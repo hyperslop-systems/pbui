@@ -1,0 +1,104 @@
+/*
+ * DATA LAB — the identity layer.
+ *
+ * `tokens.css` is the WORKBENCH's visual language: monospace, 8.5-13px,
+ * hairline borders, zero radius, tuned so that fifteen tiles fit on a screen
+ * and stay readable. This file is the BRAND's: a page someone reads once, at a
+ * comfortable size, in colour.
+ *
+ * They are two files on purpose (DATADROP-14 DR-97). A brand colour must never
+ * end up as a tile border and a 13px tile title must never end up in a hero,
+ * and the cheapest enforcement of that is that the two are not in the same
+ * place.
+ *
+ * ## Every colour here is an alias. None is a literal. (DR-98)
+ *
+ * The four phase colours ARE four presentation tones `tokens.css` already
+ * defines, and the mapping is semantic rather than approximate:
+ *
+ *     IMPORT      -> tone-source   a source is where data comes in
+ *     UNDERSTAND  -> tone-step     a pipeline step is the unit of understanding
+ *     VISUALIZE   -> tone-chart    a chart
+ *     EXPORT      -> tone-doc      a document is what leaves
+ *
+ * So the bar under the wordmark and the 4px tone edge on a chip are literally
+ * the same colour, and the marketing page's four-phase story and the
+ * workbench's type system are one system rather than two that happen to
+ * coexist. Someone who learns "purple means a step" on the landing page has
+ * learned it for the product.
+ *
+ * The consequences, both real:
+ *
+ *  - No new contrast obligation. The tones are graphic colours held to 3:1 and
+ *    already governed by `test/tokens.test.ts`. A phase colour used as TEXT
+ *    would need its own check, which is why nothing here does that and why the
+ *    brand reference forbids it — --pbui-tone-step on paper is well under the
+ *    4.5:1 that text requires.
+ *  - Retuning a tone retunes the brand. Intended, and the price of one system.
+ *    `tokens.css` carries a pointer saying so, and `test/brand-tokens.test.ts`
+ *    fails if a hex literal appears below or if a referenced token disappears.
+ */
+
+:root {
+  /* ---- identity -------------------------------------------------------- */
+  --brand-name: "DATA LAB";
+  --brand-parent: "A HYPERSLOP PRODUCT";
+  --brand-claim: "DATA IN. INSIGHT OUT.";
+
+  /* ---- the four phases, in order. NEVER reorder these. ------------------ *
+   * The order IS the brand: it is a process, not a palette. */
+  --brand-import: var(--pbui-tone-source);
+  --brand-understand: var(--pbui-tone-step);
+  --brand-visualize: var(--pbui-tone-chart);
+  --brand-export: var(--pbui-tone-doc);
+
+  /* ---- type ------------------------------------------------------------ *
+   * The exact faces are DEFERRED. The brand sheet names DATALAB DISPLAY and
+   * DATALAB SLIM, and choosing them needs a licence rather than a decision.
+   *
+   * Until then the wordmark ships as SVG (DR-92), so the letterforms are exact
+   * with no font at all, and display-sized text uses the mono stack at weight
+   * 800. Switching later is this one declaration plus a new SVG — which is why
+   * the variable exists while it still resolves to --pbui-font. */
+  --brand-font-display: var(--pbui-font);
+  --brand-font-text: var(--pbui-font);
+
+  /* A scale for a document, not for a tile. `clamp` rather than breakpoints:
+     the marketing page is one column of prose over a live workbench, and the
+     workbench has its own responsive behaviour to worry about.
+   *
+   * THE DISPLAY SIZES ARE TUNED FOR A MONOSPACE FACE and are much smaller than
+   * they look. The reference landing page these are derived from sets its hero
+   * at 78px in Inter; the same value in IBM Plex Mono is roughly 40% wider per
+   * character, which turned "Explore data without losing the thread." into four
+   * full-bleed lines that ran past the fold before the reader reached a verb.
+   *
+   * So they scale with the FACE rather than with the reference. If
+   * --brand-font-display ever resolves to a proportional display face (DR-92),
+   * these go back up — and that is the moment to check them, not before. */
+  --brand-fs-hero: clamp(28px, 3.6vw, 46px);
+  --brand-fs-h2: clamp(22px, 2.8vw, 34px);
+  --brand-fs-h3: 20px;
+  --brand-fs-lede: 18px;
+  --brand-fs-body: 16px;
+  --brand-fs-eyebrow: 11px;
+  --brand-lh-hero: 0.98;
+  --brand-lh-prose: 1.6;
+  --brand-track-hero: -0.045em; /* display sizes tighten */
+  --brand-track-word: 0.06em; /* the wordmark opens up */
+  --brand-track-eyebrow: 0.14em;
+  --brand-weight-display: 800;
+
+  /* ---- the four-bar rule ----------------------------------------------- */
+  --brand-rule-height: 8px;
+  --brand-rule-gap: 6px;
+
+  /* ---- surfaces -------------------------------------------------------- *
+   * Reused rather than reinvented: the hero sits directly above a live
+   * workbench, and two different whites read as a rendering bug. */
+  --brand-paper: var(--pbui-paper);
+  --brand-wash: var(--pbui-wash);
+  --brand-ink: var(--pbui-ink);
+  --brand-line: var(--pbui-line);
+  --brand-faint: var(--pbui-faint);
+}

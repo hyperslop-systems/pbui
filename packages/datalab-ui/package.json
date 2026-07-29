@@ -1,0 +1,88 @@
+{
+  "name": "@hyperslop-systems/datalab-ui",
+  "version": "0.1.0",
+  "description": "The complete embeddable Datalab React frontend",
+  "private": false,
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "public",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/datalab.css",
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js"
+    }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/hyperslop-systems/pbui.git",
+    "directory": "packages/datalab-ui"
+  },
+  "scripts": {
+    "dev": "vite --config vite.demo.config.ts",
+    "build": "vite build && vite build --config vite.node.config.ts && tsc -p tsconfig.build.json",
+    "build:demo": "vite build --config vite.demo.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "tokens": "tsx scripts/make-tokens.ts",
+    "storybook": "storybook dev -p 6006 --no-open",
+    "build-storybook": "storybook build -o storybook-static",
+    "fixtures": "tsx scripts/make-fixtures.ts",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
+    "pack:check": "pnpm pack --pack-destination .artifacts",
+    "consumer:smoke": "pnpm build && node scripts/consumer-smoke.mjs"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "1.32.0",
+    "@hyperslop-systems/pbui": "workspace:^",
+    "@reduxjs/toolkit": "^2.12.0",
+    "react-redux": "^9.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
+    "@storybook/addon-a11y": "^10.5.4",
+    "@storybook/addon-docs": "^10.5.4",
+    "@storybook/addon-vitest": "^10.5.4",
+    "@storybook/react-vite": "^10.5.4",
+    "@types/node": "^24.10.13",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "@vitest/browser": "^4.1.10",
+    "playwright": "^1.62.0",
+    "storybook": "^10.5.4",
+    "tsx": "^4.21.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.15.1"
+}

@@ -1,0 +1,420 @@
+/*
+ * The marketing page.
+ *
+ * The one place in the product that is a DOCUMENT rather than an interface: a
+ * 1200px column, 16-18px prose, generous vertical rhythm. Everything here comes
+ * from brand.css, and the workbench's own tokens appear only where this page
+ * touches the workbench — the hero panel's border, the surfaces.
+ *
+ * Sizes are `clamp()` rather than breakpoints. The page is one column of prose
+ * over live workbenches, and the workbenches have their own responsive
+ * behaviour to worry about; a media query here would be a second thing deciding
+ * the same layout.
+ */
+
+.page {
+  background: var(--brand-wash);
+  color: var(--brand-ink);
+  font-family: var(--brand-font-text);
+  min-height: 100vh;
+}
+
+.wide {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--pbui-space-6);
+}
+
+/* ---- the sticky header -------------------------------------------------- */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--brand-paper);
+  border-bottom: var(--pbui-border-grid);
+  transition: box-shadow 120ms linear;
+}
+
+/* Once the hero has scrolled away the header is the only thing separating the
+   page from the tutorial's workbenches, so it earns an edge. */
+.headerOn {
+  box-shadow: 0 1px 0 var(--brand-line);
+}
+
+.headerInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 58px;
+  padding: var(--pbui-space-3) var(--pbui-space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-5);
+  flex-wrap: wrap;
+}
+
+.brand {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  display: inline-flex;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-5);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.navItem {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: inherit;
+  cursor: pointer;
+  padding: var(--pbui-space-2) 0;
+}
+
+.navItem:hover {
+  border-bottom: 1px solid currentColor;
+}
+
+/* The one action that leaves the page, so it is the one filled control. */
+.cta {
+  border: var(--pbui-border-firm);
+  background: var(--brand-ink);
+  color: var(--brand-paper);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 750;
+  text-decoration: none;
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+  white-space: nowrap;
+}
+
+.cta:hover {
+  background: var(--brand-paper);
+  color: var(--brand-ink);
+}
+
+/* ---- type --------------------------------------------------------------- */
+
+.eyebrow {
+  font-size: var(--brand-fs-eyebrow);
+  font-weight: 800;
+  letter-spacing: var(--brand-track-eyebrow);
+  text-transform: uppercase;
+  color: var(--brand-faint);
+  margin-bottom: var(--pbui-space-4);
+}
+
+.eyebrowInverted {
+  composes: eyebrow;
+  /* On ink, --brand-faint is tuned for pale surfaces and would be unreadable;
+     the visualize tone is legible here and ties the band to the phase rule. */
+  color: var(--brand-visualize);
+}
+
+.headline {
+  font-family: var(--brand-font-display);
+  font-size: var(--brand-fs-hero);
+  font-weight: var(--brand-weight-display);
+  line-height: var(--brand-lh-hero);
+  letter-spacing: var(--brand-track-hero);
+  margin: 0 0 var(--pbui-space-5);
+  /* `ch` is the right unit here specifically BECAUSE the face is monospace: one
+     `ch` is one glyph, so this is a real character count rather than an
+     approximation. Around 24 puts the hero on three lines at every width the
+     grid keeps two columns. */
+  max-width: 24ch;
+}
+
+.h2 {
+  font-family: var(--brand-font-display);
+  font-size: var(--brand-fs-h2);
+  font-weight: var(--brand-weight-display);
+  line-height: 1.06;
+  letter-spacing: var(--brand-track-hero);
+  margin: 0 0 var(--pbui-space-4);
+}
+
+.h3 {
+  font-size: var(--brand-fs-h3);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 var(--pbui-space-3);
+}
+
+.lede {
+  font-size: var(--brand-fs-lede);
+  line-height: var(--brand-lh-prose);
+  max-width: 52ch;
+  margin: 0;
+}
+
+.prose {
+  font-size: var(--brand-fs-body);
+  line-height: var(--brand-lh-prose);
+  max-width: 62ch;
+  margin: 0;
+}
+
+/* ---- the hero ----------------------------------------------------------- */
+
+.hero {
+  scroll-margin-top: 70px;
+  border-bottom: var(--pbui-border-grid);
+  padding: clamp(48px, 7vw, 86px) 0 clamp(56px, 8vw, 92px);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.35fr);
+  gap: clamp(28px, 4vw, 48px);
+  align-items: center;
+}
+
+.heroRule {
+  margin: var(--pbui-space-5) 0;
+  max-width: 420px;
+}
+
+.actions {
+  display: flex;
+  gap: var(--pbui-space-4);
+  flex-wrap: wrap;
+  margin-top: var(--pbui-space-5);
+}
+
+.primary {
+  appearance: none;
+  border: var(--pbui-border-firm);
+  background: var(--brand-ink);
+  color: var(--brand-paper);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  padding: var(--pbui-space-4) var(--pbui-space-5);
+  cursor: pointer;
+  /* The one offset shadow on the page. tokens.css turned the workbench's off
+     because at fifteen tiles every panel casts a rectangle onto the one behind
+     it; a single call to action is exactly the density where it reads as
+     deliberate, which is what that comment anticipated. */
+  box-shadow: 4px 4px 0 var(--brand-visualize);
+}
+
+.quiet {
+  appearance: none;
+  border: var(--pbui-border-firm);
+  background: var(--brand-paper);
+  color: var(--brand-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  padding: var(--pbui-space-4) var(--pbui-space-5);
+  cursor: pointer;
+}
+
+.primary:hover,
+.quiet:hover {
+  background: var(--pbui-selected);
+  color: var(--brand-ink);
+}
+
+.chips {
+  display: flex;
+  gap: var(--pbui-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--pbui-space-5);
+  font-size: var(--pbui-fs-small);
+  color: var(--brand-faint);
+}
+
+.chips span:not(:last-child)::after {
+  content: " ·";
+}
+
+.tryIt {
+  border: var(--pbui-border-grid);
+  background: var(--brand-paper);
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+  margin-bottom: var(--pbui-space-4);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.heroPanel {
+  min-height: 380px;
+}
+
+/* ---- bands -------------------------------------------------------------- */
+
+.band {
+  padding: clamp(52px, 7vw, 82px) 0;
+}
+
+.sectionHead {
+  max-width: 760px;
+  margin-bottom: var(--pbui-space-6);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--pbui-space-5);
+}
+
+.card {
+  border: var(--pbui-border-firm);
+  background: var(--brand-paper);
+  padding: var(--pbui-space-6);
+  min-height: 158px;
+}
+
+.cardNumber {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--brand-faint);
+  margin-bottom: var(--pbui-space-6);
+}
+
+.cardBody {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--brand-faint);
+  margin: 0;
+}
+
+/* ---- the tutorial band -------------------------------------------------- */
+
+.tutorial {
+  scroll-margin-top: 58px;
+  background: var(--brand-paper);
+  border-top: var(--pbui-border-grid);
+  border-bottom: var(--pbui-border-grid);
+  padding-top: clamp(56px, 8vw, 92px);
+}
+
+.narrowNote {
+  border: var(--pbui-border-firm);
+  background: var(--pbui-selected);
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+  margin-top: var(--pbui-space-4);
+}
+
+/* ---- the runtime -------------------------------------------------------- */
+
+.runtimeGrid {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: clamp(28px, 4vw, 50px);
+  align-items: start;
+}
+
+.runtimeCards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: var(--pbui-space-6);
+  row-gap: var(--pbui-space-5);
+}
+
+.runtimeCard {
+  border-top: var(--pbui-border-firm);
+  padding-top: var(--pbui-space-4);
+}
+
+/* ---- the inverted band -------------------------------------------------- */
+
+.inverted {
+  background: var(--brand-ink);
+  color: var(--brand-paper);
+  padding: clamp(52px, 7vw, 80px) 0;
+}
+
+.claimGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(28px, 4vw, 40px);
+  align-items: center;
+}
+
+.claimBody {
+  font-size: 17px;
+  line-height: 1.65;
+  color: #d9d9d4;
+  margin: var(--pbui-space-4) 0 0;
+  max-width: 46ch;
+}
+
+/* ---- the design note and footer ----------------------------------------- */
+
+.noteGrid {
+  display: grid;
+  grid-template-columns: 1fr 0.9fr;
+  gap: clamp(28px, 4vw, 50px);
+  align-items: start;
+}
+
+.footer {
+  margin-top: var(--pbui-space-6);
+  padding-top: var(--pbui-space-5);
+  border-top: var(--pbui-border-grid);
+  display: flex;
+  gap: var(--pbui-space-5);
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--brand-faint);
+  font-size: 12px;
+}
+
+.footerTagline {
+  max-width: 46ch;
+}
+
+.footerLink {
+  appearance: none;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--brand-ink);
+  cursor: pointer;
+  padding: 0;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ---- narrow ------------------------------------------------------------- *
+ * One breakpoint, and only for the grids. Everything above is fluid; a grid
+ * cannot be, because two 340px columns in 600px is not a smaller layout, it is
+ * a broken one. */
+@media (max-width: 900px) {
+  .heroGrid,
+  .runtimeGrid,
+  .claimGrid,
+  .noteGrid,
+  .runtimeCards {
+    grid-template-columns: 1fr;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .wide {
+    padding: 0 var(--pbui-space-4);
+  }
+}

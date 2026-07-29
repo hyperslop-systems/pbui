@@ -1,0 +1,39 @@
+.benefits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-3);
+}
+
+/*
+ * Three columns: icon, phase word, blurb. A grid rather than a flex row so the
+ * blurbs align down the tile whatever the phase word's length — UNDERSTAND is
+ * nearly twice IMPORT, and ragged blurbs read as four unrelated lines rather
+ * than as one list.
+ */
+.benefit {
+  display: grid;
+  grid-template-columns: 14px minmax(72px, auto) 1fr;
+  gap: var(--pbui-space-3);
+  align-items: baseline;
+}
+
+.icon {
+  display: inline-flex;
+  /* The icon's box is 14px tall and its glyph is not, so baseline alignment
+     puts it slightly high against the text beside it. */
+  transform: translateY(2px);
+}
+
+.phase {
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  letter-spacing: var(--pbui-track-label);
+  text-transform: uppercase;
+  /* NOT the phase colour. The tones are graphic colours held to 3:1 and this is
+     9.5px text; the colour is carried by the icon in the column to the left.
+     See PhaseRule's `on` prop for the same rule stated once. */
+  color: var(--pbui-ink-on-pane);
+}

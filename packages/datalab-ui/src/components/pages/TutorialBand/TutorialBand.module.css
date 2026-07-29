@@ -1,0 +1,53 @@
+/*
+ * The tutorial band.
+ *
+ * This file was `LandingPage.module.css` and carried a whole page: a masthead,
+ * a wordmark, a sticky section index, a hero, a closing note and their
+ * responsive rules. `MarketingPage` owns all of that now (DATADROP-14 DR-91),
+ * so what is left is the band itself — which is most of the file gone.
+ */
+
+/*
+ * The band is COLUMN-WIDTH, not full-bleed.
+ *
+ * It matched `MarketingPage`'s 1200px column from the first draft and did not
+ * get it: the class was referenced before it existed here, CSS modules resolve
+ * a missing key to `undefined`, and `className={undefined}` renders no class at
+ * all. So the sections ran the full width of the window with no error anywhere
+ * — the failure mode a CSS module is supposed to prevent and does not, because
+ * the lookup is a plain property access.
+ *
+ * The width matters beyond tidiness. A workbench stretched to 2560px puts the
+ * lesson rail and the tile it refers to at opposite ends of a very wide screen,
+ * so the reader loses the connection the section exists to make. Anyone who
+ * wants the room has the ⤢ control in each panel, which fills the window on
+ * demand — which is why constraining the default costs nothing.
+ *
+ * 1200px matches `MarketingPage`'s `.wide` deliberately: the section headings
+ * above the band sit in that column, and a band even slightly wider reads as a
+ * misalignment rather than as a choice.
+ */
+.band {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--pbui-space-6) var(--pbui-space-6);
+}
+
+.colophon {
+  margin-top: var(--pbui-space-6);
+  padding-top: var(--pbui-space-3);
+  border-top: var(--pbui-border-grid);
+  display: flex;
+  gap: var(--pbui-space-5);
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .band {
+    padding: 0 var(--pbui-space-4) var(--pbui-space-5);
+  }
+}
