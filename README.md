@@ -27,6 +27,19 @@ const pbui = createPbui({ registry, defaultEnvironment });
 The package intentionally does not depend on Redux, RTK Query, Datadrop model
 types, or application routing.
 
+## Datalab UI workspace package
+
+`packages/datalab-ui` contains `@hyperslop-systems/datalab-ui`, the complete
+embeddable Datalab frontend. It depends on generic PBUI and owns the product
+model, DuckDB analysis runtime, RTK Query API, Redux state, presentation
+descriptors and verbs, DATA LAB brand, applications, pages, tours, and
+fixtures.
+
+Its root API exports `DatalabApp`, `WorkbenchInstance`, and the pure `routeFor`
+classifier. The `./styles.css` subpath provides the complete ordered product
+theme, and the Node-only `./vite` subpath exposes the package-owned public asset
+directory for executable Vite consumers.
+
 ## Validate a clean consumer
 
 `pnpm consumer:smoke` builds the package, packs the publishable files into a
@@ -47,3 +60,8 @@ version by default.
 A real publication tagged `latest` additionally requires the operator to enter
 `CONFIRM_LATEST`. Never force-overwrite a version; increment `version` in
 `package.json` and regenerate the lockfile instead.
+
+The separate **Publish Datalab UI** workflow applies the same gates to
+`@hyperslop-systems/datalab-ui`. It uses `pnpm publish` so the packed manifest
+rewrites the workspace PBUI dependency to a normal semver dependency before
+uploading to GitHub Packages.

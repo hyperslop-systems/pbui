@@ -31,8 +31,15 @@ jobs:
       - run: pnpm build-storybook
       - run: pnpm consumer:smoke
       - run: mkdir -p .artifacts && pnpm pack --pack-destination .artifacts
+      - run: pnpm --filter @hyperslop-systems/datalab-ui typecheck
+      - run: pnpm --filter @hyperslop-systems/datalab-ui test
+      - run: pnpm --filter @hyperslop-systems/datalab-ui lint
+      - run: pnpm --filter @hyperslop-systems/datalab-ui build
+      - run: pnpm --filter @hyperslop-systems/datalab-ui build-storybook
+      - run: pnpm --filter @hyperslop-systems/datalab-ui consumer:smoke
+      - run: pnpm --filter @hyperslop-systems/datalab-ui pack --pack-destination ../../.artifacts
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pbui-package
+          name: hyperslop-ui-packages
           path: .artifacts/*.tgz
