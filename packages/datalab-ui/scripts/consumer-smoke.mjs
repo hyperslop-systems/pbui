@@ -188,6 +188,13 @@ createRoot(root).render(<Consumer />);
     throw new Error("Datalab package does not preserve application-registration side effects");
   }
 
+  const libraryJavaScript = await readFile(join(installedRoot, "dist", "index.js"), "utf8");
+  for (const appId of ["launcher", "chart", "signin", "upload", "templates"]) {
+    if (!new RegExp(`id:\\s*"${appId}"`).test(libraryJavaScript)) {
+      throw new Error(`Datalab library omitted application registration ${appId}`);
+    }
+  }
+
   const worldDeclaration = await readFile(
     join(installedRoot, "dist", "store", "world.d.ts"),
     "utf8",

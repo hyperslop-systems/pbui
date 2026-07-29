@@ -1,11 +1,13 @@
 {
   "name": "@hyperslop-systems/datalab-ui",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The complete embeddable Datalab React frontend",
   "private": false,
   "type": "module",
   "sideEffects": [
     "**/*.css",
+    "./src/apps/all.ts",
+    "./src/apps/**/*.tsx",
     "./dist/index.js"
   ],
   "files": [
