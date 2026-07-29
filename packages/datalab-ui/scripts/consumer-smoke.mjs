@@ -171,6 +171,24 @@ createRoot(root).render(<Consumer />);
   const installedRoot = join(smokeRoot, "node_modules", "@hyperslop-systems", "datalab-ui");
   await access(join(installedRoot, "dist", "datalab.css"));
   await access(join(installedRoot, "public", "icon.svg"));
+  await access(join(installedRoot, "public", "contracts", "envelope-projection.json"));
+
+  const packageCss = await readFile(join(installedRoot, "dist", "datalab.css"), "utf8");
+  for (const contractMarker of [
+    "--pbui-font",
+    "[data-part=presentation]",
+    "[data-pbui-component=dialog]",
+  ]) {
+    if (!packageCss.includes(contractMarker)) {
+      throw new Error(
+        `Datalab stylesheet omitted bundled PBUI contract ${contractMarker}`,
+      );
+    }
+  }
+
+  if (!installedDatalab.sideEffects.includes("./dist/index.js")) {
+    throw new Error("Datalab package does not preserve application-registration side effects");
+  }
 
   const worldDeclaration = await readFile(
     join(installedRoot, "dist", "store", "world.d.ts"),

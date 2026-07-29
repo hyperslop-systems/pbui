@@ -13,6 +13,11 @@ const external = [
   "@hyperslop-systems/pbui/presentation",
 ];
 
+const bundledPbuiStyles = new Set([
+  "@hyperslop-systems/pbui/styles.css",
+  "@hyperslop-systems/pbui/components.css",
+]);
+
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -27,9 +32,10 @@ export default defineConfig({
     copyPublicDir: false,
     rollupOptions: {
       external: (id) =>
-        external.includes(id) ||
-        id.startsWith("@duckdb/duckdb-wasm/") ||
-        id.startsWith("@hyperslop-systems/pbui/"),
+        !bundledPbuiStyles.has(id) &&
+        (external.includes(id) ||
+          id.startsWith("@duckdb/duckdb-wasm/") ||
+          id.startsWith("@hyperslop-systems/pbui/")),
     },
     sourcemap: true,
   },

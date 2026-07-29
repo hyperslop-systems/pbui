@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import fixture from "./fixtures/envelope-projection.json";
+import fixture from "../public/contracts/envelope-projection.json";
 import type { Envelope } from "../src/model/live";
 import { appendEnvelope, canonicalTime, projectEnvelope } from "../src/model/live";
 import type { Field, Table } from "../src/model/table";
