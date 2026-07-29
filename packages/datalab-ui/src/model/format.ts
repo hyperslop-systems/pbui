@@ -33,7 +33,7 @@ export function formatBytes(bytes: number): string {
  * Here rather than private to a module because three of DATADROP-11's widgets
  * take a caller-supplied fraction straight into CSS geometry, and a fraction
  * arriving as 1.4 or NaN must produce a wrong-looking bar rather than a broken
- * layout. `model/plot.ts` had its own copy; it now imports this one.
+ * layout. Plot formatting now lives in `@hyperslop-systems/plot`.
  */
 export function clamp(value: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, value));

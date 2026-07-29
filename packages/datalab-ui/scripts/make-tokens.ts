@@ -1,6 +1,6 @@
 /*
  * Regenerate the categorical palette block in src/styles/tokens.css from the
- * PALETTE array in src/model/plot.ts.
+ * palette exported by @hyperslop-systems/plot.
  *
  *   pnpm tokens
  *
@@ -10,7 +10,7 @@
  * legend lies — and it is a bug that survives review, because each half looks
  * correct in isolation.
  *
- * model/plot.ts is authoritative. This script only rewrites the region between
+ * @hyperslop-systems/plot is authoritative. This script only rewrites the region between
  * the BEGIN/END markers, so the surrounding comments and hand-written tokens
  * are preserved. test/tokens.test.ts is the actual guarantee: this script is a
  * convenience, and a convenience can fall out of use.
@@ -18,7 +18,12 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { NEUTRAL, PALETTE, RAMP_HIGH, RAMP_LOW } from "../src/model/plot";
+import {
+  DEFAULT_CATEGORICAL_COLORS as PALETTE,
+  NEUTRAL_COLOR as NEUTRAL,
+  QUANTITATIVE_RAMP_HIGH as RAMP_HIGH,
+  QUANTITATIVE_RAMP_LOW as RAMP_LOW,
+} from "@hyperslop-systems/plot";
 
 const TOKENS = fileURLToPath(new URL("../src/styles/tokens.css", import.meta.url));
 const BEGIN = "  /* ---- BEGIN GENERATED PALETTE ---- */";
@@ -44,7 +49,7 @@ if (start < 0 || end < 0) {
 const next = `${css.slice(0, start + BEGIN.length)}\n${block()}\n${css.slice(end)}`;
 
 if (next === css) {
-  console.log("tokens.css palette already matches model/plot.ts");
+  console.log("tokens.css palette already matches @hyperslop-systems/plot");
 } else {
   await writeFile(TOKENS, next);
   console.log(`wrote ${PALETTE.length} categorical tokens + ramp + neutral to tokens.css`);

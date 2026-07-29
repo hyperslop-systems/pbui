@@ -124,7 +124,7 @@
   --pbui-type-t: #7cae9b;
 
   /* ---- categorical palette --------------------------------------------- *
-   * GENERATED from PALETTE in src/model/plot.ts. Do not hand-edit: run
+   * GENERATED from @hyperslop-systems/plot. Do not hand-edit: run
    *   bun run tokens
    * and let test/tokens.test.ts prove the two still agree. buildPlot is a pure
    * function with no DOM access, so it must put a concrete colour on each mark;
@@ -132,17 +132,17 @@
    * that disagrees with its marks is a bug that survives review, because both
    * halves look right in isolation. */
   /* ---- BEGIN GENERATED PALETTE ---- */
-  --pbui-cat-1: #3b6fb6;
-  --pbui-cat-2: #c0504d;
-  --pbui-cat-3: #d6a419;
-  --pbui-cat-4: #7a9a6b;
-  --pbui-cat-5: #8f7bb0;
-  --pbui-cat-6: #c07a94;
-  --pbui-cat-7: #5fa9a0;
-  --pbui-cat-8: #8892a8;
-  --pbui-ramp-low: #3b6fb6;
-  --pbui-ramp-high: #c0504d;
-  --pbui-neutral: #8892a8;
+  --pbui-cat-1: #2db878;
+  --pbui-cat-2: #805bd7;
+  --pbui-cat-3: #f2ad00;
+  --pbui-cat-4: #ef4038;
+  --pbui-cat-5: #7bd3aa;
+  --pbui-cat-6: #ad9ae3;
+  --pbui-cat-7: #f7cd66;
+  --pbui-cat-8: #f47570;
+  --pbui-ramp-low: #805bd7;
+  --pbui-ramp-high: #f2ad00;
+  --pbui-neutral: #f3f3ef;
   /* ---- END GENERATED PALETTE ---- */
 
   /* ---- type: one family, a small scale, tight leading ------------------- *

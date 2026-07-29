@@ -6,6 +6,7 @@ import "../src/styles/reset.css";
 import "../src/styles/tokens.css";
 import "@hyperslop-systems/pbui/styles.css";
 import "@hyperslop-systems/pbui/components.css";
+import "@hyperslop-systems/plot/styles.css";
 import "../src/styles/scrollbars.css";
 
 import { withStore, withTile } from "./decorators";

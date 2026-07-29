@@ -1,7 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { NEUTRAL, PALETTE, RAMP_HIGH, RAMP_LOW } from "../src/model/plot";
+import {
+  DEFAULT_CATEGORICAL_COLORS as PALETTE,
+  NEUTRAL_COLOR as NEUTRAL,
+  QUANTITATIVE_RAMP_HIGH as RAMP_HIGH,
+  QUANTITATIVE_RAMP_LOW as RAMP_LOW,
+} from "@hyperslop-systems/plot";
 
 // The categorical palette exists in two places and must agree.
 //
@@ -23,7 +28,7 @@ function tokenValue(name: string): string | undefined {
   return match?.[1]?.trim();
 }
 
-describe("tokens.css agrees with model/plot.ts", () => {
+describe("tokens.css agrees with @hyperslop-systems/plot", () => {
   test("every categorical colour is exported as a token", () => {
     PALETTE.forEach((hex, index) => {
       expect(tokenValue(`pbui-cat-${index + 1}`)).toBe(hex);

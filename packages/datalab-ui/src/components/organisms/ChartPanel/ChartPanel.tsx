@@ -1,4 +1,4 @@
-import { type PlotHit, type PlotOutcome } from "@hyperslop-systems/plot";
+import type { PlotHit, PlotOutcome } from "@hyperslop-systems/plot";
 import { PlotHost } from "@hyperslop-systems/plot/react";
 import type { ReactElement } from "react";
 import type { Table } from "../../../model/table";

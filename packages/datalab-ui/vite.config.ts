@@ -11,11 +11,14 @@ const external = [
   "@reduxjs/toolkit/query/react",
   "@hyperslop-systems/pbui",
   "@hyperslop-systems/pbui/presentation",
+  "@hyperslop-systems/plot",
+  "@hyperslop-systems/plot/react",
 ];
 
 const bundledPbuiStyles = new Set([
   "@hyperslop-systems/pbui/styles.css",
   "@hyperslop-systems/pbui/components.css",
+  "@hyperslop-systems/plot/styles.css",
 ]);
 
 export default defineConfig({

@@ -36,7 +36,7 @@ function graphicPlot(
  * `buildPlot` and `evaluate` are pure — a table and a specification in, a plot
  * out, with no DOM and no server — so every story below is the actual output of
  * the actual code path the application uses. A mark in the wrong place here is
- * a defect in `model/plot.ts`, not in this panel.
+ * a defect in `@hyperslop-systems/plot`, not in this panel.
  *
  * That is also why the pipeline stories matter. A chart of raw rows exercises
  * scales and marks; a chart of *summarised* rows exercises the thing the
@@ -54,7 +54,7 @@ const meta = {
   // application the ResizeObserver measures the real container and buildPlot is
   // given that number, so the two can never disagree.
   parameters: { tile: { width: 700, height: 420 }, pbui: { table: readings } },
-  args: { plot: graphicPlot(), docId: "d1", colorField: null },
+  args: { plot: graphicPlot(graphicFixture({ geom: "point" })), docId: "d1", colorField: null },
 } satisfies Meta<typeof ChartPanel>;
 
 export default meta;

@@ -6,7 +6,7 @@ import {
   createDefaultGraphic,
   rootView,
 } from "../src/model/graphicAuthoring";
-import { buildPlotFromResult } from "../src/model/plot";
+import { renderPbuiPlot } from "../src/appkit/plotAdapter";
 import type { Table } from "../src/model/table";
 
 /**
@@ -23,6 +23,27 @@ const ALL: [string, Table][] = [
   ["census", census],
   ["batches", batches],
 ];
+
+function plotFixture(table: Table) {
+  const document = createDefaultGraphic("fixture", "fixture", table);
+  return renderPbuiPlot(
+    document.id,
+    rootView(document),
+    {
+      rows: table.rows,
+      fields: table.fields,
+      coverage: {
+        kind: "bounded",
+        strategy: table.strategy,
+        rows: table.rows.length,
+        hasMore: table.truncated,
+      },
+      resultTruncated: table.truncated,
+    },
+    640,
+    360,
+  );
+}
 
 describe("every fixture is a well-formed Table", () => {
   test.each(ALL)("%s has consistent fields and rows", (_name, table) => {
@@ -49,18 +70,12 @@ describe("every fixture is a well-formed Table", () => {
 
 describe("every fixture charts through the real engine", () => {
   test.each(ALL)("%s produces a drawable default chart", (_name, table) => {
-    const document = createDefaultGraphic("fixture", "fixture", table);
-    const plot = buildPlotFromResult(
-      { rows: table.rows, fields: table.fields, err: null },
-      rootView(document),
-      640,
-      360,
-    );
+    const plot = plotFixture(table);
     // Not "does not throw" — buildPlot never throws, it reports. An empty
     // problems list is the only evidence that it drew anything.
-    expect(plot.problems).toEqual([]);
-    expect(plot.panels.length).toBeGreaterThan(0);
-    expect(plot.panels[0]!.marks.length).toBeGreaterThan(0);
+    expect(plot.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+    expect(plot.plan?.panels.length).toBeGreaterThan(0);
+    expect(plot.scene?.metadata.renderedMarkCount).toBeGreaterThan(0);
   });
 });
 
@@ -79,17 +94,11 @@ describe("the fixtures cover the states that matter", () => {
   });
 
   test("readings has a temporal x, so the continuous time axis is exercised", () => {
-    const document = createDefaultGraphic("fixture", "fixture", readings);
-    const plot = buildPlotFromResult(
-      { rows: readings.rows, fields: readings.fields, err: null },
-      rootView(document),
-      640,
-      360,
-    );
+    const plot = plotFixture(readings);
     // A banded time axis would emit one tick per distinct timestamp — 90 of
     // them. A continuous one emits a handful on round units.
-    expect(plot.xTicks.length).toBeLessThan(12);
-    expect(plot.xTicks.length).toBeGreaterThan(1);
+    expect(plot.plan?.axes[0].ticks.length).toBeLessThan(12);
+    expect(plot.plan?.axes[0].ticks.length).toBeGreaterThan(1);
   });
 
   test("census keeps the zero-padded identifier a string", () => {
