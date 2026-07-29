@@ -101,6 +101,32 @@ describe("the fixtures cover the states that matter", () => {
     expect(plot.plan?.axes[0].ticks.length).toBeGreaterThan(1);
   });
 
+  test("authoring references become ordinary rule layers", () => {
+    const document = createDefaultGraphic("fixture", "fixture", readings);
+    rootView(document).references = [{ on: "y", value: 20, label: "target", intent: "target" }];
+    const plot = renderPbuiPlot(
+      document.id,
+      rootView(document),
+      {
+        rows: readings.rows,
+        fields: readings.fields,
+        coverage: {
+          kind: "bounded",
+          strategy: readings.strategy,
+          rows: readings.rows.length,
+          hasMore: readings.truncated,
+        },
+        resultTruncated: readings.truncated,
+      },
+      640,
+      360,
+    );
+
+    expect(plot.compiled?.layers.map((layer) => layer.geom.kind)).toEqual(["rule", "line"]);
+    expect(plot.plan?.layers.map((layer) => layer.kind)).toEqual(["rule", "line"]);
+    expect(plot.scene?.root.children.some((node) => node.id.includes(":rule"))).toBe(true);
+  });
+
   test("census keeps the zero-padded identifier a string", () => {
     // The whole argument for server-side typing in one assertion: a sniffer
     // calls this column numeric and "001" becomes 1 before any schema can

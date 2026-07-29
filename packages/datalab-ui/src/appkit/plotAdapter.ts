@@ -85,6 +85,23 @@ export function renderPbuiPlot(
     version: 1,
     id: documentId,
     layers: [
+      ...(view.references ?? []).map((reference, index) => ({
+        id: layerId(
+          `rule:${reference.on}:${reference.value}:${reference.intent ?? "reference"}:${encodeURIComponent(reference.label ?? String(index))}`,
+        ),
+        inheritMapping: false,
+        mapping: {
+          [reference.on]: { kind: "constant" as const, value: reference.value },
+        },
+        stat: { kind: "identity" as const },
+        geom: {
+          kind: "rule" as const,
+          ...(reference.label === undefined ? {} : { label: reference.label }),
+          ...(reference.intent === undefined ? {} : { intent: reference.intent }),
+          facetMode: "all" as const,
+        },
+        position: { kind: "identity" as const },
+      })),
       {
         id: layerId("root"),
         mapping,
@@ -94,7 +111,6 @@ export function renderPbuiPlot(
       },
     ],
     scales: { y: view.yScale === "log" ? { kind: "log" } : { kind: "linear" } },
-    references: view.references,
   };
   return renderPlot({
     document,
