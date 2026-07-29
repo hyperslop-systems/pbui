@@ -168,16 +168,14 @@ createRoot(root).render(<Consumer />);
     );
   }
 
-  const installedRoot = join(
-    smokeRoot,
-    "node_modules",
-    "@hyperslop-systems",
-    "datalab-ui",
-  );
+  const installedRoot = join(smokeRoot, "node_modules", "@hyperslop-systems", "datalab-ui");
   await access(join(installedRoot, "dist", "datalab.css"));
   await access(join(installedRoot, "public", "icon.svg"));
 
-  const worldDeclaration = await readFile(join(installedRoot, "dist", "store", "world.d.ts"), "utf8");
+  const worldDeclaration = await readFile(
+    join(installedRoot, "dist", "store", "world.d.ts"),
+    "utf8",
+  );
   if (worldDeclaration.includes("worldSlice") || worldDeclaration.includes("worldActions")) {
     throw new Error("internal Redux implementation leaked into declaration output");
   }
