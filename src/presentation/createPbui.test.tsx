@@ -39,10 +39,10 @@ describe("createPbui", () => {
     render(
       <>
         <pbui.Provider environment={{ prefix: "A: " }}>
-          <pbui.Presentation reference={reference} />
+          <pbui.Presentation reference={reference}>A: Ada</pbui.Presentation>
         </pbui.Provider>
         <pbui.Provider environment={{ prefix: "B: " }}>
-          <pbui.Presentation reference={reference} />
+          <pbui.Presentation reference={reference}>B: Ada</pbui.Presentation>
         </pbui.Provider>
       </>,
     );
@@ -62,7 +62,7 @@ describe("createPbui", () => {
           performed.push(verb);
         }}
       >
-        <pbui.Presentation reference={reference} />
+        <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
         <pbui.ObjectMenu />
       </pbui.Provider>,
     );
@@ -99,7 +99,7 @@ describe("createPbui", () => {
     render(
       <pbui.Provider>
         <Acceptor />
-        <pbui.Presentation reference={reference} />
+        <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
       </pbui.Provider>,
     );
 

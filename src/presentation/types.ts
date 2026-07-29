@@ -43,9 +43,9 @@ export type PresentationDescriptorMap<
   Values extends PresentationValues,
   Environment,
   Verb,
-> = {
+> = Partial<{
   [Type in PresentationType<Values>]: PresentationDescriptor<Values[Type], Environment, Verb>;
-};
+}>;
 
 export interface AcceptRequest<Values extends PresentationValues> {
   types: PresentationType<Values> | readonly PresentationType<Values>[];

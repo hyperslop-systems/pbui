@@ -69,4 +69,23 @@ describe("createPresentationRegistry", () => {
     expect(registry.actionsFor(reference, environment)).toEqual([]);
     expect(registry.toneFor(reference)).toBe("neutral");
   });
+
+  test("falls back safely for presentation types without descriptors", () => {
+    const partial = createPresentationRegistry<Values, Environment, Verb>({
+      person: {
+        label: (person) => person.name,
+      },
+    });
+    const reference = {
+      type: "project",
+      value: { id: "project-1", title: "Compiler" },
+    } as const;
+    const environment = { currentUserId: "person-1" };
+
+    expect(partial.descriptorFor("project")).toBeNull();
+    expect(partial.labelFor(reference, environment)).toBe(
+      '{"id":"project-1","title":"Compiler"}',
+    );
+    expect(partial.actionsFor(reference, environment)).toEqual([]);
+  });
 });

@@ -81,13 +81,17 @@ function Example({ themed = false }: { themed?: boolean }) {
               type: "person",
               value: { id: "person-2", name: "Ada Lovelace", email: "ada@example.test" },
             }}
-          />
+          >
+            Ada Lovelace
+          </examplePbui.Presentation>
           <examplePbui.Presentation
             reference={{
               type: "project",
               value: { id: "project-1", title: "Analytical Engine", archived: false },
             }}
-          />
+          >
+            Analytical Engine
+          </examplePbui.Presentation>
         </div>
         <output>{lastVerb ? JSON.stringify(lastVerb) : "No action performed"}</output>
         <examplePbui.ObjectMenu />

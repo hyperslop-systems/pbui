@@ -1,9 +1,11 @@
 import {
   createContext,
+  type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -26,18 +28,34 @@ export interface CreatePbuiOptions<
   registry: PresentationRegistry<Values, Environment, Verb>;
   defaultEnvironment: Environment;
   conversions?: readonly PresentationConversion<Values>[];
+  renderMenuHeader?: (
+    reference: PresentationReference<Values>,
+    environment: Environment,
+    label: ReactNode,
+  ) => ReactNode;
 }
 
-export interface PbuiProviderProps<Environment, Verb> {
+export interface PbuiProviderProps<
+  Values extends PresentationValues,
+  Environment,
+  Verb,
+> {
   children: ReactNode;
   environment?: Environment;
   onPerform?: (verb: Verb) => void | Promise<void>;
+  onAccept?: (result: PresentationReference<Values> | null) => void;
 }
 
 export interface PresentationProps<Values extends PresentationValues> {
   reference: PresentationReference<Values>;
-  children?: ReactNode;
+  children: ReactNode;
   className?: string;
+  doc?: string;
+  svg?: boolean;
+  block?: boolean;
+  onActivate?: () => void;
+  activateDoc?: string;
+  testId?: string;
 }
 
 export interface PbuiContextValue<
@@ -54,6 +72,8 @@ export interface PbuiContextValue<
   menu: MenuState<Values> | null;
   openMenu(reference: PresentationReference<Values>, x: number, y: number): void;
   closeMenu(): void;
+  mouseDoc: string | null;
+  setMouseDoc(text: string | null): void;
   perform(verb: Verb): void | Promise<void>;
 }
 
@@ -61,6 +81,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
   registry,
   defaultEnvironment,
   conversions = [],
+  renderMenuHeader,
 }: CreatePbuiOptions<Values, Environment, Verb>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
 
@@ -85,9 +106,11 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     children,
     environment = defaultEnvironment,
     onPerform,
-  }: PbuiProviderProps<Environment, Verb>) {
+    onAccept,
+  }: PbuiProviderProps<Values, Environment, Verb>) {
     const [accepting, setAccepting] = useState<AcceptRequest<Values> | null>(null);
     const [menu, setMenu] = useState<MenuState<Values> | null>(null);
+    const [mouseDoc, setMouseDoc] = useState<string | null>(null);
     const pending = useRef<
       ((result: PresentationReference<Values> | null) => void) | null
     >(null);
@@ -96,8 +119,9 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
       const resolve = pending.current;
       pending.current = null;
       setAccepting(null);
+      onAccept?.(result);
       resolve?.(result);
-    }, []);
+    }, [onAccept]);
 
     const accept = useCallback(
       (request: AcceptRequest<Values>) =>
@@ -139,12 +163,24 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         menu,
         openMenu: (reference, x, y) => setMenu({ reference, x, y }),
         closeMenu: () => setMenu(null),
+        mouseDoc,
+        setMouseDoc,
         perform: (verb) => {
           setMenu(null);
           return onPerform?.(verb);
         },
       }),
-      [environment, accepting, accept, isAcceptable, satisfyAccept, menu, settle, onPerform],
+      [
+        environment,
+        accepting,
+        accept,
+        isAcceptable,
+        satisfyAccept,
+        menu,
+        mouseDoc,
+        settle,
+        onPerform,
+      ],
     );
 
     return <Context.Provider value={value}>{children}</Context.Provider>;
@@ -156,52 +192,159 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     return context;
   }
 
-  function Presentation({ reference, children, className }: PresentationProps<Values>) {
+  function Presentation({
+    reference,
+    children,
+    className,
+    doc,
+    svg = false,
+    block = false,
+    onActivate,
+    activateDoc,
+    testId,
+  }: PresentationProps<Values>) {
     const pbui = usePbui();
     const acceptable = pbui.isAcceptable(reference);
     const tone = registry.toneFor(reference);
     const label = registry.labelFor(reference, pbui.environment);
+    const labelText =
+      typeof label === "string" || typeof label === "number" ? String(label) : reference.type;
+    const Tag = svg ? "g" : block ? "div" : "span";
 
-    const handleContextMenu = (event: MouseEvent<HTMLButtonElement>) => {
+    const clickDoc = acceptable
+      ? "L: ACCEPT   R: menu"
+      : onActivate
+        ? `L: ${activateDoc ?? "activate"}   R: menu`
+        : "L/R: menu";
+    const describe = () => `${doc ?? `<${reference.type}>`}   —   ${clickDoc}`;
+    const open = (x: number, y: number) => pbui.openMenu(reference, x, y);
+
+    const handleContextMenu = (event: MouseEvent) => {
       event.preventDefault();
-      pbui.openMenu(reference, event.clientX, event.clientY);
+      event.stopPropagation();
+      open(event.clientX, event.clientY);
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      event.stopPropagation();
+      if (acceptable) {
+        event.preventDefault();
+        pbui.satisfyAccept(reference);
+      } else if (onActivate) {
+        onActivate();
+      } else {
+        open(event.clientX, event.clientY);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (acceptable) pbui.satisfyAccept(reference);
+        else if (onActivate) onActivate();
+        else {
+          const box = (event.target as HTMLElement).getBoundingClientRect();
+          open(box.left, box.bottom);
+        }
+      } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+        event.preventDefault();
+        event.stopPropagation();
+        const box = (event.target as HTMLElement).getBoundingClientRect();
+        open(box.left, box.bottom);
+      }
     };
 
     return (
-      <button
-        type="button"
+      <Tag
         className={className}
         data-pbui="presentation"
-        data-part="presentation"
+        data-part={svg ? "presentation-svg" : "presentation"}
         data-presentation-type={reference.type}
         data-tone={tone}
         data-acceptable={acceptable || undefined}
-        onClick={() => {
-          if (acceptable) pbui.satisfyAccept(reference);
-        }}
+        data-testid={testId}
+        tabIndex={0}
+        role="button"
+        aria-label={doc ?? labelText}
+        onClick={handleClick}
         onContextMenu={handleContextMenu}
+        onKeyDown={handleKeyDown}
+        onMouseEnter={() => pbui.setMouseDoc(describe())}
+        onMouseLeave={() => pbui.setMouseDoc(null)}
+        onFocus={() => pbui.setMouseDoc(describe())}
+        onBlur={() => pbui.setMouseDoc(null)}
       >
-        {children ?? label}
-      </button>
+        {children}
+      </Tag>
     );
   }
 
   function ObjectMenu() {
     const pbui = usePbui();
+    const ref = useRef<HTMLDivElement>(null);
+
+    const menu = pbui.menu;
+    useEffect(() => {
+      if (!menu) return;
+
+      const handleKey = (event: globalThis.KeyboardEvent) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          pbui.closeMenu();
+        }
+      };
+      const handleClickAway = () => pbui.closeMenu();
+
+      window.addEventListener("keydown", handleKey);
+      window.addEventListener("click", handleClickAway);
+      ref.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+
+      return () => {
+        window.removeEventListener("keydown", handleKey);
+        window.removeEventListener("click", handleClickAway);
+      };
+    }, [menu, pbui]);
+
     if (!pbui.menu) return null;
 
     const { reference, x, y } = pbui.menu;
     const actions = registry.actionsFor(reference, pbui.environment);
+    const label = registry.labelFor(reference, pbui.environment);
+    const left = Math.max(0, Math.min(x, window.innerWidth - 300));
+    const top = Math.max(0, Math.min(y, window.innerHeight - 340));
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const items = Array.from(
+        ref.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? [],
+      );
+      const index = items.indexOf(document.activeElement as HTMLButtonElement);
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        items[(index + 1) % items.length]?.focus();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        items[(index - 1 + items.length) % items.length]?.focus();
+      }
+    };
 
     return (
       <div
+        ref={ref}
         data-pbui="object-menu"
         data-part="object-menu"
         role="menu"
-        style={{ left: x, top: y }}
+        aria-label={`${reference.type} object menu`}
+        style={{ left, top }}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={handleKeyDown}
       >
         <header data-part="object-menu-header">
-          {registry.labelFor(reference, pbui.environment)}
+          {renderMenuHeader?.(reference, pbui.environment, label) ?? (
+            <>
+              &lt;{reference.type}&gt; {label}
+            </>
+          )}
         </header>
         {actions.length === 0 ? (
           <div data-part="object-menu-empty">No actions available</div>
@@ -218,17 +361,12 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
               onClick={() => pbui.perform(action.verb)}
             >
               {action.label}
+              {action.disabledReason && (
+                <span data-part="object-menu-reason"> — {action.disabledReason}</span>
+              )}
             </button>
           ))
         )}
-        <button
-          type="button"
-          data-part="object-menu-close"
-          aria-label="Close menu"
-          onClick={pbui.closeMenu}
-        >
-          Close
-        </button>
       </div>
     );
   }
