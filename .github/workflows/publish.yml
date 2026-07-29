@@ -67,19 +67,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm --workspace-root run typecheck
 
       - name: Test
-        run: pnpm test
+        run: pnpm --workspace-root run test
 
       - name: Build package
-        run: pnpm build
+        run: pnpm --workspace-root run build
 
       - name: Build Storybook
-        run: pnpm build-storybook
+        run: pnpm --workspace-root run build-storybook
 
       - name: Test clean tarball consumer
-        run: pnpm consumer:smoke
+        run: pnpm --workspace-root run consumer:smoke
 
       - name: Publish to GitHub Packages
         shell: bash

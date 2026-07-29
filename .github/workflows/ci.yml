@@ -25,11 +25,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-      - run: pnpm build-storybook
-      - run: pnpm consumer:smoke
+      - run: pnpm --workspace-root run typecheck
+      - run: pnpm --workspace-root run test
+      - run: pnpm --workspace-root run build
+      - run: pnpm --workspace-root run build-storybook
+      - run: pnpm --workspace-root run consumer:smoke
       - run: mkdir -p .artifacts && pnpm pack --pack-destination .artifacts
       - run: pnpm --filter @hyperslop-systems/datalab-ui typecheck
       - run: pnpm --filter @hyperslop-systems/datalab-ui test
