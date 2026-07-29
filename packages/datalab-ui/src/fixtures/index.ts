@@ -30,4 +30,4 @@ export const FIXTURES = { readings, census, batches } as const;
 // Chart specifications and plots, built by the real engine (DATADROP-6
 // follow-up). Separate module so a story importing a plot does not pull in the
 // whole fixture set.
-export { READINGS, draft, fixtureResult, graphicFixture, graphicPlot } from "./charts";
+export { READINGS, draft, fixtureResult, graphicFixture } from "./charts";

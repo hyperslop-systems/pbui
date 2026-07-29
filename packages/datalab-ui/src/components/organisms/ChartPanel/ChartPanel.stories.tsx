@@ -1,6 +1,34 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChartPanel } from "./ChartPanel";
-import { READINGS, graphicPlot, graphicFixture, readings, draft } from "../../../fixtures";
+import { READINGS, fixtureResult, graphicFixture, readings, draft } from "../../../fixtures";
+import { renderPbuiPlot } from "../../../appkit/plotAdapter";
+import { rootView } from "../../../model/graphicAuthoring";
+import type { GraphicDocument } from "../../../model/graphic";
+import type { Table } from "../../../model/table";
+
+function graphicPlot(
+  document: GraphicDocument = graphicFixture(),
+  table: Table = readings,
+  width = 560,
+  height = 300,
+) {
+  return renderPbuiPlot(
+    document.id,
+    rootView(document),
+    {
+      ...fixtureResult(table),
+      coverage: {
+        kind: "bounded",
+        strategy: table.strategy,
+        rows: table.rows.length,
+        hasMore: table.truncated,
+      },
+      resultTruncated: table.truncated,
+    },
+    width,
+    height,
+  );
+}
 
 /**
  * The chart, driven by the real engine rather than by hand-written literals.

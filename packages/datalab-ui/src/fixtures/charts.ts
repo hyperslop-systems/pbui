@@ -5,7 +5,6 @@ import {
   createGraphicDocument,
   rootView,
 } from "../model/graphicAuthoring";
-import { buildPlotFromResult, type Plot } from "../model/plot";
 import type { Field, Table } from "../model/table";
 import {
   draftToTransform,
@@ -106,13 +105,4 @@ export function fixtureResult(table: Table = readings): {
   dropped: Record<string, never>;
 } {
   return { rows: table.rows, fields: table.fields, err: null, dropped: {} };
-}
-
-export function graphicPlot(
-  document: GraphicDocument = graphicFixture(),
-  table: Table = readings,
-  width = 560,
-  height = 300,
-): Plot {
-  return buildPlotFromResult(fixtureResult(table), rootView(document), width, height);
 }
