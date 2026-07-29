@@ -260,9 +260,9 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         className={className}
         data-pbui="presentation"
         data-part={svg ? "presentation-svg" : "presentation"}
-        data-presentation-type={reference.type}
+        data-ptype={reference.type}
         data-tone={tone}
-        data-acceptable={acceptable || undefined}
+        data-state={acceptable ? "acceptable" : undefined}
         data-testid={testId}
         tabIndex={0}
         role="button"
@@ -331,15 +331,15 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     return (
       <div
         ref={ref}
-        data-pbui="object-menu"
-        data-part="object-menu"
+        data-pbui="menu"
+        data-part="menu"
         role="menu"
         aria-label={`${reference.type} object menu`}
         style={{ left, top }}
         onClick={(event) => event.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <header data-part="object-menu-header">
+        <header data-part="menu-header">
           {renderMenuHeader?.(reference, pbui.environment, label) ?? (
             <>
               &lt;{reference.type}&gt; {label}
@@ -347,14 +347,14 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
           )}
         </header>
         {actions.length === 0 ? (
-          <div data-part="object-menu-empty">No actions available</div>
+          <div data-part="menu-item">No actions available</div>
         ) : (
           actions.map((action) => (
             <button
               type="button"
               role="menuitem"
               key={action.id}
-              data-part="object-menu-action"
+              data-part="menu-item"
               data-danger={action.danger || undefined}
               disabled={action.disabled}
               title={action.disabledReason ?? action.description}
@@ -362,7 +362,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
             >
               {action.label}
               {action.disabledReason && (
-                <span data-part="object-menu-reason"> — {action.disabledReason}</span>
+                <span data-part="menu-reason"> — {action.disabledReason}</span>
               )}
             </button>
           ))
