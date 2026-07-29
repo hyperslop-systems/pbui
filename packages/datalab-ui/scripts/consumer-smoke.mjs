@@ -180,9 +180,7 @@ createRoot(root).render(<Consumer />);
     "[data-pbui-component=dialog]",
   ]) {
     if (!packageCss.includes(contractMarker)) {
-      throw new Error(
-        `Datalab stylesheet omitted bundled PBUI contract ${contractMarker}`,
-      );
+      throw new Error(`Datalab stylesheet omitted bundled PBUI contract ${contractMarker}`);
     }
   }
 
