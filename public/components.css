@@ -1,0 +1,101 @@
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pbui-dialog-space, 1rem);
+  background: var(--pbui-dialog-backdrop, rgb(15 23 42 / 45%));
+}
+
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
+  [data-part="dialog-panel"] {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--pbui-dialog-border, #cbd5e1);
+  border-radius: var(--pbui-dialog-radius, 0.5rem);
+  background: var(--pbui-dialog-surface, #ffffff);
+  color: var(--pbui-dialog-text, #0f172a);
+}
+
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
+  [data-part="dialog-header"],
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
+  [data-part="dialog-footer"] {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: var(--pbui-dialog-space, 1rem);
+}
+
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
+  [data-part="dialog-title"] {
+  flex: 1;
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
+  [data-part="dialog-close"] {
+  border: 1px solid var(--pbui-dialog-border, #cbd5e1);
+  border-radius: 0.25rem;
+  background: transparent;
+  color: inherit;
+}
+
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
+  [data-part="dialog-body"] {
+  padding: 0 var(--pbui-dialog-space, 1rem) var(--pbui-dialog-space, 1rem);
+}
+
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
+  [data-part="dialog-footer"] {
+  justify-content: flex-end;
+  border-top: 1px solid var(--pbui-dialog-border, #cbd5e1);
+}
+
+:where([data-pbui-component="json-block"]):not([data-unstyled="true"]) {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  overflow: auto;
+  border-radius: 0.25rem;
+  background: var(--pbui-code-surface, #0f172a);
+  color: var(--pbui-code-text, #e2e8f0);
+  font: 0.8125rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+:where([data-pbui-component="json-block"])[data-failed="true"] {
+  color: var(--pbui-code-danger, #fecaca);
+}
+
+:where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"]) {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+:where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"])
+  [data-part="inspector-title"] {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+:where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"])
+  [data-part="inspector-empty"] {
+  color: #64748b;
+}

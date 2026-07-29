@@ -23,7 +23,8 @@
       "types": "./dist/presentation/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./styles.css": "./dist/pbui.css"
+    "./styles.css": "./dist/pbui.css",
+    "./components.css": "./dist/components.css"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
