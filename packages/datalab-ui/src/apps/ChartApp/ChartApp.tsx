@@ -5,6 +5,7 @@ import { useDocPlot } from "../useTable";
 import { AppBody } from "@hyperslop-systems/pbui";
 import { DocBar } from "../../components/molecules";
 import { ChartPanel } from "../../components/organisms";
+import styles from "./ChartApp.module.css";
 
 /**
  * The chart tile — the container half.
@@ -52,10 +53,10 @@ function ChartApp({ leafId, docId }: AppProps) {
   return (
     <>
       <DocBar leafId={leafId} docId={docId} />
-      <AppBody>
+      <AppBody className={styles.body}>
         {/* The measuring container stays here: the size feeds buildPlot, which
             is a container concern. Everything below it is presentational. */}
-        <div ref={container} style={{ flex: 1, minHeight: 220, marginTop: "var(--pbui-space-3)" }}>
+        <div ref={container} className={styles.plotFrame}>
           <ChartPanel
             plot={plot}
             table={table}

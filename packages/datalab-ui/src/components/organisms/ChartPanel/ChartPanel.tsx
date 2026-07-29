@@ -33,7 +33,7 @@ export function ChartPanel({
         <Presentation
           key={`${hit.fieldId}:${hit.value}`}
           svg
-          reference={{ type: "cat", value: { docId, field: hit.fieldId, value: hit.value } }}
+          reference={{ type: "cat", value: { docId, field: hit.field, value: hit.value } }}
           doc={`<cat> ${hit.label}`}
         >
           {element}
