@@ -6,4 +6,5 @@ export * from "./InlineRename";
 export * from "./KindLegend";
 export * from "./Legend";
 export * from "./MoreBar";
+export * from "./ResultLog";
 export * from "./SegmentedBar";
