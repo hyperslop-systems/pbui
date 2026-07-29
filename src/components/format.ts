@@ -1,3 +1,8 @@
+/** Clamp a value into an inclusive numeric range. */
+export function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
 /** Format a number compactly for dense component labels. */
 export function formatShortNumber(value: number): string {
   if (!Number.isFinite(value)) return "—";

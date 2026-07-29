@@ -6,3 +6,4 @@ export * from "./InspectorPanel";
 export * from "./JsonBlock";
 export * from "./layout";
 export * from "./molecules";
+export * from "./organisms";
