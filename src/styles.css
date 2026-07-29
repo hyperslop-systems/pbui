@@ -1,0 +1,78 @@
+:where([data-pbui="presentation"]) {
+  --pbui-color-surface: #f8fafc;
+  --pbui-color-border: #cbd5e1;
+  --pbui-color-text: #0f172a;
+  --pbui-color-accent: #2563eb;
+  --pbui-color-danger: #b91c1c;
+  --pbui-radius-control: 999px;
+  --pbui-space-control-x: 0.625rem;
+  --pbui-space-control-y: 0.25rem;
+
+  appearance: none;
+  border: 1px solid var(--pbui-color-border);
+  border-radius: var(--pbui-radius-control);
+  background: var(--pbui-color-surface);
+  color: var(--pbui-color-text);
+  cursor: context-menu;
+  font: inherit;
+  padding: var(--pbui-space-control-y) var(--pbui-space-control-x);
+}
+
+:where([data-pbui="presentation"])[data-acceptable="true"] {
+  border-color: var(--pbui-color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pbui-color-accent) 24%, transparent);
+  cursor: pointer;
+}
+
+:where([data-pbui="presentation"]):focus-visible,
+:where([data-pbui="object-menu"]) button:focus-visible {
+  outline: 2px solid var(--pbui-color-accent);
+  outline-offset: 2px;
+}
+
+:where([data-pbui="object-menu"]) {
+  --pbui-menu-surface: #ffffff;
+  --pbui-menu-border: #cbd5e1;
+  --pbui-menu-text: #0f172a;
+  --pbui-menu-muted: #64748b;
+
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  min-width: 13rem;
+  overflow: hidden;
+  border: 1px solid var(--pbui-menu-border);
+  border-radius: 0.5rem;
+  background: var(--pbui-menu-surface);
+  box-shadow: 0 0.75rem 2rem rgb(15 23 42 / 18%);
+  color: var(--pbui-menu-text);
+}
+
+:where([data-pbui="object-menu"]) [data-part="object-menu-header"] {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--pbui-menu-border);
+  font-weight: 700;
+}
+
+:where([data-pbui="object-menu"]) button,
+:where([data-pbui="object-menu"]) [data-part="object-menu-empty"] {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+:where([data-pbui="object-menu"]) button:not(:disabled):hover {
+  background: color-mix(in srgb, var(--pbui-menu-text) 8%, transparent);
+}
+
+:where([data-pbui="object-menu"]) button[data-danger="true"] {
+  color: var(--pbui-color-danger);
+}
+
+:where([data-pbui="object-menu"]) button:disabled,
+:where([data-pbui="object-menu"]) [data-part="object-menu-empty"] {
+  color: var(--pbui-menu-muted);
+}
