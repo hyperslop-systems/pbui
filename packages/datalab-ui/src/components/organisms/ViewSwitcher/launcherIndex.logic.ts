@@ -135,6 +135,19 @@ export interface LauncherSearchContext {
    * that is not a silent split or a destroyed working tile.
    */
   allowNewViews: boolean;
+  /**
+   * The view already in the target placement, excluded in place mode.
+   *
+   * `buildViewSwitcherModel` has always dropped the current view, and Replace
+   * would otherwise offer the tile's own contents as something to replace them
+   * with — a row that dispatches a no-op. Excluded by *view* rather than by
+   * row, because the same logical view can appear under several workspaces and
+   * every one of those rows assigns the same `viewId`.
+   *
+   * Null in navigate mode: going to another placement of the view you are
+   * looking at is a real destination.
+   */
+  excludeViewId?: ViewId | null;
 }
 
 export interface LauncherResults {
@@ -416,9 +429,15 @@ export function searchLauncherIndex(
   // Current workspace first; the rest keep their visible strip order.
   groups = [...groups].sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent));
 
+  // Replacing a placement with what it already shows is a no-op, so the target's
+  // own view is not offered in place mode — by view id, since several rows
+  // across workspaces all assign the same one.
+  const excluded = context.mode === "place" ? (context.excludeViewId ?? null) : null;
+
   const scored = groups
     .map((group) => {
       const rows = group.rows
+        .filter((row) => row.viewId !== excluded)
         .map((row) => ({ row, score: scoreRow(row, group.name, text) }))
         .filter((entry) => entry.score > 0)
         .sort((a, b) => b.score - a.score)
@@ -432,6 +451,7 @@ export function searchLauncherIndex(
   const showUnplaced = query.kind === "all" && (context.mode === "place" || context.allowNewViews);
   const unplacedAll = showUnplaced
     ? index.unplaced
+        .filter((row) => row.viewId !== excluded)
         .map((row) => ({ row, score: scoreRow(row, "", text) }))
         .filter((entry) => entry.score > 0)
         .sort((a, b) => b.score - a.score)

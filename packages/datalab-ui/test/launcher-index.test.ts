@@ -472,6 +472,38 @@ describe("invocation semantics", () => {
   test("wsN never offers new applications: a new view has no workspace yet", () => {
     expect(search("ws1").newApplications).toEqual([]);
   });
+
+  test("place mode drops the view already in the target, in every workspace", () => {
+    // v-temp is placed in both ws-a and ws-b. Replacing the tile that already
+    // shows it is a no-op whichever row is clicked, so both rows go — the
+    // exclusion is by view, not by row.
+    const results = searchLauncherIndex(buildLauncherIndex(fixture()), parseLauncherQuery("temp"), {
+      ...PLACE,
+      excludeViewId: "v-temp",
+    });
+    expect(results.rows.map((row) => ("viewId" in row ? row.viewId : row.id))).not.toContain(
+      "v-temp",
+    );
+  });
+
+  test("navigate mode keeps it: another placement of it is a real destination", () => {
+    const results = searchLauncherIndex(buildLauncherIndex(fixture()), parseLauncherQuery("temp"), {
+      ...NAVIGATE,
+      excludeViewId: "v-temp",
+    });
+    expect(results.groups.flatMap((group) => group.rows).map((row) => row.viewId)).toContain(
+      "v-temp",
+    );
+  });
+
+  test("an unplaced view is dropped from place mode when it is the target's own", () => {
+    const results = searchLauncherIndex(
+      buildLauncherIndex(fixture()),
+      parseLauncherQuery("scratch"),
+      { ...PLACE, excludeViewId: "v-scratch" },
+    );
+    expect(results.unplaced).toEqual([]);
+  });
 });
 
 describe("preferred placement for navigation", () => {

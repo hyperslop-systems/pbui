@@ -99,13 +99,23 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
     [apps, layout, docNames],
   );
 
-  /** The workspace a placed result would land in, for the header and §8.4. */
-  const targetWorkspace = useMemo(() => {
-    if (!targetPlacementId) return null;
-    const holds = (node: Node): boolean =>
-      node.type === "leaf" ? node.id === targetPlacementId : holds(node.a) || holds(node.b);
-    return layout.spaces.find((space) => holds(space.tree)) ?? null;
+  /** The workspace a placed result would land in, and the view already there. */
+  const target = useMemo(() => {
+    if (!targetPlacementId) return { workspace: null, viewId: null };
+    let viewId: string | null = null;
+    const holds = (node: Node): boolean => {
+      if (node.type === "leaf") {
+        if (node.id !== targetPlacementId) return false;
+        viewId = node.viewId;
+        return true;
+      }
+      return holds(node.a) || holds(node.b);
+    };
+    const workspace = layout.spaces.find((space) => holds(space.tree)) ?? null;
+    return { workspace, viewId };
   }, [layout.spaces, targetPlacementId]);
+
+  const targetWorkspace = target.workspace;
 
   const context: LauncherSearchContext = useMemo(
     () => ({
@@ -114,8 +124,11 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
       // Phase 2 always has an explicit target, so new views are always legal.
       // Phase 3's navigate mode narrows this to "only onto a launcher tile".
       allowNewViews: invocation.kind !== "navigate",
+      // Replacing a tile with what it already shows is a no-op; the embedded
+      // switcher has always dropped this row and the modal must too.
+      excludeViewId: target.viewId,
     }),
-    [invocation.kind, targetWorkspace],
+    [invocation.kind, targetWorkspace, target.viewId],
   );
 
   const parsed = useMemo(() => parseLauncherQuery(query), [query]);
