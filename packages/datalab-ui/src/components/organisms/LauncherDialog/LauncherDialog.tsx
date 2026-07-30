@@ -78,6 +78,8 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
   useTransientSurface(true, `launcher:${listId}`);
 
   const targetPlacementId = invocation.kind === "navigate" ? null : invocation.placementId;
+  /** Snapshotted at open: the tile the user was in when the shortcut fired. */
+  const activePlacement = invocation.kind === "navigate" ? invocation.activePlacementId : null;
 
   const docNames = useMemo(
     () => Object.fromEntries(Object.entries(docs).map(([id, doc]) => [id, doc.name])),
@@ -117,18 +119,42 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
 
   const targetWorkspace = target.workspace;
 
+  /**
+   * In navigate mode, the active tile — but only if it is a launcher.
+   *
+   * `Mod+K` never replaces a working tile (Decision 6), so a new-view row has
+   * somewhere to go only when the tile the user was last in is already empty.
+   * Anywhere else, `+chart` is refused with an explanation rather than resolved
+   * into a silent split or a destroyed view.
+   */
+  const navigateTarget = useMemo(() => {
+    if (invocation.kind !== "navigate" || !invocation.activePlacementId) return null;
+    const active = invocation.activePlacementId;
+    let viewId: string | null = null;
+    const holds = (node: Node): boolean => {
+      if (node.type === "leaf") {
+        if (node.id !== active) return false;
+        viewId = node.viewId;
+        return true;
+      }
+      return holds(node.a) || holds(node.b);
+    };
+    const workspace = layout.spaces.find((space) => holds(space.tree));
+    if (!workspace || !viewId) return null;
+    const isLauncher = layout.views[viewId]?.appId === "launcher";
+    return isLauncher ? { placementId: active, workspace } : null;
+  }, [invocation, layout.spaces, layout.views]);
+
   const context: LauncherSearchContext = useMemo(
     () => ({
       mode: invocation.kind === "navigate" ? "navigate" : "place",
-      targetWorkspaceId: targetWorkspace?.id ?? null,
-      // Phase 2 always has an explicit target, so new views are always legal.
-      // Phase 3's navigate mode narrows this to "only onto a launcher tile".
-      allowNewViews: invocation.kind !== "navigate",
+      targetWorkspaceId: targetWorkspace?.id ?? navigateTarget?.workspace.id ?? null,
+      allowNewViews: invocation.kind !== "navigate" || navigateTarget !== null,
       // Replacing a tile with what it already shows is a no-op; the embedded
       // switcher has always dropped this row and the modal must too.
       excludeViewId: target.viewId,
     }),
-    [invocation.kind, targetWorkspace, target.viewId],
+    [invocation.kind, targetWorkspace, target.viewId, navigateTarget],
   );
 
   const parsed = useMemo(() => parseLauncherQuery(query), [query]);
@@ -159,16 +185,35 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
     // Focus returns by placement id rather than by a stored HTMLElement: the
     // element may have been unmounted and remounted while the modal was open,
     // and a detached node silently swallows `.focus()`.
-    if (targetPlacementId) focusPlacement(targetPlacementId);
+    const restore = targetPlacementId ?? (invocation.kind === "navigate" ? activePlacement : null);
+    if (restore) focusPlacement(restore);
   };
 
   const choose = (row: LauncherRow) => {
     if (invocation.kind === "navigate") {
-      if (row.kind !== "placed") return;
-      dispatch(layoutActions.setCurrentSpace(row.workspaceId));
+      // Navigation never mutates the layout: switch workspace, focus a
+      // placement, done. A new-view row is only reachable here when the active
+      // tile is a launcher, in which case it falls through to placement below.
+      if (row.kind === "placed") {
+        dispatch(layoutActions.setCurrentSpace(row.workspaceId));
+        dispatch(layoutActions.closeLauncher());
+        // Prefer the occurrence the user was already in when a linked view is
+        // placed twice in the target workspace (§19 question 5).
+        const target = preferredPlacement(row, activePlacement);
+        if (target) focusPlacement(target);
+        return;
+      }
+      if (row.kind !== "new" || !navigateTarget) return;
+      dispatch(layoutActions.setCurrentSpace(navigateTarget.workspace.id));
+      dispatch(
+        layoutActions.createViewInPlacement({
+          nodeId: navigateTarget.placementId,
+          appId: row.appId,
+          docId: row.docBound ? activeDocId : null,
+        }),
+      );
       dispatch(layoutActions.closeLauncher());
-      const target = preferredPlacement(row, null);
-      if (target) focusPlacement(target);
+      focusPlacement(navigateTarget.placementId);
       return;
     }
 
@@ -233,7 +278,23 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
 
   const where = targetWorkspace
     ? `${targetWorkspace.name} · ${invocation.kind === "replace" ? "this tile" : "new view"}`
-    : "navigate";
+    : navigateTarget
+      ? `${navigateTarget.workspace.name} · the empty tile you were in`
+      : "a view anywhere · nothing is replaced";
+
+  /**
+   * `+chart` from a working tile, refused with the way forward.
+   *
+   * The alternatives are worse than a refusal: picking a split direction on the
+   * user's behalf, or replacing whatever they were looking at. Both are silent
+   * and one is destructive.
+   */
+  const newViewsRefused =
+    invocation.kind === "navigate" && !navigateTarget && parsed.kind === "new";
+
+  const activeRow = rows.find((row) => row.id === active);
+  const enterVerb =
+    activeRow?.kind === "new" ? "create" : invocation.kind === "navigate" ? "go to" : "place";
 
   return (
     <Dialog title={HEADINGS[invocation.kind]} onClose={close} closeLabel="close the launcher">
@@ -262,6 +323,12 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
               A new view does not belong to a workspace yet — drop the ws prefix.
             </Text>
           )}
+          {newViewsRefused && (
+            <Text size="tiny" tone="faint" prose>
+              New views need an empty tile. Focus a <strong>new tile</strong>, or use{" "}
+              <strong>Split right</strong> / <strong>Split below</strong> first.
+            </Text>
+          )}
         </div>
 
         {/* Polite rather than assertive: the count changes on every keystroke,
@@ -280,6 +347,7 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
             activeId={active}
             mode={context.mode}
             targetWorkspaceName={targetWorkspace?.name ?? null}
+            explainedElsewhere={newViewsRefused}
             onChoose={choose}
             onHover={setActiveId}
           />
@@ -287,7 +355,12 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
 
         <div className={styles.hint}>
           <Text size="micro" tone="faint">
-            ↑↓ choose · Enter {invocation.kind === "navigate" ? "go to" : "place"} · Esc close
+            {/*
+              Named after the ACTIVE row, not the invocation. In navigate mode
+              onto a launcher tile, Enter creates a view — labelling that "go
+              to" describes the mode rather than what the key is about to do.
+            */}
+            ↑↓ choose · Enter {enterVerb} · Esc close
           </Text>
         </div>
       </div>

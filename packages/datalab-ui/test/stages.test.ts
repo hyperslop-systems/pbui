@@ -307,6 +307,7 @@ describe("the space pointer never desynchronises", () => {
     closeLauncher: undefined,
     pushSurface: "launcher:1",
     popSurface: "launcher:1",
+    setActivePlacement: "n",
     setJustSignedUp: true,
     openImport: { target: { kind: "stage" }, prefill: "", from: null },
     closeImport: undefined,

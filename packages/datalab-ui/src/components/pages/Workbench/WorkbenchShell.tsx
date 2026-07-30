@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, Button, IconButton, Surface, Toolbar, Text } from "@hyperslop-systems/pbui";
 import { useDispatch, useSelector } from "react-redux";
-import { AcceptBanner, MouseDocLine, ObjectMenu } from "../../../pbui";
+import { AcceptBanner, MouseDocLine, ObjectMenu, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { countLeaves } from "../../../store/layout";
 import { allApps } from "../../../appkit/registry";
@@ -9,6 +9,7 @@ import { commitImport, kindFor } from "../../../store/effects";
 import { layoutActions } from "../../../store/layout";
 import { BundleDialog, LauncherDialog, NodeView, StageBar, WorkspaceStrip } from "../../organisms";
 import { useTransientSurface } from "../../../appkit/useTransientSurface";
+import { isEditableTarget, routeWorkbenchKey } from "./shortcutRouting";
 import styles from "./Workbench.module.css";
 
 /**
@@ -188,6 +189,9 @@ export function WorkbenchShell({
     stageBar: stageBar ?? stage?.chrome.stageBar ?? true,
   };
 
+  const dispatch = useDispatch();
+  const pbui = usePbui();
+
   /**
    * Escape leaves full frame — unless something is open on top of it.
    *
@@ -213,13 +217,106 @@ export function WorkbenchShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [fullFrame, onToggleFullFrame, ownsEscape]);
 
+  /**
+   * Mod+K opens the launcher in navigate mode.
+   *
+   * Navigate, not place (Decision 6): a global shortcut that could silently
+   * replace whatever tile happened to be active would make the fastest way into
+   * the launcher also the most destructive. Selecting a result switches
+   * workspace and focuses a placement; nothing about the layout changes.
+   *
+   * New-view rows are offered only when the active tile is already a launcher,
+   * because `+chart` from a working tile has nowhere to go that is not an
+   * implicit split or a destroyed view. The launcher says so rather than
+   * guessing.
+   */
+  // `?? null` and not a bare `!== null`: the field is optional, so it is
+  // `undefined` until the launcher is opened for the first time — and
+  // `undefined !== null` is true, which reads as "permanently open". That
+  // suppressed Mod+K entirely and pinned the active-tile outline on, neither of
+  // which any unit test could see because both take booleans as arguments.
+  const launcherOpen = useSelector((state: RootState) => (state.layout.launcher ?? null) !== null);
+  const activePlacementId = useSelector((state: RootState) => state.layout.activePlacementId);
+  const anySurfaceOpen = useSelector(
+    (state: RootState) => (state.layout.transientSurfaces ?? []).length > 0,
+  );
+
+  /**
+   * Which workbench a key press belongs to.
+   *
+   * The design proposed `onKeyDownCapture` on this element, on the argument
+   * that only the workbench containing focus should react. Correct in spirit
+   * and wrong in practice: browsing the product, DOM focus is very often on
+   * `<body>` — after a page load, and after Escape closes the object menu —
+   * so a React handler bound here never fires and the shortcut is dead exactly
+   * when a user would reach for it.
+   *
+   * So the rule is stated directly rather than inherited from the event path:
+   *
+   *  1. the workbench that CONTAINS focus reacts, which keeps five embedded
+   *     instances from all opening at once;
+   *  2. when nothing on the page owns focus, a LONE workbench reacts, because
+   *     a page with one workbench cannot be ambiguous about which one is meant.
+   *
+   * A page with several instances and focus on `<body>` therefore does nothing,
+   * which is the honest answer — there is no way to tell which was intended.
+   */
+  const shellRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const root = shellRef.current;
+      if (!root) return;
+
+      const focused = document.activeElement;
+      const unowned = !focused || focused === document.body;
+      const ownsFocus = !unowned && root.contains(focused);
+      const lone = document.querySelectorAll("[data-workbench-shell]").length === 1;
+      if (!ownsFocus && !(unowned && lone)) return;
+
+      const decision = routeWorkbenchKey(
+        event,
+        {
+          targetIsEditable: isEditableTarget(event.target as HTMLElement | null),
+          launcherOpen,
+          dialogOpen: anySurfaceOpen,
+          objectMenuOpen: pbui.menu !== null,
+          acceptingPresentation: pbui.accepting !== null,
+        },
+        navigator.platform,
+      );
+      if (decision.kind !== "open-launcher") return;
+      event.preventDefault();
+      dispatch(
+        layoutActions.openLauncher({
+          kind: "navigate",
+          activePlacementId: activePlacementId ?? null,
+        }),
+      );
+    };
+    // Capture, so the launcher wins over anything that would swallow Mod+K
+    // deeper in the tree.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [dispatch, launcherOpen, anySurfaceOpen, pbui.menu, pbui.accepting, activePlacementId]);
+
   const counts =
     `${space ? countLeaves(space.tree) : 0} tiles · ` +
     `${spaceCount} workspaces · ${docCount} documents`;
 
   return (
     <>
-      <div className={styles.shell}>
+      <div
+        ref={shellRef}
+        className={styles.shell}
+        // Marks this subtree as one workbench, so the shortcut listener above
+        // can count how many are on the page and tell "the only one" from
+        // "one of five".
+        data-workbench-shell=""
+        // Scopes the active-tile outline (§10.3). Shown only while a keyboard
+        // operation needs a target; an always-on border would read as "this
+        // view is selected", which is not a concept the product has.
+        data-launcher-open={launcherOpen || undefined}
+      >
         {chrome.masthead && (
           <Surface tone="inverted" border="none">
             <Toolbar tight>

@@ -22,6 +22,14 @@ export interface LauncherResultsProps {
   /** In place mode an out-of-scope row is offered disabled, with the reason. */
   mode: "place" | "navigate";
   targetWorkspaceName: string | null;
+  /**
+   * The caller has already explained why there is nothing to show.
+   *
+   * Navigate mode refuses `+chart` with a specific way forward; following that
+   * with the generic "nothing matches, try +" would contradict it, since `+` is
+   * exactly what the user typed.
+   */
+  explainedElsewhere?: boolean;
   onChoose(row: LauncherRow): void;
   onHover(id: LauncherResultId): void;
 }
@@ -109,6 +117,7 @@ export function LauncherResults({
   activeId,
   mode,
   targetWorkspaceName,
+  explainedElsewhere = false,
   onChoose,
   onHover,
 }: LauncherResultsProps) {
@@ -127,6 +136,7 @@ export function LauncherResults({
   }
 
   if (results.rows.length === 0) {
+    if (explainedElsewhere) return null;
     return (
       <div className={styles.notice}>
         <Text size="small" tone="faint" prose>

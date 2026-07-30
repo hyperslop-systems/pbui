@@ -324,6 +324,17 @@ export interface LayoutState {
   /** Open transient surfaces, oldest first. The last owns Escape. Never persisted. */
   transientSurfaces?: SurfaceId[];
   /**
+   * The tile a workbench shortcut acts on: the last to hold focus or take a
+   * pointer press. Never persisted.
+   *
+   * Called *active placement* rather than "focused tile" on purpose. It is not
+   * DOM focus — focus is on a button or an input inside the tile, and often on
+   * nothing at all — and it is not a selected view, which would be a new
+   * product concept with no behaviour behind it. It names the tile a keyboard
+   * operation should use as context, and nothing more.
+   */
+  activePlacementId?: NodeId | null;
+  /**
    * The result of the last export, until it is dismissed. Never persisted.
    *
    * An export ends in a promise against a browser API that can refuse, so it
@@ -515,6 +526,10 @@ export const layoutSlice = createSlice({
       // The last tile cannot be closed: an empty workspace has no way back.
       if (!space || countLeaves(space.tree) < 2) return;
       space.tree = removeLeaf(space.tree, action.payload);
+      // A closed tile cannot be the shortcut target. Cleared rather than moved
+      // to a neighbour: nothing should become active because something else
+      // stopped existing (§10.4).
+      if (state.activePlacementId === action.payload) state.activePlacementId = null;
     },
 
     closeView: {
@@ -980,6 +995,19 @@ export const layoutSlice = createSlice({
 
     openLauncher(state, action: PayloadAction<LauncherInvocation>) {
       state.launcher = action.payload;
+    },
+
+    /**
+     * Record the tile a shortcut should act on. Ignores a no-op write.
+     *
+     * The guard is not a micro-optimisation. `onFocusCapture` fires for every
+     * focusable descendant, so tabbing across one tile's six title controls
+     * would otherwise dispatch six identical actions and wake every subscriber
+     * six times.
+     */
+    setActivePlacement(state, action: PayloadAction<NodeId | null>) {
+      if (state.activePlacementId === action.payload) return;
+      state.activePlacementId = action.payload;
     },
 
     closeLauncher(state) {

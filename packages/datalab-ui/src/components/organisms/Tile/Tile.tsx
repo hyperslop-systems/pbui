@@ -28,6 +28,17 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   const renaming = useSelector((state: RootState) => state.layout.renamingId === node.id);
   const setRenaming = (on: boolean) =>
     dispatch(layoutActions.beginRename(on && view ? node.id : null));
+
+  /**
+   * Whether this is the tile a workbench shortcut would act on.
+   *
+   * A boolean selector rather than the id, so a tile re-renders only when its
+   * own active state flips — not every time any other tile becomes active.
+   */
+  const active = useSelector((state: RootState) => state.layout.activePlacementId === node.id);
+  const markActive = () => {
+    if (!active) dispatch(layoutActions.setActivePlacement(node.id));
+  };
   const docName = useSelector((state: RootState) =>
     docId ? (state.world.docs[docId]?.name ?? null) : null,
   );
@@ -80,6 +91,12 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
       // unmounted and remounted while the modal was open, and a detached node
       // swallows `.focus()` silently.
       data-placement-id={node.id}
+      data-active={active || undefined}
+      // Capture, so the tile learns it is the interaction context before a
+      // button or drag grip handles the event. Neither handler moves DOM focus:
+      // marking context must never steal focus from an input mid-word.
+      onFocusCapture={markActive}
+      onPointerDownCapture={markActive}
       className={[styles.tile, dragging ? styles.dragging : ""].filter(Boolean).join(" ")}
       style={{ background: app ? undefined : "var(--pbui-pane-alt)" }}
     >
