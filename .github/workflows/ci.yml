@@ -42,6 +42,8 @@ jobs:
       - run: pnpm --filter @hyperslop-systems/datalab-ui build
       - run: pnpm --filter @hyperslop-systems/datalab-ui build-storybook
       - run: pnpm --filter @hyperslop-systems/datalab-ui consumer:smoke
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm --filter @hyperslop-systems/datalab-ui pack --pack-destination ../../.artifacts
 
       - uses: actions/upload-artifact@v4
