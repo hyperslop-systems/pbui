@@ -107,7 +107,7 @@ export function renderPbuiPlot(
         mapping,
         stat: { kind: "identity" },
         geom: { kind: view.mark },
-        position: { kind: "identity" },
+        position: view.mark === "bar" ? { kind: "dodge" } : { kind: "identity" },
       },
     ],
     scales: { y: view.yScale === "log" ? { kind: "log" } : { kind: "linear" } },
