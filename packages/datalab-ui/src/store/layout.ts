@@ -284,21 +284,17 @@ export type LauncherInvocation =
   | { kind: "replace"; placementId: NodeId }
   | { kind: "navigate"; activePlacementId: NodeId | null };
 
-/**
- * An open transient surface, for deciding who owns Escape (§11.5).
+/*
+ * Escape ownership is deliberately NOT in this slice (§11.5).
  *
- * The workbench has four independent Escape handlers — the dialog, the launcher,
- * full-frame, and PBUI's own menu — and three of them are `window` listeners.
- * `stopPropagation` cannot order listeners on one node, and
- * `stopImmediatePropagation` orders them by mount order, which is a race
- * between `useEffect`s rather than a rule.
- *
- * So: an explicit stack, oldest first, and one question each handler can ask —
- * *am I on top?* It is not a keyboard routing system and must not grow into
- * one; it answers the single question every one of those handlers is otherwise
- * answering by guessing.
+ * It was, briefly, beside the other transient fields — which is where DR-69's
+ * reasoning points. It moved to `@hyperslop-systems/pbui`'s `surfaces.ts`
+ * because Escape is delivered to the *document*: with a stack per store, a
+ * landing page's six instances each believed themselves topmost, and one key
+ * press closed a dialog in one and left full frame in another. The generic
+ * package owns three of the handlers and is the only layer that can see the
+ * whole page. `appkit/useTransientSurface.ts` carries the full note.
  */
-export type SurfaceId = string;
 
 export interface LayoutState {
   stages: Stage[];
@@ -321,8 +317,6 @@ export interface LayoutState {
    * let alone from global navigation.
    */
   launcher?: LauncherInvocation | null;
-  /** Open transient surfaces, oldest first. The last owns Escape. Never persisted. */
-  transientSurfaces?: SurfaceId[];
   /**
    * The tile a workbench shortcut acts on: the last to hold focus or take a
    * pointer press. Never persisted.
@@ -423,18 +417,6 @@ export function stageOf(state: LayoutState): Stage | undefined {
 /** The workspaces belonging to one stage, in layout order. */
 export function spacesOfStage(state: LayoutState, stageId: StageId): Workspace[] {
   return state.spaces.filter((s) => s.stageId === stageId);
-}
-
-/**
- * The transient surface that owns Escape, or null when none is open.
- *
- * A selector rather than a field so there is one definition of "topmost" and
- * the stack stays the only writable state. Callers compare their own id to it;
- * a handler that is not on top does nothing at all for that key press.
- */
-export function topSurface(state: LayoutState): SurfaceId | null {
-  const stack = state.transientSurfaces ?? [];
-  return stack.length > 0 ? (stack[stack.length - 1] as SurfaceId) : null;
 }
 
 /**
@@ -1012,24 +994,6 @@ export const layoutSlice = createSlice({
 
     closeLauncher(state) {
       state.launcher = null;
-    },
-
-    /**
-     * Push an open transient surface. Idempotent.
-     *
-     * Idempotent because React 18's StrictMode double-invokes effects in
-     * development: a naive push would seat one dialog twice, and the matching
-     * single pop would leave it on the stack owning Escape forever.
-     */
-    pushSurface(state, action: PayloadAction<SurfaceId>) {
-      const stack = state.transientSurfaces ?? [];
-      state.transientSurfaces = stack.includes(action.payload) ? stack : [...stack, action.payload];
-    },
-
-    popSurface(state, action: PayloadAction<SurfaceId>) {
-      state.transientSurfaces = (state.transientSurfaces ?? []).filter(
-        (id) => id !== action.payload,
-      );
     },
 
     /** Record that this browser has just completed a first sign-in (DR-96). */

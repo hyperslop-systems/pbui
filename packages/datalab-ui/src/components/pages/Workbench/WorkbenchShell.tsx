@@ -8,7 +8,7 @@ import { allApps } from "../../../appkit/registry";
 import { commitImport, kindFor } from "../../../store/effects";
 import { layoutActions } from "../../../store/layout";
 import { BundleDialog, LauncherDialog, NodeView, StageBar, WorkspaceStrip } from "../../organisms";
-import { useTransientSurface } from "../../../appkit/useTransientSurface";
+import { useAnyEscapeSurface, useEscapeSurface } from "../../../appkit/useTransientSurface";
 import { isEditableTarget, routeWorkbenchKey } from "./shortcutRouting";
 import styles from "./Workbench.module.css";
 
@@ -207,7 +207,7 @@ export function WorkbenchShell({
    * surface stack answers it directly: full frame acts only while it is the
    * topmost open surface.
    */
-  const ownsEscape = useTransientSurface(fullFrame, "workbench:full-frame");
+  const ownsEscape = useEscapeSurface(fullFrame);
   useEffect(() => {
     if (!fullFrame || !onToggleFullFrame || !ownsEscape) return;
     const onKey = (event: KeyboardEvent) => {
@@ -237,9 +237,9 @@ export function WorkbenchShell({
   // which any unit test could see because both take booleans as arguments.
   const launcherOpen = useSelector((state: RootState) => (state.layout.launcher ?? null) !== null);
   const activePlacementId = useSelector((state: RootState) => state.layout.activePlacementId);
-  const anySurfaceOpen = useSelector(
-    (state: RootState) => (state.layout.transientSurfaces ?? []).length > 0,
-  );
+  // Any dialog, menu or expanded panel anywhere on the page. The shortcut
+  // router needs the fact, not the identity.
+  const anySurfaceOpen = useAnyEscapeSurface();
 
   /**
    * Which workbench a key press belongs to.

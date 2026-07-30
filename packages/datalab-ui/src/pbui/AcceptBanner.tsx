@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useEscapeSurface } from "@hyperslop-systems/pbui";
 import { PARTS } from "./parts";
 import { usePbui } from "./runtime";
 import styles from "./pbui.module.css";
@@ -18,17 +19,21 @@ export function AcceptBanner() {
   const pbui = usePbui();
   const accepting = pbui.accepting;
 
+  // A pending accept is a transient surface like any other: it must not abort
+  // because a dialog opened above it took an Escape meant for the dialog.
+  const ownsEscape = useEscapeSurface(accepting !== null);
   useEffect(() => {
     if (!accepting) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (!ownsEscape) return;
         event.preventDefault();
         pbui.abortAccept();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [accepting, pbui]);
+  }, [accepting, pbui, ownsEscape]);
 
   if (!accepting) return null;
 

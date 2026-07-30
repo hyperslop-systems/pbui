@@ -2,7 +2,6 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Dialog, Text, TextInput } from "@hyperslop-systems/pbui";
 import { useScopedApps } from "../../../appkit/AppScope";
-import { useTransientSurface } from "../../../appkit/useTransientSurface";
 import type { RootState } from "../../../store";
 import {
   type LauncherInvocation,
@@ -73,10 +72,16 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
   const docs = useSelector((state: RootState) => state.world.docs);
   const activeDocId = useSelector((state: RootState) => state.world.activeDocId);
 
-  // The launcher owns Escape while it is open; full-frame and any dialog
-  // beneath it stand down. See `useTransientSurface`.
-  useTransientSurface(true, `launcher:${listId}`);
-
+  /*
+   * The launcher does NOT register its own Escape surface.
+   *
+   * `Dialog` already registers one, and registering a second here is worse than
+   * redundant: child effects run before parent effects, so the launcher's entry
+   * would land on top of the Dialog's own, and the Dialog — the component that
+   * actually handles Escape — would decide it was not topmost and ignore the
+   * key. Escape then closed nothing at all. Found in the browser; see
+   * `test/escape-surfaces.test.ts` for the regression.
+   */
   const targetPlacementId = invocation.kind === "navigate" ? null : invocation.placementId;
   /** Snapshotted at open: the tile the user was in when the shortcut fired. */
   const activePlacement = invocation.kind === "navigate" ? invocation.activePlacementId : null;

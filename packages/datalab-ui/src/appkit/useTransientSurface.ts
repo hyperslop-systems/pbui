@@ -1,45 +1,22 @@
-import { useEffect, useId } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import type { RootState } from "../store";
-import { layoutActions, type SurfaceId, topSurface } from "../store/layout";
+export { useAnyEscapeSurface, useEscapeSurface } from "@hyperslop-systems/pbui";
 
 /**
- * Register an open transient surface, and answer whether it owns Escape.
+ * Escape ownership lives in the generic package now.
  *
- * The workbench has several independent Escape handlers — the dialog, the
- * launcher modal, full-frame — and three of them are `window` listeners
- * registered from separate `useEffect`s. Propagation cannot order listeners on
- * one node: `stopPropagation` does not affect siblings on the same target, and
- * `stopImmediatePropagation` only suppresses those registered afterwards, which
- * makes correctness a mount-order race (DATALAB-VIEW-001 design-doc/02 §11.5).
+ * DATALAB-VIEW-001 first put the stack in the layout slice, beside the other
+ * transient fields, on the reasoning that transient interaction state belongs
+ * in the store (DR-69). That reasoning is right about *this workbench's* state
+ * and wrong about this particular fact, for one reason: **Escape is delivered
+ * to the document, and "topmost" is a property of the page, not of a store.**
  *
- * So each surface says it is open and asks one question. A handler that is not
- * on top does nothing for that key, and "topmost" has exactly one definition,
- * in `topSurface`.
+ * A landing page holds six workbench instances, each with its own store. With
+ * the stack per instance, a dialog open in one and an expanded panel in another
+ * each believed itself topmost, and one key press closed both. The generic
+ * package owns three of the handlers — `Dialog`, `ObjectMenu` and the accept
+ * protocol — so it is also the only layer that can see far enough to order
+ * them.
  *
- * The id defaults to a `useId`, which is stable across the component's life and
- * unique per instance — a page with five embedded workbenches gets five
- * distinct full-frame surfaces rather than one that any of them can pop.
- *
- * @param open  false while the surface is closed, so a component may call this
- *              unconditionally and still register only when it is showing.
- * @returns whether this surface currently owns Escape.
+ * This file is a re-export rather than a deletion so the two call sites here
+ * keep a name that says what they are for, and so this note has somewhere to
+ * live. See `@hyperslop-systems/pbui`'s `surfaces.ts` for the mechanism.
  */
-export function useTransientSurface(open: boolean, id?: SurfaceId): boolean {
-  const generated = useId();
-  const surfaceId = id ?? generated;
-  const dispatch = useDispatch();
-  const owns = useSelector((state: RootState) => topSurface(state.layout) === surfaceId);
-
-  useEffect(() => {
-    if (!open) return;
-    dispatch(layoutActions.pushSurface(surfaceId));
-    return () => {
-      dispatch(layoutActions.popSurface(surfaceId));
-    };
-  }, [dispatch, open, surfaceId]);
-
-  // While closed the surface is not on the stack, so it can never own Escape
-  // even for the render before the effect runs.
-  return open && owns;
-}

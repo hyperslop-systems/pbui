@@ -839,7 +839,6 @@ describe("persistence is defensive", () => {
       const layout: LayoutState = {
         ...initialLayout(),
         launcher: { kind: "replace", placementId: "n" },
-        transientSurfaces: ["launcher:1"],
         renamingId: "n",
         pendingImport: { target: { kind: "stage" }, prefill: "secret-ish", from: "clipboard" },
         notice: { ok: true, title: "Copied", body: "…" },

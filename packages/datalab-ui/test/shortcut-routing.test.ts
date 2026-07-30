@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 import {
   isEditableTarget,
   isModKey,
@@ -6,9 +6,14 @@ import {
   type ShortcutContext,
 } from "../src/components/pages/Workbench/shortcutRouting";
 import {
+  popEscapeSurface,
+  pushEscapeSurface,
+  resetEscapeSurfaces,
+  topEscapeSurface,
+} from "@hyperslop-systems/pbui";
+import {
   initialLayout,
   layoutSlice,
-  topSurface,
   type LayoutState,
   type Node,
   type NodeId,
@@ -116,37 +121,44 @@ describe("editable targets", () => {
   });
 });
 
-describe("the transient surface stack", () => {
-  const reduce = (state: LayoutState, action: { type: string; payload?: unknown }) =>
-    layoutSlice.reducer(state, action as never);
+describe("the escape surface stack", () => {
+  // Module state in the generic package, not this store: Escape is delivered to
+  // the document, so "topmost" is a property of the page. A landing page with
+  // six workbench instances has six stores and one Escape key.
+  beforeEach(resetEscapeSurfaces);
 
   test("the last surface pushed owns Escape", () => {
-    let state = initialLayout();
-    expect(topSurface(state)).toBeNull();
-    state = reduce(state, layoutSlice.actions.pushSurface("full-frame"));
-    expect(topSurface(state)).toBe("full-frame");
-    state = reduce(state, layoutSlice.actions.pushSurface("launcher"));
-    expect(topSurface(state)).toBe("launcher");
-    state = reduce(state, layoutSlice.actions.popSurface("launcher"));
-    expect(topSurface(state)).toBe("full-frame");
+    expect(topEscapeSurface()).toBeNull();
+    pushEscapeSurface("full-frame");
+    expect(topEscapeSurface()).toBe("full-frame");
+    pushEscapeSurface("launcher");
+    expect(topEscapeSurface()).toBe("launcher");
+    popEscapeSurface("launcher");
+    expect(topEscapeSurface()).toBe("full-frame");
   });
 
   test("pushing twice seats a surface once", () => {
     // StrictMode double-invokes effects in development. Without idempotence the
     // matching single pop would leave a closed surface owning Escape forever.
-    let state = initialLayout();
-    state = reduce(state, layoutSlice.actions.pushSurface("launcher"));
-    state = reduce(state, layoutSlice.actions.pushSurface("launcher"));
-    state = reduce(state, layoutSlice.actions.popSurface("launcher"));
-    expect(topSurface(state)).toBeNull();
+    pushEscapeSurface("launcher");
+    pushEscapeSurface("launcher");
+    popEscapeSurface("launcher");
+    expect(topEscapeSurface()).toBeNull();
   });
 
   test("popping out of order leaves the rest intact", () => {
-    let state = initialLayout();
-    state = reduce(state, layoutSlice.actions.pushSurface("a"));
-    state = reduce(state, layoutSlice.actions.pushSurface("b"));
-    state = reduce(state, layoutSlice.actions.popSurface("a"));
-    expect(topSurface(state)).toBe("b");
+    pushEscapeSurface("a");
+    pushEscapeSurface("b");
+    popEscapeSurface("a");
+    expect(topEscapeSurface()).toBe("b");
+  });
+
+  test("surfaces from different instances share one order", () => {
+    // The property the per-store version got wrong: a dialog in instance A and
+    // an expanded panel in instance B are not each independently topmost.
+    pushEscapeSurface("instance-a:full-frame");
+    pushEscapeSurface("instance-b:dialog");
+    expect(topEscapeSurface()).toBe("instance-b:dialog");
   });
 });
 
