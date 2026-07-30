@@ -62,7 +62,8 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
   useEffect(() => {
     const resource = query.data;
     if (!resource?.workbench || resource.workbench.id !== workbenchId) return;
-    if (revision !== null && resource.revision <= revisionRef.current) return;
+    const incomingRevision = BigInt(resource.revision);
+    if (revision !== null && incomingRevision <= revisionRef.current) return;
     try {
       const remote = decodeRemoteWorkbench(resource.workbench);
       const preserved = preservedLocalState(layout);
@@ -77,8 +78,8 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
       managedViewIds.current = new Set(remote.viewOrder);
       managedDocumentIds.current = new Set(Object.keys(remote.documents));
       appliedFingerprint.current = fingerprint(remote);
-      revisionRef.current = resource.revision;
-      setRevision(resource.revision);
+      revisionRef.current = incomingRevision;
+      setRevision(incomingRevision);
       setIdentity({ id: remote.id, name: remote.name });
       setConflict(null);
       setError(null);
@@ -134,13 +135,14 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
       try {
         const resource = await replace({
           id: workbenchId,
-          revision,
+          revision: revision.toString(),
           requestId: request.id,
           document,
         }).unwrap();
         appliedFingerprint.current = currentFingerprint;
-        revisionRef.current = resource.revision;
-        setRevision(resource.revision);
+        const savedRevision = BigInt(resource.revision);
+        revisionRef.current = savedRevision;
+        setRevision(savedRevision);
         pendingRequest.current = null;
         failedFingerprint.current = null;
       } catch (cause) {

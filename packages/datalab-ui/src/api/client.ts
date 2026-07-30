@@ -15,12 +15,15 @@ import {
   type MutationBatch,
   type WorkbenchDocument,
   WorkbenchDocumentSchema,
-  type WorkbenchResource,
 } from "@hyperslop-systems/workbench-protocol";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fixtureBaseQuery } from "./fixtureBaseQuery";
 import type { SourceRef, Table } from "../model/table";
-import { parseWorkbenchListJSON, parseWorkbenchResourceJSON } from "./workbenchProtocol";
+import {
+  type CachedWorkbenchResource,
+  parseWorkbenchListJSON,
+  parseWorkbenchResourceJSON,
+} from "./workbenchProtocol";
 import { request } from "./request";
 
 /**
@@ -402,16 +405,16 @@ export const api = createApi({
       transformResponse: parseWorkbenchListJSON,
       providesTags: ["Workbenches"],
     }),
-    getWorkbench: build.query<WorkbenchResource, string>({
+    getWorkbench: build.query<CachedWorkbenchResource, string>({
       query: (id) => `/workbenches/${encodeURIComponent(id)}`,
       transformResponse: parseWorkbenchResourceJSON,
       providesTags: (_result, _error, id) => [{ type: "Workbenches", id }],
     }),
     replaceWorkbench: build.mutation<
-      WorkbenchResource,
+      CachedWorkbenchResource,
       {
         id: string;
-        revision: bigint;
+        revision: string;
         requestId: string;
         document: WorkbenchDocument;
       }
@@ -428,10 +431,10 @@ export const api = createApi({
       transformResponse: parseWorkbenchResourceJSON,
     }),
     mutateWorkbench: build.mutation<
-      WorkbenchResource,
+      CachedWorkbenchResource,
       {
         id: string;
-        revision: bigint;
+        revision: string;
         requestId: string;
         batch: MutationBatch;
       }
@@ -475,8 +478,8 @@ export const {
   useMutateWorkbenchMutation,
 } = api;
 
-export function workbenchETag(id: string, revision: bigint): string {
-  return `"workbench-${id}-${revision.toString()}"`;
+export function workbenchETag(id: string, revision: string): string {
+  return `"workbench-${id}-${revision}"`;
 }
 
 /** The SSE URL a live tail subscribes to. */
