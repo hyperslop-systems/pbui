@@ -33,3 +33,10 @@
 - [x] The real `/ui/` workbench links an existing view through Replace and
       exposes **Close view everywhere** for the resulting placements.
 - [x] Runtime implementation committed as `6cff173`.
+- [x] Design modal launcher options and recommend a pragmatic path <!-- t:om3k -->
+- [x] Specify + and wsN quick-search grammar and workspace grouping <!-- t:8j3j -->
+- [x] Specify active-placement and workbench keyboard-routing boundaries <!-- t:megi -->
+- [x] Validate and upload the launcher design to reMarkable <!-- t:6tqg -->
+- [ ] Implement pure launcher index, grouping, query parsing, and tests <!-- t:qcuy -->
+- [ ] Implement modal Launcher and Replace entry points <!-- t:l3kd -->
+- [ ] Implement active placement and workbench-scoped Mod+K navigation <!-- t:p6q3 -->

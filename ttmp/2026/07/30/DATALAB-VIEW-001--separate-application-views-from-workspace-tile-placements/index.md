@@ -1,7 +1,7 @@
 ---
 Title: Separate application views from workspace tile placements
 Ticket: DATALAB-VIEW-001
-Status: complete
+Status: review
 Topics:
     - frontend
     - authoring
@@ -10,8 +10,8 @@ Intent: long-term
 Owners: []
 RelatedFiles: []
 ExternalSources: []
-Summary: Normalize logical application views independently from the workspace placements that display them.
-LastUpdated: 2026-07-30T16:12:00-04:00
+Summary: Normalize logical application views independently from placements and design the searchable modal launcher and keyboard-navigation follow-up.
+LastUpdated: 2026-07-30T16:44:00-04:00
 WhatFor: Guide implementation of reusable application views, linked placements, view duplication, title actions, and the unified Replace switcher.
 WhenToUse: Read before changing PBUI layout nodes, tile actions, launcher behavior, persistence, or portable bundles.
 ---
@@ -41,20 +41,25 @@ existing views.
 ## Key Links
 
 - [Detailed implementation guide](design-doc/01-application-views-linked-tile-placements-launcher-and-replacement-switcher-implementation-guide.md)
+- [Launcher quick-search and keyboard-routing design](design-doc/02-launcher-quick-search-modal-workspace-grouping-and-keyboard-routing.md)
 - [Investigation diary](reference/01-investigation-diary.md)
 - **Related Files**: See frontmatter RelatedFiles field
 - **External Sources**: See frontmatter ExternalSources field
 
 ## Status
 
-Current status: **complete**
+Current status: **review**
 
 The pragmatic first release is implemented in commit `6cff173`. Logical views
 are normalized independently from placement geometry; linked and independent
 duplication, title actions, shared Launcher/Replace selection, persistence,
 portable bundles, regression tests, and Storybook interactions are complete.
-MRU tracking and global recent-view keyboard navigation remain an explicitly
-deferred follow-up rather than a requirement of this release.
+
+The follow-up launcher design is ready for review. It recommends a searchable
+modal grouped by workspace, a small `+`/`wsN` query grammar, and a staged
+workbench-local active-placement and `Mod+K` navigation system. MRU ordering,
+general command registration, persistent focus, and implicit tile splitting
+remain deferred.
 
 ## Topics
 
