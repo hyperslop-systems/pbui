@@ -79,3 +79,12 @@ Step 1: revised the launcher design against the shipped code — transient launc
 
 - /home/manuel/workspaces/2026-07-30/add-launcher/pbui/ttmp/2026/07/30/DATALAB-VIEW-001--separate-application-views-from-workspace-tile-placements/design-doc/02-launcher-quick-search-modal-workspace-grouping-and-keyboard-routing.md — Revised design with new section 8.4 and corrected sections 9, 10, 11.5, 12, 14, 15, 18, 19, 20
 
+
+## 2026-07-30
+
+Steps 2-4: implemented the launcher across three phases — pure index and grammar (74f4d0d), modal with Replace and the Escape surface stack (88663a0, a91c32d), active placement and Mod+K navigation (dca118f), and tile-aesthetic dialog theming (55149f3). Verified in the running application, including multi-instance isolation. 477 tests, typecheck, lint and Storybook pass.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx — The searchable modal launcher
+

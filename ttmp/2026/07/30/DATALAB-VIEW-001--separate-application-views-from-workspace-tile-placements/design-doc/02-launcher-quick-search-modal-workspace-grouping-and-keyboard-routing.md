@@ -90,6 +90,17 @@ code, each recorded where it applies:
 - `stopPropagation()` cannot order the four Escape handlers because they all
   listen on `window`; a small surface stack replaces it (§11.5).
 
+Implementation added two more, recorded where they apply:
+
+- a React `onKeyDownCapture` on the shell cannot carry the shortcut, because
+  DOM focus is routinely on `<body>` and never reaches it (§11.2);
+- the view already in the target placement must be excluded in place mode, or
+  Replace offers a tile its own contents (§8.4).
+
+**Status: implemented.** Phases 1 to 3 are in `74f4d0d`, `88663a0`, `a91c32d`,
+`dca118f` and `55149f3`. Where this document and the code disagree, the code is
+right and this document is the bug.
+
 ## 1. Current implementation
 
 The current implementation already has most of the domain model required for a
@@ -776,6 +787,15 @@ The rule:
 | An unplaced view | The **target** placement's workspace scope |
 | A new-application row | The **target** placement's workspace scope |
 
+One exclusion sits beside scope and is easy to lose: **the view already in the
+target placement is not offered in place mode.** `buildViewSwitcherModel` has
+always dropped the current view, and Replace would otherwise list a tile's own
+contents as something to replace them with — a row that dispatches a no-op. The
+exclusion is by *view id*, not by row, because one logical view appears under
+every workspace that places it and all of those rows assign the same id.
+Navigate mode keeps them: another placement of the view you are looking at is a
+real destination.
+
 Read as one sentence: **a row is scoped by the workspace it concerns.** For a
 placed view in navigate mode that is where it already is; for anything that ends
 in a placement that is where it is going. Both readings agree in the case that
@@ -1025,18 +1045,43 @@ Add a route table only when a second or third shortcut requires it.
 
 ### 11.2 Event boundary
 
-Handle shortcuts with `onKeyDownCapture` on the workbench root, not another
-unconditional window listener.
+The goal is that only the workbench containing focus receives the shortcut, so
+that embedded tutorial workbenches do not all open at once, page inputs outside
+a workbench are unaffected, and the handler can inspect local PBUI menu and
+accept state.
 
-Benefits:
+**An earlier draft proposed reaching that with `onKeyDownCapture` on the
+workbench root. Implementation showed it does not work, for a reason that only
+appears in a browser.** DOM focus in the product is very often on `<body>`:
+after a page load, and after Escape closes the object menu. `<body>` is outside
+the shell element, so a React handler bound there never fires and `Mod+K` is
+dead exactly when a user reaches for it.
 
-- only the workbench containing focus receives the shortcut;
-- embedded tutorial workbenches do not all open;
-- browser and page inputs outside the workbench are unaffected;
-- the component can inspect local PBUI menu/accept state.
+State the rule directly instead of inheriting it from the event path. A
+`window` listener in the capture phase, with two conditions:
 
-`WorkbenchProviders` is the appropriate provider seam because it is already
-instantiated per workbench and sits inside the PBUI provider.
+```ts
+const focused = document.activeElement;
+const unowned = !focused || focused === document.body;
+const ownsFocus = !unowned && shellRef.current.contains(focused);
+const lone = document.querySelectorAll("[data-workbench-shell]").length === 1;
+if (!ownsFocus && !(unowned && lone)) return;
+```
+
+1. the workbench that **contains focus** reacts — which is the multi-instance
+   property the original rule was after;
+2. when **nothing on the page owns focus**, a **lone** workbench reacts, because
+   a page with one workbench cannot be ambiguous about which was meant.
+
+A page with several instances and focus on `<body>` therefore does nothing. That
+is the honest answer: there is no way to tell which was intended, and opening
+six launchers is worse than opening none.
+
+The shell marks itself with `data-workbench-shell` so the count is available
+without a registry.
+
+`WorkbenchShell` rather than `WorkbenchProviders` is the seam, because the
+handler needs the shell's own DOM node to answer "do I contain focus".
 
 ### 11.3 Initial keys
 
