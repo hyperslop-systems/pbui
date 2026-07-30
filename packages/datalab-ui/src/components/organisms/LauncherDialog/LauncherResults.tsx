@@ -52,6 +52,24 @@ function optionLabel(row: LauncherRow, workspaceName: string | null): string {
   return `${row.title}, ${row.appTitle}${doc}${where}${linked}`;
 }
 
+/**
+ * The second line of a row: what it is, beyond its name.
+ *
+ * Skips the application when the title is already derived from it. An unnamed
+ * chart on no document derives the title "chart", and repeating "chart"
+ * underneath is a row that says one thing twice — which is worse than a blank
+ * line, because it looks like data.
+ */
+function optionMeta(row: LauncherRow, extra = ""): string {
+  if (row.kind === "new") return row.docBound ? "uses the active document" : "no document";
+  const parts: string[] = [];
+  if (row.title !== row.appTitle) parts.push(row.appTitle);
+  if (row.docName) parts.push(row.docName);
+  const head = parts.join(" \u00b7 ");
+  if (!extra) return head;
+  return head ? `${head}${extra}` : extra.replace(/^ \u00b7 /, "");
+}
+
 function Option({
   row,
   label,
@@ -190,7 +208,7 @@ export function LauncherResults({
                 label={optionLabel(row, group.name)}
                 active={activeId === row.id}
                 disabledBecause={blocked}
-                meta={`${row.appTitle}${row.docName ? ` · ${row.docName}` : ""}${linked}`}
+                meta={optionMeta(row, linked)}
                 onChoose={onChoose}
                 onHover={onHover}
               />
@@ -215,7 +233,7 @@ export function LauncherResults({
               label={optionLabel(row, null)}
               active={activeId === row.id}
               disabledBecause={null}
-              meta={`${row.appTitle}${row.docName ? ` · ${row.docName}` : ""} · not shown`}
+              meta={optionMeta(row, " · not shown")}
               onChoose={onChoose}
               onHover={onHover}
             />
@@ -244,7 +262,7 @@ export function LauncherResults({
               label={optionLabel(row, null)}
               active={activeId === row.id}
               disabledBecause={null}
-              meta={row.docBound ? "uses the active document" : "no document"}
+              meta={optionMeta(row)}
               onChoose={onChoose}
               onHover={onHover}
             />
