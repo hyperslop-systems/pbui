@@ -1,13 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { readings } from "../src/fixtures";
-import {
-  appendTransform,
-  compileTableDocument,
-  createDefaultGraphic,
-} from "../src/model/graphicAuthoring";
-import type { Table } from "../src/model/table";
 
 /**
  * The render path stays off the rows.
@@ -18,83 +11,14 @@ import type { Table } from "../src/model/table";
  * `tableFor`, which evaluates the whole pipeline, so every field chip on screen
  * evaluated it again on every frame.
  *
- * Two guards, because they fail for different reasons:
- *
- *  - a **cost** guard, which fails if the schema path starts touching rows;
- *  - a **structural** guard, which fails if anything under `components/`
- *    reaches for `tableFor` at all.
- *
- * The structural one is the stronger of the two. The cost guard only notices a
- * regression once it is slow enough to measure; the structural one fails on the
- * import.
+ * This is enforced structurally: anything under `components/` that reaches for
+ * `tableFor` fails the test. A wall-clock microbenchmark used to accompany this
+ * guard, but elapsed-time thresholds measure scheduler and garbage-collection
+ * noise in the parallel suite. The import-level invariant is both deterministic
+ * and closer to the actual architectural requirement.
  */
 
 const SRC = resolve(import.meta.dirname, "../src");
-
-/** The fixture repeated to a row budget, as a live workbench would hold it. */
-function grow(to: number): Table {
-  const rows: Table["rows"] = [];
-  while (rows.length < to) rows.push(...readings.rows);
-  return { ...readings, rows: rows.slice(0, to), row_count: to };
-}
-
-function documentFor(table: Table) {
-  const document = createDefaultGraphic("render", "render", table);
-  appendTransform(document, {
-    id: "filter",
-    kind: "core:filter",
-    input: { kind: "source", sourceId: "pending" },
-    enabled: true,
-    state: "complete",
-    predicate: {
-      kind: "call",
-      function: "gt",
-      arguments: [
-        { kind: "field", field: { name: "data.temp_c" } },
-        { kind: "literal", value: 18 },
-      ],
-    },
-  });
-  return document;
-}
-
-const CHIPS = readings.fields.length;
-
-function timeSchema(rows: number): number {
-  const table = grow(rows);
-  const document = documentFor(table);
-  for (let i = 0; i < 3; i++) compileTableDocument(document, table, false);
-  const started = performance.now();
-  for (let i = 0; i < CHIPS; i++) compileTableDocument(document, table, false);
-  return performance.now() - started;
-}
-
-describe("the render path is independent of the row budget", () => {
-  /*
-   * An absolute bound rather than a ratio against `evaluate`.
-   *
-   * A ratio is the more informative number and the more flaky assertion: it
-   * fails when the machine is loaded rather than when the code is wrong. 5 ms
-   * for thirteen calls at the largest budget the workbench offers is roughly
-   * two hundred times the measured cost, so this passes on a busy laptop and
-   * fails immediately if the schema path acquires row work.
-   */
-  const BUDGET_MS = 5;
-
-  test("13 schema resolutions at 50 000 rows cost almost nothing", () => {
-    const ms = timeSchema(50_000);
-    expect(ms).toBeLessThan(BUDGET_MS);
-  });
-
-  test("the cost does not grow with rows", () => {
-    const small = timeSchema(2_000);
-    const large = timeSchema(50_000);
-    // Twenty-five times the rows. Anything proportional would be ~25x; the
-    // generous factor here is headroom for timer noise at sub-millisecond
-    // durations, not for a linear scan.
-    expect(large).toBeLessThan(Math.max(small * 5, BUDGET_MS));
-  });
-});
 
 /* ------------------------------------------------------- the hard guard -- */
 
