@@ -5,6 +5,12 @@ topics:
       description: Backend services
     - slug: websocket
       description: WebSocket lifecycle & events
+    - slug: frontend
+      description: Frontend application architecture and user interfaces
+    - slug: plotting
+      description: Plot authoring, compilation, diagnostics, and rendering
+    - slug: authoring
+      description: Interactive document authoring and guidance workflows
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes
