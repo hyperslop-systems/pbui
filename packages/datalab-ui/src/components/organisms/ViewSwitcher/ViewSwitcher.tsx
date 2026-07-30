@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button, SectionLabel, Stack, Text } from "@hyperslop-systems/pbui";
 import { useAvailableApps } from "../../../appkit/AppScope";
@@ -15,15 +15,24 @@ function countView(node: Node, viewId: ViewId): number {
 
 export interface ViewSwitcherProps {
   placementId: NodeId;
-  mode?: "launcher" | "replace";
   onComplete?: () => void;
 }
 
 /**
- * Shared content for an empty launcher tile and the title menu's Replace
- * action. Existing views link this placement; applications create a new view.
+ * The compact, embedded view picker.
+ *
+ * Once the whole of Launcher and Replace; now neither of them — DATALAB-VIEW-001
+ * moved both into `LauncherDialog`, because a list whose geometry depends on
+ * the tile it happens to be inside cannot be searched comfortably and cannot
+ * carry workspace grouping.
+ *
+ * It survives as the flat, no-search fallback: it needs no modal, no keyboard
+ * routing and no surface stack, which keeps it renderable in isolation in a
+ * story and usable as a picker anywhere a dialog would be too much. The
+ * `mode="replace"` variant and its `window` Escape listener are gone with the
+ * body takeover they served.
  */
-export function ViewSwitcher({ placementId, mode = "replace", onComplete }: ViewSwitcherProps) {
+export function ViewSwitcher({ placementId, onComplete }: ViewSwitcherProps) {
   const dispatch = useDispatch();
   const root = useRef<HTMLElement>(null);
   const apps = useAvailableApps();
@@ -56,21 +65,7 @@ export function ViewSwitcher({ placementId, mode = "replace", onComplete }: View
       currentSpace ? countView(currentSpace.tree, viewId) > 0 : false,
   });
 
-  useEffect(() => {
-    if (mode !== "replace") return;
-    root.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      dispatch(layoutActions.beginReplace(null));
-      onComplete?.();
-    };
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [dispatch, mode, onComplete]);
-
   const finish = () => {
-    dispatch(layoutActions.beginReplace(null));
     onComplete?.();
   };
 
@@ -92,11 +87,7 @@ export function ViewSwitcher({ placementId, mode = "replace", onComplete }: View
   };
 
   return (
-    <section
-      ref={root}
-      className={styles.root}
-      aria-label={mode === "replace" ? "replace view" : "choose a view"}
-    >
+    <section ref={root} className={styles.root} aria-label="choose a view">
       <Stack gap={4}>
         <section>
           <SectionLabel>Existing views</SectionLabel>

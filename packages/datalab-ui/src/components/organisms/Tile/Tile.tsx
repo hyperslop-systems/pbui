@@ -6,7 +6,6 @@ import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { countLeaves, layoutActions, primaryDocId, type Node } from "../../../store/layout";
 import { Button, Callout, IconButton, InlineRename, Text } from "@hyperslop-systems/pbui";
-import { ViewSwitcher } from "../ViewSwitcher";
 import { useDrag } from "./useDrag";
 import styles from "./Tile.module.css";
 
@@ -27,7 +26,6 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   // to be able to start one and a menu entry is serialisable data — it cannot
   // reach into a `useState` three components away (DATADROP-8).
   const renaming = useSelector((state: RootState) => state.layout.renamingId === node.id);
-  const replacing = useSelector((state: RootState) => state.layout.replacingId === node.id);
   const setRenaming = (on: boolean) =>
     dispatch(layoutActions.beginRename(on && view ? node.id : null));
   const docName = useSelector((state: RootState) =>
@@ -40,11 +38,6 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   const canClose = tree !== null && countLeaves(tree) > 1;
 
   const { dragging, zone, onGripPointerDown, register } = useDrag(node.id);
-  const restoreTitleFocus = () => {
-    requestAnimationFrame(() => {
-      tileElement.current?.querySelector<HTMLElement>('[data-ptype="tile"]')?.focus();
-    });
-  };
   const placementCount = useSelector((state: RootState) => {
     const count = (n: Node): number =>
       n.type === "leaf" ? Number(n.viewId === node.viewId) : count(n.a) + count(n.b);
@@ -82,6 +75,11 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
       // A landmark per tile, named by its application and document, so the
       // workspace is navigable by region rather than by tabbing through it.
       aria-label={label}
+      // The launcher restores focus to a placement by id rather than by holding
+      // an HTMLElement across its own lifetime — the element may have been
+      // unmounted and remounted while the modal was open, and a detached node
+      // swallows `.focus()` silently.
+      data-placement-id={node.id}
       className={[styles.tile, dragging ? styles.dragging : ""].filter(Boolean).join(" ")}
       style={{ background: app ? undefined : "var(--pbui-pane-alt)" }}
     >
@@ -193,9 +191,13 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
       </div>
 
       <div className={styles.body}>
-        {replacing ? (
-          <ViewSwitcher placementId={node.id} onComplete={restoreTitleFocus} />
-        ) : Component && view ? (
+        {/*
+         * Replace no longer takes over the body (DATALAB-VIEW-001). It opens the
+         * launcher modal against this placement, so the tile keeps rendering its
+         * application behind the dialog — which is what makes "replace *this*"
+         * legible while choosing.
+         */}
+        {Component && view ? (
           <RenderBoundary
             resetKey={`${view.id}:${view.appId}:${docId ?? ""}`}
             fallback={(error, reset) => (

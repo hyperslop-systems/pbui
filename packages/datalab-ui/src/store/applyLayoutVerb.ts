@@ -28,8 +28,12 @@ export function actionsForLayoutVerb(verb: Verb, layout: LayoutState): VerbResul
     case "renameView":
       return [a.renameView({ viewId: verb.viewId, title: verb.title })];
 
+    // The verb is unchanged from DATADROP-8; only its resolution moved, from
+    // "put the switcher in this tile's body" to "open the launcher modal
+    // against this tile". That the descriptor did not have to change is the
+    // argument for keeping launcher state in the store — see `LauncherInvocation`.
     case "openReplaceView":
-      return [a.beginReplace(verb.placementId)];
+      return [a.openLauncher({ kind: "replace", placementId: verb.placementId })];
 
     case "createLinkedDuplicate":
       return [a.createLinkedDuplicate(verb.placementId)];

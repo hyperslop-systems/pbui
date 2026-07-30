@@ -17,7 +17,7 @@ import {
 } from "../src/store/layout";
 import { TRACE_CAP, worldActions, worldSlice, type WorldState } from "../src/store/world";
 import { actionsForVerb, environmentFor } from "../src/store/applyVerb";
-import { findSecrets, validate } from "../src/store/persist";
+import { findSecrets, save, validate } from "../src/store/persist";
 import {
   ACCOUNT_SPACE_ID,
   ACCOUNT_STAGE_ID,
@@ -810,5 +810,56 @@ describe("persistence is defensive", () => {
     const cyclic: Record<string, unknown> = { name: "x" };
     cyclic.self = cyclic;
     expect(findSecrets(cyclic)).toEqual([]);
+  });
+
+  /**
+   * Transient layout state is excluded from what `save` writes.
+   *
+   * `save()` enumerates the fields it writes rather than passing the slice
+   * whole, which is what makes a new transient field safe *by default* — but
+   * only until someone reaches for a spread. This asserts the property rather
+   * than the convention (DATALAB-VIEW-001 design-doc/02 §14): the failure it
+   * catches produces no error and no visible symptom until the next reload
+   * opens a modal over a tile that may no longer exist (DR-69).
+   */
+  test("no transient layout field reaches storage", () => {
+    const written: Record<string, string> = {};
+    const previous = (globalThis as { localStorage?: unknown }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      setItem: (key: string, value: string) => {
+        written[key] = value;
+      },
+      getItem: (key: string) => written[key] ?? null,
+      removeItem: (key: string) => {
+        delete written[key];
+      },
+    };
+
+    try {
+      const layout: LayoutState = {
+        ...initialLayout(),
+        launcher: { kind: "replace", placementId: "n" },
+        transientSurfaces: ["launcher:1"],
+        renamingId: "n",
+        pendingImport: { target: { kind: "stage" }, prefill: "secret-ish", from: "clipboard" },
+        notice: { ok: true, title: "Copied", body: "…" },
+        justSignedUp: true,
+      };
+      save("test-key", worldSlice.getInitialState(), layout);
+
+      const stored = written["test-key"];
+      expect(stored).toBeDefined();
+      const parsed = JSON.parse(stored as string) as { layout: Record<string, unknown> };
+      expect(Object.keys(parsed.layout).sort()).toEqual([
+        "currentSpaceId",
+        "currentStageId",
+        "spaces",
+        "stages",
+        "viewOrder",
+        "views",
+      ]);
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = previous;
+    }
   });
 });

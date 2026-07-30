@@ -1,0 +1,23 @@
+/*
+ * Centred in whatever rectangle the split tree hands it.
+ *
+ * `place-content: center` rather than a fixed offset because a launcher tile is
+ * as often 200px tall (a four-way split) as it is half the window, and an empty
+ * state pinned to the top of a tall tile reads as a rendering failure.
+ */
+.root {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pbui-space-4);
+  text-align: center;
+}
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--pbui-space-2);
+}

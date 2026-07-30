@@ -7,7 +7,8 @@ import { countLeaves } from "../../../store/layout";
 import { allApps } from "../../../appkit/registry";
 import { commitImport, kindFor } from "../../../store/effects";
 import { layoutActions } from "../../../store/layout";
-import { BundleDialog, NodeView, StageBar, WorkspaceStrip } from "../../organisms";
+import { BundleDialog, LauncherDialog, NodeView, StageBar, WorkspaceStrip } from "../../organisms";
+import { useTransientSurface } from "../../../appkit/useTransientSurface";
 import styles from "./Workbench.module.css";
 
 /**
@@ -188,21 +189,29 @@ export function WorkbenchShell({
   };
 
   /**
-   * Escape leaves full frame.
+   * Escape leaves full frame — unless something is open on top of it.
    *
    * Registered only while expanded, so a page with six collapsed instances adds
    * no listeners at all — and, more importantly, an Escape meant for the object
    * menu or a pending accept is never intercepted by a workbench that is not
    * covering the window.
+   *
+   * `ownsEscape` is the DATALAB-VIEW-001 half. Both this and `Dialog` listen on
+   * `window`, so one Escape used to close the launcher *and* leave full frame,
+   * and no amount of `stopPropagation` in either could order them — listeners
+   * on one node do not propagate to each other (design-doc/02 §11.5). The
+   * surface stack answers it directly: full frame acts only while it is the
+   * topmost open surface.
    */
+  const ownsEscape = useTransientSurface(fullFrame, "workbench:full-frame");
   useEffect(() => {
-    if (!fullFrame || !onToggleFullFrame) return;
+    if (!fullFrame || !onToggleFullFrame || !ownsEscape) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onToggleFullFrame();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [fullFrame, onToggleFullFrame]);
+  }, [fullFrame, onToggleFullFrame, ownsEscape]);
 
   const counts =
     `${space ? countLeaves(space.tree) : 0} tiles · ` +
@@ -262,6 +271,12 @@ export function WorkbenchShell({
         <MouseDocLine ambient={ambient ? `${counts} · ${ambient}` : counts} />
       </div>
       <ImportDialog />
+      {/*
+       * Mounted unconditionally and rendering nothing until `layout.launcher` is
+       * set. That is what lets a serialisable tile verb open it: the descriptor
+       * dispatches, and the shell already has the modal ready to notice.
+       */}
+      <LauncherDialog />
       <ExportNotice />
       <ObjectMenu />
     </>

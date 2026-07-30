@@ -1,0 +1,98 @@
+/*
+ * Why this geometry, not what it is.
+ *
+ * A fixed 22rem result area is the whole point of choosing a modal over the
+ * tile body: the list must not resize as the query narrows, or the row under
+ * the pointer moves out from under it between keystrokes. The dialog panel is
+ * sized by PBUI; only the inside is ours.
+ */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  width: min(34rem, 80vw);
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+}
+
+.live {
+  min-height: 1em;
+}
+
+.scroll {
+  height: 22rem;
+  overflow-y: auto;
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pbui-space-2);
+  padding: var(--pbui-space-2) var(--pbui-space-2) var(--pbui-space-1);
+  position: sticky;
+  top: 0;
+  /* Opaque: rows scroll under the heading, and a translucent one turns the
+     workspace name into noise exactly when a long list makes it most useful. */
+  background: var(--pbui-pane-alt);
+  border-bottom: var(--pbui-border-hair);
+}
+
+.groupTag {
+  letter-spacing: var(--pbui-track-label);
+  text-transform: uppercase;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+
+/*
+ * The active row is marked by a wash AND a left edge, never by colour alone —
+ * the edge is what survives a greyscale screenshot (GUIDELINES §1.5).
+ */
+.option[data-active] {
+  background: var(--pbui-selected-wash);
+  border-left-color: var(--pbui-selected);
+}
+
+.option[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.optionTitle,
+.optionMeta {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  padding: var(--pbui-space-4);
+}
+
+.hint {
+  letter-spacing: var(--pbui-track-label);
+}

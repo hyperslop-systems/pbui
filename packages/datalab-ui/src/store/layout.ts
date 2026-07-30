@@ -256,6 +256,50 @@ export interface PendingImport {
   from: "clipboard" | "template" | null;
 }
 
+/**
+ * Why the launcher modal is open (DATALAB-VIEW-001 design-doc/02 §9).
+ *
+ * Opening and navigating are not the same operation, and the modal has to know
+ * which it is before the first keystroke:
+ *
+ *  - `fill-launcher` and `replace` have an explicit target placement, and
+ *    selecting a result changes what that placement shows;
+ *  - `navigate` has none. Selecting a result switches workspace and focuses an
+ *    existing placement, and never mutates the layout (Decision 6).
+ *
+ * **In the store rather than in a React context**, for the same reason
+ * `renamingId` is (DR-69) and one more: the tile's Replace entry is a
+ * *serialisable verb* emitted by `pbui/descriptors/tile.ts`, which is a pure
+ * function holding no React and cannot call a context method. A context would
+ * have needed a second opening path for a menu entry that already has one.
+ *
+ * The store is also already the workbench instance boundary — `WorkbenchInstance`
+ * builds one per instance — so a context would add isolation that exists.
+ *
+ * Transient, and `save()`'s enumeration excludes it for the reason the whole
+ * group shares: reloading into an open modal over a tile that may be gone.
+ */
+export type LauncherInvocation =
+  | { kind: "fill-launcher"; placementId: NodeId }
+  | { kind: "replace"; placementId: NodeId }
+  | { kind: "navigate"; activePlacementId: NodeId | null };
+
+/**
+ * An open transient surface, for deciding who owns Escape (§11.5).
+ *
+ * The workbench has four independent Escape handlers — the dialog, the launcher,
+ * full-frame, and PBUI's own menu — and three of them are `window` listeners.
+ * `stopPropagation` cannot order listeners on one node, and
+ * `stopImmediatePropagation` orders them by mount order, which is a race
+ * between `useEffect`s rather than a rule.
+ *
+ * So: an explicit stack, oldest first, and one question each handler can ask —
+ * *am I on top?* It is not a keyboard routing system and must not grow into
+ * one; it answers the single question every one of those handlers is otherwise
+ * answering by guessing.
+ */
+export type SurfaceId = string;
+
 export interface LayoutState {
   stages: Stage[];
   currentStageId: StageId;
@@ -269,8 +313,16 @@ export interface LayoutState {
   viewOrder: ViewId[];
   /** Non-null while an import dialog is open. Never persisted. */
   pendingImport?: PendingImport | null;
-  /** Placement whose Replace switcher is open. Never persisted. */
-  replacingId?: NodeId | null;
+  /**
+   * Why the launcher modal is open, or null. Never persisted.
+   *
+   * Replaces `replacingId`, which could say only "this placement's body is the
+   * switcher" and could not distinguish Replace from an empty launcher tile,
+   * let alone from global navigation.
+   */
+  launcher?: LauncherInvocation | null;
+  /** Open transient surfaces, oldest first. The last owns Escape. Never persisted. */
+  transientSurfaces?: SurfaceId[];
   /**
    * The result of the last export, until it is dismissed. Never persisted.
    *
@@ -360,6 +412,18 @@ export function stageOf(state: LayoutState): Stage | undefined {
 /** The workspaces belonging to one stage, in layout order. */
 export function spacesOfStage(state: LayoutState, stageId: StageId): Workspace[] {
   return state.spaces.filter((s) => s.stageId === stageId);
+}
+
+/**
+ * The transient surface that owns Escape, or null when none is open.
+ *
+ * A selector rather than a field so there is one definition of "topmost" and
+ * the stack stays the only writable state. Callers compare their own id to it;
+ * a handler that is not on top does nothing at all for that key press.
+ */
+export function topSurface(state: LayoutState): SurfaceId | null {
+  const stack = state.transientSurfaces ?? [];
+  return stack.length > 0 ? (stack[stack.length - 1] as SurfaceId) : null;
 }
 
 /**
@@ -481,7 +545,7 @@ export const layoutSlice = createSlice({
         delete state.views[action.payload.viewId];
         state.viewOrder = state.viewOrder.filter((id) => id !== action.payload.viewId);
         state.renamingId = null;
-        state.replacingId = null;
+        state.launcher = null;
       },
       prepare(viewId: ViewId) {
         const fallbackId = newId();
@@ -912,8 +976,32 @@ export const layoutSlice = createSlice({
       state.renamingId = action.payload;
     },
 
-    beginReplace(state, action: PayloadAction<NodeId | null>) {
-      state.replacingId = action.payload;
+    /* -------------------------------------------------------- launcher -- */
+
+    openLauncher(state, action: PayloadAction<LauncherInvocation>) {
+      state.launcher = action.payload;
+    },
+
+    closeLauncher(state) {
+      state.launcher = null;
+    },
+
+    /**
+     * Push an open transient surface. Idempotent.
+     *
+     * Idempotent because React 18's StrictMode double-invokes effects in
+     * development: a naive push would seat one dialog twice, and the matching
+     * single pop would leave it on the stack owning Escape forever.
+     */
+    pushSurface(state, action: PayloadAction<SurfaceId>) {
+      const stack = state.transientSurfaces ?? [];
+      state.transientSurfaces = stack.includes(action.payload) ? stack : [...stack, action.payload];
+    },
+
+    popSurface(state, action: PayloadAction<SurfaceId>) {
+      state.transientSurfaces = (state.transientSurfaces ?? []).filter(
+        (id) => id !== action.payload,
+      );
     },
 
     /** Record that this browser has just completed a first sign-in (DR-96). */
