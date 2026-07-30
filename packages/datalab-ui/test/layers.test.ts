@@ -53,6 +53,10 @@ const ALLOWED: Record<string, string[]> = {
   // The store speaks the presentation vocabulary: WatchEntry carries a
   // PresentationType, and applyVerb maps a Verb onto reducers.
   store: ["model", "api", "pbui", "demo"],
+  // The remote boundary translates between the generated workbench protocol
+  // and the internal Redux model. It may know canonical model and
+  // store types, but no React component, application, or transport client.
+  remote: ["model", "store"],
   styles: [],
   fixtures: ["model"],
   /*

@@ -1,0 +1,66 @@
+{
+  "format": "pbui.workbench",
+  "schemaVersion": 1,
+  "id": "workbench-production",
+  "name": "Production analysis",
+  "workspaces": [
+    {
+      "id": "workspace-overview",
+      "name": "Overview",
+      "tree": {
+        "id": "placement-overview",
+        "leaf": {
+          "viewId": "view-chart"
+        }
+      }
+    },
+    {
+      "id": "workspace-detail",
+      "name": "Detail",
+      "tree": {
+        "id": "placement-detail",
+        "leaf": {
+          "viewId": "view-chart"
+        }
+      }
+    }
+  ],
+  "views": {
+    "view-chart": {
+      "id": "view-chart",
+      "appId": "chart",
+      "title": "Mass and yield",
+      "documents": {
+        "primary": "document-chart"
+      }
+    }
+  },
+  "viewOrder": [
+    "view-chart"
+  ],
+  "documents": {
+    "document-chart": {
+      "id": "document-chart",
+      "format": "datadrop.gog.document",
+      "schemaVersion": 1,
+      "body": {
+        "name": "Mass and yield",
+        "sources": {},
+        "transforms": {},
+        "views": {
+          "root": {
+            "id": "root",
+            "kind": "unit",
+            "source": null,
+            "mark": {
+              "type": "point"
+            },
+            "encoding": {}
+          }
+        },
+        "rootView": "root",
+        "parameters": {}
+      }
+    }
+  }
+}

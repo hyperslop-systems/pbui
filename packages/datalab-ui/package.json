@@ -56,9 +56,11 @@
     "consumer:smoke": "pnpm build && node scripts/consumer-smoke.mjs"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "2.11.0",
     "@duckdb/duckdb-wasm": "1.32.0",
     "@hyperslop-systems/pbui": "workspace:^",
     "@hyperslop-systems/plot": "0.2.0",
+    "@hyperslop-systems/workbench-protocol": "workspace:^",
     "@reduxjs/toolkit": "^2.12.0",
     "react-redux": "^9.3.0"
   },
