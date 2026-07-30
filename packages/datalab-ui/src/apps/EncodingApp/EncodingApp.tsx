@@ -21,7 +21,8 @@ import { EncodingPanel } from "../../components/organisms";
  *    mapped to y, so an impossible mapping is unreachable rather than reported;
  *  - **`logUnavailable`**, which scans the y column for a non-positive value.
  */
-function EncodingApp({ leafId, docId }: AppProps) {
+function EncodingApp({ view: appView }: AppProps) {
+  const docId = appView.documents.primary ?? null;
   const dispatch = useDispatch();
   const pbui = usePbui();
   const { doc, pipeline } = useDocAnalysisResult(docId);
@@ -98,7 +99,7 @@ function EncodingApp({ leafId, docId }: AppProps) {
 
   return (
     <>
-      <DocBar leafId={leafId} docId={docId} />
+      <DocBar viewId={appView.id} docId={docId} />
       <EncodingPanel
         geom={view?.mark ?? null}
         analysis={view?.analysis ?? null}

@@ -26,6 +26,8 @@ export { ChartsPanel } from "./ChartsPanel";
 export type { DocView } from "./ChartsPanel";
 export { ComparePanel } from "./ComparePanel";
 export { WatchlistPanel } from "./WatchlistPanel";
+export { ViewSwitcher } from "./ViewSwitcher";
+export type { ViewSwitcherProps } from "./ViewSwitcher";
 export type { WatchView } from "./WatchlistPanel";
 export type { CompareSide } from "./ComparePanel";
 export type { PipelineStepView } from "./PipelinePanel";

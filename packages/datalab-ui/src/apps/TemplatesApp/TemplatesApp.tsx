@@ -145,12 +145,20 @@ function toView(record: TemplateRecord): TemplateView {
 }
 
 function appsIn(record: TemplateRecord): string[] {
-  if (record.kind === "tile") return [(record.bundle.payload as TilePayload).app];
+  if (record.kind === "tile") return [(record.bundle.payload as TilePayload).view.app];
   if (record.kind === "workspace") {
-    return portableLeaves((record.bundle.payload as WorkspacePayload).tree).map((l) => l.app);
+    const payload = record.bundle.payload as WorkspacePayload;
+    return portableLeaves(payload.tree).flatMap((leaf) => {
+      const app = payload.views[leaf.view]?.app;
+      return app ? [app] : [];
+    });
   }
-  return (record.bundle.payload as StagePayload).spaces.flatMap((space) =>
-    portableLeaves(space.tree).map((l) => l.app),
+  const payload = record.bundle.payload as StagePayload;
+  return payload.spaces.flatMap((space) =>
+    portableLeaves(space.tree).flatMap((leaf) => {
+      const app = payload.views[leaf.view]?.app;
+      return app ? [app] : [];
+    }),
   );
 }
 

@@ -13,9 +13,9 @@ import { allApps, type AppDescriptor } from "./registry";
  * with no way to find out why.
  *
  * What a tour section actually needs is narrower than a registry: the grammar
- * track should not offer the token manager in its tile dropdown, because the
- * dropdown is a menu of *what this panel is for*. So the allow-list is a
- * rendering concern, applied by `Tile`'s application picker and by the launcher,
+ * track should not offer the token manager in its view switcher, because that
+ * list is a menu of *what this panel is for*. So the allow-list is a
+ * rendering concern, applied by the shared Replace/Launcher switcher,
  * and it deliberately does not stop an app from being *mounted* — a tile whose
  * layout names an excluded application still renders it, because the alternative
  * is a seeded layout that silently loses a tile.
@@ -48,7 +48,7 @@ import { allApps, type AppDescriptor } from "./registry";
  *
  * That distinction is gone, and what killed it was the ratio rather than the
  * principle. Twenty-five applications with twenty-two greyed is not a list with
- * a lesson in it, it is a list nobody reads; `Tile/options.ts` has the full
+ * a lesson in it, it is a list nobody reads; `ViewSwitcher/model.ts` has the full
  * argument. The principle survives where it still applies — `pbui/verbs.ts`
  * greys unavailable verbs and should keep doing so, because a verb menu is
  * short.
@@ -73,8 +73,8 @@ export type Scope = readonly string[] | null;
  * Most restrictive wins; `null` contributes nothing.
  *
  * An empty result is possible — a stage offering `["signin"]` inside an instance
- * offering `["chart"]` — and it must not produce an empty dropdown. `Tile` falls
- * back to its own-application rule and `LauncherApp` shows its empty state.
+ * offering `["chart"]` — and it must not produce an unusable switcher. Replace
+ * keeps the current application legal and Launcher shows its empty state.
  */
 export function intersectScopes(...scopes: Scope[]): Scope {
   const present = scopes.filter((s): s is readonly string[] => s !== null);
@@ -88,8 +88,8 @@ export function intersectScopes(...scopes: Scope[]): Scope {
 /**
  * The registry narrowed by the INSTANCE's allow-list only.
  *
- * Registration order rather than the allow-list's order: the launcher and the
- * tile dropdown read as the same list everywhere, and a tour section should not
+ * Registration order rather than the allow-list's order: Launcher and Replace
+ * read as the same list everywhere, and a tour section should not
  * be able to reorder the vocabulary it is teaching.
  *
  * Almost every caller wants `useAvailableApps` instead. This one exists for the
@@ -119,8 +119,8 @@ export function useScopedApps(): AppDescriptor[] {
  * across every render in which the layout did not change.
  *
  * An empty result is possible — a stage offering `["signin"]` inside an instance
- * offering `["chart"]` — and must not produce an empty dropdown. `Tile` falls
- * back to its own-application rule and `LauncherApp` shows its empty state.
+ * offering `["chart"]` — and must not produce an unusable switcher. Replace
+ * keeps the current application legal and Launcher shows its empty state.
  */
 export function useAvailableApps(): AppDescriptor[] {
   const apps = useScopedApps();

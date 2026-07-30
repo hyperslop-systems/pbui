@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
-import type { DocId } from "../pbui/types";
-import type { NodeId } from "../store/layout";
+import type { AppView, NodeId } from "../store/layout";
 
 /**
  * The application registry.
@@ -24,9 +23,10 @@ import type { NodeId } from "../store/layout";
  */
 
 export interface AppProps {
-  leafId: NodeId;
-  /** Present only for document-bound applications. */
-  docId: DocId | null;
+  /** The rectangle rendering this view; geometry and drag operations use it. */
+  placementId: NodeId;
+  /** The logical application view shared by every linked placement. */
+  view: AppView;
 }
 
 export interface AppDescriptor {
@@ -61,10 +61,8 @@ export interface AppDescriptor {
    * May a workspace hold at most one of these? (DR-63)
    *
    * True for every application that is a pure function of the world — a second
-   * `trace` tile renders identical pixels forever. The application picker shows
-   * a singleton that is already open *disabled, with the reason*, rather than
-   * hiding it: a user who never sees `trace` in the list does not learn that it
-   * is a singleton, they conclude it is missing.
+   * `trace` tile renders identical pixels forever. The view switcher offers the
+   * existing singleton view but does not offer a second logical view.
    */
   singleton: boolean;
   Component: ComponentType<AppProps>;

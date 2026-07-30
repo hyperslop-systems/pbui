@@ -6,7 +6,7 @@ import styles from "./HintList.module.css";
  * Hints, one press at a time, and never the answer.
  *
  * The ordering is the design: navigational first ("every tile has an
- * application dropdown in its title bar"), then conceptual ("after a group∑ the
+ * Replace action in its title menu"), then conceptual ("after a group∑ the
  * schema collapses to two columns, so the x and y you had will need
  * re-pointing"), and only then mechanical. A reader who is stuck on *where* a
  * control is should not be handed the reasoning, and a reader stuck on the

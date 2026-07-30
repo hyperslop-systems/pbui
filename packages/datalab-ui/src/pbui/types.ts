@@ -135,15 +135,17 @@ export interface TraceEntryRef {
  * ticket is what made it worth saying out loud.
  */
 export interface TileRef {
-  nodeId: string;
+  placementId: string;
+  viewId: string;
   app: string;
   /** The tile's effective title, already resolved (label ?? derived). */
   title: string;
   /** The user-chosen label, absent when the title is derived. */
-  label?: string;
+  customTitle?: string;
   docId: DocId | null;
   duplicable: boolean;
   canClose: boolean;
+  placementCount: number;
 }
 
 /** A workspace, carrying what its menu needs to decide. */

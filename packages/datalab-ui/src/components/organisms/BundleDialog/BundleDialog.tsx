@@ -36,7 +36,7 @@ import styles from "./BundleDialog.module.css";
  *
  * A bundle from a build with an application yours lacks imports anyway, with
  * those tiles naming the missing application — `Tile` already renders "no
- * application called 'chartsy' — choose one above". Importing four tiles with
+ * application called 'chartsy' — choose Replace from the title". Importing four tiles with
  * one the reader cannot fill is true; importing three is a lie about what their
  * colleague sent.
  */

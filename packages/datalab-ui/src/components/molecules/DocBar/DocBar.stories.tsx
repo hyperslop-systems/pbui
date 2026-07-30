@@ -17,7 +17,7 @@ const meta = {
   title: "Component Library/Molecules/DocBar",
   component: DocBar,
   parameters: { tile: false },
-  args: { leafId: "leaf-1", docId: null },
+  args: { viewId: "view-1", docId: null },
 } satisfies Meta<typeof DocBar>;
 
 export default meta;
@@ -28,7 +28,7 @@ export const FollowsTheActiveDocument: Story = {
   render: () => (
     <Stack gap={3}>
       <Surface border="hair">
-        <DocBar leafId="leaf-1" docId={null} />
+        <DocBar viewId="view-1" docId={null} />
       </Surface>
       <Text size="tiny" tone="faint" prose>
         A null docId means "whatever is active". Re-point the tile with the dropdown, or press ＋ to
@@ -43,10 +43,10 @@ export const TwoTilesOneDocument: Story = {
   render: () => (
     <Stack gap={3}>
       <Surface border="hair">
-        <DocBar leafId="leaf-1" docId={null} />
+        <DocBar viewId="view-1" docId={null} />
       </Surface>
       <Surface border="hair">
-        <DocBar leafId="leaf-2" docId={null} />
+        <DocBar viewId="view-2" docId={null} />
       </Surface>
       <Text size="tiny" tone="faint" prose>
         Both follow the active document. Two views of one object, not two copies.

@@ -24,7 +24,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const HINTS = [
-  "No sources tile in this layout? Every tile has an application dropdown in its title bar — or split one with ⬌ and pick from the launcher.",
+  "No sources tile in this layout? Select Replace … from any tile title's menu — or split one with ⬌ and pick from the launcher.",
   "Terns are one of three species. A filter step keeps rows — and right-clicking a Tern mark in the chart writes one for you.",
   "Three islands, one number each: that is group∑ by island, summarising mass_g.",
   "After a group∑ the schema collapses to two columns, so the x and y you had before will need re-pointing.",

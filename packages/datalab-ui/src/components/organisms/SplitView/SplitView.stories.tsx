@@ -1,91 +1,56 @@
+import { useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Provider } from "react-redux";
 import { NodeView } from "./SplitView";
-import type { Node } from "../../../store/layout";
+import { makeStore } from "../../../store";
+import { singleStageLayout } from "../../../store/stages";
+import { split, type LayoutBuilder, type Node } from "../../../store/layout";
 import "../../../apps/all";
 
-/**
- * The tiling itself.
- *
- * A layout is a binary tree of splits with leaves that name an application by
- * id. Swapping two tiles is therefore a two-field exchange (DR-11) — the
- * applications' state lives in the world, not in the tile.
- *
- * The divider is a `<button role="separator">` rather than a Button: it carries
- * `aria-orientation` and `aria-valuenow` and is a resize handle, so it keeps its
- * own element and its own module. That is one of the four raw elements the
- * DATADROP-6 substitution deliberately left alone.
- */
+type LayoutKind = "one" | "row" | "column" | "nested";
+
+function build(kind: LayoutKind, builder: LayoutBuilder): Node {
+  if (kind === "one") return builder.leaf("about");
+  if (kind === "row") {
+    return split("row", builder.leaf("about"), builder.leaf("launcher"), 0.5);
+  }
+  if (kind === "column") {
+    return split("col", builder.leaf("about"), builder.leaf("launcher"), 0.5);
+  }
+  return split(
+    "row",
+    builder.leaf("launcher"),
+    split("col", builder.leaf("about"), builder.leaf("trace"), 0.6),
+    0.3,
+  );
+}
+
+function SplitStory({ kind }: { kind: LayoutKind }) {
+  const fixture = useMemo(() => {
+    const layout = singleStageLayout("story", (builder) => build(kind, builder));
+    return {
+      store: makeStore({ preloaded: { layout } }),
+      node: layout.spaces[0]!.tree,
+    };
+  }, [kind]);
+  return (
+    <Provider store={fixture.store}>
+      <NodeView node={fixture.node} />
+    </Provider>
+  );
+}
+
 const meta = {
   title: "Component Library/Organisms/SplitView",
-  component: NodeView,
+  component: SplitStory,
   parameters: { tile: { width: 640, height: 420 } },
-  args: { node: { type: "leaf", id: "l1", app: "about", docId: null } },
-} satisfies Meta<typeof NodeView>;
+  args: { kind: "one" },
+} satisfies Meta<typeof SplitStory>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const leaf = (id: string, app: string): Node => ({ type: "leaf", id, app, docId: null });
-
-export const OneLeaf: Story = {
-  render: () => <NodeView node={leaf("l1", "about")} />,
-};
-
-export const SplitHorizontally: Story = {
-  render: () => (
-    <NodeView
-      node={{
-        type: "split",
-        id: "s1",
-        dir: "row",
-        ratio: 0.5,
-        a: leaf("l1", "about"),
-        b: leaf("l2", "launcher"),
-      }}
-    />
-  ),
-};
-
-export const SplitVertically: Story = {
-  render: () => (
-    <NodeView
-      node={{
-        type: "split",
-        id: "s1",
-        dir: "col",
-        ratio: 0.5,
-        a: leaf("l1", "about"),
-        b: leaf("l2", "launcher"),
-      }}
-    />
-  ),
-};
-
-/**
- * Nested, and off-centre.
- *
- * The ratio is the thing to check: a split that reports 0.3 must *look* 30/70,
- * and the divider must announce `aria-valuenow=30` to match. Drag it, or focus
- * it and use the arrow keys.
- */
-export const NestedAndUneven: Story = {
-  render: () => (
-    <NodeView
-      node={{
-        type: "split",
-        id: "s1",
-        dir: "row",
-        ratio: 0.3,
-        a: leaf("l1", "launcher"),
-        b: {
-          type: "split",
-          id: "s2",
-          dir: "col",
-          ratio: 0.6,
-          a: leaf("l2", "about"),
-          b: leaf("l3", "trace"),
-        },
-      }}
-    />
-  ),
-};
+export const OneLeaf: Story = {};
+export const SplitHorizontally: Story = { args: { kind: "row" } };
+export const SplitVertically: Story = { args: { kind: "column" } };
+export const NestedAndUneven: Story = { args: { kind: "nested" } };

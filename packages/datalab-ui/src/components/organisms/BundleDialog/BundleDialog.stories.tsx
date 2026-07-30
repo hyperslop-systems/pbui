@@ -29,31 +29,13 @@ type Story = StoryObj<typeof meta>;
 const TILE_BUNDLE = JSON.stringify(
   {
     format: "datadrop.layout",
-    version: 1,
+    version: 3,
     kind: "tile",
     exportedAt: "2026-07-26T18:04:11.512Z",
     name: "readings, filtered",
     payload: {
-      app: "chart",
-      doc: {
-        name: "α",
-        limit: 2000,
-        spec: {
-          source: { kind: "stream", drop: "sensors", stream: "readings" },
-          steps: [
-            { id: "s1", kind: "filter", on: true, field: "data.temp_c", op: ">", value: "20" },
-          ],
-          geom: "point",
-          mapping: {
-            x: "time",
-            y: "data.temp_c",
-            color: "data.station",
-            size: null,
-            facet: null,
-          },
-          yScale: "linear",
-        },
-      },
+      view: { app: "chart", title: "readings, filtered", documents: {} },
+      docs: [],
     },
   },
   null,
@@ -101,11 +83,16 @@ export const WrongKind: Story = {
     initial: JSON.stringify(
       {
         format: "datadrop.layout",
-        version: 1,
+        version: 3,
         kind: "workspace",
         exportedAt: "2026-07-26T18:04:11.512Z",
         name: "explore",
-        payload: { name: "explore", tree: { leaf: { app: "sources" } }, docs: [] },
+        payload: {
+          name: "explore",
+          tree: { leaf: { view: 0 } },
+          views: [{ app: "sources", documents: {} }],
+          docs: [],
+        },
       },
       null,
       2,
@@ -137,19 +124,23 @@ export const Workspace: Story = {
     initial: JSON.stringify(
       {
         format: "datadrop.layout",
-        version: 1,
+        version: 3,
         kind: "workspace",
         exportedAt: "2026-07-24T09:12:00.000Z",
         name: "weekly sensor review",
         payload: {
           name: "weekly sensor review",
           docs: [],
+          views: [
+            { app: "sources", documents: {} },
+            { app: "inspector", documents: {} },
+          ],
           tree: {
             split: {
               dir: "row",
               ratio: 0.34,
-              a: { leaf: { app: "sources" } },
-              b: { leaf: { app: "inspector" } },
+              a: { leaf: { view: 0 } },
+              b: { leaf: { view: 1 } },
             },
           },
         },

@@ -1,0 +1,33 @@
+.root {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pbui-space-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--pbui-space-2);
+  margin-top: var(--pbui-space-2);
+}
+
+.option {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--pbui-space-1);
+  text-align: left;
+}
+
+.option strong,
+.option small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option small {
+  opacity: 0.72;
+}

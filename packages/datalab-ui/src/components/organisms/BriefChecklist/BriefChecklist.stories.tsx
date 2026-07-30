@@ -33,7 +33,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const HINTS = [
-  "No sources tile in this layout? Every tile has an application dropdown in its title bar — or split one with ⬌ and pick from the launcher.",
+  "No sources tile in this layout? Select Replace … from any tile title's menu — or split one with ⬌ and pick from the launcher.",
   "A filter step keeps rows — and right-clicking a mark in the chart writes one for you.",
   "One number per category is a group∑ step, summarising a quantitative field.",
   "After a group∑ the schema collapses to two columns, so the x and y you had before will need re-pointing.",
@@ -71,8 +71,10 @@ const GOALS: Goal[] = [
       if (!space) return false;
       const leaves: Array<{ app: string; docId: string | null }> = [];
       const walk = (node: (typeof space)["tree"]): void => {
-        if (node.type === "leaf") leaves.push({ app: node.app, docId: node.docId });
-        else {
+        if (node.type === "leaf") {
+          const view = state.layout.views[node.viewId];
+          if (view) leaves.push({ app: view.appId, docId: view.documents.primary ?? null });
+        } else {
           walk(node.a);
           walk(node.b);
         }

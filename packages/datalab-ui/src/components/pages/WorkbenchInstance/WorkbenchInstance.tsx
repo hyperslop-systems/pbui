@@ -68,7 +68,7 @@ export interface InstanceConfig {
    */
   fixtures?: FixtureData;
   /**
-   * Which applications the tile dropdown and the launcher offer (DR-53).
+   * Which applications the shared Replace/Launcher switcher offers (DR-53).
    *
    * Omit for every registered application, which is what the product wants.
    */

@@ -15,7 +15,8 @@ import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
 import { useDocAnalysisResult } from "../useTable";
 
-function PipelineApp({ leafId, docId }: AppProps) {
+function PipelineApp({ view }: AppProps) {
+  const docId = view.documents.primary ?? null;
   const dispatch = useDispatch();
   const pbui = usePbui();
   const { doc, table, pipeline } = useDocAnalysisResult(docId);
@@ -85,7 +86,7 @@ function PipelineApp({ leafId, docId }: AppProps) {
 
   return (
     <>
-      <DocBar leafId={leafId} docId={docId} />
+      <DocBar viewId={view.id} docId={docId} />
       <PipelinePanel
         steps={views}
         outputFields={outputFields.map((field) => field.name)}

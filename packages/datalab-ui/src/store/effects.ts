@@ -253,25 +253,35 @@ export function commitImport(text: string): AppThunk<CommitResult> {
     const ids = Array.from({ length: idsNeeded(bundle) }, () => newId());
 
     if (pending.target.kind === "tile" && bundle.kind === "tile") {
-      const { leaf, docs } = applyTileBundle(bundle as Bundle<"tile">, ids);
+      const { leaf, docs, views, viewOrder } = applyTileBundle(bundle as Bundle<"tile">, ids);
       dispatch(worldActions.addDocs(docs));
-      dispatch(layoutActions.replaceLeafFromBundle({ nodeId: pending.target.nodeId, leaf }));
+      dispatch(
+        layoutActions.replaceLeafFromBundle({
+          nodeId: pending.target.nodeId,
+          leaf,
+          views,
+          viewOrder,
+        }),
+      );
       return { ok: true };
     }
     if (pending.target.kind === "workspace" && bundle.kind === "workspace") {
-      const { space, docs } = applyWorkspaceBundle(
+      const { space, docs, views, viewOrder } = applyWorkspaceBundle(
         bundle as Bundle<"workspace">,
         pending.target.stageId,
         ids,
       );
       dispatch(worldActions.addDocs(docs));
-      dispatch(layoutActions.insertWorkspaceFromBundle({ space }));
+      dispatch(layoutActions.insertWorkspaceFromBundle({ space, views, viewOrder }));
       return { ok: true };
     }
     if (pending.target.kind === "stage" && bundle.kind === "stage") {
-      const { stage, spaces, docs } = applyStageBundle(bundle as Bundle<"stage">, ids);
+      const { stage, spaces, docs, views, viewOrder } = applyStageBundle(
+        bundle as Bundle<"stage">,
+        ids,
+      );
       dispatch(worldActions.addDocs(docs));
-      dispatch(layoutActions.insertStageFromBundle({ stage, spaces }));
+      dispatch(layoutActions.insertStageFromBundle({ stage, spaces, views, viewOrder }));
       return { ok: true };
     }
     // Unreachable: `parseBundle` was given the expected kind. Stated rather than

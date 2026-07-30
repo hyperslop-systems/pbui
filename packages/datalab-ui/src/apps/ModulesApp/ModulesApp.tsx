@@ -33,7 +33,7 @@ function ModulesApp(_props: AppProps) {
       modules={modules}
       onSelect={
         rackTarget
-          ? (app) => dispatch(layoutActions.setLeafApp({ nodeId: rackTarget, app }))
+          ? (appId) => dispatch(layoutActions.createViewInPlacement({ nodeId: rackTarget, appId }))
           : undefined
       }
     />

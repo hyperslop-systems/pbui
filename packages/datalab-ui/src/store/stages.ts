@@ -1,11 +1,14 @@
 import {
-  leaf,
+  createLayoutBuilder,
   split,
   type AppId,
+  type AppView,
+  type LayoutBuilder,
   type LayoutState,
   type Node,
   type Stage,
   type StageId,
+  type ViewId,
   type Workspace,
 } from "./layout";
 import { WELCOME_DOC_IDS } from "../demo/welcome";
@@ -112,13 +115,17 @@ const ACCOUNT_APPS = ["profile", "tokens", "upload", "templates", "about", "laun
 
 const FULL_CHROME = { masthead: true, workspaces: true, stageBar: true } as const;
 
-const demoLeaf = (app: AppId, docId: string, label: string): Node => {
-  const node = leaf(app, docId);
-  if (node.type !== "leaf") throw new Error("leaf() returned a split node");
-  return { ...node, label };
-};
+const demoLeaf = (builder: LayoutBuilder, app: AppId, docId: string, label: string): Node =>
+  builder.leaf(app, docId, label);
 
-export function pinnedStages(): { stages: Stage[]; spaces: Workspace[] } {
+export function pinnedStages(): {
+  stages: Stage[];
+  spaces: Workspace[];
+  views: Record<string, AppView>;
+  viewOrder: string[];
+} {
+  const builder = createLayoutBuilder();
+  const leaf = builder.leaf.bind(builder);
   const stages: Stage[] = [
     {
       id: SIGNIN_STAGE_ID,
@@ -215,17 +222,17 @@ export function pinnedStages(): { stages: Stage[]; spaces: Workspace[] } {
         "row",
         split(
           "col",
-          demoLeaf("chart", WELCOME_DOC_IDS.temperature, "Temperature by station"),
-          demoLeaf("chart", WELCOME_DOC_IDS.yieldByLine, "Yield by production line"),
+          demoLeaf(builder, "chart", WELCOME_DOC_IDS.temperature, "Temperature by station"),
+          demoLeaf(builder, "chart", WELCOME_DOC_IDS.yieldByLine, "Yield by production line"),
           0.52,
         ),
         split(
           "col",
-          demoLeaf("chart", WELCOME_DOC_IDS.populationBars, "Population by region"),
+          demoLeaf(builder, "chart", WELCOME_DOC_IDS.populationBars, "Population by region"),
           split(
             "col",
             leaf("sources"),
-            demoLeaf("table", WELCOME_DOC_IDS.populationBars, "Regional totals"),
+            demoLeaf(builder, "table", WELCOME_DOC_IDS.populationBars, "Regional totals"),
             0.45,
           ),
           0.54,
@@ -275,14 +282,14 @@ export function pinnedStages(): { stages: Stage[]; spaces: Workspace[] } {
         "col",
         split(
           "row",
-          demoLeaf("chart", WELCOME_DOC_IDS.temperature, "Temperature by station"),
-          demoLeaf("chart", WELCOME_DOC_IDS.humidity, "Humidity by station"),
+          demoLeaf(builder, "chart", WELCOME_DOC_IDS.temperature, "Temperature by station"),
+          demoLeaf(builder, "chart", WELCOME_DOC_IDS.humidity, "Humidity by station"),
           0.5,
         ),
         split(
           "row",
-          demoLeaf("pipeline", WELCOME_DOC_IDS.temperature, "Climate pipeline"),
-          demoLeaf("table", WELCOME_DOC_IDS.temperature, "Climate readings"),
+          demoLeaf(builder, "pipeline", WELCOME_DOC_IDS.temperature, "Climate pipeline"),
+          demoLeaf(builder, "table", WELCOME_DOC_IDS.temperature, "Climate readings"),
           0.56,
         ),
         0.7,
@@ -297,14 +304,14 @@ export function pinnedStages(): { stages: Stage[]; spaces: Workspace[] } {
         "row",
         split(
           "col",
-          demoLeaf("chart", WELCOME_DOC_IDS.yieldByLine, "Yield by line · 85% target"),
-          demoLeaf("chart", WELCOME_DOC_IDS.massYield, "Mass versus yield"),
+          demoLeaf(builder, "chart", WELCOME_DOC_IDS.yieldByLine, "Yield by line · 85% target"),
+          demoLeaf(builder, "chart", WELCOME_DOC_IDS.massYield, "Mass versus yield"),
           0.5,
         ),
         split(
           "col",
-          demoLeaf("encode", WELCOME_DOC_IDS.yieldByLine, "Yield encoding"),
-          demoLeaf("table", WELCOME_DOC_IDS.massYield, "Production batches"),
+          demoLeaf(builder, "encode", WELCOME_DOC_IDS.yieldByLine, "Yield encoding"),
+          demoLeaf(builder, "table", WELCOME_DOC_IDS.massYield, "Production batches"),
           0.45,
         ),
         0.72,
@@ -322,16 +329,26 @@ export function pinnedStages(): { stages: Stage[]; spaces: Workspace[] } {
           leaf("sources"),
           split(
             "row",
-            demoLeaf("chart", WELCOME_DOC_IDS.populationScatter, "Population and land area"),
-            demoLeaf("chart", WELCOME_DOC_IDS.populationBars, "Population by region"),
+            demoLeaf(
+              builder,
+              "chart",
+              WELCOME_DOC_IDS.populationScatter,
+              "Population and land area",
+            ),
+            demoLeaf(builder, "chart", WELCOME_DOC_IDS.populationBars, "Population by region"),
             0.5,
           ),
           0.23,
         ),
         split(
           "row",
-          demoLeaf("inspector", WELCOME_DOC_IDS.populationScatter, "Inspect the comparison"),
-          demoLeaf("table", WELCOME_DOC_IDS.populationScatter, "Regional census"),
+          demoLeaf(
+            builder,
+            "inspector",
+            WELCOME_DOC_IDS.populationScatter,
+            "Inspect the comparison",
+          ),
+          demoLeaf(builder, "table", WELCOME_DOC_IDS.populationScatter, "Regional census"),
           0.46,
         ),
         0.7,
@@ -355,7 +372,7 @@ export function pinnedStages(): { stages: Stage[]; spaces: Workspace[] } {
     },
   ];
 
-  return { stages, spaces };
+  return { stages, spaces, views: builder.views, viewOrder: builder.viewOrder };
 }
 
 /**
@@ -426,9 +443,33 @@ export function isPinnedSpaceId(id: string): boolean {
 export function mergeStages(
   restoredStages: Stage[],
   restoredSpaces: Workspace[],
-): { stages: Stage[]; spaces: Workspace[] } {
+  restoredViews: Record<string, AppView> = {},
+  restoredViewOrder: string[] = [],
+): {
+  stages: Stage[];
+  spaces: Workspace[];
+  views: Record<string, AppView>;
+  viewOrder: string[];
+} {
   const pinned = pinnedStages();
+  const repair = createLayoutBuilder();
   const pinnedSpaceIds = new Set(pinned.spaces.map((s) => s.id));
+  const referencedViews = (tree: Node): ViewId[] =>
+    tree.type === "leaf" ? [tree.viewId] : [...referencedViews(tree.a), ...referencedViews(tree.b)];
+  const userReferencedViewIds = new Set(
+    restoredSpaces
+      .filter((space) => !pinnedSpaceIds.has(space.id))
+      .flatMap((space) => referencedViews(space.tree)),
+  );
+  const pinnedOnlyViewIds = new Set(
+    restoredSpaces
+      .filter((space) => pinnedSpaceIds.has(space.id))
+      .flatMap((space) => referencedViews(space.tree))
+      .filter((id) => !userReferencedViewIds.has(id)),
+  );
+  const retainedViews = Object.fromEntries(
+    Object.entries(restoredViews).filter(([id]) => !pinnedOnlyViewIds.has(id)),
+  );
 
   const stages: Stage[] = [
     ...pinned.stages.map((stage) => {
@@ -455,7 +496,7 @@ export function mergeStages(
       const space: Workspace = {
         id: newId(),
         name: "build",
-        tree: leaf("launcher"),
+        tree: repair.leaf("launcher"),
         stageId: stage.id,
       };
       spaces.push(space);
@@ -466,7 +507,14 @@ export function mergeStages(
     }
   }
 
-  return { stages, spaces };
+  const views = { ...retainedViews, ...pinned.views, ...repair.views };
+  const viewOrder = [
+    ...pinned.viewOrder,
+    ...restoredViewOrder.filter((id) => !!retainedViews[id] && !pinned.views[id]),
+    ...repair.viewOrder,
+  ];
+
+  return { stages, spaces, views, viewOrder };
 }
 
 /**
@@ -484,9 +532,11 @@ export function mergeStages(
  */
 export function singleStageLayout(
   name: string,
-  tree: Node,
+  build: (builder: LayoutBuilder) => Node,
   apps: AppId[] | null = null,
 ): LayoutState {
+  const builder = createLayoutBuilder();
+  const tree = build(builder);
   const spaceId = newId();
   const stageId = newId();
   return {
@@ -502,6 +552,8 @@ export function singleStageLayout(
     currentStageId: stageId,
     spaces: [{ id: spaceId, name, tree, stageId }],
     currentSpaceId: spaceId,
+    views: builder.views,
+    viewOrder: builder.viewOrder,
   };
 }
 
@@ -518,6 +570,8 @@ export function singleStageLayout(
  */
 export function defaultLayout(): LayoutState {
   const pinned = pinnedStages();
+  const builder = createLayoutBuilder();
+  const leaf = builder.leaf.bind(builder);
   const work = (name: string, tree: Workspace["tree"]): Workspace => ({
     id: newId(),
     name,
@@ -562,5 +616,7 @@ export function defaultLayout(): LayoutState {
     currentStageId: WORK_STAGE_ID,
     spaces,
     currentSpaceId: build.id,
+    views: { ...pinned.views, ...builder.views },
+    viewOrder: [...pinned.viewOrder, ...builder.viewOrder],
   };
 }

@@ -7,8 +7,16 @@ function leaves(state: Parameters<NonNullable<Lesson["done"]>>[0]) {
   if (!space) return [];
   const out: Array<{ id: string; app: string; docId: string | null }> = [];
   const walk = (node: Node): void => {
-    if (node.type === "leaf") out.push({ id: node.id, app: node.app, docId: node.docId });
-    else {
+    if (node.type === "leaf") {
+      const view = state.layout.views[node.viewId];
+      if (view) {
+        out.push({
+          id: node.id,
+          app: view.appId,
+          docId: view.documents.primary ?? null,
+        });
+      }
+    } else {
       walk(node.a);
       walk(node.b);
     }
@@ -80,7 +88,23 @@ export const layoutLessons: Lesson[] = [
       const second = state.world.docOrder[1];
       const target = bound[1] ?? bound[0];
       if (target && second) {
-        dispatch(layoutActions.setLeafDoc({ nodeId: target.id, docId: second }));
+        const placement = state.layout.spaces
+          .flatMap((space) => {
+            const found: Array<{ id: string; viewId: string }> = [];
+            const walk = (node: Node): void => {
+              if (node.type === "leaf") found.push(node);
+              else {
+                walk(node.a);
+                walk(node.b);
+              }
+            };
+            walk(space.tree);
+            return found;
+          })
+          .find((node) => node.id === target.id);
+        if (placement) {
+          dispatch(layoutActions.setViewDocument({ viewId: placement.viewId, docId: second }));
+        }
       }
     },
     // Two DIFFERENT documents visible at once — which is the state the lesson

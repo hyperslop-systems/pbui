@@ -1,5 +1,5 @@
 import type { GraphicDocument } from "../model/graphic";
-import type { LayoutState, Node, Stage, StageChrome, Workspace } from "./layout";
+import type { AppView, LayoutState, Node, Stage, StageChrome, Workspace } from "./layout";
 import { mergeStages } from "./stages";
 import type { WorldState } from "./world";
 
@@ -34,7 +34,7 @@ export const WORKBENCH_KEY = "datadrop-workbench";
  * 2 since DATADROP-8, which put stages above workspaces. Version 1 payloads
  * are MIGRATED rather than discarded (DR-73) — see `migrate` below.
  */
-const VERSION = 3;
+const VERSION = 4;
 
 interface Persisted {
   version: number;
@@ -60,7 +60,7 @@ function isNode(value: unknown): value is Node {
   if (!value || typeof value !== "object") return false;
   const node = value as Partial<Node> & { type?: string };
   if (typeof node.id !== "string") return false;
-  if (node.type === "leaf") return typeof (node as { app?: unknown }).app === "string";
+  if (node.type === "leaf") return typeof (node as { viewId?: unknown }).viewId === "string";
   if (node.type === "split") {
     const s = node as { a?: unknown; b?: unknown; ratio?: unknown; dir?: unknown };
     return (
@@ -73,6 +73,19 @@ function isNode(value: unknown): value is Node {
     );
   }
   return false;
+}
+
+function isAppView(value: unknown): value is AppView {
+  if (!value || typeof value !== "object") return false;
+  const view = value as Partial<AppView>;
+  return (
+    typeof view.id === "string" &&
+    typeof view.appId === "string" &&
+    !!view.documents &&
+    typeof view.documents === "object" &&
+    Object.values(view.documents).every((id) => typeof id === "string") &&
+    (view.title === undefined || typeof view.title === "string")
+  );
 }
 
 function isWorkspace(value: unknown): value is Workspace {
@@ -139,6 +152,21 @@ export function validate(input: unknown): Persisted | null {
   if (!data.layout.spaces.every(isWorkspace)) return null;
   if (!Array.isArray(data.layout.stages)) return null;
   if (!data.layout.stages.every(isStage)) return null;
+  if (!data.layout.views || typeof data.layout.views !== "object") return null;
+  if (!Object.values(data.layout.views).every(isAppView)) return null;
+  if (!Array.isArray(data.layout.viewOrder)) return null;
+  if (
+    data.layout.viewOrder.length !== Object.keys(data.layout.views).length ||
+    new Set(data.layout.viewOrder).size !== data.layout.viewOrder.length ||
+    !data.layout.viewOrder.every((id) => typeof id === "string" && !!data.layout?.views[id])
+  ) {
+    return null;
+  }
+  const referencesKnownViews = (node: Node): boolean =>
+    node.type === "leaf"
+      ? !!data.layout?.views[node.viewId]
+      : referencesKnownViews(node.a) && referencesKnownViews(node.b);
+  if (!data.layout.spaces.every((space) => referencesKnownViews(space.tree))) return null;
   if (typeof data.world.docs !== "object" || !Array.isArray(data.world.docOrder)) return null;
   if (!Object.values(data.world.docs).every(isGraphicDocument)) return null;
   if (
@@ -158,7 +186,12 @@ export function validate(input: unknown): Persisted | null {
   // who deleted the account workspace in a previous release gets it back; a
   // user who added a tile to it loses that tile, which is what "hardwired"
   // means. `mergeStages` also repairs orphans and empty stages.
-  const { stages, spaces } = mergeStages(data.layout.stages, data.layout.spaces);
+  const { stages, spaces, views, viewOrder } = mergeStages(
+    data.layout.stages,
+    data.layout.spaces,
+    data.layout.views,
+    data.layout.viewOrder,
+  );
 
   const stage = stages.find((s) => s.id === data.layout?.currentStageId) ?? (stages[0] as Stage);
   // A currentSpaceId naming a space that is gone would render nothing. The
@@ -174,7 +207,7 @@ export function validate(input: unknown): Persisted | null {
   return {
     version: VERSION,
     world: data.world,
-    layout: { stages, currentStageId: stage.id, spaces, currentSpaceId },
+    layout: { stages, currentStageId: stage.id, spaces, currentSpaceId, views, viewOrder },
   };
 }
 
@@ -198,6 +231,8 @@ export function save(key: string, world: WorldState, layout: LayoutState): void 
       currentStageId: layout.currentStageId,
       spaces: layout.spaces,
       currentSpaceId: layout.currentSpaceId,
+      views: layout.views,
+      viewOrder: layout.viewOrder,
       // `pendingImport` is deliberately not persisted: it is a dialog, and a
       // reload that reopens a dialog over a tile that may be gone is a defect
       // that produces no error and fails no test (DR-69).

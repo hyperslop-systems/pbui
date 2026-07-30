@@ -184,7 +184,7 @@ export const MODULES: ModuleEntry[] = [
     what: "What an empty tile shows: one button per application.",
     emits: "—",
     accepts: "—",
-    lr: "L an application to become it. The tile's own dropdown does the same thing.",
+    lr: "L an application to become it. Replace … in the tile title menu does the same thing.",
     vs: <>a home screen. A tile is never empty for long, and nothing is stored here.</>,
   },
   {
