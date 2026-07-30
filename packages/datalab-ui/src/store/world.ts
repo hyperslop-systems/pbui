@@ -20,6 +20,7 @@ import {
 } from "../model/graphicAuthoring";
 import type { SourceRef } from "../model/table";
 import type { DocId, PresentationType } from "../pbui/types";
+import { remoteWorkbenchLoaded } from "./remote";
 
 /**
  * The world: documents, snapshots, and the trace.
@@ -435,6 +436,29 @@ export const worldSlice = createSlice({
       state.inspected = action.payload;
       trace(state, "inspected", action.payload.title);
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(remoteWorkbenchLoaded, (state, action) => {
+      const preserved = new Set(action.payload.preserveDocumentIds);
+      const docs: Record<DocId, Doc> = {};
+      const docOrder: DocId[] = [];
+      for (const id of state.docOrder) {
+        const document = state.docs[id];
+        if (preserved.has(id) && document) {
+          docs[id] = document;
+          docOrder.push(id);
+        }
+      }
+      for (const [id, document] of Object.entries(action.payload.state.documents)) {
+        docs[id] = document;
+        if (!docOrder.includes(id)) docOrder.push(id);
+      }
+      state.docs = docs;
+      state.docOrder = docOrder;
+      if (!state.activeDocId || !docs[state.activeDocId]) {
+        state.activeDocId = Object.keys(action.payload.state.documents)[0] ?? docOrder[0] ?? null;
+      }
+    });
   },
 });
 

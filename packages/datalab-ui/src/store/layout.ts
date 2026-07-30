@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { DocId } from "../pbui/types";
 import type { ImportTarget } from "../pbui/verbs";
+import { remoteWorkbenchLoaded } from "./remote";
 import {
   cloneTree as cloneLayoutTree,
   countLeaves,
@@ -1014,6 +1015,47 @@ export const layoutSlice = createSlice({
     replaceLayout(_state, action: PayloadAction<LayoutState>) {
       return action.payload;
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(remoteWorkbenchLoaded, (state, action) => {
+      const { stageId, preserveViewIds, state: remote } = action.payload;
+      const preserved = new Set(preserveViewIds);
+      const views: Record<ViewId, AppView> = {};
+      const viewOrder: ViewId[] = [];
+      for (const id of state.viewOrder) {
+        const view = state.views[id];
+        if (preserved.has(id) && view) {
+          views[id] = view;
+          viewOrder.push(id);
+        }
+      }
+      for (const id of remote.viewOrder) {
+        const view = remote.views[id];
+        if (view) {
+          views[id] = view;
+          if (!viewOrder.includes(id)) viewOrder.push(id);
+        }
+      }
+      const spaces: Workspace[] = remote.workspaces.map((workspace) => ({
+        ...workspace,
+        stageId,
+      }));
+      state.spaces = [...state.spaces.filter((space) => space.stageId !== stageId), ...spaces];
+      state.views = views;
+      state.viewOrder = viewOrder;
+
+      const stage = state.stages.find((candidate) => candidate.id === stageId);
+      if (stage && spaces.length > 0) {
+        const selected = spaces.some((space) => space.id === stage.currentSpaceId)
+          ? stage.currentSpaceId
+          : (spaces[0] as Workspace).id;
+        stage.currentSpaceId = selected;
+        if (state.currentStageId === stageId) syncSpacePointer(state, selected);
+      }
+      state.pendingImport = null;
+      state.replacingId = null;
+      state.renamingId = null;
+    });
   },
 });
 

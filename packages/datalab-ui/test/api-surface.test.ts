@@ -5,10 +5,10 @@ import { api } from "../src/api/client";
 /**
  * The read-only boundary, pinned (DR-27).
  *
- * `ui/src/api/client.ts` used to be able to say "every endpoint here is a GET",
- * which was a real security property: a compromised bundle could read exactly
- * what the caller could already read and write nothing. DATADROP-5 spends that
- * property, deliberately and narrowly, on six mutations.
+ * `ui/src/api/client.ts` used to be able to say "every endpoint here is a GET".
+ * DATADROP-5 spent that property on reviewed account mutations. DATADROP-18
+ * adds two scoped workbench authoring mutations: complete conditional replace
+ * and typed conditional mutation.
  *
  * A change-detector test is normally a smell. On a security boundary it is the
  * mechanism: the desired behaviour when someone adds a seventh mutation is that
@@ -38,28 +38,30 @@ function mutationNames(): string[] {
 
 describe("the API surface", () => {
   test("the set of mutating endpoints is exactly the reviewed set", () => {
-    // Every entry is an ACCOUNT or MEMBERSHIP operation. None touches a
-    // source, a table, a chart, a pipeline or a snapshot, which is the
-    // property the second test below states directly.
+    // Every entry is an account/membership operation or one of the two reviewed
+    // workbench authoring boundaries.
     //
     // Note what is absent: the dataset upload triad. The uploader uses `fetch`
     // rather than RTK Query, because its payload is a File, its response is
     // discarded, and caching a 400 MB upload would be actively harmful. The
-    // guide predicted six mutations here; there are five, and the difference
-    // is that decision.
-    expect(mutationNames()).toEqual([
-      "claimDrop",
-      "createToken",
-      "removeMember",
-      "revokeToken",
-      "setMember",
-      "signOut",
-    ]);
+    // account mutation count therefore differs from the upload workflow count.
+    expect(mutationNames()).toEqual(
+      [
+        "claimDrop",
+        "createToken",
+        "removeMember",
+        "replaceWorkbench",
+        "revokeToken",
+        "setMember",
+        "signOut",
+        "mutateWorkbench",
+      ].sort(),
+    );
   });
 
-  test("nothing in the chart workbench mutates", () => {
-    // Sources, tables, charts, pipelines and snapshots stay read-only. Every
-    // mutation is an ACCOUNT operation, and the names say so.
+  test("data execution endpoints remain read-only", () => {
+    // Workbench mutations persist authoring documents and layout. They do not
+    // mutate source drops, streams, datasets, materialized tables, or data.
     const chartish = ["Drops", "Streams", "Datasets", "Table", "Dataset"];
     for (const name of mutationNames()) {
       for (const fragment of chartish) {

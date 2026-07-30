@@ -11,6 +11,11 @@ import { worldActions } from "../../../store/world";
 import { rootSource } from "../../../model/graphicAuthoring";
 import { welcomeDemoInstallation } from "../../../demo/welcome";
 import {
+  useRemoteWorkbench,
+  type RemoteWorkbenchController,
+  type WorkbenchPersistence,
+} from "../../../appkit/useRemoteWorkbench";
+import {
   ACCOUNT_STAGE_ID,
   SIGNIN_STAGE_ID,
   landingStageFor,
@@ -61,10 +66,33 @@ export interface WorkbenchProps {
    * inert rather than destructive. `main.tsx` opts in, in one place, in a file
    * whose job is to know that it is the application.
    */
-  persistKey?: string | null;
+  persistence?: WorkbenchPersistence;
 }
 
-export function Workbench({ persistKey = null }: WorkbenchProps = {}) {
+export function Workbench({ persistence = { kind: "memory" } }: WorkbenchProps = {}) {
+  if (persistence.kind === "remote") {
+    return <RemoteWorkbenchSession workbenchId={persistence.workbenchId} />;
+  }
+  return (
+    <WorkbenchSession
+      persistKey={persistence.kind === "local" ? persistence.key : null}
+      remote={null}
+    />
+  );
+}
+
+function RemoteWorkbenchSession({ workbenchId }: { workbenchId: string }) {
+  const remote = useRemoteWorkbench(workbenchId);
+  return <WorkbenchSession persistKey={null} remote={remote} />;
+}
+
+function WorkbenchSession({
+  persistKey,
+  remote,
+}: {
+  persistKey: string | null;
+  remote: RemoteWorkbenchController | null;
+}) {
   const dispatch = useDispatch();
   const { data: me } = useMeQuery();
 
@@ -265,6 +293,7 @@ export function Workbench({ persistKey = null }: WorkbenchProps = {}) {
       fallback={(error, reset) => <WorkbenchFailure error={error} reset={reset} />}
     >
       <div className={styles.app}>
+        {remote ? <RemoteWorkbenchStatus controller={remote} /> : null}
         {/*
           No instance scope, and its absence is the point.
 
@@ -283,6 +312,49 @@ export function Workbench({ persistKey = null }: WorkbenchProps = {}) {
       </div>
     </RenderBoundary>
   );
+}
+
+function RemoteWorkbenchStatus({ controller }: { controller: RemoteWorkbenchController }) {
+  if (controller.conflict) {
+    return (
+      <Callout variant="warning" title="This workbench changed elsewhere">
+        <Text size="small" prose>
+          {controller.conflict.detail} Reload to use the server version; your current browser
+          changes will not overwrite it.
+        </Text>
+        <div style={{ marginTop: "var(--pbui-space-3)" }}>
+          <Button onClick={controller.reload}>Reload server version</Button>
+        </div>
+      </Callout>
+    );
+  }
+  if (controller.error) {
+    return (
+      <Callout variant="warning" title="Remote workbench connection failed">
+        <Text size="small" prose>
+          {controller.error}
+        </Text>
+        <div style={{ marginTop: "var(--pbui-space-3)" }}>
+          <Button onClick={controller.retry}>Try again</Button>
+        </div>
+      </Callout>
+    );
+  }
+  if (controller.loading) {
+    return (
+      <Callout title="Loading remote workbench">
+        <Text size="small">Fetching the current server revision.</Text>
+      </Callout>
+    );
+  }
+  if (controller.saving || controller.dirty) {
+    return (
+      <Text size="small" tone="faint">
+        {controller.saving ? "Saving workbench…" : "Unsaved workbench changes"}
+      </Text>
+    );
+  }
+  return null;
 }
 
 export function WorkbenchFailure({ error, reset }: { error: Error; reset: () => void }) {

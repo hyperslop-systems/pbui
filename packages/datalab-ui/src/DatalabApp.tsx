@@ -20,6 +20,11 @@ export interface DatalabAppProps {
    * that already own a StrictMode boundary can turn this off.
    */
   strict?: boolean;
+  /**
+   * Open one server-backed PBUI workbench. When omitted, the standalone app
+   * also accepts `?workbench=<id>`; null explicitly selects local persistence.
+   */
+  workbenchId?: string | null;
 }
 
 /**
@@ -30,7 +35,7 @@ export interface DatalabAppProps {
  * workbench; marketing and tour routes remain six independent fixture-backed
  * instances.
  */
-export function DatalabApp({ pathname, strict = true }: DatalabAppProps) {
+export function DatalabApp({ pathname, strict = true, workbenchId }: DatalabAppProps) {
   const resolvedPathname =
     pathname ?? (typeof window === "undefined" ? "/" : window.location.pathname);
   const route = routeFor(resolvedPathname);
@@ -43,7 +48,7 @@ export function DatalabApp({ pathname, strict = true }: DatalabAppProps) {
         <MarketingPage />
       </AnalysisProvider>
     ) : (
-      <Product />
+      <Product workbenchId={resolvedWorkbenchId(workbenchId)} />
     );
 
   return strict ? <StrictMode>{body}</StrictMode> : body;
@@ -54,10 +59,10 @@ export function DatalabApp({ pathname, strict = true }: DatalabAppProps) {
  * route. Visiting a marketing, tour, or device route cannot restore or mutate
  * workbench persistence as a package-import side effect.
  */
-function Product() {
+function Product({ workbenchId }: { workbenchId: string | null }) {
   const storeRef = useRef<AppStore | null>(null);
   if (!storeRef.current) {
-    const restored = load(WORKBENCH_KEY);
+    const restored = workbenchId ? null : load(WORKBENCH_KEY);
     storeRef.current = makeStore({
       preloaded: restored ? { world: restored.world, layout: restored.layout } : undefined,
     });
@@ -65,7 +70,18 @@ function Product() {
 
   return (
     <Provider store={storeRef.current}>
-      <Workbench persistKey={WORKBENCH_KEY} />
+      <Workbench
+        persistence={
+          workbenchId ? { kind: "remote", workbenchId } : { kind: "local", key: WORKBENCH_KEY }
+        }
+      />
     </Provider>
   );
+}
+
+function resolvedWorkbenchId(explicit: string | null | undefined): string | null {
+  if (explicit !== undefined) return explicit;
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("workbench")?.trim();
+  return value || null;
 }

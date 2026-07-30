@@ -75,7 +75,10 @@ const ALLOWED: Record<string, string[]> = {
    */
   // React lifecycle adapters may own analysis runtimes, while the physical
   // analysis layer itself remains React/store/PBUI-free.
-  appkit: ["model", "pbui", "store", "analysis"],
+  // React lifecycle adapters may also coordinate the API and the pure remote
+  // codec. Both dependencies remain one-way: neither api nor remote imports
+  // appkit or components.
+  appkit: ["model", "pbui", "store", "analysis", "api", "remote"],
   /*
    * Lesson content: the four tracks, the module cards, the cheat sheets.
    *
