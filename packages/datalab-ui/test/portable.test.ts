@@ -614,6 +614,45 @@ describe("parseBundle refuses with the reason, and the reasons are the specifica
     });
   });
 
+  test("more views than the cap", () => {
+    const bundle = JSON.parse(good());
+    const one = bundle.payload.views[0];
+    bundle.payload.views = Array.from({ length: LIMITS.views + 1 }, () => structuredClone(one));
+    expect(parseBundle(JSON.stringify(bundle))).toEqual({
+      ok: false,
+      reason: "that bundle names 65 views; the limit is 64",
+    });
+  });
+
+  test("a tile cannot bypass the document cap", () => {
+    const { state, nodes } = exploreState();
+    const bundle = JSON.parse(JSON.stringify(bundleForTile(state, nodes[1] as string, AT)));
+    const one = bundle.payload.docs[0];
+    bundle.payload.docs = Array.from({ length: LIMITS.docs + 1 }, () => structuredClone(one));
+    expect(parseBundle(JSON.stringify(bundle))).toEqual({
+      ok: false,
+      reason: "that bundle names 65 documents; the limit is 64",
+    });
+  });
+
+  test("a stage cannot bypass the view cap", () => {
+    const builder = createLayoutBuilder();
+    const space: Workspace = {
+      id: "ws",
+      name: "x",
+      stageId: "stage-1",
+      tree: builder.leaf("about"),
+    };
+    const state: BundleState = { world: worldWith(), layout: layoutWith(builder, [space]) };
+    const bundle = JSON.parse(JSON.stringify(bundleForStage(state, "stage-1", AT)));
+    const one = bundle.payload.views[0];
+    bundle.payload.views = Array.from({ length: LIMITS.views + 1 }, () => structuredClone(one));
+    expect(parseBundle(JSON.stringify(bundle))).toEqual({
+      ok: false,
+      reason: "that bundle names 65 views; the limit is 64",
+    });
+  });
+
   test("more workspaces in a stage than the cap", () => {
     const builder = createLayoutBuilder();
     const space: Workspace = {

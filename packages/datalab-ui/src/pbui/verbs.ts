@@ -81,7 +81,7 @@ export type Verb =
   // `exportTile` names the tile, and the clipboard it will be written to
   // arrives on the store's thunk extra argument rather than in the verb.
   /** Open the view title editor. The COMMIT is `renameView` below. */
-  | { kind: "beginRenameView"; viewId: string }
+  | { kind: "beginRenameView"; placementId: string }
   | { kind: "renameView"; viewId: string; title: string }
   | { kind: "openReplaceView"; placementId: string }
   | { kind: "createLinkedDuplicate"; placementId: string }

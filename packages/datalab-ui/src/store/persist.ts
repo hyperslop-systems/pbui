@@ -153,7 +153,9 @@ export function validate(input: unknown): Persisted | null {
   if (!Array.isArray(data.layout.stages)) return null;
   if (!data.layout.stages.every(isStage)) return null;
   if (!data.layout.views || typeof data.layout.views !== "object") return null;
-  if (!Object.values(data.layout.views).every(isAppView)) return null;
+  if (!Object.entries(data.layout.views).every(([id, view]) => isAppView(view) && id === view.id)) {
+    return null;
+  }
   if (!Array.isArray(data.layout.viewOrder)) return null;
   if (
     data.layout.viewOrder.length !== Object.keys(data.layout.views).length ||

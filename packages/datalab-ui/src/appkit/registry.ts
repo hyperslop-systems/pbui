@@ -58,11 +58,12 @@ export interface AppDescriptor {
    */
   duplicable: boolean;
   /**
-   * May a workspace hold at most one of these? (DR-63)
+   * May the layout hold at most one logical view of this application? (DR-63)
    *
    * True for every application that is a pure function of the world — a second
    * `trace` tile renders identical pixels forever. The view switcher offers the
-   * existing singleton view but does not offer a second logical view.
+   * existing singleton view for another placement but does not offer a second
+   * logical view.
    */
   singleton: boolean;
   Component: ComponentType<AppProps>;

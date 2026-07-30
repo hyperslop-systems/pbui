@@ -6,6 +6,7 @@ import {
   spacesOfStage,
   split,
   type LayoutState,
+  type Node,
   type Stage,
   type StageId,
   type Workspace,
@@ -105,6 +106,23 @@ describe("the pinned stages", () => {
     // The work stage owns no pinned workspaces: they are a starting point the
     // user owns, renameable and deletable.
     expect(spacesOfStage(state, WORK_STAGE_ID).every((s) => !s.pinned)).toBe(true);
+  });
+
+  test("seeded singleton applications share one logical view across workspaces", () => {
+    const state = defaultLayout();
+    const leaves = (node: Node): Extract<Node, { type: "leaf" }>[] =>
+      node.type === "leaf" ? [node] : [...leaves(node.a), ...leaves(node.b)];
+
+    for (const appId of ["sources", "inspector", "about"]) {
+      const viewIds = state.viewOrder.filter((id) => state.views[id]?.appId === appId);
+      expect(viewIds, `${appId} logical views`).toHaveLength(1);
+
+      const placements = state.spaces.flatMap((space) =>
+        leaves(space.tree).filter((placement) => placement.viewId === viewIds[0]),
+      );
+      expect(placements.length, `${appId} placements`).toBeGreaterThan(1);
+      expect(new Set(placements.map((placement) => placement.id)).size).toBe(placements.length);
+    }
   });
 
   test("no two stores agree on a workspace id that is not code-defined", () => {

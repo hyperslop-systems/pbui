@@ -53,6 +53,7 @@ export type BundleKind = "tile" | "workspace" | "stage";
 export const LIMITS = {
   bytes: 512 * 1024, // a 512 kB layout is not a layout
   leaves: 64, // 64 tiles is more than any screen can show
+  views: 64,
   docs: 64,
   depth: 24, // split-tree depth
   spaces: 32, // per stage
@@ -205,6 +206,7 @@ export const REASONS = {
     `that is a ${found}; this ${wanted} can only take a ${wanted}`,
   tooManyTiles: (found: number) =>
     `that bundle names ${found} tiles; the limit is ${LIMITS.leaves}`,
+  tooManyViews: (found: number) => `that bundle names ${found} views; the limit is ${LIMITS.views}`,
   tooManyDocs: (found: number) =>
     `that bundle names ${found} documents; the limit is ${LIMITS.docs}`,
   tooManySpaces: (found: number) =>
@@ -349,6 +351,9 @@ function checkWorkspacePayload(
   if (!Array.isArray(payload.views) || !payload.views.every(isPortableView)) {
     return REASONS.damaged;
   }
+  if (ownViews && payload.views.length > LIMITS.views) {
+    return REASONS.tooManyViews(payload.views.length);
+  }
   if (payload.apps !== undefined && payload.apps !== null) {
     if (!Array.isArray(payload.apps) || !payload.apps.every((a) => typeof a === "string")) {
       return REASONS.damaged;
@@ -433,6 +438,9 @@ export function parseBundle(text: string, expect?: BundleKind): ParseResult {
     if (!Array.isArray(docs) || !docs.every(isDoc)) {
       return { ok: false, reason: REASONS.damaged };
     }
+    if (docs.length > LIMITS.docs) {
+      return { ok: false, reason: REASONS.tooManyDocs(docs.length) };
+    }
     if (Object.values(payload.view.documents).some((index) => index >= docs.length)) {
       return { ok: false, reason: REASONS.damaged };
     }
@@ -459,6 +467,9 @@ export function parseBundle(text: string, expect?: BundleKind): ParseResult {
     }
     if (!Array.isArray(payload.views) || !payload.views.every(isPortableView)) {
       return { ok: false, reason: REASONS.damaged };
+    }
+    if (payload.views.length > LIMITS.views) {
+      return { ok: false, reason: REASONS.tooManyViews(payload.views.length) };
     }
     if (
       (payload.views as PortableView[]).some((view) =>

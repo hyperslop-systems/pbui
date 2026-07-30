@@ -26,10 +26,10 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   // The rename flag lives in the store rather than here, because the *menu* has
   // to be able to start one and a menu entry is serialisable data — it cannot
   // reach into a `useState` three components away (DATADROP-8).
-  const renaming = useSelector((state: RootState) => state.layout.renamingId === view?.id);
+  const renaming = useSelector((state: RootState) => state.layout.renamingId === node.id);
   const replacing = useSelector((state: RootState) => state.layout.replacingId === node.id);
   const setRenaming = (on: boolean) =>
-    dispatch(layoutActions.beginRename(on && view ? view.id : null));
+    dispatch(layoutActions.beginRename(on && view ? node.id : null));
   const docName = useSelector((state: RootState) =>
     docId ? (state.world.docs[docId]?.name ?? null) : null,
   );

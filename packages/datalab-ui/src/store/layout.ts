@@ -63,12 +63,20 @@ export interface LayoutBuilder {
   readonly views: Record<ViewId, AppView>;
   readonly viewOrder: ViewId[];
   leaf(appId: AppId, docId?: DocId | null, title?: string): Node;
+  singleton(appId: AppId): Node;
 }
 
-/** Build seeded layouts while registering one AppView for every placement. */
+/**
+ * Build seeded layouts while registering logical views separately from their
+ * placements. `singleton` reuses one logical view for every placement of a
+ * world-scoped application.
+ */
 export function createLayoutBuilder(): LayoutBuilder {
   const views: Record<ViewId, AppView> = {};
   const viewOrder: ViewId[] = [];
+  const singletons = new Map<AppId, ViewId>();
+
+  const place = (viewId: ViewId): Node => createLeaf(viewId, newId);
 
   return {
     views,
@@ -82,7 +90,16 @@ export function createLayoutBuilder(): LayoutBuilder {
         ...(title ? { title } : {}),
       };
       viewOrder.push(id);
-      return createLeaf(id, newId);
+      return place(id);
+    },
+    singleton(appId: AppId): Node {
+      const existing = singletons.get(appId);
+      if (existing) return place(existing);
+      const id = newId();
+      views[id] = { id, appId, documents: {} };
+      viewOrder.push(id);
+      singletons.set(appId, id);
+      return place(id);
     },
   };
 }
@@ -265,7 +282,7 @@ export interface LayoutState {
    */
   notice?: { ok: boolean; title: string; body: string } | null;
   /**
-   * The tile or workspace whose name is being edited, or null.
+   * The tile placement or workspace whose name is being edited, or null.
    *
    * In the store rather than in the component, because the *menu* has to be
    * able to start a rename and a menu entry is a serialisable verb — it cannot

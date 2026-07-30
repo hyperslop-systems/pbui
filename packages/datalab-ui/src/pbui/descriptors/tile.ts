@@ -47,7 +47,7 @@ export const tileDescriptor: PresentationDescriptor<TileRef> = {
 
     actions.push({
       label: "Rename …",
-      verb: { kind: "beginRenameView", viewId: tile.viewId },
+      verb: { kind: "beginRenameView", placementId: tile.placementId },
     });
 
     actions.push({

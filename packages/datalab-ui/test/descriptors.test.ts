@@ -208,7 +208,7 @@ describe("the layout descriptors", () => {
     });
     expect(actions.find((a) => a.label === "Rename …")?.verb).toEqual({
       kind: "beginRenameView",
-      viewId: "v1",
+      placementId: "n1",
     });
     expect(actions.find((a) => a.label === "Split below")?.verb).toEqual({
       kind: "splitTile",

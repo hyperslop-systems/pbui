@@ -684,6 +684,12 @@ describe("persistence is defensive", () => {
     expect(validate({ ...payload, layout })).toBeNull();
   });
 
+  test("a view dictionary key that disagrees with its view id is refused", () => {
+    const payload = currentPayload([], "");
+    payload.layout.views.v.id = "another-view";
+    expect(validate(payload)).toBeNull();
+  });
+
   test("a dangling placement view reference is refused", () => {
     const tree = { id: "n", type: "leaf", viewId: "missing" };
     expect(

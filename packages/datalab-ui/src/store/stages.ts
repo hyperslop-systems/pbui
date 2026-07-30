@@ -118,14 +118,14 @@ const FULL_CHROME = { masthead: true, workspaces: true, stageBar: true } as cons
 const demoLeaf = (builder: LayoutBuilder, app: AppId, docId: string, label: string): Node =>
   builder.leaf(app, docId, label);
 
-export function pinnedStages(): {
+export function pinnedStages(builder: LayoutBuilder = createLayoutBuilder()): {
   stages: Stage[];
   spaces: Workspace[];
   views: Record<string, AppView>;
   viewOrder: string[];
 } {
-  const builder = createLayoutBuilder();
   const leaf = builder.leaf.bind(builder);
+  const singleton = builder.singleton.bind(builder);
   const stages: Stage[] = [
     {
       id: SIGNIN_STAGE_ID,
@@ -208,7 +208,12 @@ export function pinnedStages(): {
       // visitor who reaches this stage has not yet said which one they need,
       // and making them guess from a link label is what the sign-up tile
       // exists to stop.
-      tree: split("row", leaf("signin"), split("col", leaf("signup"), leaf("about"), 0.6), 0.4),
+      tree: split(
+        "row",
+        singleton("signin"),
+        split("col", singleton("signup"), singleton("about"), 0.6),
+        0.4,
+      ),
     },
     {
       id: WELCOME_SPACE_ID,
@@ -231,7 +236,7 @@ export function pinnedStages(): {
           demoLeaf(builder, "chart", WELCOME_DOC_IDS.populationBars, "Population by region"),
           split(
             "col",
-            leaf("sources"),
+            singleton("sources"),
             demoLeaf(builder, "table", WELCOME_DOC_IDS.populationBars, "Regional totals"),
             0.45,
           ),
@@ -247,8 +252,8 @@ export function pinnedStages(): {
       pinned: true,
       tree: split(
         "row",
-        leaf("tut1"),
-        split("col", leaf("sources"), leaf("inspector"), 0.55),
+        singleton("tut1"),
+        split("col", singleton("sources"), singleton("inspector"), 0.55),
         0.44,
       ),
     },
@@ -257,21 +262,36 @@ export function pinnedStages(): {
       name: "2·pipeline",
       stageId: WELCOME_STAGE_ID,
       pinned: true,
-      tree: split("row", leaf("tut2"), split("col", leaf("pipeline"), leaf("table"), 0.5), 0.42),
+      tree: split(
+        "row",
+        singleton("tut2"),
+        split("col", leaf("pipeline"), leaf("table"), 0.5),
+        0.42,
+      ),
     },
     {
       id: TOUR_SPACE_IDS[2],
       name: "3·encode",
       stageId: WELCOME_STAGE_ID,
       pinned: true,
-      tree: split("row", leaf("tut3"), split("col", leaf("encode"), leaf("chart"), 0.45), 0.42),
+      tree: split(
+        "row",
+        singleton("tut3"),
+        split("col", leaf("encode"), leaf("chart"), 0.45),
+        0.42,
+      ),
     },
     {
       id: TOUR_SPACE_IDS[3],
       name: "4·docs",
       stageId: WELCOME_STAGE_ID,
       pinned: true,
-      tree: split("row", leaf("tut4"), split("col", leaf("charts"), leaf("gallery"), 0.55), 0.42),
+      tree: split(
+        "row",
+        singleton("tut4"),
+        split("col", singleton("charts"), singleton("gallery"), 0.55),
+        0.42,
+      ),
     },
     {
       id: DEMO_SPACE_IDS[0],
@@ -326,7 +346,7 @@ export function pinnedStages(): {
         "col",
         split(
           "row",
-          leaf("sources"),
+          singleton("sources"),
           split(
             "row",
             demoLeaf(
@@ -342,12 +362,7 @@ export function pinnedStages(): {
         ),
         split(
           "row",
-          demoLeaf(
-            builder,
-            "inspector",
-            WELCOME_DOC_IDS.populationScatter,
-            "Inspect the comparison",
-          ),
+          singleton("inspector"),
           demoLeaf(builder, "table", WELCOME_DOC_IDS.populationScatter, "Regional census"),
           0.46,
         ),
@@ -359,7 +374,12 @@ export function pinnedStages(): {
       name: "profile",
       stageId: ACCOUNT_STAGE_ID,
       pinned: true,
-      tree: split("row", leaf("profile"), split("col", leaf("tokens"), leaf("upload"), 0.55), 0.38),
+      tree: split(
+        "row",
+        singleton("profile"),
+        split("col", singleton("tokens"), singleton("upload"), 0.55),
+        0.38,
+      ),
     },
     {
       id: TEMPLATES_SPACE_ID,
@@ -368,7 +388,7 @@ export function pinnedStages(): {
       pinned: true,
       // One tile. The library is a table with a detail pane and wants the
       // width; a second tile beside it would be furniture.
-      tree: leaf("templates"),
+      tree: singleton("templates"),
     },
   ];
 
@@ -569,9 +589,10 @@ export function singleStageLayout(
  * user owns: renameable, deletable, and not re-created behind their back.
  */
 export function defaultLayout(): LayoutState {
-  const pinned = pinnedStages();
   const builder = createLayoutBuilder();
+  const pinned = pinnedStages(builder);
   const leaf = builder.leaf.bind(builder);
+  const singleton = builder.singleton.bind(builder);
   const work = (name: string, tree: Workspace["tree"]): Workspace => ({
     id: newId(),
     name,
@@ -592,15 +613,30 @@ export function defaultLayout(): LayoutState {
     ),
     work(
       "explore",
-      split("row", leaf("sources"), split("col", leaf("chart"), leaf("inspector"), 0.6), 0.34),
+      split(
+        "row",
+        singleton("sources"),
+        split("col", leaf("chart"), singleton("inspector"), 0.6),
+        0.34,
+      ),
     ),
     work(
       "gallery",
-      split("row", leaf("charts"), split("col", leaf("gallery"), leaf("compare"), 0.5), 0.4),
+      split(
+        "row",
+        singleton("charts"),
+        split("col", singleton("gallery"), singleton("compare"), 0.5),
+        0.4,
+      ),
     ),
     work(
       "help",
-      split("row", leaf("about"), split("col", leaf("watch"), leaf("trace"), 0.45), 0.55),
+      split(
+        "row",
+        singleton("about"),
+        split("col", singleton("watch"), singleton("trace"), 0.45),
+        0.55,
+      ),
     ),
   ];
 
@@ -616,7 +652,7 @@ export function defaultLayout(): LayoutState {
     currentStageId: WORK_STAGE_ID,
     spaces,
     currentSpaceId: build.id,
-    views: { ...pinned.views, ...builder.views },
-    viewOrder: [...pinned.viewOrder, ...builder.viewOrder],
+    views: builder.views,
+    viewOrder: builder.viewOrder,
   };
 }

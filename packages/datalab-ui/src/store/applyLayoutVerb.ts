@@ -23,7 +23,7 @@ export function actionsForLayoutVerb(verb: Verb, layout: LayoutState): VerbResul
 
   switch (verb.kind) {
     case "beginRenameView":
-      return [a.beginRename(verb.viewId)];
+      return [a.beginRename(verb.placementId)];
 
     case "renameView":
       return [a.renameView({ viewId: verb.viewId, title: verb.title })];
