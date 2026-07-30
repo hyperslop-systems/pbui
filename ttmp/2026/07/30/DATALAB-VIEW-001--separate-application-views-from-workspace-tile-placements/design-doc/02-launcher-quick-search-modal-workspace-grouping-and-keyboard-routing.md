@@ -23,9 +23,17 @@ RelatedFiles:
       Note: Workspace placement and transient interaction state contracts
     - Path: repo://src/components/Dialog/Dialog.tsx
       Note: Existing accessible modal focus trap and Escape behavior
+    - Path: repo://packages/datalab-ui/src/appkit/AppScope.tsx
+      Note: Instance, stage, and workspace scope the per-workspace rule reworks
+    - Path: repo://packages/datalab-ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.tsx
+      Note: Store-per-instance boundary that removes the case for a React context
+    - Path: repo://packages/datalab-ui/src/pbui/descriptors/tile.ts
+      Note: Serialisable openReplaceView verb the launcher must be reachable from
+    - Path: repo://packages/datalab-ui/src/store/persist.ts
+      Note: Enumerated save that keeps the new launcher fields transient
 ExternalSources: []
-Summary: Pragmatic design options and a staged recommendation for a searchable modal launcher, workspace-grouped views, query shortcuts, active-tile tracking, and workbench-scoped keyboard routing.
-LastUpdated: 2026-07-30T16:44:00-04:00
+Summary: Pragmatic design options and a staged recommendation for a searchable modal launcher, workspace-grouped views, query shortcuts, active-tile tracking, and workbench-scoped keyboard routing, revised against the shipped code to place transient state in the layout slice, scope results per workspace, and order Escape with a surface stack.
+LastUpdated: 2026-07-30T18:45:00-04:00
 WhatFor: Decide how PBUI should search, navigate, create, and place application views without prematurely building a general command system or desktop window manager.
 WhenToUse: Read before changing LauncherApp, ViewSwitcher, tile focus behavior, modal navigation, workspace aliases, or workbench keyboard shortcuts.
 ---
@@ -50,9 +58,11 @@ The recommended design is a staged version of **Option B** in this document:
    - `ws8 temp` searches only existing views in workspace 8.
 5. Add one workbench-scoped shortcut, `Mod+K`, after the modal works from
    explicit Launcher and Replace entry points.
-6. Track an **active placement** in a React context. This is the tile that last
-   contained DOM focus or received a pointer press. It is transient UI state,
-   not persisted layout state and not a synchronized property of an `AppView`.
+6. Track an **active placement** as transient state in the layout slice, beside
+   `replacingId` and `renamingId`. This is the tile that last contained DOM
+   focus or received a pointer press. It is transient UI state, excluded from
+   `persist.save()`'s enumeration, and not a synchronized property of an
+   `AppView`.
 
 The key boundary is that opening and navigating are not the same operation:
 
@@ -68,6 +78,17 @@ This provides immediate value while leaving clean seams for later MRU behavior.
 It also avoids the main overengineering risks: a command registry, a query
 language, a focus graph, cross-stage stable aliases, and a generalized keyboard
 event bus.
+
+Three corrections were made to this document after a review against the shipped
+code, each recorded where it applies:
+
+- launcher and active-placement state belong in the layout slice, not a React
+  context, because the tile menu reaches Replace through a serialisable verb
+  (§10.1, Decision 5);
+- application scope must be computed per workspace once results span workspaces,
+  or `wsN` queries silently omit real views (§8.4);
+- `stopPropagation()` cannot order the four Escape handlers because they all
+  listen on `window`; a small surface stack replaces it (§11.5).
 
 ## 1. Current implementation
 
@@ -718,31 +739,82 @@ Alternative global ordinals over `layout.spaces` were rejected because
 authentication changes which stages are visible and because a number unrelated
 to the visible strip cannot be learned from the interface.
 
+### 8.4 Application scope is per row, not per query
+
+This is the one place where grouping by workspace changes an existing rule
+rather than presenting it differently, and the current code will produce wrong
+results if it is not addressed.
+
+`buildViewSwitcherModel` filters existing views through `allowedExistingApps`,
+derived from the `apps` argument, which every caller fills from
+`useAvailableApps()` — instance ∩ **current** stage ∩ **current** workspace
+(`appkit/AppScope.tsx`). Today every result is a candidate for *this* placement
+in *this* workspace, so scoping results to the current workspace is not merely
+defensible, it is the correct question.
+
+The moment rows are grouped across workspaces the question changes, and the
+current answer silently omits real results:
+
+```text
+ws2 (explore) offers { chart, table }        ← current workspace
+ws8 (compare) offers { chart, table, encoding }
+
+query: "ws8 yield"
+
+  wrong:  "Yield encoding" is hidden, because `encoding` is not offered by ws2
+  right:  "Yield encoding" is listed — it is placed in ws8, which offers it
+```
+
+Nothing is broken today because no query can reach ws8. `ws8 temp` is exactly
+that query.
+
+The rule:
+
+| Row | Scope that decides eligibility |
+|---|---|
+| A view placed in workspace W | W's own scope: instance ∩ W's stage ∩ W |
+| An unplaced view | The **target** placement's workspace scope |
+| A new-application row | The **target** placement's workspace scope |
+
+Read as one sentence: **a row is scoped by the workspace it concerns.** For a
+placed view in navigate mode that is where it already is; for anything that ends
+in a placement that is where it is going. Both readings agree in the case that
+exists today — target and row in the current workspace — which is why the
+current single-scope code is correct and will stay correct for Replace.
+
+Two consequences worth stating so they are not read as bugs later:
+
+- A placed view can be listed in navigate mode and *not* be selectable in place
+  mode, when its own workspace offers its application and the target's does not.
+  Navigation goes to it; Replace cannot bring it here. The modal should
+  disable the row with a reason in place mode rather than hide it, following
+  `pbui/verbs.ts` — a scoped-out row is a short, specific list, not the
+  twenty-two-of-twenty-five case that DR-95 stopped greying.
+- Scope therefore has to be computed per workspace inside the index, so
+  `buildLauncherIndex` needs stage and workspace `apps` allow-lists, not one
+  pre-narrowed `AppDescriptor[]`. `useAvailableApps()` remains right for the
+  embedded `ViewSwitcher`, which still asks the old, single-placement question.
+
+The singleton rule is unaffected: it counts logical views across the whole
+`LayoutState`, not placements, and is not workspace-scoped in either reading.
+
 ## 9. Invocation and selection semantics
 
 The modal must know why it was opened.
 
 ```ts
 type LauncherInvocation =
-  | {
-      kind: "fill-launcher";
-      placementId: NodeId;
-      returnFocusTo: HTMLElement | null;
-    }
-  | {
-      kind: "replace";
-      placementId: NodeId;
-      returnFocusTo: HTMLElement | null;
-    }
-  | {
-      kind: "navigate";
-      activePlacementId: NodeId | null;
-      returnFocusTo: HTMLElement | null;
-    };
+  | { kind: "fill-launcher"; placementId: NodeId }
+  | { kind: "replace"; placementId: NodeId }
+  | { kind: "navigate"; activePlacementId: NodeId | null };
 ```
 
-The DOM element should not be stored in Redux. It belongs to the modal's React
-lifetime.
+The invocation is **serialisable and lives in the layout slice** — see §10.1 for
+why. What does *not* go in the store is the element to restore focus to. A
+`HTMLElement` is not serialisable and belongs to the modal's React lifetime;
+`Tile.restoreTitleFocus` already implements the restoration by querying
+`[data-ptype="tile"]` inside the placement after a frame, so the modal restores
+focus **by placement id** rather than by holding a DOM reference at all.
 
 Execution table:
 
@@ -791,20 +863,53 @@ function executeLauncherResult(invocation, result) {
 
 ### 10.1 State ownership
 
-Active placement is viewer-local interaction state and should live in a React
-context under one workbench instance:
+Active placement and the open invocation are **transient layout state in the
+Redux layout slice**, beside `replacingId`, `renamingId`, `pendingImport` and
+`notice`:
 
 ```ts
-interface WorkbenchInteractionValue {
-  activePlacementId: NodeId | null;
-  markPlacementActive(placementId: NodeId): void;
-  launcher: LauncherInvocation | null;
-  openLauncher(invocation: LauncherInvocation): void;
-  closeLauncher(): void;
+interface LayoutState {
+  // …
+  /** The tile a workbench shortcut should act on. Never persisted. */
+  activePlacementId?: NodeId | null;
+  /** Why the launcher modal is open, or null. Never persisted. */
+  launcher?: LauncherInvocation | null;
 }
 ```
 
-It should not be added to:
+An earlier draft of this document put both in a React context on the grounds
+that "pages may contain several embedded workbench instances." **That argument
+does not distinguish the two options in this codebase, and the rest of it points
+the other way.**
+
+*The isolation argument is already satisfied.* `WorkbenchInstance.tsx` builds one
+store per instance with `makeStore()` and wraps it in its own `<Provider>`; its
+own docstring states that "the store is the instance boundary — everything an
+instance owns is either in its store or in React context beneath its
+`Provider`." Redux state is therefore per-instance for free, exactly like a
+context would be. Nothing is bought.
+
+*The verb path forbids it.* `pbui/descriptors/tile.ts` emits Replace as
+`{ kind: "openReplaceView", placementId }` — serialisable data returned by a
+pure function that holds no React, resolved by `actionsForVerb` into a Redux
+action. A descriptor **cannot call a context method**. Routing the launcher
+through a context would mean either giving the tile menu a second, non-verb path
+to open one of its own actions, or building a verb-to-context bridge that this
+codebase deliberately does not have.
+
+*The codebase already decided this, for this exact class of state.* The
+`PendingImport` docstring (DR-69, `store/layout.ts`) records it: transient
+dialog state went to Redux "because the flow is already state-shaped and because
+the alternatives are worse: component state means prop-drilling from the shell
+through three components to reach a menu, and a second context beside
+`PbuiProvider` is a second thing doing the same job."
+
+Transience is enforced the same way it already is for its four neighbours:
+`persist.save()` **enumerates** the layout fields it writes rather than passing
+the slice whole, so a new transient field is excluded by default. That
+enumeration is load-bearing and the reason to keep writing it out by hand.
+
+Neither field may be added to:
 
 - `AppView`;
 - workspace persistence;
@@ -813,8 +918,9 @@ It should not be added to:
 - CRDT documents;
 - the PBUI generic package.
 
-The context is a good boundary because pages may contain several embedded
-workbench instances. Each instance gets its own active placement and modal.
+What remains React-local is what cannot be serialised: the current query text,
+the highlighted result id, and the modal's own DOM. Those belong to
+`LauncherDialog` and die with it.
 
 ### 10.2 How a tile becomes active
 
@@ -826,14 +932,38 @@ workbench instances. Each instance gets its own active placement and modal.
 ```tsx
 <section
   data-placement-id={node.id}
-  data-active={activePlacementId === node.id || undefined}
-  onFocusCapture={() => markPlacementActive(node.id)}
-  onPointerDownCapture={() => markPlacementActive(node.id)}
+  data-active={active || undefined}
+  onFocusCapture={markActive}
+  onPointerDownCapture={markActive}
 >
 ```
 
 Do not move DOM focus on an ordinary pointer press. Marking interaction context
 must not steal focus from an input or button.
+
+The reducer must ignore a write that changes nothing:
+
+```ts
+setActivePlacement(state, action: PayloadAction<NodeId | null>) {
+  if (state.activePlacementId === action.payload) return;
+  state.activePlacementId = action.payload;
+}
+```
+
+`onFocusCapture` fires for every focusable descendant, so without the guard,
+tabbing across one tile's six title controls dispatches six identical actions
+and re-renders every subscriber six times. The component should hold the same
+guard so the dispatch never happens:
+
+```tsx
+const active = useSelector((s: RootState) => s.layout.activePlacementId === node.id);
+const markActive = () => {
+  if (!active) dispatch(layoutActions.setActivePlacement(node.id));
+};
+```
+
+This selector is a boolean, so a tile re-renders only when its *own* active
+state flips — not when any other tile becomes active.
 
 ### 10.3 Visual treatment
 
@@ -950,9 +1080,59 @@ attempt a wholesale rewrite, but the launcher must follow one rule:
 > The topmost transient surface handles Escape and stops further workbench
 > behavior for that event.
 
-The Dialog handler should call `event.stopPropagation()` in addition to
-`preventDefault()` if browser testing confirms full-frame Escape also fires.
-That is a focused fix, not a general routing system.
+**Propagation cannot express that rule here, and an earlier draft of this
+document was wrong to suggest it could.** That draft said the Dialog handler
+should call `event.stopPropagation()` in addition to `preventDefault()`. It
+would have no effect. All three existing Escape handlers are registered on the
+*same node* in the same phase:
+
+| Handler | Registration |
+|---|---|
+| `src/components/Dialog/Dialog.tsx` | `window.addEventListener("keydown", …)` |
+| `WorkbenchShell.tsx`, full-frame exit | `window.addEventListener("keydown", …)` |
+| `ViewSwitcher.tsx`, replace mode | `window.addEventListener("keydown", …)` |
+
+`stopPropagation()` prevents an event reaching *other nodes*; listeners on the
+node that calls it still run. `stopImmediatePropagation()` would suppress them,
+but only those registered *after* the caller — making correctness a mount-order
+race between three independent `useEffect`s. Neither is a fix.
+
+Phase 2 adds a fourth window listener to these three, so the ambiguity gets
+worse before it gets better.
+
+#### The surface stack
+
+Introduce the smallest thing that can express "topmost": an ordered list of open
+transient surfaces in the layout slice, alongside the other transient fields.
+
+```ts
+type SurfaceId = string;
+
+/** Open transient surfaces, oldest first. The last entry owns Escape. */
+transientSurfaces?: SurfaceId[];
+```
+
+Each surface pushes on mount and pops on unmount, and every Escape handler
+gains one guard:
+
+```ts
+const owns = useSelector((s: RootState) => topSurface(s.layout) === surfaceId);
+```
+
+This is eight lines of reducer and one hook. It is not a keyboard routing
+system: it answers exactly one question — *am I the topmost surface?* — which is
+the question every one of these four handlers is currently answering by guessing.
+
+It also supplies `ShortcutContext.dialogOpen` in §11.1, which otherwise has no
+source of truth: `usePbui()` exposes `accepting` and `menu`, so
+`acceptingPresentation` and `objectMenuOpen` are already available, but nothing
+in the tree knows whether *a dialog* is open. `transientSurfaces.length > 0` is
+that fact, and the same eight lines produce it.
+
+Registering the launcher, the import dialog, the bundle dialog and full-frame is
+in scope. Rewriting PBUI's own `ObjectMenu` and accept-banner Escape handling is
+not — they are inside the PBUI package, they already check their own state, and
+this ticket should not reach into the generic package to fix a Datalab problem.
 
 ## 12. Component and model design
 
@@ -961,40 +1141,61 @@ Recommended decomposition:
 ```text
 LauncherApp
   └── LauncherEmptyState
-        └── openLauncher({ kind: "fill-launcher", placementId })
+        └── dispatch(openLauncher({ kind: "fill-launcher", placementId }))
 
 Tile title menu / Replace
-  └── openLauncher({ kind: "replace", placementId })
+  └── verb { kind: "openReplaceView", placementId }
+        └── actionsForVerb → dispatch(openLauncher({ kind: "replace", … }))
 
-WorkbenchInteractionProvider
-  ├── activePlacementId
-  ├── LauncherDialog
-  │     ├── LauncherSearchInput
+WorkbenchShell
+  ├── LauncherDialog              mounted from state.layout.launcher
+  │     ├── LauncherSearchInput   query text, highlighted id: React state
   │     └── LauncherResults
-  └── WorkbenchShortcutBoundary
+  └── WorkbenchShortcutBoundary   onKeyDownCapture on the shell root
+
+Tile
+  └── onFocusCapture / onPointerDownCapture
+        └── dispatch(setActivePlacement(placementId))
 
 Pure model
   ├── parseLauncherQuery
   ├── buildLauncherIndex
-  ├── filterLauncherIndex
-  └── resolveLauncherAction
+  ├── searchLauncherIndex
+  └── routeWorkbenchKey
 ```
 
-Suggested source layout:
+Note what the verb path buys: `tile.ts` does not change at all. It already emits
+`openReplaceView`; only its resolution in `actionsForVerb` moves from
+`beginReplace` to `openLauncher`. A React context would have required a second
+opening path for the same menu entry.
+
+Suggested source layout, following GUIDELINES §7 — a component gets a directory
+when it owns supporting assets, and a pure function extracted from a component
+goes in a `.logic.ts` beside it:
 
 ```text
 components/organisms/ViewSwitcher/
-  ViewSwitcher.tsx          compact embedded fallback
-  LauncherDialog.tsx        modal container
-  LauncherResults.tsx       shared grouped results
-  model.ts                  index, grouping, filtering, scoring
-  query.ts                  tiny parser
-  *.stories.tsx
+  ViewSwitcher.tsx          compact embedded fallback, unchanged
+  model.ts                  existing scope and singleton policy, unchanged
+  index.ts
+
+components/organisms/LauncherDialog/
+  LauncherDialog.tsx        modal container over Dialog
+  LauncherResults.tsx       grouped result list
+  LauncherDialog.module.css
+  LauncherDialog.stories.tsx
+  launcherIndex.logic.ts    index, grouping, filtering, scoring — no React
+  launcherQuery.logic.ts    the parser — no React
+  index.ts
 
 components/pages/Workbench/
-  WorkbenchInteractionProvider.tsx
-  shortcutRouting.ts
+  shortcutRouting.ts        pure routeWorkbenchKey
 ```
+
+`LauncherDialog` is an organism by GUIDELINES §2: it takes the layout state and
+renders a whole feature. It must be a new directory rather than more files
+inside `ViewSwitcher/`, because `test/stories.test.ts` requires a directory to
+hold a component whose name matches it.
 
 Do not rename the whole organism in the first patch. `ViewSwitcher` is already
 exported and tested. Add the modal around the model, then decide whether
@@ -1004,10 +1205,19 @@ exported and tested. Add the modal around the model, then decide whether
 
 ```ts
 interface LauncherIndexInput {
+  /**
+   * Every registered application narrowed by the INSTANCE only — the result of
+   * `useScopedApps()`, not `useAvailableApps()`. Stage and workspace scope are
+   * applied per row inside the index; see §8.4. Passing a pre-narrowed list
+   * here is the bug that section describes.
+   */
   apps: readonly AppDescriptor[];
   views: Readonly<Record<ViewId, AppView>>;
   viewOrder: readonly ViewId[];
+  /** Carries `stageId` and the optional `apps` allow-list per workspace. */
   workspaces: readonly Workspace[];
+  /** Stage allow-lists, needed to resolve a workspace's effective scope. */
+  stages: readonly Stage[];
   currentStageId: StageId;
   currentWorkspaceId: string;
   documents: Readonly<Record<DocId, GraphicDocument>>;
@@ -1072,24 +1282,35 @@ The visual row may remain compact.
 
 ## 14. State and persistence
 
-No durable schema change is required.
+No durable schema change is required. Persistence version stays at 4 and the
+portable bundle stays at version 3.
 
-React context owns:
+The layout slice gains three transient fields, all excluded from
+`persist.save()`'s enumerated write:
 
-- active placement;
-- modal invocation;
-- current query;
-- highlighted result;
-- return-focus element.
+- `activePlacementId`;
+- `launcher` — the invocation, or null;
+- `transientSurfaces` — the Escape stack from §11.5.
 
-Redux reducers continue to own only the resulting domain/layout actions:
+`LauncherDialog` owns what cannot be serialised:
+
+- current query text;
+- highlighted result id.
+
+Redux reducers continue to own the resulting domain/layout actions unchanged:
 
 - set current workspace;
 - replace placement with view;
 - create view in placement.
 
-Persistence continues to exclude all launcher interaction state. Portable
-bundles are unchanged. Backend APIs are unchanged.
+**The test that proves transience must be extended, not assumed.**
+`test/store.test.ts` already round-trips the slice through `save`/`load`; add
+the three new fields to whatever asserts that transient state does not survive.
+A field that is transient only because nobody wrote it to storage yet is one
+refactor away from reloading the user into an open modal over a tile that no
+longer exists — which is the exact failure `PendingImport`'s docstring records.
+
+Portable bundles are unchanged. Backend APIs are unchanged.
 
 This also establishes the correct future collaboration boundary: remote
 workspace/view changes may update the result index, while active placement and
@@ -1119,18 +1340,44 @@ Exit criteria:
 
 Tasks:
 
-1. Add `LauncherDialog` using the existing `Dialog`.
-2. Replace the full Launcher tile grid with an empty-state button.
-3. Make Launcher open `fill-launcher` mode.
-4. Make title-menu Replace open `replace` mode.
-5. Implement combobox/listbox keyboard behavior and focus restoration.
-6. Keep the compact embedded renderer temporarily for stories and fallback.
+1. Add the transient `launcher` field and its reducers to the layout slice.
+2. Add `LauncherDialog` using the existing `Dialog`.
+3. Replace the full Launcher tile grid with an empty-state button.
+4. Make Launcher open `fill-launcher` mode.
+5. Re-resolve the existing `openReplaceView` verb to `replace` mode.
+6. Implement combobox/listbox keyboard behavior and focus restoration.
+7. Add the surface stack and register the launcher and import dialog in it.
+8. Keep the compact embedded renderer temporarily for stories and fallback.
+
+#### What happens to `replacingId`
+
+The doc has so far not said, and it is the one piece of existing state this
+phase changes rather than adds to.
+
+`replacingId` currently means **"this placement's body is the switcher"**:
+`Tile.tsx` branches on it and renders `<ViewSwitcher>` *instead of* the
+application. Once Replace is a modal, that body branch is wrong — the tile
+should keep rendering its application behind the dialog.
+
+The field does not survive as-is. `launcher: { kind: "replace", placementId }`
+says everything `replacingId` said and distinguishes it from `fill-launcher`,
+which `replacingId` could not. So:
+
+- delete `replacingId` and `beginReplace`;
+- delete the `replacing` branch in `Tile.tsx` and the `mode="replace"` path in
+  `ViewSwitcher`, including its `window` Escape listener — one of the four
+  handlers in §11.5 disappears here rather than needing to be ordered;
+- keep `restoreTitleFocus`, and lift it to run from the placement id when the
+  modal closes.
+
+`persist.save()` never wrote `replacingId`, so there is no migration.
 
 Exit criteria:
 
 - the target placement is explicit in the modal header;
 - selecting existing and new rows reproduces current reducer behavior;
 - tile size does not affect result geometry;
+- the tile behind the modal still renders its application;
 - keyboard and pointer paths are equivalent;
 - Escape returns focus to the opener.
 
@@ -1141,9 +1388,9 @@ system.
 
 Tasks:
 
-1. Add `WorkbenchInteractionProvider`.
+1. Add the transient `activePlacementId` field and its guarded reducer.
 2. Mark active placement from tile focus and pointer capture.
-3. Add a workbench-root shortcut boundary.
+3. Add a workbench-root shortcut boundary on the shell.
 4. Open `navigate` mode with `Mod+K`.
 5. Switch workspace and focus the selected placement.
 6. Permit new-app results only when the active placement is Launcher.
@@ -1188,7 +1435,12 @@ Test:
 - several placements of one view within a workspace;
 - unplaced view grouping;
 - other-stage empty-query suppression;
-- application scope and singleton behavior.
+- singleton behavior across placements;
+- **per-workspace application scope (§8.4)**, at minimum: a view placed in a
+  workspace whose application the *current* workspace does not offer is listed
+  under its own workspace; the same row is disabled with a reason in place mode;
+  and a stage allow-list narrows its workspaces' rows without touching another
+  stage's.
 
 ### 16.2 Interaction tests
 
@@ -1228,9 +1480,12 @@ Test:
 - open object menu;
 - active PBUI accept;
 - open Dialog;
-- full-frame Escape interaction;
+- full-frame Escape interaction, with the launcher above it in the surface
+  stack and again below it;
 - closed active placement;
-- workspace switch before scheduled focus.
+- workspace switch before scheduled focus;
+- `save`/`load` round trip drops `launcher`, `activePlacementId`, and
+  `transientSurfaces` (§14).
 
 ### 16.4 Browser screenshots
 
@@ -1313,11 +1568,19 @@ keyboard operation needs a target.
 - **Reason:** the alias corresponds to something visible.
 - **Consequence:** ordinals are conveniences, not stable identifiers.
 
-### Decision 5: Track active placement in React context
+### Decision 5: Track active placement in the layout slice
 
-- **Choice:** per-workbench transient context.
-- **Reason:** focus is viewer-local and instance-local.
-- **Consequence:** no persistence, bundle, backend, or CRDT change.
+- **Choice:** transient Redux fields beside `replacingId` and `renamingId`,
+  excluded from `persist.save()`'s enumeration.
+- **Reason:** the tile menu opens Replace through a serialisable verb that
+  cannot reach a React context; the store is already the workbench instance
+  boundary, so a context adds isolation that already exists; and DR-69 recorded
+  this decision for the same class of state.
+- **Consequence:** no persistence, bundle, backend, or CRDT change. Query text
+  and highlighted result stay in the dialog's React state.
+- **Superseded:** an earlier draft chose a per-workbench React context on the
+  strength of multi-instance isolation. `WorkbenchInstance.tsx` already gives
+  each instance its own store, so that argument does not separate the options.
 
 ### Decision 6: Global invocation navigates by default
 
@@ -1343,8 +1606,14 @@ These do not block the recommended first two phases:
    “Other stages” group?
 4. Should WorkspaceStrip display numeric hints permanently, only while the modal
    is open, or not at all?
-5. When a linked view has two placements in one workspace, should navigation
-   focus the last-active occurrence or the first tree-order occurrence?
+5. ~~When a linked view has two placements in one workspace, should navigation
+   focus the last-active occurrence or the first tree-order occurrence?~~
+   **Resolved during this revision.** The original recommendation was
+   first-tree-order "until per-placement activity exists" — but Phase 3 *is*
+   per-placement activity, so the data lands in the same phase that asks the
+   question. Prefer `activePlacementId` when it is one of the view's placements
+   in the target workspace; otherwise first tree order. That is one condition,
+   not a mechanism.
 6. Should global `+chart` eventually offer an explicit “split active tile and
    create” follow-up? If so, it must ask for split direction rather than choose
    silently.
@@ -1355,7 +1624,7 @@ Recommended defaults:
 - implement modal entry points before `Mod+K`;
 - group other-stage matches by stage only for non-empty queries;
 - display numeric hints in the modal first;
-- use first tree-order occurrence until per-placement activity exists;
+- prefer the active placement, then first tree order (question 5, resolved);
 - do not split from global `+` in the first release.
 
 ## 20. Implementation review guide
@@ -1377,10 +1646,15 @@ Before implementation, preserve these invariants:
 
 - selecting an existing view never mutates the view;
 - creating a view does not copy a domain document;
-- application scope is identical between Launcher and Replace;
+- application scope is decided by the workspace a row concerns — the row's own
+  workspace in navigate mode, the target's in place mode (§8.4). The older
+  invariant, "application scope is identical between Launcher and Replace",
+  remains true for the embedded `ViewSwitcher` and is no longer sufficient for
+  the modal, whose rows span workspaces;
 - singleton means one logical view, not one placement;
 - workspace ordinals never enter persisted state;
-- active placement never enters persisted state;
+- active placement, launcher invocation, and the surface stack never enter
+  persisted state, and `test/store.test.ts` proves it rather than convention;
 - global navigation never performs an implicit layout mutation.
 
 ## Conclusion

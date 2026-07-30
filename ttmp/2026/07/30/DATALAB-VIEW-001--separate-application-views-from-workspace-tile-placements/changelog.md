@@ -70,3 +70,12 @@ Added a consumer migration playbook distinguishing unaffected PBUI/public Datala
 - /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/index.ts — Stable public API boundary
 - /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/model/portable.ts — Portable bundle migration boundary
 - /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/store/persist.ts — Persistence migration boundary
+
+## 2026-07-30
+
+Step 1: revised the launcher design against the shipped code — transient launcher state moves to the layout slice (the tile menu reaches Replace through a serialisable verb), application scope becomes per row once results span workspaces, and a surface stack replaces a stopPropagation fix that cannot order three window listeners
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/ttmp/2026/07/30/DATALAB-VIEW-001--separate-application-views-from-workspace-tile-placements/design-doc/02-launcher-quick-search-modal-workspace-grouping-and-keyboard-routing.md — Revised design with new section 8.4 and corrected sections 9, 10, 11.5, 12, 14, 15, 18, 19, 20
+
