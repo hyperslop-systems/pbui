@@ -276,6 +276,57 @@ describe("documents", () => {
   });
 });
 
+describe("plot authoring", () => {
+  test("analysis and facet scale actions update the canonical view", () => {
+    let { state, docId } = withDoc();
+    state = world(
+      state,
+      worldActions.setAnalysis({
+        docId,
+        analysis: { kind: "histogram", bins: 20 },
+      }),
+    );
+    state = world(
+      state,
+      worldActions.setFacetScales({
+        docId,
+        scales: "free-y",
+      }),
+    );
+
+    const view = rootView(state.docs[docId]!);
+    expect(view.analysis).toEqual({ kind: "histogram", bins: 20 });
+    expect(view.facetScales).toBe("free-y");
+    expect(state.trace.at(-2)?.type).toBe("analysis_set");
+    expect(state.trace.at(-1)?.type).toBe("facet_scales_set");
+  });
+
+  test("snapshots preserve an analysis recipe independently", () => {
+    let { state, docId } = withDoc();
+    state = world(
+      state,
+      worldActions.setAnalysis({
+        docId,
+        analysis: { kind: "density", points: 128 },
+      }),
+    );
+    state = world(state, worldActions.snapshot(docId, "2026-07-29T00:00:00Z"));
+    const snapshotId = state.snapshotOrder[0] as string;
+    state = world(
+      state,
+      worldActions.setAnalysis({
+        docId,
+        analysis: { kind: "boxplot" },
+      }),
+    );
+
+    expect(rootView(state.snapshots[snapshotId]!.document).analysis).toEqual({
+      kind: "density",
+      points: 128,
+    });
+  });
+});
+
 describe("snapshots", () => {
   test("a snapshot does not follow the document it came from", () => {
     // The single line the whole feature depends on: structuredClone, not a

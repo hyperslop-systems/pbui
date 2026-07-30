@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { batches, census, readings } from "../src/fixtures";
+import { batches, census, readings, READINGS } from "../src/fixtures";
 import {
   appendTransform,
   compileTableDocument,
@@ -125,6 +125,117 @@ describe("the fixtures cover the states that matter", () => {
     expect(plot.compiled?.layers.map((layer) => layer.geom.kind)).toEqual(["rule", "line"]);
     expect(plot.plan?.layers.map((layer) => layer.kind)).toEqual(["rule", "line"]);
     expect(plot.scene?.root.children.some((node) => node.id.includes(":rule"))).toBe(true);
+  });
+
+  test.each([
+    {
+      name: "histogram",
+      analysis: { kind: "histogram", bins: 12 } as const,
+      encodings: { x: { name: READINGS.temp } },
+      methods: ["bin"],
+      layers: ["bar"],
+    },
+    {
+      name: "summary",
+      analysis: {
+        kind: "summary",
+        interval: "standard-error",
+        multiplier: 1,
+      } as const,
+      encodings: {
+        x: { name: READINGS.station },
+        y: { name: READINGS.temp },
+        color: { name: READINGS.station },
+      },
+      methods: ["mean", "mean"],
+      layers: ["errorbar", "point"],
+    },
+    {
+      name: "regression",
+      analysis: { kind: "regression", confidence: 0.95 } as const,
+      encodings: {
+        x: { name: READINGS.humidity },
+        y: { name: READINGS.temp },
+        color: { name: READINGS.station },
+      },
+      methods: ["identity", "ols", "ols"],
+      layers: ["point", "ribbon", "line"],
+    },
+    {
+      name: "boxplot",
+      analysis: { kind: "boxplot" } as const,
+      encodings: {
+        x: { name: READINGS.station },
+        y: { name: READINGS.temp },
+        color: { name: READINGS.station },
+      },
+      methods: ["boxplot"],
+      layers: ["boxplot"],
+    },
+    {
+      name: "density",
+      analysis: { kind: "density", points: 64 } as const,
+      encodings: {
+        x: { name: READINGS.temp },
+        color: { name: READINGS.station },
+      },
+      methods: ["density"],
+      layers: ["line"],
+    },
+  ])("$name authoring lowers to executable statistical layers", (fixture) => {
+    const document = createDefaultGraphic("fixture", fixture.name, readings);
+    const view = rootView(document);
+    view.analysis = fixture.analysis;
+    view.encodings = fixture.encodings;
+    const plot = renderPbuiPlot(
+      document.id,
+      view,
+      {
+        rows: readings.rows,
+        fields: readings.fields,
+        coverage: {
+          kind: "bounded",
+          strategy: readings.strategy,
+          rows: readings.rows.length,
+          hasMore: readings.truncated,
+        },
+        resultTruncated: readings.truncated,
+      },
+      640,
+      360,
+    );
+
+    expect(plot.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+    expect(plot.plan?.statistics.map((statistic) => statistic.method)).toEqual(fixture.methods);
+    expect(plot.plan?.layers.map((layer) => layer.kind)).toEqual(fixture.layers);
+    expect(plot.scene?.metadata.renderedMarkCount).toBeGreaterThan(0);
+  });
+
+  test("facet scale authoring reaches the plot planner", () => {
+    const document = createDefaultGraphic("fixture", "facets", readings);
+    const view = rootView(document);
+    view.encodings.facet = { name: READINGS.station };
+    view.facetScales = "free-y";
+    const plot = renderPbuiPlot(
+      document.id,
+      view,
+      {
+        rows: readings.rows,
+        fields: readings.fields,
+        coverage: {
+          kind: "bounded",
+          strategy: readings.strategy,
+          rows: readings.rows.length,
+          hasMore: readings.truncated,
+        },
+        resultTruncated: readings.truncated,
+      },
+      640,
+      360,
+    );
+
+    expect(plot.compiled?.facetScales).toBe("free-y");
+    expect(plot.plan?.panels).toHaveLength(4);
   });
 
   test("census keeps the zero-padded identifier a string", () => {

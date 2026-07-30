@@ -67,6 +67,95 @@ export const Line: Story = { args: { plot: graphicPlot(graphicFixture({ geom: "l
 export const Bar: Story = { args: { plot: graphicPlot(graphicFixture({ geom: "bar" })) } };
 export const Area: Story = { args: { plot: graphicPlot(graphicFixture({ geom: "area" })) } };
 
+export const Histogram: Story = {
+  args: {
+    plot: graphicPlot(
+      graphicFixture({
+        analysis: { kind: "histogram", bins: 12 },
+        mapping: {
+          x: READINGS.temp,
+          y: null,
+          color: null,
+          size: null,
+          facet: null,
+        },
+      }),
+    ),
+  },
+};
+
+export const SummaryIntervals: Story = {
+  args: {
+    plot: graphicPlot(
+      graphicFixture({
+        analysis: { kind: "summary", interval: "standard-error", multiplier: 1 },
+        mapping: {
+          x: READINGS.station,
+          y: READINGS.temp,
+          color: READINGS.station,
+          size: null,
+          facet: null,
+        },
+      }),
+    ),
+    colorField: READINGS.station,
+  },
+};
+
+export const Regression: Story = {
+  args: {
+    plot: graphicPlot(
+      graphicFixture({
+        analysis: { kind: "regression", confidence: 0.95 },
+        mapping: {
+          x: READINGS.humidity,
+          y: READINGS.temp,
+          color: READINGS.station,
+          size: null,
+          facet: null,
+        },
+      }),
+    ),
+    colorField: READINGS.station,
+  },
+};
+
+export const Boxplot: Story = {
+  args: {
+    plot: graphicPlot(
+      graphicFixture({
+        analysis: { kind: "boxplot" },
+        mapping: {
+          x: READINGS.station,
+          y: READINGS.temp,
+          color: READINGS.station,
+          size: null,
+          facet: null,
+        },
+      }),
+    ),
+    colorField: READINGS.station,
+  },
+};
+
+export const Density: Story = {
+  args: {
+    plot: graphicPlot(
+      graphicFixture({
+        analysis: { kind: "density", points: 128 },
+        mapping: {
+          x: READINGS.temp,
+          y: null,
+          color: READINGS.station,
+          size: null,
+          facet: null,
+        },
+      }),
+    ),
+    colorField: READINGS.station,
+  },
+};
+
 /**
  * A colour channel, so the legend appears and its entries are live.
  *

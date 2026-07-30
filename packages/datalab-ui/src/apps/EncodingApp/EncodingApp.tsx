@@ -1,9 +1,10 @@
 import { useDispatch, useSelector } from "react-redux";
-import { CHANNELS, CHANNEL_ACCEPTS, type Channel } from "../../model/graphic";
+import { CHANNELS, CHANNEL_ACCEPTS, type AnalysisSpec, type Channel } from "../../model/graphic";
 import { rootView } from "../../model/graphicAuthoring";
 import { usePbui, type FieldRef } from "../../pbui";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocAnalysisResult } from "../useTable";
+import type { FieldType } from "../../model/table";
 import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
 import { DocBar } from "../../components/molecules";
@@ -49,9 +50,36 @@ function EncodingApp({ leafId, docId }: AppProps) {
     const mapped = mapping[channel];
     return mapped !== null && typeOf(mapped) === null;
   });
+  const acceptsFor = (channel: Channel): readonly FieldType[] => {
+    if (channel !== "x") return CHANNEL_ACCEPTS[channel];
+    if (
+      view?.analysis.kind === "histogram" ||
+      view?.analysis.kind === "density" ||
+      view?.analysis.kind === "regression"
+    ) {
+      return ["q"] as const;
+    }
+    if (view?.analysis.kind === "summary" || view?.analysis.kind === "boxplot") {
+      return ["n", "t"] as const;
+    }
+    return CHANNEL_ACCEPTS.x;
+  };
+  const setAnalysisKind = (kind: AnalysisSpec["kind"]) => {
+    const analysis: AnalysisSpec =
+      kind === "histogram"
+        ? { kind, bins: 12 }
+        : kind === "summary"
+          ? { kind, interval: "standard-error", multiplier: 1 }
+          : kind === "regression"
+            ? { kind, confidence: 0.95 }
+            : kind === "density"
+              ? { kind, points: 128 }
+              : { kind };
+    dispatch(worldActions.setAnalysis({ docId: target, analysis }));
+  };
 
   const acceptFor = async (channel: Channel) => {
-    const accepts = CHANNEL_ACCEPTS[channel];
+    const accepts = acceptsFor(channel);
     const result = await pbui.accept({
       types: "field",
       prompt: `MAP ${channel.toUpperCase()} of chart ${pbui.environment.nameOf(target)} ↦ click a FIELD anywhere`,
@@ -73,17 +101,22 @@ function EncodingApp({ leafId, docId }: AppProps) {
       <DocBar leafId={leafId} docId={docId} />
       <EncodingPanel
         geom={view?.mark ?? null}
+        analysis={view?.analysis ?? null}
         mapping={mapping}
         yScale={view?.yScale ?? null}
+        facetScales={view?.facetScales ?? null}
         staleChannels={staleChannels}
         logUnavailable={logUnavailable}
         docId={target}
         onGeom={(geom) => dispatch(worldActions.setGeom({ docId: target, geom }))}
+        onAnalysisKind={setAnalysisKind}
+        onAnalysis={(analysis) => dispatch(worldActions.setAnalysis({ docId: target, analysis }))}
         onAccept={(channel) => void acceptFor(channel)}
         onClear={(channel) =>
           dispatch(worldActions.setMapping({ docId: target, channel, field: null }))
         }
         onYScale={(scale) => dispatch(worldActions.setYScale({ docId: target, scale }))}
+        onFacetScales={(scales) => dispatch(worldActions.setFacetScales({ docId: target, scales }))}
       />
     </>
   );

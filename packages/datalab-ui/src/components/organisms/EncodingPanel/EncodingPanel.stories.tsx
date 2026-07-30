@@ -18,7 +18,9 @@ const meta = {
   args: {
     docId: "d1",
     geom: "point",
+    analysis: { kind: "identity" },
     yScale: "linear",
+    facetScales: "fixed",
     mapping: {
       x: READINGS.time,
       y: READINGS.temp,
@@ -27,9 +29,12 @@ const meta = {
       facet: null,
     },
     onGeom: () => {},
+    onAnalysisKind: () => {},
+    onAnalysis: () => {},
     onAccept: () => {},
     onClear: () => {},
     onYScale: () => {},
+    onFacetScales: () => {},
   },
 } satisfies Meta<typeof EncodingPanel>;
 
@@ -92,6 +97,32 @@ export const LogScaleUnavailable: Story = {
 /** Every geom in turn, for a look at the selected treatment. */
 export const GeomBar: Story = {
   args: { geom: "bar" },
+};
+
+export const HistogramAnalysis: Story = {
+  args: {
+    analysis: { kind: "histogram", bins: 12 },
+    mapping: {
+      x: READINGS.temp,
+      y: null,
+      color: null,
+      size: null,
+      facet: null,
+    },
+  },
+};
+
+export const SummaryAnalysis: Story = {
+  args: {
+    analysis: { kind: "summary", interval: "standard-error", multiplier: 1 },
+    mapping: {
+      x: READINGS.station,
+      y: READINGS.temp,
+      color: READINGS.station,
+      size: null,
+      facet: null,
+    },
+  },
 };
 
 /**

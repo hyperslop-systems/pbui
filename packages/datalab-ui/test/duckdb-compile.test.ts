@@ -123,6 +123,8 @@ function document(filterValue: number | string = 4_000): GraphicDocument {
         mark: "bar",
         encodings: { x: { fieldId: speciesId, name: "species" }, y: { name: 'mean "mass"' } },
         yScale: "linear",
+        analysis: { kind: "identity" },
+        facetScales: "fixed",
       },
     },
     rootView: "view",

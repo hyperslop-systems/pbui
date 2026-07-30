@@ -77,9 +77,25 @@ function seededWorld() {
   };
 }
 
+function seededAuthoringWorld() {
+  const world = seededWorld();
+  const document = Object.values(world.docs)[0]!;
+  const view = document.views[document.rootView]!;
+  view.encodings = {
+    x: { name: "data.humidity" },
+    y: { name: "data.temp_c" },
+    color: { name: "data.station" },
+  };
+  return world;
+}
+
 /** Chart beside table, both on one document — the pair §B teaches. */
 function chartAndTable() {
   return singleStageLayout("look", split("row", leaf("chart"), leaf("table"), 0.55));
+}
+
+function authorAndChart() {
+  return singleStageLayout("author", split("row", leaf("encode"), leaf("chart"), 0.42));
 }
 
 /**
@@ -111,6 +127,70 @@ export const WithFixtures: Story = {
       </div>
     ),
   ],
+};
+
+/**
+ * The real authoring container beside the real chart container over fixture
+ * data. Analysis buttons dispatch Redux actions, the adapter recompiles the
+ * document, and the chart updates without a server.
+ */
+export const AuthoringWithFixtures: Story = {
+  args: {
+    config: {
+      fixtures: fixturesFrom(readings),
+      preloaded: { world: seededAuthoringWorld(), layout: authorAndChart() },
+      apps: ["chart", "encode"],
+      workspaces: false,
+    },
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ display: "flex", height: 620 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement, step }) => {
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 120));
+    const button = (name: string) => {
+      const found = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find(
+        (candidate) => candidate.textContent?.trim() === name,
+      );
+      if (!found) throw new Error(`no ${name} authoring button`);
+      return found;
+    };
+    const chartDescription = () =>
+      canvasElement.querySelector('[role="img"]')?.getAttribute("aria-label") ??
+      canvasElement.querySelector('[role="img"]')?.textContent ??
+      "";
+
+    await step("histogram mode recompiles the chart", async () => {
+      button("histogram").click();
+      await settle();
+      const description = chartDescription();
+      if (!description.includes("bar plot") || !description.includes("12 rendered layer rows")) {
+        throw new Error(`histogram did not render: ${description}`);
+      }
+    });
+
+    await step("the bin preset changes generated geometry", async () => {
+      button("20").click();
+      await settle();
+      const description = chartDescription();
+      if (!description.includes("20 rendered layer rows")) {
+        throw new Error(`20-bin histogram did not render: ${description}`);
+      }
+    });
+
+    await step("regression mode emits observations, ribbon, and fit", async () => {
+      button("regression").click();
+      await settle();
+      const description = chartDescription();
+      if (!description.includes("point + ribbon + line")) {
+        throw new Error(`regression layers did not render: ${description}`);
+      }
+    });
+  },
 };
 
 export const Default: Story = {

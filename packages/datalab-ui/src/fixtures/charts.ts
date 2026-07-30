@@ -1,4 +1,10 @@
-import type { GraphicDocument, Mark, ReferenceLine } from "../model/graphic";
+import type {
+  AnalysisSpec,
+  FacetScalePolicy,
+  GraphicDocument,
+  Mark,
+  ReferenceLine,
+} from "../model/graphic";
 import {
   appendTransform,
   applyDefaultView,
@@ -69,6 +75,8 @@ export interface GraphicFixtureOptions {
   geom?: Mark;
   mapping?: Partial<Record<"x" | "y" | "color" | "size" | "facet", string | null>>;
   yScale?: "linear" | "log";
+  analysis?: AnalysisSpec;
+  facetScales?: FacetScalePolicy;
   references?: ReferenceLine[];
 }
 
@@ -85,6 +93,8 @@ export function graphicFixture(
   const view = rootView(document);
   if (options.geom) view.mark = options.geom;
   if (options.yScale) view.yScale = options.yScale;
+  if (options.analysis) view.analysis = structuredClone(options.analysis);
+  if (options.facetScales) view.facetScales = options.facetScales;
   if (options.references) view.references = structuredClone(options.references);
   if (options.mapping) {
     for (const [channel, field] of Object.entries(options.mapping)) {

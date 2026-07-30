@@ -1,5 +1,12 @@
 import { createSlice, current, isDraft, type PayloadAction } from "@reduxjs/toolkit";
-import type { AuthoringTransform, Channel, GraphicDocument, Mark } from "../model/graphic";
+import type {
+  AnalysisSpec,
+  AuthoringTransform,
+  Channel,
+  FacetScalePolicy,
+  GraphicDocument,
+  Mark,
+} from "../model/graphic";
 import {
   appendTransform,
   cloneGraphicDocument,
@@ -303,6 +310,23 @@ export const worldSlice = createSlice({
       if (!doc) return;
       rootView(doc).yScale = action.payload.scale;
       trace(state, "scale_set", `y ${action.payload.scale}`);
+    },
+
+    setAnalysis(state, action: PayloadAction<{ docId: DocId | null; analysis: AnalysisSpec }>) {
+      const doc = target(state, action.payload.docId);
+      if (!doc) return;
+      rootView(doc).analysis = action.payload.analysis;
+      trace(state, "analysis_set", action.payload.analysis.kind);
+    },
+
+    setFacetScales(
+      state,
+      action: PayloadAction<{ docId: DocId | null; scales: FacetScalePolicy }>,
+    ) {
+      const doc = target(state, action.payload.docId);
+      if (!doc) return;
+      rootView(doc).facetScales = action.payload.scales;
+      trace(state, "facet_scales_set", action.payload.scales);
     },
 
     addTransform(

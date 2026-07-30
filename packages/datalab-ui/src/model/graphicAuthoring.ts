@@ -118,6 +118,8 @@ export function createGraphicDocument(
         mark: "point",
         encodings: {},
         yScale: "linear",
+        analysis: { kind: "identity" },
+        facetScales: "fixed",
       },
     },
     rootView: viewId,
@@ -331,7 +333,9 @@ export function graphicFacts(document: GraphicDocument): Array<[string, string]>
   const facts: Array<[string, string]> = [
     ["source", sourceLabel],
     ["geom", view.mark],
+    ["analysis", view.analysis.kind],
     ["y scale", view.yScale],
+    ["facet scales", view.facetScales],
     [
       "steps",
       orderedTransformIds(document)

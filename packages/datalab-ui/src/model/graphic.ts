@@ -108,6 +108,19 @@ export type AuthoringTransform =
 
 export type Mark = "point" | "line" | "bar" | "area";
 export type Channel = "x" | "y" | "color" | "size" | "facet";
+export type AnalysisSpec =
+  | { kind: "identity" }
+  | { kind: "histogram"; bins: number }
+  | {
+      kind: "summary";
+      interval: "standard-deviation" | "standard-error";
+      multiplier: number;
+    }
+  | { kind: "regression"; confidence: number }
+  | { kind: "boxplot" }
+  | { kind: "density"; points: number };
+export type AnalysisKind = AnalysisSpec["kind"];
+export type FacetScalePolicy = "fixed" | "free-x" | "free-y" | "free";
 
 export const MARKS: Mark[] = ["point", "line", "bar", "area"];
 export const CHANNELS: Channel[] = ["x", "y", "color", "size", "facet"];
@@ -132,6 +145,8 @@ export interface AuthoringView {
   mark: Mark;
   encodings: Partial<Record<Channel, AuthoringFieldRef>>;
   yScale: "linear" | "log";
+  analysis: AnalysisSpec;
+  facetScales: FacetScalePolicy;
   /** Declarative data-unit guides rendered as chart chrome, never row objects. */
   references?: ReferenceLine[];
 }
@@ -248,6 +263,8 @@ export interface LogicalView {
   mark: Mark;
   encodings: Partial<Record<Channel, FieldId>>;
   yScale: "linear" | "log";
+  analysis: AnalysisSpec;
+  facetScales: FacetScalePolicy;
 }
 
 export interface LogicalGraphic {
@@ -882,6 +899,8 @@ export function compileGraphicDocument(
       mark: view.mark,
       encodings,
       yScale: view.yScale,
+      analysis: view.analysis,
+      facetScales: view.facetScales,
     };
   }
 

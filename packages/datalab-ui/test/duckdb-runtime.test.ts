@@ -169,6 +169,8 @@ const logical: LogicalGraphic = {
       mark: "point",
       encodings: { x: species.id, y: score.id },
       yScale: "linear",
+      analysis: { kind: "identity" },
+      facetScales: "fixed",
     },
   },
   rootView: "view",

@@ -66,6 +66,8 @@ function document(
               : { fieldId: "field:source:mass", name: "mass_g" },
         },
         yScale: "linear",
+        analysis: { kind: "identity" },
+        facetScales: "fixed",
       },
     },
     rootView: "view",
