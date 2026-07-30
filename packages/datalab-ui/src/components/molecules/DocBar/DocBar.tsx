@@ -5,7 +5,7 @@ import type { RootState } from "../../../store";
 import { layoutActions } from "../../../store/layout";
 import { worldActions } from "../../../store/world";
 import type { DocId } from "../../../pbui";
-import type { NodeId } from "../../../store/layout";
+import type { ViewId } from "../../../store/layout";
 import { rootSource } from "../../../model/graphicAuthoring";
 
 /**
@@ -16,7 +16,7 @@ import { rootSource } from "../../../model/graphicAuthoring";
  * lockstep because they are views of one object rather than copies — which is
  * the property the whole window manager rests on.
  */
-export function DocBar({ leafId, docId }: { leafId: NodeId; docId: DocId | null }) {
+export function DocBar({ viewId, docId }: { viewId: ViewId; docId: DocId | null }) {
   const dispatch = useDispatch();
   const docs = useSelector((state: RootState) =>
     state.world.docOrder.map((id) => state.world.docs[id]!),
@@ -35,7 +35,7 @@ export function DocBar({ leafId, docId }: { leafId: NodeId; docId: DocId | null 
         size="tiny"
         value={shown ?? ""}
         onValueChange={(docId) =>
-          dispatch(layoutActions.setLeafDoc({ nodeId: leafId, docId: docId || null }))
+          dispatch(layoutActions.setViewDocument({ viewId, docId: docId || null }))
         }
         options={
           docs.length === 0
@@ -56,7 +56,7 @@ export function DocBar({ leafId, docId }: { leafId: NodeId; docId: DocId | null 
         onClick={() => {
           const action = worldActions.newDoc(null);
           dispatch(action);
-          dispatch(layoutActions.setLeafDoc({ nodeId: leafId, docId: action.payload.id }));
+          dispatch(layoutActions.setViewDocument({ viewId, docId: action.payload.id }));
         }}
       />
     </Toolbar>

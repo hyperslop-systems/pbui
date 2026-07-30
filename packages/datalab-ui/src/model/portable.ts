@@ -37,7 +37,7 @@ import type { SourceRef } from "./table";
  * pre-filtered them would be enforcing a policy it does not know.
  */
 
-export const BUNDLE_VERSION = 2;
+export const BUNDLE_VERSION = 3;
 
 export type BundleKind = "tile" | "workspace" | "stage";
 
@@ -53,6 +53,7 @@ export type BundleKind = "tile" | "workspace" | "stage";
 export const LIMITS = {
   bytes: 512 * 1024, // a 512 kB layout is not a layout
   leaves: 64, // 64 tiles is more than any screen can show
+  views: 64,
   docs: 64,
   depth: 24, // split-tree depth
   spaces: 32, // per stage
@@ -106,26 +107,25 @@ export interface PortableDoc {
  * An index preserves sharing exactly. Two leaves with `doc: 0` import to two
  * leaves pointing at one minted document.
  */
+export interface PortableView {
+  app: string;
+  title?: string;
+  documents: Record<string, number>;
+}
+
 export type PortableNode =
-  | { leaf: { app: string; label?: string; doc?: number } }
+  | { leaf: { view: number } }
   | { split: { dir: "row" | "col"; ratio: number; a: PortableNode; b: PortableNode } };
 
 export interface TilePayload {
-  app: string;
-  label?: string;
-  /**
-   * Inlined, not an array with an index of zero.
-   *
-   * The one place the format is not uniform, and it is worth the inconsistency:
-   * a tile has at most one document, and the tile bundle is the one users will
-   * actually read.
-   */
-  doc?: PortableDoc;
+  view: PortableView;
+  docs: PortableDoc[];
 }
 
 export interface WorkspacePayload {
   name: string;
   tree: PortableNode;
+  views: PortableView[];
   docs: PortableDoc[];
   /** The workspace's own allow-list, if it had one. */
   apps?: string[] | null;
@@ -143,6 +143,8 @@ export interface StagePayload {
    * this array.
    */
   docs: PortableDoc[];
+  /** Hoisted with documents so links survive across workspaces. */
+  views: PortableView[];
 }
 
 export type PayloadFor<K> = K extends "tile"
@@ -204,6 +206,7 @@ export const REASONS = {
     `that is a ${found}; this ${wanted} can only take a ${wanted}`,
   tooManyTiles: (found: number) =>
     `that bundle names ${found} tiles; the limit is ${LIMITS.leaves}`,
+  tooManyViews: (found: number) => `that bundle names ${found} views; the limit is ${LIMITS.views}`,
   tooManyDocs: (found: number) =>
     `that bundle names ${found} documents; the limit is ${LIMITS.docs}`,
   tooManySpaces: (found: number) =>
@@ -288,10 +291,7 @@ function isPortableNode(value: unknown, depth = 0): value is PortableNode {
   if ("leaf" in value) {
     const leaf = value.leaf;
     if (!isRecord(leaf)) return false;
-    if (typeof leaf.app !== "string" || leaf.app === "") return false;
-    if (leaf.label !== undefined && typeof leaf.label !== "string") return false;
-    if (leaf.doc !== undefined && !Number.isInteger(leaf.doc)) return false;
-    return true;
+    return Number.isInteger(leaf.view) && (leaf.view as number) >= 0;
   }
   if ("split" in value) {
     const split = value.split;
@@ -314,12 +314,20 @@ export function countPortableLeaves(node: PortableNode): number {
 }
 
 /** Every leaf in a portable tree, in order. */
-export function portableLeaves(
-  node: PortableNode,
-): Array<{ app: string; label?: string; doc?: number }> {
+export function portableLeaves(node: PortableNode): Array<{ view: number }> {
   return "leaf" in node
     ? [node.leaf]
     : [...portableLeaves(node.split.a), ...portableLeaves(node.split.b)];
+}
+
+function isPortableView(value: unknown): value is PortableView {
+  if (!isRecord(value)) return false;
+  if (typeof value.app !== "string" || value.app === "") return false;
+  if (value.title !== undefined && typeof value.title !== "string") return false;
+  if (!isRecord(value.documents)) return false;
+  return Object.values(value.documents).every(
+    (index) => Number.isInteger(index) && (index as number) >= 0,
+  );
 }
 
 /**
@@ -332,10 +340,20 @@ export function clampRatio(ratio: number): number {
   return Math.min(0.95, Math.max(0.05, ratio));
 }
 
-function checkWorkspacePayload(payload: unknown, ownDocs: boolean): string | null {
+function checkWorkspacePayload(
+  payload: unknown,
+  ownDocs: boolean,
+  ownViews: boolean = ownDocs,
+): string | null {
   if (!isRecord(payload)) return REASONS.damaged;
   if (typeof payload.name !== "string") return REASONS.damaged;
   if (!isPortableNode(payload.tree)) return REASONS.damaged;
+  if (!Array.isArray(payload.views) || !payload.views.every(isPortableView)) {
+    return REASONS.damaged;
+  }
+  if (ownViews && payload.views.length > LIMITS.views) {
+    return REASONS.tooManyViews(payload.views.length);
+  }
   if (payload.apps !== undefined && payload.apps !== null) {
     if (!Array.isArray(payload.apps) || !payload.apps.every((a) => typeof a === "string")) {
       return REASONS.damaged;
@@ -344,11 +362,24 @@ function checkWorkspacePayload(payload: unknown, ownDocs: boolean): string | nul
   if (ownDocs) {
     if (!Array.isArray(payload.docs) || !payload.docs.every(isDoc)) return REASONS.damaged;
     if (payload.docs.length > LIMITS.docs) return REASONS.tooManyDocs(payload.docs.length);
+    if (
+      (payload.views as PortableView[]).some((view) =>
+        Object.values(view.documents).some((index) => index >= (payload.docs as unknown[]).length),
+      )
+    ) {
+      return REASONS.damaged;
+    }
   } else if (payload.docs !== undefined && !Array.isArray(payload.docs)) {
     return REASONS.damaged;
   }
 
   const tree = payload.tree as PortableNode;
+  if (
+    ownViews &&
+    portableLeaves(tree).some((leaf) => leaf.view >= (payload.views as unknown[]).length)
+  ) {
+    return REASONS.damaged;
+  }
   const leaves = countPortableLeaves(tree);
   if (leaves > LIMITS.leaves) return REASONS.tooManyTiles(leaves);
   if (depthOf(tree) > LIMITS.depth) return REASONS.tooDeep;
@@ -400,13 +431,17 @@ export function parseBundle(text: string, expect?: BundleKind): ParseResult {
   const payload = raw.payload;
   if (kind === "tile") {
     if (!isRecord(payload)) return { ok: false, reason: REASONS.damaged };
-    if (typeof payload.app !== "string" || payload.app === "") {
+    if (!isPortableView(payload.view)) {
       return { ok: false, reason: REASONS.damaged };
     }
-    if (payload.label !== undefined && typeof payload.label !== "string") {
+    const docs = payload.docs;
+    if (!Array.isArray(docs) || !docs.every(isDoc)) {
       return { ok: false, reason: REASONS.damaged };
     }
-    if (payload.doc !== undefined && !isDoc(payload.doc)) {
+    if (docs.length > LIMITS.docs) {
+      return { ok: false, reason: REASONS.tooManyDocs(docs.length) };
+    }
+    if (Object.values(payload.view.documents).some((index) => index >= docs.length)) {
       return { ok: false, reason: REASONS.damaged };
     }
   } else if (kind === "workspace") {
@@ -430,6 +465,19 @@ export function parseBundle(text: string, expect?: BundleKind): ParseResult {
     if (!Array.isArray(payload.docs) || !payload.docs.every(isDoc)) {
       return { ok: false, reason: REASONS.damaged };
     }
+    if (!Array.isArray(payload.views) || !payload.views.every(isPortableView)) {
+      return { ok: false, reason: REASONS.damaged };
+    }
+    if (payload.views.length > LIMITS.views) {
+      return { ok: false, reason: REASONS.tooManyViews(payload.views.length) };
+    }
+    if (
+      (payload.views as PortableView[]).some((view) =>
+        Object.values(view.documents).some((index) => index >= (payload.docs as unknown[]).length),
+      )
+    ) {
+      return { ok: false, reason: REASONS.damaged };
+    }
     if (payload.docs.length > LIMITS.docs) {
       return { ok: false, reason: REASONS.tooManyDocs(payload.docs.length) };
     }
@@ -439,8 +487,17 @@ export function parseBundle(text: string, expect?: BundleKind): ParseResult {
     }
     let total = 0;
     for (const space of payload.spaces) {
+      const candidate = space as Record<string, unknown>;
+      if (!Array.isArray(candidate.views)) return { ok: false, reason: REASONS.damaged };
       const bad = checkWorkspacePayload(space, false);
       if (bad) return { ok: false, reason: bad };
+      if (
+        portableLeaves((space as WorkspacePayload).tree).some(
+          (leaf) => leaf.view >= (payload.views as unknown[]).length,
+        )
+      ) {
+        return { ok: false, reason: REASONS.damaged };
+      }
       total += countPortableLeaves((space as WorkspacePayload).tree);
     }
     if (total > LIMITS.leaves) return { ok: false, reason: REASONS.tooManyTiles(total) };
@@ -461,7 +518,7 @@ export function measureBundle(bundle: Bundle): {
   const bytes = JSON.stringify(bundle).length;
   if (bundle.kind === "tile") {
     const payload = bundle.payload as TilePayload;
-    return { tiles: 1, docs: payload.doc ? 1 : 0, spaces: 0, bytes };
+    return { tiles: 1, docs: payload.docs.length, spaces: 0, bytes };
   }
   if (bundle.kind === "workspace") {
     const payload = bundle.payload as WorkspacePayload;
@@ -485,7 +542,7 @@ export function measureBundle(bundle: Bundle): {
 export function sourcesOf(bundle: Bundle): SourceRef[] {
   const docs =
     bundle.kind === "tile"
-      ? [(bundle.payload as TilePayload).doc].filter((d): d is PortableDoc => !!d)
+      ? (bundle.payload as TilePayload).docs
       : ((bundle.payload as WorkspacePayload | StagePayload).docs ?? []);
   const seen = new Set<string>();
   const out: SourceRef[] = [];
@@ -526,8 +583,9 @@ export function describeBundle(bundle: Bundle): string {
 
   if (bundle.kind === "tile") {
     const payload = bundle.payload as TilePayload;
-    const doc = payload.doc ? ` on a document called ${payload.doc.name}` : "";
-    return `A tile: ${payload.app}${doc}${reading}.`;
+    const primary = payload.view.documents.primary;
+    const doc = primary === undefined ? undefined : payload.docs[primary];
+    return `A tile: ${payload.view.app}${doc ? ` on a document called ${doc.name}` : ""}${reading}.`;
   }
   if (bundle.kind === "workspace") {
     const payload = bundle.payload as WorkspacePayload;
@@ -550,7 +608,7 @@ function plural(n: number, noun: string): string {
  * A **warning**, never a refusal. Three answers are defensible — refuse, drop
  * those tiles, or import them naming the missing application — and the third is
  * right, because `Tile` already renders exactly that case ("no application
- * called 'chartsy' — choose one above") and it preserves the shape of what was
+ * called 'chartsy' — choose Replace from the title") and it preserves the shape of what was
  * shared. The reader sees a four-tile layout with one tile they cannot fill,
  * which is true, rather than a three-tile layout, which is a lie about what
  * their colleague sent. Refusing outright makes the common case — a version skew
@@ -558,13 +616,11 @@ function plural(n: number, noun: string): string {
  */
 export function unknownApps(bundle: Bundle, known: ReadonlySet<string>): string[] {
   const apps: string[] = [];
-  if (bundle.kind === "tile") apps.push((bundle.payload as TilePayload).app);
+  if (bundle.kind === "tile") apps.push((bundle.payload as TilePayload).view.app);
   else if (bundle.kind === "workspace") {
-    apps.push(...portableLeaves((bundle.payload as WorkspacePayload).tree).map((l) => l.app));
+    apps.push(...(bundle.payload as WorkspacePayload).views.map((view) => view.app));
   } else {
-    for (const space of (bundle.payload as StagePayload).spaces) {
-      apps.push(...portableLeaves(space.tree).map((l) => l.app));
-    }
+    apps.push(...(bundle.payload as StagePayload).views.map((view) => view.app));
   }
   return [...new Set(apps.filter((app) => !known.has(app)))].sort();
 }

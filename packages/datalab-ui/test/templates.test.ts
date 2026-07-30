@@ -50,7 +50,12 @@ function bundle(name = "explore", app = "chart"): Bundle {
     kind: "workspace",
     exportedAt: "2026-07-26T18:04:11.512Z",
     name,
-    payload: { name, tree: { leaf: { app } }, docs: [] },
+    payload: {
+      name,
+      tree: { leaf: { view: 0 } },
+      views: [{ app, documents: {} }],
+      docs: [],
+    },
   } as Bundle;
 }
 

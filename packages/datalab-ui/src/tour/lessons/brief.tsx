@@ -23,8 +23,10 @@ function leaves(state: RootState) {
   if (!space) return [];
   const out: Array<{ app: string; docId: string | null }> = [];
   const walk = (node: Node): void => {
-    if (node.type === "leaf") out.push({ app: node.app, docId: node.docId });
-    else {
+    if (node.type === "leaf") {
+      const view = state.layout.views[node.viewId];
+      if (view) out.push({ app: view.appId, docId: view.documents.primary ?? null });
+    } else {
       walk(node.a);
       walk(node.b);
     }
@@ -107,11 +109,11 @@ export const briefGoals: Goal[] = [
  * one stuck on the reasoning is not helped by being told where to click.
  */
 export const briefHints = [
-  "No sources tile in this layout? Every tile has an application dropdown in its title bar — or split one with ⬌ and pick from the launcher.",
+  "No sources tile in this layout? Select Replace … from any tile title's menu — or split one with ⬌ and pick from the launcher.",
   "The census dataset is in the lab drop, beside the temps stream. Loading it re-points the active document.",
   "One number per region: that is group∑ by region, summarising population.",
   "After a group∑ the schema collapses to two columns, so the x and y you had before will need re-pointing — the OUT strip in the pipeline tile shows what is available.",
   "geom_bar wants the category on x and the aggregate on y. The encoding tile says so if you get it the wrong way round.",
   "⚑ snapshot is in the chart tile's header, and again in the snapshots tile.",
-  "For the last one: split a tile, set it to table, and check its DOC strip names the same document as the chart.",
+  "For the last one: split a tile, choose table in the launcher, and check its DOC strip names the same document as the chart.",
 ];

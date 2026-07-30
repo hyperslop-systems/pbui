@@ -5,13 +5,22 @@ import {
   type Bundle,
   type PortableDoc,
   type PortableNode,
+  type PortableView,
   type StagePayload,
   type TilePayload,
   type WorkspacePayload,
 } from "../model/portable";
 import { findSecrets } from "../model/secrets";
 import type { DocId } from "../pbui/types";
-import { findLeaf, type LayoutState, type Node, type Stage, type Workspace } from "./layout";
+import {
+  findLeaf,
+  type AppView,
+  type LayoutState,
+  type Node,
+  type Stage,
+  type ViewId,
+  type Workspace,
+} from "./layout";
 import type { Doc, WorldState } from "./world";
 
 /**
@@ -59,19 +68,39 @@ function portableDoc(doc: Doc): PortableDoc {
   return { name, graphic };
 }
 
-function portableTree(node: Node, collector: DocCollector): PortableNode {
+class ViewCollector {
+  readonly views: PortableView[] = [];
+  private readonly index = new Map<ViewId, number>();
+
+  constructor(
+    private readonly layout: LayoutState,
+    private readonly docs: DocCollector,
+  ) {}
+
+  at(viewId: ViewId): number {
+    const seen = this.index.get(viewId);
+    if (seen !== undefined) return seen;
+    const view = this.layout.views[viewId];
+    if (!view) throw new Error(`no view ${viewId}`);
+    const next = this.views.length;
+    this.index.set(viewId, next);
+    this.views.push({
+      app: view.appId,
+      ...(view.title ? { title: view.title } : {}),
+      documents: Object.fromEntries(
+        Object.entries(view.documents).flatMap(([role, docId]) => {
+          const index = this.docs.at(docId);
+          return index === undefined ? [] : [[role, index]];
+        }),
+      ),
+    });
+    return next;
+  }
+}
+
+function portableTree(node: Node, collector: ViewCollector): PortableNode {
   if (node.type === "leaf") {
-    const doc = collector.at(node.docId);
-    return {
-      leaf: {
-        app: node.app,
-        // Written only when present, so a bundle a human reads has no
-        // `"label": undefined` noise and two identical layouts stringify
-        // identically.
-        ...(node.label ? { label: node.label } : {}),
-        ...(doc === undefined ? {} : { doc }),
-      },
-    };
+    return { leaf: { view: collector.at(node.viewId) } };
   }
   return {
     split: {
@@ -120,13 +149,16 @@ export function bundleForTile(state: BundleState, nodeId: string, at: string): B
   if (node?.type !== "leaf") {
     throw new Error(`no tile ${nodeId} in the current workspace`);
   }
-  const doc = node.docId ? state.world.docs[node.docId] : undefined;
+  const view = state.layout.views[node.viewId];
+  if (!view) throw new Error(`no view ${node.viewId}`);
+  const docs = new DocCollector(state.world);
+  const views = new ViewCollector(state.layout, docs);
+  const portable = views.at(view.id);
   const payload: TilePayload = {
-    app: node.app,
-    ...(node.label ? { label: node.label } : {}),
-    ...(doc ? { doc: portableDoc(doc) } : {}),
+    view: views.views[portable] as PortableView,
+    docs: docs.docs,
   };
-  return auditted(envelope("tile", node.label ?? node.app, payload, at));
+  return auditted(envelope("tile", view.title ?? view.appId, payload, at));
 }
 
 export function bundleForWorkspace(
@@ -136,12 +168,14 @@ export function bundleForWorkspace(
 ): Bundle<"workspace"> {
   const space = state.layout.spaces.find((s) => s.id === spaceId);
   if (!space) throw new Error(`no workspace ${spaceId}`);
-  const collector = new DocCollector(state.world);
-  const tree = portableTree(space.tree, collector);
+  const docs = new DocCollector(state.world);
+  const views = new ViewCollector(state.layout, docs);
+  const tree = portableTree(space.tree, views);
   const payload: WorkspacePayload = {
     name: space.name,
     tree,
-    docs: collector.docs,
+    views: views.views,
+    docs: docs.docs,
     ...(space.apps ? { apps: [...space.apps] } : {}),
   };
   return auditted(envelope("workspace", space.name, payload, at));
@@ -153,12 +187,14 @@ export function bundleForStage(state: BundleState, stageId: string, at: string):
   // ONE collector across every workspace in the stage, which is what hoists the
   // documents and preserves sharing between two workspaces that read the same
   // one — the same argument as DR-64, one level up.
-  const collector = new DocCollector(state.world);
+  const docs = new DocCollector(state.world);
+  const views = new ViewCollector(state.layout, docs);
   const spaces: WorkspacePayload[] = state.layout.spaces
     .filter((space) => space.stageId === stageId)
     .map((space) => ({
       name: space.name,
-      tree: portableTree(space.tree, collector),
+      tree: portableTree(space.tree, views),
+      views: [],
       docs: [],
       ...(space.apps ? { apps: [...space.apps] } : {}),
     }));
@@ -167,7 +203,8 @@ export function bundleForStage(state: BundleState, stageId: string, at: string):
     apps: stage.apps ? [...stage.apps] : null,
     chrome: { ...stage.chrome },
     spaces,
-    docs: collector.docs,
+    docs: docs.docs,
+    views: views.views,
   };
   return auditted(envelope("stage", stage.name, payload, at));
 }
@@ -196,15 +233,18 @@ export class IdPool {
 export function idsNeeded(bundle: Bundle): number {
   if (bundle.kind === "tile") {
     const payload = bundle.payload as TilePayload;
-    return 1 + (payload.doc ? 1 : 0); // the leaf, and its document
+    return 2 + payload.docs.length; // one view, one leaf, and its documents
   }
   if (bundle.kind === "workspace") {
     const payload = bundle.payload as WorkspacePayload;
-    return 1 + payload.docs.length + nodesIn(payload.tree);
+    return 1 + payload.docs.length + payload.views.length + nodesIn(payload.tree);
   }
   const payload = bundle.payload as StagePayload;
   return (
-    1 + payload.docs.length + payload.spaces.reduce((n, space) => n + 1 + nodesIn(space.tree), 0)
+    1 +
+    payload.docs.length +
+    payload.views.length +
+    payload.spaces.reduce((n, space) => n + 1 + nodesIn(space.tree), 0)
   );
 }
 
@@ -241,16 +281,45 @@ export function hydrateDocs(docs: readonly PortableDoc[], pool: IdPool): MintedD
  * "follow the active document" state and is the honest reading of a bundle that
  * has been edited by hand.
  */
+export interface MintedViews {
+  views: Record<ViewId, AppView>;
+  viewOrder: ViewId[];
+  byIndex: ViewId[];
+}
+
+export function hydrateViews(
+  views: readonly PortableView[],
+  docIds: readonly string[],
+  pool: IdPool,
+): MintedViews {
+  const out: MintedViews = { views: {}, viewOrder: [], byIndex: [] };
+  for (const portable of views) {
+    const id = pool.take();
+    out.views[id] = {
+      id,
+      appId: portable.app,
+      documents: Object.fromEntries(
+        Object.entries(portable.documents).flatMap(([role, index]) => {
+          const docId = docIds[index];
+          return docId ? [[role, docId]] : [];
+        }),
+      ),
+      ...(portable.title ? { title: portable.title } : {}),
+    };
+    out.viewOrder.push(id);
+    out.byIndex.push(id);
+  }
+  return out;
+}
+
 export function hydrateTree(node: PortableNode, byIndex: readonly string[], pool: IdPool): Node {
   if ("leaf" in node) {
-    const index = node.leaf.doc;
-    const docId = index === undefined ? null : (byIndex[index] ?? null);
+    const viewId = byIndex[node.leaf.view];
+    if (!viewId) throw new Error(`portable leaf names missing view ${node.leaf.view}`);
     return {
       id: pool.take(),
       type: "leaf",
-      app: node.leaf.app,
-      docId,
-      ...(node.leaf.label ? { label: node.leaf.label } : {}),
+      viewId,
     };
   }
   return {
@@ -266,27 +335,32 @@ export function hydrateTree(node: PortableNode, byIndex: readonly string[], pool
 export interface TileImport {
   leaf: Extract<Node, { type: "leaf" }>;
   docs: Record<DocId, Doc>;
+  views: Record<ViewId, AppView>;
+  viewOrder: ViewId[];
 }
 
 export function applyTileBundle(bundle: Bundle<"tile">, ids: readonly string[]): TileImport {
   const pool = new IdPool(ids);
   const payload = bundle.payload;
-  const minted = hydrateDocs(payload.doc ? [payload.doc] : [], pool);
+  const minted = hydrateDocs(payload.docs, pool);
+  const view = hydrateViews([payload.view], minted.byIndex, pool);
   return {
     leaf: {
       id: pool.take(),
       type: "leaf",
-      app: payload.app,
-      docId: minted.byIndex[0] ?? null,
-      ...(payload.label ? { label: payload.label } : {}),
+      viewId: view.byIndex[0] as ViewId,
     },
     docs: minted.docs,
+    views: view.views,
+    viewOrder: view.viewOrder,
   };
 }
 
 export interface WorkspaceImport {
   space: Workspace;
   docs: Record<DocId, Doc>;
+  views: Record<ViewId, AppView>;
+  viewOrder: ViewId[];
 }
 
 export function applyWorkspaceBundle(
@@ -297,15 +371,18 @@ export function applyWorkspaceBundle(
   const pool = new IdPool(ids);
   const payload = bundle.payload;
   const minted = hydrateDocs(payload.docs, pool);
+  const views = hydrateViews(payload.views, minted.byIndex, pool);
   return {
     space: {
       id: pool.take(),
       name: payload.name,
       stageId,
-      tree: hydrateTree(payload.tree, minted.byIndex, pool),
+      tree: hydrateTree(payload.tree, views.byIndex, pool),
       ...(payload.apps ? { apps: [...payload.apps] } : {}),
     },
     docs: minted.docs,
+    views: views.views,
+    viewOrder: views.viewOrder,
   };
 }
 
@@ -313,18 +390,21 @@ export interface StageImport {
   stage: Stage;
   spaces: Workspace[];
   docs: Record<DocId, Doc>;
+  views: Record<ViewId, AppView>;
+  viewOrder: ViewId[];
 }
 
 export function applyStageBundle(bundle: Bundle<"stage">, ids: readonly string[]): StageImport {
   const pool = new IdPool(ids);
   const payload = bundle.payload;
   const minted = hydrateDocs(payload.docs, pool);
+  const views = hydrateViews(payload.views, minted.byIndex, pool);
   const stageId = pool.take();
   const spaces: Workspace[] = payload.spaces.map((space) => ({
     id: pool.take(),
     name: space.name,
     stageId,
-    tree: hydrateTree(space.tree, minted.byIndex, pool),
+    tree: hydrateTree(space.tree, views.byIndex, pool),
     ...(space.apps ? { apps: [...space.apps] } : {}),
   }));
   return {
@@ -344,5 +424,7 @@ export function applyStageBundle(bundle: Bundle<"stage">, ids: readonly string[]
     },
     spaces,
     docs: minted.docs,
+    views: views.views,
+    viewOrder: views.viewOrder,
   };
 }

@@ -22,20 +22,29 @@ export function actionsForLayoutVerb(verb: Verb, layout: LayoutState): VerbResul
   const a = layoutActions;
 
   switch (verb.kind) {
-    case "beginRenameTile":
-      return [a.beginRename(verb.nodeId)];
+    case "beginRenameView":
+      return [a.beginRename(verb.placementId)];
 
-    case "renameTile":
-      return [a.renameLeaf({ nodeId: verb.nodeId, label: verb.label })];
+    case "renameView":
+      return [a.renameView({ viewId: verb.viewId, title: verb.title })];
 
-    case "duplicateTile":
-      return [a.duplicateLeaf(verb.nodeId)];
+    case "openReplaceView":
+      return [a.beginReplace(verb.placementId)];
+
+    case "createLinkedDuplicate":
+      return [a.createLinkedDuplicate(verb.placementId)];
+
+    case "duplicateView":
+      return [a.duplicateView(verb.placementId)];
 
     case "splitTile":
       return [a.splitLeaf({ nodeId: verb.nodeId, dir: verb.dir })];
 
-    case "closeTile":
-      return [a.closeLeaf(verb.nodeId)];
+    case "removePlacement":
+      return [a.closeLeaf(verb.placementId)];
+
+    case "closeView":
+      return [a.closeView(verb.viewId)];
 
     case "exportTile":
       return [exportTile(verb.nodeId)];

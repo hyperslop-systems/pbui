@@ -27,7 +27,15 @@ import {
   idsNeeded,
   type BundleState,
 } from "../src/store/bundles";
-import { leaf, split, type LayoutState, type Node, type Workspace } from "../src/store/layout";
+import {
+  createLayoutBuilder,
+  leaf as placement,
+  split,
+  type LayoutBuilder,
+  type LayoutState,
+  type Node,
+  type Workspace,
+} from "../src/store/layout";
 import { initialWorld, type Doc, type WorldState } from "../src/store/world";
 
 /**
@@ -77,7 +85,11 @@ function worldWith(...docs: Doc[]): WorldState {
   };
 }
 
-function layoutWith(spaces: Workspace[], currentSpaceId = spaces[0]?.id ?? ""): LayoutState {
+function layoutWith(
+  builder: LayoutBuilder,
+  spaces: Workspace[],
+  currentSpaceId = spaces[0]?.id ?? "",
+): LayoutState {
   return {
     stages: [
       {
@@ -91,19 +103,22 @@ function layoutWith(spaces: Workspace[], currentSpaceId = spaces[0]?.id ?? ""): 
     currentStageId: "stage-1",
     spaces,
     currentSpaceId,
+    views: builder.views,
+    viewOrder: builder.viewOrder,
   };
 }
 
 /** The §7.4 worked example: a source browser beside a chart above an inspector. */
 function exploreState(): { state: BundleState; nodes: string[]; docId: string } {
   const alpha = doc("8f2c0f9e", "α");
-  const sources = leaf("sources");
-  const chart = leaf("chart", alpha.id);
-  const inspector = leaf("inspector");
+  const builder = createLayoutBuilder();
+  const sources = builder.leaf("sources");
+  const chart = builder.leaf("chart", alpha.id);
+  const inspector = builder.leaf("inspector");
   const tree = split("row", sources, split("col", chart, inspector, 0.6), 0.34);
   const space: Workspace = { id: "ws-1", name: "explore", stageId: "stage-1", tree };
   return {
-    state: { world: worldWith(alpha), layout: layoutWith([space]) },
+    state: { world: worldWith(alpha), layout: layoutWith(builder, [space]) },
     nodes: [sources.id, chart.id, inspector.id, tree.id],
     docId: alpha.id,
   };
@@ -112,9 +127,13 @@ function exploreState(): { state: BundleState; nodes: string[]; docId: string } 
 /** A chart and a table on ONE document — the sharing case. */
 function sharedState(): { state: BundleState; docId: string } {
   const alpha = doc("aaaa-1111", "α");
-  const tree = split("row", leaf("chart", alpha.id), leaf("table", alpha.id), 0.5);
+  const builder = createLayoutBuilder();
+  const tree = split("row", builder.leaf("chart", alpha.id), builder.leaf("table", alpha.id), 0.5);
   const space: Workspace = { id: "ws-shared", name: "two views", stageId: "stage-1", tree };
-  return { state: { world: worldWith(alpha), layout: layoutWith([space]) }, docId: alpha.id };
+  return {
+    state: { world: worldWith(alpha), layout: layoutWith(builder, [space]) },
+    docId: alpha.id,
+  };
 }
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `new-${i}`);
@@ -136,20 +155,24 @@ describe("the envelope", () => {
       split: {
         dir: "row",
         ratio: 0.34,
-        a: { leaf: { app: "sources" } },
+        a: { leaf: { view: 0 } },
         b: {
           split: {
             dir: "col",
             ratio: 0.6,
-            a: { leaf: { app: "chart", doc: 0 } },
-            b: { leaf: { app: "inspector" } },
+            a: { leaf: { view: 1 } },
+            b: { leaf: { view: 2 } },
           },
         },
       },
     });
-    // `sources` and `inspector` are not docBound, so no `doc` field is written
-    // at all — a `doc` on them would be ignored on import and is therefore not
-    // in the bundle a human reads.
+    expect(bundle.payload.views).toEqual([
+      { app: "sources", documents: {} },
+      { app: "chart", documents: { primary: 0 } },
+      { app: "inspector", documents: {} },
+    ]);
+    // `sources` and `inspector` are not document-bound, so their view records
+    // carry an empty document map.
     expect(bundle.payload.docs).toHaveLength(1);
     expect(bundle.payload.docs[0]?.name).toBe("α");
     expect(bundle.payload.docs[0]?.graphic.format).toBe("datadrop.gog.document");
@@ -162,36 +185,41 @@ describe("the envelope", () => {
   });
 
   test("a ratio outside the drawable range is clamped, not refused", () => {
-    const tree = split("row", leaf("chart"), leaf("table"), 0.001);
+    const builder = createLayoutBuilder();
+    const tree = split("row", builder.leaf("chart"), builder.leaf("table"), 0.001);
     const space: Workspace = { id: "ws", name: "x", stageId: "stage-1", tree };
-    const state: BundleState = { world: worldWith(), layout: layoutWith([space]) };
+    const state: BundleState = { world: worldWith(), layout: layoutWith(builder, [space]) };
     const bundle = bundleForWorkspace(state, "ws", AT);
     expect((bundle.payload.tree as { split: { ratio: number } }).split.ratio).toBe(0.05);
   });
 
-  test("a tile bundle inlines its one document rather than using an array", () => {
+  test("a tile bundle carries its view and document without runtime ids", () => {
     const { state, nodes } = exploreState();
     const chartNode = nodes[1] as string;
     const bundle = bundleForTile(state, chartNode, AT);
-    expect(bundle.payload.doc?.name).toBe("α");
-    expect(bundle.payload).not.toHaveProperty("docs");
+    expect(bundle.payload.docs[0]?.name).toBe("α");
+    expect(bundle.payload.view).toMatchObject({
+      app: "chart",
+      documents: { primary: 0 },
+    });
   });
 
   test("a stage bundle hoists documents above its workspaces", () => {
     const alpha = doc("d-1", "α");
+    const builder = createLayoutBuilder();
     const a: Workspace = {
       id: "ws-a",
       name: "a",
       stageId: "stage-1",
-      tree: leaf("chart", alpha.id),
+      tree: builder.leaf("chart", alpha.id),
     };
     const b: Workspace = {
       id: "ws-b",
       name: "b",
       stageId: "stage-1",
-      tree: leaf("table", alpha.id),
+      tree: builder.leaf("table", alpha.id),
     };
-    const state: BundleState = { world: worldWith(alpha), layout: layoutWith([a, b]) };
+    const state: BundleState = { world: worldWith(alpha), layout: layoutWith(builder, [a, b]) };
     const bundle = bundleForStage(state, "stage-1", AT);
 
     // One document at the stage, index 0 from BOTH workspaces: two workspaces
@@ -200,8 +228,9 @@ describe("the envelope", () => {
     expect(bundle.payload.docs).toHaveLength(1);
     expect(bundle.payload.spaces).toHaveLength(2);
     expect(bundle.payload.spaces[0]?.docs).toEqual([]);
-    expect(bundle.payload.spaces[0]?.tree).toEqual({ leaf: { app: "chart", doc: 0 } });
-    expect(bundle.payload.spaces[1]?.tree).toEqual({ leaf: { app: "table", doc: 0 } });
+    expect(bundle.payload.views).toHaveLength(2);
+    expect(bundle.payload.spaces[0]?.tree).toEqual({ leaf: { view: 0 } });
+    expect(bundle.payload.spaces[1]?.tree).toEqual({ leaf: { view: 1 } });
   });
 });
 
@@ -249,6 +278,59 @@ describe("ids do not travel (DR-64)", () => {
 /* --------------------------------------------------------- sharing -- */
 
 describe("sharing survives a round trip", () => {
+  test("linked placements stay linked instead of hydrating independent views", () => {
+    const builder = createLayoutBuilder();
+    const first = builder.leaf("chart");
+    const viewId = (first as Extract<Node, { type: "leaf" }>).viewId;
+    const tree = split("row", first, placement(viewId));
+    const space: Workspace = {
+      id: "linked",
+      name: "linked",
+      stageId: "stage-1",
+      tree,
+    };
+    const state: BundleState = {
+      world: worldWith(),
+      layout: layoutWith(builder, [space]),
+    };
+
+    const bundle = bundleForWorkspace(state, space.id, AT);
+    expect(bundle.payload.views).toHaveLength(1);
+    expect(bundle.payload.tree).toMatchObject({
+      split: { a: { leaf: { view: 0 } }, b: { leaf: { view: 0 } } },
+    });
+
+    const imported = applyWorkspaceBundle(bundle, "stage-1", ids(idsNeeded(bundle)));
+    const back = imported.space.tree as Extract<Node, { type: "split" }>;
+    expect((back.a as Extract<Node, { type: "leaf" }>).viewId).toBe(
+      (back.b as Extract<Node, { type: "leaf" }>).viewId,
+    );
+    expect(Object.keys(imported.views)).toHaveLength(1);
+  });
+
+  test("one linked view remains shared across workspaces in a stage bundle", () => {
+    const builder = createLayoutBuilder();
+    const first = builder.leaf("chart");
+    const viewId = (first as Extract<Node, { type: "leaf" }>).viewId;
+    const spaces: Workspace[] = [
+      { id: "a", name: "a", stageId: "stage-1", tree: first },
+      { id: "b", name: "b", stageId: "stage-1", tree: placement(viewId) },
+    ];
+    const state: BundleState = {
+      world: worldWith(),
+      layout: layoutWith(builder, spaces),
+    };
+
+    const imported = applyStageBundle(
+      bundleForStage(state, "stage-1", AT),
+      ids(idsNeeded(bundleForStage(state, "stage-1", AT))),
+    );
+    const a = imported.spaces[0]?.tree as Extract<Node, { type: "leaf" }>;
+    const b = imported.spaces[1]?.tree as Extract<Node, { type: "leaf" }>;
+    expect(a.viewId).toBe(b.viewId);
+    expect(Object.keys(imported.views)).toHaveLength(1);
+  });
+
   test("two leaves on one document import to two leaves on ONE document", () => {
     const { state } = sharedState();
     const bundle = bundleForWorkspace(state, "ws-shared", AT);
@@ -262,22 +344,37 @@ describe("sharing survives a round trip", () => {
     // Identity, not equality. Two leaves pointing at two structurally identical
     // documents is precisely the defect: nothing throws, and changing a filter
     // in the pipeline stops moving the chart.
-    expect(a.docId).toBe(b.docId as string);
+    expect(imported.views[a.viewId]?.documents.primary).toBe(
+      imported.views[b.viewId]?.documents.primary,
+    );
     expect(Object.keys(imported.docs)).toHaveLength(1);
   });
 
   test("two workspaces in one stage import to one document as well", () => {
     const alpha = doc("d-1", "α");
-    const a: Workspace = { id: "a", name: "a", stageId: "stage-1", tree: leaf("chart", alpha.id) };
-    const b: Workspace = { id: "b", name: "b", stageId: "stage-1", tree: leaf("table", alpha.id) };
-    const state: BundleState = { world: worldWith(alpha), layout: layoutWith([a, b]) };
+    const builder = createLayoutBuilder();
+    const a: Workspace = {
+      id: "a",
+      name: "a",
+      stageId: "stage-1",
+      tree: builder.leaf("chart", alpha.id),
+    };
+    const b: Workspace = {
+      id: "b",
+      name: "b",
+      stageId: "stage-1",
+      tree: builder.leaf("table", alpha.id),
+    };
+    const state: BundleState = { world: worldWith(alpha), layout: layoutWith(builder, [a, b]) };
     const bundle = bundleForStage(state, "stage-1", AT);
     const imported = applyStageBundle(bundle, ids(idsNeeded(bundle)));
 
     expect(Object.keys(imported.docs)).toHaveLength(1);
     const first = imported.spaces[0]?.tree as Extract<Node, { type: "leaf" }>;
     const second = imported.spaces[1]?.tree as Extract<Node, { type: "leaf" }>;
-    expect(first.docId).toBe(second.docId as string);
+    expect(imported.views[first.viewId]?.documents.primary).toBe(
+      imported.views[second.viewId]?.documents.primary,
+    );
   });
 });
 
@@ -286,11 +383,9 @@ describe("sharing survives a round trip", () => {
 describe("the round trip preserves what was shared", () => {
   test("applications, ratios, labels, document names, specs and limits", () => {
     const alpha = doc("d-1", "α", spec("sensors", "37"));
-    const chart = { ...leaf("chart", alpha.id), label: "the raw feed" } as Extract<
-      Node,
-      { type: "leaf" }
-    >;
-    const tree = split("col", chart, leaf("table", alpha.id), 0.62);
+    const builder = createLayoutBuilder();
+    const chart = builder.leaf("chart", alpha.id, "the raw feed");
+    const tree = split("col", chart, builder.leaf("table", alpha.id), 0.62);
     const space: Workspace = {
       id: "ws",
       name: "review",
@@ -298,7 +393,7 @@ describe("the round trip preserves what was shared", () => {
       tree,
       apps: ["chart", "table"],
     };
-    const state: BundleState = { world: worldWith(alpha), layout: layoutWith([space]) };
+    const state: BundleState = { world: worldWith(alpha), layout: layoutWith(builder, [space]) };
 
     const bundle = bundleForWorkspace(state, "ws", AT);
     const back = applyWorkspaceBundle(bundle, "stage-9", ids(idsNeeded(bundle)));
@@ -311,8 +406,8 @@ describe("the round trip preserves what was shared", () => {
     expect(t.dir).toBe("col");
     expect(t.ratio).toBe(0.62);
     const a = t.a as Extract<Node, { type: "leaf" }>;
-    expect(a.app).toBe("chart");
-    expect(a.label).toBe("the raw feed");
+    expect(back.views[a.viewId]?.appId).toBe("chart");
+    expect(back.views[a.viewId]?.title).toBe("the raw feed");
 
     const minted = Object.values(back.docs)[0];
     expect(minted?.name).toBe("α");
@@ -327,17 +422,23 @@ describe("the round trip preserves what was shared", () => {
   test("an unlabelled tile comes back unlabelled rather than with an empty label", () => {
     const { state, nodes } = exploreState();
     const bundle = bundleForTile(state, nodes[0] as string, AT);
-    expect(bundle.payload).not.toHaveProperty("label");
+    expect(bundle.payload.view).not.toHaveProperty("title");
     const back = applyTileBundle(bundle, ids(idsNeeded(bundle)));
-    expect(back.leaf.label).toBeUndefined();
+    expect(back.views[back.leaf.viewId]?.title).toBeUndefined();
   });
 
   test("a stage round trip keeps its allow-list and its chrome", () => {
-    const space: Workspace = { id: "ws", name: "x", stageId: "stage-1", tree: leaf("about") };
+    const builder = createLayoutBuilder();
+    const space: Workspace = {
+      id: "ws",
+      name: "x",
+      stageId: "stage-1",
+      tree: builder.leaf("about"),
+    };
     const state: BundleState = {
       world: worldWith(),
       layout: {
-        ...layoutWith([space]),
+        ...layoutWith(builder, [space]),
         stages: [
           {
             id: "stage-1",
@@ -370,10 +471,16 @@ describe("the round trip preserves what was shared", () => {
       kind: "workspace",
       exportedAt: AT,
       name: "x",
-      payload: { name: "x", tree: { leaf: { app: "chart", doc: 7 } }, docs: [] },
+      payload: {
+        name: "x",
+        tree: { leaf: { view: 0 } },
+        views: [{ app: "chart", documents: { primary: 7 } }],
+        docs: [],
+      },
     };
     const back = applyWorkspaceBundle(bundle, "stage-1", ids(idsNeeded(bundle) + 4));
-    expect((back.space.tree as Extract<Node, { type: "leaf" }>).docId).toBeNull();
+    const leaf = back.space.tree as Extract<Node, { type: "leaf" }>;
+    expect(back.views[leaf.viewId]?.documents.primary).toBeUndefined();
   });
 });
 
@@ -458,7 +565,7 @@ describe("parseBundle refuses with the reason, and the reasons are the specifica
     // proving nothing about the leaf cap.
     const balanced = (n: number): PortableNode =>
       n === 1
-        ? { leaf: { app: "chart" } }
+        ? { leaf: { view: 0 } }
         : {
             split: {
               dir: "row",
@@ -477,9 +584,9 @@ describe("parseBundle refuses with the reason, and the reasons are the specifica
   });
 
   test("deeper than the cap", () => {
-    let tree: PortableNode = { leaf: { app: "chart" } };
+    let tree: PortableNode = { leaf: { view: 0 } };
     for (let i = 0; i < LIMITS.depth + 2; i++) {
-      tree = { split: { dir: "row", ratio: 0.5, a: { leaf: { app: "chart" } }, b: tree } };
+      tree = { split: { dir: "row", ratio: 0.5, a: { leaf: { view: 0 } }, b: tree } };
     }
     const bundle = JSON.parse(good());
     bundle.payload.tree = tree;
@@ -507,13 +614,59 @@ describe("parseBundle refuses with the reason, and the reasons are the specifica
     });
   });
 
+  test("more views than the cap", () => {
+    const bundle = JSON.parse(good());
+    const one = bundle.payload.views[0];
+    bundle.payload.views = Array.from({ length: LIMITS.views + 1 }, () => structuredClone(one));
+    expect(parseBundle(JSON.stringify(bundle))).toEqual({
+      ok: false,
+      reason: "that bundle names 65 views; the limit is 64",
+    });
+  });
+
+  test("a tile cannot bypass the document cap", () => {
+    const { state, nodes } = exploreState();
+    const bundle = JSON.parse(JSON.stringify(bundleForTile(state, nodes[1] as string, AT)));
+    const one = bundle.payload.docs[0];
+    bundle.payload.docs = Array.from({ length: LIMITS.docs + 1 }, () => structuredClone(one));
+    expect(parseBundle(JSON.stringify(bundle))).toEqual({
+      ok: false,
+      reason: "that bundle names 65 documents; the limit is 64",
+    });
+  });
+
+  test("a stage cannot bypass the view cap", () => {
+    const builder = createLayoutBuilder();
+    const space: Workspace = {
+      id: "ws",
+      name: "x",
+      stageId: "stage-1",
+      tree: builder.leaf("about"),
+    };
+    const state: BundleState = { world: worldWith(), layout: layoutWith(builder, [space]) };
+    const bundle = JSON.parse(JSON.stringify(bundleForStage(state, "stage-1", AT)));
+    const one = bundle.payload.views[0];
+    bundle.payload.views = Array.from({ length: LIMITS.views + 1 }, () => structuredClone(one));
+    expect(parseBundle(JSON.stringify(bundle))).toEqual({
+      ok: false,
+      reason: "that bundle names 65 views; the limit is 64",
+    });
+  });
+
   test("more workspaces in a stage than the cap", () => {
-    const space: Workspace = { id: "ws", name: "x", stageId: "stage-1", tree: leaf("about") };
-    const state: BundleState = { world: worldWith(), layout: layoutWith([space]) };
+    const builder = createLayoutBuilder();
+    const space: Workspace = {
+      id: "ws",
+      name: "x",
+      stageId: "stage-1",
+      tree: builder.leaf("about"),
+    };
+    const state: BundleState = { world: worldWith(), layout: layoutWith(builder, [space]) };
     const bundle = JSON.parse(JSON.stringify(bundleForStage(state, "stage-1", AT)));
     bundle.payload.spaces = Array.from({ length: LIMITS.spaces + 1 }, () => ({
       name: "x",
-      tree: { leaf: { app: "about" } },
+      tree: { leaf: { view: 0 } },
+      views: [],
       docs: [],
     }));
     expect(parseBundle(JSON.stringify(bundle))).toEqual({
@@ -532,13 +685,17 @@ describe("the credential guard fires in both directions", () => {
     // the absence is load-bearing. This is the second net under that one.
     const poisoned = doc("d-1", "α");
     poisoned.metadata = { token: "dd_live_not_a_real_secret" };
+    const builder = createLayoutBuilder();
     const space: Workspace = {
       id: "ws",
       name: "x",
       stageId: "stage-1",
-      tree: leaf("chart", poisoned.id),
+      tree: builder.leaf("chart", poisoned.id),
     };
-    const state: BundleState = { world: worldWith(poisoned), layout: layoutWith([space]) };
+    const state: BundleState = {
+      world: worldWith(poisoned),
+      layout: layoutWith(builder, [space]),
+    };
 
     expect(() => bundleForWorkspace(state, "ws", AT)).toThrow(/credential-shaped/);
     expect(() => bundleForTile(state, (space.tree as Node).id, AT)).toThrow(/credential-shaped/);
@@ -593,7 +750,7 @@ describe("an unknown application warns rather than refusing", () => {
   test("parseBundle accepts a bundle naming an application this build lacks", () => {
     const { state } = exploreState();
     const bundle = JSON.parse(JSON.stringify(bundleForWorkspace(state, "ws-1", AT)));
-    bundle.payload.tree.split.a.leaf.app = "chartsy";
+    bundle.payload.views[0].app = "chartsy";
     const result = parseBundle(JSON.stringify(bundle));
     expect(result.ok).toBe(true);
   });
@@ -601,17 +758,23 @@ describe("an unknown application warns rather than refusing", () => {
   test("unknownApps names them, sorted and deduplicated", () => {
     const { state } = exploreState();
     const bundle = JSON.parse(JSON.stringify(bundleForWorkspace(state, "ws-1", AT))) as Bundle;
-    (bundle.payload as WorkspacePayload).tree = {
+    const payload = bundle.payload as WorkspacePayload;
+    payload.views = [
+      { app: "chartsy", documents: {} },
+      { app: "chartsy", documents: {} },
+      { app: "abacus", documents: {} },
+    ];
+    payload.tree = {
       split: {
         dir: "row",
         ratio: 0.5,
-        a: { leaf: { app: "chartsy" } },
+        a: { leaf: { view: 0 } },
         b: {
           split: {
             dir: "col",
             ratio: 0.5,
-            a: { leaf: { app: "chartsy" } },
-            b: { leaf: { app: "abacus" } },
+            a: { leaf: { view: 1 } },
+            b: { leaf: { view: 2 } },
           },
         },
       },
@@ -632,10 +795,10 @@ describe("an unknown application warns rather than refusing", () => {
       kind: "tile",
       exportedAt: AT,
       name: "x",
-      payload: { app: "chartsy" },
+      payload: { view: { app: "chartsy", documents: {} }, docs: [] },
     };
     const back = applyTileBundle(bundle, ids(idsNeeded(bundle)));
-    expect(back.leaf.app).toBe("chartsy");
+    expect(back.views[back.leaf.viewId]?.appId).toBe("chartsy");
   });
 });
 
@@ -665,8 +828,14 @@ describe("describeBundle and measureBundle", () => {
   });
 
   test("a stage counts its workspaces too", () => {
-    const space: Workspace = { id: "ws", name: "x", stageId: "stage-1", tree: leaf("about") };
-    const state: BundleState = { world: worldWith(), layout: layoutWith([space]) };
+    const builder = createLayoutBuilder();
+    const space: Workspace = {
+      id: "ws",
+      name: "x",
+      stageId: "stage-1",
+      tree: builder.leaf("about"),
+    };
+    const state: BundleState = { world: worldWith(), layout: layoutWith(builder, [space]) };
     const bundle = bundleForStage(state, "stage-1", AT);
     expect(describeBundle(bundle)).toBe("A stage “work”: 1 workspace, 1 tile, 0 documents.");
   });
@@ -711,7 +880,10 @@ describe("ids are minted by the caller, never inside", () => {
 
 describe("the payload types are what the parser accepts", () => {
   test("a tile payload with a label and no document parses", () => {
-    const payload: TilePayload = { app: "table", label: "raw feed" };
+    const payload: TilePayload = {
+      view: { app: "table", title: "raw feed", documents: {} },
+      docs: [],
+    };
     const bundle: Bundle<"tile"> = {
       format: FORMAT,
       version: BUNDLE_VERSION,
@@ -728,8 +900,9 @@ describe("the payload types are what the parser accepts", () => {
       name: "work",
       apps: null,
       chrome: { masthead: true, workspaces: true, stageBar: true },
-      spaces: [{ name: "build", tree: { leaf: { app: "chart" } }, docs: [] }],
+      spaces: [{ name: "build", tree: { leaf: { view: 0 } }, views: [], docs: [] }],
       docs: [],
+      views: [{ app: "chart", documents: {} }],
     };
     const bundle: Bundle<"stage"> = {
       format: FORMAT,

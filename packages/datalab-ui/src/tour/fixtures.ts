@@ -2,7 +2,7 @@ import { fixturesFrom, type FixtureData } from "../api/fixtures";
 import { readings, census } from "../fixtures";
 import { createDefaultGraphic } from "../model/graphicAuthoring";
 import type { PreloadedState } from "../store";
-import { leaf, split, type LayoutState } from "../store/layout";
+import { split, type LayoutBuilder, type LayoutState, type Node } from "../store/layout";
 import { singleStageLayout } from "../store/stages";
 import { newId } from "../store/world";
 
@@ -83,8 +83,8 @@ export function seedTwo(): NonNullable<PreloadedState["world"]> {
  * and giving six embedded instances the *same* stage id would be harmless today
  * and confusing the moment a stage verb names one.
  */
-const space = (name: string, tree: LayoutState["spaces"][number]["tree"]): LayoutState =>
-  singleStageLayout(name, tree);
+const space = (name: string, build: (builder: LayoutBuilder) => Node): LayoutState =>
+  singleStageLayout(name, build);
 
 /**
  * Each section seeds its world and its layout TOGETHER.
@@ -119,7 +119,9 @@ export function heroSeed(): Seed {
   const doc = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space("start", split("row", leaf("pipeline", doc), leaf("chart", doc), 0.44)),
+    layout: space("start", (builder) =>
+      split("row", builder.leaf("pipeline", doc), builder.leaf("chart", doc), 0.44),
+    ),
   };
 }
 
@@ -135,15 +137,19 @@ export function heroSeed(): Seed {
 export function objectsSeed(): Seed {
   return {
     world: seedStream(),
-    layout: space(
-      "objects",
+    layout: space("objects", (builder) =>
       split(
         "row",
         // The cheat sheet sits UNDER the rail, in the same column: the
         // vocabulary of a section belongs beneath the lessons that teach it,
         // and a reader who wants the room can close either.
-        split("col", leaf("lessons"), leaf("cheat"), 0.72),
-        split("col", leaf("sources"), split("col", leaf("inspector"), leaf("watch"), 0.55), 0.42),
+        split("col", builder.leaf("lessons"), builder.leaf("cheat"), 0.72),
+        split(
+          "col",
+          builder.leaf("sources"),
+          split("col", builder.leaf("inspector"), builder.leaf("watch"), 0.55),
+          0.42,
+        ),
         0.34,
       ),
     ),
@@ -156,12 +162,11 @@ export function layoutSeed(): Seed {
   const first = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space(
-      "two views",
+    layout: space("two views", (builder) =>
       split(
         "row",
-        split("col", leaf("lessons"), leaf("cheat"), 0.72),
-        split("col", leaf("chart", first), leaf("table", first), 0.55),
+        split("col", builder.leaf("lessons"), builder.leaf("cheat"), 0.72),
+        split("col", builder.leaf("chart", first), builder.leaf("table", first), 0.55),
         0.34,
       ),
     ),
@@ -180,15 +185,14 @@ export function grammarSeed(): Seed {
   const doc = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space(
-      "build",
+    layout: space("build", (builder) =>
       split(
         "row",
-        split("col", leaf("lessons"), leaf("cheat"), 0.74),
+        split("col", builder.leaf("lessons"), builder.leaf("cheat"), 0.74),
         split(
           "row",
-          split("col", leaf("pipeline", doc), leaf("encode", doc), 0.54),
-          split("col", leaf("chart", doc), leaf("table", doc), 0.62),
+          split("col", builder.leaf("pipeline", doc), builder.leaf("encode", doc), 0.54),
+          split("col", builder.leaf("chart", doc), builder.leaf("table", doc), 0.62),
           0.44,
         ),
         0.3,
@@ -203,9 +207,13 @@ export function rackSeed(): Seed {
   const doc = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space(
-      "rack",
-      split("row", leaf("modules"), split("col", leaf("chart", doc), leaf("cheat"), 0.62), 0.36),
+    layout: space("rack", (builder) =>
+      split(
+        "row",
+        builder.leaf("modules"),
+        split("col", builder.leaf("chart", doc), builder.leaf("cheat"), 0.62),
+        0.36,
+      ),
     ),
   };
 }
@@ -222,12 +230,11 @@ export function briefSeed(): Seed {
   const doc = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space(
-      "build",
+    layout: space("build", (builder) =>
       split(
         "row",
-        leaf("brief"),
-        split("col", leaf("pipeline", doc), leaf("chart", doc), 0.45),
+        builder.leaf("brief"),
+        split("col", builder.leaf("pipeline", doc), builder.leaf("chart", doc), 0.45),
         0.32,
       ),
     ),

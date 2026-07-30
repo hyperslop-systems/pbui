@@ -1,41 +1,37 @@
-import { useMemo } from "react";
+import { useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { appFor } from "../../../appkit/registry";
-import { useAvailableApps } from "../../../appkit/AppScope";
 import { RenderBoundary } from "../../../appkit/RenderBoundary";
 import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
-import { countLeaves, layoutActions, type Node } from "../../../store/layout";
-import {
-  Button,
-  Callout,
-  IconButton,
-  InlineRename,
-  SelectInput,
-  Text,
-} from "@hyperslop-systems/pbui";
+import { countLeaves, layoutActions, primaryDocId, type Node } from "../../../store/layout";
+import { Button, Callout, IconButton, InlineRename, Text } from "@hyperslop-systems/pbui";
+import { ViewSwitcher } from "../ViewSwitcher";
 import { useDrag } from "./useDrag";
-import { pickerOptions } from "./options";
 import styles from "./Tile.module.css";
 
 /**
  * One tile: a title bar and an application.
  *
- * The tile holds `app` and `docId` and nothing else (DR-11). Everything the
- * application shows lives in the world, which is why swapping two tiles is a
- * two-field exchange and closing one loses nothing.
+ * The tile is geometry plus a reference to one logical AppView. The view owns
+ * application, document binding and title, so linked placements stay in sync.
  */
 export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   const dispatch = useDispatch();
   const pbui = usePbui();
-  const app = appFor(node.app);
+  const tileElement = useRef<HTMLElement | null>(null);
+  const view = useSelector((state: RootState) => state.layout.views[node.viewId]);
+  const app = appFor(view?.appId ?? "");
+  const docId = primaryDocId(view);
   // The rename flag lives in the store rather than here, because the *menu* has
   // to be able to start one and a menu entry is serialisable data — it cannot
   // reach into a `useState` three components away (DATADROP-8).
   const renaming = useSelector((state: RootState) => state.layout.renamingId === node.id);
-  const setRenaming = (on: boolean) => dispatch(layoutActions.beginRename(on ? node.id : null));
+  const replacing = useSelector((state: RootState) => state.layout.replacingId === node.id);
+  const setRenaming = (on: boolean) =>
+    dispatch(layoutActions.beginRename(on && view ? node.id : null));
   const docName = useSelector((state: RootState) =>
-    node.docId ? (state.world.docs[node.docId]?.name ?? null) : null,
+    docId ? (state.world.docs[docId]?.name ?? null) : null,
   );
   const tree = useSelector(
     (state: RootState) =>
@@ -44,37 +40,23 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   const canClose = tree !== null && countLeaves(tree) > 1;
 
   const { dragging, zone, onGripPointerDown, register } = useDrag(node.id);
-  // Instance ∩ stage ∩ workspace, already narrowed (DR-53, DR-61, DR-95).
-  // Nothing is greyed any more, so there is no second value carrying reasons.
-  const scopedApps = useAvailableApps();
+  const restoreTitleFocus = () => {
+    requestAnimationFrame(() => {
+      tileElement.current?.querySelector<HTMLElement>('[data-ptype="tile"]')?.focus();
+    });
+  };
+  const placementCount = useSelector((state: RootState) => {
+    const count = (n: Node): number =>
+      n.type === "leaf" ? Number(n.viewId === node.viewId) : count(n.a) + count(n.b);
+    return state.layout.spaces.reduce((total, space) => total + count(space.tree), 0);
+  });
 
-  /** Application ids held by the OTHER tiles in this workspace. */
-  const elsewhere = useMemo(() => {
-    const found = new Set<string>();
-    const walk = (n: Node | null) => {
-      if (!n) return;
-      if (n.type === "leaf") {
-        if (n.id !== node.id) found.add(n.app);
-        return;
-      }
-      walk(n.a);
-      walk(n.b);
-    };
-    walk(tree);
-    return found;
-  }, [tree, node.id]);
-
-  const options = useMemo(
-    () => pickerOptions({ apps: scopedApps, own: app, ownApp: node.app, elsewhere }),
-    [scopedApps, app, node.app, elsewhere],
-  );
-
-  const title = app ? app.title : node.app;
+  const title = app ? app.title : (view?.appId ?? "missing view");
   const derived = docName ? `${title} · ${docName}` : title;
   // `??` and not `||`: an empty label is normalised to undefined by the
   // reducer, so `??` is what makes "clear the field and press Enter" mean *go
   // back to the derived title* rather than *render an empty title bar*.
-  const label = node.label ?? derived;
+  const label = view?.title ?? derived;
 
   const zoneStyle =
     zone === "left"
@@ -93,7 +75,10 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
 
   return (
     <section
-      ref={register}
+      ref={(element) => {
+        tileElement.current = element;
+        register(element);
+      }}
       // A landmark per tile, named by its application and document, so the
       // workspace is navigable by region rather than by tabbing through it.
       aria-label={label}
@@ -129,8 +114,8 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
           // the same component — and this one already handles the
           // read-on-Enter / Escape-means-never-happened semantics.
           <InlineRename
-            initial={node.label ?? ""}
-            label="tile name"
+            initial={view?.title ?? ""}
+            label="view name"
             // Empty commits as empty, which the reducer normalises back to
             // "no label". `InlineRename`'s fallback exists for a workspace,
             // where a blank name leaves nothing to click; a tile always has a
@@ -138,11 +123,14 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
             fallback=""
             // Through `perform`, not `dispatch`, so the rename appears in the
             // trace as a verb like every other user decision.
-            onCommit={(name) => pbui.perform({ kind: "renameTile", nodeId: node.id, label: name })}
+            onCommit={(name) =>
+              view && pbui.perform({ kind: "renameView", viewId: view.id, title: name })
+            }
             onCancel={() => setRenaming(false)}
           />
         ) : (
           <Presentation
+            className={styles.viewTitle}
             /*
              * A TileRef, not a node id (DATADROP-8 DR-68).
              *
@@ -156,40 +144,23 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
             reference={{
               type: "tile",
               value: {
-                nodeId: node.id,
-                app: node.app,
+                placementId: node.id,
+                viewId: node.viewId,
+                app: view?.appId ?? "",
                 title: label,
-                ...(node.label ? { label: node.label } : {}),
-                docId: node.docId,
+                ...(view?.title ? { customTitle: view.title } : {}),
+                docId,
                 duplicable: app?.duplicable ?? false,
                 canClose,
+                placementCount,
               },
             }}
             doc={`<tile> ${label}`}
-            /*
-             * Rename is the tile title's DEFAULT VERB, not a double-click.
-             *
-             * The workspace strip renames on double-click because its left
-             * button already means "switch to it". A tile title had no default
-             * verb, so `Presentation` fell back to its rule for chips with no
-             * obvious primary action — the left button opens the menu too —
-             * and a double-click therefore opened the menu, closed it, and
-             * opened it again. The rename never fired, which is not something
-             * a unit test can see: it needs a real click on a real menu.
-             *
-             * Making it the default verb fixes three things at once. The
-             * gesture works; the mouse-doc line announces "L: rename it   R:
-             * menu" before the user commits; and Enter on the focused
-             * presentation renames, which is the keyboard route the strip's
-             * equivalent still does not have. A double-click also still works —
-             * its first click enters the field and its second lands in it.
-             */
-            onActivate={() => setRenaming(true)}
-            activateDoc="rename it"
           >
             <span
+              className={styles.viewTitleText}
               style={{ textTransform: "uppercase", letterSpacing: "var(--pbui-track-label)" }}
-              title={node.label ? `renamed — the derived title is “${derived}”` : undefined}
+              title={view?.title ? `renamed — the derived title is “${derived}”` : undefined}
             >
               <Text size="tiny" strong>
                 {label}
@@ -199,16 +170,6 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
         )}
 
         <span style={{ flex: 1 }} />
-
-        <SelectInput
-          label="application"
-          variant="framed"
-          size="tiny"
-          value={node.app}
-          onValueChange={(app) => dispatch(layoutActions.setLeafApp({ nodeId: node.id, app }))}
-          onPointerDown={(event) => event.stopPropagation()}
-          options={options}
-        />
 
         <TileButton
           label="split right"
@@ -232,9 +193,11 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
       </div>
 
       <div className={styles.body}>
-        {Component ? (
+        {replacing ? (
+          <ViewSwitcher placementId={node.id} onComplete={restoreTitleFocus} />
+        ) : Component && view ? (
           <RenderBoundary
-            resetKey={`${node.app}:${node.docId ?? ""}`}
+            resetKey={`${view.id}:${view.appId}:${docId ?? ""}`}
             fallback={(error, reset) => (
               <div style={{ padding: "var(--pbui-space-4)" }}>
                 <Callout variant="warning" title={`${title} could not render`}>
@@ -248,12 +211,14 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
               </div>
             )}
           >
-            <Component leafId={node.id} docId={node.docId} />
+            <Component placementId={node.id} view={view} />
           </RenderBoundary>
         ) : (
           <div style={{ padding: "var(--pbui-space-4)" }}>
             <Text size="small" tone="faint">
-              no application called “{node.app}” — choose one above
+              {view
+                ? `no application called “${view.appId}” — choose Replace from the title`
+                : `no view called “${node.viewId}”`}
             </Text>
           </div>
         )}

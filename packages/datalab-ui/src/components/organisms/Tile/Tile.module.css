@@ -25,6 +25,18 @@
   user-select: none;
 }
 
+.viewTitle {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.viewTitleText {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .body {
   flex: 1;
   min-height: 0;

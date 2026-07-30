@@ -6,6 +6,7 @@ import {
   spacesOfStage,
   split,
   type LayoutState,
+  type Node,
   type Stage,
   type StageId,
   type Workspace,
@@ -105,6 +106,23 @@ describe("the pinned stages", () => {
     // The work stage owns no pinned workspaces: they are a starting point the
     // user owns, renameable and deletable.
     expect(spacesOfStage(state, WORK_STAGE_ID).every((s) => !s.pinned)).toBe(true);
+  });
+
+  test("seeded singleton applications share one logical view across workspaces", () => {
+    const state = defaultLayout();
+    const leaves = (node: Node): Extract<Node, { type: "leaf" }>[] =>
+      node.type === "leaf" ? [node] : [...leaves(node.a), ...leaves(node.b)];
+
+    for (const appId of ["sources", "inspector", "about"]) {
+      const viewIds = state.viewOrder.filter((id) => state.views[id]?.appId === appId);
+      expect(viewIds, `${appId} logical views`).toHaveLength(1);
+
+      const placements = state.spaces.flatMap((space) =>
+        leaves(space.tree).filter((placement) => placement.viewId === viewIds[0]),
+      );
+      expect(placements.length, `${appId} placements`).toBeGreaterThan(1);
+      expect(new Set(placements.map((placement) => placement.id)).size).toBe(placements.length);
+    }
   });
 
   test("no two stores agree on a workspace id that is not code-defined", () => {
@@ -258,6 +276,11 @@ describe("the space pointer never desynchronises", () => {
       currentStageId: "s1",
       spaces: [space("s1-a", "s1"), space("s1-b", "s1"), space("s2-a", "s2"), space("s2-b", "s2")],
       currentSpaceId: "s1-a",
+      views: {
+        chart: { id: "chart", appId: "chart", documents: {} },
+        table: { id: "table", appId: "table", documents: {} },
+      },
+      viewOrder: ["chart", "table"],
     };
   }
 
@@ -272,11 +295,15 @@ describe("the space pointer never desynchronises", () => {
     setRatio: { nodeId: "n", ratio: 0.4 },
     splitLeaf: { nodeId: "n", dir: "row" },
     closeLeaf: "n",
-    setLeafApp: { nodeId: "n", app: "trace" },
-    setLeafDoc: { nodeId: "n", docId: null },
-    renameLeaf: { nodeId: "n", label: "mine" },
-    duplicateLeaf: "n",
+    createViewInPlacement: { nodeId: "n", appId: "trace" },
+    replacePlacementWithView: { nodeId: "n", viewId: "chart" },
+    setViewDocument: { viewId: "chart", docId: null },
+    renameView: { viewId: "chart", title: "mine" },
+    duplicateView: "n",
+    createLinkedDuplicate: "n",
+    closeView: "chart",
     beginRename: "s1-a",
+    beginReplace: "n",
     setJustSignedUp: true,
     openImport: { target: { kind: "stage" }, prefill: "", from: null },
     closeImport: undefined,
@@ -284,15 +311,19 @@ describe("the space pointer never desynchronises", () => {
     dismissNotice: undefined,
     replaceLeafFromBundle: {
       nodeId: "n",
-      leaf: { id: "x", type: "leaf", app: "chart", docId: null },
+      leaf: { id: "x", type: "leaf", viewId: "imported" },
+      views: { imported: { id: "imported", appId: "chart", documents: {} } },
+      viewOrder: ["imported"],
     },
     insertWorkspaceFromBundle: {
       space: {
         id: "fresh",
         name: "fresh",
         stageId: "s1",
-        tree: { id: "t", type: "leaf", app: "chart", docId: null },
+        tree: { id: "t", type: "leaf", viewId: "imported" },
       },
+      views: { imported: { id: "imported", appId: "chart", documents: {} } },
+      viewOrder: ["imported"],
     },
     insertStageFromBundle: {
       stage: {
@@ -307,9 +338,11 @@ describe("the space pointer never desynchronises", () => {
           id: "s3-a",
           name: "a",
           stageId: "s3",
-          tree: { id: "t2", type: "leaf", app: "chart", docId: null },
+          tree: { id: "t2", type: "leaf", viewId: "imported" },
         },
       ],
+      views: { imported: { id: "imported", appId: "chart", documents: {} } },
+      viewOrder: ["imported"],
     },
     swapTiles: { a: "n1", b: "n2" },
     dockTile: { from: "n1", to: "n2", zone: "left" },
@@ -407,6 +440,8 @@ describe("deletion keeps the same guard at every level", () => {
         { id: "elsewhere", name: "elsewhere", stageId: "s2", tree: leaf("chart") },
       ],
       currentSpaceId: "only",
+      views: { chart: { id: "chart", appId: "chart", documents: {} } },
+      viewOrder: ["chart"],
     };
     const after = layout(state, layoutSlice.actions.removeSpace("only"));
     expect(after.spaces.map((s) => s.id)).toContain("only");
@@ -491,7 +526,7 @@ describe("canonical persistence clean break", () => {
   });
 
   test("migrate is identity-only for the current version", () => {
-    const current = { version: 3 };
+    const current = { version: 4 };
     expect(migrate(current)).toBe(current);
     expect(migrate(migrate(current))).toBe(current);
   });
@@ -500,6 +535,13 @@ describe("canonical persistence clean break", () => {
 /* ------------------------------------------------------- mergeStages -- */
 
 describe("mergeStages", () => {
+  test("replacing pinned workspaces does not retain their obsolete view records", () => {
+    const stored = pinnedStages();
+    const oldViewIds = new Set(stored.viewOrder);
+    const merged = mergeStages(stored.stages, stored.spaces, stored.views, stored.viewOrder);
+    expect(merged.viewOrder.some((id) => oldViewIds.has(id))).toBe(false);
+  });
+
   test("a workspace whose stage is gone joins work rather than vanishing", () => {
     const orphan: Workspace = {
       id: "orphan",
@@ -540,14 +582,14 @@ describe("mergeStages", () => {
 
 describe("singleStageLayout", () => {
   test("mints a fresh stage id per call", () => {
-    const a = singleStageLayout("build", leaf("chart"));
-    const b = singleStageLayout("build", leaf("chart"));
+    const a = singleStageLayout("build", (builder) => builder.leaf("chart"));
+    const b = singleStageLayout("build", (builder) => builder.leaf("chart"));
     expect(a.currentStageId).not.toBe(b.currentStageId);
     expect(a.currentSpaceId).not.toBe(b.currentSpaceId);
   });
 
   test("offers no stage switcher, because there is nothing to switch to", () => {
-    const one = singleStageLayout("build", leaf("chart"));
+    const one = singleStageLayout("build", (builder) => builder.leaf("chart"));
     expect(one.stages[0]?.chrome.stageBar).toBe(false);
   });
 });

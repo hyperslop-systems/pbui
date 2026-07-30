@@ -80,12 +80,15 @@ export type Verb =
   // Still plain serialisable data, including the ones that end in a promise:
   // `exportTile` names the tile, and the clipboard it will be written to
   // arrives on the store's thunk extra argument rather than in the verb.
-  /** Open the inline editor. The COMMIT is `renameTile` below. */
-  | { kind: "beginRenameTile"; nodeId: string }
-  | { kind: "renameTile"; nodeId: string; label: string }
-  | { kind: "duplicateTile"; nodeId: string }
+  /** Open the view title editor. The COMMIT is `renameView` below. */
+  | { kind: "beginRenameView"; placementId: string }
+  | { kind: "renameView"; viewId: string; title: string }
+  | { kind: "openReplaceView"; placementId: string }
+  | { kind: "createLinkedDuplicate"; placementId: string }
+  | { kind: "duplicateView"; placementId: string }
   | { kind: "splitTile"; nodeId: string; dir: "row" | "col" }
-  | { kind: "closeTile"; nodeId: string }
+  | { kind: "removePlacement"; placementId: string }
+  | { kind: "closeView"; viewId: string }
   | { kind: "exportTile"; nodeId: string }
   | { kind: "importIntoTile"; nodeId: string }
   | { kind: "beginRenameWorkspace"; spaceId: string }
@@ -128,15 +131,15 @@ export interface Action {
    * who never sees "Map to y" on a nominal column never learns that y requires
    * a quantitative one.
    *
-   * **The tile picker deliberately does the opposite** (DATADROP-14 DR-95), and
+   * **The view switcher deliberately does the opposite** (DATADROP-14 DR-95), and
    * that is not a contradiction — the argument above scales with the ratio of
    * unavailable entries, not with the principle. A verb menu offers four to
    * eight entries with one greyed, and the greyed one is the lesson. The
-   * application picker offers twenty-five with as many as twenty-two greyed,
+   * New view section offers twenty-five with as many as twenty-two greyed,
    * where the same treatment buries the ones that work.
    *
    * Two files used to cite this comment as a project-wide policy;
-   * `Tile/options.ts` now states its own and explains why it differs. If a
+   * `ViewSwitcher/model.ts` states its own and explains why it differs. If a
    * future menu has to choose, the question to ask is "how many of these are
    * unavailable at once".
    */
@@ -181,18 +184,24 @@ export function describeVerb(verb: Verb): string {
     // The layout verbs read as prose in the trace, which is a teaching surface
     // people screenshot — so they name the object rather than its id where the
     // verb has a name to hand.
-    case "beginRenameTile":
-      return "rename the tile";
-    case "renameTile":
-      return verb.label ? `rename tile to “${verb.label}”` : "clear the tile's name";
-    case "duplicateTile":
-      return "duplicate the tile";
+    case "beginRenameView":
+      return "rename the view";
+    case "renameView":
+      return verb.title ? `rename view to “${verb.title}”` : "clear the view's name";
+    case "openReplaceView":
+      return "replace the view in this tile";
+    case "createLinkedDuplicate":
+      return "create a linked duplicate";
+    case "duplicateView":
+      return "duplicate the view";
     case "splitTile":
       return verb.dir === "row" ? "split right" : "split below";
-    case "closeTile":
-      return "close the tile";
+    case "removePlacement":
+      return "remove the tile from this workspace";
+    case "closeView":
+      return "close the view everywhere";
     case "exportTile":
-      return "copy the tile to the clipboard";
+      return "copy the view to the clipboard";
     case "importIntoTile":
       return "replace the tile from a bundle";
     case "beginRenameWorkspace":

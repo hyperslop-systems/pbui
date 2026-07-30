@@ -156,26 +156,32 @@ describe("an unknown presentation type degrades rather than throws", () => {
 
 describe("the layout descriptors", () => {
   const tile = {
-    nodeId: "n1",
+    placementId: "n1",
+    viewId: "v1",
     app: "chart",
     title: "chart · α",
+    customTitle: undefined,
     docId: "d1",
     duplicable: true,
     canClose: true,
+    placementCount: 1,
   };
 
-  test("a tile's menu offers rename, duplicate, split, export, import and close", () => {
+  test("a view title's menu offers view and placement actions in a stable order", () => {
     const labels = actionsFor("tile", tile, env()).map((a) => a.label);
     expect(labels).toEqual([
-      "Rename this tile …",
+      "Replace …",
+      "Rename …",
+      "Create linked duplicate",
       "Duplicate",
       "Split right",
       "Split below",
-      "Copy this tile to the clipboard",
-      "Replace this tile from the clipboard …",
+      "Copy view to clipboard",
+      "Replace from clipboard …",
       "Save as a template …",
       "Inspect",
-      "Close",
+      "Remove from this workspace",
+      "Close view",
     ]);
   });
 
@@ -189,23 +195,33 @@ describe("the layout descriptors", () => {
 
   test("the last tile in a workspace cannot close, and says so", () => {
     const alone = actionsFor("tile", { ...tile, canClose: false }, env());
-    expect(alone.find((a) => a.label === "Close")?.disabledReason).toBe(
+    expect(alone.find((a) => a.label === "Remove from this workspace")?.disabledReason).toBe(
       "the last tile in a workspace cannot close",
     );
   });
 
-  test("a tile's verbs name the node, never the application", () => {
-    // The verb is what a test can assert without a store, and it must carry the
-    // id rather than anything resolved at menu-build time.
+  test("view verbs name the view while placement verbs name the placement", () => {
     const actions = actionsFor("tile", tile, env());
     expect(actions.find((a) => a.label === "Duplicate")?.verb).toEqual({
-      kind: "duplicateTile",
-      nodeId: "n1",
+      kind: "duplicateView",
+      placementId: "n1",
+    });
+    expect(actions.find((a) => a.label === "Rename …")?.verb).toEqual({
+      kind: "beginRenameView",
+      placementId: "n1",
     });
     expect(actions.find((a) => a.label === "Split below")?.verb).toEqual({
       kind: "splitTile",
       nodeId: "n1",
       dir: "col",
+    });
+  });
+
+  test("a linked view warns that closing it affects every placement", () => {
+    const actions = actionsFor("tile", { ...tile, placementCount: 3 }, env());
+    expect(actions.find((a) => a.label === "Close view everywhere")?.verb).toEqual({
+      kind: "closeView",
+      viewId: "v1",
     });
   });
 

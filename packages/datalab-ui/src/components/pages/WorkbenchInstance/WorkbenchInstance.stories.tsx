@@ -3,7 +3,7 @@ import { WorkbenchInstance } from "./WorkbenchInstance";
 import { fixturesFrom } from "../../../api/fixtures";
 import { readings, census } from "../../../fixtures";
 import { createDefaultGraphic } from "../../../model/graphicAuthoring";
-import { leaf, split } from "../../../store/layout";
+import { split } from "../../../store/layout";
 import { singleStageLayout } from "../../../store/stages";
 import { newId } from "../../../store/world";
 import { AnalysisProvider } from "../../../appkit/AnalysisProvider";
@@ -52,9 +52,13 @@ type Story = StoryObj<typeof meta>;
 
 /** The layout a tour section teaching the grammar would seed. */
 function grammarSpaces() {
-  return singleStageLayout(
-    "build",
-    split("row", split("col", leaf("pipeline"), leaf("encode"), 0.55), leaf("chart"), 0.46),
+  return singleStageLayout("build", (builder) =>
+    split(
+      "row",
+      split("col", builder.leaf("pipeline"), builder.leaf("encode"), 0.55),
+      builder.leaf("chart"),
+      0.46,
+    ),
   );
 }
 
@@ -91,11 +95,15 @@ function seededAuthoringWorld() {
 
 /** Chart beside table, both on one document — the pair §B teaches. */
 function chartAndTable() {
-  return singleStageLayout("look", split("row", leaf("chart"), leaf("table"), 0.55));
+  return singleStageLayout("look", (builder) =>
+    split("row", builder.leaf("chart"), builder.leaf("table"), 0.55),
+  );
 }
 
 function authorAndChart() {
-  return singleStageLayout("author", split("row", leaf("encode"), leaf("chart"), 0.42));
+  return singleStageLayout("author", (builder) =>
+    split("row", builder.leaf("encode"), builder.leaf("chart"), 0.42),
+  );
 }
 
 /**

@@ -77,6 +77,8 @@ export const SingleStage: Story = {
           currentStageId: stage.id,
           spaces: full.spaces.filter((space) => space.stageId === stage.id),
           currentSpaceId: stage.currentSpaceId,
+          views: full.views,
+          viewOrder: full.viewOrder,
         },
       },
     });

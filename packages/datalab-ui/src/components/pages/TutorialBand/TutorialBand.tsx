@@ -260,7 +260,7 @@ function firstLeafOfApp(
   const walk = (node: typeof space.tree): void => {
     if (found) return;
     if (node.type === "leaf") {
-      if (node.app === app) found = node.id;
+      if (layout.views[node.viewId]?.appId === app) found = node.id;
     } else {
       walk(node.a);
       walk(node.b);

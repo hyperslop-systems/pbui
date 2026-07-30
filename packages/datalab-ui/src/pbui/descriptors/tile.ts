@@ -13,8 +13,8 @@ import type { Action } from "../verbs";
  * menu `ObjectMenu.tsx` renders when `actionsFor` returns nothing.
  *
  * **No buttons were added to the tile title bar, and that was the point.** It
- * already holds a drag grip, a title, an application picker and three buttons;
- * duplicate, rename, export and import would make seven controls on a bar 22
+ * already holds a drag grip, a title and three buttons; duplicate, rename,
+ * export and import would make seven controls on a bar 22
  * pixels tall in a tile that may be 200 pixels wide. They are verbs of the
  * tile, the tile is already a presentation, and the object menu is where verbs
  * go.
@@ -32,7 +32,7 @@ export const tileDescriptor: PresentationDescriptor<TileRef> = {
     presentationType: "tile",
     title: tile.title,
     application: tile.app,
-    named: tile.label !== undefined,
+    named: tile.customTitle !== undefined,
     document: tile.docId,
     duplicable: tile.duplicable,
   }),
@@ -40,19 +40,24 @@ export const tileDescriptor: PresentationDescriptor<TileRef> = {
   actions: (tile) => {
     const actions: Action[] = [];
 
-    // The menu entry OPENS the editor; the component supplies the text and
-    // emits `renameTile` on commit. Two verbs rather than one because a menu
-    // entry is serialisable data and cannot reach into a component's state, and
-    // because the trace should say what the user typed rather than only that
-    // they started typing.
     actions.push({
-      label: "Rename this tile …",
-      verb: { kind: "beginRenameTile", nodeId: tile.nodeId },
+      label: "Replace …",
+      verb: { kind: "openReplaceView", placementId: tile.placementId },
+    });
+
+    actions.push({
+      label: "Rename …",
+      verb: { kind: "beginRenameView", placementId: tile.placementId },
+    });
+
+    actions.push({
+      label: "Create linked duplicate",
+      verb: { kind: "createLinkedDuplicate", placementId: tile.placementId },
     });
 
     actions.push({
       label: "Duplicate",
-      verb: { kind: "duplicateTile", nodeId: tile.nodeId },
+      verb: { kind: "duplicateView", placementId: tile.placementId },
       // Shown greyed with the reason rather than hidden: a user who never sees
       // Duplicate on a trace tile does not learn that the trace is the same in
       // every tile, they conclude the feature is missing.
@@ -63,26 +68,26 @@ export const tileDescriptor: PresentationDescriptor<TileRef> = {
 
     actions.push({
       label: "Split right",
-      verb: { kind: "splitTile", nodeId: tile.nodeId, dir: "row" },
+      verb: { kind: "splitTile", nodeId: tile.placementId, dir: "row" },
     });
     actions.push({
       label: "Split below",
-      verb: { kind: "splitTile", nodeId: tile.nodeId, dir: "col" },
+      verb: { kind: "splitTile", nodeId: tile.placementId, dir: "col" },
     });
 
     actions.push({
-      label: "Copy this tile to the clipboard",
-      verb: { kind: "exportTile", nodeId: tile.nodeId },
+      label: "Copy view to clipboard",
+      verb: { kind: "exportTile", nodeId: tile.placementId },
     });
     actions.push({
-      label: "Replace this tile from the clipboard …",
-      verb: { kind: "importIntoTile", nodeId: tile.nodeId },
+      label: "Replace from clipboard …",
+      verb: { kind: "importIntoTile", nodeId: tile.placementId },
     });
     actions.push({
       label: "Save as a template …",
       verb: {
         kind: "storeTemplate",
-        source: { kind: "tile", nodeId: tile.nodeId },
+        source: { kind: "tile", nodeId: tile.placementId },
         name: tile.title,
       },
     });
@@ -90,9 +95,14 @@ export const tileDescriptor: PresentationDescriptor<TileRef> = {
     actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "tile", value: tile } });
 
     actions.push({
-      label: "Close",
-      verb: { kind: "closeTile", nodeId: tile.nodeId },
+      label: "Remove from this workspace",
+      verb: { kind: "removePlacement", placementId: tile.placementId },
       ...(tile.canClose ? {} : { disabledBecause: "the last tile in a workspace cannot close" }),
+    });
+
+    actions.push({
+      label: tile.placementCount > 1 ? "Close view everywhere" : "Close view",
+      verb: { kind: "closeView", viewId: tile.viewId },
     });
 
     return actions;

@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   validate:
@@ -23,8 +24,12 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@hyperslop-systems"
 
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm --workspace-root run typecheck
       - run: pnpm --workspace-root run test
       - run: pnpm --workspace-root run build
@@ -37,6 +42,8 @@ jobs:
       - run: pnpm --filter @hyperslop-systems/datalab-ui build
       - run: pnpm --filter @hyperslop-systems/datalab-ui build-storybook
       - run: pnpm --filter @hyperslop-systems/datalab-ui consumer:smoke
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm --filter @hyperslop-systems/datalab-ui pack --pack-destination ../../.artifacts
 
       - uses: actions/upload-artifact@v4

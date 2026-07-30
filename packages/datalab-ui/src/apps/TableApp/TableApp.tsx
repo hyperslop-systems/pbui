@@ -4,12 +4,13 @@ import { DocBar } from "../../components/molecules";
 import { TablePanel } from "../../components/organisms";
 
 /** The current DuckDB output relation — the container half. */
-function TableApp({ leafId, docId }: AppProps) {
+function TableApp({ view }: AppProps) {
+  const docId = view.documents.primary ?? null;
   const { doc, pipeline, loading } = useDocAnalysisResult(docId);
 
   return (
     <>
-      <DocBar leafId={leafId} docId={docId} />
+      <DocBar viewId={view.id} docId={docId} />
       <TablePanel pipeline={pipeline} docId={doc?.id ?? null} loading={loading} />
     </>
   );

@@ -35,7 +35,7 @@ describe("render failure containment", () => {
     expect(workbench).toContain("<RenderBoundary");
     expect(embedded).toContain("<RenderBoundary");
     expect(tile).toContain("<RenderBoundary");
-    expect(tile.indexOf("<RenderBoundary")).toBeLessThan(tile.indexOf("<Component leafId="));
+    expect(tile.indexOf("<RenderBoundary")).toBeLessThan(tile.indexOf("<Component placementId="));
   });
 });
 

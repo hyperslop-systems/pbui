@@ -56,7 +56,7 @@ describe("the split tree", () => {
 
   test("updateNode shares every untouched subtree", () => {
     const t = tree() as Extract<Node, { type: "split" }>;
-    const next = updateNode(t, t.a.id, (n) => ({ ...n, app: "encode" }) as Node) as Extract<
+    const next = updateNode(t, t.a.id, (n) => ({ ...n, viewId: "encode" }) as Node) as Extract<
       Node,
       { type: "split" }
     >;
@@ -99,10 +99,12 @@ describe("the split tree", () => {
 
 describe("the layout slice", () => {
   const start = (): LayoutState => layout(undefined, { type: "@@init" });
+  const viewAt = (state: LayoutState, node: Node) =>
+    node.type === "leaf" ? state.views[node.viewId] : undefined;
 
   test("the last tile cannot be closed", () => {
     const state = start();
-    const only = (state.spaces[0] as { tree: Node }).tree;
+    const only = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "leaf" }>;
     const next = layout(state, layoutSlice.actions.closeLeaf(only.id));
     expect(countLeaves((next.spaces[0] as { tree: Node }).tree)).toBe(1);
   });
@@ -123,17 +125,23 @@ describe("the layout slice", () => {
     const first = (state.spaces[0] as { tree: Node }).tree.id;
     state = layout(state, layoutSlice.actions.splitLeaf({ nodeId: first, dir: "row" }));
     const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
-    state = layout(state, layoutSlice.actions.setLeafApp({ nodeId: tree.a.id, app: "chart" }));
-    state = layout(state, layoutSlice.actions.setLeafApp({ nodeId: tree.b.id, app: "table" }));
-    state = layout(state, layoutSlice.actions.setLeafDoc({ nodeId: tree.a.id, docId: "climate" }));
-    state = layout(state, layoutSlice.actions.setLeafDoc({ nodeId: tree.b.id, docId: "census" }));
     state = layout(
       state,
-      layoutSlice.actions.renameLeaf({ nodeId: tree.a.id, label: "temperature by station" }),
+      layoutSlice.actions.createViewInPlacement({
+        nodeId: tree.a.id,
+        appId: "chart",
+        docId: "climate",
+        title: "temperature by station",
+      }),
     );
     state = layout(
       state,
-      layoutSlice.actions.renameLeaf({ nodeId: tree.b.id, label: "population by region" }),
+      layoutSlice.actions.createViewInPlacement({
+        nodeId: tree.b.id,
+        appId: "table",
+        docId: "census",
+        title: "population by region",
+      }),
     );
 
     state = layout(state, layoutSlice.actions.swapTiles({ a: tree.a.id, b: tree.b.id }));
@@ -142,51 +150,58 @@ describe("the layout slice", () => {
     // the named view moves together.
     expect(after.a.id).toBe(tree.a.id);
     expect(after.b.id).toBe(tree.b.id);
-    expect(after.a).toMatchObject({
-      app: "table",
-      docId: "census",
-      label: "population by region",
+    expect(viewAt(state, after.a)).toMatchObject({
+      appId: "table",
+      documents: { primary: "census" },
+      title: "population by region",
     });
-    expect(after.b).toMatchObject({
-      app: "chart",
-      docId: "climate",
-      label: "temperature by station",
+    expect(viewAt(state, after.b)).toMatchObject({
+      appId: "chart",
+      documents: { primary: "climate" },
+      title: "temperature by station",
     });
   });
 
-  test("renaming a leaf and then clearing it restores the derived title", () => {
-    // `label: ""` must normalise to `undefined`, so there is one representation
-    // of "no label" and `Tile`'s `node.label ?? derived` sends it back to the
+  test("renaming a view and then clearing it restores the derived title", () => {
+    // `title: ""` must normalise to `undefined`, so there is one representation
+    // of "no title" and `Tile`'s `view.title ?? derived` sends it back to the
     // derived title rather than rendering an empty bar (DR-62).
     let state = start();
-    const only = (state.spaces[0] as { tree: Node }).tree;
+    const only = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "leaf" }>;
     state = layout(
       state,
-      layoutSlice.actions.renameLeaf({ nodeId: only.id, label: "  raw feed  " }),
+      layoutSlice.actions.renameView({ viewId: only.viewId, title: "  raw feed  " }),
     );
-    expect((state.spaces[0] as { tree: Node }).tree).toMatchObject({ label: "raw feed" });
+    expect(state.views[only.viewId]?.title).toBe("raw feed");
 
-    state = layout(state, layoutSlice.actions.renameLeaf({ nodeId: only.id, label: "   " }));
-    expect((state.spaces[0] as { tree: { label?: string } }).tree.label).toBeUndefined();
+    state = layout(state, layoutSlice.actions.renameView({ viewId: only.viewId, title: "   " }));
+    expect(state.views[only.viewId]?.title).toBeUndefined();
   });
 
-  test("duplicating a leaf keeps the document and marks the copy", () => {
+  test("duplicating a view keeps the document and marks the copy", () => {
     // The SAME document, not a copy of it: two tiles on one document stay in
     // lockstep because they read one object rather than two copies.
     let state = start();
     const only = (state.spaces[0] as { tree: Node }).tree;
-    state = layout(state, layoutSlice.actions.setLeafApp({ nodeId: only.id, app: "chart" }));
-    state = layout(state, layoutSlice.actions.setLeafDoc({ nodeId: only.id, docId: "doc-1" }));
-    state = layout(state, layoutSlice.actions.renameLeaf({ nodeId: only.id, label: "raw feed" }));
-    state = layout(state, layoutSlice.actions.duplicateLeaf(only.id));
+    state = layout(
+      state,
+      layoutSlice.actions.createViewInPlacement({
+        nodeId: only.id,
+        appId: "chart",
+        docId: "doc-1",
+        title: "raw feed",
+      }),
+    );
+    state = layout(state, layoutSlice.actions.duplicateView(only.id));
 
     const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
     expect(countLeaves(tree)).toBe(2);
     const a = tree.a as Extract<Node, { type: "leaf" }>;
     const b = tree.b as Extract<Node, { type: "leaf" }>;
-    expect(b.app).toBe("chart");
-    expect(b.docId).toBe(a.docId);
-    expect(b.label).toBe("raw feed (copy)");
+    expect(state.views[b.viewId]?.appId).toBe("chart");
+    expect(state.views[b.viewId]?.documents).toEqual(state.views[a.viewId]?.documents);
+    expect(state.views[b.viewId]?.title).toBe("raw feed (copy)");
+    expect(b.viewId).not.toBe(a.viewId);
     // A duplicate that reused the id would give React duplicate keys AND make
     // the hit-test return the wrong tile — the class of bug DR-12 removes.
     expect(b.id).not.toBe(a.id);
@@ -197,10 +212,131 @@ describe("the layout slice", () => {
     // a label appearing out of nowhere would make the copy look renamed.
     let state = start();
     const only = (state.spaces[0] as { tree: Node }).tree;
-    state = layout(state, layoutSlice.actions.duplicateLeaf(only.id, "col"));
+    state = layout(state, layoutSlice.actions.duplicateView(only.id, "col"));
     const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
     expect(tree.dir).toBe("col");
-    expect((tree.b as { label?: string }).label).toBeUndefined();
+    expect(state.views[(tree.b as Extract<Node, { type: "leaf" }>).viewId]?.title).toBeUndefined();
+  });
+
+  test("a linked duplicate creates a second placement of the same view", () => {
+    let state = start();
+    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
+    state = layout(state, layoutSlice.actions.createLinkedDuplicate(only.id));
+    const tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
+    expect((tree.a as Extract<Node, { type: "leaf" }>).viewId).toBe(
+      (tree.b as Extract<Node, { type: "leaf" }>).viewId,
+    );
+  });
+
+  test("renaming and document changes propagate through linked placements", () => {
+    let state = start();
+    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
+    state = layout(
+      state,
+      layoutSlice.actions.createViewInPlacement({
+        nodeId: only.id,
+        appId: "chart",
+        docId: "doc-a",
+      }),
+    );
+    state = layout(state, layoutSlice.actions.createLinkedDuplicate(only.id));
+    const tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
+    const a = tree.a as Extract<Node, { type: "leaf" }>;
+    const b = tree.b as Extract<Node, { type: "leaf" }>;
+
+    state = layout(
+      state,
+      layoutSlice.actions.renameView({ viewId: b.viewId, title: "shared title" }),
+    );
+    state = layout(
+      state,
+      layoutSlice.actions.setViewDocument({ viewId: b.viewId, docId: "doc-b" }),
+    );
+
+    expect(a.viewId).toBe(b.viewId);
+    expect(state.views[a.viewId]).toMatchObject({
+      title: "shared title",
+      documents: { primary: "doc-b" },
+    });
+  });
+
+  test("an independent duplicate diverges without copying its document", () => {
+    let state = start();
+    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
+    state = layout(
+      state,
+      layoutSlice.actions.createViewInPlacement({
+        nodeId: only.id,
+        appId: "chart",
+        docId: "doc-a",
+      }),
+    );
+    state = layout(state, layoutSlice.actions.duplicateView(only.id));
+    const tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
+    const source = tree.a as Extract<Node, { type: "leaf" }>;
+    const copy = tree.b as Extract<Node, { type: "leaf" }>;
+
+    state = layout(
+      state,
+      layoutSlice.actions.setViewDocument({ viewId: copy.viewId, docId: "doc-b" }),
+    );
+    expect(state.views[source.viewId]?.documents.primary).toBe("doc-a");
+    expect(state.views[copy.viewId]?.documents.primary).toBe("doc-b");
+  });
+
+  test("replacing a placement links an existing view and leaves the old view open", () => {
+    let state = start();
+    const source = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
+    const oldViewId = source.viewId;
+    state = layout(state, layoutSlice.actions.createLinkedDuplicate(source.id));
+    let tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
+    const target = tree.b as Extract<Node, { type: "leaf" }>;
+    state = layout(
+      state,
+      layoutSlice.actions.createViewInPlacement({ nodeId: target.id, appId: "chart" }),
+    );
+    tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
+    const chartViewId = (tree.b as Extract<Node, { type: "leaf" }>).viewId;
+
+    state = layout(
+      state,
+      layoutSlice.actions.replacePlacementWithView({
+        nodeId: (tree.a as Extract<Node, { type: "leaf" }>).id,
+        viewId: chartViewId,
+      }),
+    );
+    const after = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
+    expect((after.a as Extract<Node, { type: "leaf" }>).viewId).toBe(chartViewId);
+    expect((after.b as Extract<Node, { type: "leaf" }>).viewId).toBe(chartViewId);
+    expect(state.views[oldViewId]).toBeDefined();
+  });
+
+  test("removing one linked placement leaves its view and other placement intact", () => {
+    let state = start();
+    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
+    state = layout(state, layoutSlice.actions.createLinkedDuplicate(only.id));
+    const tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
+    const linked = tree.b as Extract<Node, { type: "leaf" }>;
+    state = layout(state, layoutSlice.actions.closeLeaf(linked.id));
+
+    const remaining = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
+    expect(remaining.viewId).toBe(only.viewId);
+    expect(state.views[only.viewId]).toBeDefined();
+  });
+
+  test("closing a view removes all placements and repairs an emptied workspace", () => {
+    let state = start();
+    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
+    state = layout(state, layoutSlice.actions.createLinkedDuplicate(only.id));
+    state = layout(state, layoutSlice.actions.cloneSpace(state.currentSpaceId));
+    state = layout(state, layoutSlice.actions.closeView(only.viewId));
+
+    expect(state.views[only.viewId]).toBeUndefined();
+    for (const space of state.spaces) {
+      expect(countLeaves(space.tree)).toBe(1);
+      const replacement = space.tree as Extract<Node, { type: "leaf" }>;
+      expect(state.views[replacement.viewId]?.appId).toBe("launcher");
+    }
   });
 
   test("docking never leaves the same leaf in two places", () => {
@@ -511,14 +647,70 @@ describe("persistence is defensive", () => {
     stages: unknown[] = [],
     currentStageId = WORK_STAGE_ID,
   ) => ({
-    version: 3,
+    version: 4,
     world: { docs: {}, docOrder: [], snapshots: {} },
-    layout: { stages, currentStageId, spaces, currentSpaceId },
+    layout: {
+      stages,
+      currentStageId,
+      spaces,
+      currentSpaceId,
+      views: { v: { id: "v", appId: "chart", documents: {} } },
+      viewOrder: ["v"],
+    },
   });
 
   test("a payload from another version is refused", () => {
     expect(
       validate({ version: 99, world: {}, layout: { spaces: [], currentSpaceId: "" } }),
+    ).toBeNull();
+  });
+
+  test("a normalized payload with a known view reference is accepted", () => {
+    const tree = { id: "n", type: "leaf", viewId: "v" };
+    const valid = validate(
+      currentPayload([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "s"),
+    );
+    expect(valid?.layout.spaces.find((space) => space.id === "s")?.tree).toEqual(tree);
+    expect(valid?.layout.views.v).toEqual({
+      id: "v",
+      appId: "chart",
+      documents: {},
+    });
+  });
+
+  test("a missing view dictionary is refused", () => {
+    const payload = currentPayload([], "");
+    const { views: _, ...layout } = payload.layout;
+    expect(validate({ ...payload, layout })).toBeNull();
+  });
+
+  test("a view dictionary key that disagrees with its view id is refused", () => {
+    const payload = currentPayload([], "");
+    payload.layout.views.v.id = "another-view";
+    expect(validate(payload)).toBeNull();
+  });
+
+  test("a dangling placement view reference is refused", () => {
+    const tree = { id: "n", type: "leaf", viewId: "missing" };
+    expect(
+      validate(currentPayload([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "s")),
+    ).toBeNull();
+  });
+
+  test("duplicate view-order entries are refused", () => {
+    const payload = currentPayload([], "");
+    expect(
+      validate({
+        ...payload,
+        layout: {
+          ...payload.layout,
+          views: {
+            ...payload.layout.views,
+            second: { id: "second", appId: "table", documents: {} },
+          },
+          viewOrder: ["v", "v"],
+        },
+      }),
     ).toBeNull();
   });
 
@@ -539,8 +731,8 @@ describe("persistence is defensive", () => {
       type: "split",
       dir: "row",
       ratio: 12,
-      a: { id: "a", type: "leaf", app: "chart" },
-      b: { id: "b", type: "leaf", app: "table" },
+      a: { id: "a", type: "leaf", viewId: "v" },
+      b: { id: "b", type: "leaf", viewId: "v" },
     };
     expect(
       validate(currentPayload([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "s")),
@@ -548,7 +740,7 @@ describe("persistence is defensive", () => {
   });
 
   test("a currentSpaceId naming a missing space falls back to the stage's", () => {
-    const tree = { id: "n", type: "leaf", app: "chart" };
+    const tree = { id: "n", type: "leaf", viewId: "v" };
     const valid = validate(
       currentPayload([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "gone"),
     );
@@ -569,7 +761,7 @@ describe("persistence is defensive", () => {
             id: ACCOUNT_SPACE_ID,
             name: "renamed by a user",
             stageId: ACCOUNT_STAGE_ID,
-            tree: { id: "n", type: "leaf", app: "chart" },
+            tree: { id: "n", type: "leaf", viewId: "v" },
           },
         ],
         ACCOUNT_SPACE_ID,
@@ -597,7 +789,7 @@ describe("persistence is defensive", () => {
             id: "mine",
             name: "mine",
             stageId: WORK_STAGE_ID,
-            tree: { id: "n", type: "leaf", app: "chart" },
+            tree: { id: "n", type: "leaf", viewId: "v" },
           },
         ],
         "mine",

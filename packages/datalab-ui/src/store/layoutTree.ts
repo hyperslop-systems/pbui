@@ -1,19 +1,17 @@
-import type { DocId } from "../pbui/types";
-
 export type NodeId = string;
 export type AppId = string;
+export type ViewId = string;
 
 export type Node =
-  | { id: NodeId; type: "leaf"; app: AppId; docId: DocId | null; label?: string }
+  | { id: NodeId; type: "leaf"; viewId: ViewId }
   | { id: NodeId; type: "split"; dir: "row" | "col"; a: Node; b: Node; ratio: number };
 
 export type IdFactory = () => string;
 
-export const leaf = (app: AppId, docId: DocId | null = null, createId: IdFactory): Node => ({
+export const leaf = (viewId: ViewId, createId: IdFactory): Node => ({
   id: createId(),
   type: "leaf",
-  app,
-  docId,
+  viewId,
 });
 
 export const split = (
@@ -61,6 +59,17 @@ export function findLeaf(node: Node, id: NodeId): Node | null {
 
 export function countLeaves(node: Node): number {
   return node.type === "leaf" ? 1 : countLeaves(node.a) + countLeaves(node.b);
+}
+
+/** Remove every placement of one logical view, collapsing empty split branches. */
+export function removeViewLeaves(node: Node, viewId: ViewId): Node | null {
+  if (node.type === "leaf") return node.viewId === viewId ? null : node;
+  const a = removeViewLeaves(node.a, viewId);
+  const b = removeViewLeaves(node.b, viewId);
+  if (!a) return b;
+  if (!b) return a;
+  if (a === node.a && b === node.b) return node;
+  return { ...node, a, b };
 }
 
 /** Deep-copy a layout tree, minting an id for every copied node. */

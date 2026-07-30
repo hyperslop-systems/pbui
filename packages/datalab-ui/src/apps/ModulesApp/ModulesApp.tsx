@@ -1,7 +1,8 @@
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { useTourContent } from "../../appkit/TourContent";
-import { layoutActions } from "../../store/layout";
+import type { RootState } from "../../store";
+import { findLeaf, layoutActions, primaryDocId } from "../../store/layout";
 import { ModuleRack } from "../../components/organisms";
 import { EmptyState } from "@hyperslop-systems/pbui";
 
@@ -18,6 +19,14 @@ import { EmptyState } from "@hyperslop-systems/pbui";
 function ModulesApp(_props: AppProps) {
   const dispatch = useDispatch();
   const { modules, rackTarget } = useTourContent();
+  const rackDocId = useSelector((state: RootState) => {
+    if (!rackTarget) return null;
+    const space = state.layout.spaces.find(
+      (candidate) => candidate.id === state.layout.currentSpaceId,
+    );
+    const placement = space ? findLeaf(space.tree, rackTarget) : null;
+    return placement?.type === "leaf" ? primaryDocId(state.layout.views[placement.viewId]) : null;
+  });
 
   if (!modules || modules.length === 0) {
     return (
@@ -33,7 +42,14 @@ function ModulesApp(_props: AppProps) {
       modules={modules}
       onSelect={
         rackTarget
-          ? (app) => dispatch(layoutActions.setLeafApp({ nodeId: rackTarget, app }))
+          ? (appId) =>
+              dispatch(
+                layoutActions.createViewInPlacement({
+                  nodeId: rackTarget,
+                  appId,
+                  docId: rackDocId,
+                }),
+              )
           : undefined
       }
     />

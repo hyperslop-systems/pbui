@@ -3,7 +3,7 @@ import { parseBundle } from "../src/model/portable";
 import { actionsForVerb } from "../src/store/applyVerb";
 import type { ClipboardPort } from "../src/store/clipboard";
 import { makeStore, type AppThunk } from "../src/store";
-import { layoutActions, leaf, split, type LayoutState, type Node } from "../src/store/layout";
+import { layoutActions, split, type LayoutState, type Node } from "../src/store/layout";
 import { save } from "../src/store/persist";
 import { singleStageLayout } from "../src/store/stages";
 import type { PbuiEnvironment } from "../src/pbui/types";
@@ -44,9 +44,13 @@ function fakeClipboard(readValue: string | null = null): ClipboardPort & { writt
 
 /** A workspace with one chart tile on one document. */
 function oneChartTile(): { layout: LayoutState; nodeId: string } {
-  const tile = leaf("chart");
-  const layout = singleStageLayout("build", split("row", tile, leaf("table"), 0.5));
-  return { layout, nodeId: tile.id };
+  let nodeId = "";
+  const layout = singleStageLayout("build", (builder) => {
+    const tile = builder.leaf("chart");
+    nodeId = tile.id;
+    return split("row", tile, builder.leaf("table"), 0.5);
+  });
+  return { layout, nodeId };
 }
 
 function perform(store: ReturnType<typeof makeStore>, verb: Parameters<typeof actionsForVerb>[0]) {
@@ -71,7 +75,7 @@ describe("exporting is testable with no DOM", () => {
     const text = clipboard.written[0] as string;
     const parsed = parseBundle(text, "tile");
     expect(parsed.ok).toBe(true);
-    expect(JSON.parse(text).payload.app).toBe("chart");
+    expect(JSON.parse(text).payload.view.app).toBe("chart");
     // DR-64, asserted at the seam rather than only in portable.test.ts.
     expect(text).not.toContain(nodeId);
   });
@@ -213,7 +217,22 @@ describe("importing never depends on reading the clipboard", () => {
     // one and the import has something to mint.
     const source = makeStore({ preloaded: { layout }, clipboard });
     const doc = source.getState().world.docOrder[0] as string;
-    source.dispatch(layoutActions.setLeafDoc({ nodeId, docId: doc }));
+    const sourceLeaf = source
+      .getState()
+      .layout.spaces.flatMap((space) => {
+        const out: Array<Extract<Node, { type: "leaf" }>> = [];
+        const walk = (node: Node): void => {
+          if (node.type === "leaf") out.push(node);
+          else {
+            walk(node.a);
+            walk(node.b);
+          }
+        };
+        walk(space.tree);
+        return out;
+      })
+      .find((node) => node.id === nodeId)!;
+    source.dispatch(layoutActions.setViewDocument({ viewId: sourceLeaf.viewId, docId: doc }));
     const [exportEffect] = perform(source, { kind: "exportTile", nodeId });
     await source.dispatch(exportEffect as AppThunk<Promise<unknown>>);
     const text = clipboard.written[0] as string;
@@ -240,11 +259,12 @@ describe("importing never depends on reading the clipboard", () => {
     const replaced = tree.a as Extract<Node, { type: "leaf" }>;
     // The TARGET's node id is kept: the tile is being re-pointed, not replaced.
     expect(replaced.id).toBe(targetNode);
-    expect(replaced.app).toBe("chart");
-    expect(replaced.docId).not.toBeNull();
+    const importedView = target.getState().layout.views[replaced.viewId]!;
+    expect(importedView.appId).toBe("chart");
+    expect(importedView.documents.primary).toBeDefined();
     // A fresh document, not the exporting store's id.
-    expect(replaced.docId).not.toBe(doc);
-    expect(Object.keys(target.getState().world.docs)).toContain(replaced.docId as string);
+    expect(importedView.documents.primary).not.toBe(doc);
+    expect(Object.keys(target.getState().world.docs)).toContain(importedView.documents.primary);
     // And the dialog is closed.
     expect(target.getState().layout.pendingImport).toBeNull();
   });

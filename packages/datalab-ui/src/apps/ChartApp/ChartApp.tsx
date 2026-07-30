@@ -18,7 +18,8 @@ import styles from "./ChartApp.module.css";
  * The debounce is load-bearing. Without it a divider drag re-runs `buildPlot`
  * over the whole table twenty times a second.
  */
-function ChartApp({ leafId, docId }: AppProps) {
+function ChartApp({ view }: AppProps) {
+  const docId = view.documents.primary ?? null;
   const container = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 640, height: 360 });
 
@@ -52,7 +53,7 @@ function ChartApp({ leafId, docId }: AppProps) {
 
   return (
     <>
-      <DocBar leafId={leafId} docId={docId} />
+      <DocBar viewId={view.id} docId={docId} />
       <AppBody className={styles.body}>
         {/* The measuring container stays here: the size feeds buildPlot, which
             is a container concern. Everything below it is presentational. */}

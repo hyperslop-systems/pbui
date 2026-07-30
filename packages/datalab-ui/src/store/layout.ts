@@ -7,17 +7,27 @@ import {
   findLeaf,
   leaf as createLeaf,
   removeLeaf,
+  removeViewLeaves,
   SNAP_RATIOS,
   SNAP_TOLERANCE,
   snapRatio,
   split as createSplit,
   updateNode,
 } from "./layoutTree";
-import type { AppId, Node, NodeId } from "./layoutTree";
+import type { AppId, Node, NodeId, ViewId } from "./layoutTree";
 import { newId } from "./world";
 
-export { countLeaves, findLeaf, removeLeaf, SNAP_RATIOS, SNAP_TOLERANCE, snapRatio, updateNode };
-export type { AppId, Node, NodeId } from "./layoutTree";
+export {
+  countLeaves,
+  findLeaf,
+  removeLeaf,
+  removeViewLeaves,
+  SNAP_RATIOS,
+  SNAP_TOLERANCE,
+  snapRatio,
+  updateNode,
+};
+export type { AppId, Node, NodeId, ViewId } from "./layoutTree";
 
 /**
  * The window manager's state: workspaces, each a binary split tree.
@@ -30,6 +40,82 @@ export type { AppId, Node, NodeId } from "./layoutTree";
  */
 
 export type StageId = string;
+
+export type DocumentBindings = Record<string, DocId>;
+
+/**
+ * One logical open application, independent of every workspace rectangle that
+ * presents it.
+ *
+ * The first implementation intentionally carries only the fields PBUI already
+ * has: application, primary document and optional title. `documents` is named
+ * rather than an array so a later two-document application can add meaningful
+ * roles without changing the identity model.
+ */
+export interface AppView {
+  id: ViewId;
+  appId: AppId;
+  documents: DocumentBindings;
+  title?: string;
+}
+
+export interface LayoutBuilder {
+  readonly views: Record<ViewId, AppView>;
+  readonly viewOrder: ViewId[];
+  leaf(appId: AppId, docId?: DocId | null, title?: string): Node;
+  singleton(appId: AppId): Node;
+}
+
+/**
+ * Build seeded layouts while registering logical views separately from their
+ * placements. `singleton` reuses one logical view for every placement of a
+ * world-scoped application.
+ */
+export function createLayoutBuilder(): LayoutBuilder {
+  const views: Record<ViewId, AppView> = {};
+  const viewOrder: ViewId[] = [];
+  const singletons = new Map<AppId, ViewId>();
+
+  const place = (viewId: ViewId): Node => createLeaf(viewId, newId);
+
+  return {
+    views,
+    viewOrder,
+    leaf(appId: AppId, docId: DocId | null = null, title?: string): Node {
+      const id = newId();
+      views[id] = {
+        id,
+        appId,
+        documents: docId ? { primary: docId } : {},
+        ...(title ? { title } : {}),
+      };
+      viewOrder.push(id);
+      return place(id);
+    },
+    singleton(appId: AppId): Node {
+      const existing = singletons.get(appId);
+      if (existing) return place(existing);
+      const id = newId();
+      views[id] = { id, appId, documents: {} };
+      viewOrder.push(id);
+      singletons.set(appId, id);
+      return place(id);
+    },
+  };
+}
+
+export function primaryDocId(view: AppView | undefined): DocId | null {
+  return view?.documents.primary ?? null;
+}
+
+function appView(id: ViewId, appId: AppId, docId: DocId | null = null, title?: string): AppView {
+  return {
+    id,
+    appId,
+    documents: docId ? { primary: docId } : {},
+    ...(title ? { title } : {}),
+  };
+}
 
 /**
  * A leaf's optional user-chosen name (DATADROP-8 DR-62).
@@ -177,8 +263,14 @@ export interface LayoutState {
   spaces: Workspace[];
   /** Mirrors the current stage's `currentSpaceId`. See `Stage.currentSpaceId`. */
   currentSpaceId: string;
+  /** Logical application views; workspace leaves reference these by id. */
+  views: Record<ViewId, AppView>;
+  /** Stable ordering for launcher and Replace results. */
+  viewOrder: ViewId[];
   /** Non-null while an import dialog is open. Never persisted. */
   pendingImport?: PendingImport | null;
+  /** Placement whose Replace switcher is open. Never persisted. */
+  replacingId?: NodeId | null;
   /**
    * The result of the last export, until it is dismissed. Never persisted.
    *
@@ -190,7 +282,7 @@ export interface LayoutState {
    */
   notice?: { ok: boolean; title: string; body: string } | null;
   /**
-   * The tile or workspace whose name is being edited, or null.
+   * The tile placement or workspace whose name is being edited, or null.
    *
    * In the store rather than in the component, because the *menu* has to be
    * able to start a rename and a menu entry is a serialisable verb — it cannot
@@ -217,7 +309,8 @@ export interface LayoutState {
   justSignedUp?: boolean;
 }
 
-export const leaf = (app: AppId, docId: DocId | null = null): Node => createLeaf(app, docId, newId);
+/** Create a placement for an already-registered logical view. */
+export const leaf = (viewId: ViewId): Node => createLeaf(viewId, newId);
 
 export const split = (dir: "row" | "col", a: Node, b: Node, ratio = 0.5): Node =>
   createSplit(dir, a, b, ratio, newId);
@@ -234,8 +327,14 @@ export const cloneTree = (node: Node): Node => cloneLayoutTree(node, newId);
  * `store/stages.ts`.
  */
 export const initialLayout = (): LayoutState => {
+  const builder = createLayoutBuilder();
   const stageId = newId();
-  const space: Workspace = { id: newId(), name: "build", tree: leaf("launcher"), stageId };
+  const space: Workspace = {
+    id: newId(),
+    name: "build",
+    tree: builder.leaf("launcher"),
+    stageId,
+  };
   return {
     stages: [
       {
@@ -249,6 +348,8 @@ export const initialLayout = (): LayoutState => {
     currentStageId: stageId,
     spaces: [space],
     currentSpaceId: space.id,
+    views: builder.views,
+    viewOrder: builder.viewOrder,
   };
 };
 
@@ -285,6 +386,18 @@ function mutateTree(state: LayoutState, fn: (tree: Node) => Node) {
   if (space) space.tree = fn(space.tree);
 }
 
+function addView(state: LayoutState, view: AppView): void {
+  state.views[view.id] = view;
+  state.viewOrder.push(view.id);
+}
+
+function viewForPlacement(state: LayoutState, nodeId: NodeId): AppView | undefined {
+  const space = current(state);
+  if (!space) return undefined;
+  const node = findLeaf(space.tree, nodeId);
+  return node?.type === "leaf" ? state.views[node.viewId] : undefined;
+}
+
 export const layoutSlice = createSlice({
   name: "layout",
   initialState: initialLayout(),
@@ -297,12 +410,40 @@ export const layoutSlice = createSlice({
       );
     },
 
-    splitLeaf(state, action: PayloadAction<{ nodeId: NodeId; dir: "row" | "col" }>) {
-      mutateTree(state, (tree) =>
-        updateNode(tree, action.payload.nodeId, (node) =>
-          split(action.payload.dir, node, leaf("launcher")),
-        ),
-      );
+    splitLeaf: {
+      reducer(
+        state,
+        action: PayloadAction<{
+          nodeId: NodeId;
+          dir: "row" | "col";
+          view: AppView;
+          placementId: NodeId;
+          splitId: NodeId;
+        }>,
+      ) {
+        addView(state, action.payload.view);
+        mutateTree(state, (tree) =>
+          updateNode(tree, action.payload.nodeId, (node) => ({
+            id: action.payload.splitId,
+            type: "split",
+            dir: action.payload.dir,
+            a: node,
+            b: { id: action.payload.placementId, type: "leaf", viewId: action.payload.view.id },
+            ratio: 0.5,
+          })),
+        );
+      },
+      prepare(input: { nodeId: NodeId; dir: "row" | "col" }) {
+        const viewId = newId();
+        return {
+          payload: {
+            ...input,
+            view: appView(viewId, "launcher"),
+            placementId: newId(),
+            splitId: newId(),
+          },
+        };
+      },
     },
 
     closeLeaf(state, action: PayloadAction<NodeId>) {
@@ -312,13 +453,80 @@ export const layoutSlice = createSlice({
       space.tree = removeLeaf(space.tree, action.payload);
     },
 
-    setLeafApp(state, action: PayloadAction<{ nodeId: NodeId; app: AppId; docId?: DocId | null }>) {
-      mutateTree(state, (tree) =>
-        updateNode(tree, action.payload.nodeId, (node) =>
-          node.type === "leaf"
-            ? { ...node, app: action.payload.app, docId: action.payload.docId ?? node.docId }
-            : node,
-        ),
+    closeView: {
+      reducer(state, action: PayloadAction<{ viewId: ViewId; fallbackView: AppView }>) {
+        if (!state.views[action.payload.viewId]) return;
+        const repaired = state.spaces.map((space) => ({
+          space,
+          tree: removeViewLeaves(space.tree, action.payload.viewId),
+        }));
+        let fallbackId: ViewId | undefined;
+        if (repaired.some(({ tree }) => tree === null)) {
+          fallbackId = state.viewOrder.find(
+            (id) => id !== action.payload.viewId && state.views[id]?.appId === "launcher",
+          );
+          if (!fallbackId) {
+            addView(state, action.payload.fallbackView);
+            fallbackId = action.payload.fallbackView.id;
+          }
+        }
+
+        for (const item of repaired) {
+          item.space.tree = item.tree ?? {
+            id: item.space.tree.id,
+            type: "leaf",
+            viewId: fallbackId as ViewId,
+          };
+        }
+        delete state.views[action.payload.viewId];
+        state.viewOrder = state.viewOrder.filter((id) => id !== action.payload.viewId);
+        state.renamingId = null;
+        state.replacingId = null;
+      },
+      prepare(viewId: ViewId) {
+        const fallbackId = newId();
+        return {
+          payload: { viewId, fallbackView: appView(fallbackId, "launcher") },
+        };
+      },
+    },
+
+    createViewInPlacement: {
+      reducer(
+        state,
+        action: PayloadAction<{
+          nodeId: NodeId;
+          view: AppView;
+        }>,
+      ) {
+        const space = current(state);
+        if (!space) return;
+        const placement = findLeaf(space.tree, action.payload.nodeId);
+        if (placement?.type !== "leaf") return;
+        addView(state, action.payload.view);
+        space.tree = updateNode(space.tree, action.payload.nodeId, (node) =>
+          node.type === "leaf" ? { ...node, viewId: action.payload.view.id } : node,
+        );
+      },
+      prepare(input: { nodeId: NodeId; appId: AppId; docId?: DocId | null; title?: string }) {
+        const id = newId();
+        return {
+          payload: {
+            nodeId: input.nodeId,
+            view: appView(id, input.appId, input.docId ?? null, input.title),
+          },
+        };
+      },
+    },
+
+    replacePlacementWithView(state, action: PayloadAction<{ nodeId: NodeId; viewId: ViewId }>) {
+      if (!state.views[action.payload.viewId]) return;
+      const space = current(state);
+      if (!space) return;
+      const placement = findLeaf(space.tree, action.payload.nodeId);
+      if (placement?.type !== "leaf") return;
+      space.tree = updateNode(space.tree, action.payload.nodeId, (node) =>
+        node.type === "leaf" ? { ...node, viewId: action.payload.viewId } : node,
       );
     },
 
@@ -331,14 +539,13 @@ export const layoutSlice = createSlice({
      * so there is exactly one representation of "no label" in state, and read
      * with `??` rather than `||` at the other end.
      */
-    renameLeaf(state, action: PayloadAction<{ nodeId: NodeId; label: string }>) {
+    renameView(state, action: PayloadAction<{ viewId: ViewId; title: string }>) {
       state.renamingId = null;
-      const label = action.payload.label.trim();
-      mutateTree(state, (tree) =>
-        updateNode(tree, action.payload.nodeId, (node) =>
-          node.type === "leaf" ? { ...node, label: label || undefined } : node,
-        ),
-      );
+      const view = state.views[action.payload.viewId];
+      if (!view) return;
+      const title = action.payload.title.trim();
+      if (title) view.title = title;
+      else delete view.title;
     },
 
     /**
@@ -356,18 +563,32 @@ export const layoutSlice = createSlice({
      * wants the closest-to-square split measures in `Tile` and passes it. A
      * getBoundingClientRect does not belong in a reducer.
      */
-    duplicateLeaf: {
+    duplicateView: {
       reducer(
         state,
-        action: PayloadAction<{ nodeId: NodeId; id: NodeId; splitId: NodeId; dir: "row" | "col" }>,
+        action: PayloadAction<{
+          nodeId: NodeId;
+          viewId: ViewId;
+          placementId: NodeId;
+          splitId: NodeId;
+          dir: "row" | "col";
+        }>,
       ) {
+        const sourceView = viewForPlacement(state, action.payload.nodeId);
+        if (!sourceView) return;
+        addView(state, {
+          ...sourceView,
+          id: action.payload.viewId,
+          documents: { ...sourceView.documents },
+          ...(sourceView.title ? { title: `${sourceView.title} (copy)` } : {}),
+        });
         mutateTree(state, (tree) =>
           updateNode(tree, action.payload.nodeId, (node) => {
             if (node.type !== "leaf") return node;
             const copy: Node = {
-              ...node,
-              id: action.payload.id,
-              label: node.label ? `${node.label} (copy)` : undefined,
+              id: action.payload.placementId,
+              type: "leaf",
+              viewId: action.payload.viewId,
             };
             return {
               id: action.payload.splitId,
@@ -381,21 +602,63 @@ export const layoutSlice = createSlice({
         );
       },
       prepare(nodeId: NodeId, dir: "row" | "col" = "row") {
-        // BOTH ids are minted by the caller, as `duplicateDoc`'s is, so the
-        // reducer is a pure function of its payload and a replayed action
-        // rebuilds the identical tree. `splitLeaf` above predates the rule and
-        // still mints inside; it should be brought into line, and is not part
-        // of this ticket.
-        return { payload: { nodeId, id: newId(), splitId: newId(), dir } };
+        return {
+          payload: {
+            nodeId,
+            viewId: newId(),
+            placementId: newId(),
+            splitId: newId(),
+            dir,
+          },
+        };
       },
     },
 
-    setLeafDoc(state, action: PayloadAction<{ nodeId: NodeId; docId: DocId | null }>) {
-      mutateTree(state, (tree) =>
-        updateNode(tree, action.payload.nodeId, (node) =>
-          node.type === "leaf" ? { ...node, docId: action.payload.docId } : node,
-        ),
-      );
+    createLinkedDuplicate: {
+      reducer(
+        state,
+        action: PayloadAction<{
+          nodeId: NodeId;
+          placementId: NodeId;
+          splitId: NodeId;
+          dir: "row" | "col";
+        }>,
+      ) {
+        mutateTree(state, (tree) =>
+          updateNode(tree, action.payload.nodeId, (node) => {
+            if (node.type !== "leaf") return node;
+            const linked: Node = {
+              id: action.payload.placementId,
+              type: "leaf",
+              viewId: node.viewId,
+            };
+            return {
+              id: action.payload.splitId,
+              type: "split",
+              dir: action.payload.dir,
+              a: node,
+              b: linked,
+              ratio: 0.5,
+            };
+          }),
+        );
+      },
+      prepare(nodeId: NodeId, dir: "row" | "col" = "row") {
+        return {
+          payload: { nodeId, placementId: newId(), splitId: newId(), dir },
+        };
+      },
+    },
+
+    setViewDocument(
+      state,
+      action: PayloadAction<{ viewId: ViewId; role?: string; docId: DocId | null }>,
+    ) {
+      const view = state.views[action.payload.viewId];
+      if (!view) return;
+      const role = action.payload.role ?? "primary";
+      if (action.payload.docId) view.documents[role] = action.payload.docId;
+      else delete view.documents[role];
     },
 
     /**
@@ -416,12 +679,12 @@ export const layoutSlice = createSlice({
       const first = findLeaf(space.tree, action.payload.a);
       const second = findLeaf(space.tree, action.payload.b);
       if (!first || !second || first.type !== "leaf" || second.type !== "leaf") return;
-      const firstView = { app: first.app, docId: first.docId, label: first.label };
-      const secondView = { app: second.app, docId: second.docId, label: second.label };
       space.tree = updateNode(
-        updateNode(space.tree, action.payload.a, (n) => ({ ...n, ...secondView })),
+        updateNode(space.tree, action.payload.a, (n) =>
+          n.type === "leaf" ? { ...n, viewId: second.viewId } : n,
+        ),
         action.payload.b,
-        (n) => ({ ...n, ...firstView }),
+        (n) => (n.type === "leaf" ? { ...n, viewId: first.viewId } : n),
       );
     },
 
@@ -452,12 +715,16 @@ export const layoutSlice = createSlice({
     },
 
     addSpace: {
-      reducer(state, action: PayloadAction<{ id: string; name: string; stageId?: StageId }>) {
+      reducer(
+        state,
+        action: PayloadAction<{ id: string; name: string; stageId?: StageId; view: AppView }>,
+      ) {
         const stageId = action.payload.stageId ?? state.currentStageId;
+        addView(state, action.payload.view);
         state.spaces.push({
           id: action.payload.id,
           name: action.payload.name,
-          tree: leaf("launcher"),
+          tree: leaf(action.payload.view.id),
           stageId,
         });
         // A new workspace in ANOTHER stage does not steal the pointer: the user
@@ -466,7 +733,15 @@ export const layoutSlice = createSlice({
         if (stageId === state.currentStageId) syncSpacePointer(state, action.payload.id);
       },
       prepare(name?: string, stageId?: StageId) {
-        return { payload: { id: newId(), name: name ?? "workspace", stageId } };
+        const viewId = newId();
+        return {
+          payload: {
+            id: newId(),
+            name: name ?? "workspace",
+            stageId,
+            view: appView(viewId, "launcher"),
+          },
+        };
       },
     },
 
@@ -550,15 +825,18 @@ export const layoutSlice = createSlice({
           name: string;
           apps: AppId[] | null;
           chrome: StageChrome;
+          view: AppView;
         }>,
       ) {
-        const { id, spaceId, name, apps, chrome } = action.payload;
-        state.spaces.push({ id: spaceId, name: "build", tree: leaf("launcher"), stageId: id });
+        const { id, spaceId, name, apps, chrome, view } = action.payload;
+        addView(state, view);
+        state.spaces.push({ id: spaceId, name: "build", tree: leaf(view.id), stageId: id });
         state.stages.push({ id, name, apps, chrome, currentSpaceId: spaceId });
         state.currentStageId = id;
         syncSpacePointer(state, spaceId);
       },
       prepare(name: string, apps: readonly AppId[] | null = null, chrome?: StageChrome) {
+        const viewId = newId();
         return {
           payload: {
             id: newId(),
@@ -566,6 +844,7 @@ export const layoutSlice = createSlice({
             name,
             apps: apps === null ? null : [...apps],
             chrome: chrome ?? { masthead: true, workspaces: true, stageBar: true },
+            view: appView(viewId, "launcher"),
           },
         };
       },
@@ -633,6 +912,10 @@ export const layoutSlice = createSlice({
       state.renamingId = action.payload;
     },
 
+    beginReplace(state, action: PayloadAction<NodeId | null>) {
+      state.replacingId = action.payload;
+    },
+
     /** Record that this browser has just completed a first sign-in (DR-96). */
     setJustSignedUp(state, action: PayloadAction<boolean>) {
       state.justSignedUp = action.payload;
@@ -664,8 +947,17 @@ export const layoutSlice = createSlice({
      */
     replaceLeafFromBundle(
       state,
-      action: PayloadAction<{ nodeId: NodeId; leaf: Extract<Node, { type: "leaf" }> }>,
+      action: PayloadAction<{
+        nodeId: NodeId;
+        leaf: Extract<Node, { type: "leaf" }>;
+        views: Record<ViewId, AppView>;
+        viewOrder: ViewId[];
+      }>,
     ) {
+      for (const id of action.payload.viewOrder) {
+        const view = action.payload.views[id];
+        if (view) addView(state, view);
+      }
       mutateTree(state, (tree) =>
         updateNode(tree, action.payload.nodeId, (node) =>
           // The TARGET's id is kept, not the hydrated leaf's. The tile stays the
@@ -677,17 +969,40 @@ export const layoutSlice = createSlice({
       state.pendingImport = null;
     },
 
-    insertWorkspaceFromBundle(state, action: PayloadAction<{ space: Workspace }>) {
+    insertWorkspaceFromBundle(
+      state,
+      action: PayloadAction<{
+        space: Workspace;
+        views: Record<ViewId, AppView>;
+        viewOrder: ViewId[];
+      }>,
+    ) {
       const space = action.payload.space;
       if (!state.stages.some((s) => s.id === space.stageId)) return;
+      for (const id of action.payload.viewOrder) {
+        const view = action.payload.views[id];
+        if (view) addView(state, view);
+      }
       state.spaces.push(space);
       if (space.stageId === state.currentStageId) syncSpacePointer(state, space.id);
       state.pendingImport = null;
     },
 
-    insertStageFromBundle(state, action: PayloadAction<{ stage: Stage; spaces: Workspace[] }>) {
+    insertStageFromBundle(
+      state,
+      action: PayloadAction<{
+        stage: Stage;
+        spaces: Workspace[];
+        views: Record<ViewId, AppView>;
+        viewOrder: ViewId[];
+      }>,
+    ) {
       const { stage, spaces } = action.payload;
       if (spaces.length === 0) return;
+      for (const id of action.payload.viewOrder) {
+        const view = action.payload.views[id];
+        if (view) addView(state, view);
+      }
       state.stages.push({ ...stage, currentSpaceId: (spaces[0] as Workspace).id });
       state.spaces.push(...spaces);
       state.currentStageId = stage.id;

@@ -297,12 +297,14 @@ function LayoutObjects() {
             reference={{
               type: "tile",
               value: {
-                nodeId: "n1",
+                placementId: "n1",
+                viewId: "v1",
                 app: "chart",
                 title: "chart · α",
                 docId: "d1",
                 duplicable: true,
                 canClose: true,
+                placementCount: 1,
               },
             }}
             doc="<tile> chart · α"
@@ -319,12 +321,14 @@ function LayoutObjects() {
             reference={{
               type: "tile",
               value: {
-                nodeId: "n2",
+                placementId: "n2",
+                viewId: "v2",
                 app: "trace",
                 title: "trace",
                 docId: null,
                 duplicable: false,
                 canClose: false,
+                placementCount: 1,
               },
             }}
             doc="<tile> trace"
