@@ -60,3 +60,13 @@ Validated the launcher quick-search design with strict docmgr checks and uploade
 ### Related Files
 
 - ttmp/2026/07/30/DATALAB-VIEW-001--separate-application-views-from-workspace-tile-placements/design-doc/02-launcher-quick-search-modal-workspace-grouping-and-keyboard-routing.md — Uploaded launcher modal and keyboard-routing design
+
+## 2026-07-30
+
+Added a consumer migration playbook distinguishing unaffected PBUI/public Datalab consumers from saved-state, portable-bundle, template, and internal-source migrations; documented the recommended clear-state path and optional offline v3-to-v4 and v2-to-v3 conversions without adding runtime compatibility code.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/index.ts — Stable public API boundary
+- /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/model/portable.ts — Portable bundle migration boundary
+- /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/store/persist.ts — Persistence migration boundary

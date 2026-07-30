@@ -42,6 +42,7 @@ existing views.
 
 - [Detailed implementation guide](design-doc/01-application-views-linked-tile-placements-launcher-and-replacement-switcher-implementation-guide.md)
 - [Launcher quick-search and keyboard-routing design](design-doc/02-launcher-quick-search-modal-workspace-grouping-and-keyboard-routing.md)
+- [Consumer migration playbook](playbook/01-migrating-datalab-consumers-to-application-views-and-tile-placements.md)
 - [Investigation diary](reference/01-investigation-diary.md)
 - **Related Files**: See frontmatter RelatedFiles field
 - **External Sources**: See frontmatter ExternalSources field

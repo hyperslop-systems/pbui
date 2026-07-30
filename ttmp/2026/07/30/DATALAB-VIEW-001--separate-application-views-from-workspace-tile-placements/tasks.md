@@ -40,3 +40,4 @@
 - [ ] Implement pure launcher index, grouping, query parsing, and tests <!-- t:qcuy -->
 - [ ] Implement modal Launcher and Replace entry points <!-- t:l3kd -->
 - [ ] Implement active placement and workbench-scoped Mod+K navigation <!-- t:p6q3 -->
+- [x] Document consumer impact and migration procedures for normalized application views <!-- t:9ybl -->
