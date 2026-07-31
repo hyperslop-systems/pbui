@@ -341,7 +341,12 @@ export function createWorkbenchClient(config: ClientConfig): WorkbenchClient {
 
     if (singleton) {
       const existing = viewsOfApp(doc, appId)[0];
-      if (existing && existing.id !== currentViewId) {
+      // Already showing it: nothing to do. Falling through would mint a SECOND
+      // view for the singleton — the structural applier here accepts that, but
+      // `pkg/workbench`'s Validate rejects the batch as `duplicate_singleton`,
+      // so the optimistic document would sit invalid until conflict repair.
+      if (existing && existing.id === currentViewId) return [];
+      if (existing) {
         const mutations = [
           mutation({
             case: "placementReplace",

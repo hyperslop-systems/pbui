@@ -93,6 +93,14 @@ describe("createWorkbenchClient", () => {
     expect(next.views["view-launcher"]).toBeUndefined();
   });
 
+  it("replaceApp is a no-op when the placement already holds the singleton", () => {
+    // Falling through would emit a second viewCreate for `chart`; the Go
+    // validator rejects that batch as duplicate_singleton, so the optimistic
+    // document would go invalid until conflict repair.
+    const doc = baseDocument();
+    expect(client.replaceApp(doc, "placement-a", "chart", true)).toEqual([]);
+  });
+
   it("splitPlacement opens a launcher pane beside the placement", () => {
     const doc = baseDocument();
     const next = applyMutations(doc, client.splitPlacement(doc, "placement-a", "row"));

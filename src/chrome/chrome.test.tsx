@@ -12,8 +12,18 @@ import { registeredTileCount, useTileDrag, zoneFor } from "./useTileDrag";
 
 afterEach(cleanup);
 
-function box(width: number, height: number): DOMRect {
-  return { left: 0, top: 0, right: width, bottom: height, width, height, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+function box(width: number, height: number, left = 0): DOMRect {
+  return {
+    left,
+    top: 0,
+    right: left + width,
+    bottom: height,
+    width,
+    height,
+    x: left,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect;
 }
 
 describe("zoneFor (DR-U4: the banded geometry)", () => {
@@ -54,6 +64,107 @@ describe("useTileDrag registry", () => {
     expect(registeredTileCount()).toBe(before + 1);
     cleanup();
     expect(registeredTileCount()).toBe(before);
+  });
+});
+
+/**
+ * A drag that outlives its release is the failure this suite guards: the
+ * pointer goes up outside the browser window, no `pointerup` arrives, and the
+ * NEXT click lands on a still-armed drag and swaps two tiles the user never
+ * touched. Only a real `pointerup` may commit.
+ */
+describe("useTileDrag lifecycle", () => {
+  function DragTile({
+    id,
+    left,
+    onSwap,
+    onDock,
+  }: {
+    id: string;
+    left: number;
+    onSwap: (a: string, b: string) => void;
+    onDock: (a: string, b: string, zone: string) => void;
+  }) {
+    const drag = useTileDrag({ id, onSwap, onDock });
+    return (
+      <section
+        ref={(element) => {
+          // jsdom has no layout; the hit test needs a rect to classify.
+          if (element)
+            element.getBoundingClientRect = () =>
+              box(100, 100, left) as DOMRect;
+          drag.register(element);
+        }}
+        data-placement-id={id}
+      >
+        <button type="button" data-testid={`grip-${id}`} onPointerDown={drag.onGripPointerDown} />
+      </section>
+    );
+  }
+
+  function setup() {
+    const onSwap = vi.fn();
+    const onDock = vi.fn();
+    const view = render(
+      <>
+        <DragTile id="live-a" left={0} onSwap={onSwap} onDock={onDock} />
+        <DragTile id="live-b" left={200} onSwap={onSwap} onDock={onDock} />
+      </>,
+    );
+    return { onSwap, onDock, view };
+  }
+
+  /**
+   * jsdom does not implement `PointerEvent`, so testing-library's
+   * `fireEvent.pointerMove` degrades to a bare `Event` and silently drops
+   * clientX/clientY — the hit test would then see `undefined` coordinates.
+   * `MouseEvent` carries them and matches the `pointer*` type name fine.
+   */
+  function pointer(type: string, x = 250, y = 50) {
+    fireEvent(window, new MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+  }
+
+  /** Grab A's grip and hold the pointer over B's centre. */
+  function dragAOverB() {
+    fireEvent.pointerDown(screen.getByTestId("grip-live-a"), { pointerId: 1 });
+    pointer("pointermove");
+  }
+
+  test("a release over the target's centre swaps", () => {
+    const { onSwap } = setup();
+    dragAOverB();
+    expect(document.body.style.userSelect).toBe("none");
+    pointer("pointerup");
+    expect(onSwap).toHaveBeenCalledWith("live-a", "live-b");
+    expect(document.body.style.userSelect).toBe("");
+  });
+
+  test("pointercancel abandons the drag, and a later pointerup cannot revive it", () => {
+    const { onSwap, onDock } = setup();
+    dragAOverB();
+    pointer("pointercancel");
+    expect(onSwap).not.toHaveBeenCalled();
+    expect(document.body.style.userSelect).toBe("");
+    pointer("pointerup");
+    expect(onSwap).not.toHaveBeenCalled();
+    expect(onDock).not.toHaveBeenCalled();
+  });
+
+  test("window blur ends a drag released outside the window", () => {
+    const { onSwap } = setup();
+    dragAOverB();
+    fireEvent.blur(window);
+    expect(onSwap).not.toHaveBeenCalled();
+    expect(document.body.style.userSelect).toBe("");
+  });
+
+  test("unmounting mid-drag restores the selection override and commits nothing", () => {
+    const { onSwap, view } = setup();
+    dragAOverB();
+    view.unmount();
+    expect(document.body.style.userSelect).toBe("");
+    pointer("pointerup");
+    expect(onSwap).not.toHaveBeenCalled();
   });
 });
 

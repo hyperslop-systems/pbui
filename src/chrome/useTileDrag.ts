@@ -12,8 +12,13 @@
  * `isConnected` is checked at hit-test time because a closed tile leaves its
  * entry behind, and a phantom drop target is a memorably confusing bug —
  * pbui-gog.jsx:2530-2531 does the same for the same reason.
+ *
+ * A drag has exactly one exit (`finish`), and only a real `pointerup` commits
+ * it. Pointer capture, `pointercancel`, window blur, and unmount all route to
+ * the same teardown, because a drag that survives its release is worse than a
+ * drag that ends early: the next click completes it.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type DockZone = "left" | "right" | "top" | "bottom";
 export type DragZone = DockZone | "center";
@@ -95,6 +100,8 @@ export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
   zone: DragZone | null;
 } {
   const [state, setState] = useState<DragState | null>(dragState);
+  /** Set while a drag from THIS tile is live; called with commit=false to abandon. */
+  const teardown = useRef<((commit: boolean) => void) | null>(null);
 
   useEffect(() => {
     const listener = (next: DragState | null) => setState(next);
@@ -103,6 +110,10 @@ export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
       listeners = listeners.filter((entry) => entry !== listener);
     };
   }, []);
+
+  // A tile can be closed (or the whole workbench unmounted) mid-drag; the
+  // window listeners and the userSelect override would outlive it.
+  useEffect(() => () => teardown.current?.(false), []);
 
   const register = useCallback(
     (element: HTMLElement | null) => {
@@ -115,9 +126,27 @@ export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
   const onGripPointerDown = useCallback(
     (event: React.PointerEvent) => {
       event.preventDefault();
+      // Only one drag at a time; a second grip press abandons the first rather
+      // than leaving two sets of window listeners racing over `dragState`.
+      teardown.current?.(false);
+
       const previous = document.body.style.userSelect;
       document.body.style.userSelect = "none";
       setDrag({ from: id, over: null, zone: null });
+
+      // Pointer capture is what makes a release OUTSIDE the browser window
+      // still deliver `pointerup` here. Without it the drag stays armed, the
+      // userSelect override sticks, and a later click completes a stale
+      // swap/dock. Capture can throw for a stale pointerId and is absent under
+      // jsdom, so it is best-effort — `pointercancel` and the window blur
+      // below are the belt to its braces.
+      const grip = event.currentTarget as HTMLElement | null;
+      const pointerId = event.pointerId;
+      try {
+        grip?.setPointerCapture?.(pointerId);
+      } catch {
+        /* capture is an optimisation, not a precondition */
+      }
 
       const move = (moveEvent: PointerEvent) => {
         const hit = hitTest(moveEvent.clientX, moveEvent.clientY);
@@ -128,20 +157,40 @@ export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
         });
       };
 
-      const up = () => {
+      /**
+       * The single exit. `commit` is true only for a real `pointerup`:
+       * cancellation, window blur, and unmount all end the drag WITHOUT
+       * performing a swap or a dock.
+       */
+      const finish = (commit: boolean) => {
+        if (teardown.current !== finish) return;
+        teardown.current = null;
         document.body.style.userSelect = previous;
         const current = dragState;
         setDrag(null);
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", cancel);
+        window.removeEventListener("blur", cancel);
+        try {
+          grip?.releasePointerCapture?.(pointerId);
+        } catch {
+          /* already released with the capture */
+        }
 
+        if (!commit) return;
         if (!current?.over || !current.zone) return;
         if (current.zone === "center") onSwap(current.from, current.over);
         else onDock(current.from, current.over, current.zone);
       };
+      const up = () => finish(true);
+      const cancel = () => finish(false);
 
+      teardown.current = finish;
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", cancel);
+      window.addEventListener("blur", cancel);
     },
     [id, onSwap, onDock],
   );
