@@ -95,13 +95,30 @@ export function draftToTransform(draft: TransformDraft, fields: Field[]): Author
           : {}),
       };
       const functions = { "=": "eq", "!=": "ne", ">": "gt", "<": "lt" } as const;
+      // A nominal column compares through a string cast, not bare. The
+      // field's PHYSICAL type is inferred from the rows on screen — boolean
+      // once data has arrived, string while the table is still empty — so no
+      // bare literal can type-check in both phases, and a boolean column
+      // could not be filtered at all. The cast form is valid in both phases;
+      // DuckDB renders booleans as 'true'/'false' under it, and for plain
+      // string columns it is a no-op. `expressionField` reads through the
+      // cast, so the round-trip keeps the field name.
+      const operand: Expression =
+        source?.type === "q" || source?.type === "t"
+          ? field(draft.field)
+          : {
+              kind: "cast",
+              expression: field(draft.field),
+              to: { kind: "string" },
+              onFailure: "null",
+            };
       return {
         ...base,
         kind: "core:filter",
         predicate: {
           kind: "call",
           function: functions[draft.op],
-          arguments: [field(draft.field), literal],
+          arguments: [operand, literal],
         },
       };
     }

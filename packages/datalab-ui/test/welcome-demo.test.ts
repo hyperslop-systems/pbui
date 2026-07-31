@@ -85,6 +85,28 @@ describe("the anonymous welcome documents", () => {
     }
   });
 
+  test("the QC filter also compiles once rows are on screen (boolean phase)", () => {
+    // The schema-compile test above runs against EMPTY tables, where the ok
+    // column's physical type is string. With rows present it is boolean —
+    // the other half of the two-phase problem the cast form exists for.
+    const documents = welcomeDemoDocuments(welcome);
+    const temperature = documents[WELCOME_DOC_IDS.temperature]!;
+    const withRows: Table = {
+      ...tables["climate-readings"]!,
+      rows: [
+        { time: "2026-07-24T09:00:00Z", station: "north", temp_c: 19.2, humidity: 54, ok: true },
+        { time: "2026-07-24T09:05:00Z", station: "south", temp_c: 22.7, humidity: 44.5, ok: false },
+      ],
+      row_count: 2,
+    };
+    const result = compileGraphicDocument(
+      temperature,
+      compileEnvironmentForTable(temperature, withRows),
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(result.logical).not.toBeNull();
+  });
+
   test("aggregate and target examples are authored rather than precomputed", () => {
     const documents = welcomeDemoDocuments(welcome);
     const population = documents[WELCOME_DOC_IDS.populationBars]!;
