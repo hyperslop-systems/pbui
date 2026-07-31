@@ -176,9 +176,15 @@ createRoot(root).render(<Consumer />);
   if (installedDatalab.name !== "@hyperslop-systems/datalab-ui") {
     throw new Error(`unexpected installed package ${installedDatalab.name}`);
   }
-  if (installedDatalab.dependencies["@hyperslop-systems/pbui"] !== "^0.1.0") {
+  // The expected range follows the workspace's own pbui version — a
+  // hardcoded "^0.1.0" here turned every pbui version bump into a smoke
+  // failure whose message blamed the rewrite.
+  const workspacePbui = JSON.parse(
+    await readFile(join(workspaceRoot, "package.json"), "utf8"),
+  ).version;
+  if (installedDatalab.dependencies["@hyperslop-systems/pbui"] !== `^${workspacePbui}`) {
     throw new Error(
-      `workspace dependency was not rewritten: ${
+      `workspace dependency was not rewritten to ^${workspacePbui}: ${
         installedDatalab.dependencies["@hyperslop-systems/pbui"]
       }`,
     );
