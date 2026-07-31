@@ -267,3 +267,256 @@ func TestFailedBatchDoesNotMutateInput(t *testing.T) {
 		t.Fatalf("input name = %q, want Production", document.Name)
 	}
 }
+
+func TestEveryMutationKind(t *testing.T) {
+	title := "Configured"
+	tests := []struct {
+		name     string
+		prepare  func(*testing.T, *Document)
+		mutation *Mutation
+		check    func(*testing.T, *Document)
+	}{
+		{
+			name: "workbench rename",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_WorkbenchRename{
+				WorkbenchRename: &workbenchv1.WorkbenchRename{Name: "Renamed"},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if document.Name != "Renamed" {
+					t.Fatalf("name = %q", document.Name)
+				}
+			},
+		},
+		{
+			name: "workspace create",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_WorkspaceCreate{
+				WorkspaceCreate: &workbenchv1.WorkspaceCreate{
+					WorkspaceId: "workspace-new", Name: "New",
+					RootPlacement: leafNode("placement-new", "view-launcher"),
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if workspaceByID(document, "workspace-new") == nil {
+					t.Fatal("new workspace is missing")
+				}
+			},
+		},
+		{
+			name: "workspace rename",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_WorkspaceRename{
+				WorkspaceRename: &workbenchv1.WorkspaceRename{
+					WorkspaceId: "workspace-a", Name: "Renamed workspace",
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if got := workspaceByID(document, "workspace-a").Name; got != "Renamed workspace" {
+					t.Fatalf("workspace name = %q", got)
+				}
+			},
+		},
+		{
+			name: "workspace delete",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_WorkspaceDelete{
+				WorkspaceDelete: &workbenchv1.WorkspaceDelete{WorkspaceId: "workspace-b"},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if workspaceByID(document, "workspace-b") != nil {
+					t.Fatal("deleted workspace remains")
+				}
+			},
+		},
+		{
+			name: "document put",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_DocumentPut{
+				DocumentPut: &workbenchv1.DocumentPut{Document: graphicDocument(t, "document-new")},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if document.Documents["document-new"] == nil {
+					t.Fatal("put document is missing")
+				}
+			},
+		},
+		{
+			name: "document delete",
+			prepare: func(t *testing.T, document *Document) {
+				document.Documents["document-unused"] = graphicDocument(t, "document-unused")
+			},
+			mutation: &Mutation{Body: &workbenchv1.Mutation_DocumentDelete{
+				DocumentDelete: &workbenchv1.DocumentDelete{DocumentId: "document-unused"},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if document.Documents["document-unused"] != nil {
+					t.Fatal("deleted document remains")
+				}
+			},
+		},
+		{
+			name: "view create",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_ViewCreate{
+				ViewCreate: &workbenchv1.ViewCreate{View: &AppView{
+					Id: "view-new", AppId: "launcher", Documents: map[string]string{},
+				}},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if document.Views["view-new"] == nil ||
+					document.ViewOrder[len(document.ViewOrder)-1] != "view-new" {
+					t.Fatal("created view is absent from table or order")
+				}
+			},
+		},
+		{
+			name: "view configure",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_ViewConfigure{
+				ViewConfigure: &workbenchv1.ViewConfigure{
+					ViewId: "view-chart",
+					TitleChange: &workbenchv1.ViewConfigure_SetTitle{
+						SetTitle: title,
+					},
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if got := document.Views["view-chart"].GetTitle(); got != title {
+					t.Fatalf("configured title = %q", got)
+				}
+			},
+		},
+		{
+			name: "view clone",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_ViewClone{
+				ViewClone: &workbenchv1.ViewClone{
+					SourceViewId: "view-chart", NewViewId: "view-clone",
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if document.Views["view-clone"].Documents["primary"] != "document-1" {
+					t.Fatal("clone did not preserve document binding")
+				}
+			},
+		},
+		{
+			name: "view delete",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_ViewDelete{
+				ViewDelete: &workbenchv1.ViewDelete{ViewId: "view-launcher"},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if document.Views["view-launcher"] != nil {
+					t.Fatal("deleted view remains")
+				}
+			},
+		},
+		{
+			name: "view close",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_ViewClose{
+				ViewClose: &workbenchv1.ViewClose{
+					ViewId: "view-chart", FallbackViewId: "view-launcher",
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if document.Views["view-chart"] != nil ||
+					countViewPlacements(document, "view-launcher") != 2 {
+					t.Fatal("view close did not replace all placements")
+				}
+			},
+		},
+		{
+			name: "placement replace",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_PlacementReplace{
+				PlacementReplace: &workbenchv1.PlacementReplace{
+					WorkspaceId: "workspace-a", PlacementId: "placement-a",
+					ViewId: "view-launcher",
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				node := workspaceByID(document, "workspace-a").Tree
+				if node.Id != "placement-a" || node.GetLeaf().ViewId != "view-launcher" {
+					t.Fatalf("replacement = %+v", node)
+				}
+			},
+		},
+		{
+			name: "placement split",
+			mutation: &Mutation{Body: &workbenchv1.Mutation_PlacementSplit{
+				PlacementSplit: &workbenchv1.PlacementSplit{
+					WorkspaceId: "workspace-a", PlacementId: "placement-a",
+					Direction: workbenchv1.Direction_DIRECTION_ROW, Ratio: 0.4,
+					SplitId: "split-new", NewPlacement: leafNode("placement-new", "view-launcher"),
+					Place: workbenchv1.PlacementPosition_PLACEMENT_POSITION_AFTER,
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if split := workspaceByID(document, "workspace-a").Tree.GetSplit(); split == nil ||
+					split.B.GetLeaf().ViewId != "view-launcher" {
+					t.Fatal("placement was not split")
+				}
+			},
+		},
+		{
+			name: "placement close",
+			prepare: func(_ *testing.T, document *Document) {
+				document.Workspaces[0].Tree = splitNode(
+					"split-a", 0.5,
+					leafNode("placement-a", "view-chart"),
+					leafNode("placement-extra", "view-launcher"),
+				)
+			},
+			mutation: &Mutation{Body: &workbenchv1.Mutation_PlacementClose{
+				PlacementClose: &workbenchv1.PlacementClose{
+					WorkspaceId: "workspace-a", PlacementId: "placement-extra",
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if tree := workspaceByID(document, "workspace-a").Tree; tree.Id != "placement-a" {
+					t.Fatalf("promoted sibling = %q", tree.Id)
+				}
+			},
+		},
+		{
+			name: "split resize",
+			prepare: func(_ *testing.T, document *Document) {
+				document.Workspaces[0].Tree = splitNode(
+					"split-a", 0.5,
+					leafNode("placement-a", "view-chart"),
+					leafNode("placement-extra", "view-launcher"),
+				)
+			},
+			mutation: &Mutation{Body: &workbenchv1.Mutation_SplitResize{
+				SplitResize: &workbenchv1.SplitResize{
+					WorkspaceId: "workspace-a", SplitId: "split-a", Ratio: 0.7,
+				},
+			}},
+			check: func(t *testing.T, document *Document) {
+				if got := workspaceByID(document, "workspace-a").Tree.GetSplit().Ratio; got != 0.7 {
+					t.Fatalf("ratio = %v", got)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			document := validDocument(t)
+			if tt.prepare != nil {
+				tt.prepare(t, document)
+			}
+			output, err := ApplyMutations(
+				t.Context(), document, []*Mutation{tt.mutation}, testDependencies(), DefaultLimits,
+			)
+			if err != nil {
+				t.Fatalf("ApplyMutations() error = %v", err)
+			}
+			tt.check(t, output)
+		})
+	}
+}
+
+func splitNode(id string, ratio float64, a, b *Node) *Node {
+	return &Node{
+		Id: id,
+		Body: &workbenchv1.Node_Split{Split: &workbenchv1.Split{
+			Direction: workbenchv1.Direction_DIRECTION_ROW,
+			Ratio:     ratio,
+			A:         a,
+			B:         b,
+		}},
+	}
+}

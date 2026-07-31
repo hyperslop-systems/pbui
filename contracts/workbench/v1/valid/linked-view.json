@@ -45,20 +45,39 @@
       "schemaVersion": 1,
       "body": {
         "name": "Mass and yield",
-        "sources": {},
-        "transforms": {},
-        "views": {
-          "root": {
-            "id": "root",
-            "kind": "unit",
-            "source": null,
-            "mark": {
-              "type": "point"
+        "sources": {
+          "source:root": {
+            "id": "source:root",
+            "source": {
+              "kind": "stream",
+              "drop": "production",
+              "stream": "batches"
             },
-            "encoding": {}
+            "scope": {
+              "kind": "bounded-window",
+              "limit": 2000,
+              "strategy": "latest"
+            }
           }
         },
-        "rootView": "root",
+        "transforms": {},
+        "views": {
+          "view:root": {
+            "id": "view:root",
+            "relation": {
+              "kind": "source",
+              "sourceId": "source:root"
+            },
+            "mark": "point",
+            "encodings": {},
+            "yScale": "linear",
+            "analysis": {
+              "kind": "identity"
+            },
+            "facetScales": "fixed"
+          }
+        },
+        "rootView": "view:root",
         "parameters": {}
       }
     }
