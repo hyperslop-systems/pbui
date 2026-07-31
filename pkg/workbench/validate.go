@@ -3,7 +3,9 @@ package workbench
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	workbenchv1 "github.com/hyperslop-systems/pbui/gen/go/hyperslop/pbui/workbench/v1"
@@ -232,7 +234,8 @@ func validateNode(
 			split.Direction != workbenchv1.Direction_DIRECTION_COLUMN {
 			return invalid("invalid_split", path+".split.direction", "got %q", split.Direction)
 		}
-		if split.Ratio < 0.05 || split.Ratio > 0.95 {
+		if math.IsNaN(split.Ratio) || math.IsInf(split.Ratio, 0) ||
+			split.Ratio < 0.05 || split.Ratio > 0.95 {
 			return invalid("invalid_split", path+".split.ratio", "ratio must be between 0.05 and 0.95")
 		}
 		if split.A == nil || split.B == nil {
@@ -267,9 +270,8 @@ func hasCredentialKey(value any) bool {
 	switch typed := value.(type) {
 	case map[string]any:
 		for key, child := range typed {
-			normalized := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(key, "-", "_"), " ", "_"))
-			switch normalized {
-			case "token", "access_token", "refresh_token", "password", "secret", "api_key", "authorization":
+			switch normalizedCredentialKey(key) {
+			case "token", "accesstoken", "refreshtoken", "password", "secret", "apikey", "authorization":
 				return true
 			}
 			if hasCredentialKey(child) {
@@ -284,4 +286,13 @@ func hasCredentialKey(value any) bool {
 		}
 	}
 	return false
+}
+
+func normalizedCredentialKey(key string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return unicode.ToLower(r)
+		}
+		return -1
+	}, key)
 }

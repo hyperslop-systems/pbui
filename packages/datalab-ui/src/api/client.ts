@@ -429,6 +429,7 @@ export const api = createApi({
         body: toJson(WorkbenchDocumentSchema, document),
       }),
       transformResponse: parseWorkbenchResourceJSON,
+      invalidatesTags: (_result, _error, { id }) => ["Workbenches", { type: "Workbenches", id }],
     }),
     mutateWorkbench: build.mutation<
       CachedWorkbenchResource,
@@ -449,6 +450,7 @@ export const api = createApi({
         body: toJson(MutationBatchSchema, batch),
       }),
       transformResponse: parseWorkbenchResourceJSON,
+      invalidatesTags: (_result, _error, { id }) => ["Workbenches", { type: "Workbenches", id }],
     }),
   }),
 });

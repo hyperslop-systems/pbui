@@ -3,6 +3,7 @@ package workbench
 import (
 	"context"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -201,6 +202,17 @@ func TestValidationMatrix(t *testing.T) {
 			code: "invalid_split",
 		},
 		{
+			name: "split ratio is not finite",
+			mutate: func(_ *testing.T, document *Document) {
+				document.Workspaces[0].Tree = splitNode(
+					"split-a", math.NaN(),
+					leafNode("placement-a", "view-chart"),
+					leafNode("placement-extra", "view-launcher"),
+				)
+			},
+			code: "invalid_split",
+		},
+		{
 			name: "unknown application",
 			mutate: func(_ *testing.T, document *Document) {
 				document.Views["view-chart"].AppId = "not-registered"
@@ -217,6 +229,24 @@ func TestValidationMatrix(t *testing.T) {
 					"views":      map[string]any{},
 					"rootView":   "root",
 					"parameters": map[string]any{"api_key": "forbidden"},
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				document.Documents["document-1"].Body = body
+			},
+			code: "credential_field",
+		},
+		{
+			name: "camel case credential shaped document",
+			mutate: func(t *testing.T, document *Document) {
+				body, err := structpb.NewStruct(map[string]any{
+					"name":       "Secret",
+					"sources":    map[string]any{},
+					"transforms": map[string]any{},
+					"views":      map[string]any{},
+					"rootView":   "root",
+					"parameters": map[string]any{"refreshToken": "forbidden"},
 				})
 				if err != nil {
 					t.Fatal(err)
@@ -251,6 +281,29 @@ func TestValidationMatrix(t *testing.T) {
 				t.Fatalf("Validate() error = %v, want %s", err, tt.code)
 			}
 		})
+	}
+}
+
+func TestPlacementSplitRejectsUnspecifiedPosition(t *testing.T) {
+	t.Parallel()
+	document := validDocument(t)
+	mutation := &Mutation{Body: &workbenchv1.Mutation_PlacementSplit{
+		PlacementSplit: &workbenchv1.PlacementSplit{
+			WorkspaceId: "workspace-a",
+			PlacementId: "placement-a",
+			Direction:   workbenchv1.Direction_DIRECTION_ROW,
+			Ratio:       0.4,
+			SplitId:     "split-new",
+			NewPlacement: leafNode(
+				"placement-new",
+				"view-launcher",
+			),
+		},
+	}}
+	_, err := ApplyMutations(t.Context(), document, []*Mutation{mutation}, testDependencies(), DefaultLimits)
+	var validation *ValidationError
+	if !errors.As(err, &validation) || validation.Code != "invalid_position" {
+		t.Fatalf("ApplyMutations() error = %v, want invalid_position", err)
 	}
 }
 

@@ -261,10 +261,17 @@ func applyMutation(document *Document, mutation *Mutation) error {
 		targetCopy := cloneNode(target)
 		newCopy := cloneNode(value.NewPlacement)
 		split := &workbenchv1.Split{Direction: value.Direction, Ratio: value.Ratio}
-		if value.Place == workbenchv1.PlacementPosition_PLACEMENT_POSITION_BEFORE {
+		switch value.Place {
+		case workbenchv1.PlacementPosition_PLACEMENT_POSITION_BEFORE:
 			split.A, split.B = newCopy, targetCopy
-		} else {
+		case workbenchv1.PlacementPosition_PLACEMENT_POSITION_AFTER:
 			split.A, split.B = targetCopy, newCopy
+		default:
+			return invalid(
+				"invalid_position",
+				"placementSplit.place",
+				"position must be BEFORE or AFTER",
+			)
 		}
 		*target = Node{Id: value.SplitId, Body: &workbenchv1.Node_Split{Split: split}}
 		return nil

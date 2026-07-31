@@ -104,4 +104,35 @@ describe("remote workbench loading", () => {
     expect(after.layout.activePlacementId).toBeNull();
     expect(after.layout.renamingId).toBeNull();
   });
+
+  test("a remote collision cannot overwrite a preserved document", () => {
+    const store = makeStore();
+    const before = store.getState();
+    const preservedId = before.world.docOrder[0]!;
+    const preserved = before.world.docs[preservedId]!;
+    const replacement = createGraphicDocument(
+      preservedId,
+      "Remote collision",
+      { kind: "stream", drop: "production" },
+      100,
+    );
+
+    store.dispatch(
+      remoteWorkbenchLoaded({
+        state: {
+          id: "workbench-remote",
+          name: "Remote",
+          workspaces: [],
+          views: {},
+          viewOrder: [],
+          documents: { [preservedId]: replacement },
+        },
+        stageId: WORK_STAGE_ID,
+        preserveViewIds: [],
+        preserveDocumentIds: [preservedId],
+      }),
+    );
+
+    expect(store.getState().world.docs[preservedId]).toBe(preserved);
+  });
 });

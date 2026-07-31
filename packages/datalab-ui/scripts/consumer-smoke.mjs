@@ -34,7 +34,22 @@ async function pack(root, prefix) {
 
 try {
   const pbuiTarball = await pack(workspaceRoot, "hyperslop-systems-pbui-");
+  const protocolTarball = await pack(
+    join(workspaceRoot, "packages", "workbench-protocol"),
+    "hyperslop-systems-workbench-protocol-",
+  );
   const datalabTarball = await pack(packageRoot, "hyperslop-systems-datalab-ui-");
+
+  await writeFile(
+    join(smokeRoot, ".npmrc"),
+    [
+      "@hyperslop-systems:registry=https://npm.pkg.github.com",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: npm expands this environment placeholder.
+      "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}",
+      "always-auth=true",
+      "",
+    ].join("\n"),
+  );
 
   await writeFile(
     join(smokeRoot, "package.json"),
@@ -49,6 +64,7 @@ try {
         dependencies: {
           "@hyperslop-systems/datalab-ui": `file:${datalabTarball}`,
           "@hyperslop-systems/pbui": `file:${pbuiTarball}`,
+          "@hyperslop-systems/workbench-protocol": `file:${protocolTarball}`,
           react: "^19.2.8",
           "react-dom": "^19.2.8",
         },

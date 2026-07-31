@@ -7,6 +7,7 @@ import type { Node, ViewId } from "../store/layout";
 import { remoteWorkbenchLoaded } from "../store/remote";
 import { WORK_STAGE_ID } from "../store/stages";
 import {
+  assertRemoteDocumentNamespace,
   decodeRemoteWorkbench,
   encodeRemoteWorkbench,
   workbenchDocumentJSON,
@@ -58,15 +59,71 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
   const savingRef = useRef(false);
   const failedFingerprint = useRef<string | null>(null);
   const pendingRequest = useRef<{ fingerprint: string; id: string } | null>(null);
+  const deferredRevision = useRef<bigint | null>(null);
+  const activeWorkbenchId = useRef(workbenchId);
+
+  // Update the request epoch during render so callbacks from an older
+  // workbench cannot publish results before the reset effect runs.
+  activeWorkbenchId.current = workbenchId;
 
   useEffect(() => {
-    const resource = query.data;
-    if (!resource?.workbench || resource.workbench.id !== workbenchId) return;
+    appliedFingerprint.current = null;
+    managedViewIds.current = new Set();
+    managedDocumentIds.current = new Set();
+    revisionRef.current = 0n;
+    dirtyRef.current = false;
+    savingRef.current = false;
+    failedFingerprint.current = null;
+    pendingRequest.current = null;
+    deferredRevision.current = null;
+    setIdentity(null);
+    setRevision(null);
+    setSaving(false);
+    setConflict(null);
+    setError(null);
+    setRetryGeneration(0);
+  }, [workbenchId]);
+
+  useEffect(() => {
+    const resource = query.currentData;
+    if (!resource?.workbench) {
+      if (query.isSuccess)
+        setError("The server returned a workbench response without a workbench.");
+      return;
+    }
+    if (resource.workbench.id !== workbenchId) {
+      setError(
+        `The server returned workbench ${resource.workbench.id} while ${workbenchId} was requested.`,
+      );
+      return;
+    }
     const incomingRevision = BigInt(resource.revision);
-    if (revision !== null && incomingRevision <= revisionRef.current) return;
+    if (
+      identity?.id === workbenchId &&
+      revision !== null &&
+      incomingRevision <= revisionRef.current
+    ) {
+      return;
+    }
+    if (savingRef.current) {
+      deferredRevision.current =
+        deferredRevision.current === null || incomingRevision > deferredRevision.current
+          ? incomingRevision
+          : deferredRevision.current;
+      return;
+    }
+    if (dirtyRef.current) {
+      setConflict({
+        detail: `Revision ${incomingRevision.toString()} arrived while this browser had unsaved changes.`,
+        expectedRevision: revisionRef.current,
+        currentRevision: incomingRevision,
+      });
+      return;
+    }
     try {
       const remote = decodeRemoteWorkbench(resource.workbench);
       const preserved = preservedLocalState(layout);
+      assertRemoteDocumentNamespace(remote, preserved.documentIds);
       dispatch(
         remoteWorkbenchLoaded({
           state: remote,
@@ -88,7 +145,7 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
     } catch (cause) {
       setError(messageOf(cause));
     }
-  }, [dispatch, layout, query.data, revision, workbenchId]);
+  }, [dispatch, identity?.id, layout, query.currentData, query.isSuccess, revision, workbenchId]);
 
   const current = useMemo(
     () =>
@@ -123,6 +180,7 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
       return;
     }
     const timer = setTimeout(async () => {
+      const requestWorkbenchId = workbenchId;
       const document = encodeRemoteWorkbench(current);
       const request =
         pendingRequest.current?.fingerprint === currentFingerprint
@@ -134,18 +192,31 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
       setError(null);
       try {
         const resource = await replace({
-          id: workbenchId,
+          id: requestWorkbenchId,
           revision: revision.toString(),
           requestId: request.id,
           document,
         }).unwrap();
+        if (activeWorkbenchId.current !== requestWorkbenchId) return;
         appliedFingerprint.current = currentFingerprint;
         const savedRevision = BigInt(resource.revision);
         revisionRef.current = savedRevision;
         setRevision(savedRevision);
         pendingRequest.current = null;
         failedFingerprint.current = null;
+        const deferred = deferredRevision.current;
+        deferredRevision.current = null;
+        if (deferred !== null && deferred > savedRevision) {
+          setConflict({
+            detail: `Revision ${deferred.toString()} followed this browser's saved revision.`,
+            expectedRevision: savedRevision,
+            currentRevision: deferred,
+          });
+        } else {
+          setConflict(null);
+        }
       } catch (cause) {
+        if (activeWorkbenchId.current !== requestWorkbenchId) return;
         const parsed = conflictOf(cause, revision);
         if (parsed) setConflict(parsed);
         else {
@@ -153,8 +224,10 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
           setError(messageOf(cause));
         }
       } finally {
-        savingRef.current = false;
-        setSaving(false);
+        if (activeWorkbenchId.current === requestWorkbenchId) {
+          savingRef.current = false;
+          setSaving(false);
+        }
       }
     }, 500);
     return () => clearTimeout(timer);
@@ -176,7 +249,14 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
       getAfter: () => revisionRef.current,
       onRevision: (incoming) => {
         if (incoming <= revisionRef.current) return;
-        if (dirtyRef.current || savingRef.current) {
+        if (savingRef.current) {
+          deferredRevision.current =
+            deferredRevision.current === null || incoming > deferredRevision.current
+              ? incoming
+              : deferredRevision.current;
+          return;
+        }
+        if (dirtyRef.current) {
           setConflict({
             detail: `A newer revision (${incoming.toString()}) is available while this browser has unsaved changes.`,
             expectedRevision: revisionRef.current,
@@ -204,8 +284,12 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
   const retry = useCallback(() => {
     failedFingerprint.current = null;
     setError(null);
+    if (identity === null) {
+      void query.refetch();
+      return;
+    }
     setRetryGeneration((value) => value + 1);
-  }, []);
+  }, [identity, query.refetch]);
 
   return {
     loading: query.isLoading && identity === null,

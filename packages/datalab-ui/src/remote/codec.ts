@@ -100,11 +100,16 @@ function decodeGraphicDocument(
   ) {
     throw new Error(`documents.${id} is not a canonical graphic document`);
   }
+  for (const key of ["id", "format", "version"]) {
+    if (Object.hasOwn(body, key)) {
+      throw new Error(`documents.${id}.body.${key} is reserved for envelope identity`);
+    }
+  }
   return structuredClone({
+    ...body,
     format: payload.format,
     version: payload.schemaVersion,
     id: payload.id,
-    ...body,
   }) as unknown as GraphicDocument;
 }
 
@@ -202,6 +207,17 @@ export function decodeRemoteWorkbench(document: WorkbenchDocument): RemoteWorkbe
     viewOrder,
     documents,
   };
+}
+
+export function assertRemoteDocumentNamespace(
+  remote: RemoteWorkbenchState,
+  preservedDocumentIds: Iterable<string>,
+): void {
+  for (const id of preservedDocumentIds) {
+    if (Object.hasOwn(remote.documents, id)) {
+      throw new Error(`remote document ${id} collides with a code-defined stage document`);
+    }
+  }
 }
 
 export function encodeRemoteWorkbench(state: RemoteWorkbenchState): WorkbenchDocument {

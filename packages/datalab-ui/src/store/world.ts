@@ -450,6 +450,7 @@ export const worldSlice = createSlice({
         }
       }
       for (const [id, document] of Object.entries(action.payload.state.documents)) {
+        if (preserved.has(id)) continue;
         docs[id] = document;
         if (!docOrder.includes(id)) docOrder.push(id);
       }

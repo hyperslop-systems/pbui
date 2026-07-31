@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
+  assertRemoteDocumentNamespace,
   decodeRemoteWorkbench,
   encodeRemoteWorkbench,
   parseRemoteWorkbenchJSON,
@@ -31,5 +32,24 @@ describe("remote workbench codec", () => {
     expect(() =>
       decodeRemoteWorkbench(parseRemoteWorkbenchJSON(fixture("invalid", "view-key-mismatch.json"))),
     ).toThrow("inconsistent identity");
+  });
+
+  test("rejects document bodies that shadow envelope identity", () => {
+    const source = structuredClone(fixture("valid", "linked-view.json")) as {
+      documents: Record<string, { body: Record<string, unknown> }>;
+    };
+    source.documents["document-chart"]!.body.id = "shadowed";
+    expect(() => decodeRemoteWorkbench(parseRemoteWorkbenchJSON(source))).toThrow(
+      "body.id is reserved",
+    );
+  });
+
+  test("rejects collisions with documents owned by code-defined stages", () => {
+    const decoded = decodeRemoteWorkbench(
+      parseRemoteWorkbenchJSON(fixture("valid", "linked-view.json")),
+    );
+    expect(() => assertRemoteDocumentNamespace(decoded, ["document-chart"])).toThrow(
+      "collides with a code-defined stage document",
+    );
   });
 });
