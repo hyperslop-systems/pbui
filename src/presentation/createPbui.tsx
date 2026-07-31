@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { VisuallyHidden } from "../components/foundation";
 import { useEscapeSurface } from "../surfaces";
 import type { PresentationRegistry } from "./registry";
 import type {
@@ -377,10 +378,93 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     );
   }
 
+  /**
+   * The mouse documentation line, straight out of Genera (PBUI-UNIFY-001,
+   * DR-U2 — previously transcribed per product from datalab-ui).
+   *
+   * A permanently visible strip describing whatever is under the pointer and
+   * stating what each button will do to it. The `aria-live` mirror is what
+   * makes the self-documentation reach a screen reader; the visible copy is
+   * aria-hidden so the text is not read twice. Styled by
+   * `presentation-parts.css` through its data-part hooks.
+   */
+  function MouseDocLine({ ambient }: { ambient?: string }) {
+    const pbui = usePbui();
+    const mode = pbui.accepting ? "ACCEPT MODE" : "READY";
+    const text =
+      pbui.mouseDoc ??
+      (pbui.accepting
+        ? `${pbui.accepting.prompt}   (Esc aborts)`
+        : "hover anything · L is the default verb · R opens its menu");
+    return (
+      <div data-pbui="mouse-doc" data-part="mouse-doc">
+        <span data-part="mouse-doc-mode">{mode}</span>
+        <span data-part="mouse-doc-text" aria-hidden="true">
+          {text}
+        </span>
+        <VisuallyHidden live="polite">{text}</VisuallyHidden>
+        {ambient && <span data-part="mouse-doc-ambient">{ambient}</span>}
+      </div>
+    );
+  }
+
+  /**
+   * The banner shown while a command is waiting for an object (DR-U2).
+   *
+   * Unmissable on purpose: accept mode changes what the left mouse button
+   * does to every presentation on screen, and a mode change that is not
+   * advertised is a trap. It also states that the mode reaches across tiles
+   * and workspaces — the non-obvious, genuinely useful part.
+   *
+   * A pending accept is a transient surface like any other: it must not
+   * abort because a dialog opened above it took an Escape meant for the
+   * dialog (the escape-surface stack in `surfaces.ts` decides ownership).
+   */
+  function AcceptBanner() {
+    const pbui = usePbui();
+    const accepting = pbui.accepting;
+    const abortAccept = pbui.abortAccept;
+
+    const ownsEscape = useEscapeSurface(accepting !== null);
+    useEffect(() => {
+      if (!accepting) return;
+      const onKey = (event: globalThis.KeyboardEvent) => {
+        if (event.key === "Escape") {
+          if (!ownsEscape) return;
+          event.preventDefault();
+          abortAccept();
+        }
+      };
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }, [accepting, abortAccept, ownsEscape]);
+
+    if (!accepting) return null;
+
+    const wanted = Array.isArray(accepting.types)
+      ? accepting.types.join(" | ")
+      : String(accepting.types);
+
+    return (
+      <div
+        data-pbui="accept-banner"
+        data-part="accept-banner"
+        role="status"
+        aria-live="assertive"
+      >
+        <span>ACCEPTING &lt;{wanted}&gt;</span>
+        <span>{accepting.prompt}</span>
+        <span data-part="accept-banner-hint">works across tiles and workspaces · Esc aborts</span>
+      </div>
+    );
+  }
+
   return {
     Provider,
     Presentation,
     ObjectMenu,
+    MouseDocLine,
+    AcceptBanner,
     usePbui,
     registry,
   };

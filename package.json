@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/pbui",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Presentation-based React UI primitives and typed interaction protocols",
   "type": "module",
   "sideEffects": [
@@ -24,7 +24,8 @@
       "import": "./dist/index.js"
     },
     "./styles.css": "./dist/pbui.css",
-    "./components.css": "./dist/components.css"
+    "./components.css": "./dist/components.css",
+    "./presentation-parts.css": "./dist/presentation-parts.css"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",

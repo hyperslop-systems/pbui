@@ -1,0 +1,188 @@
+/*
+ * The default styles for pbui's PRESENTATION parts (PBUI-UNIFY-001, DR-U1).
+ *
+ * pbui's presentation components emit structure only: data-part hooks that
+ * every product styles itself. Three products transcribed the same block, and
+ * one shipped without it — with the object menu rendering unpositioned in
+ * normal document flow, invisibly. This file is the shared default; import it
+ * next to components.css:
+ *
+ *     import "@hyperslop-systems/pbui/presentation-parts.css";
+ *
+ * A product that genuinely wants a different menu or affordance look skips
+ * the import and styles the parts itself. Every value reads a --pbui-* token
+ * with a fallback, because pbui defines no token values (the token contract).
+ *
+ * Source of truth transcribed from datalab-ui/src/pbui/pbui.module.css.
+ */
+
+/* ---- the interaction affordances ---------------------------------------- */
+
+/* These three states — hoverable, acceptable, focused — are what a
+ * presentation-based interface communicates continuously, and they must read
+ * identically on every presentation type. */
+
+[data-part="presentation"] {
+  cursor: pointer;
+  /* A presentation is a span by default and must not stretch its parent. */
+  display: inline-flex;
+  align-items: center;
+}
+
+[data-part="presentation"]:hover {
+  outline: 1px dotted var(--pbui-ink, #1f2430);
+  background: var(--pbui-selected, #e6ecf5);
+}
+
+/* Acceptable: this object can satisfy the command currently waiting.
+ * Outline AND animation, never animation alone — the reduced-motion rule
+ * removes the pulse, so the solid outline carries the whole meaning. */
+[data-part="presentation"][data-state="acceptable"] {
+  outline: 2px solid var(--pbui-danger, #b64b37);
+  background: var(--pbui-selected, #e6ecf5);
+  animation: pbui-pulse 0.9s infinite;
+}
+
+@keyframes pbui-pulse {
+  50% {
+    outline-color: var(--pbui-cat-3, #f2ad00);
+  }
+}
+
+/* SVG presentations cannot take an outline — SVG has no box to draw one
+ * around — so they take a drop-shadow instead. Same states, different
+ * mechanism. */
+[data-part="presentation-svg"] {
+  cursor: pointer;
+}
+
+[data-part="presentation-svg"]:hover {
+  filter: drop-shadow(0 0 1.5px var(--pbui-ink, #1f2430));
+}
+
+[data-part="presentation-svg"][data-state="acceptable"] {
+  filter: drop-shadow(0 0 2.5px var(--pbui-danger, #b64b37));
+  animation: pbui-pulse-svg 0.9s infinite;
+}
+
+@keyframes pbui-pulse-svg {
+  50% {
+    filter: drop-shadow(0 0 3.5px var(--pbui-cat-3, #f2ad00));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-part="presentation"][data-state="acceptable"],
+  [data-part="presentation-svg"][data-state="acceptable"] {
+    animation: none;
+  }
+}
+
+/* ---- the object menu ---------------------------------------------------- */
+
+/* Fixed at the pointer and above everything. The absence of this rule is the
+ * silent-failure mode this file exists to end: an unpositioned menu renders
+ * at the end of the document, opens on every click, and is never seen. */
+[data-part="menu"] {
+  position: fixed;
+  z-index: 100;
+  min-width: 260px;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--pbui-pane, #ffffff);
+  border: var(--pbui-border-firm, 1.5px solid #1f2430);
+  border-radius: var(--pbui-radius, 2px);
+}
+
+[data-part="menu-header"] {
+  position: sticky;
+  top: 0;
+  padding: var(--pbui-space-1, 2px) var(--pbui-space-4, 10px);
+  background: var(--pbui-ink, #1f2430);
+  color: var(--pbui-paper, #f6f4ef);
+  font-size: var(--pbui-fs-tiny, 10px);
+  font-weight: 700;
+  letter-spacing: var(--pbui-track-label, 0.06em);
+}
+
+[data-part="menu-item"] {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
+  font-size: var(--pbui-fs-small, 11px);
+  border-top: 1px dotted var(--pbui-line, #cfc9bd);
+  background: transparent;
+}
+
+[data-part="menu-item"]:first-of-type {
+  border-top: 0;
+}
+
+[data-part="menu-item"]:hover:not(:disabled),
+[data-part="menu-item"]:focus-visible:not(:disabled) {
+  background: var(--pbui-selected, #e6ecf5);
+}
+
+/* Disabled entries are shown, not hidden: hiding a verb hides the rule that
+ * makes it unavailable, so the user never learns why. */
+[data-part="menu-item"]:disabled {
+  color: var(--pbui-faint, #8b857a);
+  cursor: default;
+}
+
+[data-part="menu-reason"] {
+  color: var(--pbui-faint, #8b857a);
+  font-size: var(--pbui-fs-tiny, 10px);
+}
+
+/* ---- the accept banner -------------------------------------------------- */
+
+[data-part="accept-banner"] {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3, 6px);
+  flex-shrink: 0;
+  padding: var(--pbui-space-1, 2px) var(--pbui-space-4, 10px);
+  background: var(--pbui-danger, #b64b37);
+  color: var(--pbui-paper, #f6f4ef);
+  font-weight: 700;
+  font-size: var(--pbui-fs-small, 11px);
+}
+
+[data-part="accept-banner-hint"] {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ---- the mouse documentation line --------------------------------------- */
+
+[data-part="mouse-doc"] {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-5, 14px);
+  flex-shrink: 0;
+  padding: var(--pbui-space-1, 2px) var(--pbui-space-4, 10px);
+  background: var(--pbui-ink, #1f2430);
+  color: var(--pbui-paper, #f6f4ef);
+  font-size: var(--pbui-fs-small, 11px);
+}
+
+[data-part="mouse-doc-mode"] {
+  color: var(--pbui-cat-3, #f2ad00);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+[data-part="mouse-doc-text"] {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-part="mouse-doc-ambient"] {
+  color: var(--pbui-faint-inverted, #918c85);
+  white-space: nowrap;
+}
