@@ -6,7 +6,7 @@ import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { countLeaves, layoutActions, primaryDocId, type Node } from "../../../store/layout";
 import { Button, Callout, IconButton, InlineRename, Text } from "@hyperslop-systems/pbui";
-import { useDrag } from "./useDrag";
+import { DropZoneOverlay, useTileDrag } from "@hyperslop-systems/pbui";
 import styles from "./Tile.module.css";
 
 /**
@@ -48,7 +48,14 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   );
   const canClose = tree !== null && countLeaves(tree) > 1;
 
-  const { dragging, zone, onGripPointerDown, register } = useDrag(node.id);
+  // The shared drag machinery (PBUI-UNIFY-001, DR-U3/U4): the hook owns the
+  // registry, the hit test, and the banded zone; releasing dispatches the
+  // same layout verbs the old local hook dispatched itself.
+  const { dragging, zone, onGripPointerDown, register } = useTileDrag({
+    id: node.id,
+    onSwap: (a, b) => dispatch(layoutActions.swapTiles({ a, b })),
+    onDock: (from, to, dockZone) => dispatch(layoutActions.dockTile({ from, to, zone: dockZone })),
+  });
   const placementCount = useSelector((state: RootState) => {
     const count = (n: Node): number =>
       n.type === "leaf" ? Number(n.viewId === node.viewId) : count(n.a) + count(n.b);
@@ -61,19 +68,6 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   // reducer, so `??` is what makes "clear the field and press Enter" mean *go
   // back to the derived title* rather than *render an empty title bar*.
   const label = view?.title ?? derived;
-
-  const zoneStyle =
-    zone === "left"
-      ? { left: 0, top: 0, bottom: 0, width: "50%" }
-      : zone === "right"
-        ? { right: 0, top: 0, bottom: 0, width: "50%" }
-        : zone === "top"
-          ? { top: 0, left: 0, right: 0, height: "50%" }
-          : zone === "bottom"
-            ? { bottom: 0, left: 0, right: 0, height: "50%" }
-            : zone === "center"
-              ? { inset: 0 }
-              : null;
 
   const Component = app?.Component;
 
@@ -100,12 +94,12 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
       className={[styles.tile, dragging ? styles.dragging : ""].filter(Boolean).join(" ")}
       style={{ background: app ? undefined : "var(--pbui-pane-alt)" }}
     >
-      {zoneStyle && (
-        <div className={styles.zone} style={zoneStyle}>
-          <span className={styles.zoneLabel}>
-            {zone === "center" ? "⇄ swap applications" : "split-dock here · the source tile closes"}
-          </span>
-        </div>
+      {zone && (
+        <DropZoneOverlay
+          zone={zone}
+          swapLabel="⇄ swap applications"
+          dockLabel="split-dock here · the source tile closes"
+        />
       )}
 
       <div className={styles.title} style={{ background: app?.tone ?? "var(--pbui-pane-alt)" }}>

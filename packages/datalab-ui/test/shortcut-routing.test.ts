@@ -4,7 +4,7 @@ import {
   isModKey,
   routeWorkbenchKey,
   type ShortcutContext,
-} from "../src/components/pages/Workbench/shortcutRouting";
+} from "@hyperslop-systems/pbui";
 import {
   popEscapeSurface,
   pushEscapeSurface,

@@ -200,6 +200,12 @@ createRoot(root).render(<Consumer />);
     "--pbui-font",
     "[data-part=presentation]",
     "[data-pbui-component=dialog]",
+    // The object menu positions itself entirely from this stylesheet; shipping
+    // without it produced a menu that rendered unpositioned at the end of the
+    // document, invisible, with every mechanical check still passing.
+    "[data-part=menu]",
+    // The tile chrome and its drop-zone preview (PBUI-UNIFY-001).
+    "[data-part=tile-bar]",
   ]) {
     if (!packageCss.includes(contractMarker)) {
       throw new Error(`Datalab stylesheet omitted bundled PBUI contract ${contractMarker}`);

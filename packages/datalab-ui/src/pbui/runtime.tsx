@@ -50,6 +50,8 @@ export const PbuiProvider = datadropPbui.Provider;
 export const Presentation = datadropPbui.Presentation;
 export const ObjectMenu = datadropPbui.ObjectMenu;
 export const usePbui = datadropPbui.usePbui;
+export const MouseDocLine = datadropPbui.MouseDocLine;
+export const AcceptBanner = datadropPbui.AcceptBanner;
 
 export type AcceptRequest = GenericAcceptRequest<PresentationValues>;
 export type AcceptResult = PresentationReference<PresentationValues>;

@@ -9,7 +9,7 @@ import { commitImport, kindFor } from "../../../store/effects";
 import { layoutActions } from "../../../store/layout";
 import { BundleDialog, LauncherDialog, NodeView, StageBar, WorkspaceStrip } from "../../organisms";
 import { useAnyEscapeSurface, useEscapeSurface } from "../../../appkit/useTransientSurface";
-import { isEditableTarget, routeWorkbenchKey } from "./shortcutRouting";
+import { isEditableTarget, routeWorkbenchKey } from "@hyperslop-systems/pbui";
 import styles from "./Workbench.module.css";
 
 /**

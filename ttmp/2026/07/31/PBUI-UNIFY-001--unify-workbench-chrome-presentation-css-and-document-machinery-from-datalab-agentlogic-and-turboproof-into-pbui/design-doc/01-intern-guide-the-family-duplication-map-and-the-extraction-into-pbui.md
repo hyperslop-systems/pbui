@@ -12,10 +12,10 @@ Owners: []
 RelatedFiles:
     - Path: repo://packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx
       Note: The launcher whose shell is extracted and whose policy stays behind
-    - Path: repo://packages/datalab-ui/src/components/organisms/Tile/useDrag.ts
-      Note: The reference drag/dock hook (module-level registry, banded zones)
-    - Path: repo://packages/datalab-ui/src/pbui/pbui.module.css
-      Note: The reference copy of the presentation-parts CSS being extracted
+    - Path: repo://src/chrome/useTileDrag.ts
+      Note: The extracted drag/dock hook (module-level registry, banded zones; from datalab-ui's useDrag)
+    - Path: repo://packages/datalab-ui/src/styles/pbui-extras.css
+      Note: 'What remains of the extracted reference copy (pbui.module.css): the one datalab-emitted part'
     - Path: repo://packages/workbench-protocol/src/index.ts
       Note: The protocol package that gains the TypeScript mutation layer
     - Path: repo://src/index.ts

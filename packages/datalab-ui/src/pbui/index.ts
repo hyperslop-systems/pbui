@@ -6,8 +6,7 @@ export type {
   MenuState,
   PbuiContextValue,
 } from "./runtime";
-export { AcceptBanner } from "./AcceptBanner";
-export { MouseDocLine } from "./MouseDocLine";
+export { AcceptBanner, MouseDocLine } from "./runtime";
 export { PARTS, STATES } from "./parts";
 export { datadropRegistry } from "./registry";
 export type { PresentationDescriptor } from "./registry";

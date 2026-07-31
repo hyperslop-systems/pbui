@@ -1,0 +1,95 @@
+{
+  "name": "view-delete-unplaced",
+  "document": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "workbench-1",
+    "name": "Production",
+    "workspaces": [
+      {
+        "id": "workspace-a",
+        "name": "Overview",
+        "tree": {
+          "id": "placement-a",
+          "leaf": {
+            "viewId": "view-chart"
+          }
+        }
+      }
+    ],
+    "views": {
+      "view-chart": {
+        "id": "view-chart",
+        "appId": "chart",
+        "title": "Mass and yield",
+        "documents": {
+          "primary": "document-1"
+        }
+      },
+      "view-launcher": {
+        "id": "view-launcher",
+        "appId": "launcher"
+      }
+    },
+    "viewOrder": [
+      "view-chart",
+      "view-launcher"
+    ],
+    "documents": {
+      "document-1": {
+        "id": "document-1",
+        "format": "example.doc",
+        "schemaVersion": 1,
+        "body": {
+          "name": "Demo"
+        }
+      }
+    }
+  },
+  "mutation": {
+    "viewDelete": {
+      "viewId": "view-launcher"
+    }
+  },
+  "expected": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "workbench-1",
+    "name": "Production",
+    "workspaces": [
+      {
+        "id": "workspace-a",
+        "name": "Overview",
+        "tree": {
+          "id": "placement-a",
+          "leaf": {
+            "viewId": "view-chart"
+          }
+        }
+      }
+    ],
+    "views": {
+      "view-chart": {
+        "id": "view-chart",
+        "appId": "chart",
+        "documents": {
+          "primary": "document-1"
+        },
+        "title": "Mass and yield"
+      }
+    },
+    "viewOrder": [
+      "view-chart"
+    ],
+    "documents": {
+      "document-1": {
+        "id": "document-1",
+        "format": "example.doc",
+        "schemaVersion": 1,
+        "body": {
+          "name": "Demo"
+        }
+      }
+    }
+  }
+}
