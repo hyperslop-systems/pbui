@@ -147,6 +147,113 @@ func TestValidateRejectsSecondLogicalSingletonView(t *testing.T) {
 	}
 }
 
+func TestValidationMatrix(t *testing.T) {
+	tests := []struct {
+		name   string
+		limits Limits
+		mutate func(*testing.T, *Document)
+		code   string
+	}{
+		{
+			name: "duplicate node identity across workspaces",
+			mutate: func(_ *testing.T, document *Document) {
+				document.Workspaces[1].Tree.Id = "placement-a"
+			},
+			code: "duplicate_id",
+		},
+		{
+			name: "document map key disagrees with identity",
+			mutate: func(_ *testing.T, document *Document) {
+				document.Documents["document-1"].Id = "document-other"
+			},
+			code: "id_mismatch",
+		},
+		{
+			name: "placement references missing view",
+			mutate: func(_ *testing.T, document *Document) {
+				document.Workspaces[0].Tree.GetLeaf().ViewId = "view-missing"
+			},
+			code: "unknown_view",
+		},
+		{
+			name: "view references missing document",
+			mutate: func(_ *testing.T, document *Document) {
+				document.Views["view-chart"].Documents["primary"] = "document-missing"
+			},
+			code: "unknown_document",
+		},
+		{
+			name: "malformed view order",
+			mutate: func(_ *testing.T, document *Document) {
+				document.ViewOrder = []string{"view-chart", "view-chart"}
+			},
+			code: "duplicate_id",
+		},
+		{
+			name: "split ratio outside canonical range",
+			mutate: func(_ *testing.T, document *Document) {
+				document.Workspaces[0].Tree = splitNode(
+					"split-a", 0.99,
+					leafNode("placement-a", "view-chart"),
+					leafNode("placement-extra", "view-launcher"),
+				)
+			},
+			code: "invalid_split",
+		},
+		{
+			name: "unknown application",
+			mutate: func(_ *testing.T, document *Document) {
+				document.Views["view-chart"].AppId = "not-registered"
+			},
+			code: "unknown_application",
+		},
+		{
+			name: "credential shaped document",
+			mutate: func(t *testing.T, document *Document) {
+				body, err := structpb.NewStruct(map[string]any{
+					"name":       "Secret",
+					"sources":    map[string]any{},
+					"transforms": map[string]any{},
+					"views":      map[string]any{},
+					"rootView":   "root",
+					"parameters": map[string]any{"api_key": "forbidden"},
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				document.Documents["document-1"].Body = body
+			},
+			code: "credential_field",
+		},
+		{
+			name: "resource cap",
+			limits: Limits{
+				Bytes: 2 << 20, Workspaces: 1, Nodes: 256, Depth: 24,
+				Views: 128, Documents: 128, NameBytes: 256, TitleBytes: 512,
+				DocumentBytes: 512 << 10, DocumentBindings: 8,
+			},
+			mutate: func(_ *testing.T, _ *Document) {},
+			code:   "limit_exceeded",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			document := validDocument(t)
+			tt.mutate(t, document)
+			limits := tt.limits
+			if limits == (Limits{}) {
+				limits = DefaultLimits
+			}
+			err := Validate(t.Context(), document, testDependencies(), limits)
+			var validation *ValidationError
+			if !errors.As(err, &validation) || validation.Code != tt.code {
+				t.Fatalf("Validate() error = %v, want %s", err, tt.code)
+			}
+		})
+	}
+}
+
 func TestApplyMutationsCreatesIndependentAndLinkedPlacements(t *testing.T) {
 	t.Parallel()
 	document := validDocument(t)
@@ -265,6 +372,17 @@ func TestFailedBatchDoesNotMutateInput(t *testing.T) {
 	}
 	if document.Name != "Production" {
 		t.Fatalf("input name = %q, want Production", document.Name)
+	}
+}
+
+func TestMutationWithoutOneofBodyFails(t *testing.T) {
+	document := validDocument(t)
+	_, err := ApplyMutations(
+		t.Context(), document, []*Mutation{{}}, testDependencies(), DefaultLimits,
+	)
+	var validation *ValidationError
+	if !errors.As(err, &validation) || validation.Code != "invalid_mutation" {
+		t.Fatalf("ApplyMutations() error = %v, want invalid_mutation", err)
 	}
 }
 
