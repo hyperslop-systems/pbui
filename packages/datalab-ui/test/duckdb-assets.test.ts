@@ -55,14 +55,26 @@ describe("self-hosted pinned DuckDB assets", () => {
       ).toBe("http://localhost:4173/duckdb-extensions");
     });
 
-    test("this package's own dev server, from source", () => {
+    test("this package's own dev server, from source (/@fs/, live BASE_URL)", () => {
+      // The workspace node_modules sits above the Vite root, so the wasm URL
+      // carries a filesystem path that says nothing about the base. From
+      // source BASE_URL is live — substituted by the serving dev server — so
+      // it is the one topology where the constant is trustworthy, including
+      // for a non-root dev base.
       expect(
         extensionRepositoryFor(
-          "/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-eh.wasm",
+          "/@fs/home/me/pbui/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?import&url",
           "/",
           "http://localhost:5173/",
         ),
       ).toBe("http://localhost:5173/duckdb-extensions");
+      expect(
+        extensionRepositoryFor(
+          "/@fs/home/me/pbui/node_modules/@duckdb/duckdb-wasm/dist/duckdb-eh.wasm",
+          "/static/",
+          "http://localhost:5173/static/",
+        ),
+      ).toBe("http://localhost:5173/static/duckdb-extensions");
     });
 
     test("a consumer dev server importing the prebuilt dist", () => {
@@ -73,6 +85,19 @@ describe("self-hosted pinned DuckDB assets", () => {
           "http://localhost:5173/ui/",
         ),
       ).toBe("http://localhost:5173/duckdb-extensions");
+    });
+
+    test("a consumer dev server with a non-root base", () => {
+      // Everything a dev server serves lives beneath its configured base, so
+      // the path before /node_modules/ IS the base — while the baked BASE_URL
+      // is "/" whatever the consumer configured. The URL must win.
+      expect(
+        extensionRepositoryFor(
+          "/static/node_modules/@hyperslop-systems/datalab-ui/node_modules/@duckdb/duckdb-wasm/dist/duckdb-eh.wasm",
+          "/",
+          "http://localhost:5173/static/ui/",
+        ),
+      ).toBe("http://localhost:5173/static/duckdb-extensions");
     });
   });
 });
