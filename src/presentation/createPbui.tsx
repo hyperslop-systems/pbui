@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useEscapeSurface } from "../surfaces";
 import type { PresentationRegistry } from "./registry";
 import type {
   AcceptRequest,
@@ -285,11 +286,16 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     const ref = useRef<HTMLDivElement>(null);
 
     const menu = pbui.menu;
+    // The menu is the topmost thing while it is open — it can be opened from
+    // inside a dialog, and its z-index says so — but it must not swallow the
+    // Escape of anything that opens above it. See `surfaces.ts`.
+    const ownsEscape = useEscapeSurface(menu !== null);
     useEffect(() => {
       if (!menu) return;
 
       const handleKey = (event: globalThis.KeyboardEvent) => {
         if (event.key === "Escape") {
+          if (!ownsEscape) return;
           event.preventDefault();
           pbui.closeMenu();
         }
@@ -304,7 +310,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         window.removeEventListener("keydown", handleKey);
         window.removeEventListener("click", handleClickAway);
       };
-    }, [menu, pbui]);
+    }, [menu, pbui, ownsEscape]);
 
     if (!pbui.menu) return null;
 

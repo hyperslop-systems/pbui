@@ -5,6 +5,10 @@ export { WorkspaceStrip } from "./WorkspaceStrip";
 export { StageBar } from "./StageBar";
 export { BundleDialog } from "./BundleDialog";
 export type { BundleDialogProps } from "./BundleDialog";
+// DATALAB-VIEW-001: the searchable launcher, shared by the empty tile, Replace,
+// and global navigation.
+export { LauncherDialog, LauncherResults } from "./LauncherDialog";
+export type { LauncherResultsProps } from "./LauncherDialog";
 export { TemplateTable } from "./TemplateTable";
 export type { TemplateTableProps, TemplateView } from "./TemplateTable";
 

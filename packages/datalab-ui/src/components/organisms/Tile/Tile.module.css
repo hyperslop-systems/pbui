@@ -10,6 +10,23 @@
   border-radius: var(--pbui-radius);
 }
 
+/*
+ * The active tile, marked only while the launcher is open.
+ *
+ * Scoped to `[data-launcher-open]` deliberately (DATALAB-VIEW-001 §10.3). An
+ * always-on border would say "this view is selected", which is not a concept
+ * the product has — active placement is the tile a *keyboard operation* will
+ * use, so it is worth showing exactly when a keyboard operation is in flight
+ * and invisible otherwise.
+ *
+ * An outline rather than a border, so nothing reflows when it appears: the
+ * tiles keep their geometry and only gain a ring.
+ */
+:global([data-launcher-open]) .tile[data-active] {
+  outline: 2px solid var(--pbui-selected);
+  outline-offset: -2px;
+}
+
 .title {
   display: flex;
   align-items: center;
