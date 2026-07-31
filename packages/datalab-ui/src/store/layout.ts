@@ -490,12 +490,23 @@ export const layoutSlice = createSlice({
           })),
         );
       },
-      prepare(input: { nodeId: NodeId; dir: "row" | "col" }) {
+      /**
+       * The new half is an empty launcher tile unless the caller names an
+       * application.
+       *
+       * The split button in the title bar names none, which is the original
+       * behaviour and still the common case. The launcher's `Mod+K` names one,
+       * so that "create a chart" is a single action: splitting first and filling
+       * afterwards would be two dispatches, and the tile would render as an
+       * empty launcher for a frame in between.
+       */
+      prepare(input: { nodeId: NodeId; dir: "row" | "col"; appId?: AppId; docId?: DocId | null }) {
         const viewId = newId();
         return {
           payload: {
-            ...input,
-            view: appView(viewId, "launcher"),
+            nodeId: input.nodeId,
+            dir: input.dir,
+            view: appView(viewId, input.appId ?? "launcher", input.docId ?? null),
             placementId: newId(),
             splitId: newId(),
           },

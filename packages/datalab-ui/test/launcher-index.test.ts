@@ -488,7 +488,7 @@ describe("new-view discoverability", () => {
   // The problem this solves, measured in the running app: with existing views
   // first, a Replace on a real workspace put 25 rows and a scroll between the
   // user and every new-view option.
-  test("an empty query in place mode puts new views first", () => {
+  test("an empty query puts new views first", () => {
     const results = search("");
     expect(results.newViewsFirst).toBe(true);
     expect(results.rows[0]?.kind).toBe("new");
@@ -502,7 +502,13 @@ describe("new-view discoverability", () => {
     expect(results.rows.at(-1)?.kind).toBe("new");
   });
 
-  test("navigate mode never reorders: it is not a place to create", () => {
+  test("navigate mode reorders too, once it has somewhere to create", () => {
+    // Reported as "I don't see any new view with cmd-K": navigate mode showed
+    // 36 existing rows before the new-view section, which is the same burial.
+    expect(search("", { ...NAVIGATE, allowNewViews: true }).newViewsFirst).toBe(true);
+  });
+
+  test("with nowhere to create, there is nothing to put first", () => {
     expect(search("", NAVIGATE).newViewsFirst).toBe(false);
   });
 
@@ -516,14 +522,18 @@ describe("new-view discoverability", () => {
 });
 
 describe("invocation semantics", () => {
-  test("navigate mode offers no new applications without a launcher target", () => {
-    const results = search("chart", NAVIGATE);
-    expect(results.newApplications).toEqual([]);
-  });
-
-  test("navigate mode offers new applications when the active tile is a launcher", () => {
+  test("navigate mode offers new applications, because it can split", () => {
+    // It used to refuse unless the active tile was an empty launcher. That made
+    // Mod+K a strictly worse launcher than the tile's own, and on a freshly
+    // loaded page — nothing focused, so no active tile — it offered none at all.
     const results = search("chart", { ...NAVIGATE, allowNewViews: true });
     expect(results.newApplications.map((row) => row.appId)).toEqual(["chart"]);
+  });
+
+  test("new applications are still suppressed when there is nowhere to put one", () => {
+    // The only remaining case: a workspace holding no tile at all.
+    const results = search("chart", NAVIGATE);
+    expect(results.newApplications).toEqual([]);
   });
 
   test("navigate mode hides unplaced views, which have nowhere to navigate", () => {

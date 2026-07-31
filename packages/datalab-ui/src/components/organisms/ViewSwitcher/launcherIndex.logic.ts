@@ -134,9 +134,16 @@ export interface LauncherSearchContext {
   /**
    * Whether new-view rows may be offered.
    *
-   * Always true in place mode. In navigate mode, true only when the active
-   * placement is already a launcher tile — otherwise `+chart` has nowhere to go
-   * that is not a silent split or a destroyed working tile.
+   * True whenever there is somewhere for a new view to go, which — since
+   * navigate mode learned to split — is everywhere except an empty workspace.
+   *
+   * It was once false in navigate mode unless the active tile was already a
+   * launcher, on the reasoning that `Mod+K` must not destroy a working tile.
+   * The rule was right and the remedy was wrong: it made `Mod+K` a strictly
+   * worse launcher than the tile's own, and on a freshly loaded page — where
+   * nothing has been focused yet, so there is no active tile at all — it hid
+   * every new-view row with no way to reach one. Splitting keeps the promise
+   * without the refusal: nothing is replaced, the neighbour just gets smaller.
    */
   allowNewViews: boolean;
   /**
@@ -167,12 +174,16 @@ export interface LauncherResults {
   /**
    * Whether the new-view rows come before the existing ones.
    *
-   * True for an empty query in place mode, and it is a usability fix rather
-   * than a preference. Someone who opens the launcher against a tile wants to
-   * put *something* there, and "make a new one" is as likely an answer as
-   * "reuse an existing one" — but with existing views first, a real workspace
-   * put twenty-five rows and a scroll between the user and every new-view
-   * option. A section nobody scrolls to is a section that does not exist.
+   * True for an empty query, in every mode. An empty query means the user has
+   * expressed no preference yet, so the list should open with the complete menu
+   * of what can be done — and "make a new one" is as likely an answer as "reuse
+   * an existing one".
+   *
+   * It is a usability fix rather than a preference. Measured in a real
+   * workspace, existing-views-first put twenty-five rows and a scroll between
+   * the user and any new-view option in place mode, and thirty-six in navigate
+   * mode. A section nobody scrolls to is a section that does not exist, which is
+   * exactly how it was reported: "I don't see any new view with cmd-K".
    *
    * False as soon as there is query text: a text match against a named view is
    * more specific than an application whose name happens to contain the same
@@ -498,7 +509,7 @@ export function searchLauncherIndex(
     : [];
   const newApplications = searching ? newAll : newAll.slice(0, EMPTY_QUERY_NEW_APPLICATIONS);
 
-  const newViewsFirst = !searching && context.mode === "place" && newApplications.length > 0;
+  const newViewsFirst = !searching && newApplications.length > 0;
   const existing = [...scored.flatMap((group) => group.rows), ...unplaced];
   const rows: LauncherRow[] = newViewsFirst
     ? [...newApplications, ...existing]

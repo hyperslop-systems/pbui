@@ -125,41 +125,59 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
   const targetWorkspace = target.workspace;
 
   /**
-   * In navigate mode, the active tile — but only if it is a launcher.
+   * Where a new view goes in navigate mode.
    *
-   * `Mod+K` never replaces a working tile (Decision 6), so a new-view row has
-   * somewhere to go only when the tile the user was last in is already empty.
-   * Anywhere else, `+chart` is refused with an explanation rather than resolved
-   * into a silent split or a destroyed view.
+   * `Mod+K` must never destroy a working tile (Decision 6), so a new view is
+   * never placed *into* one. But refusing outright — the first implementation —
+   * made the global launcher strictly worse than the tile's own, and on a fresh
+   * page load, where nothing has been focused, it offered no new views at all.
+   *
+   * Splitting keeps the promise and drops the refusal: the active tile stays,
+   * gets narrower, and the new view appears beside it. `fill` when the target is
+   * already an empty launcher, because splitting an empty tile to make room for
+   * something would be absurd.
    */
-  const navigateTarget = useMemo(() => {
-    if (invocation.kind !== "navigate" || !invocation.activePlacementId) return null;
-    const active = invocation.activePlacementId;
-    let viewId: string | null = null;
-    const holds = (node: Node): boolean => {
-      if (node.type === "leaf") {
-        if (node.id !== active) return false;
-        viewId = node.viewId;
-        return true;
-      }
-      return holds(node.a) || holds(node.b);
+  const newViewTarget = useMemo(() => {
+    if (invocation.kind !== "navigate") return null;
+    const space = layout.spaces.find((candidate) => candidate.id === layout.currentSpaceId);
+    if (!space) return null;
+
+    const firstLeaf = (node: Node): Extract<Node, { type: "leaf" }> | null =>
+      node.type === "leaf" ? node : (firstLeaf(node.a) ?? firstLeaf(node.b));
+    const holds = (node: Node, id: NodeId): Extract<Node, { type: "leaf" }> | null =>
+      node.type === "leaf"
+        ? node.id === id
+          ? node
+          : null
+        : (holds(node.a, id) ?? holds(node.b, id));
+
+    // The active tile when there is one; otherwise the first in tree order.
+    // Deterministic rather than clever: the header names it either way, so a
+    // user who does not like the choice can see it before pressing Enter.
+    const leaf =
+      (invocation.activePlacementId ? holds(space.tree, invocation.activePlacementId) : null) ??
+      firstLeaf(space.tree);
+    if (!leaf) return null;
+
+    const isLauncher = layout.views[leaf.viewId]?.appId === "launcher";
+    return {
+      placementId: leaf.id,
+      workspace: space,
+      title: layout.views[leaf.viewId]?.title ?? layout.views[leaf.viewId]?.appId ?? "a tile",
+      action: isLauncher ? ("fill" as const) : ("split" as const),
     };
-    const workspace = layout.spaces.find((space) => holds(space.tree));
-    if (!workspace || !viewId) return null;
-    const isLauncher = layout.views[viewId]?.appId === "launcher";
-    return isLauncher ? { placementId: active, workspace } : null;
-  }, [invocation, layout.spaces, layout.views]);
+  }, [invocation, layout.spaces, layout.currentSpaceId, layout.views]);
 
   const context: LauncherSearchContext = useMemo(
     () => ({
       mode: invocation.kind === "navigate" ? "navigate" : "place",
-      targetWorkspaceId: targetWorkspace?.id ?? navigateTarget?.workspace.id ?? null,
-      allowNewViews: invocation.kind !== "navigate" || navigateTarget !== null,
+      targetWorkspaceId: targetWorkspace?.id ?? newViewTarget?.workspace.id ?? null,
+      allowNewViews: invocation.kind !== "navigate" || newViewTarget !== null,
       // Replacing a tile with what it already shows is a no-op; the embedded
       // switcher has always dropped this row and the modal must too.
       excludeViewId: target.viewId,
     }),
-    [invocation.kind, targetWorkspace, target.viewId, navigateTarget],
+    [invocation.kind, targetWorkspace, target.viewId, newViewTarget],
   );
 
   const parsed = useMemo(() => parseLauncherQuery(query), [query]);
@@ -208,17 +226,33 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
         if (target) focusPlacement(target);
         return;
       }
-      if (row.kind !== "new" || !navigateTarget) return;
-      dispatch(layoutActions.setCurrentSpace(navigateTarget.workspace.id));
+      if (row.kind !== "new" || !newViewTarget) return;
+      const docId = row.docBound ? activeDocId : null;
+      if (newViewTarget.action === "fill") {
+        dispatch(
+          layoutActions.createViewInPlacement({
+            nodeId: newViewTarget.placementId,
+            appId: row.appId,
+            docId,
+          }),
+        );
+        dispatch(layoutActions.closeLauncher());
+        focusPlacement(newViewTarget.placementId);
+        return;
+      }
+      // Split along the tile's LONGER axis, so the new view gets a usable
+      // rectangle rather than a sliver. A wide tile splits into two columns;
+      // a tall one stacks. Read from the DOM because only the DOM knows the
+      // rendered geometry — the tree stores ratios, not pixels.
       dispatch(
-        layoutActions.createViewInPlacement({
-          nodeId: navigateTarget.placementId,
+        layoutActions.splitLeaf({
+          nodeId: newViewTarget.placementId,
+          dir: splitDirectionFor(newViewTarget.placementId),
           appId: row.appId,
-          docId: row.docBound ? activeDocId : null,
+          docId,
         }),
       );
       dispatch(layoutActions.closeLauncher());
-      focusPlacement(navigateTarget.placementId);
       return;
     }
 
@@ -283,8 +317,10 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
 
   const where = targetWorkspace
     ? `${targetWorkspace.name} · ${invocation.kind === "replace" ? "this tile" : "new view"}`
-    : navigateTarget
-      ? `${navigateTarget.workspace.name} · the empty tile you were in`
+    : newViewTarget
+      ? `${newViewTarget.workspace.name} · ${
+          newViewTarget.action === "fill" ? "the empty tile" : `beside ${newViewTarget.title}`
+        }`
       : "a view anywhere · nothing is replaced";
 
   /**
@@ -294,8 +330,8 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
    * user's behalf, or replacing whatever they were looking at. Both are silent
    * and one is destructive.
    */
-  const newViewsRefused =
-    invocation.kind === "navigate" && !navigateTarget && parsed.kind === "new";
+  // Only reachable now when the current workspace somehow holds no tile at all.
+  const newViewsRefused = invocation.kind === "navigate" && !newViewTarget && parsed.kind === "new";
 
   const activeRow = rows.find((row) => row.id === active);
   const enterVerb =
@@ -371,6 +407,24 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
       </div>
     </Dialog>
   );
+}
+
+/**
+ * Split a tile along its longer axis.
+ *
+ * The design left split direction as an open question and warned against
+ * choosing one silently. This chooses, and the modal says which tile it will
+ * split before the user commits — which addresses the actual objection, since
+ * what makes an implicit split bad is that it is a surprise, not that it is a
+ * default. A wide tile becomes two columns; a tall one stacks.
+ */
+function splitDirectionFor(placementId: NodeId): "row" | "col" {
+  const element = document.querySelector<HTMLElement>(
+    `[data-placement-id="${CSS.escape(placementId)}"]`,
+  );
+  if (!element) return "row";
+  const box = element.getBoundingClientRect();
+  return box.width >= box.height ? "row" : "col";
 }
 
 /**
