@@ -97,3 +97,12 @@ Step 5: moved Escape ownership from the layout slice into @hyperslop-systems/pbu
 
 - /home/manuel/workspaces/2026-07-30/add-launcher/pbui/src/surfaces.ts — The shared Escape surface stack
 
+
+## 2026-07-30
+
+Step 7: Mod+K offered no new views on a cold load, because the launcher-tile condition depended on an active placement that does not exist before the first interaction. New views are now offered everywhere and create by splitting the named target rather than refusing (d8aeea4).
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx — Target resolution, fill-or-split, and split direction
+

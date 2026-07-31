@@ -941,3 +941,162 @@ exist yet, all of which now work:
 Verified end to end: `+encoding` then Enter turned the target tile into
 `encoding · α`, the hint read **"Enter create"** rather than "Enter place", and
 the dialog closed and focused the new tile.
+
+## Step 7: Mod+K had no new views, and the fix was to split rather than refuse
+
+Reported from the running application: pressing `Mod+K` showed only existing
+views, and it should behave like the launcher a new tile offers. It was two
+faults stacked, both mine, and the second is the interesting one — I implemented
+a design rule correctly and the rule's *remedy* was wrong even though the rule
+itself was right.
+
+The rule is Decision 6: `Mod+K` must never destroy a working tile. My
+implementation kept that promise by refusing — hiding every new-view row unless
+the active tile was already an empty launcher. Splitting keeps the same promise
+without refusing anything, and that is what this step changes.
+
+### Prompt Context
+
+**User prompt (verbatim):** "i don't see any new view with cmd-K on http://localhost:5273/ui/, t just shows the existing ones. But it should show a list like when clicking open view in a new title."
+
+**Assistant interpretation:** `Mod+K` should offer new-view creation the way the
+launcher tile's "Open a view" modal does, rather than listing existing views only.
+
+**Inferred user intent:** The global shortcut should be a complete launcher, not
+a navigation-only subset — otherwise it is a worse version of the thing already
+reachable from a tile.
+
+**Commit (code):** `d8aeea4` — "fix(launcher): Mod+K offers new views, and splits to make room"
+
+### What I did
+
+- Reproduced first, and the reproduction named the cause immediately:
+
+  ```json
+  { "heading": "Go to view", "sections": ["workspace start here", "…"], "activeTile": 0 }
+  ```
+
+  `activeTile: 0` — a freshly loaded page has focused nothing, so
+  `activePlacementId` is null, so the launcher-tile condition could not hold and
+  every new-view row was suppressed.
+- Extended `splitLeaf`'s `prepare` with optional `appId`/`docId`.
+- Replaced `navigateTarget` with `newViewTarget`, which resolves the active tile
+  or the first leaf in tree order, and reports `fill` or `split`.
+- Selecting a new-view row in navigate mode now splits along the tile's longer
+  axis, and the header names the tile: *"beside Temperature by station"*.
+- Dropped the `mode === "place"` condition from `newViewsFirst`.
+- Four tests: two in `store.test.ts` for the reducer, two in
+  `launcher-index.test.ts` for the ordering.
+
+### Why
+
+Two separate mistakes, worth separating because they have different lessons.
+
+**The bug**: the launcher-tile condition depended on `activePlacementId`, which
+is null until the user interacts. I had tested `Mod+K` by *clicking a tile
+first*, every time, so I never saw the state a user actually starts in. The
+condition was never reachable on arrival.
+
+**The design error**: even with the bug fixed, requiring an empty launcher tile
+makes `Mod+K` strictly worse than the tile's own launcher — the global shortcut
+could do less than the local one, which is backwards. The design's own §19
+question 6 anticipated this ("should global `+chart` eventually offer an
+explicit split?") and answered "not in the first release" partly because
+choosing a split direction silently is bad. But the objection to a silent split
+is the *silence*, not the default: naming the target in the header before the
+user commits removes it.
+
+### What worked
+
+- Reproducing before reading any code. The `activeTile: 0` line took thirty
+  seconds and pointed straight at the cause; reasoning from the source would
+  have found the launcher-tile condition and probably stopped there, missing
+  that it was unreachable rather than merely strict.
+- Putting `appId`/`docId` on `splitLeaf`'s prepare rather than dispatching split
+  then create. Two dispatches would render an empty launcher tile for one frame
+  before the real view replaced it.
+
+### What didn't work
+
+- Nothing failed outright this time. The nearest miss: after the first fix,
+  navigate mode still listed 36 existing rows before the new-view section — the
+  same burial that Step 6 fixed for place mode. I had scoped `newViewsFirst` to
+  place mode on the argument that navigate mode "is not a place to create",
+  which was true when it could not create and false the moment it could. The
+  condition survived the change that invalidated it.
+
+### What I learned
+
+- **A condition can outlive its reason silently.** `mode === "place"` was
+  correct when written and wrong an hour later, and nothing in the type system
+  or the tests noticed. The rewritten comment now states the *reason* rather
+  than the rule, so the next person to change the capability sees what the
+  condition depends on.
+- Testing a keyboard shortcut by first clicking something is not testing the
+  shortcut. The interesting state for a global shortcut is the one before any
+  interaction, and it is the easiest to skip.
+
+### What was tricky to build
+
+Choosing a split direction without a dialog.
+
+The design explicitly warned against choosing silently, and the obvious
+alternatives are all worse: asking for a direction turns one keystroke into two
+decisions; always splitting right gives a tall narrow tile a sliver; splitting
+the workspace root changes the geometry of things the user did not name.
+
+I settled on the tile's longer axis — a wide tile becomes two columns, a tall
+one stacks — read from `getBoundingClientRect` at the moment of the click,
+because the tree stores ratios and only the DOM knows the rendered geometry.
+What makes that acceptable rather than silent is the header: "beside Temperature
+by station" is on screen before Enter, so the outcome is predicted rather than
+discovered. The direction is still a guess, but a guess about *shape*, applied
+to a named target, and reversible with one undo of a split.
+
+### What warrants a second pair of eyes
+
+- **The fallback target when nothing is focused** is the first leaf in tree
+  order, which is arbitrary in the sense that it is not "the one the user was
+  looking at" — there is no such tile yet. It is deterministic and named in the
+  header, which I think is enough, but a reasonable alternative is the largest
+  tile.
+- `splitDirectionFor` reads the DOM inside a click handler. Cheap and correct
+  here, but it is a layout read in an event path and would need care if it ever
+  ran per keystroke.
+- Whether navigate mode should reorder at all. Putting "create a chart" above
+  "the view you are looking for" is arguably backwards for a shortcut named *go
+  to view*; the counter-argument, which I took, is that an empty query means no
+  preference has been expressed yet.
+
+### What should be done in the future
+
+- The design doc's §19 question 6 and Decision 6 both need updating: the answer
+  to "should global `+` split?" is now yes, with the target named. I have not
+  amended them yet.
+- If a workspace can ever hold zero tiles, `newViewTarget` returns null and the
+  refusal message is still there to catch it. Worth confirming that state is
+  actually unreachable.
+
+### Code review instructions
+
+- Start with `newViewTarget` in `LauncherDialog.tsx` — target resolution and the
+  fill/split decision.
+- Then `splitDirectionFor` beneath it, and `splitLeaf`'s `prepare` in
+  `store/layout.ts`.
+- `pnpm test` — 486, including the two reducer tests that prove a split with no
+  application still makes an empty launcher tile.
+- In a browser, the exact reported path: load `/ui/` fresh, press `Mod+K`
+  without clicking anything, and confirm NEW VIEW is the first section.
+
+### Technical details
+
+Verified end to end from a cold load:
+
+```text
+header: "go to: start here · beside Temperature by station"
+before: [Temperature by station, Yield by production line, Population by region,
+         sources, Regional totals]
+after:  [Temperature by station, table · α, Yield by production line,
+         Population by region, sources, Regional totals]
+everythingSurvived: true
+```
