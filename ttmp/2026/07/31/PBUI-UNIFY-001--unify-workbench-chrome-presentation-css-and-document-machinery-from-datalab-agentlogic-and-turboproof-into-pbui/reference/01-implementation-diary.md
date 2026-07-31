@@ -133,3 +133,56 @@ The document-model-agnostic chrome (design doc DR-U3): `useTileDrag`, `TileFrame
 
 - `git show 8f99e8a`; diff `src/chrome/useTileDrag.ts` against `packages/datalab-ui/src/components/organisms/Tile/useDrag.ts` (the deltas should be exactly: callbacks for dispatch, the exported test hook).
 - Validate: `pnpm vitest run src/chrome && pnpm build`.
+
+## Step 3: Phase 3 integrated, and datalab-ui's adoption
+
+Two threads landed while the product-adoption subagents ran. The Phase-3 subagent delivered `workbench-protocol/client` with the TS↔Go parity corpus (its own diary: reference/02); I reviewed and committed it, then performed the datalab-ui adoption myself — datalab-ui consumes pbui as `workspace:^`, so it adopts the unpublished 0.2.0 with no dependency gymnastics and serves as the first real consumer of the extracted modules.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation / intent:** (see Step 1)
+
+**Commit (code):** f3d8134 (Phase 3, subagent work reviewed+committed), ed9b1f6 (datalab-ui adoption)
+
+### What I did
+
+- Reviewed and committed Phase 3: all 15 mutation arms in the TS applier (the products' copies had 9), the `ClientConfig` factory for product-flavored builders, 26 protojson fixtures generated deterministically through the TS applier and asserted from BOTH appliers (TS 43/43; Go `TestApplierParityFixtures` 26/26; gofmt clean). The agent surfaced four genuine TS↔Go divergences and resolved all toward Go per the brief: name/title trimming, `PLACEMENT_POSITION_UNSPECIFIED` rejection (the product copies silently treated it as AFTER), `documentDelete` unknown/in-use guards, and `documentPut` cloning.
+- datalab-ui adoption: package CSS imports into `styles.ts`; `MouseDocLine`/`AcceptBanner` become the instance's own (locals deleted); `pbui.module.css` shrinks from 183 lines to the one part this product itself emits (`menu-target`, from `renderMenuHeader`) and moves to `styles/pbui-extras.css` as a global sheet — its only importers were the deleted components, so as a module it would have silently stopped loading; `Tile` swaps `useDrag` for the package `useTileDrag` (dispatch adapters) and renders the shared `DropZoneOverlay`; `shortcutRouting` deleted locally and imported from the package (test repointed). typecheck, 509/509 tests, build.
+- Deliberately deferred: datalab's `TileFrame`/`LauncherShell` adoption. Its Tile and LauncherDialog are the policy-rich references (InlineRename in the title slot, active-placement capture props, the query language); DR-U6 explicitly scopes the shell to not export that policy, and rewriting the reference implementation for cosmetic sameness is churn without risk reduction. Recorded as follow-up.
+
+### Why
+
+- Committing the subagent's work myself: two workers sharing one repository index is how commits get corrupted; the brief told the agent not to touch git, and the review-then-commit step is where its work got read.
+
+### What worked
+
+- The parity corpus did exactly what §5.3 promised on day one: it FOUND drift (four divergences) instead of documenting the hope that there is none.
+
+### What didn't work
+
+- N/A in this step (the subagent's failures are recorded verbatim in its own diary).
+
+### What I learned
+
+- The products' appliers were not just duplicated — they were WRONG relative to the server on four behaviors, quietly: a mutation trimmed by the server but not locally leaves the outbox document diverging from the acknowledged one until the next rebase. The unification is a correctness fix, not only hygiene.
+
+### What was tricky to build
+
+- The datalab `pbui.module.css` unwind: deleting the two component importers would have silently unloaded the surviving product-specific rule — the same failure class as the original incident, one level down. Caught by asking "who still imports this file" before moving on.
+
+### What warrants a second pair of eyes
+
+- The Go parity test reads the fixture directory from the npm package path by relative path; fixtures are not in the npm tarball (files: ["dist"]) — fine for a monorepo test, but a packaging reviewer should confirm that is intended.
+- The trimming divergence becomes a visible behavior change for agentlogic/turboproof when they adopt `client/` (their local appliers do not trim today).
+
+### What should be done in the future
+
+- Products adopt `client/` (task 9kjg) — scheduled after the chrome adoptions land.
+- A CI regenerate-and-diff check for the fixture corpus (the generator is deterministic).
+
+### Code review instructions
+
+- `git show f3d8134` (start at `packages/workbench-protocol/src/client/apply.ts` against `pkg/workbench`'s applier; then the fixtures and both parity tests), `git show ed9b1f6`.
+- Validate: `cd packages/workbench-protocol && pnpm vitest run && pnpm build`; `go test ./pkg/workbench/...`; `cd packages/datalab-ui && pnpm test`.
