@@ -1,157 +1,176 @@
 /**
  * Every word on the marketing page, in one file.
  *
- * ## Where it comes from
+ * ## The rewrite (AGENTLOGIC-4)
  *
- * Lifted from the reference landing page the requester preferred
- * (`pbui-landing-duckdb.tsx:2861-3031`), with one substitution: that page says
- * "PBUI" and this one says "DATA LAB".
+ * The previous copy was lifted from a prototype reference page with "PBUI"
+ * substituted by "DATA LAB" — its own header flagged that choice as one to
+ * revisit. This is the revisit: written from scratch, in the product's voice,
+ * and ordered so a stranger meets the *idea* before the feature list.
  *
- * That is a deliberate reading of "I like the copy from the pbui-landing-duckdb
- * more than what you have, so let's keep that for now" — keep the sentences,
- * change the product name. The alternative reading, *rewrite it in the brand's
- * voice*, is defensible and would produce a different page; §6.3 of the design
- * doc records the choice so it can be revisited rather than discovered.
+ * The narrative is: hook (the chart is not a picture) → the PBUI concept
+ * (objects and verbs, tiles and documents, one world) → what DATA LAB builds
+ * on top of it (visible pipeline, grammar of graphics, local execution) →
+ * the tutorial → the runtime → the family (the same workbench idiom carries
+ * other applications, agentlogic among them).
  *
- * ## Two places the reference's words were NOT kept, and why
+ * ## The rule this file is under, kept from the previous version
  *
- * Both are the reference describing a *different program* — it is accurate
- * about itself, and datadrop is a separate implementation with different data.
- * Keeping the instruction would have meant shipping something a visitor cannot
- * follow, and keeping the runtime cards would have meant shipping claims that
- * are false. Neither can be what "keep the copy" meant.
- *
- *  - **`HERO.tryIt`** told the reader to "keep one species". There is no
- *    species column in any datadrop fixture; the hero shows weather stations.
- *  - **`RUNTIME.cards`** — three of four described the prototype's runtime.
- *
- * Each is annotated at the declaration with what was checked. Everything else
- * is the reference's, verbatim, and the `FEATURES` comment records the claims
- * that were traced and found true.
+ * **A claim here must name something a reader could go and find.** If a card
+ * cannot be traced to a file, delete the card. The previous copy shipped three
+ * runtime claims that were true of a prototype and false of this product
+ * ("JavaScript evaluator", "LRU geometry cache", "LTTB decimation" — none
+ * existed anywhere in ui/src). Every card below carries its trace.
  *
  * ## Why the copy is data rather than JSX
  *
- * The reference file keeps its prose inline in the markup, which makes it
- * unreviewable as prose: to check the page reads well you have to read past
- * `style={{ fontSize: "clamp(46px, 6.4vw, 78px)" }}` between every sentence.
- * Here the whole page can be read top to bottom in one screen, and edited by
+ * So the whole page reads top to bottom as prose, and can be edited by
  * someone who does not write React.
  */
 
 export const HERO = {
-  eyebrow: "Browser-native visual analysis",
-  headline: "Explore data without losing the thread.",
+  eyebrow: "A PBUI workbench for data analysis",
+  headline: "The chart is not a picture.",
   lede:
-    "DATA LAB keeps the chart, table, pipeline and encoding in one live document. " +
-    "Filter a mark, remap a field, inspect a transform, or branch the analysis " +
-    "without leaving the workspace.",
-  chips: ["DuckDB-Wasm worker", "visible SQL-shaped steps", "linked views"],
+    "Every mark, field, step and legend entry on this screen is a live object: it knows its " +
+    "value, it knows its type, and it carries a menu of verbs that edit the analysis itself. " +
+    "DATA LAB is built on that one idea — right-click anything, and the thing you point at " +
+    "is the thing you change.",
+  chips: ["DuckDB-Wasm worker", "visible pipeline steps", "linked views"],
   /**
    * The one instruction on the page, so it has to work on the data beside it.
    *
-   * The reference said "keep one species", which is its penguins dataset
-   * showing through. **There is no species column in any datadrop fixture.**
-   * The hero seeds `readings` — an event stream from four weather stations —
-   * so a visitor following it looked for something that is not on screen, in
-   * the single sentence telling them what to do.
-   *
    * "Keep only" is the menu label verbatim (`pbui/descriptors/cat.ts:32`), and
-   * `station` is a categorical column, which matters: only categorical columns
-   * get keep/exclude, because "keep only temp_c = 21.4" is a filter nobody
-   * wants (`descriptors/datum.ts:38`).
+   * `station` is a categorical column of the seeded `readings` stream, which
+   * matters: only categorical columns get keep/exclude
+   * (`descriptors/datum.ts:38`). The hero seed also ships one filter step
+   * already in the pipeline (`tour/fixtures.ts:heroSeed`), so "the pipeline
+   * beside it" is not an empty tile when the reader looks.
    */
   tryIt:
     "Try it: right-click a point, choose Keep only station = …, " +
     "then disable the new filter in the pipeline beside it.",
-  primary: "Take the product tour",
+  primary: "Learn it in five exercises",
   secondary: "See the runtime",
 } as const;
 
-export const WHY = {
-  eyebrow: "Why the workbench feels different",
-  headline: "One analysis. Several useful views.",
+/**
+ * The concept section: PBUI itself, before any product feature.
+ *
+ * Traceability:
+ *   01  presentations carry value and type      pbui/src/types.ts, descriptors/*
+ *   02  the accept protocol and its red banner  the §A tour cheat sheet teaches
+ *       it live on this same page; Esc aborts
+ *   03  tiles/documents/workspaces              store/world.ts, store/layout.ts;
+ *       §B of the tour proves two tiles on one document move together
+ *
+ * The lineage sentence stays: Genera and CLIM are where presentation-based
+ * interaction comes from, and naming the ancestry is more honest than
+ * pretending the idea is new.
+ */
+export const CONCEPT = {
+  eyebrow: "The idea underneath — PBUI",
+  headline: "Presentation-based interaction.",
   lede:
-    "The chart is not a dead-end render. It is one view over a document that also has " +
-    "a relation, a pipeline, an encoding and a history of states worth keeping.",
+    "Most interfaces flatten their objects into pixels the moment they draw them; from then on " +
+    "you operate on the picture. In a PBUI application the rendered value stays attached to the " +
+    "real object — an idea inherited from Genera and CLIM. Three consequences carry the whole " +
+    "workbench:",
+  cards: [
+    {
+      n: "01",
+      title: "Objects, not pixels",
+      body:
+        "Whatever is displayed remains a first-class handle: a mark knows its row, a field " +
+        "knows its type, a step knows its place. Hovering names the object; its menu lists " +
+        "the verbs that type supports.",
+    },
+    {
+      n: "02",
+      title: "Verbs that can ask",
+      body:
+        "A command can pause and accept an argument you point at, anywhere on screen — the red " +
+        "banner names what it wants, Esc aborts. No dialog boxes reconstructing what you were " +
+        "already looking at.",
+    },
+    {
+      n: "03",
+      title: "Tiles are windows; documents are the thing",
+      body:
+        "Every pane is a view of one document or of the shared world. Two tiles pointed at the " +
+        "same document move together, because they are not copies — and workspaces are layouts, " +
+        "never data.",
+    },
+  ],
 } as const;
 
 /**
- * Verified against the code, DATADROP-14 step 12.
- *
- *   01  presentations carry their value and type          pbui/types.ts, descriptors/*
- *   02  filter · derive · summarize · sort · limit        model/transformEditor.ts:7
- *   03  documents, workspaces and snapshots               store/world.ts, store/layout.ts
- *
- * Card 02's five names are exact rather than illustrative — `TransformKind` is
- * literally that union — and if a sixth transform is ever added this line is
- * wrong the day it lands.
+ * What DATA LAB builds on the concept. Traceability:
+ *   01  filter · derive · summarize · sort · limit is the exact TransformKind
+ *       union (model/transformEditor.ts:7) — a sixth transform makes this
+ *       sentence wrong the day it lands
+ *   02  the spec line is §C's cheat sheet, verbatim
+ *   03  the DuckDB worker: appkit/analysisCoordinator.ts
  */
-export const FEATURES = [
-  {
-    n: "01",
-    title: "Edit from the evidence",
-    body: "Marks, legend entries, fields and rows retain their data and type. Their menus act on the underlying document.",
-  },
-  {
-    n: "02",
-    title: "Keep computation visible",
-    body: "Filters, derives, summaries, sorts and limits remain ordered, editable steps instead of disappearing behind a chart.",
-  },
-  {
-    n: "03",
-    title: "Branch without flattening",
-    body: "Documents, workspaces and snapshots separate the analysis from its layout, so comparison does not require screenshots or duplicated files.",
-  },
-] as const;
+export const PRODUCT = {
+  eyebrow: "What DATA LAB does with it",
+  headline: "An analysis you can hold open.",
+  lede:
+    "Point the workbench at an event stream or a dataset version, and the chart, table, " +
+    "pipeline and encoding stay four views of one live document — filter from the chart, " +
+    "re-map from the encoding, disable a step from the pipeline, and every view answers.",
+  cards: [
+    {
+      n: "01",
+      title: "Computation stays visible",
+      body:
+        "Filters, derives, summaries, sorts and limits are ordered, editable steps — not " +
+        "history that disappeared behind a render. Disable a step in place to A/B your own " +
+        "transform.",
+    },
+    {
+      n: "02",
+      title: "A grammar, not a chart-type menu",
+      body:
+        "A chart is a composition — source ⊳ steps ↦ mapping · geom · scale — editable from " +
+        "either end. Ask for a geometry the data cannot support and the chart says why, " +
+        "instead of guessing.",
+    },
+    {
+      n: "03",
+      title: "Branch without flattening",
+      body:
+        "Documents, workspaces and snapshots separate the analysis from its layout, so " +
+        "comparing two states never means screenshots or duplicated files.",
+    },
+  ],
+} as const;
 
 export const TUTORIAL = {
   eyebrow: "Interactive tutorial",
-  headline: "Learn it by answering a question.",
+  headline: "Learn it by doing it, right here.",
   lede:
-    "These are not screenshots or a separate tutorial shell. Each exercise embeds the product, " +
-    "observes the resulting state, and accepts any route that reaches the goal.",
+    "Five exercises, and every panel in them is the real product — the same workbench shell, " +
+    "answering from committed fixtures instead of a server. Each exercise watches the world, " +
+    "not your mouse: any route that reaches the goal counts, including one nobody wrote down.",
   narrow:
     "The exercises work on small screens. Tile dragging and side-by-side comparison are easier on a desktop.",
 } as const;
 
 /**
- * THE ONE SECTION THAT IS NOT THE REFERENCE'S COPY, AND WHY.
- *
- * The reference page's four runtime cards describe the *prototype's* runtime,
- * which is a different implementation. Three of the four were false of datadrop
- * (DATADROP-14 OQ-3), and each was checked rather than assumed:
- *
- *   "The small JavaScript evaluator renders the first frame"
- *       — there is no JavaScript evaluator. `useTableFor` is documented as a
- *         "synchronous PBUI lookup of the latest current DuckDB result"; every
- *         document goes through DuckDB and shows a loading state until it does.
- *   "a second LRU stores built plot geometry"
- *       — no LRU exists anywhere in ui/src.
- *   "line and area series use LTTB decimation"
- *       — no decimation exists anywhere in ui/src.
- *
- * Before this was checked, the only file in the repository containing the
- * strings "LRU", "LTTB" and "decimat" was THIS ONE. That is the shape of the
- * failure: marketing copy that describes a system nobody built, in a file no
- * test reads.
- *
- * So these four cards say what datadrop's runtime actually does. Each is
- * traceable:
- *
+ * The four runtime claims, each traceable — kept from the verified set:
  *   lazy worker          appkit/analysisCoordinator.ts — one lazily-created executor
  *   stale-while-fresh    analysisCoordinator.ts:76 — the latest-generation rule
  *   purge on principal   AnalysisProvider.tsx:45 — "changing it purges all data"
  *   bounded results      AnalysisProvider.tsx:23 — MVP_MAX_RESULT_ROWS, plus coverage
- *
- * The rule this section is under: **a claim here must name something a reader
- * could go and find.** If a card cannot be traced to a file, delete the card.
  */
 export const RUNTIME = {
   eyebrow: "Frontend runtime",
-  headline: "Fast enough to stay direct.",
+  headline: "Your data stays where you are.",
   lede:
-    "DATA LAB compiles the visible pipeline to SQL and executes it against DuckDB in a browser " +
-    "worker. Nothing is sent anywhere to be computed.",
+    "The visible pipeline compiles to SQL and runs against DuckDB in a browser worker. " +
+    "Nothing is sent anywhere to be computed — the server stores and serves bytes; the " +
+    "analysis happens in your tab.",
   cards: [
     {
       title: "DuckDB-Wasm in a worker",
@@ -176,18 +195,26 @@ export const WORKFLOW = {
   eyebrow: "The full workflow",
   headline: "Bring a question. Keep the reasoning.",
   body:
-    "The final exercise removes the guided steps. Build a filtered summary, map it, save it, " +
-    "and place the evidence beside the picture.",
+    "The final exercise removes the guided steps: a question, a workbench, and five things " +
+    "that must be true when you are done. Build the filtered summary, map it, save it, and " +
+    "place the evidence beside the picture — the checks tick by watching the world.",
 } as const;
 
-export const DESIGN_NOTE = {
-  eyebrow: "Design note",
-  headline: "A grammar of graphics with object-level interaction.",
+/**
+ * The family note replaces the old design-note section. The lineage sentence
+ * moved up into CONCEPT; what remains at the bottom is the wider claim: the
+ * workbench idiom is a library, and DATA LAB is one application of it.
+ * agentlogic — the transcript workbench over coding-agent sessions — is
+ * another, with the same tiles, the same verbs, the same accept protocol.
+ */
+export const FAMILY = {
+  eyebrow: "One idiom, many backends",
+  headline: "DATA LAB is one PBUI application.",
   body:
-    "DATA LAB combines a grammar-of-graphics document model with presentation-based interaction " +
-    "inspired by Genera and CLIM. Rendered values retain their type and behavior, so the result " +
-    "can be edited from the chart, table, pipeline or field browser without inventing a separate " +
-    "command language for each view.",
+    "The presentation layer, the tile shell and the verb protocol live in a library, and this " +
+    "product is one application of it. agentlogic applies the same workbench to a different " +
+    "object entirely — the transcripts coding agents leave behind: the same tiles, the same " +
+    "right-click, a different world underneath. Learning one is learning both.",
 } as const;
 
 export const FOOTER = {
@@ -198,6 +225,7 @@ export const FOOTER = {
 /** The sticky header's sections, in page order. */
 export const NAV = [
   { id: "product", label: "Product" },
+  { id: "concept", label: "The idea" },
   { id: "tutorial", label: "Tutorial" },
   { id: "runtime", label: "Runtime" },
 ] as const;

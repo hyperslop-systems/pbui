@@ -64,10 +64,10 @@ const tables: Record<string, Table> = {
 };
 
 describe("the anonymous welcome documents", () => {
-  test("the complete catalog produces six named authored documents", () => {
+  test("the complete catalog produces seven named authored documents", () => {
     const documents = welcomeDemoDocuments(welcome);
     expect(Object.keys(documents).sort()).toEqual(Object.values(WELCOME_DOC_IDS).sort());
-    expect(new Set(Object.values(documents).map((document) => document.name)).size).toBe(6);
+    expect(new Set(Object.values(documents).map((document) => document.name)).size).toBe(7);
   });
 
   test("every document compiles against its advertised source schema", () => {
@@ -124,7 +124,7 @@ describe("the anonymous welcome documents", () => {
 
   test("anonymous restoration receives documents without redirecting ambient actions", () => {
     const installation = welcomeDemoInstallation(welcome, false, "my-analysis", "my-drop");
-    expect(Object.keys(installation.documents)).toHaveLength(6);
+    expect(Object.keys(installation.documents)).toHaveLength(7);
     expect(installation.activateDocId).toBeNull();
   });
 });

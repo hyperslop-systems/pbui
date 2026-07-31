@@ -3,13 +3,21 @@ import { appendTransform, createGraphicDocument, rootView } from "../model/graph
 import type { AuthoringTransform, GraphicDocument, Mark } from "../model/graphic";
 import type { SourceRef } from "../model/table";
 
+/**
+ * The ids are versioned so a revision can mint new documents without mutating
+ * anything persisted under the old ids. v2 (AGENTLOGIC-4) added the QC filter
+ * to both climate documents and the defects document — every demo pipeline now
+ * holds at least one visible step, because an empty pipeline tile beside a
+ * finished chart teaches that the pipeline is decoration.
+ */
 export const WELCOME_DOC_IDS = {
-  populationBars: "demo-v1-population-bars",
-  populationScatter: "demo-v1-population-scatter",
-  temperature: "demo-v1-temperature",
-  humidity: "demo-v1-humidity",
-  yieldByLine: "demo-v1-yield-by-line",
-  massYield: "demo-v1-mass-yield",
+  populationBars: "demo-v2-population-bars",
+  populationScatter: "demo-v2-population-scatter",
+  temperature: "demo-v2-temperature",
+  humidity: "demo-v2-humidity",
+  yieldByLine: "demo-v2-yield-by-line",
+  massYield: "demo-v2-mass-yield",
+  defectsByLine: "demo-v2-defects-by-line",
 } as const;
 
 type DemoDocId = (typeof WELCOME_DOC_IDS)[keyof typeof WELCOME_DOC_IDS];
@@ -111,6 +119,38 @@ function aggregate(
 }
 
 /**
+ * A `field = "value"` filter step, for the QC flags the seed data carries.
+ *
+ * The comparison goes through an explicit string cast because the field's
+ * physical type is inferred from the rows on screen: boolean once data has
+ * arrived, string while the table is still empty. A bare boolean literal
+ * would type-check in one phase and fail in the other; the cast form is
+ * valid in both, and DuckDB renders a boolean as 'true'/'false' under it.
+ */
+function filterEq(id: string, field: string, value: string): AuthoringTransform {
+  return {
+    id,
+    kind: "core:filter",
+    input: { kind: "source", sourceId: "source:root" },
+    enabled: true,
+    state: "complete",
+    predicate: {
+      kind: "call",
+      function: "eq",
+      arguments: [
+        {
+          kind: "cast",
+          expression: { kind: "field", field: { name: field } },
+          to: { kind: "string" },
+          onFailure: "null",
+        },
+        { kind: "literal", value },
+      ],
+    },
+  };
+}
+
+/**
  * Build the finished analytical documents shown by the anonymous demo stage.
  *
  * Returns an empty object until the server advertises every required source.
@@ -153,6 +193,10 @@ export function welcomeDemoDocuments(welcome: Welcome): Record<string, GraphicDo
       x: "time",
       y: "temp_c",
       color: "station",
+      // The climate readings carry a QC flag, and the demo starts the way a
+      // real analysis of them would: failed readings filtered, visibly, as a
+      // step the visitor can hover and disable.
+      transforms: [filterEq("filter-qc-temperature", "ok", "true")],
     }),
     demoDocument({
       id: WELCOME_DOC_IDS.humidity,
@@ -162,6 +206,7 @@ export function welcomeDemoDocuments(welcome: Welcome): Record<string, GraphicDo
       x: "time",
       y: "humidity",
       color: "station",
+      transforms: [filterEq("filter-qc-humidity", "ok", "true")],
     }),
     demoDocument({
       id: WELCOME_DOC_IDS.yieldByLine,
@@ -183,6 +228,16 @@ export function welcomeDemoDocuments(welcome: Welcome): Record<string, GraphicDo
       y: "yield_pct",
       color: "line",
       references: [{ on: "y", value: 85, label: "85% target", intent: "target" }],
+    }),
+    demoDocument({
+      id: WELCOME_DOC_IDS.defectsByLine,
+      name: "Defects by line",
+      source: production,
+      mark: "bar",
+      x: "line",
+      y: "total_defects",
+      color: "line",
+      transforms: [aggregate("aggregate-defects", "line", "total_defects", "sum", "defects")],
     }),
   ];
 

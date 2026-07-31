@@ -1,6 +1,6 @@
 import { fixturesFrom, type FixtureData } from "../api/fixtures";
 import { readings, census } from "../fixtures";
-import { createDefaultGraphic } from "../model/graphicAuthoring";
+import { appendTransform, createDefaultGraphic, fieldRef } from "../model/graphicAuthoring";
 import type { PreloadedState } from "../store";
 import { split, type LayoutBuilder, type LayoutState, type Node } from "../store/layout";
 import { singleStageLayout } from "../store/stages";
@@ -113,10 +113,47 @@ export interface Seed {
  * hero was rendering a `lessons` tile with no lessons in it — "No lessons here",
  * at the top of the page, as the first thing anyone sees. The empty state was
  * doing its job; the layout was asking a question it had no answer to.
+ *
+ * The document arrives with one filter step already in the pipeline. The hero
+ * claims "visible pipeline steps" in the chips beside it, and an empty pipeline
+ * tile would be the page contradicting itself in its first screen — the reader
+ * should meet a step they can hover, disable and re-enable before they have
+ * done anything at all. `data.ok = true` is honest housekeeping on the seeded
+ * stream: `readings` carries a QC flag, and dropping failed readings is what a
+ * real analysis of it starts with.
  */
 export function heroSeed(): Seed {
   const world = seedStream();
   const doc = world.docOrder?.[0] ?? null;
+  const document = doc ? world.docs?.[doc] : undefined;
+  if (document) {
+    const sourceId = Object.keys(document.sources)[0];
+    if (sourceId) {
+      appendTransform(document, {
+        id: "hero-filter-ok",
+        kind: "core:filter",
+        input: { kind: "source", sourceId },
+        enabled: true,
+        state: "complete",
+        // Compared through a string cast for the same reason demo/welcome.ts
+        // does: the field's physical type is boolean once rows are on screen
+        // and string before they arrive, and the cast form types in both.
+        predicate: {
+          kind: "call",
+          function: "eq",
+          arguments: [
+            {
+              kind: "cast",
+              expression: { kind: "field", field: fieldRef(sourceId, COLUMNS.ok) },
+              to: { kind: "string" },
+              onFailure: "null",
+            },
+            { kind: "literal", value: "true" },
+          ],
+        },
+      });
+    }
+  }
   return {
     world,
     layout: space("start", (builder) =>

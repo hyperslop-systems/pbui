@@ -173,6 +173,11 @@ function callExpression(
 }
 
 function expressionField(expression: Expression | undefined): string {
+  // A comparison may wrap its field in a cast — the seeded QC filters do,
+  // because a boolean column's physical type depends on whether rows have
+  // arrived yet (see demo/welcome.ts:filterEq). The field underneath is
+  // still what the step is about, and what its caption should name.
+  if (expression?.kind === "cast") return expressionField(expression.expression);
   return expression?.kind === "field" ? expression.field.name : "";
 }
 
