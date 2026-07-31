@@ -266,11 +266,18 @@ func applyMutation(document *Document, mutation *Mutation) error {
 			split.A, split.B = newCopy, targetCopy
 		case workbenchv1.PlacementPosition_PLACEMENT_POSITION_AFTER:
 			split.A, split.B = targetCopy, newCopy
-		default:
+		case workbenchv1.PlacementPosition_PLACEMENT_POSITION_UNSPECIFIED:
 			return invalid(
 				"invalid_position",
 				"placementSplit.place",
 				"position must be BEFORE or AFTER",
+			)
+		default:
+			return invalid(
+				"invalid_position",
+				"placementSplit.place",
+				"unknown position %d",
+				value.Place,
 			)
 		}
 		*target = Node{Id: value.SplitId, Body: &workbenchv1.Node_Split{Split: split}}
