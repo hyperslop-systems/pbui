@@ -17,7 +17,7 @@ import {
 } from "../src/store/layout";
 import { TRACE_CAP, worldActions, worldSlice, type WorldState } from "../src/store/world";
 import { actionsForVerb, environmentFor } from "../src/store/applyVerb";
-import { findSecrets, validate } from "../src/store/persist";
+import { findSecrets, save, validate } from "../src/store/persist";
 import {
   ACCOUNT_SPACE_ID,
   ACCOUNT_STAGE_ID,
@@ -639,6 +639,46 @@ describe("verbs become actions", () => {
 
 /* ----------------------------------------------------------- persistence -- */
 
+describe("splitting to make room for a new view", () => {
+  const leavesOf = (node: Node): Extract<Node, { type: "leaf" }>[] =>
+    node.type === "leaf" ? [node] : [...leavesOf(node.a), ...leavesOf(node.b)];
+  const currentTree = (state: LayoutState) =>
+    state.spaces.find((s) => s.id === state.currentSpaceId)?.tree as Node;
+
+  test("a split with no application still makes an empty launcher tile", () => {
+    // The title bar's split button names none, and that is the original
+    // behaviour this must not change.
+    const state = initialLayout();
+    const first = leavesOf(currentTree(state))[0] as Extract<Node, { type: "leaf" }>;
+    const next = layout(state, layoutSlice.actions.splitLeaf({ nodeId: first.id, dir: "row" }));
+    const added = leavesOf(currentTree(next)).find((leaf) => leaf.id !== first.id);
+    expect(next.views[added?.viewId ?? ""]?.appId).toBe("launcher");
+  });
+
+  test("a split that names an application creates that view in one action", () => {
+    // One dispatch, not two: splitting and then filling would render an empty
+    // launcher tile for a frame before the real view replaced it.
+    const state = initialLayout();
+    const first = leavesOf(currentTree(state))[0] as Extract<Node, { type: "leaf" }>;
+    const next = layout(
+      state,
+      layoutSlice.actions.splitLeaf({
+        nodeId: first.id,
+        dir: "col",
+        appId: "chart",
+        docId: "doc-1",
+      }),
+    );
+    const added = leavesOf(currentTree(next)).find((leaf) => leaf.id !== first.id);
+    expect(next.views[added?.viewId ?? ""]).toMatchObject({
+      appId: "chart",
+      documents: { primary: "doc-1" },
+    });
+    // The tile that was split survives untouched — nothing is replaced.
+    expect(leavesOf(currentTree(next)).map((leaf) => leaf.id)).toContain(first.id);
+  });
+});
+
 describe("persistence is defensive", () => {
   /** A current canonical payload holding one user workspace in the work stage. */
   const currentPayload = (
@@ -810,5 +850,55 @@ describe("persistence is defensive", () => {
     const cyclic: Record<string, unknown> = { name: "x" };
     cyclic.self = cyclic;
     expect(findSecrets(cyclic)).toEqual([]);
+  });
+
+  /**
+   * Transient layout state is excluded from what `save` writes.
+   *
+   * `save()` enumerates the fields it writes rather than passing the slice
+   * whole, which is what makes a new transient field safe *by default* — but
+   * only until someone reaches for a spread. This asserts the property rather
+   * than the convention (DATALAB-VIEW-001 design-doc/02 §14): the failure it
+   * catches produces no error and no visible symptom until the next reload
+   * opens a modal over a tile that may no longer exist (DR-69).
+   */
+  test("no transient layout field reaches storage", () => {
+    const written: Record<string, string> = {};
+    const previous = (globalThis as { localStorage?: unknown }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      setItem: (key: string, value: string) => {
+        written[key] = value;
+      },
+      getItem: (key: string) => written[key] ?? null,
+      removeItem: (key: string) => {
+        delete written[key];
+      },
+    };
+
+    try {
+      const layout: LayoutState = {
+        ...initialLayout(),
+        launcher: { kind: "replace", placementId: "n" },
+        renamingId: "n",
+        pendingImport: { target: { kind: "stage" }, prefill: "secret-ish", from: "clipboard" },
+        notice: { ok: true, title: "Copied", body: "…" },
+        justSignedUp: true,
+      };
+      save("test-key", worldSlice.getInitialState(), layout);
+
+      const stored = written["test-key"];
+      expect(stored).toBeDefined();
+      const parsed = JSON.parse(stored as string) as { layout: Record<string, unknown> };
+      expect(Object.keys(parsed.layout).sort()).toEqual([
+        "currentSpaceId",
+        "currentStageId",
+        "spaces",
+        "stages",
+        "viewOrder",
+        "views",
+      ]);
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = previous;
+    }
   });
 });

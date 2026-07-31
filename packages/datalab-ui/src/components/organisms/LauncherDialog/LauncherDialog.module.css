@@ -1,0 +1,128 @@
+/*
+ * Why this geometry, not what it is.
+ *
+ * A fixed 22rem result area is the whole point of choosing a modal over the
+ * tile body: the list must not resize as the query narrows, or the row under
+ * the pointer moves out from under it between keystrokes. The dialog panel is
+ * sized by PBUI; only the inside is ours.
+ */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  width: min(34rem, 80vw);
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+}
+
+.live {
+  min-height: 1em;
+}
+
+.scroll {
+  height: 22rem;
+  overflow-y: auto;
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pbui-space-2);
+  padding: var(--pbui-space-2) var(--pbui-space-2) var(--pbui-space-1);
+  position: sticky;
+  top: 0;
+  /* Opaque: rows scroll under the heading, and a translucent one turns the
+     workspace name into noise exactly when a long list makes it most useful. */
+  background: var(--pbui-pane-alt);
+  border-bottom: var(--pbui-border-hair);
+}
+
+.groupTag {
+  letter-spacing: var(--pbui-track-label);
+  text-transform: uppercase;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  cursor: pointer;
+  /*
+   * The edge carries the APPLICATION, not the selection — same width and idiom
+   * as `Chip`, so a chart row in the launcher and a chart chip in a tile read as
+   * the same colour meaning the same thing. The inline style supplies the hue.
+   */
+  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-neutral);
+}
+
+/*
+ * The active row is a wash plus the ▸ marker in the title.
+ *
+ * The left border is spoken for by the tone, so selection cannot use it. A wash
+ * alone would be colour-only state (GUIDELINES §1.5); the marker is the part
+ * that survives a greyscale screenshot.
+ */
+.option[data-active] {
+  background: var(--pbui-selected-wash);
+}
+
+.marker {
+  display: inline-block;
+  width: 1ch;
+  margin-right: var(--pbui-space-2);
+  color: var(--pbui-ink);
+}
+
+.option[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Flex, so the marker column and the title share a baseline. */
+.optionTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  min-width: 0;
+}
+
+.optionTitle > :last-child,
+.optionMeta {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * The meta line is indented past the marker column so the two lines of a row
+ * start at the same x, marker or no marker.
+ */
+.optionMeta {
+  display: block;
+  padding-left: calc(1ch + var(--pbui-space-2));
+}
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  padding: var(--pbui-space-4);
+}
+
+.hint {
+  letter-spacing: var(--pbui-track-label);
+}

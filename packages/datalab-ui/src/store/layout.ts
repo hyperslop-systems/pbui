@@ -256,6 +256,51 @@ export interface PendingImport {
   from: "clipboard" | "template" | null;
 }
 
+/**
+ * Why the launcher modal is open (DATALAB-VIEW-001 design-doc/02 §9).
+ *
+ * Opening and navigating are not the same operation, and the modal has to know
+ * which it is before the first keystroke:
+ *
+ *  - `fill-launcher` and `replace` have an explicit target placement, and
+ *    selecting a result changes what that placement shows;
+ *  - `navigate` has none. Selecting a result switches workspace and focuses an
+ *    existing placement, and never mutates the layout (Decision 6).
+ *
+ * **In the store rather than in a React context**, for the same reason
+ * `renamingId` is (DR-69) and one more: the tile's Replace entry is a
+ * *serialisable verb* emitted by `pbui/descriptors/tile.ts`, which is a pure
+ * function holding no React and cannot call a context method. A context would
+ * have needed a second opening path for a menu entry that already has one.
+ *
+ * The store is also already the workbench instance boundary — `WorkbenchInstance`
+ * builds one per instance — so a context would add isolation that exists.
+ *
+ * Transient, and `save()`'s enumeration excludes it for the reason the whole
+ * group shares: reloading into an open modal over a tile that may be gone.
+ */
+export type LauncherInvocation =
+  /**
+   * `prefill` seeds the search box. The launcher tile's quick-create buttons
+   * use it so `+ chart` opens on the chart row rather than on a blank query —
+   * without it, three differently-labelled buttons all did the same thing.
+   */
+  | { kind: "fill-launcher"; placementId: NodeId; prefill?: string }
+  | { kind: "replace"; placementId: NodeId }
+  | { kind: "navigate"; activePlacementId: NodeId | null };
+
+/*
+ * Escape ownership is deliberately NOT in this slice (§11.5).
+ *
+ * It was, briefly, beside the other transient fields — which is where DR-69's
+ * reasoning points. It moved to `@hyperslop-systems/pbui`'s `surfaces.ts`
+ * because Escape is delivered to the *document*: with a stack per store, a
+ * landing page's six instances each believed themselves topmost, and one key
+ * press closed a dialog in one and left full frame in another. The generic
+ * package owns three of the handlers and is the only layer that can see the
+ * whole page. `appkit/useTransientSurface.ts` carries the full note.
+ */
+
 export interface LayoutState {
   stages: Stage[];
   currentStageId: StageId;
@@ -269,8 +314,25 @@ export interface LayoutState {
   viewOrder: ViewId[];
   /** Non-null while an import dialog is open. Never persisted. */
   pendingImport?: PendingImport | null;
-  /** Placement whose Replace switcher is open. Never persisted. */
-  replacingId?: NodeId | null;
+  /**
+   * Why the launcher modal is open, or null. Never persisted.
+   *
+   * Replaces `replacingId`, which could say only "this placement's body is the
+   * switcher" and could not distinguish Replace from an empty launcher tile,
+   * let alone from global navigation.
+   */
+  launcher?: LauncherInvocation | null;
+  /**
+   * The tile a workbench shortcut acts on: the last to hold focus or take a
+   * pointer press. Never persisted.
+   *
+   * Called *active placement* rather than "focused tile" on purpose. It is not
+   * DOM focus — focus is on a button or an input inside the tile, and often on
+   * nothing at all — and it is not a selected view, which would be a new
+   * product concept with no behaviour behind it. It names the tile a keyboard
+   * operation should use as context, and nothing more.
+   */
+  activePlacementId?: NodeId | null;
   /**
    * The result of the last export, until it is dismissed. Never persisted.
    *
@@ -433,12 +495,23 @@ export const layoutSlice = createSlice({
           })),
         );
       },
-      prepare(input: { nodeId: NodeId; dir: "row" | "col" }) {
+      /**
+       * The new half is an empty launcher tile unless the caller names an
+       * application.
+       *
+       * The split button in the title bar names none, which is the original
+       * behaviour and still the common case. The launcher's `Mod+K` names one,
+       * so that "create a chart" is a single action: splitting first and filling
+       * afterwards would be two dispatches, and the tile would render as an
+       * empty launcher for a frame in between.
+       */
+      prepare(input: { nodeId: NodeId; dir: "row" | "col"; appId?: AppId; docId?: DocId | null }) {
         const viewId = newId();
         return {
           payload: {
-            ...input,
-            view: appView(viewId, "launcher"),
+            nodeId: input.nodeId,
+            dir: input.dir,
+            view: appView(viewId, input.appId ?? "launcher", input.docId ?? null),
             placementId: newId(),
             splitId: newId(),
           },
@@ -451,6 +524,10 @@ export const layoutSlice = createSlice({
       // The last tile cannot be closed: an empty workspace has no way back.
       if (!space || countLeaves(space.tree) < 2) return;
       space.tree = removeLeaf(space.tree, action.payload);
+      // A closed tile cannot be the shortcut target. Cleared rather than moved
+      // to a neighbour: nothing should become active because something else
+      // stopped existing (§10.4).
+      if (state.activePlacementId === action.payload) state.activePlacementId = null;
     },
 
     closeView: {
@@ -481,7 +558,7 @@ export const layoutSlice = createSlice({
         delete state.views[action.payload.viewId];
         state.viewOrder = state.viewOrder.filter((id) => id !== action.payload.viewId);
         state.renamingId = null;
-        state.replacingId = null;
+        state.launcher = null;
       },
       prepare(viewId: ViewId) {
         const fallbackId = newId();
@@ -912,8 +989,27 @@ export const layoutSlice = createSlice({
       state.renamingId = action.payload;
     },
 
-    beginReplace(state, action: PayloadAction<NodeId | null>) {
-      state.replacingId = action.payload;
+    /* -------------------------------------------------------- launcher -- */
+
+    openLauncher(state, action: PayloadAction<LauncherInvocation>) {
+      state.launcher = action.payload;
+    },
+
+    /**
+     * Record the tile a shortcut should act on. Ignores a no-op write.
+     *
+     * The guard is not a micro-optimisation. `onFocusCapture` fires for every
+     * focusable descendant, so tabbing across one tile's six title controls
+     * would otherwise dispatch six identical actions and wake every subscriber
+     * six times.
+     */
+    setActivePlacement(state, action: PayloadAction<NodeId | null>) {
+      if (state.activePlacementId === action.payload) return;
+      state.activePlacementId = action.payload;
+    },
+
+    closeLauncher(state) {
+      state.launcher = null;
     },
 
     /** Record that this browser has just completed a first sign-in (DR-96). */

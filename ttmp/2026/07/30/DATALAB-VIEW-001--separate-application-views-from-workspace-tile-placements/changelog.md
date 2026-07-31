@@ -70,3 +70,57 @@ Added a consumer migration playbook distinguishing unaffected PBUI/public Datala
 - /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/index.ts — Stable public API boundary
 - /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/model/portable.ts — Portable bundle migration boundary
 - /home/manuel/workspaces/2026-07-28/split-datadrop/pbui/packages/datalab-ui/src/store/persist.ts — Persistence migration boundary
+
+## 2026-07-30
+
+Step 1: revised the launcher design against the shipped code — transient launcher state moves to the layout slice (the tile menu reaches Replace through a serialisable verb), application scope becomes per row once results span workspaces, and a surface stack replaces a stopPropagation fix that cannot order three window listeners
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/ttmp/2026/07/30/DATALAB-VIEW-001--separate-application-views-from-workspace-tile-placements/design-doc/02-launcher-quick-search-modal-workspace-grouping-and-keyboard-routing.md — Revised design with new section 8.4 and corrected sections 9, 10, 11.5, 12, 14, 15, 18, 19, 20
+
+
+## 2026-07-30
+
+Steps 2-4: implemented the launcher across three phases — pure index and grammar (74f4d0d), modal with Replace and the Escape surface stack (88663a0, a91c32d), active placement and Mod+K navigation (dca118f), and tile-aesthetic dialog theming (55149f3). Verified in the running application, including multi-instance isolation. 477 tests, typecheck, lint and Storybook pass.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx — The searchable modal launcher
+
+
+## 2026-07-30
+
+Step 5: moved Escape ownership from the layout slice into @hyperslop-systems/pbui as a document-global surface stack (d61094a) — the per-store version was wrong, not just misplaced, since topmost is a property of the page. Step 6: coloured launcher rows by application tone and stopped burying the new-view section, which a real workspace put 25 rows and a scroll below the fold (7a9504d).
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/src/surfaces.ts — The shared Escape surface stack
+
+
+## 2026-07-30
+
+Step 7: Mod+K offered no new views on a cold load, because the launcher-tile condition depended on an active placement that does not exist before the first interaction. New views are now offered everywhere and create by splitting the named target rather than refusing (d8aeea4).
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx — Target resolution, fill-or-split, and split direction
+
+
+## 2026-07-30
+
+Amended Decision 6 and open question 6 after implementation: global creation splits the named target rather than refusing. Added navigate-mode Storybook coverage and ran the clean-consumer smoke against the changed PBUI public API.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.stories.tsx — Navigate-mode stories, including the cold-load state
+
+
+## 2026-07-30
+
+Step 8: addressed all seven Codex review findings on PR #2 (315490b). Three P1: the target workspace's scope now decides what can be placed, Enter honours disabled rows, and audience-restricted stages are excluded from navigation. Four P2: quick-create prefill, unplaced dead end in navigate mode, document-global DOM queries, and Mod+K during an inline rename.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/ViewSwitcher/launcherIndex.logic.ts — Target scope, audience filter, and the row block reason
+

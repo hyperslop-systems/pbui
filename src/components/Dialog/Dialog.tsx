@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEscapeSurface } from "../../surfaces";
 
 export interface DialogProps {
   title: string;
@@ -27,6 +28,16 @@ export function Dialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
+  /**
+   * A dialog is mounted only while it is open, so it registers unconditionally.
+   *
+   * `ownsEscape` is what stops one key press closing this dialog *and* whatever
+   * is beneath it — a second dialog, an expanded panel, an object menu. All of
+   * them listen on `window`, where propagation cannot order siblings, so the
+   * order has to be stated. See `surfaces.ts`.
+   */
+  const ownsEscape = useEscapeSurface(true);
+
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
@@ -39,10 +50,16 @@ export function Dialog({
 
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // Not ours: something opened on top of this dialog and owns the key.
+        if (!ownsEscape) return;
         event.preventDefault();
         onClose();
         return;
       }
+      // Tab containment is NOT gated on `ownsEscape`. A dialog beneath another
+      // surface is still the focus trap for anything inside it, and releasing
+      // the trap because something opened above would let Tab walk out into the
+      // page behind both.
       if (event.key !== "Tab") return;
 
       const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
@@ -65,7 +82,7 @@ export function Dialog({
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
+  }, [onClose, ownsEscape]);
 
   return (
     <div

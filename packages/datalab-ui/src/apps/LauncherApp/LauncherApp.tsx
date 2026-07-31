@@ -1,33 +1,73 @@
+import { useDispatch } from "react-redux";
+import { Button, Stack, Text } from "@hyperslop-systems/pbui";
 import { registerApp, type AppProps } from "../../appkit/registry";
-import { ViewSwitcher } from "../../components/organisms";
+import { useAvailableApps } from "../../appkit/AppScope";
+import { layoutActions } from "../../store/layout";
+import styles from "./LauncherApp.module.css";
 
 /**
- * What an empty tile shows: a button per application.
+ * What an empty tile shows: a way into the launcher, not the launcher itself.
  *
- * `useAvailableApps`, not `useScopedApps`. The launcher used the instance-only
- * scope, so on the sign-in stage it offered every registered application while
- * Replace beside it offered three — a pre-existing inconsistency that
- * DR-95 made visible by making both of them filter (DATADROP-14).
+ * It used to render the complete view grid inline. That was the only search
+ * surface the product had, and it inherited every problem of living inside a
+ * rectangle the user chose for something else: in a narrow tile the grid
+ * reflowed to one column, in a short one it scrolled, and result geometry
+ * changed with every split. DATALAB-VIEW-001 moves the list into a modal, so
+ * this becomes an empty state whose whole job is to open it.
  *
- * ## The count is the other half of DR-95's mitigation
+ * ## The quick-create buttons come from the registry
  *
- * DR-95 accepted a real loss when the tile picker started hiding unavailable
- * applications rather than greying them: a user on the welcome stage who has
- * read about the token manager looks for it, does not find it, and has no way
- * to learn it exists on the account stage. Greying at least showed the rule.
+ * Three creatable applications, taken in registration order rather than named
+ * here. A hard-coded list would be a second place to remember when an
+ * application is added, and it would silently offer something a tour panel's
+ * instance scope forbids — `useAvailableApps` is already the answer to "what
+ * may this workbench offer, here".
  *
- * It was accepted on the strength of two mitigations — the stage bar naming the
- * alternatives, and this line. So this is not a nicety: without it the decision
- * was made on a promise that was only half kept, and the argument for hiding
- * gets weaker rather than the interface getting better.
- *
- * It says the count rather than naming what is missing, deliberately. Listing
- * the excluded applications here would reconstruct exactly the greyed list DR-95
- * removed, one tile over. A number tells the reader that a boundary exists and
- * where to go about it; the stage bar is where they act on it.
+ * They prefill the query rather than creating directly, so the modal is still
+ * where creation happens and there is one path to reason about.
  */
 function LauncherApp({ placementId }: AppProps) {
-  return <ViewSwitcher placementId={placementId} mode="launcher" />;
+  const dispatch = useDispatch();
+  const apps = useAvailableApps();
+  const quick = apps.filter((app) => app.id !== "launcher").slice(0, 3);
+
+  const open = (prefill?: string) =>
+    dispatch(
+      layoutActions.openLauncher({
+        kind: "fill-launcher",
+        placementId,
+        ...(prefill ? { prefill } : {}),
+      }),
+    );
+
+  return (
+    <div className={styles.root}>
+      <Stack gap={3}>
+        <Text size="small" tone="faint">
+          OPEN A VIEW
+        </Text>
+
+        <Button variant="raised" onClick={() => open()}>
+          Search views…
+        </Button>
+
+        {quick.length > 0 && (
+          <div className={styles.quick}>
+            {quick.map((app) => (
+              <Button key={app.id} fill={app.tone} onClick={() => open(`+${app.id}`)}>
+                + {app.title}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        <Text size="tiny" tone="faint" prose>
+          Search existing views, or type <strong>+</strong> for a new one and <strong>ws2</strong>{" "}
+          to look in one workspace.
+        </Text>
+      </Stack>
+    </div>
+  );
 }
 
 registerApp({
