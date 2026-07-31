@@ -1100,3 +1100,142 @@ after:  [Temperature by station, table · α, Yield by production line,
          Population by region, sources, Regional totals]
 everythingSurvived: true
 ```
+
+## Step 8: Addressing the Codex review
+
+An automated review on PR #2 left seven inline comments, three P1 and four P2. I
+checked each against the code expecting to reject one or two as false positives,
+and rejected none — all seven were real. The two P1s that matter most are gaps
+between what `design-doc/02` §8.4 *specified* and what I *implemented*, which is
+the uncomfortable kind: I wrote the rule, quoted it in a commit message, and then
+did not build it.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Address code review comments: https://github.com/hyperslop-systems/pbui/pull/2"
+
+**Assistant interpretation:** Read the review on PR #2, judge each comment, and
+fix the ones that hold.
+
+**Inferred user intent:** Get the branch to a mergeable state with the reviewer's
+objections resolved rather than argued away.
+
+**Commit (code):** `315490b` — "fix(launcher): address Codex review — scope, audience, and four dead ends"
+
+### What I did
+
+| Finding | Fix |
+|---|---|
+| P1 target scope | `LauncherSearchContext.targetAppIds`; new rows the target forbids are hidden, placed and unplaced rows disabled with a reason |
+| P1 Enter bypass | `unavailable` on the row, read by both paths via `blockedReason` |
+| P1 stage audience | `LauncherIndexInput.visibleStageIds`, current stage exempt |
+| P2 quick-create | optional `prefill` on `fill-launcher`; buttons pass `+<appId>` |
+| P2 unplaced dead end | unplaced rows restricted to place mode |
+| P2 global DOM query | `placementElement(root, id)`, scoped to the shell that owns the launcher |
+| P2 rename guard | `renamingView` in `ShortcutContext`, blocks `Mod+K` |
+
+Nine new tests, 495 total.
+
+### Why
+
+**The scope one is the one worth dwelling on.** §8.4 says, in a sentence I wrote:
+*a row is scoped by the workspace it concerns — for a placed view in navigate
+mode that is where it already is; for anything that ends in a placement that is
+where it is going.* The implementation only ever computed the first half. The
+tell was sitting in the code the whole time: the disabled message read
+`${appTitle} is not offered in ${targetWorkspaceName}` while the condition was
+`!row.inScope`, which is the *source* workspace. The message and the check
+disagreed, in the same expression, and I wrote both.
+
+**The audience one** is a smaller blast radius than it first looks — the server
+denies the data regardless (DR-31) — but the user-visible failure is real: pick a
+row in `work` while signed out, `setCurrentSpace` takes you there, and
+`Workbench`'s gate throws you back, with the forbidden stage flashing in between.
+
+**The unplaced dead end** is a regression I introduced in Step 7. Making
+`allowNewViews` true in navigate mode also flipped `showUnplaced`, because that
+condition read `mode === "place" || allowNewViews` — a disjunction that meant
+something sensible when `allowNewViews` implied "the active tile is an empty
+launcher" and something wrong the moment it meant "we can split".
+
+### What worked
+
+- Treating the review as a set of claims to verify rather than instructions to
+  follow. It cost about ten minutes and it is what turns "apply the patch" into
+  knowing *why* each one is right — which mattered here, because the fix for the
+  first P1 is not the fix the comment proposed. Codex suggested passing the
+  target scope into the index; the index is shared by navigate mode, which has
+  no target, so it belongs on the search context instead.
+- Verifying in the product on the sign-in stage, whose allow-list is genuinely
+  `["signin", "signup", "about"]`. That is a real restricted workspace rather
+  than a fixture, and it showed the fix working end to end.
+
+### What didn't work
+
+- Two rounds of typecheck failures from threading `visibleStageIds` and the
+  `root` ref through: the test fixture, the `LauncherResults` props that became
+  unused once the block moved into the model, and `RefObject` typing on the
+  dialog. All mechanical, all caught by `tsc`.
+- I first reached for `state.world.authenticated`, which does not exist —
+  authentication comes from `useMeQuery()`, the same source `Workbench`'s gate
+  uses. Worth knowing that auth is RTK Query state and not world state.
+
+### What I learned
+
+- **A comment that contradicts its own condition is a defect the compiler cannot
+  see.** The `not offered in ${targetWorkspaceName}` message was written from the
+  design and the condition from the data at hand, and nothing reconciles the two.
+  Where a message names a *rule*, the rule should come from the same place the
+  check does — which is what moving it into the model achieved.
+- **A disjunction is where a widened capability leaks.** `mode === "place" ||
+  allowNewViews` was correct under the old meaning of `allowNewViews` and wrong
+  under the new one, and nothing failed. Both times a condition has gone stale in
+  this ticket, it has been because the *meaning* of a term changed while the
+  expression stayed valid.
+
+### What was tricky to build
+
+Deciding, per row kind, between hiding and disabling.
+
+The design's §8.4 says out-of-scope rows are greyed rather than hidden, on
+DR-95's argument that a short specific list teaches something a hidden one
+cannot. But that argument was made about *existing views*, and it does not
+transfer to new-view rows: "create a chart here, except you cannot" is not a
+lesson, it is a row that exists to be refused. The switcher this replaced hid
+them, via `useAvailableApps()`.
+
+So: new rows hidden, existing rows (placed and unplaced) disabled with a reason.
+The split is not arbitrary — it follows whether the row names something that
+*exists* — but it is the kind of asymmetry that looks like an oversight later, so
+both branches carry the reason in a comment.
+
+### What warrants a second pair of eyes
+
+- **`targetAppIds` is computed in the component**, duplicating the intersection
+  logic that `scopeFor` already does inside the index and `intersectScopes` does
+  in `AppScope`. Three implementations of "instance ∩ stage ∩ workspace" now
+  exist. They agree, and I did not unify them because the three have different
+  input shapes, but that is a real smell.
+- **Blocking `Mod+K` during a rename** is the conservative choice; committing the
+  rename and then opening would arguably be friendlier. I took the option that
+  cannot lose text.
+- The disabled reason says "not offered in this workspace" with a literal
+  `targetName` constant rather than the workspace's name, because the pure model
+  does not have it to hand. The name is in the header two lines above, so it
+  reads acceptably, but it is less specific than the string it replaced.
+
+### What should be done in the future
+
+- Unify the three scope intersections behind one helper.
+- `blockedReason` currently only ever reports scope. If a second reason appears
+  (a singleton already placed, say) the field is ready for it.
+
+### Code review instructions
+
+- `launcherIndex.logic.ts`: `targetAppIds` and `blockFor` for the scope rule,
+  `visibleStageIds` for the audience filter, and `showUnplaced`.
+- `LauncherDialog.tsx`: `blockedReason` at the top of `choose`, and
+  `placementElement` at the bottom.
+- `pnpm vitest run test/launcher-index.test.ts` — 55 tests.
+- In a browser: switch to the sign-in stage, open Replace, and confirm no chart
+  is offered and cross-workspace chart rows are disabled.

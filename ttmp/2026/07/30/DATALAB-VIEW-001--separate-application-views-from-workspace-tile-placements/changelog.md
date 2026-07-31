@@ -115,3 +115,12 @@ Amended Decision 6 and open question 6 after implementation: global creation spl
 
 - /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.stories.tsx — Navigate-mode stories, including the cold-load state
 
+
+## 2026-07-30
+
+Step 8: addressed all seven Codex review findings on PR #2 (315490b). Three P1: the target workspace's scope now decides what can be placed, Enter honours disabled rows, and audience-restricted stages are excluded from navigation. Four P2: quick-create prefill, unplaced dead end in navigate mode, document-global DOM queries, and Mod+K during an inline rename.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/ViewSwitcher/launcherIndex.logic.ts — Target scope, audience filter, and the row block reason
+
