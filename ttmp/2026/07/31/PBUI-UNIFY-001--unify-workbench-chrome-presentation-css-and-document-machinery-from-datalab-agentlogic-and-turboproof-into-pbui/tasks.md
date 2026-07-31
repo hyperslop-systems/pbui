@@ -11,5 +11,5 @@
 - [x] Phase 2: LauncherShell (DR-U6); products adopt chrome kit, delete copies <!-- t:c6ya -->
 - [x] Phase 3: workbench-protocol/client applier + builders (DR-U5) <!-- t:kqia -->
 - [x] Phase 3: TS-Go applier parity fixtures asserted from both languages <!-- t:2jgc -->
-- [ ] Phase 3: agentlogic + turboproof adopt client layer <!-- t:9kjg -->
-- [ ] Phase 4: family day-one checklist page; delete dead copies; record bundle deltas <!-- t:39xm -->
+- [x] Phase 3: agentlogic + turboproof adopt client layer <!-- t:9kjg -->
+- [x] Phase 4: family day-one checklist page; delete dead copies; record bundle deltas <!-- t:39xm -->

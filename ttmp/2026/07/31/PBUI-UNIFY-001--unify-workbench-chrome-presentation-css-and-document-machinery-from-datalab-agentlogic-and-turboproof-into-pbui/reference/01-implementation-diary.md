@@ -229,3 +229,50 @@ Both adoption subagents finished green (their diaries: reference/03 turboproof, 
 ### Code review instructions
 
 - Product diffs: turboproof `git show 35c5efc 7539704`, agentlogic `git show 6f2c649`; the geometry evidence in various/turboproof-adoption/.
+
+## Step 5: The client-layer adoptions, the measurements, and closure
+
+The last two subagents replaced the products' local appliers and builders with `workbench-protocol/client` (diaries: reference/05 turboproof, reference/06 agentlogic), and a live end-to-end smoke on the adopted stack closed the loop: a split performed through the shared TileFrame button flowed through the shared TS applier, synced to the Go applier's server (7→8 tiles, sync green), and the object menu measured `position: fixed`, z-index 100, in-viewport. Every task on the ticket is checked.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation / intent:** (see Step 1)
+
+**Commits (code):** product repos: turboproof 8fa0905 (store/workbench.ts 688→272 lines, −529), agentlogic 44f8d3c (512→169, −419); pbui c5d70c6 (subagent diaries).
+
+### What I did
+
+- Reviewed and committed the two client-adoption reports. Both landed with ZERO test edits — no product test relied on the four Go-semantics corrections, which is itself evidence the divergences were silent rather than load-bearing.
+- Field corrections the agents verified rather than assumed: agentlogic's source binding is "transcript" (not "source"), its bindable format `agentlogic.transcript-ref`; its one visible behavior delta is that launcher retarget/replaceApp now carries `replaceDocuments` (turboproof's unbound-tile fix, inherited by the whole family through the shared builder).
+- Measurements for the record: agentlogic's committed bundle moved 397.8 kB → 404.9 kB JS (+7.1 kB) and 40.5 kB → 44.5 kB CSS (+4.0 kB) — the kit and client layer cost slightly more than the deleted copies because they ship the full family surface (launcher styles, all 15 mutation arms). Turboproof's dist is untracked (gitignored); its built bundle stands at 887 kB. Net source deletion across the products: ~950 lines of store code plus ~365 lines of chrome CSS plus the chrome components.
+- Live smoke on :8666 after `devctl restart`: split via chrome button (shared applier end to end), menu geometry, close via menu.
+
+### What worked
+
+- The whole four-phase plan landed in one session with five subagents and zero cross-repo merge incidents — the no-commits-in-shared-repos rule for agents did its job.
+
+### What didn't work
+
+- N/A in this step; the field corrections above are the closest thing, and they were catches, not failures.
+
+### What I learned
+
+- "Zero test edits needed" after swapping an applier with four behavior changes says the products' test suites do not pin applier semantics at all — the parity corpus in the protocol package is now the ONLY thing pinning them, which is exactly where that pinning belongs.
+
+### What warrants a second pair of eyes
+
+- The file: dependencies (pbui and workbench-protocol) in both product repos are explicitly temporary; the release flow is: publish pbui 0.2.0 and workbench-protocol 0.2.0 via the existing CONFIRM_LATEST-gated workflows (user-driven; workflow_dispatch registers from the default branch), then flip the three package.json entries to pinned registry versions.
+- datalab's deferred TileFrame/LauncherShell adoption (Step 3 rationale) and its eventual document-model migration onto client/ remain the two open follow-ups from the design doc.
+
+### What should be done in the future
+
+- Publish the two packages; flip the file: deps.
+- The CI regenerate-and-diff check for the fixture corpus (Phase-3 agent's recommendation).
+- `rootProps` pass-through on TileFrame when a third consumer needs root attributes (twice-noted limitation).
+
+### Code review instructions
+
+- Read the six diaries in order (01 orchestrator, 02 protocol client, 03/05 turboproof, 04/06 agentlogic); then per repo: pbui `git log --oneline cf85eda..HEAD`, turboproof `git show 603b6c5 35c5efc 7539704 8fa0905`, agentlogic `git show 7c01978 6f2c649 44f8d3c`.
+- Validate everything: pbui `pnpm vitest run src && pnpm build && go test ./pkg/workbench/...`; datalab-ui `pnpm test` (509); turboproof ui `pnpm vitest run` (45) + `make ui-token-check`; agentlogic ui tests (105/1 skipped); then the live geometry smoke on :8666.

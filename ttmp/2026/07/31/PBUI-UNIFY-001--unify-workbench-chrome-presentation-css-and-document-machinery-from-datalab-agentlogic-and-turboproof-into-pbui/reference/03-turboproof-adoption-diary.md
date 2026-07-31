@@ -10,12 +10,18 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - turboproof/ui/src/components/organisms/Tile.tsx
-    - turboproof/ui/src/components/organisms/Chrome.tsx
-    - turboproof/ui/src/components/organisms/LauncherDialog.tsx
-    - turboproof/ui/src/components/pages/Workbench.tsx
-    - turboproof/ui/src/styles/app.css
-    - turboproof/ui/src/pbui/runtime.tsx
+    - Path: ws://turboproof/ui/src/components/organisms/Tile.tsx
+      Note: TileView rewritten on the shared TileFrame + useTileDrag
+    - Path: ws://turboproof/ui/src/components/organisms/Chrome.tsx
+      Note: Local MouseDocLine/AcceptBanner deleted; instance re-exports
+    - Path: ws://turboproof/ui/src/components/organisms/LauncherDialog.tsx
+      Note: Renders via the shared LauncherShell; policy stays local
+    - Path: ws://turboproof/ui/src/components/pages/Workbench.tsx
+      Note: Mod+K routed through pbui's routeWorkbenchKey
+    - Path: ws://turboproof/ui/src/styles/app.css
+      Note: 257 lines of transcribed chrome/parts CSS deleted
+    - Path: ws://turboproof/ui/src/pbui/runtime.tsx
+      Note: Exports the instance MouseDocLine/AcceptBanner
 ExternalSources: []
 Summary: Diary of the turboproof product adopting pbui 0.2.0 Phases 1+2 — the presentation-parts/chrome CSS, the instance MouseDocLine/AcceptBanner, TileFrame + useTileDrag, LauncherShell, and shortcut routing — ending with the browser geometry verification the incident demands.
 LastUpdated: 2026-07-31T13:20:00-04:00

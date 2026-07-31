@@ -10,17 +10,23 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - turboproof/ui/src/store/workbench.ts
-    - turboproof/ui/src/store/slice.ts
-    - turboproof/ui/package.json
-    - pbui/packages/workbench-protocol/src/client/builders.ts
-    - pbui/packages/workbench-protocol/src/client/apply.ts
+    - Path: repo://packages/workbench-protocol/src/client/apply.ts
+      Note: The shared applier replacing the local one
+    - Path: repo://packages/workbench-protocol/src/client/builders.ts
+      Note: The shared builders + ClientConfig factory adopted here
+    - Path: ws://turboproof/ui/package.json
+      Note: 'workbench-protocol pinned to the local file: path until 0.2.0 publishes'
+    - Path: ws://turboproof/ui/src/store/slice.ts
+      Note: Consumer of applyMutation, untouched by the swap
+    - Path: ws://turboproof/ui/src/store/workbench.ts
+      Note: Shrank 688→272 lines; re-exports the shared client under the historical names
 ExternalSources: []
 Summary: Diary of turboproof adopting workbench-protocol 0.2.0's "./client" export in Phase 3 — deleting the local applier, verb builders, and tree queries from store/workbench.ts (529 lines) and re-exporting the package's plain and config-bound verbs under the historical names, with all 45 UI tests passing unmodified.
 LastUpdated: 2026-07-31T13:25:00-04:00
 WhatFor: Review and continuation record for the turboproof leg of the PBUI-UNIFY-001 Phase 3 client-layer adoption (commit 8fa0905).
-WhenToUse: Read when reviewing turboproof commit 8fa0905, when adopting the same client layer in agentlogic/datalab, or when swapping the temporary file: dependency for the published 0.2.0.
+WhenToUse: 'Read when reviewing turboproof commit 8fa0905, when adopting the same client layer in agentlogic/datalab, or when swapping the temporary file: dependency for the published 0.2.0.'
 ---
+
 
 # Diary
 
