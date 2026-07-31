@@ -186,3 +186,46 @@ Two threads landed while the product-adoption subagents ran. The Phase-3 subagen
 
 - `git show f3d8134` (start at `packages/workbench-protocol/src/client/apply.ts` against `pkg/workbench`'s applier; then the fixtures and both parity tests), `git show ed9b1f6`.
 - Validate: `cd packages/workbench-protocol && pnpm vitest run && pnpm build`; `go test ./pkg/workbench/...`; `cd packages/datalab-ui && pnpm test`.
+
+## Step 4: The chrome adoptions land in all three products
+
+Both adoption subagents finished green (their diaries: reference/03 turboproof, reference/04 agentlogic), and with datalab-ui's Step-3 adoption that makes three products on the shared modules. The chrome-kit stories and the day-one playbook (docs/playbooks/starting-a-new-pbui-family-product.md) also landed, closing the Phase-2 and most Phase-4 tasks.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation / intent:** (see Step 1)
+
+**Commits (code):** 0d2bcf0 (day-one playbook), 3e73f6a (chrome-kit stories), 30a90e2 (subagent diaries + geometry screenshots); product repos: turboproof 603b6c5/35c5efc/7539704, agentlogic 7c01978/6f2c649.
+
+### What I did
+
+- Reviewed both subagent reports and spot-checked their edits as they streamed (TileView on TileFrame with the ~10-line verb adapters; LauncherDialog reduced to policy over LauncherShell; the Workbench shortcut on routeWorkbenchKey).
+- Turboproof: three commits, 45/45 tests, token check, build, go build — and the acceptance rule done properly for the first time: MEASURED geometry (menu computed position: fixed, z-index 100, rect at the exact contextmenu coordinates with Δ=0, in-viewport; drop overlay rect inside the target's left half; zero stray overlays after release). 257 lines left app.css. Screenshots in various/turboproof-adoption/.
+- Agentlogic: two commits, 105 passed/1 skipped, builds green including the committed go:embed bundle; 108 lines of chrome CSS deleted; an incident-regression test now reads the installed package CSS and asserts the menu block. One deliberate behavior gain: canClose now follows the leaf-count rule (the last pane no longer offers ✕).
+- Committed the subagents' diaries and artifacts; wrote the chrome-kit stories in the package and the family day-one playbook.
+
+### What worked
+
+- The DR-U3 adapter claim held in practice: turboproof's whole drag integration is one useTileDrag call with two perform() callbacks; agentlogic's is the same shape with its workbench-context methods.
+
+### What didn't work
+
+- Two map corrections from the field, recorded by the agents: agentlogic has NO createPbui runtime yet (duplication-map rows 1–2 overstated it — there was nothing to swap for MouseDocLine/AcceptBanner, and the parts CSS is imported for the future), and turboproof's tile sections lost the write-only data-app attribute (TileFrame has no attribute pass-through; no reader existed).
+
+### What I learned
+
+- The design doc's inventory was right about the shape but wrong in two cells; the adoption agents' STUDY-first instructions caught both instead of forcing the map onto the code.
+
+### What warrants a second pair of eyes
+
+- TileFrame's lack of a root-attribute pass-through is now a known limitation twice over (datalab's active-marking capture props, turboproof's dropped data-app); if a third product needs it, add `rootProps` to TileFrame rather than another workaround.
+
+### What should be done in the future
+
+- Phase-3 client adoption in both protocol products (running as this step closes), then the closure measurements.
+
+### Code review instructions
+
+- Product diffs: turboproof `git show 35c5efc 7539704`, agentlogic `git show 6f2c649`; the geometry evidence in various/turboproof-adoption/.
