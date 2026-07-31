@@ -202,7 +202,20 @@ func (p *oidcProvider) EndSessionURL(idToken, postLogoutRedirect string) string 
 	if len(params) == 0 {
 		return p.endSession
 	}
-	return p.endSession + "?" + params.Encode()
+	// A discovered end_session_endpoint may already carry a query string
+	// (multi-tenant providers do); merge into it rather than appending a
+	// second "?" that would fold the logout parameters into the last
+	// existing value.
+	parsed, err := url.Parse(p.endSession)
+	if err != nil {
+		return p.endSession + "?" + params.Encode()
+	}
+	query := parsed.Query()
+	for key, values := range params {
+		query[key] = values
+	}
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
 
 // DiscoverWithRetry is DiscoverProvider with a bounded retry.
@@ -225,9 +238,15 @@ func DiscoverWithRetry(
 			return provider, nil
 		}
 		lastErr = err
+		// No delay after the final attempt: there is nothing left to wait
+		// for, and the real discovery error must not be displaced by a
+		// context expiry inside a pointless sleep.
+		if i == attempts-1 {
+			break
+		}
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, errors.Wrapf(lastErr, "authkit: discovery canceled (%s)", ctx.Err())
 		case <-time.After(wait):
 		}
 	}
