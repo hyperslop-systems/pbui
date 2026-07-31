@@ -40,6 +40,8 @@ export interface LauncherPlacedRow {
   title: string;
   appId: AppId;
   appTitle: string;
+  /** The application's token reference, for the row's tone edge. */
+  tone: string;
   docName: string | null;
   /**
    * Whether this row's application is offered by the workspace it sits in.
@@ -60,6 +62,7 @@ export interface LauncherUnplacedRow {
   title: string;
   appId: AppId;
   appTitle: string;
+  tone: string;
   docName: string | null;
 }
 
@@ -69,6 +72,7 @@ export interface LauncherNewRow {
   id: LauncherResultId;
   appId: AppId;
   appTitle: string;
+  tone: string;
   docBound: boolean;
 }
 
@@ -160,12 +164,31 @@ export interface LauncherResults {
   missingWorkspace: { ordinal: number; available: string[] } | null;
   /** Presentation limits applied because the query text was empty (§7.3). */
   limited: boolean;
+  /**
+   * Whether the new-view rows come before the existing ones.
+   *
+   * True for an empty query in place mode, and it is a usability fix rather
+   * than a preference. Someone who opens the launcher against a tile wants to
+   * put *something* there, and "make a new one" is as likely an answer as
+   * "reuse an existing one" — but with existing views first, a real workspace
+   * put twenty-five rows and a scroll between the user and every new-view
+   * option. A section nobody scrolls to is a section that does not exist.
+   *
+   * False as soon as there is query text: a text match against a named view is
+   * more specific than an application whose name happens to contain the same
+   * letters, so the specific answers go first. `rows` follows this order, so
+   * arrow keys and the visual list never disagree.
+   */
+  newViewsFirst: boolean;
 }
 
 /** Rendering limits for an empty query. Removed as soon as text is typed. */
 const EMPTY_QUERY_ROWS_PER_OTHER_WORKSPACE = 3;
 const EMPTY_QUERY_UNPLACED = 5;
 const EMPTY_QUERY_NEW_APPLICATIONS = 8;
+
+/** The fallback for a view whose application is not registered in this build. */
+const NEUTRAL_TONE = "var(--pbui-tone-neutral)";
 
 const normalize = (value: string): string => value.toLowerCase().replace(/\s+/g, " ").trim();
 
@@ -290,6 +313,7 @@ export function buildLauncherIndex(input: LauncherIndexInput): LauncherIndex {
         title: titleOf(view),
         appId: view.appId,
         appTitle: app?.title ?? view.appId,
+        tone: app?.tone ?? NEUTRAL_TONE,
         docName: docNameOf(view),
         inScope: scope.has(view.appId),
       });
@@ -325,6 +349,7 @@ export function buildLauncherIndex(input: LauncherIndexInput): LauncherIndex {
       title: titleOf(view),
       appId: view.appId,
       appTitle: app?.title ?? view.appId,
+      tone: app?.tone ?? NEUTRAL_TONE,
       docName: docNameOf(view),
     });
   }
@@ -341,6 +366,7 @@ export function buildLauncherIndex(input: LauncherIndexInput): LauncherIndex {
       id: `new:${app.id}`,
       appId: app.id,
       appTitle: app.title,
+      tone: app.tone,
       docBound: app.docBound,
     }));
 
@@ -472,11 +498,11 @@ export function searchLauncherIndex(
     : [];
   const newApplications = searching ? newAll : newAll.slice(0, EMPTY_QUERY_NEW_APPLICATIONS);
 
-  const rows: LauncherRow[] = [
-    ...scored.flatMap((group) => group.rows),
-    ...unplaced,
-    ...newApplications,
-  ];
+  const newViewsFirst = !searching && context.mode === "place" && newApplications.length > 0;
+  const existing = [...scored.flatMap((group) => group.rows), ...unplaced];
+  const rows: LauncherRow[] = newViewsFirst
+    ? [...newApplications, ...existing]
+    : [...existing, ...newApplications];
 
   return {
     groups: scored,
@@ -485,6 +511,7 @@ export function searchLauncherIndex(
     rows,
     missingWorkspace,
     limited: !searching,
+    newViewsFirst,
   };
 }
 

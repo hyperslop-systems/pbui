@@ -234,6 +234,37 @@ describe("workspace grouping", () => {
     expect(rows.find((row) => row.viewId === "v-temp")?.title).toBe("Temperature by station");
   });
 
+  test("every row carries its application's tone", () => {
+    // The launcher colours rows by application, the same way the tile title bar
+    // and `Chip` do. A view whose application this build does not register gets
+    // the neutral tone rather than an empty border.
+    const index = buildLauncherIndex(
+      fixture({
+        apps: [
+          { ...descriptor("chart"), tone: "var(--pbui-tone-chart)" },
+          { ...descriptor("table"), tone: "var(--pbui-tone-cat)" },
+        ],
+        views: {
+          "v-c": view("v-c", "chart", "a chart"),
+          "v-t": view("v-t", "table", "a table"),
+        },
+        viewOrder: ["v-c", "v-t"],
+        workspaces: [workspace("ws-a", "build", split(leaf("v-c"), leaf("v-t")))],
+      }),
+    );
+    const byId = Object.fromEntries(
+      (index.currentStageGroups[0]?.rows ?? []).map((row) => [row.viewId, row.tone]),
+    );
+    expect(byId).toEqual({
+      "v-c": "var(--pbui-tone-chart)",
+      "v-t": "var(--pbui-tone-cat)",
+    });
+    expect(index.newApplications.map((row) => row.tone)).toEqual([
+      "var(--pbui-tone-chart)",
+      "var(--pbui-tone-cat)",
+    ]);
+  });
+
   test("launcher tiles are never destinations", () => {
     const index = buildLauncherIndex(
       fixture({
@@ -453,6 +484,37 @@ describe("empty-query presentation limits", () => {
   });
 });
 
+describe("new-view discoverability", () => {
+  // The problem this solves, measured in the running app: with existing views
+  // first, a Replace on a real workspace put 25 rows and a scroll between the
+  // user and every new-view option.
+  test("an empty query in place mode puts new views first", () => {
+    const results = search("");
+    expect(results.newViewsFirst).toBe(true);
+    expect(results.rows[0]?.kind).toBe("new");
+  });
+
+  test("typing text puts the specific answers first again", () => {
+    // A named view matching "chart" is a better answer than "the chart
+    // application", so once there is text the existing rows lead.
+    const results = search("chart");
+    expect(results.newViewsFirst).toBe(false);
+    expect(results.rows.at(-1)?.kind).toBe("new");
+  });
+
+  test("navigate mode never reorders: it is not a place to create", () => {
+    expect(search("", NAVIGATE).newViewsFirst).toBe(false);
+  });
+
+  test("rows follow the rendered order, so arrow keys agree with the eye", () => {
+    const results = search("");
+    const newCount = results.newApplications.length;
+    expect(newCount).toBeGreaterThan(0);
+    expect(results.rows.slice(0, newCount).every((row) => row.kind === "new")).toBe(true);
+    expect(results.rows.slice(newCount).some((row) => row.kind === "new")).toBe(false);
+  });
+});
+
 describe("invocation semantics", () => {
   test("navigate mode offers no new applications without a launcher target", () => {
     const results = search("chart", NAVIGATE);
@@ -517,6 +579,7 @@ describe("preferred placement for navigation", () => {
     title: "v",
     appId: "chart",
     appTitle: "chart",
+    tone: "var(--pbui-tone-chart)",
     docName: null,
     inScope: true,
   };

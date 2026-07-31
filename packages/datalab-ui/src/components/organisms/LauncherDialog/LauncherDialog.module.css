@@ -60,16 +60,30 @@
   gap: 1px;
   padding: var(--pbui-space-1) var(--pbui-space-2);
   cursor: pointer;
-  border-left: 2px solid transparent;
+  /*
+   * The edge carries the APPLICATION, not the selection — same width and idiom
+   * as `Chip`, so a chart row in the launcher and a chart chip in a tile read as
+   * the same colour meaning the same thing. The inline style supplies the hue.
+   */
+  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-neutral);
 }
 
 /*
- * The active row is marked by a wash AND a left edge, never by colour alone —
- * the edge is what survives a greyscale screenshot (GUIDELINES §1.5).
+ * The active row is a wash plus the ▸ marker in the title.
+ *
+ * The left border is spoken for by the tone, so selection cannot use it. A wash
+ * alone would be colour-only state (GUIDELINES §1.5); the marker is the part
+ * that survives a greyscale screenshot.
  */
 .option[data-active] {
   background: var(--pbui-selected-wash);
-  border-left-color: var(--pbui-selected);
+}
+
+.marker {
+  display: inline-block;
+  width: 1ch;
+  margin-right: var(--pbui-space-2);
+  color: var(--pbui-ink);
 }
 
 .option[data-disabled] {
@@ -77,13 +91,29 @@
   opacity: 0.55;
 }
 
-.optionTitle,
+/* Flex, so the marker column and the title share a baseline. */
+.optionTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  min-width: 0;
+}
+
+.optionTitle > :last-child,
 .optionMeta {
-  display: block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * The meta line is indented past the marker column so the two lines of a row
+ * start at the same x, marker or no marker.
+ */
+.optionMeta {
+  display: block;
+  padding-left: calc(1ch + var(--pbui-space-2));
 }
 
 .notice {

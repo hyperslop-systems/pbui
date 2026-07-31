@@ -107,6 +107,15 @@ function Option({
       data-active={active || undefined}
       data-disabled={disabledBecause !== null || undefined}
       className={styles.option}
+      /*
+       * The application's tone, as a left edge — the same 4px `--pbui-tone-edge`
+       * `Chip` uses, and one of the three inline styles GUIDELINES §5 allows
+       * ("a tone passed as a variable reference").
+       *
+       * Colour is never the only carrier (§1.5): the application name is on the
+       * meta line beside it, so a greyscale reader loses nothing.
+       */
+      style={{ borderLeftColor: row.tone }}
       // Hover moves the active row so pointer and keyboard agree about what
       // Enter would do, but it is never required: every row is also reachable
       // with the arrow keys alone.
@@ -116,6 +125,12 @@ function Option({
       }}
     >
       <span className={styles.optionTitle}>
+        {/* The design's own mockups mark the active row with this. It is what
+            keeps the state legible in greyscale, since the wash behind it is a
+            colour difference and the tone edge belongs to the application. */}
+        <span className={styles.marker} aria-hidden="true">
+          {active ? "\u25b8" : "\u00a0"}
+        </span>
         <Text size="small" strong>
           {row.kind === "new" ? row.appTitle : row.title}
         </Text>
@@ -165,8 +180,40 @@ export function LauncherResults({
     );
   }
 
+  const newViews = results.newApplications.length > 0 && (
+    // A <fieldset> is the rule's suggestion, but ARIA requires role="group"
+    // for a labelled section of a listbox, and a fieldset inside one is not
+    // a valid owning element.
+    // biome-ignore lint/a11y/useSemanticElements: see above
+    <div role="group" aria-label="new views">
+      <div className={styles.groupHead}>
+        <SectionLabel>New view</SectionLabel>
+        <span className={styles.groupTag}>
+          <Text size="micro" tone="faint">
+            TYPE +
+          </Text>
+        </span>
+      </div>
+      {results.newApplications.map((row) => (
+        <Option
+          key={row.id}
+          row={row}
+          label={optionLabel(row, null)}
+          active={activeId === row.id}
+          disabledBecause={null}
+          meta={optionMeta(row)}
+          onChoose={onChoose}
+          onHover={onHover}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div role="listbox" id={listId} aria-label="views and applications" className={styles.list}>
+      {/* Order comes from the model, so arrow keys and the eye agree. See
+          `LauncherResults.newViewsFirst`. */}
+      {results.newViewsFirst && newViews}
       {results.groups.map((group) => (
         // A <fieldset> is the rule's suggestion, but ARIA requires role="group"
         // for a labelled section of a listbox, and a fieldset inside one is not
@@ -241,34 +288,7 @@ export function LauncherResults({
         </div>
       )}
 
-      {results.newApplications.length > 0 && (
-        // A <fieldset> is the rule's suggestion, but ARIA requires role="group"
-        // for a labelled section of a listbox, and a fieldset inside one is not
-        // a valid owning element.
-        // biome-ignore lint/a11y/useSemanticElements: see above
-        <div role="group" aria-label="new views">
-          <div className={styles.groupHead}>
-            <SectionLabel>New view</SectionLabel>
-            <span className={styles.groupTag}>
-              <Text size="micro" tone="faint">
-                TYPE +
-              </Text>
-            </span>
-          </div>
-          {results.newApplications.map((row) => (
-            <Option
-              key={row.id}
-              row={row}
-              label={optionLabel(row, null)}
-              active={activeId === row.id}
-              disabledBecause={null}
-              meta={optionMeta(row)}
-              onChoose={onChoose}
-              onHover={onHover}
-            />
-          ))}
-        </div>
-      )}
+      {!results.newViewsFirst && newViews}
     </div>
   );
 }
