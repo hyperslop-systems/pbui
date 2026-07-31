@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/pkg/errors"
 )
@@ -221,14 +222,17 @@ func (f *Flow) Create(ctx context.Context, p CreateParams) (Authorization, error
 	if strings.TrimSpace(p.ID) == "" || strings.TrimSpace(p.DeviceHash) == "" || strings.TrimSpace(p.UserCodeHMAC) == "" {
 		return Authorization{}, errors.New("deviceflow: identifiers are required")
 	}
-	if strings.TrimSpace(p.Name) == "" || len(p.Name) > 120 {
+	if strings.TrimSpace(p.Name) == "" || utf8.RuneCountInString(p.Name) > 120 {
 		return Authorization{}, errors.New("deviceflow: the requested name must hold 1 to 120 characters")
 	}
 	if err := f.hooks.ValidateScopes(p.Scopes); err != nil {
 		return Authorization{}, err
 	}
-	if p.TokenLifetime <= 0 || p.TokenLifetime > TokenMaxLifetime {
-		return Authorization{}, errors.New("deviceflow: the token lifetime must be positive and at most 30d")
+	// Whole seconds only: token_lifetime_s is an integer column, and a
+	// lifetime that truncates to zero would mint an already-expired token.
+	if p.TokenLifetime < time.Second || p.TokenLifetime > TokenMaxLifetime ||
+		p.TokenLifetime%time.Second != 0 {
+		return Authorization{}, errors.New("deviceflow: the token lifetime must be whole seconds between 1s and 30d")
 	}
 
 	now := f.hooks.Now()
@@ -330,14 +334,21 @@ func (f *Flow) settle(ctx context.Context, id, userID, userCodeHMAC string, to S
 		return Authorization{}, stateError(record.State)
 	}
 
-	column, action := "approved_at", ActionApprove
+	// approved_by names the approver whose account the token will belong to;
+	// a denial must not claim one, so the actor lands only in the audit log.
+	query := `UPDATE device_authorizations SET state = ?, approved_by = ?, approved_at = ?
+		WHERE id = ? AND state = ?`
+	action := ActionApprove
 	if to == StateDenied {
-		column, action = "denied_at", ActionDeny
+		query = `UPDATE device_authorizations SET state = ?, denied_at = ?
+			WHERE id = ? AND state = ?`
+		action = ActionDeny
 	}
-	result, err := tx.ExecContext(ctx, `
-		UPDATE device_authorizations SET state = ?, approved_by = ?, `+column+` = ?
-		WHERE id = ? AND state = ?`,
-		string(to), userID, f.hooks.FormatTime(now), id, string(StatePending))
+	args := []any{string(to), userID, f.hooks.FormatTime(now), id, string(StatePending)}
+	if to == StateDenied {
+		args = []any{string(to), f.hooks.FormatTime(now), id, string(StatePending)}
+	}
+	result, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return Authorization{}, errors.Wrap(err, "deviceflow: settle the authorization")
 	}
@@ -352,8 +363,8 @@ func (f *Flow) settle(ctx context.Context, id, userID, userCodeHMAC string, to S
 		return Authorization{}, errors.Wrap(err, "deviceflow: commit the settlement")
 	}
 	record.State = to
-	record.ApprovedBy = userID
 	if to == StateApproved {
+		record.ApprovedBy = userID
 		record.ApprovedAt = &now
 	} else {
 		record.DeniedAt = &now
@@ -389,9 +400,14 @@ func (f *Flow) Consume(ctx context.Context, deviceHash string) (TokenResponse, e
 		return TokenResponse{}, ErrExpired
 	}
 	if now.Before(record.NextPollAt) {
-		next := record.NextPollAt.Add(5 * time.Second)
-		if _, err := tx.ExecContext(ctx, `UPDATE device_authorizations SET next_poll_at = ? WHERE id = ?`,
-			f.hooks.FormatTime(next), record.ID); err != nil {
+		// RFC 8628 §3.5: slow_down grows the interval by 5 seconds for this
+		// and ALL subsequent polls, so the new interval is persisted — the
+		// later pending-poll reset must count from the grown value, not
+		// spring back to the initial five seconds.
+		interval := record.PollInterval + 5*time.Second
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE device_authorizations SET poll_interval_s = ?, next_poll_at = ? WHERE id = ?`,
+			int64(interval/time.Second), f.hooks.FormatTime(now.Add(interval)), record.ID); err != nil {
 			return TokenResponse{}, errors.Wrap(err, "deviceflow: slow the poll")
 		}
 		if err := tx.Commit(); err != nil {
@@ -492,20 +508,31 @@ func ParseExpiresIn(raw string) (time.Duration, error) {
 		if err != nil {
 			return 0, errors.New("deviceflow: expires_in is malformed")
 		}
-		parsed *= 24
-		if parsed <= 0 || parsed > TokenMaxLifetime {
+		// Bound BEFORE scaling to days: a huge count would overflow the
+		// multiplication and wrap into a small, accepted duration.
+		if parsed <= 0 || parsed > TokenMaxLifetime/24 {
 			return 0, errors.New("deviceflow: expires_in must be between one second and 30d")
 		}
-		return parsed, nil
+		return checkLifetime(parsed * 24)
 	}
 	parsed, err := time.ParseDuration(value)
 	if err != nil {
 		return 0, errors.New("deviceflow: expires_in is malformed")
 	}
-	if parsed <= 0 || parsed > TokenMaxLifetime {
+	return checkLifetime(parsed)
+}
+
+// checkLifetime enforces the bounds Create persists: token_lifetime_s is an
+// integer column, so a sub-second remainder would silently truncate — and a
+// value under one second would truncate to a token that expires at mint time.
+func checkLifetime(d time.Duration) (time.Duration, error) {
+	if d < time.Second || d > TokenMaxLifetime {
 		return 0, errors.New("deviceflow: expires_in must be between one second and 30d")
 	}
-	return parsed, nil
+	if d%time.Second != 0 {
+		return 0, errors.New("deviceflow: expires_in must be whole seconds")
+	}
+	return d, nil
 }
 
 const selectColumns = `SELECT id, requested_name, requested_scopes, expires_at, token_expires_at,

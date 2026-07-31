@@ -88,8 +88,12 @@ func (l *RateLimiter) evictOldest() {
 
 // ClientKey derives an abuse-limiter key without accepting a forwarded address
 // from an arbitrary peer. When the direct peer is a trusted proxy, the
-// RIGHTMOST X-Forwarded-For value is that proxy's immediate client; earlier
-// values may have been supplied by the client itself and are ignored.
+// X-Forwarded-For chain is walked right to left, skipping every address that
+// is itself a trusted proxy: with two proxies in front, the rightmost value is
+// the second proxy, not the client. The first untrusted address is the client;
+// anything left of it is client-supplied and never consulted. A malformed
+// entry ends the walk — a real proxy appends well-formed addresses, so what
+// follows it cannot be trusted either.
 func ClientKey(r *http.Request, trustedProxies []netip.Prefix) string {
 	remote, ok := remoteAddr(r.RemoteAddr)
 	if !ok {
@@ -99,12 +103,19 @@ func ClientKey(r *http.Request, trustedProxies []netip.Prefix) string {
 		return remote.String()
 	}
 	forwards := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
+	fallback := remote
 	for i := len(forwards) - 1; i >= 0; i-- {
-		if candidate, err := netip.ParseAddr(strings.TrimSpace(forwards[i])); err == nil {
-			return candidate.Unmap().String()
+		candidate, err := netip.ParseAddr(strings.TrimSpace(forwards[i]))
+		if err != nil {
+			break
 		}
+		candidate = candidate.Unmap()
+		if !isTrustedProxy(candidate, trustedProxies) {
+			return candidate.String()
+		}
+		fallback = candidate
 	}
-	return remote.String()
+	return fallback.String()
 }
 
 func remoteAddr(value string) (netip.Addr, bool) {

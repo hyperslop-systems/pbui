@@ -215,6 +215,9 @@ func DiscoverWithRetry(
 	ctx context.Context, issuer, clientID, clientSecret, redirectURL string,
 	scopes []string, attempts int, wait time.Duration,
 ) (Provider, error) {
+	if attempts < 1 {
+		return nil, errors.New("authkit: discovery needs at least one attempt")
+	}
 	var lastErr error
 	for i := 0; i < attempts; i++ {
 		provider, err := DiscoverProvider(ctx, issuer, clientID, clientSecret, redirectURL, scopes)
