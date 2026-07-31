@@ -1,5 +1,10 @@
 import { SectionLabel, Text } from "@hyperslop-systems/pbui";
-import type { LauncherResults as Results, LauncherResultId, LauncherRow } from "../ViewSwitcher";
+import {
+  blockedReason,
+  type LauncherResults as Results,
+  type LauncherResultId,
+  type LauncherRow,
+} from "../ViewSwitcher";
 import styles from "./LauncherDialog.module.css";
 
 /**
@@ -19,9 +24,6 @@ export interface LauncherResultsProps {
   results: Results;
   listId: string;
   activeId: LauncherResultId | null;
-  /** In place mode an out-of-scope row is offered disabled, with the reason. */
-  mode: "place" | "navigate";
-  targetWorkspaceName: string | null;
   /**
    * The caller has already explained why there is nothing to show.
    *
@@ -148,8 +150,6 @@ export function LauncherResults({
   results,
   listId,
   activeId,
-  mode,
-  targetWorkspaceName,
   explainedElsewhere = false,
   onChoose,
   onHover,
@@ -233,17 +233,11 @@ export function LauncherResults({
             )}
           </div>
           {group.rows.map((row) => {
-            // §8.4: a row whose own workspace offers its application is always
-            // a navigation destination, but Replace cannot bring it to a target
-            // that does not offer it. Greyed with the reason rather than
-            // hidden — this is one or two specific rows, not the
-            // twenty-two-of-twenty-five list DR-95 stopped greying.
-            const blocked =
-              mode === "place" && !row.inScope
-                ? `${row.appTitle} is not offered${
-                    targetWorkspaceName ? ` in ${targetWorkspaceName}` : " here"
-                  }`
-                : null;
+            // §8.4, decided in the model so the Enter path reads the same
+            // field. It used to be recomputed here from `inScope` — the row's
+            // OWN workspace scope — while the message claimed the target's,
+            // which is a different question whenever the two differ.
+            const blocked = blockedReason(row);
             const linked =
               row.totalPlacementCount > 1
                 ? ` · linked · ${row.placementIds.length} here · ${row.totalPlacementCount} total`
@@ -279,7 +273,7 @@ export function LauncherResults({
               row={row}
               label={optionLabel(row, null)}
               active={activeId === row.id}
-              disabledBecause={null}
+              disabledBecause={blockedReason(row)}
               meta={optionMeta(row, " · not shown")}
               onChoose={onChoose}
               onHover={onHover}

@@ -24,6 +24,17 @@ export interface ShortcutContext {
   objectMenuOpen: boolean;
   /** A presentation is waiting for the user to pick a value. */
   acceptingPresentation: boolean;
+  /**
+   * A tile or workspace name is being edited inline.
+   *
+   * Blocks the shortcut, and the reason is data loss rather than tidiness. The
+   * launcher cannot restore focus to an `InlineRename` — focus restoration
+   * looks for `[data-ptype="tile"]`, which that component replaces while it is
+   * open — and navigating to another workspace unmounts the input, discarding
+   * unsaved text while `renamingId` stays pointing at a placement the user can
+   * no longer see. Finish or abandon the rename first; both are one key away.
+   */
+  renamingView: boolean;
 }
 
 export type ShortcutDecision = { kind: "ignore" } | { kind: "open-launcher" };
@@ -47,11 +58,13 @@ export function routeWorkbenchKey(
   if (!isModKey(event, platform) || event.altKey) return { kind: "ignore" };
 
   // Mod+K is a chord, so an editable target is not a reason to ignore it on its
-  // own — a user typing in a rename field still expects the launcher. What does
-  // block it is another transient surface already owning the keyboard: the
-  // object menu, a pending accept, or a dialog, including the launcher itself.
+  // own — a user typing in a search box still expects the launcher. What blocks
+  // it is another transient surface already owning the keyboard: the object
+  // menu, a pending accept, a dialog including the launcher itself, or an
+  // inline rename, which is the one that would lose work.
   if (context.launcherOpen || context.dialogOpen) return { kind: "ignore" };
   if (context.objectMenuOpen || context.acceptingPresentation) return { kind: "ignore" };
+  if (context.renamingView) return { kind: "ignore" };
 
   return { kind: "open-launcher" };
 }

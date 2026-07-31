@@ -31,7 +31,14 @@ function LauncherApp({ placementId }: AppProps) {
   const apps = useAvailableApps();
   const quick = apps.filter((app) => app.id !== "launcher").slice(0, 3);
 
-  const open = () => dispatch(layoutActions.openLauncher({ kind: "fill-launcher", placementId }));
+  const open = (prefill?: string) =>
+    dispatch(
+      layoutActions.openLauncher({
+        kind: "fill-launcher",
+        placementId,
+        ...(prefill ? { prefill } : {}),
+      }),
+    );
 
   return (
     <div className={styles.root}>
@@ -40,14 +47,14 @@ function LauncherApp({ placementId }: AppProps) {
           OPEN A VIEW
         </Text>
 
-        <Button variant="raised" onClick={open}>
+        <Button variant="raised" onClick={() => open()}>
           Search views…
         </Button>
 
         {quick.length > 0 && (
           <div className={styles.quick}>
             {quick.map((app) => (
-              <Button key={app.id} fill={app.tone} onClick={open}>
+              <Button key={app.id} fill={app.tone} onClick={() => open(`+${app.id}`)}>
                 + {app.title}
               </Button>
             ))}

@@ -52,6 +52,8 @@ export interface LauncherPlacedRow {
    * or two specific rows, not twenty-two of twenty-five.
    */
   inScope: boolean;
+  /** Set in place mode when the TARGET workspace does not offer this app. */
+  unavailable?: string;
 }
 
 /** A logical view with no placement anywhere. */
@@ -64,6 +66,8 @@ export interface LauncherUnplacedRow {
   appTitle: string;
   tone: string;
   docName: string | null;
+  /** Set in place mode when the TARGET workspace does not offer this app. */
+  unavailable?: string;
 }
 
 /** An application that can create a new logical view. */
@@ -77,6 +81,19 @@ export interface LauncherNewRow {
 }
 
 export type LauncherRow = LauncherPlacedRow | LauncherUnplacedRow | LauncherNewRow;
+
+/**
+ * Why a row cannot be chosen, or null when it can.
+ *
+ * On the row rather than computed at render time, so the pointer path and the
+ * Enter path read one field. They did not: the click handler checked, Enter did
+ * not, and a highlighted out-of-scope row could be placed with the keyboard.
+ */
+export type LauncherRowBlock = { row: LauncherRow; because: string } | null;
+
+export function blockedReason(row: LauncherRow): string | null {
+  return row.kind === "new" ? null : (row.unavailable ?? null);
+}
 
 export interface LauncherWorkspaceGroup {
   workspaceId: string;
@@ -117,6 +134,16 @@ export interface LauncherIndexInput {
   stages: readonly Stage[];
   currentStageId: StageId;
   currentWorkspaceId: string;
+  /**
+   * The stages this viewer may actually reach, by `stageIsVisible`.
+   *
+   * Without it, a non-empty search offers placed views from audience-restricted
+   * stages: a signed-out visitor selects a row in `work`, `setCurrentSpace`
+   * takes them there, and `Workbench`'s gate immediately bounces them back —
+   * a broken navigation and a flash of a stage they cannot use. The current
+   * stage is always included regardless, since they are standing in it.
+   */
+  visibleStageIds: readonly StageId[];
   /** Document display names only; the index has no use for their contents. */
   docNames: Readonly<Record<DocId, string>>;
 }
@@ -159,6 +186,18 @@ export interface LauncherSearchContext {
    * looking at is a real destination.
    */
   excludeViewId?: ViewId | null;
+  /**
+   * The applications the TARGET workspace offers, or null for no constraint.
+   *
+   * §8.4 says a row is scoped by the workspace it concerns — and for anything
+   * that ends in a placement, that is where it is *going*, not where it came
+   * from. `inScope` on a placed row answers the navigate-mode question ("may
+   * this workspace show it?"); this answers the place-mode one ("may the target
+   * show it?"). They differ exactly when the two workspaces have different
+   * allow-lists, which is when the old code offered to create a `chart` in a
+   * workspace restricted to `signin`.
+   */
+  targetAppIds?: readonly AppId[] | null;
 }
 
 export interface LauncherResults {
@@ -249,6 +288,7 @@ export function buildLauncherIndex(input: LauncherIndexInput): LauncherIndex {
     stages,
     currentStageId,
     currentWorkspaceId,
+    visibleStageIds,
     docNames,
   } = input;
 
@@ -343,8 +383,11 @@ export function buildLauncherIndex(input: LauncherIndexInput): LauncherIndex {
   const currentStageGroups = currentStageWorkspaces.map((workspace, index) =>
     groupFor(workspace, index + 1),
   );
+  // Only stages this viewer may actually reach. The current stage is exempt:
+  // they are already standing in it, whatever the audience rule says.
+  const reachable = new Set([...visibleStageIds, currentStageId]);
   const otherStageGroups = workspaces
-    .filter((workspace) => workspace.stageId !== currentStageId)
+    .filter((workspace) => workspace.stageId !== currentStageId && reachable.has(workspace.stageId))
     .map((workspace) => groupFor(workspace, 0));
 
   const unplaced: LauncherUnplacedRow[] = [];
@@ -471,10 +514,27 @@ export function searchLauncherIndex(
   // across workspaces all assign the same one.
   const excluded = context.mode === "place" ? (context.excludeViewId ?? null) : null;
 
+  /**
+   * The target workspace's allow-list, in place mode only.
+   *
+   * Navigate mode places nothing, so nothing there is constrained by a target.
+   */
+  const targetAppIds =
+    context.mode === "place" && context.targetAppIds ? new Set(context.targetAppIds) : null;
+  const targetName = "this workspace";
+  const blockFor = <T extends { appId: AppId; appTitle: string }>(row: T): T => {
+    if (!targetAppIds || targetAppIds.has(row.appId)) return row;
+    // Offered disabled rather than hidden, following `pbui/verbs.ts`: a handful
+    // of specific rows with a stated reason, not the twenty-two-of-twenty-five
+    // list DR-95 stopped greying.
+    return { ...row, unavailable: `${row.appTitle} is not offered in ${targetName}` };
+  };
+
   const scored = groups
     .map((group) => {
       const rows = group.rows
         .filter((row) => row.viewId !== excluded)
+        .map(blockFor)
         .map((row) => ({ row, score: scoreRow(row, group.name, text) }))
         .filter((entry) => entry.score > 0)
         .sort((a, b) => b.score - a.score)
@@ -485,10 +545,14 @@ export function searchLauncherIndex(
     })
     .filter((group) => group.rows.length > 0);
 
-  const showUnplaced = query.kind === "all" && (context.mode === "place" || context.allowNewViews);
+  // Place mode only. Navigate mode has no placement to assign them to, and
+  // `LauncherDialog.choose` handles only placed and new rows there — so an
+  // unplaced row shown under Mod+K was a row that silently did nothing.
+  const showUnplaced = query.kind === "all" && context.mode === "place";
   const unplacedAll = showUnplaced
     ? index.unplaced
         .filter((row) => row.viewId !== excluded)
+        .map(blockFor)
         .map((row) => ({ row, score: scoreRow(row, "", text) }))
         .filter((entry) => entry.score > 0)
         .sort((a, b) => b.score - a.score)
@@ -499,6 +563,10 @@ export function searchLauncherIndex(
   const showNew = context.allowNewViews && query.kind !== "workspace";
   const newAll = showNew
     ? index.newApplications
+        // Hidden rather than disabled: `useAvailableApps()` filtered these in
+        // the switcher this replaced, and "create a thing this workspace may
+        // not hold" is not a row worth explaining.
+        .filter((row) => !targetAppIds || targetAppIds.has(row.appId))
         .map((row) => ({
           row,
           score: scoreRow({ ...row, title: row.appTitle, docName: null }, "", text),

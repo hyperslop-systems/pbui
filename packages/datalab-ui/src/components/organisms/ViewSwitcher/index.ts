@@ -13,6 +13,7 @@ export {
   type ParsedLauncherQuery,
 } from "./launcherQuery.logic";
 export {
+  blockedReason,
   buildLauncherIndex,
   preferredPlacement,
   scoreRow,
@@ -23,6 +24,7 @@ export {
   type LauncherPlacedRow,
   type LauncherResultId,
   type LauncherResults,
+  type LauncherRowBlock,
   type LauncherRow,
   type LauncherSearchContext,
   type LauncherUnplacedRow,

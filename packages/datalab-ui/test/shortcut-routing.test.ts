@@ -33,6 +33,7 @@ const quiet: ShortcutContext = {
   dialogOpen: false,
   objectMenuOpen: false,
   acceptingPresentation: false,
+  renamingView: false,
 };
 
 const key = (overrides: Partial<KeyboardEvent> = {}) => ({
@@ -90,6 +91,7 @@ describe("workbench key routing", () => {
     ["a dialog", { dialogOpen: true }],
     ["the object menu", { objectMenuOpen: true }],
     ["a pending accept", { acceptingPresentation: true }],
+    ["an inline rename", { renamingView: true }],
   ])("%s owns the keyboard and blocks the shortcut", (_name, overrides) => {
     expect(routeWorkbenchKey(key({ ctrlKey: true }), { ...quiet, ...overrides }, "Linux")).toEqual({
       kind: "ignore",
@@ -97,9 +99,10 @@ describe("workbench key routing", () => {
   });
 
   test("an editable target does NOT block a chord", () => {
-    // Deliberate: Mod+K is not a printable key, and a user renaming a tile
-    // still expects the launcher. The editable guard exists for a future
-    // unmodified shortcut such as `/`.
+    // Deliberate: Mod+K is not a printable key, and a user typing in a search
+    // box still expects the launcher. The editable guard exists for a future
+    // unmodified shortcut such as `/`. An inline RENAME is blocked separately,
+    // above — not because it is editable, but because it would lose work.
     expect(
       routeWorkbenchKey(key({ ctrlKey: true }), { ...quiet, targetIsEditable: true }, "Linux"),
     ).toEqual({ kind: "open-launcher" });

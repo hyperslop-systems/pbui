@@ -1,7 +1,9 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useMeQuery } from "../../../api/client";
 import { Dialog, Text, TextInput } from "@hyperslop-systems/pbui";
 import { useScopedApps } from "../../../appkit/AppScope";
+import { stageIsVisible } from "../../../store/stages";
 import type { RootState } from "../../../store";
 import {
   type LauncherInvocation,
@@ -14,6 +16,7 @@ import {
   type LauncherResultId,
   type LauncherRow,
   type LauncherSearchContext,
+  blockedReason,
   parseLauncherQuery,
   preferredPlacement,
   searchLauncherIndex,
@@ -35,19 +38,31 @@ import styles from "./LauncherDialog.module.css";
  * including from a serialisable tile verb, which is the constraint that put the
  * invocation in the store rather than in a context.
  */
-export function LauncherDialog() {
+export interface LauncherDialogProps {
+  /**
+   * The workbench this launcher belongs to.
+   *
+   * Placement ids are unique within a store, not within the document, so every
+   * DOM lookup here is scoped to this element. See `placementElement`.
+   */
+  root?: RefObject<HTMLElement | null>;
+}
+
+export function LauncherDialog({ root }: LauncherDialogProps = {}) {
   const invocation = useSelector((state: RootState) => state.layout.launcher ?? null);
   // Remounted per invocation so query text and the highlighted row start fresh
   // and never leak from a Replace into the next launcher.
   return invocation ? (
-    <LauncherModal key={invocationKey(invocation)} invocation={invocation} />
+    <LauncherModal key={invocationKey(invocation)} invocation={invocation} rootRef={root ?? null} />
   ) : null;
 }
 
 function invocationKey(invocation: LauncherInvocation): string {
   return invocation.kind === "navigate"
     ? `navigate:${invocation.activePlacementId ?? ""}`
-    : `${invocation.kind}:${invocation.placementId}`;
+    : `${invocation.kind}:${invocation.placementId}:${
+        invocation.kind === "fill-launcher" ? (invocation.prefill ?? "") : ""
+      }`;
 }
 
 const HEADINGS: Record<LauncherInvocation["kind"], string> = {
@@ -56,10 +71,19 @@ const HEADINGS: Record<LauncherInvocation["kind"], string> = {
   navigate: "Go to view",
 };
 
-function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
+function LauncherModal({
+  invocation,
+  rootRef,
+}: {
+  invocation: LauncherInvocation;
+  rootRef: RefObject<HTMLElement | null> | null;
+}) {
   const dispatch = useDispatch();
+  const root = rootRef?.current ?? null;
   const listId = useId();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(
+    invocation.kind === "fill-launcher" ? (invocation.prefill ?? "") : "",
+  );
   const [activeId, setActiveId] = useState<LauncherResultId | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +93,15 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
   // another workspace.
   const apps = useScopedApps();
   const layout = useSelector((state: RootState) => state.layout);
+  // Audience is a rendering constraint, not a security boundary — the server
+  // denies the data regardless (DR-31). What it buys here is that a signed-out
+  // visitor is never offered a destination the gate will bounce them out of.
+  const { data: me } = useMeQuery();
+  const authed = me?.authenticated === true;
+  const visibleStageIds = useMemo(
+    () => layout.stages.filter((s) => stageIsVisible(s, authed)).map((s) => s.id),
+    [layout.stages, authed],
+  );
   const docs = useSelector((state: RootState) => state.world.docs);
   const activeDocId = useSelector((state: RootState) => state.world.activeDocId);
 
@@ -101,9 +134,10 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
         stages: layout.stages,
         currentStageId: layout.currentStageId,
         currentWorkspaceId: layout.currentSpaceId,
+        visibleStageIds,
         docNames,
       }),
-    [apps, layout, docNames],
+    [apps, layout, visibleStageIds, docNames],
   );
 
   /** The workspace a placed result would land in, and the view already there. */
@@ -168,6 +202,23 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
     };
   }, [invocation, layout.spaces, layout.currentSpaceId, layout.views]);
 
+  /**
+   * What the target workspace may hold: instance ∩ its stage ∩ itself.
+   *
+   * `useAvailableApps()` answers this for the CURRENT workspace, which is the
+   * wrong workspace whenever the launcher targets another one — and computing
+   * it here rather than reusing that hook is the whole of §8.4's place-mode
+   * half.
+   */
+  const targetAppIds = useMemo(() => {
+    const workspace = targetWorkspace ?? newViewTarget?.workspace ?? null;
+    if (!workspace) return null;
+    const stage = layout.stages.find((candidate) => candidate.id === workspace.stageId);
+    const narrow = (allowed: string[] | null, list: string[] | null | undefined) =>
+      list == null ? allowed : (allowed ?? list).filter((id) => list.includes(id));
+    return narrow(narrow(null, stage?.apps), workspace.apps);
+  }, [targetWorkspace, newViewTarget, layout.stages]);
+
   const context: LauncherSearchContext = useMemo(
     () => ({
       mode: invocation.kind === "navigate" ? "navigate" : "place",
@@ -176,8 +227,9 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
       // Replacing a tile with what it already shows is a no-op; the embedded
       // switcher has always dropped this row and the modal must too.
       excludeViewId: target.viewId,
+      targetAppIds,
     }),
-    [invocation.kind, targetWorkspace, target.viewId, newViewTarget],
+    [invocation.kind, targetWorkspace, target.viewId, newViewTarget, targetAppIds],
   );
 
   const parsed = useMemo(() => parseLauncherQuery(query), [query]);
@@ -209,10 +261,14 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
     // element may have been unmounted and remounted while the modal was open,
     // and a detached node silently swallows `.focus()`.
     const restore = targetPlacementId ?? (invocation.kind === "navigate" ? activePlacement : null);
-    if (restore) focusPlacement(restore);
+    if (restore) focusPlacement(root, restore);
   };
 
   const choose = (row: LauncherRow) => {
+    // The pointer path checks this in `LauncherResults`; Enter did not, so a
+    // highlighted out-of-scope row could be placed with the keyboard and
+    // bypass the workspace restriction entirely. One field, both paths.
+    if (blockedReason(row)) return;
     if (invocation.kind === "navigate") {
       // Navigation never mutates the layout: switch workspace, focus a
       // placement, done. A new-view row is only reachable here when the active
@@ -223,7 +279,7 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
         // Prefer the occurrence the user was already in when a linked view is
         // placed twice in the target workspace (§19 question 5).
         const target = preferredPlacement(row, activePlacement);
-        if (target) focusPlacement(target);
+        if (target) focusPlacement(root, target);
         return;
       }
       if (row.kind !== "new" || !newViewTarget) return;
@@ -237,7 +293,7 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
           }),
         );
         dispatch(layoutActions.closeLauncher());
-        focusPlacement(newViewTarget.placementId);
+        focusPlacement(root, newViewTarget.placementId);
         return;
       }
       // Split along the tile's LONGER axis, so the new view gets a usable
@@ -247,7 +303,7 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
       dispatch(
         layoutActions.splitLeaf({
           nodeId: newViewTarget.placementId,
-          dir: splitDirectionFor(newViewTarget.placementId),
+          dir: splitDirectionFor(root, newViewTarget.placementId),
           appId: row.appId,
           docId,
         }),
@@ -269,7 +325,7 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
       dispatch(layoutActions.replacePlacementWithView({ nodeId: placementId, viewId: row.viewId }));
     }
     dispatch(layoutActions.closeLauncher());
-    focusPlacement(placementId);
+    focusPlacement(root, placementId);
   };
 
   const move = (delta: number | "first" | "last") => {
@@ -386,8 +442,6 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
             results={results}
             listId={listId}
             activeId={active}
-            mode={context.mode}
-            targetWorkspaceName={targetWorkspace?.name ?? null}
             explainedElsewhere={newViewsRefused}
             onChoose={choose}
             onHover={setActiveId}
@@ -418,10 +472,8 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
  * what makes an implicit split bad is that it is a surprise, not that it is a
  * default. A wide tile becomes two columns; a tall one stacks.
  */
-function splitDirectionFor(placementId: NodeId): "row" | "col" {
-  const element = document.querySelector<HTMLElement>(
-    `[data-placement-id="${CSS.escape(placementId)}"]`,
-  );
+function splitDirectionFor(root: HTMLElement | null, placementId: NodeId): "row" | "col" {
+  const element = placementElement(root, placementId);
   if (!element) return "row";
   const box = element.getBoundingClientRect();
   return box.width >= box.height ? "row" : "col";
@@ -434,11 +486,21 @@ function splitDirectionFor(placementId: NodeId): "row" | "col" {
  * workspace, so the target tile does not exist yet when the reducer returns.
  * The same query `Tile.restoreTitleFocus` uses, for the same element.
  */
-function focusPlacement(placementId: NodeId): void {
+function placementElement(root: HTMLElement | null, placementId: NodeId): HTMLElement | null {
+  // Scoped to the workbench that opened the launcher, never `document`.
+  // Two `WorkbenchInstance`s seeded from one preloaded layout hold the SAME
+  // placement ids in their independent stores, so a document-wide query
+  // reliably finds the first instance — and closing the second launcher would
+  // move focus into the first workbench, or measure its geometry.
+  return (
+    (root ?? document).querySelector<HTMLElement>(
+      `[data-placement-id="${CSS.escape(placementId)}"]`,
+    ) ?? null
+  );
+}
+
+function focusPlacement(root: HTMLElement | null, placementId: NodeId): void {
   requestAnimationFrame(() => {
-    document
-      .querySelector<HTMLElement>(`[data-placement-id="${CSS.escape(placementId)}"]`)
-      ?.querySelector<HTMLElement>('[data-ptype="tile"]')
-      ?.focus();
+    placementElement(root, placementId)?.querySelector<HTMLElement>('[data-ptype="tile"]')?.focus();
   });
 }

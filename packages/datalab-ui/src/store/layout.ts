@@ -280,7 +280,12 @@ export interface PendingImport {
  * group shares: reloading into an open modal over a tile that may be gone.
  */
 export type LauncherInvocation =
-  | { kind: "fill-launcher"; placementId: NodeId }
+  /**
+   * `prefill` seeds the search box. The launcher tile's quick-create buttons
+   * use it so `+ chart` opens on the chart row rather than on a blank query —
+   * without it, three differently-labelled buttons all did the same thing.
+   */
+  | { kind: "fill-launcher"; placementId: NodeId; prefill?: string }
   | { kind: "replace"; placementId: NodeId }
   | { kind: "navigate"; activePlacementId: NodeId | null };
 

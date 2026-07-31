@@ -240,6 +240,7 @@ export function WorkbenchShell({
   // Any dialog, menu or expanded panel anywhere on the page. The shortcut
   // router needs the fact, not the identity.
   const anySurfaceOpen = useAnyEscapeSurface();
+  const renaming = useSelector((state: RootState) => (state.layout.renamingId ?? null) !== null);
 
   /**
    * Which workbench a key press belongs to.
@@ -281,6 +282,7 @@ export function WorkbenchShell({
           dialogOpen: anySurfaceOpen,
           objectMenuOpen: pbui.menu !== null,
           acceptingPresentation: pbui.accepting !== null,
+          renamingView: renaming,
         },
         navigator.platform,
       );
@@ -297,7 +299,15 @@ export function WorkbenchShell({
     // deeper in the tree.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [dispatch, launcherOpen, anySurfaceOpen, pbui.menu, pbui.accepting, activePlacementId]);
+  }, [
+    dispatch,
+    launcherOpen,
+    anySurfaceOpen,
+    renaming,
+    pbui.menu,
+    pbui.accepting,
+    activePlacementId,
+  ]);
 
   const counts =
     `${space ? countLeaves(space.tree) : 0} tiles · ` +
@@ -373,7 +383,7 @@ export function WorkbenchShell({
        * set. That is what lets a serialisable tile verb open it: the descriptor
        * dispatches, and the shell already has the modal ready to notice.
        */}
-      <LauncherDialog />
+      <LauncherDialog root={shellRef} />
       <ExportNotice />
       <ObjectMenu />
     </>

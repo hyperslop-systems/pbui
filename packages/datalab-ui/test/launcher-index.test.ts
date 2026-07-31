@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import type { AppDescriptor } from "../src/appkit/registry";
 import {
+  blockedReason,
   buildLauncherIndex,
+  type LauncherRow,
   type LauncherIndexInput,
   type LauncherSearchContext,
   parseLauncherQuery,
@@ -105,6 +107,7 @@ function fixture(overrides: Partial<LauncherIndexInput> = {}): LauncherIndexInpu
     stages: [stage("work")],
     currentStageId: "work",
     currentWorkspaceId: "ws-a",
+    visibleStageIds: ["work", "account", "lab", "elsewhere"],
     docNames: { "d-climate": "climate", "d-batches": "batches" },
     ...overrides,
   };
@@ -484,6 +487,86 @@ describe("empty-query presentation limits", () => {
   });
 });
 
+describe("the target workspace's scope decides what can be placed", () => {
+  // Codex review, P1. §8.4 says a row that ends in a placement is scoped by
+  // where it is GOING. The index only ever applied the row's own workspace
+  // scope, so the launcher offered to create a `chart` in a workspace
+  // restricted to `signin` — and the disabled message claimed the target's
+  // scope while the check used the source's.
+  const scoped = { ...PLACE, targetAppIds: ["chart"] };
+
+  test("a new-view row the target forbids is hidden", () => {
+    expect(search("", scoped).newApplications.map((row) => row.appId)).toEqual(["chart"]);
+    expect(search("", PLACE).newApplications.map((row) => row.appId)).toContain("table");
+  });
+
+  test("a placed row the target forbids is offered disabled, not hidden", () => {
+    const row = search("table", scoped)
+      .groups.flatMap((group) => group.rows)
+      .find((candidate) => candidate.appId === "table");
+    expect(row).toBeDefined();
+    expect(row?.unavailable).toContain("not offered");
+  });
+
+  test("an unplaced row the target forbids is disabled too", () => {
+    const results = searchLauncherIndex(buildLauncherIndex(fixture()), parseLauncherQuery(""), {
+      ...PLACE,
+      targetAppIds: ["table"],
+    });
+    // v-scratch is a chart, and the target offers only tables.
+    expect(results.unplaced.map((row) => row.unavailable)).toEqual([
+      expect.stringContaining("not offered"),
+    ]);
+  });
+
+  test("navigate mode ignores it: nothing is being placed", () => {
+    const results = search("table", { ...NAVIGATE, targetAppIds: ["chart"] });
+    const row = results.groups.flatMap((group) => group.rows).find((r) => r.appId === "table");
+    expect(row?.unavailable).toBeUndefined();
+  });
+
+  test("blockedReason is the one field both the pointer and Enter read", () => {
+    const row = search("table", scoped)
+      .groups.flatMap((group) => group.rows)
+      .find((candidate) => candidate.appId === "table");
+    expect(blockedReason(row as LauncherRow)).toContain("not offered");
+    const allowed = search("temp", scoped)
+      .groups.flatMap((group) => group.rows)
+      .find((candidate) => candidate.appId === "chart");
+    expect(blockedReason(allowed as LauncherRow)).toBeNull();
+  });
+});
+
+describe("stages the viewer cannot reach", () => {
+  // Codex review, P1. Without this a signed-out visitor could select a result
+  // in the authenticated `work` stage: setCurrentSpace takes them there and the
+  // gate immediately bounces them back.
+  const twoStages = () =>
+    fixture({
+      stages: [stage("work"), stage("private")],
+      currentStageId: "work",
+      workspaces: [
+        workspace("ws-a", "build", leaf("v-temp")),
+        workspace("ws-secret", "restricted", leaf("v-yield"), { stageId: "private" }),
+      ],
+    });
+
+  test("an invisible stage is not indexed", () => {
+    const index = buildLauncherIndex({ ...twoStages(), visibleStageIds: ["work"] });
+    expect(index.otherStageGroups).toEqual([]);
+  });
+
+  test("a visible stage still is", () => {
+    const index = buildLauncherIndex({ ...twoStages(), visibleStageIds: ["work", "private"] });
+    expect(index.otherStageGroups.map((group) => group.workspaceId)).toEqual(["ws-secret"]);
+  });
+
+  test("the current stage is exempt: you are already standing in it", () => {
+    const index = buildLauncherIndex({ ...twoStages(), visibleStageIds: [] });
+    expect(index.currentStageGroups.map((group) => group.workspaceId)).toEqual(["ws-a"]);
+  });
+});
+
 describe("new-view discoverability", () => {
   // The problem this solves, measured in the running app: with existing views
   // first, a Replace on a real workspace put 25 rows and a scroll between the
@@ -537,6 +620,10 @@ describe("invocation semantics", () => {
   });
 
   test("navigate mode hides unplaced views, which have nowhere to navigate", () => {
+    // Codex review, P2: once navigate mode could create, `allowNewViews` went
+    // true and started admitting unplaced rows — which `choose` does not handle
+    // there, so selecting one silently did nothing and left the modal open.
+    expect(search("scratch", { ...NAVIGATE, allowNewViews: true }).unplaced).toEqual([]);
     expect(search("scratch", NAVIGATE).unplaced).toEqual([]);
     expect(search("scratch", PLACE).unplaced.map((row) => row.viewId)).toEqual(["v-scratch"]);
   });
