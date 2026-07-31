@@ -46,7 +46,10 @@ jobs:
       - name: Check protobuf compatibility
         run: |
           if git cat-file -e origin/main:proto 2>/dev/null; then
-            buf breaking --against '.git#branch=main'
+            # A PR checkout is a detached merge ref with no LOCAL branch named
+            # main — only origin/main exists — so buf must compare against the
+            # remote-tracking ref, not a branch it cannot find.
+            buf breaking --against '.git#ref=origin/main'
           else
             echo "No protobuf baseline exists on main yet; lint and drift checks still apply."
           fi

@@ -1,0 +1,111 @@
+name: Publish Workbench Protocol
+
+on:
+  workflow_dispatch:
+    inputs:
+      npm_tag:
+        description: GitHub Packages dist-tag
+        required: true
+        default: latest
+        type: string
+      dry_run:
+        description: Validate pnpm publish without uploading
+        required: true
+        default: true
+        type: boolean
+      skip_existing:
+        description: Skip if this exact package version already exists
+        required: true
+        default: true
+        type: boolean
+      confirm_latest_publish:
+        description: Type CONFIRM_LATEST for a real latest publication
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: workbench-protocol-github-packages-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - name: Setup Node for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@hyperslop-systems"
+
+      - name: Validate workflow inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.dry_run }}" = "false" ] &&
+             [ "${{ inputs.npm_tag }}" = "latest" ] &&
+             [ "${{ inputs.confirm_latest_publish }}" != "CONFIRM_LATEST" ]; then
+            echo "A real latest publish requires confirm_latest_publish=CONFIRM_LATEST" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Typecheck
+        run: pnpm --filter @hyperslop-systems/workbench-protocol typecheck
+
+      - name: Test
+        run: pnpm --filter @hyperslop-systems/workbench-protocol test
+
+      - name: Build package
+        run: pnpm --filter @hyperslop-systems/workbench-protocol build
+
+      - name: Publish to GitHub Packages
+        shell: bash
+        working-directory: packages/workbench-protocol
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          package_name=$(node -p "require('./package.json').name")
+          package_version=$(node -p "require('./package.json').version")
+          package_spec="${package_name}@${package_version}"
+          registry="https://npm.pkg.github.com"
+
+          echo "Preparing ${package_spec} with tag ${{ inputs.npm_tag }}"
+
+          if [ "${{ inputs.skip_existing }}" = "true" ] &&
+             npm view "${package_spec}" version --registry "${registry}" >/dev/null 2>&1; then
+            echo "${package_spec} already exists; skipping publication."
+            exit 0
+          fi
+
+          publish_args=(
+            --registry "${registry}"
+            --access restricted
+            --tag "${{ inputs.npm_tag }}"
+            --no-git-checks
+          )
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            publish_args+=(--dry-run)
+          fi
+
+          pnpm publish . "${publish_args[@]}"
