@@ -15,6 +15,8 @@ RelatedFiles:
       Note: The Escape surface stack
     - Path: repo://packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx
       Note: Modal container, invocation semantics, focus restoration by placement id
+    - Path: repo://packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherResults.tsx
+      Note: Tone edges, the active marker, and section ordering
     - Path: repo://packages/datalab-ui/src/components/organisms/ViewSwitcher/launcherIndex.logic.ts
       Note: Pure index, grouping, scoring, and the per-workspace scope rule
     - Path: repo://packages/datalab-ui/src/components/organisms/ViewSwitcher/launcherQuery.logic.ts
@@ -31,12 +33,17 @@ RelatedFiles:
       Note: Maps the generic dialog onto the workbench tile aesthetic
     - Path: repo://src/components/Dialog/Dialog.tsx
       Note: One of three window Escape listeners the surface stack must order
+    - Path: repo://src/surfaces.test.tsx
+      Note: Pins the double-registration and nesting-order behaviours
+    - Path: repo://src/surfaces.ts
+      Note: Document-global Escape ownership, and the two constraints it carries
 ExternalSources: []
 Summary: Chronological implementation record for the searchable modal launcher — design-doc corrections, the pure index, the modal, active placement, and real-app verification.
 LastUpdated: 2026-07-30T18:50:00-04:00
 WhatFor: Review the launcher work step by step, including what failed and why decisions were changed against the shipped code.
 WhenToUse: Read before reviewing or continuing the launcher implementation, or when a design-doc statement disagrees with the code.
 ---
+
 
 
 
@@ -654,3 +661,283 @@ Verified in the running application, not only in Storybook:
 | `Mod+K` then `compare` then Enter | switched workspace, focused the tile |
 | `Mod+K` with a launcher tile active, `+chart` | created a chart there |
 | `Mod+K` on the marketing page | 1 of 6 instances opened; 0 with focus on body |
+
+## Step 5: Escape ownership moves into the generic package
+
+Step 3 put the Escape surface stack in the layout slice, beside the other
+transient fields, following DR-69. Given permission to change the generic
+package, I moved it — and moving it showed the Redux version was not merely
+misplaced but **wrong**. Escape is delivered to the document, so "topmost" is a
+property of the page; with a stack per store, a landing page's six instances
+each believed themselves topmost and one key press could close a dialog in one
+instance and leave full frame in another.
+
+PBUI owns three of the four handlers — `Dialog`, `ObjectMenu` and the accept
+protocol — so it is the only layer that can see far enough to order them. The
+mechanism is module state rather than a context for exactly that reason: a
+per-root context cannot see the other root.
+
+### Prompt Context
+
+**User prompt (verbatim):** "You can fix pbui stuff. Also, how much performance intensive would it be to show a little preview of the tile when hovering above its name, to be able to see what it's like?"
+
+**Assistant interpretation:** Permission to change the generic PBUI package, so
+finish the Escape work I had scoped out; and separately, estimate the cost of
+live tile previews on hover in the launcher.
+
+**Inferred user intent:** Remove the known-incomplete bit rather than leave it
+documented as a limitation, and find out whether a preview feature is affordable
+before anyone designs it.
+
+**Commit (code):** `d61094a` — "fix(pbui): move Escape ownership into the package, and order it there"
+
+### What I did
+
+- Added `src/surfaces.ts` to PBUI: a module-level LIFO with
+  `pushEscapeSurface` / `popEscapeSurface` / `topEscapeSurface` /
+  `escapeSurfaceCount`, a `useSyncExternalStore` binding in `useEscapeSurface`,
+  and `useAnyEscapeSurface` for "is anything modal open".
+- Wired `Dialog`, `ObjectMenu` and datalab's `AcceptBanner` to stand down when
+  not on top.
+- Reduced `appkit/useTransientSurface.ts` to a re-export carrying the note.
+- Deleted `transientSurfaces`, `pushSurface`, `popSurface`, `topSurface` and
+  `SurfaceId` from the layout slice; `dialogOpen` now comes from
+  `useAnyEscapeSurface()`.
+- Added `src/surfaces.test.tsx`: 8 tests including two that pin constraints.
+
+### Why
+
+`Dialog`'s Tab containment is deliberately **not** gated on ownership, and that
+asymmetry is the interesting part. Escape is a global gesture and only one
+surface should answer it; Tab containment is a property of a subtree, and a
+dialog beneath another surface is still the focus trap for its own contents.
+Releasing the trap because something opened above would let Tab walk out into
+the page behind both.
+
+### What worked
+
+- Deleting state. The Redux fields, their reducers, the selector and the
+  payload-coverage entries all went, and the datalab call sites got shorter.
+- `useSyncExternalStore` is exactly the right primitive here: the snapshot is a
+  string or a number, so it never allocates and never tears.
+
+### What didn't work
+
+**The refactor broke Escape entirely, and no test saw it.** After wiring
+everything up, Escape stopped closing the launcher. Playwright caught it
+immediately — the dialog backdrop was still intercepting pointer events:
+
+```text
+<div data-part="dialog-backdrop" data-pbui-component="dialog">…</div> intercepts pointer events
+```
+
+The cause: `LauncherDialog` still registered its own surface from Step 3, and
+`Dialog` now registered one too. **Child effects run before parent effects**, so
+the Dialog's entry was pushed first and the launcher's landed on top — and the
+Dialog, which is the component that actually handles Escape, decided it was not
+topmost and ignored the key. One surface, two registrations, and the handler
+lost to its own wrapper.
+
+Then, writing a test for nested dialogs, the same ordering rule bit again from
+the other side: two dialogs mounted in one commit register bottom-up, so the
+*outer* one ends up on top and closes both.
+
+### What I learned
+
+- "Child effects run before parent effects" is the single fact that explains
+  both failures, and it means **registration order is the reverse of nesting for
+  anything mounted in the same commit**. It agrees with nesting only when
+  surfaces open over time, which is every real case.
+- A global LIFO is the correct model for a document-level gesture even in a
+  library that otherwise avoids module state. The multi-root argument that
+  usually pushes state *into* a context pushes it *out* here.
+
+### What was tricky to build
+
+Deciding what to do about the nested-dialog case once the test exposed it.
+
+The symptom is a two-line reproduction: render a `Dialog` inside another
+`Dialog`'s body, press Escape, and both close because the outer one owns the
+key. The underlying cause is that the stack orders by *when a component
+registered* and React registers children first, so the stack's idea of "on top"
+is inverted relative to what the user sees.
+
+The honest fix is to order by DOM containment instead — record each surface's
+element on push and compare `compareDocumentPosition`. I did not do it. It
+roughly doubles the mechanism, it requires threading a ref through
+`useEscapeSurface`, and the case does not arise in this product: every surface
+is a sibling at the shell root, opened by a click. So the resolution was to
+**state it**: a test that asserts the actual behaviour with a comment saying it
+is documented rather than desired, plus a paragraph in `surfaces.ts`. If a
+nested pair ever becomes real, that test is the specification to change.
+
+I am reasonably confident this is the right call and not laziness, but it is the
+judgement in this step most worth disagreeing with.
+
+### What warrants a second pair of eyes
+
+- **The double-registration constraint is enforced by convention.** The stack
+  cannot tell that a wrapper and the `Dialog` it renders are one surface. The
+  test states the consequence; nothing prevents it.
+- **`resetEscapeSurfaces` is exported from the package root**, so it appears in
+  the public API. It is labelled a test seam, but a consumer could call it and
+  silently break every open surface's ownership.
+- Whether `useAnyEscapeSurface` is the right shape for `dialogOpen`. It is true
+  for an object menu as well as a dialog, which is what the shortcut router
+  wants, but the name of the field in `ShortcutContext` now undersells it.
+
+### What should be done in the future
+
+- If nested surfaces become real, order by DOM containment.
+- Consider whether `escapeSurfaceCount` and `resetEscapeSurfaces` should be on a
+  narrower export path than the package root.
+
+### Code review instructions
+
+- `src/surfaces.ts` — the whole mechanism, including the two constraints.
+- `src/surfaces.test.tsx` — read the two constraint tests first; they encode the
+  failures above.
+- `Dialog.tsx`: note that Escape is gated and Tab is not, and why.
+- `pnpm test` at the repo root (34) and in `packages/datalab-ui` (483).
+- In a browser: Escape closes the launcher; Escape closes an object menu without
+  closing anything underneath.
+
+## Step 6: Application tones, and the new-view section nobody could reach
+
+Two changes that arrived together because the first exposed the second. Rows in
+the launcher now carry their application's tone as a left edge, so a chart row
+reads as the colour of a chart tile. Checking that against a real workspace
+answered the other half of the question — how do you create a view that does not
+exist yet — and the answer was "in principle, by scrolling past twenty-five
+rows", which is not an answer.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Use the colors of the views for the existing views. Also, how can I use the launcher to create a new view that doesn't exist yet?"
+
+**Assistant interpretation:** Colour the launcher's existing-view rows by their
+application the way tiles are coloured; and explain the path to creating a new
+view.
+
+**Inferred user intent:** The launcher looks flat and undifferentiated compared
+to the workbench, and creating a new view does not feel reachable from it.
+
+**Commit (code):** `7a9504d` — "feat(launcher): colour rows by application, and stop burying new views"
+
+### What I did
+
+- Added `tone` to all three row types in `launcherIndex.logic.ts`, defaulting to
+  `--pbui-tone-neutral` for a view whose application this build does not
+  register.
+- Rendered it as a 4px left edge in `LauncherResults`, inline as a variable
+  reference — `Chip`'s exact idiom.
+- Moved the active-row marker from the left border to a `▸` glyph, because the
+  border is now spoken for.
+- Added `newViewsFirst` to `LauncherResults` and reordered both the sections and
+  `rows` accordingly.
+- Six new tests: tone propagation including the neutral fallback, and four for
+  the ordering rule.
+
+### Why
+
+The measurement is the argument. With Replace open on a real workspace:
+
+```text
+totalOptions: 33
+optionsBeforeNewView: 25
+newSectionVisibleWithoutScrolling: false
+scrollHeight: 1268   clientHeight: 350
+```
+
+Twenty-five rows and a scroll before the first new-view option. The `+` prefix
+worked and was advertised in the placeholder, but a section nobody scrolls to
+is a section that does not exist — and someone who opens the launcher against a
+tile is as likely to want a new view as an existing one.
+
+Ordering is in the pure model rather than the component so it is decidable from
+data, and so `rows` and the rendered list cannot drift — if they did, arrow keys
+would move the highlight somewhere the eye is not.
+
+### What worked
+
+- Putting the decision in `searchLauncherIndex` meant the "arrow keys agree with
+  the eye" property became a test rather than a review note.
+- The tone edge needed no new token, no new prop and no new component: `Chip`
+  had already made this exact decision and `--pbui-tone-edge` already existed.
+
+### What didn't work
+
+- `.optionTitle` got `display: flex` from one rule and `display: block` from a
+  later shared rule, so the marker column did not align. Fixed by splitting the
+  ellipsis rules off onto `.optionTitle > :last-child`.
+- The first attempt at colouring used the row background rather than an edge. It
+  looked like a paint chart at twenty rows and buried the selection wash. The
+  edge is both quieter and consistent with the rest of the system.
+
+### What I learned
+
+- Asking "where does this land in a real workspace" is worth more than reading
+  the code: the section order was defensible in the abstract and unusable at 33
+  results, and only the running app with real seeded documents showed it.
+- The design's own mockups had `▸` on the active row all along. When a spec
+  draws something and the implementation quietly drops it, the spec is often
+  compensating for a constraint the implementer has not hit yet — here, that
+  colour would eventually claim the left border.
+
+### What was tricky to build
+
+Choosing what "first" should mean without making it a mode-switch nobody can
+predict.
+
+The obvious rule — new views always first — is wrong for Replace with a query
+typed, where a view actually named "chart" is a much better answer than the
+chart application. The opposite rule is what shipped and buries creation.
+
+The rule I settled on splits on *whether there is a query at all*, not on the
+invocation: an empty query means the user has not expressed a preference, so
+offer the cheapest complete answer first; any text means they have, so the
+specific matches lead. Navigate mode is excluded entirely because it cannot
+create. Three conditions in one line, and each has a test naming the reason.
+
+### What warrants a second pair of eyes
+
+- **The ordering rule is a product judgement, not a correctness one.** Someone
+  who mostly reuses views will find new-views-first wrong, and the counter-fix
+  is a one-line change plus four test updates.
+- The neutral fallback tone means an unregistered application's row is visually
+  identical to a genuinely neutral one. Acceptable, since the row also renders
+  the raw `appId` as its title, but it is a small ambiguity.
+- Whether the `▸` marker plus wash is enough selection affordance at a glance in
+  a long list. It reads well in a screenshot; it deserves a real user.
+
+### What should be done in the future
+
+- The empty-query caps (§7.3) are unchanged and still allow 25 existing rows.
+  With new views first that no longer hides anything, but the current
+  workspace's row count is still unbounded and could get long.
+- N/A otherwise.
+
+### Code review instructions
+
+- `launcherIndex.logic.ts`: the `tone` fields and `newViewsFirst`.
+- `LauncherDialog.module.css`: the comment explaining why the left border
+  carries the application and not the selection.
+- `pnpm vitest run test/launcher-index.test.ts` — 46 tests.
+- In a browser: open Replace on a workspace with several views; new views should
+  be at the top with coloured edges, and typing `chart` should put the named
+  views back on top.
+
+### Technical details
+
+Answering the question directly — three ways to create a view that does not
+exist yet, all of which now work:
+
+| Path | What it does |
+|---|---|
+| Open the launcher, look at the top | NEW VIEW is the first section on an empty query |
+| Type `+` | Only new-view rows |
+| Type `+encoding` | Only new-view rows matching "encoding" |
+
+Verified end to end: `+encoding` then Enter turned the target tile into
+`encoding · α`, the hint read **"Enter create"** rather than "Enter place", and
+the dialog closed and focused the new tile.

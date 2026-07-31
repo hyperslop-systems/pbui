@@ -88,3 +88,12 @@ Steps 2-4: implemented the launcher across three phases — pure index and gramm
 
 - /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx — The searchable modal launcher
 
+
+## 2026-07-30
+
+Step 5: moved Escape ownership from the layout slice into @hyperslop-systems/pbui as a document-global surface stack (d61094a) — the per-store version was wrong, not just misplaced, since topmost is a property of the page. Step 6: coloured launcher rows by application tone and stopped burying the new-view section, which a real workspace put 25 rows and a scroll below the fold (7a9504d).
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/src/surfaces.ts — The shared Escape surface stack
+
