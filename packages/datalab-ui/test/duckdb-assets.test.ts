@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { extensionRepositoryFor } from "../src/analysis/browser";
 import packageJSON from "../package.json";
 
 const EXTENSIONS = {
@@ -26,8 +27,52 @@ describe("self-hosted pinned DuckDB assets", () => {
 
   test("the browser adapter points autoload at the same-origin Vite asset tree", async () => {
     const source = await readFile("src/analysis/browser.ts", "utf8");
-    expect(source).toContain("import.meta.env.BASE_URL}duckdb-extensions");
     expect(source).toContain("SET custom_extension_repository");
     expect(source).not.toContain("extensions.duckdb.org");
+  });
+
+  // The repository must be derived from the resolved wasm URL, never from
+  // `import.meta.env.BASE_URL` alone: Vite substitutes that constant when THIS
+  // PACKAGE is built (base "/"), not when an embedding shell is built with its
+  // own base, so a BASE_URL-only repository 404s in every consumer that mounts
+  // the bundles anywhere but the root. The wasm `?url` import stays external
+  // in the library build and is resolved by the consumer, which is what makes
+  // it the one trustworthy anchor. Each case below is a real topology.
+  describe("the extension repository follows the consumer's asset tree", () => {
+    test("a production shell with a non-root base (datalab, /static/)", () => {
+      expect(
+        extensionRepositoryFor(
+          "/static/assets/duckdb-eh-9ubY-jlA.wasm",
+          "/",
+          "http://data.example.com/ui/",
+        ),
+      ).toBe("http://data.example.com/static/duckdb-extensions");
+    });
+
+    test("a production build served at the root", () => {
+      expect(
+        extensionRepositoryFor("/assets/duckdb-eh-9ubY-jlA.wasm", "/", "http://localhost:4173/"),
+      ).toBe("http://localhost:4173/duckdb-extensions");
+    });
+
+    test("this package's own dev server, from source", () => {
+      expect(
+        extensionRepositoryFor(
+          "/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-eh.wasm",
+          "/",
+          "http://localhost:5173/",
+        ),
+      ).toBe("http://localhost:5173/duckdb-extensions");
+    });
+
+    test("a consumer dev server importing the prebuilt dist", () => {
+      expect(
+        extensionRepositoryFor(
+          "/node_modules/@hyperslop-systems/datalab-ui/node_modules/@duckdb/duckdb-wasm/dist/duckdb-eh.wasm",
+          "/",
+          "http://localhost:5173/ui/",
+        ),
+      ).toBe("http://localhost:5173/duckdb-extensions");
+    });
   });
 });
