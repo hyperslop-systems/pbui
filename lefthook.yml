@@ -1,0 +1,17 @@
+pre-commit:
+  commands:
+    go-quality:
+      glob: "*.go"
+      run: make fmt-check lint logcopter-check glazed-lint
+    go-test:
+      glob: "*.go"
+      run: make test
+  parallel: true
+
+pre-push:
+  commands:
+    go:
+      run: make ci-check
+    protocol:
+      run: make protocol-check
+  parallel: true

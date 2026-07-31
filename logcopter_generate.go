@@ -1,0 +1,3 @@
+package pbui
+
+//go:generate go tool logcopter-gen -area-prefix hyperslop-systems.pbui -strip-prefix github.com/hyperslop-systems/pbui ./pkg/...

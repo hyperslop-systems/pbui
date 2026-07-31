@@ -1,0 +1,36 @@
+name: Go CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test and generated loggers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify logcopter package loggers
+        run: make logcopter-check
+      - name: Generate Go assets
+        run: go generate ./...
+      - name: Verify generated Go files are current
+        run: git diff --exit-code
+      - name: Run Go tests
+        run: make test
+      - name: Build Go packages
+        run: GOWORK=off go build ./...
+      - name: Check Glazed command declarations
+        run: make glazed-lint

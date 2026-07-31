@@ -65,3 +65,29 @@ The separate **Publish Datalab UI** workflow applies the same gates to
 `@hyperslop-systems/datalab-ui`. It uses `pnpm publish` so the packed manifest
 rewrites the workspace PBUI dependency to a normal semver dependency before
 uploading to GitHub Packages.
+
+## Go and protocol development
+
+The repository is also the canonical Go module for PBUI workbench validation,
+typed mutation application, and protobuf JSON. The standard local gates are:
+
+```bash
+make ci-check
+make protocol-check
+```
+
+`make ci-check` runs formatting, golangci-lint, logcopter drift, glazed command
+lint, Go tests, generation, and compilation. The generators and glazed-lint are
+pinned with Go's `tool` directive; they do not depend on an ambient `latest`
+installation. Lefthook runs the focused Go checks before a commit and the full
+Go/protocol checks before a push.
+
+The generated TypeScript protocol package must be built before a clean
+Datalab-only typecheck:
+
+```bash
+pnpm --filter @hyperslop-systems/workbench-protocol build
+pnpm --filter @hyperslop-systems/datalab-ui typecheck
+```
+
+The PBUI CI workflow enforces this order after `buf generate`.

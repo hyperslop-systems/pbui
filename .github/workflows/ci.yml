@@ -14,7 +14,9 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
         with:
@@ -27,7 +29,7 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: "@hyperslop-systems"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -52,6 +54,8 @@ jobs:
       - run: buf generate
       - name: Verify generated protocol is current
         run: git diff --exit-code -- gen/go packages/workbench-protocol/src/generated
+      - name: Build generated TypeScript protocol package
+        run: pnpm --filter @hyperslop-systems/workbench-protocol build
       - run: pnpm --workspace-root run typecheck
       - run: pnpm --workspace-root run test
       - run: pnpm --workspace-root run build
