@@ -23,7 +23,9 @@ type Scenario =
   | "query-new"
   | "missing-workspace"
   | "no-results"
-  | "out-of-scope";
+  | "out-of-scope"
+  | "navigate"
+  | "navigate-new";
 
 /** Types into the search field the way a user would, after the modal mounts. */
 function Typed({ text }: { text: string }) {
@@ -38,16 +40,23 @@ function Typed({ text }: { text: string }) {
   return null;
 }
 
+function invocationFor(scenario: Scenario, placementId: NodeId) {
+  if (scenario === "replace" || scenario === "out-of-scope") {
+    return { kind: "replace" as const, placementId };
+  }
+  // Navigate with NO active placement, which is the state a freshly loaded page
+  // is actually in — nothing has been focused yet. It is also the state that
+  // once hid every new-view row, so it is the one worth having a story for.
+  if (scenario === "navigate" || scenario === "navigate-new") {
+    return { kind: "navigate" as const, activePlacementId: null };
+  }
+  return { kind: "fill-launcher" as const, placementId };
+}
+
 function Opener({ scenario, placementId }: { scenario: Scenario; placementId: NodeId }) {
   const dispatch = useDispatch();
   useEffect(() => {
-    dispatch(
-      layoutActions.openLauncher(
-        scenario === "replace" || scenario === "out-of-scope"
-          ? { kind: "replace", placementId }
-          : { kind: "fill-launcher", placementId },
-      ),
-    );
+    dispatch(layoutActions.openLauncher(invocationFor(scenario, placementId)));
   }, [dispatch, scenario, placementId]);
   return null;
 }
@@ -57,6 +66,7 @@ const QUERY: Partial<Record<Scenario, string>> = {
   "query-new": "+chart",
   "missing-workspace": "ws9",
   "no-results": "qqqq",
+  "navigate-new": "+chart",
 };
 
 function LauncherStory({ scenario }: { scenario: Scenario }) {
@@ -141,6 +151,18 @@ export const NoResults: Story = { args: { scenario: "no-results" } };
 
 /** A row placed where its application is offered, targeting one where it is not. */
 export const OutOfScopeTarget: Story = { args: { scenario: "out-of-scope" } };
+
+/**
+ * `Mod+K` with nothing focused — the state a page load leaves you in.
+ *
+ * The header names the tile a new view would be created beside, because in
+ * navigate mode creating splits rather than replaces (Decision 6). This story
+ * exists because that state once showed no new-view rows at all.
+ */
+export const NavigateFromColdLoad: Story = { args: { scenario: "navigate" } };
+
+/** `+chart` in navigate mode: offered, and it will split the named tile. */
+export const NavigateCreatesBySplitting: Story = { args: { scenario: "navigate-new" } };
 
 export const ArrowKeysMoveTheActiveRow: Story = {
   play: async () => {

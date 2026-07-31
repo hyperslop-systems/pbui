@@ -33,7 +33,7 @@ RelatedFiles:
       Note: Enumerated save that keeps the new launcher fields transient
 ExternalSources: []
 Summary: Pragmatic design options and a staged recommendation for a searchable modal launcher, workspace-grouped views, query shortcuts, active-tile tracking, and workbench-scoped keyboard routing, revised against the shipped code to place transient state in the layout slice, scope results per workspace, and order Escape with a surface stack.
-LastUpdated: 2026-07-30T18:45:00-04:00
+LastUpdated: 2026-07-30T20:20:00-04:00
 WhatFor: Decide how PBUI should search, navigate, create, and place application views without prematurely building a general command system or desktop window manager.
 WhenToUse: Read before changing LauncherApp, ViewSwitcher, tile focus behavior, modal navigation, workspace aliases, or workbench keyboard shortcuts.
 ---
@@ -70,9 +70,10 @@ The key boundary is that opening and navigating are not the same operation:
   placement. Selecting a result changes what that placement shows.
 - A modal opened with `Mod+K` is initially a navigation surface. Selecting an
   existing placement switches to its workspace and focuses it.
-- In global navigation mode, new-view results are available only when the active
-  placement is already a Launcher tile. The first release must not silently
-  split or replace a working tile merely because the user typed `+chart`.
+- In global navigation mode, selecting a new-view result **splits** the target
+  tile rather than replacing it, and the modal names that tile before the user
+  commits. Nothing is ever replaced by `Mod+K`; that promise is what matters,
+  not the refusal an earlier draft used to keep it (Decision 6).
 
 This provides immediate value while leaving clean seams for later MRU behavior.
 It also avoids the main overengineering risks: a command registry, a query
@@ -90,16 +91,23 @@ code, each recorded where it applies:
 - `stopPropagation()` cannot order the four Escape handlers because they all
   listen on `window`; a small surface stack replaces it (§11.5).
 
-Implementation added two more, recorded where they apply:
+Implementation added three more, recorded where they apply:
 
 - a React `onKeyDownCapture` on the shell cannot carry the shortcut, because
   DOM focus is routinely on `<body>` and never reaches it (§11.2);
 - the view already in the target placement must be excluded in place mode, or
-  Replace offers a tile its own contents (§8.4).
+  Replace offers a tile its own contents (§8.4);
+- refusing to create in navigate mode was unreachable on a cold load and made
+  the global launcher worse than the tile's own; it splits instead
+  (Decision 6, §19 question 6).
 
-**Status: implemented.** Phases 1 to 3 are in `74f4d0d`, `88663a0`, `a91c32d`,
-`dca118f` and `55149f3`. Where this document and the code disagree, the code is
-right and this document is the bug.
+Escape ownership also left this codebase entirely: it is a document-global
+concern, so it lives in `@hyperslop-systems/pbui`'s `surfaces.ts` rather than in
+the layout slice (§11.5).
+
+**Status: implemented.** `74f4d0d`, `88663a0`, `a91c32d`, `dca118f`, `55149f3`,
+`d61094a`, `7a9504d`, `d8aeea4`. Where this document and the code disagree, the
+code is right and this document is the bug.
 
 ## 1. Current implementation
 
@@ -1438,7 +1446,8 @@ Tasks:
 3. Add a workbench-root shortcut boundary on the shell.
 4. Open `navigate` mode with `Mod+K`.
 5. Switch workspace and focus the selected placement.
-6. Permit new-app results only when the active placement is Launcher.
+6. Offer new-app results wherever there is a tile to split; fill an empty
+   launcher tile, split anything else.
 7. Add multi-instance isolation tests.
 
 Exit criteria:
@@ -1446,7 +1455,8 @@ Exit criteria:
 - one embedded workbench cannot open another's launcher;
 - typing in an input is not intercepted;
 - navigation does not alter layout;
-- new-view creation never replaces or splits a working tile implicitly;
+- new-view creation never *replaces* a working tile, and never splits one
+  without naming it first;
 - active placement is cleared when its placement disappears.
 
 ### Phase 4: Observe before extending
@@ -1627,11 +1637,22 @@ keyboard operation needs a target.
   strength of multi-instance isolation. `WorkbenchInstance.tsx` already gives
   each instance its own store, so that argument does not separate the options.
 
-### Decision 6: Global invocation navigates by default
+### Decision 6: Global invocation never replaces a working tile
 
-- **Choice:** `Mod+K` selects where to go; it does not replace a working tile.
-- **Reason:** navigation is reversible and non-destructive.
-- **Consequence:** creating a new view globally requires an active Launcher tile.
+- **Choice:** `Mod+K` selects where to go, and when it creates, it **splits**.
+  It does not replace a working tile.
+- **Reason:** navigation is reversible and non-destructive; so is a split.
+- **Consequence:** none for the user — new views are offered everywhere there is
+  a tile to split.
+- **Amended after implementation.** The original consequence was "creating a new
+  view globally requires an active Launcher tile", and it was reported from the
+  running product as a bug: *"I don't see any new view with cmd-K, it just shows
+  the existing ones."* Two things were wrong with it. The condition depended on
+  an active placement, which is null until the user interacts, so on a freshly
+  loaded page it was unreachable and hid every new-view row. And even working,
+  it made the global launcher strictly worse than the one on a tile — a
+  shortcut that can do less than the thing it shortcuts.
+  Splitting keeps the promise this decision exists to make, without the refusal.
 
 ### Decision 7: Start routing with one hard-coded action
 
@@ -1659,9 +1680,15 @@ These do not block the recommended first two phases:
    question. Prefer `activePlacementId` when it is one of the view's placements
    in the target workspace; otherwise first tree order. That is one condition,
    not a mechanism.
-6. Should global `+chart` eventually offer an explicit “split active tile and
-   create” follow-up? If so, it must ask for split direction rather than choose
-   silently.
+6. ~~Should global `+chart` eventually offer an explicit "split active tile and
+   create" follow-up? If so, it must ask for split direction rather than choose
+   silently.~~ **Resolved during implementation: yes, and it does not ask.**
+   The objection to an implicit split is the *silence*, not the default. The
+   modal names the target before the user commits — "beside Temperature by
+   station" — so the outcome is predicted rather than discovered, and the
+   direction follows the tile's longer axis so the new view always gets a usable
+   rectangle. Asking would turn one keystroke into two decisions for a result
+   that one undo reverses.
 
 Recommended defaults:
 
@@ -1670,7 +1697,8 @@ Recommended defaults:
 - group other-stage matches by stage only for non-empty queries;
 - display numeric hints in the modal first;
 - prefer the active placement, then first tree order (question 5, resolved);
-- do not split from global `+` in the first release.
+- ~~do not split from global `+` in the first release~~ — split, naming the
+  target (question 6, resolved).
 
 ## 20. Implementation review guide
 

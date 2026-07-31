@@ -106,3 +106,12 @@ Step 7: Mod+K offered no new views on a cold load, because the launcher-tile con
 
 - /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx — Target resolution, fill-or-split, and split direction
 
+
+## 2026-07-30
+
+Amended Decision 6 and open question 6 after implementation: global creation splits the named target rather than refusing. Added navigate-mode Storybook coverage and ran the clean-consumer smoke against the changed PBUI public API.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/add-launcher/pbui/packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.stories.tsx — Navigate-mode stories, including the cold-load state
+
