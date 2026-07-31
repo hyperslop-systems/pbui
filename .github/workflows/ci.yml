@@ -14,7 +14,9 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
         with:
@@ -27,9 +29,33 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: "@hyperslop-systems"
 
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: 1.50.0
+
       - run: pnpm install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: go test ./...
+      - run: buf lint
+      - name: Check protobuf compatibility
+        run: |
+          if git cat-file -e origin/main:proto 2>/dev/null; then
+            buf breaking --against '.git#branch=main'
+          else
+            echo "No protobuf baseline exists on main yet; lint and drift checks still apply."
+          fi
+      - run: go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+      - run: buf generate
+      - name: Verify generated protocol is current
+        run: git diff --exit-code -- gen/go packages/workbench-protocol/src/generated
+      - name: Build generated TypeScript protocol package
+        run: pnpm --filter @hyperslop-systems/workbench-protocol build
       - run: pnpm --workspace-root run typecheck
       - run: pnpm --workspace-root run test
       - run: pnpm --workspace-root run build

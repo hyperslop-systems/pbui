@@ -53,6 +53,10 @@ const ALLOWED: Record<string, string[]> = {
   // The store speaks the presentation vocabulary: WatchEntry carries a
   // PresentationType, and applyVerb maps a Verb onto reducers.
   store: ["model", "api", "pbui", "demo"],
+  // The remote boundary translates between the generated workbench protocol
+  // and the internal Redux model. It may know canonical model and
+  // store types, but no React component, application, or transport client.
+  remote: ["model", "store"],
   styles: [],
   fixtures: ["model"],
   /*
@@ -71,7 +75,10 @@ const ALLOWED: Record<string, string[]> = {
    */
   // React lifecycle adapters may own analysis runtimes, while the physical
   // analysis layer itself remains React/store/PBUI-free.
-  appkit: ["model", "pbui", "store", "analysis"],
+  // React lifecycle adapters may also coordinate the API and the pure remote
+  // codec. Both dependencies remain one-way: neither api nor remote imports
+  // appkit or components.
+  appkit: ["model", "pbui", "store", "analysis", "api", "remote"],
   /*
    * Lesson content: the four tracks, the module cards, the cheat sheets.
    *

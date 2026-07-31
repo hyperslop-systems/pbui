@@ -1,19 +1,29 @@
 // The data layer: RTK Query over the datadrop v1 API.
 //
-// The chart workbench reads and never writes. DATADROP-5 added exactly six
-// mutations, none of them in the workbench: minting and revoking an API token,
-// signing out, and the three-step dataset upload. That set is pinned by
-// test/api-surface.test.ts — a change-detector by design, because this is a
-// security boundary and the desired behaviour when someone adds a seventh is
-// that a test fails and a human looks (DR-27).
+// The data execution surface remains read-only. DATADROP-5 added the reviewed
+// account and membership mutations. DATADROP-18 adds two more narrowly scoped
+// writes: conditional replacement of a user's PBUI workbench and a generated
+// typed mutation batch. The exact mutation set is pinned by
+// test/api-surface.test.ts so each new write requires explicit review.
 //
-// So a compromised bundle can read what the caller could already read, and can
-// write only through those six. Everything about sources, tables, charts,
-// pipelines and snapshots remains read-only.
+// Workbench writes persist authoring documents and layout; they do not mutate
+// drops, streams, datasets, materialized tables, or runtime data.
 
+import { toJson } from "@bufbuild/protobuf";
+import {
+  MutationBatchSchema,
+  type MutationBatch,
+  type WorkbenchDocument,
+  WorkbenchDocumentSchema,
+} from "@hyperslop-systems/workbench-protocol";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fixtureBaseQuery } from "./fixtureBaseQuery";
 import type { SourceRef, Table } from "../model/table";
+import {
+  type CachedWorkbenchResource,
+  parseWorkbenchListJSON,
+  parseWorkbenchResourceJSON,
+} from "./workbenchProtocol";
 import { request } from "./request";
 
 /**
@@ -299,7 +309,7 @@ export const PATHS = {
 export const api = createApi({
   reducerPath: "datadrop",
   baseQuery: fixtureBaseQuery(httpBaseQuery),
-  tagTypes: ["Me", "Tokens", "Sessions", "Members", "Drops"],
+  tagTypes: ["Me", "Tokens", "Sessions", "Members", "Drops", "Workbenches"],
   endpoints: (build) => ({
     listDrops: build.query<{ drops: DropSummary[] }, void>({
       query: PATHS.drops,
@@ -390,6 +400,58 @@ export const api = createApi({
     datasetTable: build.query<Table, DatasetTableArgs>({
       query: PATHS.datasetTable,
     }),
+    listWorkbenches: build.query<ReturnType<typeof parseWorkbenchListJSON>, void>({
+      query: () => "/workbenches",
+      transformResponse: parseWorkbenchListJSON,
+      providesTags: ["Workbenches"],
+    }),
+    getWorkbench: build.query<CachedWorkbenchResource, string>({
+      query: (id) => `/workbenches/${encodeURIComponent(id)}`,
+      transformResponse: parseWorkbenchResourceJSON,
+      providesTags: (_result, _error, id) => [{ type: "Workbenches", id }],
+    }),
+    replaceWorkbench: build.mutation<
+      CachedWorkbenchResource,
+      {
+        id: string;
+        revision: string;
+        requestId: string;
+        document: WorkbenchDocument;
+      }
+    >({
+      query: ({ id, revision, requestId, document }) => ({
+        url: `/workbenches/${encodeURIComponent(id)}`,
+        method: "PUT",
+        headers: {
+          "If-Match": workbenchETag(id, revision),
+          "Idempotency-Key": requestId,
+        },
+        body: toJson(WorkbenchDocumentSchema, document),
+      }),
+      transformResponse: parseWorkbenchResourceJSON,
+      invalidatesTags: (_result, _error, { id }) => ["Workbenches", { type: "Workbenches", id }],
+    }),
+    mutateWorkbench: build.mutation<
+      CachedWorkbenchResource,
+      {
+        id: string;
+        revision: string;
+        requestId: string;
+        batch: MutationBatch;
+      }
+    >({
+      query: ({ id, revision, requestId, batch }) => ({
+        url: `/workbenches/${encodeURIComponent(id)}/mutate`,
+        method: "POST",
+        headers: {
+          "If-Match": workbenchETag(id, revision),
+          "Idempotency-Key": requestId,
+        },
+        body: toJson(MutationBatchSchema, batch),
+      }),
+      transformResponse: parseWorkbenchResourceJSON,
+      invalidatesTags: (_result, _error, { id }) => ["Workbenches", { type: "Workbenches", id }],
+    }),
   }),
 });
 
@@ -412,7 +474,15 @@ export const {
   useGetDatasetVersionQuery,
   useStreamTableQuery,
   useDatasetTableQuery,
+  useListWorkbenchesQuery,
+  useGetWorkbenchQuery,
+  useReplaceWorkbenchMutation,
+  useMutateWorkbenchMutation,
 } = api;
+
+export function workbenchETag(id: string, revision: string): string {
+  return `"workbench-${id}-${revision}"`;
+}
 
 /** The SSE URL a live tail subscribes to. */
 export function streamURL(source: SourceRef, after: number): string {

@@ -1,0 +1,29 @@
+{
+  "format": "pbui.workbench",
+  "schemaVersion": 1,
+  "id": "workbench-damaged",
+  "name": "Damaged",
+  "workspaces": [
+    {
+      "id": "workspace-a",
+      "name": "A",
+      "tree": {
+        "id": "placement-a",
+        "leaf": {
+          "viewId": "view-key"
+        }
+      }
+    }
+  ],
+  "views": {
+    "view-key": {
+      "id": "view-embedded",
+      "appId": "launcher",
+      "documents": {}
+    }
+  },
+  "viewOrder": [
+    "view-key"
+  ],
+  "documents": {}
+}

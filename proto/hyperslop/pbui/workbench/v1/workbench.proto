@@ -1,0 +1,221 @@
+syntax = "proto3";
+
+package hyperslop.pbui.workbench.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hyperslop-systems/pbui/gen/go/hyperslop/pbui/workbench/v1;workbenchv1";
+
+message WorkbenchDocument {
+  string format = 1;
+  uint32 schema_version = 2;
+  string id = 3;
+  string name = 4;
+  repeated Workspace workspaces = 5;
+  map<string, AppView> views = 6;
+  repeated string view_order = 7;
+  map<string, DocumentPayload> documents = 8;
+}
+
+message Workspace {
+  string id = 1;
+  string name = 2;
+  Node tree = 3;
+}
+
+message Node {
+  string id = 1;
+  oneof body {
+    Leaf leaf = 2;
+    Split split = 3;
+  }
+}
+
+message Leaf {
+  string view_id = 1;
+}
+
+message Split {
+  Direction direction = 1;
+  double ratio = 2;
+  Node a = 3;
+  Node b = 4;
+}
+
+enum Direction {
+  DIRECTION_UNSPECIFIED = 0;
+  DIRECTION_ROW = 1;
+  DIRECTION_COLUMN = 2;
+}
+
+message AppView {
+  string id = 1;
+  string app_id = 2;
+  map<string, string> documents = 3;
+  optional string title = 4;
+}
+
+message DocumentPayload {
+  string id = 1;
+  string format = 2;
+  uint32 schema_version = 3;
+  google.protobuf.Struct body = 4;
+}
+
+message WorkbenchResource {
+  WorkbenchDocument workbench = 1;
+  uint64 revision = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message WorkbenchSummary {
+  string id = 1;
+  string name = 2;
+  uint64 revision = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message ListWorkbenchesResponse {
+  repeated WorkbenchSummary workbenches = 1;
+}
+
+message CreateWorkbenchRequest {
+  WorkbenchDocument workbench = 1;
+}
+
+message MutationBatch {
+  repeated Mutation mutations = 1;
+}
+
+message Mutation {
+  oneof body {
+    WorkbenchRename workbench_rename = 1;
+    WorkspaceCreate workspace_create = 2;
+    WorkspaceRename workspace_rename = 3;
+    WorkspaceDelete workspace_delete = 4;
+    DocumentPut document_put = 5;
+    DocumentDelete document_delete = 6;
+    ViewCreate view_create = 7;
+    ViewConfigure view_configure = 8;
+    ViewClone view_clone = 9;
+    ViewDelete view_delete = 10;
+    ViewClose view_close = 11;
+    PlacementReplace placement_replace = 12;
+    PlacementSplit placement_split = 13;
+    PlacementClose placement_close = 14;
+    SplitResize split_resize = 15;
+  }
+}
+
+message WorkbenchRename {
+  string name = 1;
+}
+
+message WorkspaceCreate {
+  string workspace_id = 1;
+  string name = 2;
+  Node root_placement = 3;
+}
+
+message WorkspaceRename {
+  string workspace_id = 1;
+  string name = 2;
+}
+
+message WorkspaceDelete {
+  string workspace_id = 1;
+}
+
+message DocumentPut {
+  DocumentPayload document = 1;
+}
+
+message DocumentDelete {
+  string document_id = 1;
+}
+
+message ViewCreate {
+  AppView view = 1;
+}
+
+message DocumentBindings {
+  map<string, string> values = 1;
+}
+
+message ViewConfigure {
+  string view_id = 1;
+  optional string app_id = 2;
+  oneof title_change {
+    string set_title = 3;
+    google.protobuf.Empty clear_title = 4;
+  }
+  optional DocumentBindings replace_documents = 5;
+}
+
+message ViewClone {
+  string source_view_id = 1;
+  string new_view_id = 2;
+  oneof title_change {
+    string set_title = 3;
+    google.protobuf.Empty clear_title = 4;
+  }
+}
+
+message ViewDelete {
+  string view_id = 1;
+}
+
+message ViewClose {
+  string view_id = 1;
+  string fallback_view_id = 2;
+}
+
+message PlacementReplace {
+  string workspace_id = 1;
+  string placement_id = 2;
+  string view_id = 3;
+}
+
+message PlacementSplit {
+  string workspace_id = 1;
+  string placement_id = 2;
+  Direction direction = 3;
+  double ratio = 4;
+  string split_id = 5;
+  Node new_placement = 6;
+  PlacementPosition place = 7;
+}
+
+enum PlacementPosition {
+  PLACEMENT_POSITION_UNSPECIFIED = 0;
+  PLACEMENT_POSITION_BEFORE = 1;
+  PLACEMENT_POSITION_AFTER = 2;
+}
+
+message PlacementClose {
+  string workspace_id = 1;
+  string placement_id = 2;
+}
+
+message SplitResize {
+  string workspace_id = 1;
+  string split_id = 2;
+  double ratio = 3;
+}
+
+message WorkbenchConflict {
+  string code = 1;
+  uint32 status = 2;
+  string detail = 3;
+  string workbench_id = 4;
+  uint64 expected_revision = 5;
+  uint64 current_revision = 6;
+}
+
+message WorkbenchUpdatedEvent {
+  string workbench_id = 1;
+  uint64 revision = 2;
+}
