@@ -16,7 +16,9 @@ permissions:
 jobs:
   dependency-review:
     name: Dependency Review
-    if: github.event_name == 'pull_request'
+    # Dependency Review is unavailable for private repositories without GitHub
+    # Advanced Security. govulncheck and gosec still run below.
+    if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
