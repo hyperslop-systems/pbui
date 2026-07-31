@@ -5,8 +5,12 @@ go 1.26.1
 toolchain go1.26.5
 
 require (
+	github.com/coreos/go-oidc/v3 v3.20.0
+	github.com/go-go-golems/logcopter v0.1.1
 	github.com/pkg/errors v0.9.1
+	golang.org/x/oauth2 v0.36.0
 	google.golang.org/protobuf v1.36.11
+	modernc.org/sqlite v1.54.0
 )
 
 require (
@@ -41,7 +45,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/go-go-golems/glazed v1.4.1 // indirect
-	github.com/go-go-golems/logcopter v0.1.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-openapi/errors v0.22.0 // indirect
 	github.com/go-openapi/strfmt v0.23.0 // indirect
@@ -107,7 +110,6 @@ require (
 	modernc.org/libc v1.74.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.54.0 // indirect
 )
 
 tool (
