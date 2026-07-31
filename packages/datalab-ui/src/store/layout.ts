@@ -1149,7 +1149,11 @@ export const layoutSlice = createSlice({
         if (state.currentStageId === stageId) syncSpacePointer(state, selected);
       }
       state.pendingImport = null;
-      state.replacingId = null;
+      // A remote snapshot may replace the placement tree targeted by any open
+      // launcher or keyboard route. Transient browser references cannot survive
+      // that ownership change even when an identifier happens to be reused.
+      state.launcher = null;
+      state.activePlacementId = null;
       state.renamingId = null;
     });
   },

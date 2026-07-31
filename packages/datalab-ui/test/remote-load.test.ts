@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { remoteWorkbenchLoaded } from "../src/store/remote";
 import type { RemoteWorkbenchState } from "../src/remote/types";
 import { makeStore } from "../src/store";
-import type { Node } from "../src/store/layout";
+import { layoutActions, type Node } from "../src/store/layout";
 import { WORK_STAGE_ID } from "../src/store/stages";
 import { createGraphicDocument } from "../src/model/graphicAuthoring";
 
@@ -62,6 +62,12 @@ describe("remote workbench loading", () => {
       documents: { [document.id]: document },
     };
 
+    store.dispatch(
+      layoutActions.openLauncher({ kind: "replace", placementId: "placement-before-load" }),
+    );
+    store.dispatch(layoutActions.setActivePlacement("placement-before-load"));
+    store.dispatch(layoutActions.beginRename("placement-before-load"));
+
     let notifications = 0;
     let graphWasConsistent = false;
     const unsubscribe = store.subscribe(() => {
@@ -94,5 +100,8 @@ describe("remote workbench loading", () => {
       "workspace-remote",
     );
     expect(after.layout.pendingImport).toBeNull();
+    expect(after.layout.launcher).toBeNull();
+    expect(after.layout.activePlacementId).toBeNull();
+    expect(after.layout.renamingId).toBeNull();
   });
 });
