@@ -64,10 +64,10 @@ const tables: Record<string, Table> = {
 };
 
 describe("the anonymous welcome documents", () => {
-  test("the complete catalog produces six named authored documents", () => {
+  test("the complete catalog produces seven named authored documents", () => {
     const documents = welcomeDemoDocuments(welcome);
     expect(Object.keys(documents).sort()).toEqual(Object.values(WELCOME_DOC_IDS).sort());
-    expect(new Set(Object.values(documents).map((document) => document.name)).size).toBe(6);
+    expect(new Set(Object.values(documents).map((document) => document.name)).size).toBe(7);
   });
 
   test("every document compiles against its advertised source schema", () => {
@@ -83,6 +83,28 @@ describe("the anonymous welcome documents", () => {
       expect(result.logical, document.name).not.toBeNull();
       expect(Object.keys(rootView(document).encodings).length).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  test("the QC filter also compiles once rows are on screen (boolean phase)", () => {
+    // The schema-compile test above runs against EMPTY tables, where the ok
+    // column's physical type is string. With rows present it is boolean —
+    // the other half of the two-phase problem the cast form exists for.
+    const documents = welcomeDemoDocuments(welcome);
+    const temperature = documents[WELCOME_DOC_IDS.temperature]!;
+    const withRows: Table = {
+      ...tables["climate-readings"]!,
+      rows: [
+        { time: "2026-07-24T09:00:00Z", station: "north", temp_c: 19.2, humidity: 54, ok: true },
+        { time: "2026-07-24T09:05:00Z", station: "south", temp_c: 22.7, humidity: 44.5, ok: false },
+      ],
+      row_count: 2,
+    };
+    const result = compileGraphicDocument(
+      temperature,
+      compileEnvironmentForTable(temperature, withRows),
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(result.logical).not.toBeNull();
   });
 
   test("aggregate and target examples are authored rather than precomputed", () => {
@@ -124,7 +146,7 @@ describe("the anonymous welcome documents", () => {
 
   test("anonymous restoration receives documents without redirecting ambient actions", () => {
     const installation = welcomeDemoInstallation(welcome, false, "my-analysis", "my-drop");
-    expect(Object.keys(installation.documents)).toHaveLength(6);
+    expect(Object.keys(installation.documents)).toHaveLength(7);
     expect(installation.activateDocId).toBeNull();
   });
 });

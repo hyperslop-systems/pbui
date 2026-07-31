@@ -6,15 +6,15 @@ import { TOUR_FIXTURES, heroSeed } from "../../../tour";
 import { TutorialBand } from "../TutorialBand";
 import { WorkbenchInstance } from "../WorkbenchInstance";
 import {
-  DESIGN_NOTE,
-  FEATURES,
+  CONCEPT,
+  FAMILY,
   FOOTER,
   HERO,
   NAV,
   OPEN_WORKBENCH,
+  PRODUCT,
   RUNTIME,
   TUTORIAL,
-  WHY,
   WORKFLOW,
 } from "./copy";
 import styles from "./MarketingPage.module.css";
@@ -44,9 +44,10 @@ import styles from "./MarketingPage.module.css";
  * ## The copy lives in `copy.ts`
  *
  * All of it, so the page can be read as prose by someone who does not write
- * React. It is the reference landing page's copy with "PBUI" replaced by
- * "DATA LAB" and nothing else reworded — see that file's header for why that
- * reading was chosen.
+ * React. Written in the product's voice (AGENTLOGIC-4 replaced the inherited
+ * prototype copy), ordered concept-first: the PBUI idea, then what DATA LAB
+ * builds on it — see that file's header for the narrative and the
+ * traceability rule.
  */
 export function MarketingPage() {
   const heroRef = useRef<HTMLDivElement>(null);
@@ -155,20 +156,40 @@ export function MarketingPage() {
           </div>
         </section>
 
-        {/* ------------------------------------------------ why / cards -- */}
+        {/* ------------------------------------------- the PBUI concept -- */}
+        <section id="concept" className={styles.band}>
+          <div className={styles.wide}>
+            <div className={styles.sectionHead}>
+              <div className={styles.eyebrow}>{CONCEPT.eyebrow}</div>
+              <h2 className={styles.h2}>{CONCEPT.headline}</h2>
+              <p className={styles.prose}>{CONCEPT.lede}</p>
+            </div>
+            <div className={styles.cards}>
+              {CONCEPT.cards.map((card) => (
+                <article key={card.n} className={styles.card}>
+                  <div className={styles.cardNumber}>{card.n}</div>
+                  <h3 className={styles.h3}>{card.title}</h3>
+                  <p className={styles.cardBody}>{card.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* --------------------------------- what DATA LAB builds on it -- */}
         <section className={styles.band}>
           <div className={styles.wide}>
             <div className={styles.sectionHead}>
-              <div className={styles.eyebrow}>{WHY.eyebrow}</div>
-              <h2 className={styles.h2}>{WHY.headline}</h2>
-              <p className={styles.prose}>{WHY.lede}</p>
+              <div className={styles.eyebrow}>{PRODUCT.eyebrow}</div>
+              <h2 className={styles.h2}>{PRODUCT.headline}</h2>
+              <p className={styles.prose}>{PRODUCT.lede}</p>
             </div>
             <div className={styles.cards}>
-              {FEATURES.map((feature) => (
-                <article key={feature.n} className={styles.card}>
-                  <div className={styles.cardNumber}>{feature.n}</div>
-                  <h3 className={styles.h3}>{feature.title}</h3>
-                  <p className={styles.cardBody}>{feature.body}</p>
+              {PRODUCT.cards.map((card) => (
+                <article key={card.n} className={styles.card}>
+                  <div className={styles.cardNumber}>{card.n}</div>
+                  <h3 className={styles.h3}>{card.title}</h3>
+                  <p className={styles.cardBody}>{card.body}</p>
                 </article>
               ))}
             </div>
@@ -225,15 +246,15 @@ export function MarketingPage() {
           </div>
         </section>
 
-        {/* ------------------------------------------- the design note -- */}
+        {/* -------------------------------------------- the family note -- */}
         <section className={styles.band}>
           <div className={styles.wide}>
             <div className={styles.noteGrid}>
               <div>
-                <div className={styles.eyebrow}>{DESIGN_NOTE.eyebrow}</div>
-                <h2 className={styles.h2}>{DESIGN_NOTE.headline}</h2>
+                <div className={styles.eyebrow}>{FAMILY.eyebrow}</div>
+                <h2 className={styles.h2}>{FAMILY.headline}</h2>
               </div>
-              <p className={styles.prose}>{DESIGN_NOTE.body}</p>
+              <p className={styles.prose}>{FAMILY.body}</p>
             </div>
 
             <footer className={styles.footer}>
