@@ -61,27 +61,6 @@
   flex-direction: column;
 }
 
-/* The drop overlay names the outcome BEFORE the release. That is the
- * difference between a discoverable gesture and a mystery. */
-.zone {
-  position: absolute;
-  z-index: 5;
-  pointer-events: none;
-  background: rgba(182, 75, 55, 0.16);
-  border: 3px dashed var(--pbui-danger);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.zoneLabel {
-  background: var(--pbui-pane);
-  border: var(--pbui-border-firm);
-  padding: 0 var(--pbui-space-4);
-  font-size: var(--pbui-fs-small);
-  font-weight: 700;
-}
-
 .dragging {
   opacity: 0.75;
 }
