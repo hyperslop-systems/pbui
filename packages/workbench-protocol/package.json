@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/workbench-protocol",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Generated PBUI workbench protocol types",
   "private": false,
   "type": "module",
@@ -14,6 +14,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.js"
     }
   },
   "publishConfig": {

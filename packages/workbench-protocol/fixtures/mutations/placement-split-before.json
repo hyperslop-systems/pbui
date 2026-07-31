@@ -1,0 +1,150 @@
+{
+  "name": "placement-split-before",
+  "document": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "workbench-1",
+    "name": "Production",
+    "workspaces": [
+      {
+        "id": "workspace-a",
+        "name": "Overview",
+        "tree": {
+          "id": "split-root",
+          "split": {
+            "direction": "DIRECTION_ROW",
+            "ratio": 0.5,
+            "a": {
+              "id": "placement-a",
+              "leaf": {
+                "viewId": "view-chart"
+              }
+            },
+            "b": {
+              "id": "placement-b",
+              "leaf": {
+                "viewId": "view-launcher"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "views": {
+      "view-chart": {
+        "id": "view-chart",
+        "appId": "chart",
+        "title": "Mass and yield",
+        "documents": {
+          "primary": "document-1"
+        }
+      },
+      "view-launcher": {
+        "id": "view-launcher",
+        "appId": "launcher"
+      }
+    },
+    "viewOrder": [
+      "view-chart",
+      "view-launcher"
+    ],
+    "documents": {
+      "document-1": {
+        "id": "document-1",
+        "format": "example.doc",
+        "schemaVersion": 1,
+        "body": {
+          "name": "Demo"
+        }
+      }
+    }
+  },
+  "mutation": {
+    "placementSplit": {
+      "workspaceId": "workspace-a",
+      "placementId": "placement-b",
+      "direction": "DIRECTION_ROW",
+      "ratio": 0.5,
+      "splitId": "split-new",
+      "newPlacement": {
+        "id": "placement-new",
+        "leaf": {
+          "viewId": "view-chart"
+        }
+      },
+      "place": "PLACEMENT_POSITION_BEFORE"
+    }
+  },
+  "expected": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "workbench-1",
+    "name": "Production",
+    "workspaces": [
+      {
+        "id": "workspace-a",
+        "name": "Overview",
+        "tree": {
+          "id": "split-root",
+          "split": {
+            "direction": "DIRECTION_ROW",
+            "ratio": 0.5,
+            "a": {
+              "id": "placement-a",
+              "leaf": {
+                "viewId": "view-chart"
+              }
+            },
+            "b": {
+              "id": "split-new",
+              "split": {
+                "direction": "DIRECTION_ROW",
+                "ratio": 0.5,
+                "a": {
+                  "id": "placement-new",
+                  "leaf": {
+                    "viewId": "view-chart"
+                  }
+                },
+                "b": {
+                  "id": "placement-b",
+                  "leaf": {
+                    "viewId": "view-launcher"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ],
+    "views": {
+      "view-chart": {
+        "id": "view-chart",
+        "appId": "chart",
+        "documents": {
+          "primary": "document-1"
+        },
+        "title": "Mass and yield"
+      },
+      "view-launcher": {
+        "id": "view-launcher",
+        "appId": "launcher"
+      }
+    },
+    "viewOrder": [
+      "view-chart",
+      "view-launcher"
+    ],
+    "documents": {
+      "document-1": {
+        "id": "document-1",
+        "format": "example.doc",
+        "schemaVersion": 1,
+        "body": {
+          "name": "Demo"
+        }
+      }
+    }
+  }
+}
