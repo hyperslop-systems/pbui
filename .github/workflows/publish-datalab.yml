@@ -98,6 +98,10 @@ jobs:
 
       - name: Test clean tarball consumer
         run: pnpm --filter @hyperslop-systems/datalab-ui consumer:smoke
+        env:
+          # The clean consumer installs @hyperslop-systems/plot from the
+          # registry; ci.yml passes the same token to the same step.
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to GitHub Packages
         shell: bash
