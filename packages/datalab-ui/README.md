@@ -28,3 +28,10 @@ export default defineConfig({
 `@hyperslop-systems/pbui` remains the domain-neutral presentation and component
 package. Datalab UI owns product models, descriptors, verbs, stores, API
 transport, routes, applications, pages, fixtures, and brand.
+
+## Integration playbooks
+
+- [Adding editing support to a PBUI application](../../docs/playbooks/adding-editing-support-to-a-pbui-application.md)
+  explains document ownership, Redux edits, application registration, remote
+  persistence, backend validation, agent mutations, and two-browser conflict
+  testing.
