@@ -1,0 +1,13 @@
+/*
+ * datalab-only presentation styling (formerly pbui.module.css). The shared presentation-part rules —
+ * hover/acceptable affordances, the object menu, the accept banner, and the
+ * mouse-doc strip — moved to @hyperslop-systems/pbui/presentation-parts.css
+ * (PBUI-UNIFY-001); src/styles.ts imports them. Only parts THIS product emits
+ * beyond the package's own stay here.
+ */
+
+/* renderMenuHeader (runtime.tsx) appends the active-chart target to the menu
+ * header; the package does not emit this part. */
+[data-part="menu-target"] {
+  color: var(--pbui-cat-3);
+}
