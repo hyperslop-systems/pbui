@@ -1,40 +1,61 @@
+/*
+ * pbui's ZERO-SPECIFICITY fallback defaults for the presentation parts.
+ *
+ * Two layers style the presentation parts, on purpose:
+ *
+ *   1. THIS file — :where() rules (zero specificity) so a bare consumer sees
+ *      something legible before it styles anything. Every value is a local
+ *      fallback variable because pbui defines no design tokens.
+ *   2. public/presentation-parts.css — the design-system look, plain
+ *      attribute selectors that win over :where() in every product that
+ *      imports it (the documented import order).
+ *
+ * The defaults follow the same ten rules as the products: no radius, no
+ * blurred shadows, hairline-solid borders in ink. An earlier version of this
+ * file shipped a 999px pill and a blurred menu shadow as the DEFAULT, which
+ * meant a storybook or product missing presentation-parts.css silently
+ * rendered off-system — the exact silent-failure mode the parts file exists
+ * to end. If a default here and a rule in tokens.css disagree, the default
+ * is wrong: fix it here, not in the products.
+ */
+
 :where([data-pbui="presentation"]) {
-  --pbui-color-surface: #f8fafc;
-  --pbui-color-border: #cbd5e1;
-  --pbui-color-text: #0f172a;
-  --pbui-color-accent: #2563eb;
-  --pbui-color-danger: #b91c1c;
-  --pbui-radius-control: 999px;
-  --pbui-space-control-x: 0.625rem;
-  --pbui-space-control-y: 0.25rem;
+  --pbui-fallback-surface: #ffffff;
+  --pbui-fallback-border: #23262b;
+  --pbui-fallback-text: #23262b;
+  --pbui-fallback-accent: #2563eb;
+  --pbui-fallback-danger: #b64b37;
+  --pbui-fallback-selected: #fdeec6;
 
   appearance: none;
-  border: 1px solid var(--pbui-color-border);
-  border-radius: var(--pbui-radius-control);
-  background: var(--pbui-color-surface);
-  color: var(--pbui-color-text);
+  border: 1px solid var(--pbui-fallback-border);
+  border-radius: var(--pbui-radius, 0);
+  background: var(--pbui-fallback-surface);
+  color: var(--pbui-fallback-text);
   cursor: context-menu;
   font: inherit;
-  padding: var(--pbui-space-control-y) var(--pbui-space-control-x);
+  padding: var(--pbui-space-1, 2px) var(--pbui-space-3, 6px);
 }
 
 :where([data-pbui="presentation"])[data-state="acceptable"] {
-  border-color: var(--pbui-color-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pbui-color-accent) 24%, transparent);
+  outline: 2px solid var(--pbui-fallback-danger);
+  background: var(--pbui-fallback-selected);
   cursor: pointer;
 }
 
 :where([data-pbui="presentation"]):focus-visible,
 :where([data-pbui="menu"]) button:focus-visible {
-  outline: 2px solid var(--pbui-color-accent);
+  outline: 2px solid var(--pbui-fallback-accent);
   outline-offset: 2px;
 }
 
 :where([data-pbui="menu"]) {
   --pbui-menu-surface: #ffffff;
-  --pbui-menu-border: #cbd5e1;
-  --pbui-menu-text: #0f172a;
-  --pbui-menu-muted: #64748b;
+  --pbui-menu-border: #23262b;
+  --pbui-menu-text: #23262b;
+  --pbui-menu-muted: #696e75;
+  --pbui-menu-selected: #fdeec6;
+  --pbui-menu-danger: #b64b37;
 
   position: fixed;
   z-index: 1000;
@@ -42,9 +63,10 @@
   min-width: 13rem;
   overflow: hidden;
   border: 1px solid var(--pbui-menu-border);
-  border-radius: 0.5rem;
+  border-radius: var(--pbui-radius, 0);
   background: var(--pbui-menu-surface);
-  box-shadow: 0 0.75rem 2rem rgb(15 23 42 / 18%);
+  /* Rule 3: shadows are off. Separation comes from the border. */
+  box-shadow: var(--pbui-shadow-menu, none);
   color: var(--pbui-menu-text);
 }
 
@@ -65,11 +87,11 @@
 }
 
 :where([data-pbui="menu"]) button:not(:disabled):hover {
-  background: color-mix(in srgb, var(--pbui-menu-text) 8%, transparent);
+  background: var(--pbui-menu-selected);
 }
 
 :where([data-pbui="menu"]) button[data-danger="true"] {
-  color: var(--pbui-color-danger);
+  color: var(--pbui-menu-danger);
 }
 
 :where([data-pbui="menu"]) button:disabled,
