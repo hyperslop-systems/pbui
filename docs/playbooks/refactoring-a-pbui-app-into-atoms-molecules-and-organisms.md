@@ -11,7 +11,7 @@ Intent: long-term
 Owners: []
 RelatedFiles: []
 ExternalSources: []
-Summary: "How to take an existing PBUI application whose UI is flat files and a global stylesheet, and move it to the family convention — one folder per component, four files each, atoms/molecules/organisms, stories beside the component — without a big-bang rewrite and without breaking the product."
+Summary: "How to take an existing PBUI application whose UI is flat files and a global stylesheet, and move it to the family convention — one folder per component, atoms/molecules/organisms, stories beside the component — without a big-bang rewrite and without breaking the product."
 LastUpdated: 2026-08-02
 WhatFor: "Retrofit a PBUI-family frontend that was built before the convention was written down, in reviewable steps, with the product working after every one."
 WhenToUse: "Read the whole thing before starting. Do §2 before touching a component. Follow §4's loop for each component; §5 is the order to take them in."
@@ -22,7 +22,7 @@ WhenToUse: "Read the whole thing before starting. Do §2 before touching a compo
 ## What this is, and why it is needed
 
 PBUI's own `src/components` follows a strict convention: every component is a
-**folder** of four files. No product built on PBUI followed it, because until
+**folder**. No product built on PBUI followed it, because until
 recently nobody had written it down. The convention is now
 [`building-a-new-hyperslop-systems-app-on-pbui.md` §6a][new-app]; this document
 is the other half — how to get an **existing** application there.
@@ -34,10 +34,14 @@ The target, for every component at every level:
 ```
 components/molecules/PostRow/
   PostRow.tsx           the component, and the doc comment that argues for it
-  PostRow.module.css    its styles; NOT a shared stylesheet
+  PostRow.module.css    its styles — ONLY IF it has any; NOT a shared sheet
   PostRow.stories.tsx   every state it has
   index.ts              export { PostRow }; export type { PostRowProps };
 ```
+
+A component that composes PBUI components and passes tones has no styles of its
+own and wants no stylesheet — see §1 rule 2. Roughly half of datalab-ui's are
+like that, and it is the target state rather than a gap.
 
 **This is a mechanical refactor with a judgement problem inside it.** The
 mechanical part — making folders, moving files, writing barrels — is an
@@ -50,9 +54,10 @@ where the work actually is. Sections 3 and 5 are about that.
 
 Six of them. Print them; you will re-read them.
 
-1. **One folder per component, four files, at every level.** Atom, molecule,
-   organism, page. No exceptions for "small" components — small is what a
-   folder is for.
+1. **One folder per component, at every level.** Atom, molecule, organism,
+   page. Three files always — `Name.tsx`, `Name.stories.tsx`, `index.ts` — plus
+   `Name.module.css` when it has styles of its own. No exceptions for "small"
+   components; small is what a folder is for.
 2. **`.module.css` beside the component, never a shared stylesheet.** A global
    `app.css` with `.foo-row`, `.foo-item`, `.foo-chip` in it is a global
    namespace: renaming means grepping, deleting a component leaves its rules
