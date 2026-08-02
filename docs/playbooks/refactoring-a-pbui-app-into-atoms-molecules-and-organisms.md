@@ -58,6 +58,19 @@ Six of them. Print them; you will re-read them.
    namespace: renaming means grepping, deleting a component leaves its rules
    behind forever, and two components eventually collide. Product-wide *tokens*
    stay in `styles/tokens.css`; component *rules* do not.
+
+   **A component with no styles needs no stylesheet.** The rule is "its rules
+   live beside it", not "every folder has four files". Composing PBUI
+   components and passing tones is the target state.
+
+   The sharpest version of why a *shared* sheet is wrong: datalab-ui's brand
+   components shared one, and it contained `.lockup_masthead .bar` — a
+   descendant selector reaching from one component into another. The same
+   `<PhaseRule/>` therefore drew an 8px bar in its own story and a 4px bar
+   inside a masthead, and **two of its three real states could not be storied
+   at all.** A cross-component selector does not just risk collision; it makes
+   the component's appearance depend on who is rendering it, which is the end
+   of both reuse and testability.
 3. **Stories beside the component.** One `.stories.tsx` per component,
    covering every state it has. Documentation that lives away from the thing it
    documents is documentation nobody updates.
@@ -127,6 +140,12 @@ Two specific things to check while you are here:
   `hyperblog/ui/src/styles/tokens.css`.
 
 ### 2.3 · Take an inventory, and a screenshot of every tile
+
+> **If the app has no screenshot baseline and you are not adding one**, say so
+> and substitute something real — the datalab-ui audit rendered all 34 tile
+> stories in headless Chromium and diffed 23 before/after brand screenshots
+> instead. "I verified it in a browser" is a legitimate substitute; "it
+> typechecks" is not.
 
 You are about to move code that no test covers. **A screenshot is the test.**
 
@@ -442,9 +461,30 @@ grep -rho 'className="[a-z][a-z0-9 -]*"' ui/src --include='*.tsx' \
 Not a checklist of activities — a set of properties that are either true or
 not:
 
-- [ ] `find ui/src/components -mindepth 2 -maxdepth 2 -type f` prints **nothing**
-      — every entry at that depth is a folder.
-- [ ] Every component folder holds exactly four files (or five, with a test).
+- [ ] Every entry two levels down in `components/` is a **folder or a layer
+      barrel**:
+
+      ```bash
+      find ui/src/components -mindepth 2 -maxdepth 2 -type f \
+        -not -name 'index.ts'
+      ```
+
+      It should print nothing. **Note the `-not -name index.ts`:** §4 tells you
+      to write a barrel per layer (`molecules/index.ts`), so a check that
+      forbids every file at that depth contradicts the instructions. An earlier
+      draft of this section did exactly that, and the datalab-ui audit caught
+      it. A non-component data module (`phases.ts` beside the brand components)
+      is a legitimate second exception — decide it deliberately and say so.
+
+- [ ] Every component folder holds `Name.tsx`, `Name.stories.tsx` and
+      `index.ts`, **plus `Name.module.css` if and only if it has styles.**
+
+      Do not create empty stylesheets to satisfy a count. In datalab-ui, 35 of
+      73 components have no `.module.css` because they have no styles at all —
+      31 of those have no `style=` attribute either. They compose PBUI
+      components and pass tones, which is the target state, not a gap. A
+      component that *does* style itself and keeps those rules in a shared
+      sheet is the violation; a component with nothing to style is done.
 - [ ] `ui/src/styles/app.css` contains **no** component-scoped rule. Every
       class left in it is the shell, the layout, or a token.
 - [ ] Every component has a stories file, and every state is in it.
