@@ -49,7 +49,8 @@ ui/
     api/client.ts     EVERY network call, in one file (section 7)
     appkit/           the tile registry contract
     apps/             one thin container per tile; all.ts is the only list
-    components/
+    components/       ONE FOLDER PER COMPONENT (section 6a)
+      atoms/          the product's own presentation-bound primitives
       molecules/      small shared pieces
       organisms/      presentational panels: props in, pixels out
       pages/          the shell and the front door
@@ -63,6 +64,12 @@ ui/
 **`model/` holds no React, and `organisms/` do no data fetching.** That split is
 what makes both testable, and it is the first thing to erode if nobody defends
 it.
+
+**A tile is a container, not a view.** `apps/<Tile>.tsx` reads the store,
+derives what a panel needs, and hands it down. The markup lives in
+`organisms/`. A tile that renders three hundred lines of JSX is a tile whose
+pieces cannot be storied, reused or looked at in isolation — and it is the
+shape every product in this family drifts into if nobody says otherwise.
 
 ---
 
@@ -281,6 +288,80 @@ For durable application edits, continue with
 
 ---
 
+## 6a · One folder per component, and split the view before you write it
+
+**This is the section every product in the family has ignored, including the
+one that wrote it.** PBUI's own `src/components` follows it exactly; `datalab`,
+`agentlogic`, `turboproof` and `hyperblog`'s first draft all did not.
+
+### The unit is a folder
+
+```
+components/atoms/Meter/
+  Meter.tsx           the component, and the doc comment that argues for it
+  Meter.module.css    its styles; NOT a shared stylesheet
+  Meter.stories.tsx   every state it has
+  index.ts            export { Meter }; export type { MeterProps };
+```
+
+Four files, every time, at every level — atom, molecule, organism, page. Copy
+`pbui/src/components/atoms/Meter/` and change the names.
+
+Each file earns its place:
+
+- **`index.ts`** makes the import path the component's name rather than its
+  spelling twice (`from "../atoms/Meter"`, not `"../atoms/Meter/Meter"`). It is
+  also the seam that lets a component grow a second file without every caller
+  changing.
+- **`.module.css`** scopes the styles to the component. A shared `app.css` with
+  `.hb-chip`, `.hb-item`, `.hb-row` in it is a global namespace: renaming a
+  class means grepping, deleting a component leaves its rules behind forever,
+  and two components eventually collide. Product-wide *tokens* stay in
+  `styles/tokens.css`; component *rules* do not.
+- **`.stories.tsx` beside the component**, not in one file per directory. A
+  story is documentation, and documentation that lives away from the thing it
+  documents is documentation nobody updates.
+
+### Split the view BEFORE you write it, and reuse first
+
+The order that works:
+
+1. **Look for it in PBUI first.** `Button`, `TextInput`, `TextArea`, `Chip`,
+   `Meter`, `EmptyState`, `Callout`, `SegmentedBar`, `DiffHunk`, `Legend`,
+   `Stack`, `Toolbar`, `AppBody`, `Surface`, `Text`, `SectionLabel`, `Kbd`,
+   `JsonBlock`, `Dialog`, `TileFrame` — about twenty-eight components exist. If
+   you are writing a `<button>` with an inline style, the answer is already
+   shipped.
+2. **Then look in your own `atoms/` and `molecules/`.**
+3. **Only then write a new one** — as a folder, with its stories, at the lowest
+   level that makes sense.
+
+The failure mode is not laziness, it is *momentum*: a tile starts as one file
+because the first version is small, and by the time it is four hundred lines
+nobody wants to take it apart. Extract as you go. A view written as
+container → organism → molecules → atoms costs nothing to write in that order
+and is a two-day retrofit afterwards.
+
+**Watch for the §4 interaction.** If PBUI's components look ugly and a raw
+`<button>` looks better, your tokens are undefined — go back to section 4. That
+is not a styling preference, it is a defect, and acting on the preference is
+how `agentlogic` ended up using 6 of PBUI's ~28 components.
+
+### The check
+
+There is no lint for this yet, which is why it keeps slipping. Two questions at
+review time catch most of it:
+
+- Does every `components/**` directory contain a folder rather than a `.tsx`?
+- Does every component folder contain four files?
+
+PBUI carries `test/no-raw-controls.test.ts`, which forbids a raw `<textarea>`
+outside `atoms/`. A product-side equivalent — forbidding `<button>`, `<input>`
+and `<textarea>` outside `components/atoms/` — is twenty lines and worth the
+twenty lines.
+
+---
+
 ## 7 · Keep every network call in one file
 
 `ui/src/api/client.ts` holds every request. Nothing else calls `fetch`.
@@ -421,6 +502,9 @@ Two more:
 Each cost real time in agentlogic.
 
 - [ ] **The tokens are defined.** Run the grep in section 4. This is the big one.
+- [ ] **Every component is a folder of four files**, and the view was split
+      into organisms and molecules before it was written. Section 6a. Every
+      product in this family has skipped this; the retrofit is days.
 - [ ] **The shared presentation and chrome styles are imported.** Open an object
       menu and assert fixed positioning, z-index, and viewport containment;
       accessibility-tree presence does not prove visible geometry.
