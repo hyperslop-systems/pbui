@@ -65,3 +65,22 @@ export const Narrow: Story = {
     </div>
   ),
 };
+
+/**
+ * The three sizes, which until DATALAB-UI-AUDIT-1 could not be storied at all.
+ *
+ * `masthead` and `footer` were `.lockup_masthead .bar` and `.lockup_footer .bar`
+ * in a stylesheet the lockup and the rule shared, so the only way to see them
+ * was to render a lockup — the component's own story showed one of its three
+ * appearances and gave no hint that the others existed. That is the concrete
+ * cost of a shared sheet, and it is why the size is now a prop.
+ */
+export const Sizes: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: 24, width: 420 }}>
+      <PhaseRule size="hero" />
+      <PhaseRule size="masthead" />
+      <PhaseRule size="footer" />
+    </div>
+  ),
+};

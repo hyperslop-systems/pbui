@@ -1,0 +1,66 @@
+/*
+ * The lockup's geometry, and the claim block's.
+ *
+ * Sizes are the only thing this file decides; every colour is a token from
+ * brand.css, which is aliases all the way down to tokens.css (DR-98).
+ *
+ * Nothing here selects into `Wordmark` or `PhaseRule`. The bar heights that
+ * used to be written as `.lockup_masthead .bar` are now `PhaseRule`'s own
+ * `size` prop, so the size travels as data rather than as a selector and the
+ * rule looks the same wherever it is rendered.
+ */
+
+.lockup {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--pbui-space-3);
+  /* Shrink-to-fit, so the rule inherits the wordmark's width rather than the
+     container's. Without this the bars run the width of the page and the
+     lockup stops being a lockup. */
+  align-items: stretch;
+  width: max-content;
+  max-width: 100%;
+}
+
+.lockup_hero {
+  gap: var(--pbui-space-4);
+}
+
+.lockup_footer {
+  gap: var(--pbui-space-2);
+}
+
+.parent {
+  font-family: var(--brand-font-text);
+  font-size: var(--brand-fs-eyebrow);
+  font-weight: 700;
+  letter-spacing: var(--brand-track-eyebrow);
+  text-transform: uppercase;
+  color: var(--brand-faint);
+  line-height: 1;
+}
+
+.lockup_masthead .parent,
+.lockup_footer .parent {
+  font-size: var(--pbui-fs-micro);
+}
+
+/* ---- the claim block ---------------------------------------------------- */
+
+.claim {
+  background: var(--brand-ink);
+  color: var(--brand-paper);
+  padding: var(--pbui-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-5);
+}
+
+.claimText {
+  font-family: var(--brand-font-display);
+  font-size: var(--brand-fs-h2);
+  font-weight: var(--brand-weight-display);
+  line-height: 1.02;
+  letter-spacing: var(--brand-track-hero);
+  text-transform: uppercase;
+}

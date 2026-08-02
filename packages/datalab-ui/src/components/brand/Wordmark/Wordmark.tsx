@@ -1,4 +1,4 @@
-import styles from "../Brand.module.css";
+import styles from "./Wordmark.module.css";
 
 /**
  * DATA LAB, drawn rather than typeset.

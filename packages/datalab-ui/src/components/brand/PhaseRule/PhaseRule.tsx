@@ -1,6 +1,6 @@
 import { PhaseIcon } from "../PhaseIcon";
 import { PHASES, phaseVar } from "../phases";
-import styles from "../Brand.module.css";
+import styles from "./PhaseRule.module.css";
 
 /**
  * The four-bar rule: the brand's whole argument in eight pixels.
@@ -28,7 +28,21 @@ import styles from "../Brand.module.css";
  * so the choice is made by the surface rather than by whoever is looking at the
  * screenshot — setting them in colour on paper looks better and fails an audit,
  * and that is exactly the mistake a boolean `colour` prop would invite.
+ *
+ * ## `size` is a prop because it used to be the lockup's business
+ *
+ * The masthead's bars are 4px and the footer's are 3px — an 8px bar under a
+ * 15px wordmark reads as a highlighter stripe rather than as a rule. Those two
+ * heights were written in the lockup's half of a shared stylesheet, as
+ * `.lockup_masthead .bar`, which made this component's appearance depend on who
+ * was rendering it: the same `<PhaseRule />` drew differently inside a lockup
+ * than in its own story, and neither the component nor its story said so.
+ *
+ * As a prop the size travels as data, the rule looks the same everywhere, and
+ * the stories below can show all three.
  */
+export type PhaseRuleSize = "hero" | "masthead" | "footer";
+
 export interface PhaseRuleProps {
   /** IMPORT - UNDERSTAND - VISUALIZE - EXPORT beneath the bars. */
   labels?: boolean;
@@ -36,6 +50,8 @@ export interface PhaseRuleProps {
   icons?: boolean;
   /** Which surface this sits on. Decides whether the labels may take colour. */
   on?: "paper" | "ink";
+  /** Bar thickness and the gap beneath. `hero` is the full-size rule. */
+  size?: PhaseRuleSize;
   className?: string;
 }
 
@@ -43,10 +59,13 @@ export function PhaseRule({
   labels = false,
   icons = false,
   on = "paper",
+  size = "hero",
   className,
 }: PhaseRuleProps) {
   return (
-    <div className={[styles.rule, className ?? ""].filter(Boolean).join(" ")}>
+    <div
+      className={[styles.rule, styles[`rule_${size}`], className ?? ""].filter(Boolean).join(" ")}
+    >
       <div className={styles.bars} aria-hidden="true">
         {PHASES.map((phase) => (
           <span key={phase} className={styles.bar} style={{ background: phaseVar(phase) }} />
