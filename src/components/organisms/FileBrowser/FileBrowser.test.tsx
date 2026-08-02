@@ -223,3 +223,62 @@ describe("FileBrowser", () => {
     expect(basic.getAttribute("aria-level")).toBe("3");
   });
 });
+
+describe("FileBrowser presentation seam", () => {
+  test("renderRow wraps each row's content (the product's Presentation hook)", () => {
+    const v = verbs();
+    render(
+      <FileBrowser
+        roots={[{ name: "project" }]}
+        trees={{ project: TREE }}
+        expanded={new Set(["project:", "project:Mini"])}
+        onToggle={v.onToggle}
+        selectedId={null}
+        onSelect={v.onSelect}
+        onOpen={v.onOpen}
+        onRename={v.onRename}
+        onDelete={v.onDelete}
+        renderRow={(node, children) => <span data-testid={`wrap-${node.id}`}>{children}</span>}
+      />,
+    );
+    expect(screen.getByTestId("wrap-project:Mini/Basic.lean").textContent).toContain("Basic.lean");
+    expect(screen.getByTestId("wrap-project:lakefile.lean")).toBeTruthy();
+  });
+
+  test("controlled rename: the product drives the field F2 drives", () => {
+    const v = verbs();
+    function Controlled() {
+      const [renamingId, setRenamingId] = useState<string | null>(null);
+      return (
+        <>
+          <button onClick={() => setRenamingId("project:lakefile.lean")}>menu-rename</button>
+          <FileBrowser
+            roots={[{ name: "project" }]}
+            trees={{ project: TREE }}
+            expanded={new Set(["project:"])}
+            onToggle={v.onToggle}
+            selectedId={null}
+            onSelect={v.onSelect}
+            onOpen={v.onOpen}
+            onRename={v.onRename}
+            onDelete={v.onDelete}
+            renamingId={renamingId}
+            onRenameStateChange={setRenamingId}
+          />
+        </>
+      );
+    }
+    render(<Controlled />);
+    // A menu verb (here: the button) opens the same InlineRename field.
+    fireEvent.click(screen.getByText("menu-rename"));
+    const input = screen.getByLabelText("rename lakefile.lean") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "lakefile.toml" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(v.onRename).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "project:lakefile.lean" }),
+      "lakefile.toml",
+    );
+    // Commit cleared the controlled state back through onRenameStateChange.
+    expect(screen.queryByLabelText("rename lakefile.lean")).toBeNull();
+  });
+});

@@ -166,3 +166,98 @@ export const DeepNesting: Story = {
     return <Live trees={{ project: { id: "project:", name: "project", kind: "directory", children: [node] } }} />;
   },
 };
+
+/* ------------------------------------------------------------------ */
+/* The presentation-protocol seam: file rows as PRESENTATIONS.        */
+/* ------------------------------------------------------------------ */
+import { createPbui } from "../../../presentation/createPbui";
+import { createPresentationRegistry } from "../../../presentation/registry";
+import type { PresentationAction } from "../../../presentation/types";
+
+interface FileEntryValues {
+  "file.entry": FileNode;
+}
+type FileVerb =
+  | { type: "open"; id: string }
+  | { type: "rename"; id: string }
+  | { type: "delete"; id: string }
+  | { type: "create"; parentId: string; kind: "file" | "directory" };
+
+const fileEntryRegistry = createPresentationRegistry<FileEntryValues, Record<string, never>, FileVerb>({
+  "file.entry": {
+    label: (node) => node.name,
+    describe: (node) => ({ id: node.id, kind: node.kind }),
+    tone: "neutral",
+    actions: (node): readonly PresentationAction<FileVerb>[] => [
+      ...(node.kind === "file"
+        ? [{ id: "open", label: "Open", verb: { type: "open", id: node.id } as FileVerb, group: "file" }]
+        : [
+            { id: "new-file", label: "New file here", verb: { type: "create", parentId: node.id, kind: "file" } as FileVerb, group: "file" },
+            { id: "new-folder", label: "New folder here", verb: { type: "create", parentId: node.id, kind: "directory" } as FileVerb, group: "file" },
+          ]),
+      { id: "rename", label: "Rename…", verb: { type: "rename", id: node.id }, group: "edit" },
+      { id: "delete", label: "Delete", verb: { type: "delete", id: node.id }, group: "edit", danger: true },
+    ],
+  },
+});
+
+const filePbui = createPbui({ registry: fileEntryRegistry, defaultEnvironment: {} });
+
+/**
+ * Files have ACTIONS: right-click any row for its object menu (open, new
+ * file/folder here, rename…, delete). The menu's "Rename…" verb drives the
+ * same inline field F2 drives, through the controlled rename props. Every
+ * verb lands in the log below — the organism never performs.
+ */
+export const WithPresentation: Story = {
+  render: function Render() {
+    const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set(["project:", "project:Mini"]));
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [renamingId, setRenamingId] = useState<string | null>(null);
+    const [lastVerb, setLastVerb] = useState<string>("(none yet — right-click a row)");
+    const perform = (verb: FileVerb) => {
+      setLastVerb(JSON.stringify(verb));
+      if (verb.type === "rename") setRenamingId(verb.id);
+    };
+    return (
+      <filePbui.Provider onPerform={perform}>
+        <div style={{ width: 360, display: "grid", gap: 8 }}>
+          <div style={{ height: 380, display: "flex", border: "1px solid #cbd5e1" }}>
+            <FileBrowser
+              roots={[{ name: "project" }]}
+              trees={{ project: PROJECT }}
+              expanded={expanded}
+              onToggle={(id) =>
+                setExpanded((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                })
+              }
+              selectedId={selectedId}
+              onSelect={(node) => setSelectedId(node.id)}
+              onOpen={(node) => perform({ type: "open", id: node.id })}
+              onCreate={(parentId, kind) => perform({ type: "create", parentId, kind })}
+              onRename={(node, next) => perform({ type: "rename", id: `${node.id} → ${next}` })}
+              onDelete={(node) => perform({ type: "delete", id: node.id })}
+              renamingId={renamingId}
+              onRenameStateChange={setRenamingId}
+              renderRow={(node, children) => (
+                <filePbui.Presentation
+                  reference={{ type: "file.entry", value: node }}
+                  onActivate={() => setSelectedId(node.id)}
+                  doc={`${node.kind} ${node.id}`}
+                >
+                  {children}
+                </filePbui.Presentation>
+              )}
+            />
+          </div>
+          <code style={{ fontSize: 12 }}>last verb: {lastVerb}</code>
+        </div>
+        <filePbui.ObjectMenu />
+      </filePbui.Provider>
+    );
+  },
+};

@@ -3,6 +3,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { EmptyState } from "../../molecules/EmptyState";
 import { InlineRename } from "../../molecules/InlineRename";
 import { Text } from "../../foundation";
+import styles from "./FileBrowser.module.css";
 
 /**
  * One row in the tree, built by the PRODUCT's model layer.
@@ -53,6 +54,22 @@ export interface FileBrowserProps {
   onDelete(node: FileNode): void;
   /** Product-rendered affordances per row, e.g. a dirty dot. */
   renderBadge?(node: FileNode): ReactNode;
+  /**
+   * The presentation-protocol seam: wrap a row's rendered content in the
+   * PRODUCT's bound Presentation so file rows carry object menus and verbs
+   * (open, rename, delete, …) like every other object in the workbench.
+   * Default: children as-is. The organism stays product-agnostic; the
+   * product brings its own createPbui instance.
+   */
+  renderRow?(node: FileNode, children: ReactNode): ReactNode;
+  /**
+   * Controlled inline-rename. When `renamingId` is provided, F2 and
+   * commit/cancel report through `onRenameStateChange` instead of internal
+   * state — so an object-menu "rename" VERB can drive the same field the
+   * keyboard drives. Provide both or neither.
+   */
+  renamingId?: string | null;
+  onRenameStateChange?(nodeId: string | null): void;
   /** DR-30 surfaces: no roots, load failure, empty directory. */
   emptyState?: ReactNode;
   /**
@@ -147,13 +164,22 @@ export function FileBrowser({
   onRename,
   onDelete,
   renderBadge,
+  renderRow,
+  renamingId,
+  onRenameStateChange,
   emptyState,
   pageSize = DEFAULT_PAGE_SIZE,
 }: FileBrowserProps) {
   // The focus row for keyboard navigation; starts on the selection.
   const [focusedKey, setFocusedKey] = useState<string | null>(selectedId);
-  // Which row is being renamed in place, if any.
-  const [renamingKey, setRenamingKey] = useState<string | null>(null);
+  // Inline rename: internal by default, controlled when the product drives
+  // it (so a menu verb and the F2 key share one code path).
+  const [internalRenaming, setInternalRenaming] = useState<string | null>(null);
+  const renamingKey = renamingId !== undefined ? renamingId : internalRenaming;
+  const setRenamingKey = (key: string | null): void => {
+    if (onRenameStateChange) onRenameStateChange(key);
+    else setInternalRenaming(key);
+  };
   // Directories whose child cap the user lifted via "show N more".
   const [uncapped, setUncapped] = useState<ReadonlySet<string>>(new Set());
 
@@ -164,7 +190,7 @@ export function FileBrowser({
 
   if (roots.length === 0) {
     return (
-      <div data-pbui-component="file-browser" data-part="file-browser">
+      <div data-pbui-component="file-browser" data-part="file-browser" className={styles.browser}>
         {emptyState ?? (
           <EmptyState
             message="no file roots on this server"
@@ -245,6 +271,7 @@ export function FileBrowser({
     <div
       data-pbui-component="file-browser"
       data-part="file-browser"
+      className={styles.browser}
       role="tree"
       aria-label="files"
       tabIndex={0}
@@ -256,6 +283,7 @@ export function FileBrowser({
             <div
               key={row.key}
               data-part="file-browser-more"
+              className={styles.more}
               data-depth={row.depth}
               role="treeitem"
               aria-selected={false}
@@ -296,12 +324,38 @@ export function FileBrowser({
               onCancel={() => setRenamingKey(null)}
             />
           ) : (
-            <span data-part="file-row-label">{node.name}</span>
+            <span
+              data-part="file-row-label"
+              className={isDirectory ? `${styles.label} ${styles.labelDirectory}` : styles.label}
+            >
+              {node.name}
+            </span>
           );
+        // The presentation seam: the product may wrap the row's CONTENT
+        // (label + badge, not the chevron/indent geometry) in its bound
+        // Presentation, so right-clicking a file opens its object menu.
+        const content = (
+          <>
+            {label}
+            {renderBadge ? (
+              <span data-part="file-row-badge" className={styles.badge}>
+                {renderBadge(node)}
+              </span>
+            ) : null}
+          </>
+        );
+        const rowClass = [
+          styles.row,
+          isSelected ? styles.rowSelected : "",
+          isFocused ? styles.rowFocused : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
         return (
           <div
             key={row.key}
             data-part="file-row"
+            className={rowClass}
             data-kind={node.kind}
             data-depth={row.depth}
             data-selected={isSelected || undefined}
@@ -325,9 +379,14 @@ export function FileBrowser({
               if (!isDirectory) onOpen(node);
             }}
           >
-            <span data-part="file-tree-indent" style={{ width: `${row.depth * 0.875}rem` }} />
+            <span
+              data-part="file-tree-indent"
+              className={styles.indent}
+              style={{ width: `${row.depth * 0.875}rem` }}
+            />
             <span
               data-part="file-row-chevron"
+              className={styles.chevron}
               data-expanded={isExpanded || undefined}
               onClick={(event) => {
                 if (!isDirectory) return;
@@ -337,8 +396,7 @@ export function FileBrowser({
             >
               {isDirectory ? (isExpanded ? "▾" : "▸") : ""}
             </span>
-            {label}
-            {renderBadge ? <span data-part="file-row-badge">{renderBadge(node)}</span> : null}
+            {renderRow ? renderRow(node, content) : content}
           </div>
         );
       })}
