@@ -11,6 +11,10 @@ topics:
       description: Plot authoring, compilation, diagnostics, and rendering
     - slug: authoring
       description: Interactive document authoring and guidance workflows
+    - slug: pbui
+      description: The PBUI presentation-based UI library and the products built on it
+    - slug: refactoring
+      description: Restructuring existing code without changing behaviour
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes
