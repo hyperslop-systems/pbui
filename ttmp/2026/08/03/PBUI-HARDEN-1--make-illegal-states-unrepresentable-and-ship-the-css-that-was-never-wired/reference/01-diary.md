@@ -989,3 +989,116 @@ For P5.1 the thing to check is what was NOT renamed:
 grep -rn 'label' pbui/src/components/atoms/SelectInput/SelectInput.tsx
 ```
 `SelectOption.label` must still be `label` — it is the option's visible text.
+
+## Step 7: The documentation, and a broken gate found while surveying it
+
+Asked which documentation needed updating, I grepped for every changed
+identifier before answering — and found something more urgent than any doc:
+`pnpm consumer:smoke` was broken, and it is the pre-publish gate.
+
+### Prompt Context
+
+**User prompt (verbatim):** "ok, update all the documentation"
+
+**Assistant interpretation:** Update every live document that the 0.4.0 changes
+made wrong.
+
+**Inferred user intent:** Leave the family's prescriptive docs correct, so the
+next product does not follow instructions that are now traps.
+
+**Commit (code):** `4edc7a8` (smoke fix), `a59c7ce` (pbui docs), `4e011fa`
+(TURBOPROOF-5), `7d9ab38` (AGENTLOGIC-UI-2)
+
+### What I did
+
+- Fixed `scripts/consumer-smoke.mjs`, broken by P5.1's rename.
+- `building-a-new-hyperslop-systems-app-on-pbui.md`: §3 version and imports,
+  a new React-resolution subsection, §4 token history and typography, §6's
+  third descriptor rule, four new checklist items.
+- `refactoring-a-pbui-app-into-atoms-molecules-and-organisms.md`: the 0.4.0
+  bump as the first commit of a retrofit, and the delete-restated-tokens rule.
+- `README.md`: the single import, `pbuiVite`, and the `./vite` name collision.
+- `TURBOPROOF-5`'s defect report: a §8 resolution note.
+- `AGENTLOGIC-UI-2`: three re-scoped tasks and a changelog entry.
+
+### What worked
+
+**Grepping the docs before answering.** The question was "which documentation
+needs updating", and the honest way to answer it is a search for every changed
+identifier rather than a list from memory. That is what turned up the smoke
+test — which is not documentation at all, but is the only check in the
+repository that compiles against the PUBLISHED package shape rather than
+`src/`. Every other check would have stayed green through a broken release.
+
+Its passing is also an independent confirmation of P1.3: the smoke imports only
+`styles.css` and `components.css`, so one stylesheet import really is enough
+for a consumer who knows nothing about the ordering contract.
+
+### What didn't work
+
+**I broke the smoke test a second time while fixing it.** The comment I added
+explaining that a mark's `label` is visible text used backticks around the
+identifiers — and the JSX in that script lives inside a TEMPLATE LITERAL, so
+the backticks terminated it. The failure was `SyntaxError: missing ) after
+argument list`, eleven frames deep in the ESM loader, with no mention of the
+line I had touched.
+
+Also, earlier in the session, a commit message written with `-m "…"` containing
+backticks had them executed by the shell — four `command not found` lines and a
+mangled message that needed amending. Twice in one session, the same character,
+two different mechanisms. **Backticks in generated text are a hazard in every
+layer that reads them.**
+
+### What I learned
+
+Which documents are live and which are history is the whole question, and it
+has a clean answer: **prescriptive documents get corrected; records get
+appended to.** The two playbooks and the README tell someone what to do, so a
+stale instruction there is an active trap and gets rewritten. The ten ticket
+docs across agentlogic and datalab that still say `disabledReason` are diaries
+and design docs recording what was true when written — rewriting those would
+destroy the only account of why decisions were made, to fix a reference nobody
+will follow.
+
+The defect report sits between the two, and gets both treatments: the body is
+untouched, and a §8 records what landed. Its diagnosis is worth preserving
+exactly as reasoned, including the parts implementation proved wrong.
+
+### What was tricky to build
+
+Writing §8 of the defect report honestly. Three of its recommendations did not
+survive contact:
+
+- the discriminated union would have FORCED the workaround it was replacing
+- the roving-focus API became unnecessary once the click fix landed
+- the dev-time React guard cannot be written from inside pbui at all
+
+Saying so plainly, next to the parts that held, is more useful than a note that
+says "all five resolved" — the report's §7 correctly identified the organising
+idea for the entire ticket, and a reader should be able to see both. I also had
+to correct its §6 against my own migration: it lists two workaround sites and
+there were five.
+
+### What warrants a second pair of eyes
+
+The new §3 subsection in the new-app playbook states the duplicate-React
+mechanism from the report plus my own reading of Vite's symlink resolution. It
+is right for the `link:` case measured here; I have not verified the claim that
+a registry install can never hit it on every package manager.
+
+### What should be done in the future
+
+- The remaining sequence is unchanged: publish 0.4.0, bump hyperblog and
+  agentlogic, then P5.2.
+- `pnpm consumer:smoke` should run in the publish workflow if it does not
+  already — it is the only check that would have caught this.
+
+### Code review instructions
+
+```bash
+cd pbui && pnpm consumer:smoke     # the gate; must print "smoke passed"
+grep -rn 'components\.css\|presentation-parts\.css' docs/playbooks/
+```
+The only surviving mentions must be the ones explaining that the four-import
+form is historical. Same for `disabledReason`, which survives once, marked
+`DON'T`, beside the shape that replaced it.
