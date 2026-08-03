@@ -10,12 +10,12 @@
 - [x] P2.1 Guard the object-menu reason on disabled, not on the reason being set (createPbui.tsx) <!-- t:bcaw -->
 - [x] P2.2 Guard SelectInput's option reason the same way (latent copy of the same defect) <!-- t:ca5y -->
 - [x] P2.3 Regression tests: an enabled action with a reason shows its description and no reason text <!-- t:b23m -->
-- [ ] P3.1 Merge PresentationAction.disabled/disabledReason into disabledBecause <!-- t:3026 -->
-- [ ] P3.2 Merge SelectOption.disabled/reason into disabledBecause <!-- t:1eqd -->
-- [ ] P3.3 Merge FileDropZone.disabled/disabledReason into disabledBecause <!-- t:5533 -->
-- [ ] P3.4 Merge Presentation.onActivate/activateDoc into activate?: { doc, run } <!-- t:9n74 -->
-- [ ] P3.5 Merge FileBrowser.renamingId/onRenameStateChange into rename?: { id, onChange } <!-- t:hbjp -->
-- [ ] P3.6 Migrate consumers: hyperblog (10 sites), turboproof (5), datalab-ui (adapter collapses to a passthrough) <!-- t:ynqy -->
+- [x] P3.1 Merge PresentationAction.disabled/disabledReason into disabledBecause <!-- t:3026 -->
+- [x] P3.2 Merge SelectOption.disabled/reason into disabledBecause <!-- t:1eqd -->
+- [x] P3.3 Merge FileDropZone.disabled/disabledReason into disabledBecause <!-- t:5533 -->
+- [x] P3.4 Merge Presentation.onActivate/activateDoc into activate?: { doc, run } <!-- t:9n74 -->
+- [x] P3.5 Merge FileBrowser.renamingId/onRenameStateChange into rename?: { id, onChange } <!-- t:hbjp -->
+- [x] P3.6 Migrate consumers: hyperblog (10 sites), turboproof (5), datalab-ui (adapter collapses to a passthrough) <!-- t:ynqy -->
 - [ ] P4.1 Stop swallowing the host's click when onActivate/activate is present <!-- t:9ops -->
 - [ ] P4.2 Guard against Presentation-nested-in-Presentation double-handling <!-- t:9q22 -->
 - [ ] P4.3 Give FileBrowser's roving focus a controlled surface so renderRow can restore it <!-- t:48tg -->

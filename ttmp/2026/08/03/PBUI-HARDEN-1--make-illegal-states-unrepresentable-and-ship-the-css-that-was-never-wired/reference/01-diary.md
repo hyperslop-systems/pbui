@@ -533,3 +533,172 @@ pnpm vitest run src/presentation/createPbui.test.tsx; git checkout src/presentat
 For the live check: `pnpm exec storybook dev -p 6021`, open
 `presentation-pbui-protocol--default`, right-click Ada Lovelace. "Send email"
 must carry no em-dash suffix.
+
+## Step 4: Phase 3 — merging five pairs, and the compiler hole underneath them
+
+Five prop pairs became five single fields. The merges themselves were
+mechanical; what was not mechanical was discovering, partway through, that
+deleting the old fields would have been **worse than leaving the bug alone** —
+because TypeScript does not check what I assumed it checks.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Implement P3.1-P3.6 — merge the pairs, migrate
+every consumer.
+
+**Inferred user intent:** Make the illegal states unrepresentable, as designed,
+without breaking the four products that depend on them.
+
+**Commit (code):** `f5e22f2` (the `disabledBecause` family), `92ea3a5`
+(`activate` and `rename`), `6ce8d7a` (turboproof)
+
+### What I did
+
+```
+PresentationAction   disabled + disabledReason         ->  disabledBecause
+SelectOption         disabled + reason                 ->  disabledBecause
+FileDropZone         disabled + disabledReason         ->  disabledBecause
+Presentation         onActivate + activateDoc          ->  activate { run, doc }
+FileBrowser          renamingId + onRenameStateChange   ->  rename { id, onChange }
+```
+
+Consumers migrated: datalab-ui (2 files), turboproof (14 files), pbui's own
+stories and tests. Added three tests for `activate.doc`, which had none.
+
+### Why
+
+Recorded in the design doc §3.1: absence already means "not disabled", so one
+optional field expresses everything the pair did, and both illegal states —
+a reason on an available action, and a disabled action with no explanation —
+become unwritable rather than merely discouraged.
+
+### What worked
+
+**The design doc's prediction about datalab-ui held exactly.** It said the
+adapter would collapse to a passthrough and the six descriptor files would not
+change. They did not:
+
+```
+ M packages/datalab-ui/src/components/organisms/UploadPanel/UploadPanel.tsx
+ M packages/datalab-ui/src/pbui/registry.ts
+```
+
+Two lines left `registry.ts`, and the product that had merged this pair on its
+own — years before the library — stopped paying for the privilege.
+
+**turboproof's tombstone errors told the true story.** 18 compile errors, and
+the one at `shared.ts:27` proved the product had its own `ActionSpec`, so five
+descriptor call sites migrated by changing one type.
+
+### What didn't work
+
+**The merge alone did not do what I said it would.** After merging
+`PresentationAction`, `Pbui.stories.tsx` still wrote `disabled` and
+`disabledReason` — and `tsc` reported **nothing**. I checked with a property
+named `totallyBogusProperty`; also nothing.
+
+A minimal repro isolated it. Excess-property checking fires only on a *fresh*
+object literal assigned to a target, and freshness is lost the moment the
+literal is widened into a function's **inferred** return type — which is what
+`actions: (value, env) => [ … ]` produces. The array is then checked for
+assignability, and assignability is structural, so extra properties are legal.
+
+The consequence is worse than the defect being fixed. A product left on the old
+shape would have compiled clean, had both fields ignored, and rendered
+`disabled={undefined}` — turning every unavailable action, **including
+destructive ones**, into a clickable one. "Delete the root directory" becomes
+performable, silently, on upgrade.
+
+The fix is a tombstone: keep the names, type them `never`. That converts an
+ignored excess property into an ordinary type mismatch, which the inference
+path does report:
+
+```
+Types of property 'disabled' are incompatible.
+  Type 'boolean' is not assignable to type 'undefined'.
+```
+
+Adding them immediately surfaced **five** call sites inside pbui alone that the
+compiler had been ignoring, one of which was a bare `disabled` with no
+explanation at all.
+
+**A second stale-artifact trap, twice.** datalab-ui typechecked clean against
+the merged pbui — because it resolves types from `dist/`, which I had not
+rebuilt. The green was meaningless. I hit it again after P3.4/P3.5 before
+making "rebuild pbui, then check datalab-ui" a habit. Same shape as the marker
+collision in Step 1 and the wrong Storybook port in Step 2: **the tool answered
+honestly about something other than what I was asking.**
+
+**One careless rename.** A blanket `.disabledReason` → `.disabledBecause` sweep
+across datalab-ui's tests also caught `y.disabled` in a story where `y` is an
+`HTMLButtonElement`, not an action. The typechecker caught it. `disabled` is a
+name shared by the DOM and the domain, and a sed does not know the difference.
+
+### What I learned
+
+The merge is only half a migration tool. **Renaming a field in an interface
+whose values arrive through an inferred return type is a silent behaviour
+change unless the old name is left behind as `never`.** That is now the rule
+for this codebase, written into `types.ts` where the next person renaming
+something will read it.
+
+It also reframes what the tombstones are. They are not deprecation politeness
+— they are the only reason the migration is detectable at all.
+
+### What was tricky to build
+
+Deciding whether `activate` was worth doing. `onActivate` + `activateDoc` had
+no live defect, and the merge makes six call sites wordier:
+
+```tsx
+- onActivate={() => onGeom(option)} activateDoc="use this geom"
++ activate={{ run: () => onGeom(option), doc: "use this geom" }}
+```
+
+I nearly skipped it as pattern-application for its own sake. What decided it
+was that `activateDoc` alone type-checks, renders nothing, and warns nothing —
+identical in shape to `disabledReason` without `disabled`, which had fifteen
+live instances. "No product has written it yet" describes the condition under
+which such a defect survives review indefinitely, not a reason to leave it.
+The verbosity is a real cost and is recorded as one in the prop's doc comment.
+
+The `rename` merge had a second job. `renamingId` overloaded `undefined`
+(uncontrolled) against `null` (controlled, idle), which is why the
+implementation had to ask `renamingId !== undefined` rather than a truth test.
+Presence of the object is now the mode, so `id: null` means exactly one thing.
+
+### What warrants a second pair of eyes
+
+The tombstones are `?: never`, which reads oddly and will tempt someone to
+delete them as noise. The comment in `types.ts` is long for that reason. They
+are safe to remove only once every consumer is on 0.4.0 — hyperblog and
+agentlogic are not yet.
+
+Also: `activate` and `rename` are fresh object literals, so they change
+identity every render. Neither is used as a memo dependency today.
+
+### What should be done in the future
+
+- hyperblog (10 sites) and agentlogic still consume 0.3.0 from the registry and
+  are unaffected until P6.5 bumps them. Their migration is the same shape as
+  turboproof's.
+- A lint or test for the tombstone rule itself: any field removed from a
+  descriptor-facing interface should leave a `never` behind for one version.
+
+### Code review instructions
+
+Start with `src/presentation/types.ts` — the `disabledBecause` comment is the
+design, and the tombstone comment below it is the migration hazard.
+
+```bash
+cd pbui && pnpm run test && pnpm exec tsc --noEmit
+pnpm run build   # REQUIRED before the next line; datalab-ui reads dist/
+(cd packages/datalab-ui && pnpm exec tsc --noEmit && pnpm run test)
+(cd ../turboproof/ui && pnpm exec tsc --noEmit && pnpm run test)
+```
+
+To see the hole the tombstones cover, delete `disabled?: never` from
+`PresentationAction` and add `disabled: true` to any descriptor action. It
+compiles.
