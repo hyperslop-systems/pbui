@@ -21,11 +21,11 @@
 - [x] P4.3 Give FileBrowser's roving focus a controlled surface so renderRow can restore it <!-- t:48tg -->
 - [x] P4.4 Fix pbui's own WithPresentation story, which demonstrates the bug <!-- t:1x06 -->
 - [x] P4.5 Test: click a directory label through a Presentation, assert toggle AND focus <!-- t:vvk6 -->
-- [ ] P5.1 Rename label -> accessibleName on the graphics/region components <!-- t:wmu3 -->
+- [x] P5.1 Rename label -> accessibleName on the graphics/region components <!-- t:wmu3 -->
 - [ ] P5.2 Give the four form controls a label that actually renders <!-- t:98ci -->
-- [ ] P5.3 Migrate consumers and restore any text that was silently dropped <!-- t:tpwe -->
-- [ ] P6.1 FileBrowser.onCreate: declared and never called (issue 4) <!-- t:usab -->
-- [ ] P6.2 role=button nested in role=treeitem (issue 5) <!-- t:hg10 -->
-- [ ] P6.3 Duplicate-React dev-time guard and a Vite preset (issue 1) <!-- t:rgny -->
-- [ ] P6.4 FileBrowser: trees cannot express a failed root; emptyState claims three surfaces and serves one <!-- t:ivj0 -->
+- [x] P5.3 Migrate consumers and restore any text that was silently dropped <!-- t:tpwe -->
+- [x] P6.1 FileBrowser.onCreate: declared and never called (issue 4) <!-- t:usab -->
+- [x] P6.2 role=button nested in role=treeitem (issue 5) <!-- t:hg10 -->
+- [x] P6.3 Duplicate-React dev-time guard and a Vite preset (issue 1) <!-- t:rgny -->
+- [x] P6.4 FileBrowser: trees cannot express a failed root; emptyState claims three surfaces and serves one <!-- t:ivj0 -->
 - [ ] P6.5 Publish 0.4.0 and bump the four products <!-- t:upc2 -->

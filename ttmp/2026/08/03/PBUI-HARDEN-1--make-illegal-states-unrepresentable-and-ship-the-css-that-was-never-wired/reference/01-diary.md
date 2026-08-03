@@ -848,3 +848,144 @@ Then the mutation that matters: put `event.stopPropagation()` back in the
 `activate` branch of `handleClick` and run `FileBrowser.test.tsx`. Two tests
 must fail. In a browser, open `component-library-organisms-filebrowser--with-presentation`
 and click a collapsed directory's LABEL — it must expand.
+
+## Step 6: Phases 5 and 6 — a rename that fought back, and four small fixes
+
+Phase 5 was supposed to be the mechanical one and produced the worst mistakes
+of the ticket. Phase 6 was four unrelated leftovers and went cleanly.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Finish P5 and P6.
+
+**Inferred user intent:** Land the whole ticket.
+
+**Commit (code):** `38fff9a` (P5.1), `9563813` (turboproof P5.1), `96912a0`
+(P6.1-P6.4), `25b7e4a` (turboproof P6)
+
+### What I did
+
+- **P5.1** — `label` → `accessibleName` on the eleven components where it was
+  only ever an `aria-label`. 125 attributes across pbui, datalab-ui and
+  turboproof.
+- **P6.1** — deleted `FileBrowser.onCreate`.
+- **P6.2** — `Presentation.inComposite`, so a presentation inside a tree or
+  grid yields role and tab stop to the container.
+- **P6.3** — `@hyperslop-systems/pbui/vite` exporting `pbuiVite()`.
+- **P6.4** — `RootState`, so a failed root says why instead of loading forever.
+
+### What didn't work
+
+**Two reverted attempts at the same rename, both from the same wrong
+assumption: that `label` meant one thing.** It does not. `label` is also a
+real, VISIBLE prop on `Chip`, `SelectOption`, `Segment` and
+`ResultLogSegment` — often in the same file, sometimes on the same line:
+
+```tsx
+<Chip label={segment.label} tone={segment.tone} />
+```
+
+Attempt one was a textual sweep over the eleven component files. It renamed
+`SelectOption.label` — an option's visible text — because the declaration
+looks identical to the prop being renamed.
+
+Attempt two was compiler-driven, patching the first `label` on each line tsc
+reported. Worse: tsc reports `Type '{...}' is not assignable` at the ELEMENT's
+position, not the attribute's, so "the first `label` on that line" was the
+`Chip` above, and every `{ id, weight, tone, label }` segment literal in the
+story fixtures. I only caught it by reading the diff of what the script had
+produced rather than trusting the error count going down.
+
+The version that works matches `<Component` by tag name and walks its
+attribute list with a depth counter over braces and quotes, so a `label`
+inside a nested expression is never mistaken for the tag's own. Its correctness
+is visible in the output:
+
+```tsx
+<SelectInput
+  accessibleName="drop"                                        ← renamed
+  options={writableDrops.map((d) => ({ value: d, label: d }))}  ← untouched
+```
+
+**A third failure mode in the same phase.** My first brace-matching script
+aborted on an assertion at the seventh of eleven files, so four components got
+their destructure renamed and their interface left alone. The error was
+printed, I read the *next* command's output instead of it, and only noticed
+when `KindLegendProps` still declared `label`. Aborting loops need their exit
+status checked, not their tail.
+
+### What I learned
+
+**The compiler is a good oracle for "is something wrong" and a bad one for
+"what exactly".** Its position information points at the assignment, which for
+JSX is the element, not the property. Three attempts converged on the rule:
+when a rename is ambiguous by name, disambiguate by STRUCTURE — the tag it is
+attached to — not by proximity to an error.
+
+Also: I reverted twice, and both reverts were cheap because the work was
+committed at phase boundaries. A single "P5" commit at the end would have made
+the second revert a manual untangle.
+
+### What was tricky to build
+
+P5.2 — the visible label — is **deliberately not done**, and deciding that took
+longer than the rename. Making `label` render on the four form controls would
+turn 44 existing call sites from "no visible text" into "visible text", which
+is a layout change imposed on three products rather than a fix. The right shape
+is a `Field` molecule, and every design I tried recreates an illegal state:
+
+- `Field` wraps the control in a `<label>`, so `accessibleName` becomes
+  optional — and a control can then end up with no name at all.
+- `Field` renders a `<span>` and the control keeps a required `accessibleName`
+  — but then clicking the visible text does not focus the control.
+- `Field` clones the child to inject an id — fragile, and it breaks any
+  wrapper between `Field` and the control.
+
+Shipping any of those inside a ticket about making illegal states
+unrepresentable would have been the wrong joke to land. The trap it was meant
+to fix is already gone: nothing named `label` is silently invisible now, and a
+product that wants visible text writes it, which is what they all did before.
+
+The other genuinely tricky call was P6.3's runtime guard, which the report
+ranked as the most valuable of its four suggestions. It cannot be written from
+inside pbui: pbui holds a handle to exactly one React — whichever its own
+`import` resolved — and has no visibility of the consumer's. Detecting the
+duplicate needs both sides to register on a shared global, which is more
+coordination than the preset it would be protecting. `src/vite.ts` says so
+explicitly rather than leaving the omission to look like an oversight.
+
+### What warrants a second pair of eyes
+
+`inComposite` renders `role="none"`. That is correct for a `<span>` inside a
+`treeitem`, and I have not checked every composite role — a `gridcell` may want
+different treatment.
+
+`RootState`'s absent-key-means-loading is two ways to spell one state, which is
+the smell this ticket exists to remove. It is deliberate: products build the map
+incrementally, and requiring an explicit `{ status: "loading" }` per root before
+the first response is friction with no safety in return. Worth re-reading with
+fresh eyes.
+
+### What should be done in the future
+
+- **P5.2, the visible label**, with a `Field` design that does not recreate an
+  illegal state. It is the one item in this ticket that is not done.
+- turboproof's `useFileTree` keeps one global error string, so its `RootState`
+  adapter can produce `ready` and `loading` but never `failed`. Per-root
+  failure needs a `Record<string, string>` of errors in the hook.
+- hyperblog and agentlogic still consume 0.3.0 and have not migrated.
+
+### Code review instructions
+
+```bash
+cd pbui && pnpm run test && pnpm run build
+(cd packages/datalab-ui && pnpm exec tsc --noEmit && pnpm run test)
+(cd ../turboproof/ui && pnpm exec tsc --noEmit && pnpm run test && pnpm run build)
+```
+For P5.1 the thing to check is what was NOT renamed:
+```bash
+grep -rn 'label' pbui/src/components/atoms/SelectInput/SelectInput.tsx
+```
+`SelectOption.label` must still be `label` — it is the option's visible text.
