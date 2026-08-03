@@ -27,6 +27,32 @@ const pbui = createPbui({ registry, defaultEnvironment });
 The package intentionally does not depend on Redux, RTK Query, Datadrop model
 types, or application routing.
 
+## What a consumer imports
+
+```ts
+import "@hyperslop-systems/pbui/styles.css"; // the whole design system
+```
+
+One stylesheet, since 0.4.0. It carries the token defaults, the presentation
+fallbacks, every component's CSS, and the tile chrome. The granular subpaths —
+`./components.css`, `./presentation-parts.css`, `./chrome.css` — still resolve,
+for a product that deliberately styles one of those contracts itself; before
+0.4.0 all four had to be imported in a documented order, and missing one
+produced no error, just a component rendering bare.
+
+```ts
+// vite.config.ts — required when pbui is consumed through a `link:` override
+import { pbuiVite } from "@hyperslop-systems/pbui/vite";
+export default defineConfig({ ...pbuiVite(), plugins: [react()] });
+```
+
+Without it, the first pbui component to render throws `Cannot read properties
+of null (reading 'useState')` from two React instances. `src/vite.ts` carries
+the full mechanism. **Note the name collision:** this `./vite` subpath exports
+a Vite *config preset*, while `@hyperslop-systems/datalab-ui`'s `./vite`
+subpath exports that package's public asset directory. Same path, unrelated
+jobs.
+
 ## Datalab UI workspace package
 
 `packages/datalab-ui` contains `@hyperslop-systems/datalab-ui`, the complete

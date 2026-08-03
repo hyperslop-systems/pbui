@@ -12,7 +12,7 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: "How to take an existing PBUI application whose UI is flat files and a global stylesheet, and move it to the family convention — one folder per component, atoms/molecules/organisms, stories beside the component — without a big-bang rewrite and without breaking the product."
-LastUpdated: 2026-08-02
+LastUpdated: 2026-08-03
 WhatFor: "Retrofit a PBUI-family frontend that was built before the convention was written down, in reviewable steps, with the product working after every one."
 WhenToUse: "Read the whole thing before starting. Do §2 before touching a component. Follow §4's loop for each component; §5 is the order to take them in."
 ---
@@ -122,13 +122,21 @@ grep -c '^\.' ui/src/styles/app.css            # how many global classes
 **Do this before you touch a component, and do not skip it because the app
 "looks fine".**
 
-**Upgrade to pbui 0.3.0 first, and most of this section stops applying.**
+**Upgrade to pbui 0.4.0 first, and most of this section stops applying.**
 Until 0.3.0, PBUI's components read forty-four design tokens and defined none
 of them; it now ships a default for every one, at zero specificity, so your own
 values still win. If the app you are refactoring is on 0.2.x, bumping the
 dependency is the single highest-value change you can make before touching a
 component — measured on a bare consumer, a `Chip` went from `0px none` border,
 `0px` tone edge and 16px browser-default type to the family look.
+
+0.4.0 continues the same work and is a breaking release: five prop pairs
+merged into single fields, `label` became `accessibleName` on the eleven
+components where it was never visible, and the four stylesheet imports became
+one. **Every break is a compile error rather than a behaviour change** — each
+removed name is left behind typed `never`, so a missed site names its
+replacement instead of being silently ignored. Do the bump as its own commit,
+before any refactoring, and let the compiler produce the worklist.
 
 The check below still earns its place, because it catches the other half of the
 failure: a token *you* invented that pbui never reads. An undefined custom
@@ -162,6 +170,13 @@ Two specific things to check while you are here:
   failure: a token *you* invented that pbui never reads. hyperblog aliased
   `--pbui-blue` and five siblings from a design sketch; none of those names
   exist, and the check is what found it.
+- **Delete every token you restate at pbui's own value.** Your `tokens.css` is
+  the DIFFERENCE between your product and pbui, not a copy of the palette. A
+  restated default silently stops tracking the family the day pbui changes it,
+  and it is what makes a near-miss name look right: with 61 declarations in a
+  local file, `--pbui-ink-faint` reads as plausible, and that typo meant a
+  divider grip never rendered at all. hyperblog and agentlogic both went from
+  61 declarations to 26 with a byte-identical screenshot.
 - The nine `JsonBlock`/`Dialog` tokens are read WITH inline fallbacks, so they
   never rendered as nothing — they rendered in a slate-blue palette from no
   family product. pbui now defines them on-system.

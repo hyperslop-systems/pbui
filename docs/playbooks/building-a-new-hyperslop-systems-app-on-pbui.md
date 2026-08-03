@@ -12,7 +12,7 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: "The structure, day-one imports, order of work, and traps for building a new single-binary application on PBUI. Consolidates the PBUI-UNIFY-001 bootstrap contract with lessons from building agentlogic after datalab-ui."
-LastUpdated: 2026-08-02
+LastUpdated: 2026-08-03
 WhatFor: "Start a PBUI-family application without re-deriving the layering, import stack, mount discipline, token contract, workbench protocol, or validation strategy."
 WhenToUse: "Read before scaffolding a new PBUI application. Complete sections 3 and 4 on day one, section 6 while building the first tiles, and section 8 before the first browser check."
 ---
@@ -112,7 +112,7 @@ product.
 
 ```jsonc
 // ui/package.json
-"@hyperslop-systems/pbui": "^0.3.0",
+"@hyperslop-systems/pbui": "^0.4.0",
 "@hyperslop-systems/workbench-protocol": "^0.2.0" // if it has a workbench
 ```
 
@@ -124,18 +124,63 @@ Import the stylesheets in this order:
 ```ts
 import "./styles/reset.css";
 import "./styles/tokens.css"; // product overrides; pbui ships defaults (§4)
-import "@hyperslop-systems/pbui/styles.css";
-import "@hyperslop-systems/pbui/components.css";
-import "@hyperslop-systems/pbui/presentation-parts.css";
-import "@hyperslop-systems/pbui/chrome.css";
+import "@hyperslop-systems/pbui/styles.css"; // the whole design system
 import "./styles/scrollbars.css";
 import "./styles/app.css"; // product grammar and intentional overrides, last
 ```
 
-`presentation-parts.css` supplies the visible object-menu, hover, acceptance,
-and mouse-documentation mechanics. `chrome.css` supplies the tile frame, drop
-zone, and launcher hooks. A product may omit one only when it deliberately
-styles the corresponding `data-part` contract itself.
+**One pbui import, since 0.4.0.** It used to be four —
+`styles.css`, `components.css`, `presentation-parts.css`, `chrome.css` — in
+that order, and getting it wrong produced no error at all, just a component
+rendering bare. agentlogic missed two of the four in its Storybook config and
+reviewed its entire component refactor against a tile chrome that had no
+border and no background, while the shipped product had both. `styles.css` now
+carries all of it.
+
+The granular subpaths still exist and still resolve, so an existing product
+that imports all four keeps working; the rules simply appear twice, which the
+cascade resolves identically. A product that genuinely wants a different
+object-menu or tile look skips `styles.css` and composes the parts itself —
+that is the only reason to know they are separate.
+
+> **If your Storybook and your product load different stylesheets, they are
+> different products.** Assert it rather than commenting it: agentlogic's
+> `src/styles-parity.test.ts` compares the two entry points' imports as sets,
+> and is ~40 lines.
+
+### The React resolution requirement
+
+A `link:`-linked consumer — which is what the family's development workflow
+prescribes — hits this the first time it renders a pbui component:
+
+```
+Uncaught TypeError: Cannot read properties of null (reading 'useState')
+```
+
+Nothing in your own tree is at fault, the stack points into pbui, and every
+obvious hypothesis (a bad hook call, a conditional hook, a version skew) is
+wrong. One engineer lost an entire session to it and handed the work off
+blocked on "a React error I cannot explain".
+
+Spread the preset pbui ships, and it cannot happen:
+
+```ts
+// ui/vite.config.ts
+import { pbuiVite } from "@hyperslop-systems/pbui/vite";
+
+export default defineConfig({
+  ...pbuiVite(), // resolve.dedupe for react and react-dom
+  plugins: [react()],
+});
+```
+
+The cause: pbui declares React as a peer dependency AND a devDependency, which
+is correct and universal for a React library — Storybook and the tests need a
+real React. Under a `link:` override Vite resolves the symlink to pbui's real
+directory, so a bare `react` import inside `pbui/dist` resolves from *pbui's*
+tree first. Two React instances, one null hook dispatcher. A registry install
+never hits it, because npm and pnpm do not install a dependency's
+devDependencies.
 
 For a single-binary Go application, preserve three route boundaries:
 
@@ -161,10 +206,18 @@ it cannot overwrite the embedded bundle.
 ## 4 · The tokens, and the trap that shaped everything
 
 **PBUI used to ship components that read design tokens and define none of
-them. As of pbui 0.3.0 it defines a default for all forty-four.** This section
+them. Since pbui 0.3.0 it defines a default for all forty-four.** This section
 is retained because the failure mode it describes is instructive, because the
 history explains several odd-looking decisions in the products, and because the
 check at the end still earns its place.
+
+It is also worth reading as an instance rather than an incident. The same root
+cause — **a safety net that nothing imports does not ship** — was found a
+second time in 0.4.0: `src/styles.css`, a hundred lines of zero-specificity
+fallbacks for the presentation parts, written deliberately, carrying a header
+explaining exactly what it protected against, and imported by no module. It
+had never shipped. If you write a file whose job is to be a fallback, the next
+thing to write is the test that it is reachable.
 
 Before that fix, agentlogic imported PBUI's stylesheets, defined none, and ran
 for weeks with **43 tokens read and 0 defined**.
@@ -202,6 +255,23 @@ for every token pbui reads, wrapped in `:where(:root)` so your own `:root` block
 still wins regardless of import order. You now override what you want to change
 and inherit the rest. Keep running the check: it still catches a token you
 invented that pbui does not read, which is the mistake hyperblog made.
+
+**Do not restate a default.** Your `tokens.css` is the DIFFERENCE between your
+product and pbui, plus any token pbui does not read. Restating a value that
+already matches buys nothing and guarantees a future divergence: change it in
+pbui and your product silently keeps the old one, with no error at any layer.
+When hyperblog and agentlogic applied this rule their token files went from 61
+declarations to 26, and the rendered result was byte-identical.
+
+**Since 0.4.0 pbui also applies the typography it defines.** A `:where(:root)`
+rule sets `font-family`, `font-size` and `line-height` from the tokens, because
+`--pbui-font` was defined, read by four components, and never applied to
+anything a bare consumer would inherit from — every presentation part says
+`font: inherit`, deliberately, and there was nothing to inherit. A consumer who
+set no typography of their own got Times New Roman at 16px underneath an
+11.5px design system. Zero specificity, so your own `body` rule still wins;
+every family product already sets one, which is precisely why nobody noticed
+for eleven months.
 
 The nine `JsonBlock`/`Dialog` tokens are a special case worth knowing about.
 They are read WITH inline fallbacks — `var(--pbui-code-surface, #0f172a)` — so
@@ -272,12 +342,40 @@ export const AcceptBanner = instance.AcceptBanner;
 export const usePbui = instance.usePbui;
 ```
 
-Two rules, both learned by datalab and both worth taking:
+Three rules, all learned the hard way and all worth taking:
 
 - **One descriptor file per type.** Do not spread one type across parallel
   `labelFor`, `describe`, and `actionsFor` conditionals.
 - **Verbs are serializable data, never closures.** `actions(value, env)` remains
   pure and tests can assert its exact verb without a store, provider, or DOM.
+- **An unavailable action is one field.** `disabledBecause` is present exactly
+  when the action cannot be performed, and the string is why:
+
+  ```ts
+  disabledBecause: tile.canClose ? undefined : "the last tile cannot close",
+  ```
+
+  It used to be two — `disabled: boolean` and `disabledReason: string` — and
+  that pair produced the same defect in every product that used it. An author
+  knows the rule and writes it twice, once as a predicate and once as prose:
+
+  ```ts
+  disabled: environment.cursorTerm === ref.id,      // DON'T: this is 0.3.0
+  disabledReason: "the cursor is already here",     // and it renders wrong
+  ```
+
+  Two adjacent lines that read as one unit and evaluate as two. pbui's menu
+  guarded the reason on the reason EXISTING, so every usable action displayed
+  an explanation of why it could not be used. Fifteen live sites across three
+  products, plus pbui's own primary story. With one field there is nothing for
+  a predicate to disagree with, and a disabled action with no explanation stops
+  being expressible too — which was always a defect and was always silent.
+
+> **The general rule, worth applying to your own props:** if field B is only
+> read inside a branch that tests field A, B belongs inside A. pbui had five
+> instances and fixed all five in 0.4.0; the tell for one of them was a doc
+> comment ending "Provide both or neither", which is an invariant the type was
+> not carrying.
 
 Import shared window mechanics from PBUI:
 
@@ -537,9 +635,23 @@ Each cost real time in agentlogic.
 - [ ] **`make ui-token-check` prints nothing.** Since pbui 0.3.0 it should,
       because pbui defines every token it reads — so anything it prints is a
       name YOU invented that pbui never reads. Section 4.
-- [ ] **The shared presentation and chrome styles are imported.** Open an object
-      menu and assert fixed positioning, z-index, and viewport containment;
+- [ ] **The shared presentation and chrome styles are imported.** Since 0.4.0
+      one `styles.css` import covers all of it, so this is mostly a question
+      for products still on the four-import form. Open an object menu and
+      assert fixed positioning, z-index, and viewport containment;
       accessibility-tree presence does not prove visible geometry.
+- [ ] **Storybook imports exactly what the product imports.** A comment saying
+      so is not a check — agentlogic carried "the whole foundation, in
+      dependency order, exactly as main.tsx loads it" above a list that was
+      missing two of six. Compare the two files' imports in a test.
+- [ ] **`...pbuiVite()` is in the Vite config** if pbui is consumed through a
+      `link:` override. Without it, the first pbui component to render throws
+      `Cannot read properties of null (reading 'useState')` and the stack
+      points somewhere useless. Section 3.
+- [ ] **Nothing named `label` is invisible.** Since 0.4.0 the aria-only prop on
+      eleven components is `accessibleName`; `label` renders. Swapping nine raw
+      `<select>` elements for `SelectInput` once deleted nine visible words in
+      agentlogic, silently, with the types accepting every line.
 - [ ] **A flex parent gives its tile a committed height.** `height: 100%` inside
       flex resolves against a height flex has not committed, and every tile
       collapses to its content. Use a one-cell grid.
