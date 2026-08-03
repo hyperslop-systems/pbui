@@ -2,11 +2,11 @@
 
 ## TODO
 
-- [ ] P1.1 Wire src/styles.css into the bundle so its zero-specificity fallbacks actually ship <!-- t:xn8u -->
-- [ ] P1.2 Refresh styles.css's stale header (it predates tokens.css) and drop fallback vars that tokens.css now defaults <!-- t:fuxo -->
-- [ ] P1.3 Make the styles.css export self-sufficient so a consumer cannot miss one of the four stylesheets <!-- t:scvm -->
-- [ ] P1.4 Add a test that every data-part pbui renders has a rule in the shipped CSS <!-- t:nmwa -->
-- [ ] P1.5 Fix agentlogic's Storybook preview: it imports 4 stylesheets where the app imports 6 <!-- t:c62z -->
+- [x] P1.1 Wire src/styles.css into the bundle so its zero-specificity fallbacks actually ship <!-- t:xn8u -->
+- [x] P1.2 Refresh styles.css's stale header (it predates tokens.css) and drop fallback vars that tokens.css now defaults <!-- t:fuxo -->
+- [x] P1.3 Make the styles.css export self-sufficient so a consumer cannot miss one of the four stylesheets <!-- t:scvm -->
+- [x] P1.4 Add a test that every data-part pbui renders has a rule in the shipped CSS <!-- t:nmwa -->
+- [x] P1.5 Fix agentlogic's Storybook preview: it imports 4 stylesheets where the app imports 6 <!-- t:c62z -->
 - [ ] P2.1 Guard the object-menu reason on disabled, not on the reason being set (createPbui.tsx) <!-- t:bcaw -->
 - [ ] P2.2 Guard SelectInput's option reason the same way (latent copy of the same defect) <!-- t:ca5y -->
 - [ ] P2.3 Regression tests: an enabled action with a reason shows its description and no reason text <!-- t:b23m -->

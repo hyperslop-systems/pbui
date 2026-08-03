@@ -215,9 +215,16 @@ already missed two, in the file where it matters most:
 | `agentlogic/ui/src/main.tsx:52-64` | styles, components, **presentation-parts**, **chrome** |
 | `agentlogic/ui/.storybook/preview.tsx:12-13` | styles, components |
 
-So agentlogic's Storybook renders presentations and tile chrome unlike its own
-product — and Storybook is what its entire component refactor was verified
-through. hyperblog, turboproof and datalab-ui import all four in both places.
+So agentlogic's Storybook renders the tile chrome unlike its own product — and
+Storybook is what its entire component refactor was verified through.
+hyperblog, turboproof and datalab-ui import all four in both places.
+
+Measured after the fix rather than assumed: agentlogic imports exactly one
+thing from pbui's chrome (`TileFrame`, `TileTree.tsx:185`) and nothing from its
+presentation runtime, so no agentlogic story renders a `Presentation` or an
+`ObjectMenu`. The blast radius is the tile frame alone — but the tile frame is
+on every workspace story, and it lost its 2px border and its white background
+in all of them.
 
 **The fix has two halves.** Wire `styles.css` into the module graph so it
 ships (P1.1); and make the `styles.css` export self-sufficient, so importing
