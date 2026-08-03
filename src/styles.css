@@ -1,78 +1,139 @@
 /*
  * pbui's ZERO-SPECIFICITY fallback defaults for the presentation parts.
  *
+ * # What this file is
+ *
  * Two layers style the presentation parts, on purpose:
  *
- *   1. THIS file — :where() rules (zero specificity) so a bare consumer sees
- *      something legible before it styles anything. Every value is a local
- *      fallback variable because pbui defines no design tokens.
- *   2. public/presentation-parts.css — the design-system look, plain
- *      attribute selectors that win over :where() in every product that
- *      imports it (the documented import order).
+ *   1. THIS file — :where() rules (zero specificity) so a consumer who imports
+ *      nothing but the library's own stylesheet still sees a legible menu and
+ *      a legible presentation.
+ *   2. public/presentation-parts.css — the design-system look, plain attribute
+ *      selectors that carry (0,1,0) and therefore win over every rule here
+ *      regardless of import order.
  *
- * The defaults follow the same ten rules as the products: no radius, no
- * blurred shadows, hairline-solid borders in ink. An earlier version of this
- * file shipped a 999px pill and a blurred menu shadow as the DEFAULT, which
- * meant a storybook or product missing presentation-parts.css silently
- * rendered off-system — the exact silent-failure mode the parts file exists
- * to end. If a default here and a rule in tokens.css disagree, the default
- * is wrong: fix it here, not in the products.
+ * The defaults follow the same rules as the products: no radius, no blurred
+ * shadows, hairline-solid borders in ink. An earlier version shipped a 999px
+ * pill and a blurred menu shadow as the DEFAULT, which meant a storybook or
+ * product missing presentation-parts.css silently rendered off-system — the
+ * exact silent-failure mode the parts file exists to end.
+ *
+ * # It did not ship for its first eleven months
+ *
+ * `src/index.ts` imported `tokens.css` and not this file, so Vite never pulled
+ * it into the module graph and none of it reached `dist/pbui.css`. A file
+ * written to protect a bare consumer, carrying a header explaining what it
+ * protects against, attached to nothing. That is the same defect as the one
+ * `tokens.css` was created to fix in 0.3.0, one layer up: a safety net nothing
+ * imports does not ship. PBUI-HARDEN-1 P1.1 wired it in.
+ *
+ * Wiring it in also exposed a bug it had been hiding. The muted-text rule read
+ *
+ *     :where([data-pbui="menu"]) button:disabled,
+ *     :where([data-pbui="menu"]) [data-part="menu-item"] { color: muted }
+ *
+ * and `data-part="menu-item"` is on EVERY action button (createPbui.tsx:364),
+ * not only the empty-state div (`:357`). Shipping the file unchanged would
+ * have greyed every entry in every menu. The empty state is now selected as
+ * `div[data-part="menu-item"]`, which is the only part of the pair that is not
+ * a button.
+ *
+ * # These values read the real tokens
+ *
+ * They used to be a parallel palette — `--pbui-fallback-surface`,
+ * `--pbui-menu-border` and ten more hardcoded hexes — declared here "because
+ * pbui defines no design tokens". Since 0.3.0 it does, in `tokens.css`, which
+ * is bundled into the same stylesheet as this file and cannot be absent when
+ * these rules apply. The second palette is gone; a colour that should track
+ * the family now does. Inline fallbacks stay on every read, matching
+ * presentation-parts.css, because a read with a fallback is safe by
+ * construction.
  */
 
-:where([data-pbui="presentation"]) {
-  --pbui-fallback-surface: #ffffff;
-  --pbui-fallback-border: #23262b;
-  --pbui-fallback-text: #23262b;
-  --pbui-fallback-accent: #2563eb;
-  --pbui-fallback-danger: #b64b37;
-  --pbui-fallback-selected: #fdeec6;
+/* ---- the typographic baseline ------------------------------------------- */
 
+/*
+ * pbui DEFINES `--pbui-font` and, until this rule, never applied it to
+ * anything a bare consumer would inherit from.
+ *
+ * Four component modules read it — `Text`, `Kbd`, `CodeLine`, `FileBrowser` —
+ * so anything rendered through `<Text>` was monospace. But every presentation
+ * part says `font: inherit`, deliberately, so that a product's typography
+ * flows into the menus. With no document baseline there was nothing to
+ * inherit, and a consumer who imported the stylesheet and set no typography of
+ * their own got the browser default: Times New Roman at 16px, with an 11.5px
+ * design system layered on top of it.
+ *
+ * Every product sets its own `body` typography, so none of them ever saw this
+ * — which is exactly why it survived. The bare consumer is the only one who
+ * hits it, and the bare consumer is who this file is for.
+ *
+ * Zero specificity, so a product's own `:root`/`body` rule wins without
+ * needing to know this exists. Colour and background are deliberately NOT set
+ * here: the parts below paint their own, and a page-level background is a
+ * decision belonging to whoever owns the page.
+ */
+:where(:root) {
+  font-family: var(--pbui-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: var(--pbui-fs-base, 11.5px);
+  line-height: var(--pbui-lh-tight, 1.35);
+}
+
+/* ---- the presentation --------------------------------------------------- */
+
+:where([data-pbui="presentation"]) {
   appearance: none;
-  border: 1px solid var(--pbui-fallback-border);
+  border: var(--pbui-border-hair, 1px solid #23262b);
   border-radius: var(--pbui-radius, 0);
-  background: var(--pbui-fallback-surface);
-  color: var(--pbui-fallback-text);
+  background: var(--pbui-pane, #ffffff);
+  color: var(--pbui-ink-on-pane, #23262b);
   cursor: context-menu;
   font: inherit;
   padding: var(--pbui-space-1, 2px) var(--pbui-space-3, 6px);
 }
 
+/*
+ * An object that would satisfy the accept in progress. The outline is danger
+ * rather than accent because accepting is the one click in the protocol that
+ * commits to something.
+ */
 :where([data-pbui="presentation"])[data-state="acceptable"] {
-  outline: 2px solid var(--pbui-fallback-danger);
-  background: var(--pbui-fallback-selected);
+  outline: var(--pbui-border-firm, 2px solid #23262b);
+  outline-color: var(--pbui-danger, #b64b37);
+  background: var(--pbui-selected, #fdeec6);
   cursor: pointer;
 }
 
 :where([data-pbui="presentation"]):focus-visible,
 :where([data-pbui="menu"]) button:focus-visible {
-  outline: 2px solid var(--pbui-fallback-accent);
-  outline-offset: 2px;
+  outline: var(--pbui-focus-ring, 2px solid #23262b);
+  outline-offset: var(--pbui-focus-offset, 1px);
 }
 
-:where([data-pbui="menu"]) {
-  --pbui-menu-surface: #ffffff;
-  --pbui-menu-border: #23262b;
-  --pbui-menu-text: #23262b;
-  --pbui-menu-muted: #696e75;
-  --pbui-menu-selected: #fdeec6;
-  --pbui-menu-danger: #b64b37;
+/* ---- the object menu ---------------------------------------------------- */
 
+/*
+ * Fixed at the pointer and above everything. The absence of this rule is the
+ * silent-failure mode both stylesheets exist to end: an unpositioned menu
+ * renders at the end of the document, opens on every click, and is never seen.
+ */
+:where([data-pbui="menu"]) {
   position: fixed;
   z-index: 1000;
   display: grid;
   min-width: 13rem;
   overflow: hidden;
-  border: 1px solid var(--pbui-menu-border);
+  border: var(--pbui-border-hair, 1px solid #23262b);
   border-radius: var(--pbui-radius, 0);
-  background: var(--pbui-menu-surface);
-  /* Rule 3: shadows are off. Separation comes from the border. */
+  background: var(--pbui-pane, #ffffff);
+  /* Shadows are off. Separation comes from the border. */
   box-shadow: var(--pbui-shadow-menu, none);
-  color: var(--pbui-menu-text);
+  color: var(--pbui-ink-on-pane, #23262b);
 }
 
 :where([data-pbui="menu"]) [data-part="menu-header"] {
-  padding: 0.625rem 0.75rem;
-  border-bottom: 1px solid var(--pbui-menu-border);
+  padding: var(--pbui-space-3, 6px) var(--pbui-space-4, 10px);
+  border-bottom: var(--pbui-border-hair, 1px solid #23262b);
   font-weight: 700;
 }
 
@@ -82,19 +143,36 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  padding: 0.5rem 0.75rem;
+  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
   text-align: left;
 }
 
 :where([data-pbui="menu"]) button:not(:disabled):hover {
-  background: var(--pbui-menu-selected);
+  background: var(--pbui-selected, #fdeec6);
 }
 
 :where([data-pbui="menu"]) button[data-danger="true"] {
-  color: var(--pbui-menu-danger);
+  color: var(--pbui-danger, #b64b37);
 }
 
+/*
+ * Muted: a disabled entry, and the "No actions available" placeholder.
+ *
+ * The placeholder is the only `[data-part="menu-item"]` that is not a button
+ * (createPbui.tsx:357), which is what `div` selects here. Grouping the bare
+ * attribute with `button:disabled` — as this rule did before it shipped —
+ * greys every entry in the menu.
+ */
 :where([data-pbui="menu"]) button:disabled,
-:where([data-pbui="menu"]) [data-part="menu-item"] {
-  color: var(--pbui-menu-muted);
+:where([data-pbui="menu"]) div[data-part="menu-item"] {
+  color: var(--pbui-faint, #696e75);
+}
+
+/*
+ * The reason an entry is unavailable, shown after the label. Faint and small,
+ * so it reads as an annotation on the verb rather than part of its name.
+ */
+:where([data-pbui="menu"]) [data-part="menu-reason"] {
+  color: var(--pbui-faint, #696e75);
+  font-size: var(--pbui-fs-tiny, 9.5px);
 }
