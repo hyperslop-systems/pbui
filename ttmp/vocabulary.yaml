@@ -15,6 +15,10 @@ topics:
       description: The PBUI presentation-based UI library and the products built on it
     - slug: refactoring
       description: Restructuring existing code without changing behaviour
+    - slug: onboarding
+      description: Documents written to hand work to somebody new
+    - slug: review
+      description: Code-review findings and follow-ups
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes

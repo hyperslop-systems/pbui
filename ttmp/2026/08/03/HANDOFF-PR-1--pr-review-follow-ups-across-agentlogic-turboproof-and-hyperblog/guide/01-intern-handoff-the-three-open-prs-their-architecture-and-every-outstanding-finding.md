@@ -44,6 +44,19 @@ WhenToUse: Read §1-§4 once, then work §5-§7 in the order given in §8.
 
 # Intern handoff: three open PRs
 
+> **Superseded for the next round — 2026-08-03.** Everything catalogued here
+> has been worked; see this ticket's `reference/01-diary.md`. But this document
+> undercounted: it said 21 findings and the API says 32, so eleven went
+> unaddressed for a round.
+>
+> **The current work is `HANDOFF-PR-2`** —
+> `ttmp/2026/08/03/HANDOFF-PR-2--…/design-doc/01-fix-the-categories-not-the-instances-….md`
+> — which carries the 38 findings that remain, the structural changes that
+> would retire their categories, and a script that derives the list from the
+> API rather than counting it by hand.
+>
+> **§1–§4 below are still the architecture and are still correct.** Read them.
+
 Welcome. Three pull requests are open and reviewed, with **21 review findings
 and 7 failing CI jobs** between them. None is blocked on a decision; all of
 them are yours.

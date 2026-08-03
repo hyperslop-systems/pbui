@@ -1,0 +1,95 @@
+
+==========================================================================
+turboproof #3 — 12 shown of 21 threads
+==========================================================================
+  [P1] OPEN  pkg/filestore/store.go:199
+              When configured roots overlap or resolve to the same directory, one physical file is reachable t
+  [P2] OPEN  pkg/filestore/store.go:328
+              For a symbolic link to a directory inside the configured root, `DirEntry.Info()` describes the l
+  [P2] OPEN  pkg/filestore/store.go:480
+              When a previously opened file is externally replaced by a directory, the next save reaches `Writ
+  [P2] OPEN  pkg/filestore/store.go:521
+              When the opened path is a symlink to another file inside the same root, reads and fingerprint ch
+  [P2] OPEN  pkg/server/handlers_files.go:82
+              A body such as `{}` or `{"text":null}` decodes successfully with `body.Text == ""`, despite the 
+  [P1] OPEN  pkg/server/handlers_files.go:117
+              The new create and rename POST handlers decode JSON regardless of the request's `Content-Type` o
+  [P2] OPEN  ui/src/apps/FilesApp.tsx:305
+              With multiple configured roots, any failed root or directory request writes one global `tree.err
+  [P1] OPEN  ui/src/apps/SaveControl.tsx:70
+              When an open file is deleted externally or by another tab, its local sync entry still carries th
+  [P2] OPEN  ui/src/hooks/fileTree.ts:49
+              After creating, renaming, or deleting an entry in a directory that contains expanded subdirector
+  [P1] OPEN  ui/src/store/renameBinding.ts:80
+              When the destination file was previously deleted while its buffer remained open, the server acce
+  [P2] OPEN  ui/src/store/sync.tsx:149
+              When the initial workbench probe fails, `syncPhase` becomes `offline`, so this effect marks the 
+  [P2] OPEN  ui/src/store/sync.tsx:224
+              If the mutation returns 422 but the subsequent `getWorkbench` fails transiently, `.catch(() => n
+
+==========================================================================
+hyperblog #1 — 18 shown of 27 threads
+==========================================================================
+  [P2] OPEN  pkg/cli/reader.go:164
+              When an operator runs the documented `hyperblog reader --subject <existing> --disable` form, omi
+  [P2] OPEN  pkg/cli/serve.go:179
+              If the identity provider remains unavailable through the configured ten discovery attempts, this
+  [P2] OPEN  pkg/glossary/markdown.go:130
+              When a configured corpus directory is unreadable, or `--corpus-dir` points to a nonexistent root
+  [P2] OPEN  pkg/glossary/markdown.go:299
+              Any ten-character value, such as `2026-99-99` or `abcdefghij`, passes this check even though dow
+  [P1] OPEN  pkg/glossary/search.go:127
+              For an anonymous or lower-tier reader, every search still scans the complete paid body and retur
+  [P2] OPEN  pkg/glossary/types.go:146
+              The membership table says free-tier notes and bookmarks live only in the current browser while m
+  [P2] OPEN  pkg/server/handlers_auth.go:136
+              When the same new OIDC subject completes two sign-ins concurrently in separate browsers, both pr
+  [P2] OPEN  pkg/server/handlers_auth.go:239
+              When the provider refuses sign-in, state validation fails, or token exchange fails, this redirec
+  [P2] OPEN  pkg/server/handlers_corpus.go:108
+              A corpus with no `series/` directory is explicitly supported, but in that case `Corpus.Series` r
+  [P2] OPEN  pkg/server/handlers_me.go:260
+              When a client requests at least one valid scope together with a misspelled or unsupported one, `
+  [P1] OPEN  pkg/server/handlers_workbenches.go:351
+              In deployments behind a shared cache that stores otherwise cacheable GET responses, the list and
+  [P2] OPEN  pkg/server/problem.go:155
+              When a request body contains a valid first object followed by another JSON value or arbitrary tr
+  [P2] OPEN  ui/src/App.tsx:155
+              After “Open beside… (accept a term)” collects a term, this only moves the global cursor and igno
+  [P2] OPEN  ui/src/apps/ShellApps.tsx:225
+              When a singleton pane is split, its companion becomes the launcher, but the launcher then offers
+  [P1] OPEN  ui/src/components/molecules/NoteEditor/NoteEditor.tsx:66
+              When a reader edits an open question and clicks “close the question” without first blurring the 
+  [P2] OPEN  ui/src/components/molecules/Prose/Prose.tsx:42
+              For prose containing inline Markdown—already present as `` `map_take_key` `` and `` `new` `` in 
+  [P2] OPEN  ui/src/pbui/descriptors/rest.ts:250
+              When a reader chooses “Swap with…”, this entry emits `swapTilesByAccept`, but neither `applyLayo
+  [P2] OPEN  ui/src/pbui/descriptors/term.ts:24
+              Bookmark sets are keyed by `markKey`, which separates the presentation type and value with a NUL
+
+==========================================================================
+agentlogic #3 — 0 shown of 3 threads
+==========================================================================
+
+==========================================================================
+pbui #9 — 8 shown of 14 threads
+==========================================================================
+  [P2] OPEN  src/components/organisms/FileBrowser/FileBrowser.tsx:247
+              When the common initial state has `selectedId === null`, `focusedKey` remains null as the tree i
+  [P2] OPEN  src/components/organisms/FileBrowser/FileBrowser.tsx:291
+              When a keyboard user arrows onto the sentinel and presses Enter, this update removes that sentin
+  [P2] OPEN  src/components/organisms/FileBrowser/FileBrowser.tsx:314
+              Replacing every punctuation character with `_` does not preserve the `FileNode.id` uniqueness co
+  [P2] OPEN  src/components/organisms/FileBrowser/FileBrowser.tsx:422
+              The show-more sentinel is an actionable `treeitem` that ArrowUp/ArrowDown can make the active de
+  [P2] OPEN  src/components/organisms/FileBrowser/index.ts:3
+              The new `trees` prop is expressed in terms of the exported `RootState` union, and the component'
+  [P2] OPEN  src/presentation/createPbui.tsx:387
+              When `Presentation` wraps a `FileBrowser` row, the inline-rename input is nested inside this han
+  [P2] OPEN  src/presentation/createPbui.tsx:442
+              When `inComposite` is used as shown by `FileBrowser`'s presentation story, DOM focus remains on 
+  [P2] OPEN  src/styles-wiring.test.ts:121
+              This regex only recognizes `:where(:root)` and `:where(html)`, so a plain `html { font-size: ...
+
+==========================================================================
+NOT YET FIXED: 38  (7 P1, 31 P2)
