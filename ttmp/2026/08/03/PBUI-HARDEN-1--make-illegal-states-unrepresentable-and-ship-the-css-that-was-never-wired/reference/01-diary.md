@@ -375,3 +375,161 @@ pnpm vitest run src/styles-parity.test.ts; git checkout .storybook/preview.tsx
 ```
 Then open `workspaces-workbench--default` and confirm the four tiles have a 2px
 ink border on white.
+
+## Step 3: Phase 2 — correcting the guards, without touching a consumer
+
+Two components guarded the unavailability reason on the reason being SET rather
+than on the action being disabled. Fixing both is four lines, and it corrects
+fifteen live sites across three products without a single consumer changing —
+because every one of those sites already sets `disabled` correctly. The
+predicate was never wrong. Only its independence from the prose was.
+
+That property is why Phase 2 exists as its own phase rather than falling out of
+Phase 3's merge: the user-visible defect is gone before the breaking change
+starts, so P3 can be judged on API quality rather than under pressure to fix a
+live bug.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Implement P2.1-P2.3 — the non-breaking guard
+corrections and their regression tests.
+
+**Inferred user intent:** Stop the bug that is currently on screen in three
+products before restructuring the API that permitted it.
+
+**Commit (code):** `85bf821` — "P2: a disabled reason belongs to a disabled action"
+
+### What I did
+
+- `createPbui.tsx:366-378` — both the reason span and the `title` now read
+  `action.disabled` first.
+- `SelectInput.tsx:110-127` — the same, for `option.disabled` / `option.reason`.
+- `createPbui.test.tsx` — a `describe` block with the two directions, using a
+  descriptor written the way all fifteen real sites are written.
+- `SelectInput.test.tsx` — new file; the component had no tests at all.
+- `FileBrowser.test.tsx:189` — an explicit 20s timeout on the windowing test
+  (pre-existing flake, see below).
+
+### Why
+
+The fix is trivial and the reason it was needed is not. A descriptor author
+knows the rule — *you cannot focus the term the cursor is already on* — and
+writes it twice, once as a predicate and once as prose:
+
+```ts
+disabled: environment.cursorTerm === ref.id,
+disabledReason: "the cursor is already here",
+```
+
+Two adjacent lines that a reader parses as one unit and the renderer evaluates
+as two. Nothing on the page says the second is independent of the first, and
+the type endorses the author's reading by declaring both as free-standing
+optionals.
+
+### What worked
+
+**The mutation test, in the currency the user sees.** Reverting each guard
+produces the exact string a person would have read on screen:
+
+```
+expected 'Focus — the cursor is already here' to be 'Focus'
+expected 'JSON — needs a paid plan' to be 'JSON'
+```
+
+An assertion whose failure message is the user-visible symptom needs no comment
+explaining what broke.
+
+**Proving it against a real menu rather than a test double.** pbui's own
+`Pbui.stories.tsx:30` has the defective shape, so driving its Storybook is a
+live consumer check with no product linking. Opening Ada Lovelace's menu, who is
+not the current user:
+
+```json
+{ "text": "Send email", "disabled": false, "title": null, "reasonSpan": false }
+```
+
+Before the fix that item read "Send email — You cannot email yourself from this
+example". One of the sixteen sites, fixed and observed in a browser.
+
+### What didn't work
+
+**A red run I nearly explained away.** The first full-suite run after the fix
+came back `1 failed | 75 passed`. The second came back green. The temptation to
+call that a flake and move on is exactly the failure mode that lets a real
+regression through, so I ran it four more times: `FileBrowser > windowing: 5000
+siblings` failed on run 3 at **5359ms** against vitest's 5000ms default.
+
+My first isolation attempt was wrong. I stashed the change and ran that test
+FILE alone six times: 6/6 green — which proves nothing, because the flake only
+appears under full-suite parallel load. Running the right comparison:
+
+| tree | full-suite runs | failures |
+|---|---|---|
+| before P2 | 5 | **3** |
+| with P2 | 5 | 2 |
+
+Pre-existing, and if anything slightly better with my change, which is noise.
+Not mine — but a suite that fails half the time makes every verification in
+Phases 3-6 worthless, because the habit it teaches is re-running rather than
+reading. Fixed with an explicit 20s timeout rather than a smaller fixture: 5000
+siblings is the claim (`pageSize` exists so a 50,000-node directory costs what
+a 50-node one costs), and a fixture small enough to be fast would not exercise
+it. 6/6 green after.
+
+### What I learned
+
+`SelectInput` had **no test file at all**, which is the reason its copy of the
+defect was latent rather than fixed. The component is ten months old, is used
+by seven organisms across two products, and nothing asserted anything about it.
+The bug was found by reading, and would have been found by writing one test.
+
+The general form, and the one I would carry forward: *"no caller uses this
+field yet"* is not a reason to skip the assertion. It is the precise condition
+under which a defect survives review indefinitely — nobody sees it, so nobody
+reports it, and the first caller ships it.
+
+### What was tricky to build
+
+The `title` correction has a subtlety the reason span does not. The old code was
+`title={action.disabledReason ?? action.description}`, so a `disabledReason`
+suppressed the description **even on an enabled action** — the useful tooltip
+replaced by an inapplicable one. The fix has to preserve three behaviours at
+once: disabled with a reason shows the reason, disabled without one falls back
+to the description, and enabled always shows the description regardless of what
+`disabledReason` holds. Written as a conditional rather than a chain of `&&`/
+`||`, because the `||` form types as `boolean | string | undefined` and reads
+as though it might be doing something clever:
+
+```tsx
+title={action.disabled ? (action.disabledReason ?? action.description) : action.description}
+```
+
+### What warrants a second pair of eyes
+
+The `SelectOption` title on an enabled option is now `undefined` rather than
+the reason. `SelectOption` has no `description` field, so there is nothing to
+fall back to — an enabled option simply has no tooltip, which is correct but is
+a behaviour change if any caller was using `reason` as a general annotation.
+None does today.
+
+### What should be done in the future
+
+- The FileBrowser windowing test is slow because jsdom mounts 5001 real nodes.
+  If the suite gets slower, that test wants a different strategy rather than a
+  larger timeout.
+
+### Code review instructions
+
+Start at `createPbui.tsx:366-378` — the comment there is the whole argument.
+
+```bash
+cd pbui && pnpm run test
+# each guard must fail on its own defect:
+sed -i 's/{action.disabled && action.disabledReason && (/{action.disabledReason \&\& (/' src/presentation/createPbui.tsx
+pnpm vitest run src/presentation/createPbui.test.tsx; git checkout src/presentation/createPbui.tsx
+```
+For the live check: `pnpm exec storybook dev -p 6021`, open
+`presentation-pbui-protocol--default`, right-click Ada Lovelace. "Send email"
+must carry no em-dash suffix.

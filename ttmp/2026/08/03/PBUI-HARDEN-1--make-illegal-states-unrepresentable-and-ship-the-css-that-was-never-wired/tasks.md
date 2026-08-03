@@ -7,9 +7,9 @@
 - [x] P1.3 Make the styles.css export self-sufficient so a consumer cannot miss one of the four stylesheets <!-- t:scvm -->
 - [x] P1.4 Add a test that every data-part pbui renders has a rule in the shipped CSS <!-- t:nmwa -->
 - [x] P1.5 Fix agentlogic's Storybook preview: it imports 4 stylesheets where the app imports 6 <!-- t:c62z -->
-- [ ] P2.1 Guard the object-menu reason on disabled, not on the reason being set (createPbui.tsx) <!-- t:bcaw -->
-- [ ] P2.2 Guard SelectInput's option reason the same way (latent copy of the same defect) <!-- t:ca5y -->
-- [ ] P2.3 Regression tests: an enabled action with a reason shows its description and no reason text <!-- t:b23m -->
+- [x] P2.1 Guard the object-menu reason on disabled, not on the reason being set (createPbui.tsx) <!-- t:bcaw -->
+- [x] P2.2 Guard SelectInput's option reason the same way (latent copy of the same defect) <!-- t:ca5y -->
+- [x] P2.3 Regression tests: an enabled action with a reason shows its description and no reason text <!-- t:b23m -->
 - [ ] P3.1 Merge PresentationAction.disabled/disabledReason into disabledBecause <!-- t:3026 -->
 - [ ] P3.2 Merge SelectOption.disabled/reason into disabledBecause <!-- t:1eqd -->
 - [ ] P3.3 Merge FileDropZone.disabled/disabledReason into disabledBecause <!-- t:5533 -->
