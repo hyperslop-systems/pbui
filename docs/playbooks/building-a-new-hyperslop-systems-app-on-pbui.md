@@ -115,7 +115,7 @@ Import the stylesheets in this order:
 
 ```ts
 import "./styles/reset.css";
-import "./styles/tokens.css"; // product-owned; PBUI defines no values
+import "./styles/tokens.css"; // product overrides; pbui ships defaults (§4)
 import "@hyperslop-systems/pbui/styles.css";
 import "@hyperslop-systems/pbui/components.css";
 import "@hyperslop-systems/pbui/presentation-parts.css";
@@ -152,11 +152,14 @@ it cannot overwrite the embedded bundle.
 
 ## 4 · The tokens, and the trap that shaped everything
 
-**PBUI ships components that read design tokens. PBUI does not define them.**
+**PBUI used to ship components that read design tokens and define none of
+them. As of pbui 0.3.0 it defines a default for all forty-four.** This section
+is retained because the failure mode it describes is instructive, because the
+history explains several odd-looking decisions in the products, and because the
+check at the end still earns its place.
 
-The values live in `datalab-ui/src/styles/tokens.css`, 61 of them, and that
-package does not export the file. agentlogic imported PBUI's stylesheets, defined
-none, and ran for weeks with **43 tokens read and 0 defined**.
+Before that fix, agentlogic imported PBUI's stylesheets, defined none, and ran
+for weeks with **43 tokens read and 0 defined**.
 
 An undefined custom property makes the declaration invalid at computed-value
 time, so `border: var(--pbui-border-hair)` becomes no border. Nothing fails: no
@@ -184,8 +187,19 @@ comm -23 <(grep -o -- 'var(--pbui-[a-z0-9-]*' $C | sed 's/var(//' | sort -u) \
          <(grep -o -- '--pbui-[a-z0-9-]*:'    $C | sed 's/:$//'  | sort -u)
 ```
 
-Anything it prints is read and undefined. Nine tokens are read by `JsonBlock` and
-`Dialog` that datalab does not define either; define them yourself.
+Anything it prints is read and undefined.
+
+**Since pbui 0.3.0 this should print nothing.** `src/tokens.css` ships a default
+for every token pbui reads, wrapped in `:where(:root)` so your own `:root` block
+still wins regardless of import order. You now override what you want to change
+and inherit the rest. Keep running the check: it still catches a token you
+invented that pbui does not read, which is the mistake hyperblog made.
+
+The nine `JsonBlock`/`Dialog` tokens are a special case worth knowing about.
+They are read WITH inline fallbacks — `var(--pbui-code-surface, #0f172a)` — so
+they never rendered as nothing; they rendered in a slate-blue palette from no
+family product. pbui now defines them on-system. A read with a fallback is safe
+by construction and the check does not flag it.
 
 ### Keep your own grammar separate
 

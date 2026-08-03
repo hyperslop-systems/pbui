@@ -140,9 +140,14 @@ Two specific things to check while you are here:
   uses semantic `--pbui-tone-*` names. `hyperblog` aliased `--pbui-blue` and
   five siblings from a design sketch; none of them existed, so every chip's
   left edge silently fell back to ink.
-- **Nine tokens are read by `JsonBlock` and `Dialog` that no product defines.**
-  If you use either, define them. Copy the block at the end of
-  `hyperblog/ui/src/styles/tokens.css`.
+- **Since pbui 0.3.0 this check should print nothing**, because pbui now ships
+  a default for every token it reads. It still catches the other half of the
+  failure: a token *you* invented that pbui never reads. hyperblog aliased
+  `--pbui-blue` and five siblings from a design sketch; none of those names
+  exist, and the check is what found it.
+- The nine `JsonBlock`/`Dialog` tokens are read WITH inline fallbacks, so they
+  never rendered as nothing — they rendered in a slate-blue palette from no
+  family product. pbui now defines them on-system.
 
 ### 2.3 · Take an inventory, and a screenshot of every tile
 
