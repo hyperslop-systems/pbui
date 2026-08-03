@@ -702,3 +702,149 @@ pnpm run build   # REQUIRED before the next line; datalab-ui reads dist/
 To see the hole the tombstones cover, delete `disabled?: never` from
 `PresentationAction` and add `disabled: true` to any descriptor action. It
 compiles.
+
+## Step 5: Phase 4 — the click, and the API that dissolved
+
+The report's only S1 that was still costing correctness rather than only time.
+A Presentation opened its click handler with an unconditional
+`stopPropagation()`, which is right for the two cases where the Presentation
+acts and wrong for the case where the HOST does — which is exactly the case
+`renderRow` exists to create.
+
+The interesting part is what did not get built. P4.3 was "give FileBrowser's
+roving focus a controlled surface so renderRow can restore it", and once P4.1
+landed there was nothing left to restore.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Implement P4.1-P4.5 — click semantics, nesting
+guard, roving focus, the story, the test.
+
+**Inferred user intent:** Fix the defect that a product could not fix for
+itself.
+
+**Commit (code):** `538c63e` (pbui), `dae2b25` (turboproof)
+
+### What I did
+
+- `createPbui.tsx` — three-way click policy; a `Symbol.for` marker on the
+  native event; `activate.run` made optional.
+- `FileBrowser.stories.tsx` — the `WithPresentation` story stopped
+  demonstrating the bug.
+- `createPbui.test.tsx` — three propagation tests.
+- `FileBrowser.test.tsx` — two tests through a REAL Presentation.
+- turboproof `FilesApp.tsx` — deleted the re-implemented row gesture.
+
+### Why
+
+`renderRow` wraps a row's CONTENT, so the Presentation sits inside the row
+element and a click on the label was stopped before the row's handler ran. The
+tree lost three effects: `onSelect`, `onToggle`, and `setFocusedKey`. A product
+could restore the first two by duplicating them in the activate handler.
+`setFocusedKey` is `useState` inside `FileBrowser` with no prop and no handle,
+so arrow navigation kept moving from whatever row was last focused some other
+way, and no amount of product code could repair it.
+
+### What worked
+
+**P4.3 dissolved.** The plan was a `focus?: { id, onChange }` prop mirroring
+`rename`. Once the click bubbles, the row's own handler runs and calls
+`setFocusedKey` itself — the roving focus repairs itself and the new API is
+unnecessary. Deleting a planned prop is a better outcome than shipping it, and
+it only became visible by implementing in the right order.
+
+**The browser check on the story that used to demonstrate the bug.** Clicking
+the collapsed `Notes` label:
+
+```
+before  ▸Notes  aria-expanded=false  focused=false
+after   ▾Notes  aria-expanded=true   focused=TRUE
+```
+
+Both effects the report said were lost, in one gesture.
+
+**Both mutations failed loudly.** Reinstating the stop:
+`expected '▸Mini' to contain 'lakefile.lean'` — the report's exact symptom,
+reproduced by a test rather than by a person. Removing the nesting guard:
+`expected [ 'inner', 'outer' ] to deeply equal [ 'inner' ]`.
+
+### What didn't work
+
+**My first version of the P4.5 test proved nothing.** I wrote the harness with
+`renderRow={(node, children) => <span>{children}</span>}` — a stand-in for a
+Presentation. It passed. It would have passed just as well with the bug
+present, because a plain span stops nothing and the defect was pbui's own
+handler. I noticed because the test went green before I had run a mutation
+against it, which is the wrong order of events.
+
+Rewired to a real `createPbui` instance and a real `Presentation`, and only then
+did the mutation fail. **A test double that omits the mechanism under test is a
+test of nothing**, and the tell was that it passed first try.
+
+**The stale-`dist` trap for the third time.** turboproof reported `Property
+'run' is missing` after I made `run` optional — because it reads pbui's
+`dist/`, and I had not rebuilt. Three occurrences in one ticket; it is now in
+the code-review instructions as a required step rather than a note.
+
+### What I learned
+
+Removing a `stopPropagation` is a breaking behaviour change in two directions,
+and only one of them is obvious. Upward, hosts start seeing clicks they did not
+see before — which is the fix. Downward, a Presentation nested inside another
+was relying on the inner one's stop, and would now double-handle. Nothing nests
+presentations in this workspace today, which is precisely why the guard had to
+go in with the change rather than after someone finds out.
+
+The marker is `Symbol.for` rather than `Symbol()` so that two copies of pbui on
+one page still agree — the duplicate-React situation P6.3 covers. A private
+symbol would have made the guard fail exactly when the packaging bug is
+present, which is the worst time for a second bug to appear.
+
+### What was tricky to build
+
+`activate.run` becoming optional was not in the plan and is the subtle part.
+After P4.1, turboproof's wrapper had to stop duplicating select-and-toggle or
+every directory would toggle twice and cancel out. But it still wanted a left
+click to mean "the default verb" rather than "open the menu", and still wanted
+the mouse doc to say "expand or collapse". With `run` required, the only way to
+express that was `run: () => {}` — an empty function that lies about what
+happens.
+
+So `activate` now encodes three states rather than two:
+
+| | left click |
+|---|---|
+| `activate` absent | opens the menu, like right click |
+| `activate` with `run` | this element acts, and the host also sees the click |
+| `activate` without `run` | the host owns it; this only names it |
+
+That third row is what a `renderRow` wrapper wants, and it did not exist before
+this phase.
+
+### What warrants a second pair of eyes
+
+Hosts that relied on the swallow. I audited every `Presentation` call site in
+datalab-ui and turboproof for a clickable ancestor and found none — the
+`onClick`s near them are on sibling controls, not parents — but that audit is
+by reading, and a product outside this workspace could differ. The escape hatch
+if one turns up is a `stopPropagation` option on `activate`.
+
+### What should be done in the future
+
+- P4.3's controlled-focus prop is deliberately NOT built. If a product ever
+  needs to drive the roving focus from outside (a "reveal in tree" verb, say),
+  that is when to add it — with a use, rather than in anticipation of one.
+
+### Code review instructions
+
+```bash
+cd pbui && pnpm run test && pnpm run build   # build BEFORE checking consumers
+(cd packages/datalab-ui && pnpm exec tsc --noEmit && pnpm run test)
+(cd ../turboproof/ui && pnpm exec tsc --noEmit && pnpm run test)
+```
+Then the mutation that matters: put `event.stopPropagation()` back in the
+`activate` branch of `handleClick` and run `FileBrowser.test.tsx`. Two tests
+must fail. In a browser, open `component-library-organisms-filebrowser--with-presentation`
+and click a collapsed directory's LABEL — it must expand.

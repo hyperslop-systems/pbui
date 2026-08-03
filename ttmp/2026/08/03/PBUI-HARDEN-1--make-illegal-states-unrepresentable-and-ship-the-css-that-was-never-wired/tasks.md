@@ -16,11 +16,11 @@
 - [x] P3.4 Merge Presentation.onActivate/activateDoc into activate?: { doc, run } <!-- t:9n74 -->
 - [x] P3.5 Merge FileBrowser.renamingId/onRenameStateChange into rename?: { id, onChange } <!-- t:hbjp -->
 - [x] P3.6 Migrate consumers: hyperblog (10 sites), turboproof (5), datalab-ui (adapter collapses to a passthrough) <!-- t:ynqy -->
-- [ ] P4.1 Stop swallowing the host's click when onActivate/activate is present <!-- t:9ops -->
-- [ ] P4.2 Guard against Presentation-nested-in-Presentation double-handling <!-- t:9q22 -->
-- [ ] P4.3 Give FileBrowser's roving focus a controlled surface so renderRow can restore it <!-- t:48tg -->
-- [ ] P4.4 Fix pbui's own WithPresentation story, which demonstrates the bug <!-- t:1x06 -->
-- [ ] P4.5 Test: click a directory label through a Presentation, assert toggle AND focus <!-- t:vvk6 -->
+- [x] P4.1 Stop swallowing the host's click when onActivate/activate is present <!-- t:9ops -->
+- [x] P4.2 Guard against Presentation-nested-in-Presentation double-handling <!-- t:9q22 -->
+- [x] P4.3 Give FileBrowser's roving focus a controlled surface so renderRow can restore it <!-- t:48tg -->
+- [x] P4.4 Fix pbui's own WithPresentation story, which demonstrates the bug <!-- t:1x06 -->
+- [x] P4.5 Test: click a directory label through a Presentation, assert toggle AND focus <!-- t:vvk6 -->
 - [ ] P5.1 Rename label -> accessibleName on the graphics/region components <!-- t:wmu3 -->
 - [ ] P5.2 Give the four form controls a label that actually renders <!-- t:98ci -->
 - [ ] P5.3 Migrate consumers and restore any text that was silently dropped <!-- t:tpwe -->
