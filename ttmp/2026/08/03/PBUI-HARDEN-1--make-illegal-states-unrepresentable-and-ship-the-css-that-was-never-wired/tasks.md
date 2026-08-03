@@ -28,4 +28,4 @@
 - [x] P6.2 role=button nested in role=treeitem (issue 5) <!-- t:hg10 -->
 - [x] P6.3 Duplicate-React dev-time guard and a Vite preset (issue 1) <!-- t:rgny -->
 - [x] P6.4 FileBrowser: trees cannot express a failed root; emptyState claims three surfaces and serves one <!-- t:ivj0 -->
-- [ ] P6.5 Publish 0.4.0 and bump the four products <!-- t:upc2 -->
+- [x] P6.5 Publish 0.4.0 and bump the four products <!-- t:upc2 -->

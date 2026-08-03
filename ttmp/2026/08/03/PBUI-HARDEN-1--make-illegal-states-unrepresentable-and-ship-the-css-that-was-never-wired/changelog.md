@@ -24,3 +24,8 @@ Documentation brought to 0.4.0: both playbooks, the README, TURBOPROOF-5's defec
 
 - /home/manuel/workspaces/2026-07-30/transcript-agent/pbui/scripts/consumer-smoke.mjs — The only check that compiles against the published package shape rather than src/
 
+
+## 2026-08-03
+
+Published @hyperslop-systems/pbui@0.4.0 (run 30846386902) and opened PRs: pbui#9, agentlogic#3, turboproof#3, hyperblog#1. Pushing surfaced a Go test the 0.3.0 token adoption had broken, and three hyperblog comments claiming tests that did not exist — all now written and mutation-tested.
+

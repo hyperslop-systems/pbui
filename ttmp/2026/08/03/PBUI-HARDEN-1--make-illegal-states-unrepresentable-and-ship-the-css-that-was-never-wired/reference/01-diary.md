@@ -1102,3 +1102,135 @@ grep -rn 'components\.css\|presentation-parts\.css' docs/playbooks/
 The only surviving mentions must be the ones explaining that the four-import
 form is historical. Same for `disabledReason`, which survives once, marked
 `DON'T`, beside the shape that replaced it.
+
+## Step 8: Publishing 0.4.0, and two more absent guards found on the way out
+
+`+ @hyperslop-systems/pbui@0.4.0`. Four PRs open. Pushing turned up two more
+instances of the pattern this whole ticket is about — a comment asserting a
+check that does not exist — in two different repositories, neither of which I
+was looking at.
+
+### Prompt Context
+
+**User prompt (verbatim):** "publish, create PRs across the board"
+
+**Assistant interpretation:** Publish 0.4.0 to the registry and open pull
+requests in every repository with work on it.
+
+**Inferred user intent:** Land all of it.
+
+**Commit (code):** agentlogic `2b0f2a1`, hyperblog `c738a06`
+
+### What I did
+
+- Ran the full CI sequence locally first — including `build-storybook`, which I
+  had never run — then pushed, dry-ran the publish workflow, and published.
+- Opened PRs: pbui #9, agentlogic #3, turboproof #3, hyperblog #1.
+- Fixed a Go test the pbui 0.3.0 adoption had broken.
+- Wrote three guards in hyperblog that its own comments already claimed.
+
+### What worked
+
+**Running CI's steps locally before pushing.** The publish workflow runs
+typecheck, test, build, build-storybook and `consumer:smoke`. I had run four of
+those five; `build-storybook` passed, but checking took a minute against a
+publish that takes several and is visible when it fails.
+
+The dry run then passed all five in CI, and the real publish printed
+`+ @hyperslop-systems/pbui@0.4.0` with `dist/vite.js` and `dist/vite.d.ts` in
+the tarball — the new subpath export, confirmed present in what consumers
+actually receive rather than in what the build emitted locally.
+
+### What didn't work
+
+**A Go test I broke a day ago and never ran.** agentlogic's pre-push hook
+refused the push:
+
+```
+--- FAIL: TestFontStylesheetKeepsTheFallbackStackInStep
+    webui_test.go:173: tokens.css declares no --pbui-font
+```
+
+The font feature has exactly one duplication: the server generates
+`--pbui-font: "Berkeley Mono", <stack>`, and that stack must match the design
+system's, because `font-family` takes one list and a preference cannot be
+prepended to an existing value. Deleting the thirty-five restated tokens moved
+the test's source of truth into pbui, and the test stayed where it was.
+
+**I verified `pnpm run test` after that change and never ran `go test ./...`.**
+A frontend change broke a backend test because the two share a value. Only the
+hook caught it. The fix points the test at the shipped `dist/pbui.css`, scoped
+to the `:where(:root)` block — a whole-file scan takes the last match, which
+lives in `.inverted`, exactly the mistake that cost time in the TypeScript
+equivalent of this guard.
+
+**`pnpm view` 403'd** when I tried to confirm the publish. The read token I had
+been using was almost certainly rotated — I flagged it for rotation earlier in
+this session after it was printed into a transcript. The workflow log is the
+better source anyway.
+
+### What I learned
+
+The pattern this ticket is named for kept turning up in places I was not
+looking. hyperblog had **three** comments describing tests that did not exist:
+
+```
+corpus.ts:180    "parseRefs.test.ts asserts the two agree on the corpus"
+registry.ts:18   "both assert themselves against registry.fixture.json"
+catalog.go:23    "catalog_test.go checks the Go side"
+```
+
+No `parseRefs.test.ts`, no fixture, no `catalog_test.go`. The last two describe
+the same absent check **in two languages**, and that is the part worth keeping:
+each comment lends the other credibility, so a reader who checks one file finds
+a claim corroborated by the other and stops. `registrySnapshot()` had even been
+written for the test, and was called by nothing. `pnpm run test` exited 1 with
+"No test files found".
+
+Written, both mutation-tested. The registry one protects a genuinely quiet
+failure: a tile in one list and not the other produces a workbench the server
+accepts and the browser cannot mount, and it surfaces as a 400 on a layout the
+reader saved a moment earlier.
+
+So the family's real defect is narrower than "illegal states are
+representable". It is: **a sentence that asserts an invariant reads exactly
+like one that enforces it, and costs nothing to write.** Every instance in this
+ticket — the Storybook comment, "Provide both or neither", `onCreate`'s
+contract, and now hyperblog's three — is that.
+
+### What was tricky to build
+
+Deciding how much to fix while opening a PR. hyperblog's missing tests are not
+pbui work and were on the backlog. But the branch was about to become a pull
+request with three comments in it claiming guards that were not there, and
+"known gap" in a PR description is not the same as a false statement in the
+source. The guards took twenty minutes; the fixture is generated from the live
+registry rather than hand-written, so it cannot start out wrong.
+
+I stopped short of writing hyperblog's component tests, which are a real gap
+and are named as one in the PR body.
+
+### What warrants a second pair of eyes
+
+pbui's PR #9 carries **33 commits**, sixteen of which are the unmerged
+`task/authkit-oidc-followups` branch including the 0.3.0 release. The PR says
+so and points at `0b18332` as the start of the 0.4.0 work, but a reviewer who
+misses that note will think the diff is much larger than the ticket.
+
+### What should be done in the future
+
+- hyperblog and agentlogic still consume 0.3.0. The bump is now unblocked and
+  is the next piece of work; agentlogic's `accessibleName` renames are reverted
+  and waiting for it.
+- hyperblog has no component tests.
+- The npm read token in Vault needs rotating if it has not been already.
+
+### Code review instructions
+
+```bash
+gh pr view 9 -R hyperslop-systems/pbui
+gh run view 30846386902 --log | grep '^+ @hyperslop'   # the publish line
+```
+For the two new guards, the mutations are the fastest way to see what they
+cover: change `[a-z0-9-]` to `[a-zA-Z0-9-]` in `hyperblog/pkg/glossary/refs.go`,
+and remove one id from `DefaultCatalog()`.
