@@ -647,3 +647,208 @@ useEffect(() => { if (installPerform) installPerform.current = perform; },
 
 `perform` is `layout-first, then the domain interpreter`, so a menu entry and
 a frame button take one path — which was the point of having one interpreter.
+
+## Step 4: agentlogic's three, and the CI nobody could reach
+
+agentlogic's findings are small and were a good place to end: a row that
+fetched from the wrong project, a variant that does not exist, and a row
+handler that answered for its own child. Then H10, which the guide flagged as
+infrastructure to ask about — and which, once asked and answered, turned out
+to be hiding four more failures behind it.
+
+The shape of H10 is worth stating plainly. Six red jobs, one missing Vault
+role. Provision the role and the pipeline goes green — except that lint,
+gosec, dependency-review and CodeQL had **never run at all**, because they all
+died at the same first step. Fixing the credential did not fix CI; it revealed
+what CI had to say. Two real lint failures, a gosec that was reporting zero
+findings because it could not type-check anything, and a CodeQL job failing at
+`checkout` for a reason that has nothing to do with CodeQL.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Finish the ticket: agentlogic's three, X1, and
+whatever can honestly be done about H10.
+
+**Inferred user intent:** As Step 1.
+
+**Blocking question asked (H10):** whether to provision the Vault policy and
+role. Answered "yes, provision it now".
+
+**Commit (code):** `d6c0e91` (agentlogic) — "A1/A2/A3: …"; `6801103` and `e622489` (hyperblog) — the CI work.
+
+### What I did
+
+- A1: `TranscriptChoice` carries `project`; `onOpen` uses `item.project`; the
+  effect clears the rows before its early return and cancels a superseded
+  response. `SourcePicker.test.tsx` (3).
+- A2: `variant="framed"` at both sites.
+- A3: `if (event.target !== event.currentTarget) return;` at the top of the
+  row's `onKeyDown`. `ChangesPanel.test.tsx` (5).
+- X1: verified rather than built — see below.
+- H10: wrote `gha-hyperblog-private-dependencies` and the
+  `hyperblog-private-dependencies` JWT role, mirroring turboproof's exactly.
+  Then fixed the two lint issues, ported turboproof's `dependency-scanning.yml`
+  (private-go on both scanning jobs, `id-token: write`, the `ttmp` exclusion,
+  dependency-review gated on public visibility) and its `codeql-analysis.yml`.
+
+All four repositories are now green.
+
+### What worked
+
+**Asking about H10 rather than assuming either way.** Provisioning a Vault
+policy that grants CI access to a shared App credential is outward-facing and
+not obviously mine to do. The guide said ask; asking took one question and the
+answer unblocked six jobs.
+
+**Reading turboproof's workflows instead of debugging hyperblog's.** Every
+single difference between the two `dependency-scanning.yml` files was a fix
+hyperblog needed, and turboproof's already carried the reasoning in comments —
+including the 2026-07-31 decision that this repository has no Advanced
+Security, which is the whole answer to two of the six jobs. The two files are
+now the same file. That is cheaper than diagnosing and better documented than
+anything I would have written.
+
+### What didn't work
+
+**My first A1 test asserted the case that already worked.** "Clears the rows
+when the project changes" tested alpha → beta, and alpha → beta was never
+broken: the early return `if (!project) return;` only fires when the project is
+CLEARED. The mutation run is what caught it — I reverted the fix and the test
+stayed green. Rewritten to test alpha → `""`, it fails properly.
+
+This is the second time in this ticket that a test passed for the wrong
+reason, and both times the mutation run was the only thing that noticed. §8 of
+the guide says a test written after a fix passes for the wrong reason more
+often than you would think. It is right, and the tell is not always "it passed
+first try" — sometimes it is "it passed under the mutation too".
+
+**`vault write bound_claims='{...}'` does not work from the shell.** The CLI
+reads it as a string and the API wants a map: `error converting input for
+field "bound_claims": '' expected a map, got 'string'`. Writing the whole role
+as a JSON file and `vault write @role.json` is the form that works.
+
+### What I learned
+
+**A CI failure at step one hides every step after it.** hyperblog's six red
+jobs looked like one problem with one fix. It was one problem — but the fix
+did not make CI green, it made CI *run*, and what ran had things to say: two
+genuine lint issues in committed code, a gosec that had been reporting `Issues
+: 0` for the same reason it was reporting errors, and a permissions bug in
+CodeQL. "Six jobs, one cause" was true and also the least interesting thing
+about it.
+
+**Naming any entry in `permissions:` zeroes every other one.** hyperblog's
+CodeQL job declared `security-events: write` and nothing else, so `checkout`
+had no `contents: read` and reported `fatal: repository … not found` — on the
+repository it was running inside. The message names the wrong thing entirely,
+which is exactly why it survived.
+
+**X1 did not need doing.** §7.4 of the guide says agentlogic and turboproof
+have the same two tile lists and no agreement test. Both have the fixture, the
+TypeScript half and `catalog_test.go`, and I confirmed the Go guard actually
+bites by adding a phantom tile to one catalog and watching it fail. The guide
+was stale — which is a small instance of its own central idea, since it is a
+document asserting the absence of a test that exists.
+
+### What was tricky to build
+
+**A1's discriminating test.** The bug is "the request names the selected
+project rather than the row's", and those two only differ during a race. A
+race makes an unreliable test, so the test arranges the disagreement directly:
+a row tagged `alpha` while `beta` is selected. That is legitimate rather than
+contrived — the server really does return each row's own project, which is
+what `TranscriptVersion.project` is for — and it asks the exact question the
+line under test answers.
+
+**A3's assertion on `defaultPrevented`.** Checking only that `onSelectEdit`
+was not called would pass for the wrong reason if the handler had simply been
+deleted. The row must still claim Enter for ITSELF (first test, asserts
+`defaultPrevented === true`) and must not claim it for its child (second test,
+asserts `false`). The pair is what pins the behaviour; either alone does not.
+
+### What warrants a second pair of eyes
+
+- **The Vault policy and role.** They mirror turboproof's byte for byte and I
+  diffed both to confirm, but they are a credential grant and deserve a look
+  from somebody with the authority to have made them.
+- **Gating CodeQL and dependency-review on `repository.visibility`.** It is
+  turboproof's decision, ported. If Advanced Security is ever bought, both
+  jobs return on their own — which is the point of a negative comparison
+  rather than a deleted file.
+- **A2 uses `framed` rather than implementing `.raised` in pbui.** `raised` is
+  arguably what these two primary actions want. Implementing it is a pbui
+  change and a release; `framed` is the border-and-padding look they lost.
+
+### What should be done in the future
+
+- **pbui's `LinkAction` accepts `ButtonVariant` and implements two of its
+  three cases.** The type promises `raised` and the CSS module has no
+  `.raised`, so the failure is silent — the same shape as an undefined custom
+  property. Either implement it or narrow the prop type. This is a pbui issue,
+  not an agentlogic one.
+- Bump hyperblog and agentlogic to pbui 0.4.0.
+- hyperblog's layout, including the new bindings, is not persisted.
+
+### Code review instructions
+
+```bash
+cd agentlogic/ui && pnpm exec vitest run && pnpm exec tsc --noEmit
+cd .. && GOWORK=off go test ./... -count=1
+
+# the Vault objects, against the product that already had them
+vault read auth/github-actions/role/hyperblog-private-dependencies
+diff <(vault policy read gha-turboproof-private-dependencies | grep -v '^#') \
+     <(vault policy read gha-hyperblog-private-dependencies  | grep -v '^#')
+
+# the workflows, against the same
+diff turboproof/.github/workflows/dependency-scanning.yml \
+     hyperblog/.github/workflows/dependency-scanning.yml
+```
+
+| finding | revert | test that goes red |
+|---|---|---|
+| A1 | `fetchArchive(project, …)` | `SourcePicker.test.tsx` (1) |
+| A1 | early-return before the clear | `SourcePicker.test.tsx` (1) |
+| A1 | drop the `live` flag | `SourcePicker.test.tsx` (1) |
+| A3 | drop the target guard | `ChangesPanel.test.tsx` (2) |
+
+### Technical details
+
+The role, in the form that actually writes (the shell form fails on
+`bound_claims`):
+
+```bash
+vault write auth/github-actions/role/hyperblog-private-dependencies @role.json
+```
+
+```json
+{
+  "role_type": "jwt",
+  "user_claim": "repository",
+  "bound_audiences": ["https://vault.yolo.scapegoat.dev"],
+  "bound_claims_type": "string",
+  "bound_claims": {
+    "repository": "hyperslop-systems/hyperblog",
+    "repository_owner": "hyperslop-systems"
+  },
+  "token_policies": ["gha-hyperblog-private-dependencies"],
+  "token_ttl": 600, "token_max_ttl": 1800, "token_explicit_max_ttl": 1800
+}
+```
+
+## Closing
+
+All 24 tasks are done. 21 review findings, the CI failures, and two defects
+nobody had found: hyperblog's dead `onPerform`, and the four CI jobs that had
+never run.
+
+The theme the guide named held up in both directions. `FileBrowser` documented
+"Left collapses or climbs" and only collapsed; `filesTile.ts` argued from
+"files is a singleton" to "a module slot has one owner" and the step does not
+follow; `slice.rejected` said everything behind the refused prefix "is still
+the user's work" and was silent about what shared it; §7.4 of the guide itself
+described an absent test that exists. A sentence that asserts an invariant
+reads exactly like one that enforces it — including when the sentence is in a
+handoff document written to catalogue that very failure.

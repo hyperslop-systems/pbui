@@ -47,3 +47,13 @@ Step 3: hyperblog H1-H9 — per-placement post bindings, a launcher that works, 
 - /home/manuel/workspaces/2026-07-30/transcript-agent/hyperblog/ui/src/App.tsx — the provider had no onPerform — the tenth finding
 - /home/manuel/workspaces/2026-07-30/transcript-agent/hyperblog/ui/src/model/paneTree.ts — the layout tree, extracted so H1/H7/H8 could be asserted
 
+
+## 2026-08-03
+
+Step 4: agentlogic A1/A2/A3, X1 verified as already done, and H10 — provisioned the missing Vault policy and role, which then revealed two real lint failures, a gosec that could not type-check anything, and a CodeQL job failing at checkout for want of contents:read. All four repositories green (agentlogic d6c0e91; hyperblog 6801103, e622489)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/transcript-agent/agentlogic/ui/src/components/pages/SourcePicker/SourcePicker.tsx — the row's own project (A1)
+- /home/manuel/workspaces/2026-07-30/transcript-agent/hyperblog/.github/workflows/dependency-scanning.yml — ported from turboproof — private-go on both scanning jobs (H10)
+

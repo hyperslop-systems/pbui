@@ -21,8 +21,8 @@
 - [x] H7 [P2] hyperblog openLauncher has no case, so no working path to change a pane's view (Workbench.tsx:168) <!-- t:fl2p -->
 - [x] H8 [P2] hyperblog split duplicates singleton tiles the server will reject (Workbench.tsx:147) <!-- t:pujl -->
 - [x] H9 [P2] hyperblog session list shows idle-expired sessions for up to 16 days (pkg/store/accounts.go:320) <!-- t:qupu -->
-- [ ] H10 CI hyperblog: vault role hyperblog-private-dependencies missing — INFRA, ask first. Dependency graph off. govulncheck resolves after pbui#9 merges <!-- t:tq11 -->
-- [ ] A1 [P2] agentlogic transcript fetched from the current project, not the row's — regression, see git log -p (SourcePicker.tsx:216) <!-- t:ssbr -->
-- [ ] A2 [P2] agentlogic LinkAction variant=raised does not exist; link loses all styling (DevicePage.tsx:91) <!-- t:bivl -->
-- [ ] A3 [P2] agentlogic nested StepChip keyboard events swallowed by the row handler (ChangesPanel.tsx:98) <!-- t:tojd -->
-- [ ] X1 Port hyperblog's registry/catalog agreement test to agentlogic and turboproof (~30 min each) <!-- t:kvwl -->
+- [x] H10 CI hyperblog: vault role hyperblog-private-dependencies missing — INFRA, ask first. Dependency graph off. govulncheck resolves after pbui#9 merges <!-- t:tq11 -->
+- [x] A1 [P2] agentlogic transcript fetched from the current project, not the row's — regression, see git log -p (SourcePicker.tsx:216) <!-- t:ssbr -->
+- [x] A2 [P2] agentlogic LinkAction variant=raised does not exist; link loses all styling (DevicePage.tsx:91) <!-- t:bivl -->
+- [x] A3 [P2] agentlogic nested StepChip keyboard events swallowed by the row handler (ChangesPanel.tsx:98) <!-- t:tojd -->
+- [x] X1 Port hyperblog's registry/catalog agreement test to agentlogic and turboproof (~30 min each) <!-- t:kvwl -->

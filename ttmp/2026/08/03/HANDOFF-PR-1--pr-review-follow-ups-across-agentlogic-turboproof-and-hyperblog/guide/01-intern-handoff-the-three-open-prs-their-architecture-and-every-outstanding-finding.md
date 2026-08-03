@@ -530,13 +530,24 @@ deleted the file being renamed. The fix there is
 this; the shape transfers, though here the guard is "is the target this row"
 rather than "is the target editable".
 
-### 7.4 · One task that is not a review comment
+### 7.4 · One task that is not a review comment — AND IT WAS ALREADY DONE
 
-hyperblog now has tests asserting its tile registry and its Go catalog agree
+> **Corrected 2026-08-03.** This section said agentlogic and turboproof have
+> the same two tile lists and no agreement test. Both have all three pieces —
+> `registry.fixture.json`, `ui/src/appkit/registry.test.ts` and
+> `pkg/workbenchapp/catalog_test.go` — and the Go guard bites: adding a phantom
+> tile to agentlogic's catalog fails `TestCatalogMatchesTheRegistryFixture`
+> with "the catalog holds 15 applications and the fixture 14".
+>
+> Left in place rather than deleted, because it is a small instance of §3: a
+> document asserting the absence of a test that exists, in a document written
+> to catalogue exactly that failure mode. The lesson generalises to reading
+> this file — **check the claim before acting on it**, including the claims
+> below.
+
+hyperblog has tests asserting its tile registry and its Go catalog agree
 (`ui/src/appkit/registry.test.ts`, `pkg/workbenchapp/catalog_test.go`, against
-a generated `registry.fixture.json`). **agentlogic and turboproof have the same
-two lists and no such test.** Porting it is about half an hour each, and it is
-the kind of guard that pays for itself the first time somebody adds a tile.
+a generated `registry.fixture.json`), and so do the other two.
 
 ---
 
