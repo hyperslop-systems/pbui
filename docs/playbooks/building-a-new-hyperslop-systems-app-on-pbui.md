@@ -19,6 +19,14 @@ WhenToUse: "Read before scaffolding a new PBUI application. Complete sections 3 
 
 # Building a new hyperslop-systems app on PBUI
 
+> **The three PBUI playbooks, and which one you want:**
+>
+> | If you are… | Read |
+> |---|---|
+> | starting a new application on PBUI | [building-a-new-hyperslop-systems-app-on-pbui.md](./building-a-new-hyperslop-systems-app-on-pbui.md) |
+> | moving an existing frontend to the component convention | [refactoring-a-pbui-app-into-atoms-molecules-and-organisms.md](./refactoring-a-pbui-app-into-atoms-molecules-and-organisms.md) |
+> | making an application edit durable workbench state | [adding-editing-support-to-a-pbui-application.md](./adding-editing-support-to-a-pbui-application.md) |
+
 ## What this is
 
 `agentlogic` is the second application built on PBUI, after `datalab-ui`. It is a
@@ -104,7 +112,7 @@ product.
 
 ```jsonc
 // ui/package.json
-"@hyperslop-systems/pbui": "^0.2.0",
+"@hyperslop-systems/pbui": "^0.3.0",
 "@hyperslop-systems/workbench-protocol": "^0.2.0" // if it has a workbench
 ```
 
@@ -318,8 +326,14 @@ components/atoms/Meter/
   index.ts            export { Meter }; export type { MeterProps };
 ```
 
-Four files, every time, at every level — atom, molecule, organism, page. Copy
+Three files always, at every level — atom, molecule, organism, page — plus
+`Name.module.css` when the component has styles of its own. Copy
 `pbui/src/components/atoms/Meter/` and change the names.
+
+**A component with no styles needs no stylesheet.** Roughly half of
+datalab-ui's compose PBUI components and pass tones; they have no `style=`
+attribute either, and that is the target state rather than a gap. Creating
+empty files to satisfy a count is churn.
 
 Each file earns its place:
 
@@ -367,7 +381,8 @@ There is no lint for this yet, which is why it keeps slipping. Two questions at
 review time catch most of it:
 
 - Does every `components/**` directory contain a folder rather than a `.tsx`?
-- Does every component folder contain four files?
+- Does every component folder contain `Name.tsx`, `Name.stories.tsx` and
+  `index.ts` — plus a `.module.css` if and only if it has styles?
 
 PBUI carries `test/no-raw-controls.test.ts`, which forbids a raw `<textarea>`
 outside `atoms/`. A product-side equivalent — forbidding `<button>`, `<input>`
@@ -516,9 +531,12 @@ Two more:
 Each cost real time in agentlogic.
 
 - [ ] **The tokens are defined.** Run the grep in section 4. This is the big one.
-- [ ] **Every component is a folder of four files**, and the view was split
-      into organisms and molecules before it was written. Section 6a. Every
-      product in this family has skipped this; the retrofit is days.
+- [ ] **Every component is a folder**, and the view was split into organisms
+      and molecules before it was written. Section 6a. Every product outside
+      this repo skipped it; the retrofit is days.
+- [ ] **`make ui-token-check` prints nothing.** Since pbui 0.3.0 it should,
+      because pbui defines every token it reads — so anything it prints is a
+      name YOU invented that pbui never reads. Section 4.
 - [ ] **The shared presentation and chrome styles are imported.** Open an object
       menu and assert fixed positioning, z-index, and viewport containment;
       accessibility-tree presence does not prove visible geometry.

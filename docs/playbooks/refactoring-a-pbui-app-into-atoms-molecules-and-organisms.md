@@ -19,6 +19,14 @@ WhenToUse: "Read the whole thing before starting. Do §2 before touching a compo
 
 # Refactoring a PBUI app into atoms, molecules and organisms
 
+> **The three PBUI playbooks, and which one you want:**
+>
+> | If you are… | Read |
+> |---|---|
+> | starting a new application on PBUI | [building-a-new-hyperslop-systems-app-on-pbui.md](./building-a-new-hyperslop-systems-app-on-pbui.md) |
+> | moving an existing frontend to the component convention | [refactoring-a-pbui-app-into-atoms-molecules-and-organisms.md](./refactoring-a-pbui-app-into-atoms-molecules-and-organisms.md) |
+> | making an application edit durable workbench state | [adding-editing-support-to-a-pbui-application.md](./adding-editing-support-to-a-pbui-application.md) |
+
 ## What this is, and why it is needed
 
 PBUI's own `src/components` follows a strict convention: every component is a
@@ -114,10 +122,19 @@ grep -c '^\.' ui/src/styles/app.css            # how many global classes
 **Do this before you touch a component, and do not skip it because the app
 "looks fine".**
 
-PBUI ships components that read design tokens and defines none of them. An
-undefined custom property makes the declaration invalid at *computed-value*
-time — `border: var(--pbui-border-hair)` becomes **no border** — with no build
-error and no console warning.
+**Upgrade to pbui 0.3.0 first, and most of this section stops applying.**
+Until 0.3.0, PBUI's components read forty-four design tokens and defined none
+of them; it now ships a default for every one, at zero specificity, so your own
+values still win. If the app you are refactoring is on 0.2.x, bumping the
+dependency is the single highest-value change you can make before touching a
+component — measured on a bare consumer, a `Chip` went from `0px none` border,
+`0px` tone edge and 16px browser-default type to the family look.
+
+The check below still earns its place, because it catches the other half of the
+failure: a token *you* invented that pbui never reads. An undefined custom
+property makes the declaration invalid at *computed-value* time — `border:
+var(--pbui-border-hair)` becomes **no border** — with no build error and no
+console warning.
 
 ```bash
 C=$(ls pkg/webui/dist/assets/*.css)
@@ -501,16 +518,92 @@ not:
 - [ ] `make ui-token-check` passes.
 - [ ] No tile is over ~150 lines, and none of them contains a panel's markup.
 - [ ] The count of hand-rolled controls that duplicate a PBUI component is
-      **zero**. Grep for `<button`, `<input`, `<textarea` outside `atoms/`.
-- [ ] The screenshots match §2.3.
+      **zero**, or every survivor is in an allowlist with a written reason.
+      Grep for `<button`, `<input`, `<textarea` outside `atoms/`. agentlogic
+      finished with three, all of them the same missing primitive — PBUI has no
+      clickable block that may itself contain controls, and a `<div onClick>`
+      would pass this check while losing the keyboard. An allowlist entry that
+      names a real library gap is a finding; one that says "TODO" is a failure.
+- [ ] The screenshots match §2.3, **or** you have said in writing what you
+      substituted and why. Both retrofits had no baseline: one rendered every
+      story in headless Chromium, the other diffed 23 before/after images of
+      the components it touched. "I verified it in a browser" is legitimate;
+      "it typechecks" is not.
+- [ ] Every story renders with **no console error**. See §9.
 
-Consider adding the guard PBUI carries — `test/no-raw-controls.test.ts` forbids
-a raw `<textarea>` outside `atoms/`. A product-side equivalent is twenty lines
-and stops the drift coming back.
+Add the guard rather than relying on this list. PBUI carries
+`test/no-raw-controls.test.ts`; agentlogic's `components/conventions.test.ts`
+is the product-side equivalent at six assertions covering folder shape, an
+empty `app.css`, and raw controls. It is twenty lines of `readdir`, and its own
+doc comment makes the case: *"None of that is enforced by a compiler. A raw
+`<input>` typechecks, a rule added to `app.css` builds, and a component dropped
+as a loose `.tsx` beside a folder looks fine in a diff."*
 
 ---
 
-## 9 · Write it down
+## 9 · What the first two retrofits found
+
+This playbook was written before it had been used, and then used twice on the
+same day. Both runs changed it, and both found defects the checklist did not
+predict. That history is the most useful part of this section.
+
+### The checklist contradicted the instructions
+
+§8's first item told you to assert that **nothing** at depth 2 in `components/`
+is a file. §4 tells you to write a layer barrel — `molecules/index.ts` — at
+exactly that depth. An agent that followed the instructions failed the
+checklist. Both items are now corrected, and the general lesson is worth
+stating: **a rule written twice drifts at the second statement.** The "four
+files" count was wrong in four separate places for the same reason.
+
+### The count was wrong, and the right rule is about styles
+
+"Every folder holds four files" is false and should never have been a count. In
+datalab-ui, 35 of 73 components have no `.module.css` — and 31 of those have no
+`style=` attribute either. They compose PBUI components and pass tones. That is
+the target state. The rule is **"a component's rules live beside it"**, not an
+arithmetic check, and creating empty stylesheets to satisfy one is churn.
+
+### A shared stylesheet made a component unstoriable
+
+The sharpest available argument for `.module.css`, found in datalab-ui's brand
+components. Their shared sheet contained `.lockup_masthead .bar` — a descendant
+selector reaching from one component into another. The same `<PhaseRule/>`
+therefore drew an 8px bar in its own story and a 4px bar inside a masthead, and
+**two of its three real states could not be storied at all.** A cross-component
+selector does not merely risk a collision; it makes a component's appearance
+depend on who renders it, which ends both reuse and testability.
+
+### Mechanical reuse can delete content
+
+agentlogic swapped nine raw `<select>` elements for pbui's `SelectInput`. That
+component's `label` is **aria-only**, so the swap silently removed nine visible
+words from the interface — `kind`, `state`, `show`, `speed`, `x`, `y`, `shape`,
+`context`, `project`. Typecheck passed, tests passed, the accessibility tree
+improved. Only the before/after screenshots caught it.
+
+**Read the props of every component you adopt.** "It compiles" is not evidence
+that it renders the same thing.
+
+### Read the console you already have
+
+agentlogic's changes and files tiles nested a `<button>` inside a `<button>`,
+which swallowed the step chip's click — the product's primary navigation verb.
+React 19 had been logging it in Storybook on every render for as long as the
+defect existed. Wire the story runner to **fail on any console error** and this
+whole class becomes a red build instead of scrollback.
+
+### What no mechanism catches
+
+Twice during this work a red assertion on real data was the *test* being wrong
+rather than the code: an edge weight that was 9 because a weight applies per
+direction, and a field whose name implied per-occurrence counting when the
+behaviour was per-paragraph and correct. **A red assertion on real data is not
+automatically a defect in the code.** Print the object before you change it.
+
+---
+
+## 10 · Write it down
 
 A diary, in the `diary` skill's format, with **a step per meaningful chunk** —
 not per file. Each step should say what moved, what was deleted in favour of a
