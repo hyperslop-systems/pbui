@@ -245,7 +245,21 @@ export const WithPresentation: Story = {
               renderRow={(node, children) => (
                 <filePbui.Presentation
                   reference={{ type: "file.entry", value: node }}
-                  activate={{ run: () => setSelectedId(node.id), doc: "select" }}
+                  /*
+                   * No `run`. THIS STORY USED TO DEMONSTRATE THE BUG: it wired
+                   * `onActivate={() => setSelectedId(node.id)}` — selection
+                   * only — so clicking a directory's LABEL selected it and did
+                   * not expand it, while clicking two pixels left on the indent
+                   * did. The Presentation swallowed the row's click and the
+                   * story restored half of what was lost.
+                   *
+                   * Since P4.1 the click reaches the row, which selects AND
+                   * toggles AND moves the roving focus, so there is nothing for
+                   * the product to restore. `activate` stays, without `run`,
+                   * because a left click still does something other than open
+                   * the menu and the mouse doc should say what.
+                   */
+                  activate={{ doc: "select · directories expand" }}
                   doc={`${node.kind} ${node.id}`}
                 >
                   {children}

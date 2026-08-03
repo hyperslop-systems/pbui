@@ -48,6 +48,15 @@ export interface PbuiProviderProps<
   onAccept?: (result: PresentationReference<Values> | null) => void;
 }
 
+/**
+ * Marks a click as already handled by a Presentation, so that a Presentation
+ * ANCESTOR ignores it while the host element still receives it.
+ *
+ * `Symbol.for` rather than `Symbol()` so two copies of pbui on one page — the
+ * duplicate-React situation the packaging guard covers — still agree.
+ */
+const PRESENTATION_HANDLED = Symbol.for("pbui.presentation.handled");
+
 export interface PresentationProps<Values extends PresentationValues> {
   reference: PresentationReference<Values>;
   children: ReactNode;
@@ -81,8 +90,25 @@ export interface PresentationProps<Values extends PresentationValues> {
    * mouse-doc string and the behaviour it describes are one value.
    */
   activate?: {
-    /** Runs on left click and on Enter/Space. */
-    run(): void;
+    /**
+     * Runs on left click and on Enter/Space.
+     *
+     * OPTIONAL, which encodes a third state the old pair could not express.
+     * The presence of `activate` says "a left click does something rather than
+     * opening the menu"; `run` says whether THIS element is what does it.
+     *
+     *   activate absent            L opens the menu, like R.
+     *   activate with run          this element acts, and the host also sees
+     *                              the click (P4.1).
+     *   activate without run       the HOST owns the click entirely; this
+     *                              element only names it in the mouse doc.
+     *
+     * The third is what a `renderRow` wrapper wants. Before P4.1 a product had
+     * to re-implement the organism's own select-and-toggle inside `run` just
+     * to undo the swallowed click; now the row's handler runs on its own and
+     * duplicating it would fire the toggle twice.
+     */
+    run?(): void;
     /** Names the verb in the mouse-doc strip. Defaults to "activate". */
     doc?: string;
   };
@@ -267,16 +293,68 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
       open(event.clientX, event.clientY);
     };
 
+    /*
+     * WHEN A PRESENTATION SWALLOWS THE CLICK, AND WHEN IT LETS IT THROUGH.
+     *
+     * This used to open with an unconditional `event.stopPropagation()`, which
+     * is correct for the two cases where the Presentation itself acts and
+     * wrong for the case where the HOST does.
+     *
+     * `renderRow` exists so a product can wrap an organism's row content in a
+     * Presentation. The Presentation then sits INSIDE the row element, so a
+     * click on the label was stopped before the row's own handler ran. In
+     * turboproof that meant directories stopped expanding and selection
+     * stopped working the moment file rows became presentation objects; in
+     * pbui's own `WithPresentation` story it means clicking a directory's
+     * label selects it and does not expand it, while clicking two pixels left
+     * on the indent does. The library shipped a demo of its own bug.
+     *
+     * A product could restore `onSelect` and `onToggle` through the activate
+     * handler — turboproof did, duplicating logic the organism already had —
+     * but not `setFocusedKey`, which is `useState` inside `FileBrowser` with
+     * no prop and no handle. So arrow-key navigation kept moving from whatever
+     * row was last focused by a NON-label click. The seam pbui built for
+     * products was mutually exclusive with the organism's keyboard model.
+     *
+     * Now:
+     *
+     *   acceptable   stop. The accept flow commits; nothing else may also fire.
+     *   activate     run, then LET IT BUBBLE. The host sees its own click.
+     *   otherwise    stop, and open the menu. Opening a menu is this element
+     *                acting, and a menu-open that also selects a row is wrong.
+     *
+     * The nested case is why marking beats plain bubbling. A Presentation
+     * inside another Presentation previously relied on the inner one's
+     * unconditional stop to keep the outer from acting too; with bubbling
+     * restored, the outer would open its menu on a click meant for the inner.
+     * Marking the native event lets the click reach the host — an ordinary
+     * element with an ordinary handler — while any Presentation ancestor
+     * ignores it. Nothing nests presentations today; the accept flow makes it
+     * a natural shape (an acceptable object containing presented children),
+     * and this is cheaper than finding out later.
+     */
     const handleClick = (event: MouseEvent) => {
-      event.stopPropagation();
+      const native = event.nativeEvent as MouseEvent["nativeEvent"] & {
+        [PRESENTATION_HANDLED]?: true;
+      };
+      if (native[PRESENTATION_HANDLED]) return;
+      native[PRESENTATION_HANDLED] = true;
+
       if (acceptable) {
         event.preventDefault();
+        event.stopPropagation();
         pbui.satisfyAccept(reference);
-      } else if (activate) {
-        activate.run();
-      } else {
-        open(event.clientX, event.clientY);
+        return;
       }
+      if (activate) {
+        // No stopPropagation: the host row's own gesture is not this
+        // element's to cancel. `run` is optional precisely so a product can
+        // say "the host owns this click" and still name it in the mouse doc.
+        activate.run?.();
+        return;
+      }
+      event.stopPropagation();
+      open(event.clientX, event.clientY);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -284,7 +362,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         event.preventDefault();
         event.stopPropagation();
         if (acceptable) pbui.satisfyAccept(reference);
-        else if (activate) activate.run();
+        else if (activate) activate.run?.();
         else {
           const box = (event.target as HTMLElement).getBoundingClientRect();
           open(box.left, box.bottom);

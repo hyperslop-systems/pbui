@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { FileBrowser, type FileNode } from "./FileBrowser";
+import { createPbui } from "../../../presentation/createPbui";
+import { createPresentationRegistry } from "../../../presentation/registry";
 
 afterEach(cleanup);
 
@@ -293,5 +295,96 @@ describe("FileBrowser presentation seam", () => {
     );
     // Commit cleared the controlled state back through rename.onChange.
     expect(screen.queryByLabelText("rename lakefile.lean")).toBeNull();
+  });
+
+  /**
+   * A row wrapped in a Presentation keeps the row's own gesture.
+   *
+   * `renderRow` wraps a row's CONTENT, so the Presentation sits inside the row
+   * element. Until PBUI-HARDEN-1 P4.1 the Presentation stopped every click, so
+   * a click on the label never reached the row's handler and the tree lost all
+   * three of its effects: selection, directory toggling, and the roving focus
+   * that arrow keys navigate from.
+   *
+   * The first two a product could restore by hand through the activate
+   * handler, duplicating logic the organism already had. `setFocusedKey` it
+   * could not — that is `useState` in here with no prop and no handle — so
+   * ArrowDown kept moving from whatever row was last focused some OTHER way.
+   * That is the assertion below that would not have been fixable from outside
+   * this file, and it is why the fix belonged in pbui rather than in a product.
+   */
+  const filePbui = createPbui<{ "file.entry": string }, object, { kind: "noop" }>({
+    registry: createPresentationRegistry<{ "file.entry": string }, object, { kind: "noop" }>({
+      "file.entry": { label: (id) => id },
+    }),
+    defaultEnvironment: {},
+  });
+
+  describe("a row wrapped in a Presentation keeps the row's own gesture", () => {
+    function PresentedHarness({ verbs: v }: { verbs: ReturnType<typeof verbs> }) {
+      const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set(["project:"]));
+      const [selectedId, setSelectedId] = useState<string | null>(null);
+      return (
+        <filePbui.Provider>
+        <FileBrowser
+          roots={[{ name: "project" }]}
+          trees={{ project: TREE }}
+          expanded={expanded}
+          onToggle={(id) => {
+            v.onToggle(id);
+            setExpanded((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            });
+          }}
+          selectedId={selectedId}
+          onSelect={(node) => {
+            v.onSelect(node);
+            setSelectedId(node.id);
+          }}
+          onOpen={v.onOpen}
+          onRename={v.onRename}
+          onDelete={v.onDelete}
+          // A REAL Presentation, because a plain wrapper proves nothing: the
+          // defect was pbui's own click handler stopping propagation, so a
+          // stand-in that stops nothing passes whether or not the bug exists.
+          renderRow={(node, children) => (
+            <filePbui.Presentation
+              reference={{ type: "file.entry", value: node.id }}
+              activate={{ doc: "select" }}
+            >
+              {children}
+            </filePbui.Presentation>
+          )}
+        />
+        </filePbui.Provider>
+      );
+    }
+
+    test("clicking a wrapped directory label toggles it", () => {
+      const v = verbs();
+      render(<PresentedHarness verbs={v} />);
+      fireEvent.click(screen.getByText("Mini"));
+      expect(v.onToggle).toHaveBeenCalledWith("project:Mini");
+      expect(v.onSelect).toHaveBeenCalledWith(expect.objectContaining({ name: "Mini" }));
+    });
+
+    test("clicking a wrapped label moves the roving focus to THAT row", () => {
+      const v = verbs();
+      const { container } = render(<PresentedHarness verbs={v} />);
+      const tree = container.querySelector("[role=tree]") as HTMLElement;
+
+      // Focus starts at the top. Click the third row's label, then press Down:
+      // if the click did not move the roving focus, this lands on row 2.
+      fireEvent.click(screen.getByText("lakefile.lean"));
+      fireEvent.keyDown(tree, { key: "ArrowDown" });
+
+      // lakefile.lean is the last row, so ArrowDown clamps and stays on it.
+      expect(container.querySelector("[data-focused=true]")?.textContent).toContain(
+        "lakefile.lean",
+      );
+    });
   });
 });

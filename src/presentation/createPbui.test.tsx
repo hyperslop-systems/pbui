@@ -113,6 +113,90 @@ describe("createPbui", () => {
   });
 
   /**
+   * A click reaches the host, and stops at the first Presentation ancestor.
+   *
+   * P4.1 removed the unconditional `stopPropagation()` so that a Presentation
+   * wrapping an organism's row content no longer swallows the row's own
+   * gesture. That alone would have introduced a different bug: an inner
+   * Presentation's click would bubble into an OUTER Presentation, which would
+   * open its menu on a click meant for the child. Nothing nests presentations
+   * today, but the accept flow makes it a natural shape — an acceptable object
+   * containing presented children — and marking the native event is cheaper
+   * than finding out later.
+   */
+  describe("click propagation", () => {
+    const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
+
+    test("lets the host element see a click it activated on", () => {
+      const pbui = makePbui();
+      const hostClicks: string[] = [];
+      const activated: string[] = [];
+
+      render(
+        <pbui.Provider>
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+          <div onClick={() => hostClicks.push("host")}>
+            <pbui.Presentation
+              reference={reference}
+              activate={{ run: () => activated.push("presentation") }}
+            >
+              Ada
+            </pbui.Presentation>
+          </div>
+        </pbui.Provider>,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Ada" }));
+      expect(activated).toEqual(["presentation"]);
+      // The whole point: the host is not deprived of its own click.
+      expect(hostClicks).toEqual(["host"]);
+    });
+
+    test("still swallows the click when it opens the menu", () => {
+      const pbui = makePbui();
+      const hostClicks: string[] = [];
+
+      render(
+        <pbui.Provider>
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+          <div onClick={() => hostClicks.push("host")}>
+            <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
+          </div>
+          <pbui.ObjectMenu />
+        </pbui.Provider>,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Ada" }));
+      // Opening a menu IS this element acting, so the host must not also fire —
+      // a menu-open that selects the row underneath is wrong.
+      expect(screen.queryByRole("menu")).toBeTruthy();
+      expect(hostClicks).toEqual([]);
+    });
+
+    test("an inner Presentation's click does not reach an outer one", () => {
+      const pbui = makePbui();
+      const runs: string[] = [];
+
+      render(
+        <pbui.Provider>
+          <pbui.Presentation
+            reference={{ type: "person", value: { id: "outer", name: "Outer" } }}
+            activate={{ run: () => runs.push("outer") }}
+            block
+          >
+            <pbui.Presentation reference={reference} activate={{ run: () => runs.push("inner") }}>
+              Ada
+            </pbui.Presentation>
+          </pbui.Presentation>
+        </pbui.Provider>,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Ada" }));
+      expect(runs).toEqual(["inner"]);
+    });
+  });
+
+  /**
    * `activate` describes the left click in the mouse-doc strip.
    *
    * These two were `onActivate?: () => void` and `activateDoc?: string`, and
