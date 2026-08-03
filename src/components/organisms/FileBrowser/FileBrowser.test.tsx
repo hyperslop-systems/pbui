@@ -276,8 +276,7 @@ describe("FileBrowser presentation seam", () => {
             onOpen={v.onOpen}
             onRename={v.onRename}
             onDelete={v.onDelete}
-            renamingId={renamingId}
-            onRenameStateChange={setRenamingId}
+            rename={{ id: renamingId, onChange: setRenamingId }}
           />
         </>
       );
@@ -292,7 +291,7 @@ describe("FileBrowser presentation seam", () => {
       expect.objectContaining({ id: "project:lakefile.lean" }),
       "lakefile.toml",
     );
-    // Commit cleared the controlled state back through onRenameStateChange.
+    // Commit cleared the controlled state back through rename.onChange.
     expect(screen.queryByLabelText("rename lakefile.lean")).toBeNull();
   });
 });

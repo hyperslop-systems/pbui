@@ -63,13 +63,45 @@ export interface FileBrowserProps {
    */
   renderRow?(node: FileNode, children: ReactNode): ReactNode;
   /**
-   * Controlled inline-rename. When `renamingId` is provided, F2 and
-   * commit/cancel report through `onRenameStateChange` instead of internal
-   * state — so an object-menu "rename" VERB can drive the same field the
-   * keyboard drives. Provide both or neither.
+   * Controlled inline-rename. Present ⇔ the product owns which row is being
+   * renamed; absent ⇔ the organism keeps that state itself.
+   *
+   *     rename={{ id: renamingId, onChange: setRenamingId }}
+   *
+   * When present, F2 and commit/cancel report through `onChange` instead of
+   * internal state, so an object-menu "rename" VERB drives the same field the
+   * keyboard drives.
+   *
+   * # Why this is one prop
+   *
+   * It was `renamingId?: string | null` plus `onRenameStateChange?(...)`, and
+   * the doc comment ended with the sentence "Provide both or neither" — a
+   * prose invariant the type did not carry, which is the reliable tell. A
+   * controlled `renamingId` with no callback silently swallowed every F2.
+   *
+   * It also retired an overload. `renamingId` meant three things:
+   *
+   *     undefined   uncontrolled — the organism keeps internal state
+   *     null        controlled, nothing being renamed
+   *     "abc"       controlled, "abc" being renamed
+   *
+   * Presence of the object is now the mode, so `undefined` and `null` stop
+   * competing for the same job and `id: null` means exactly one thing.
    */
-  renamingId?: string | null;
-  onRenameStateChange?(nodeId: string | null): void;
+  rename?: {
+    /** The row being renamed, or `null` for none. */
+    id: string | null;
+    onChange(nodeId: string | null): void;
+  };
+
+  /**
+   * TOMBSTONES — merged into `rename` in 0.4.0.
+   *
+   * @deprecated use `rename={{ id, onChange }}`
+   */
+  renamingId?: never;
+  /** @deprecated use `rename={{ id, onChange }}` */
+  onRenameStateChange?: never;
   /** DR-30 surfaces: no roots, load failure, empty directory. */
   emptyState?: ReactNode;
   /**
@@ -165,8 +197,7 @@ export function FileBrowser({
   onDelete,
   renderBadge,
   renderRow,
-  renamingId,
-  onRenameStateChange,
+  rename,
   emptyState,
   pageSize = DEFAULT_PAGE_SIZE,
 }: FileBrowserProps) {
@@ -175,9 +206,13 @@ export function FileBrowser({
   // Inline rename: internal by default, controlled when the product drives
   // it (so a menu verb and the F2 key share one code path).
   const [internalRenaming, setInternalRenaming] = useState<string | null>(null);
-  const renamingKey = renamingId !== undefined ? renamingId : internalRenaming;
+  // Presence of `rename` IS the mode. The old shape asked `renamingId !==
+  // undefined`, which is why `undefined` and `null` had to mean different
+  // things — the pair could not distinguish "uncontrolled" from "controlled,
+  // nothing renaming" any other way.
+  const renamingKey = rename ? rename.id : internalRenaming;
   const setRenamingKey = (key: string | null): void => {
-    if (onRenameStateChange) onRenameStateChange(key);
+    if (rename) rename.onChange(key);
     else setInternalRenaming(key);
   };
   // Directories whose child cap the user lifted via "show N more".

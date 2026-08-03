@@ -27,10 +27,11 @@ export function SourceChip({
     <Presentation
       reference={{ type: "source", value: source }}
       doc={`<source> ${describeSource(source)}`}
-      onActivate={() =>
-        pbui.perform({ kind: "setSource", docId: pbui.environment.activeDocId, source })
-      }
-      activateDoc={`load into chart ${name}`}
+      activate={{
+        run: () =>
+          pbui.perform({ kind: "setSource", docId: pbui.environment.activeDocId, source }),
+        doc: `load into chart ${name}`,
+      }}
       testId={testId}
     >
       <Chip label={describeSource(source)} tone="var(--pbui-tone-source)" strong={strong} />

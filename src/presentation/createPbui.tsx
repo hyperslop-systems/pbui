@@ -55,9 +55,50 @@ export interface PresentationProps<Values extends PresentationValues> {
   doc?: string;
   svg?: boolean;
   block?: boolean;
-  onActivate?: () => void;
-  activateDoc?: string;
+  /**
+   * What a left click does, and what to call it in the mouse-doc strip.
+   *
+   * Present ⇔ this presentation has a default verb. Absent ⇔ a left click
+   * opens the object menu, like a right click.
+   *
+   *     activate={{ run: () => onGeom(option), doc: "use this geom" }}
+   *
+   * # Why these are one prop
+   *
+   * They were `onActivate?: () => void` and `activateDoc?: string`, and the
+   * doc was read only inside the branch that tested the handler:
+   *
+   *     : onActivate ? `L: ${activateDoc ?? "activate"}   R: menu` : "L/R: menu"
+   *
+   * So `activateDoc` without `onActivate` type-checked, rendered nothing, and
+   * said nothing — the same shape as `disabledReason` without `disabled`, one
+   * layer up. No product had written it yet, which is the condition under
+   * which such a defect survives indefinitely rather than a reason to leave it.
+   *
+   * The cost is honest: six call sites got slightly wordier, trading
+   * `onActivate={fn} activateDoc="x"` for `activate={{ run: fn, doc: "x" }}`.
+   * What is bought is that the doc can no longer be orphaned, and that the
+   * mouse-doc string and the behaviour it describes are one value.
+   */
+  activate?: {
+    /** Runs on left click and on Enter/Space. */
+    run(): void;
+    /** Names the verb in the mouse-doc strip. Defaults to "activate". */
+    doc?: string;
+  };
   testId?: string;
+
+  /**
+   * TOMBSTONES — merged into `activate` in 0.4.0. JSX props are excess-property
+   * checked, so these would already error if deleted; they are typed `never`
+   * for a message that names the replacement rather than one that says the prop
+   * does not exist.
+   *
+   * @deprecated use `activate={{ run, doc }}`
+   */
+  onActivate?: never;
+  /** @deprecated use `activate={{ run, doc }}` */
+  activateDoc?: never;
 }
 
 export interface PbuiContextValue<
@@ -201,8 +242,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     doc,
     svg = false,
     block = false,
-    onActivate,
-    activateDoc,
+    activate,
     testId,
   }: PresentationProps<Values>) {
     const pbui = usePbui();
@@ -215,8 +255,8 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
 
     const clickDoc = acceptable
       ? "L: ACCEPT   R: menu"
-      : onActivate
-        ? `L: ${activateDoc ?? "activate"}   R: menu`
+      : activate
+        ? `L: ${activate.doc ?? "activate"}   R: menu`
         : "L/R: menu";
     const describe = () => `${doc ?? `<${reference.type}>`}   —   ${clickDoc}`;
     const open = (x: number, y: number) => pbui.openMenu(reference, x, y);
@@ -232,8 +272,8 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
       if (acceptable) {
         event.preventDefault();
         pbui.satisfyAccept(reference);
-      } else if (onActivate) {
-        onActivate();
+      } else if (activate) {
+        activate.run();
       } else {
         open(event.clientX, event.clientY);
       }
@@ -244,7 +284,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         event.preventDefault();
         event.stopPropagation();
         if (acceptable) pbui.satisfyAccept(reference);
-        else if (onActivate) onActivate();
+        else if (activate) activate.run();
         else {
           const box = (event.target as HTMLElement).getBoundingClientRect();
           open(box.left, box.bottom);

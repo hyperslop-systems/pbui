@@ -18,8 +18,10 @@ export function DocChip({ docId, testId }: { docId: DocId; testId?: string }) {
     <Presentation
       reference={{ type: "doc", value: docId }}
       doc={`<doc> chart ${name}${active ? " · ACTIVE" : ""}`}
-      onActivate={() => pbui.perform({ kind: "setActiveDoc", docId })}
-      activateDoc="make it the ACTIVE chart"
+      activate={{
+        run: () => pbui.perform({ kind: "setActiveDoc", docId }),
+        doc: "make it the ACTIVE chart",
+      }}
       testId={testId}
     >
       <Chip

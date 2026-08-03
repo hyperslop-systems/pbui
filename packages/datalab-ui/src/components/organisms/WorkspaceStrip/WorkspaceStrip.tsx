@@ -80,8 +80,10 @@ export function WorkspaceStrip() {
                 },
               }}
               doc={`<workspace> ${space.name}`}
-              onActivate={() => dispatch(layoutActions.setCurrentSpace(space.id))}
-              activateDoc="switch to it"
+              activate={{
+                run: () => dispatch(layoutActions.setCurrentSpace(space.id)),
+                doc: "switch to it",
+              }}
             >
               {/* biome-ignore lint/a11y/noStaticElementInteractions: the interactive element is the Presentation around this span — it carries tabIndex, role and the key handlers. What this span adds is double-click-to-rename; the keyboard route is "Rename this workspace …" in the object menu, which DATADROP-8 added. */}
               <span

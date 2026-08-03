@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { createPbui } from "./createPbui";
@@ -108,6 +109,62 @@ describe("createPbui", () => {
 
     await act(async () => {
       expect(await result).toEqual(reference);
+    });
+  });
+
+  /**
+   * `activate` describes the left click in the mouse-doc strip.
+   *
+   * These two were `onActivate?: () => void` and `activateDoc?: string`, and
+   * the doc was read only inside the branch that tested the handler — so a doc
+   * without a handler type-checked, rendered nothing, and said nothing. P3.4
+   * merged them into one prop, and this is the behaviour that merge has to
+   * preserve. It had no test before.
+   */
+  describe("the mouse-doc line describes what a left click will do", () => {
+    function hover(node: ReactElement, pbui: ReturnType<typeof makePbui>) {
+      const { container } = render(
+        <pbui.Provider>
+          {node}
+          <pbui.MouseDocLine />
+        </pbui.Provider>,
+      );
+      fireEvent.mouseEnter(screen.getByRole("button", { name: /Ada/ }));
+      // The visible span specifically: MouseDocLine renders the same string
+      // twice, once for the eye and once in a polite live region, so a text
+      // query matches both.
+      return container.querySelector('[data-part="mouse-doc-text"]')?.textContent ?? "";
+    }
+
+    const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
+
+    test("names the verb when the presentation has one", () => {
+      const pbui = makePbui();
+      const text = hover(
+        <pbui.Presentation reference={reference} activate={{ run: () => {}, doc: "open the file" }}>
+          Ada
+        </pbui.Presentation>,
+        pbui,
+      );
+      expect(text).toContain("L: open the file");
+      expect(text).toContain("R: menu");
+    });
+
+    test("falls back to 'activate' when the verb is unnamed", () => {
+      const pbui = makePbui();
+      const text = hover(
+        <pbui.Presentation reference={reference} activate={{ run: () => {} }}>
+          Ada
+        </pbui.Presentation>,
+        pbui,
+      );
+      expect(text).toContain("L: activate");
+    });
+
+    test("says both buttons open the menu when there is no verb", () => {
+      const pbui = makePbui();
+      const text = hover(<pbui.Presentation reference={reference}>Ada</pbui.Presentation>, pbui);
+      expect(text).toContain("L/R: menu");
     });
   });
 

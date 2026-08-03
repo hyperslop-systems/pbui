@@ -241,12 +241,11 @@ export const WithPresentation: Story = {
               onCreate={(parentId, kind) => perform({ type: "create", parentId, kind })}
               onRename={(node, next) => perform({ type: "rename", id: `${node.id} → ${next}` })}
               onDelete={(node) => perform({ type: "delete", id: node.id })}
-              renamingId={renamingId}
-              onRenameStateChange={setRenamingId}
+              rename={{ id: renamingId, onChange: setRenamingId }}
               renderRow={(node, children) => (
                 <filePbui.Presentation
                   reference={{ type: "file.entry", value: node }}
-                  onActivate={() => setSelectedId(node.id)}
+                  activate={{ run: () => setSelectedId(node.id), doc: "select" }}
                   doc={`${node.kind} ${node.id}`}
                 >
                   {children}
