@@ -57,3 +57,8 @@ Step 4: agentlogic A1/A2/A3, X1 verified as already done, and H10 — provisione
 - /home/manuel/workspaces/2026-07-30/transcript-agent/agentlogic/ui/src/components/pages/SourcePicker/SourcePicker.tsx — the row's own project (A1)
 - /home/manuel/workspaces/2026-07-30/transcript-agent/hyperblog/.github/workflows/dependency-scanning.yml — ported from turboproof — private-go on both scanning jobs (H10)
 
+
+## 2026-08-03
+
+Ticket closed
+
