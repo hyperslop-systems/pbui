@@ -223,3 +223,212 @@ cannot be deleted out from under it.
 - `guide/01-intern-handoff-…` — the findings, the architecture, the order.
 - `pbui/ttmp/2026/08/03/PBUI-HARDEN-1/` — the library-side ticket several of
   these findings shadow.
+
+## Step 2: turboproof's frontend findings — T2, T3, T4, T5, T8, T9
+
+Six findings, five of them P1, and the thing they have in common is that none
+of them looks like a bug from the outside. A rename that opens the wrong
+inline field. A directory rename that leaves the tile looking fine. A save
+that quietly restores the text from thirty seconds ago. A 422 that discards a
+paragraph along with the mutation that deserved it. A root list that decides,
+once, that this server has no roots. In every case the operation reports
+success.
+
+That is what makes them expensive: there is no error to search for, no stack
+to read, and by the time the user notices, the evidence is the absence of
+something. The tests below are correspondingly specific — each one names the
+observation the user would eventually make.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Continue through the ticket in the guide's
+order: turboproof's frontend P1s next.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `c798f7c` — "T2-T5: the four P1 frontend findings, all of them silent data loss"; `e9de793` — "T8/T9: a failed root fetch is not an answer, and a Windows root is not a host"
+
+### What I did
+
+- **T2**: `state/filesTile.ts` keeps a `Map` keyed by placement instead of one
+  slot; every file verb in `pbui/verbs.ts` gained `placementId`, sourced from
+  the `FileRef` the row was rendered with; `FilesApp` takes `AppProps`.
+- **T3**: `renameMoves` in `model/fileRefs.ts` — a rename is a prefix rewrite
+  over open documents, with the file case as its degenerate form.
+- **T4**: `store/renameBinding.ts` — `renameAndRebind`, which re-reads the
+  document after the request resolves.
+- **T5**: `slice.rejected` keeps a multi-entry batch and sets `isolating`;
+  `sync.tsx` sends one mutation per request while it is set; `flushed` clears
+  it when the outbox drains.
+- **T8**: `state/fileRoots.ts` caches successes only, and retries a failure
+  with backoff.
+- **T9**: `absoluteFileUri` in `model/fileRefs.ts`.
+- Tests: `filesTile.test.ts`, `descriptors/file.test.ts`, `fileRoots.test.ts`,
+  `renameBinding.test.ts`, plus additions to `fileRefs.test.ts` and a rewrite
+  of the `rejected` block in `seed.test.ts`. 131 pass.
+- `make ui`, so the committed bundle matches the source beside it.
+
+### Why
+
+They are the P1 half of turboproof's review, and five of the six lose the
+user's work.
+
+### What worked
+
+**Splitting T2 into two halves and testing both.** The routing table and the
+verb's address are separate defects, and either one alone leaves the bug
+standing: a perfectly keyed table routing an unaddressed verb is still a coin
+flip. Testing them separately meant the mutation run could show five failures
+across two files rather than one ambiguous red.
+
+**Giving T4 a seam.** The property is "read the document AFTER the await", and
+correct and incorrect code have identical types and an identical call
+sequence. `renameAndRebind` takes `rename` and `currentDocument` as
+parameters, so the test resolves the request with the document changed
+underneath. Without that there is no honest test — only one that resolves
+immediately and passes either way.
+
+**Verifying T7 against the real binary.** A 1 MiB file of quotes — ~2 MiB once
+JSON-escaped — now returns 200 through the actual server. The unit test says
+the same thing, but this is the one that would have caught a middleware
+ordering mistake.
+
+### What didn't work
+
+**The T5 test failed twice, and both failures were the test being wrong in
+ways worth recording.**
+
+First: I asserted that dropping one refused mutation leaves the outbox one
+shorter. It leaves it two shorter, because the `placementSplit` queued behind
+the refused `viewCreate` names a view id that no longer exists, so the replay
+drops it as well. That cascade is correct — it is the outbox doing its job —
+and my expectation was simply a worse description of the system than the code.
+
+Second, and more interesting: I fed the LOCAL document back into
+`rejected` while simulating the isolating loop. The local document already
+contained the replayed duplicate, so replaying on top of it produced a THIRD
+files tile. The real sync layer refetches the authoritative document from the
+server before dispatching `rejected` — which is exactly why it does that. The
+test now tracks a separate `serverDoc`, and says so in a comment, because the
+mistake is easy and the symptom (a count of 3) is baffling until you see it.
+
+**I lost an uncommitted fix to `git checkout`** — recorded under Step 1, and
+this step used `cp` backups throughout.
+
+### What I learned
+
+**"Singleton application" and "one instance on screen" are different claims,
+and the code conflated them in a comment.** `filesTile.ts` reasoned: files is
+a singleton app, therefore at most one files tile exists, therefore a module
+slot has one owner. The second step does not follow — a singleton VIEW can be
+linked into two panes, which is what linking is FOR. The comment was
+confident, specific and wrong, and it is the reason nobody looked.
+
+**The T1 race and the T5 batch are the same mistake at different layers.**
+Both take a set of things that happened to arrive together and treat that
+coincidence as meaning. Two saves overlap in time, so one silently wins; one
+invalid mutation shares a 400 ms debounce window with the user's typing, so
+both are discarded. In each case the fix is to stop treating co-arrival as
+identity.
+
+**A percent-encoded prefix comparison is a trap I nearly walked into.**
+`renameMoves` compares in (root, path) space. Comparing uris would have been
+one line shorter and wrong whenever a directory name needed encoding — the
+same path can encode more than one way, so the match would silently miss and
+leave the document orphaned, which is the very bug being fixed.
+
+### What was tricky to build
+
+**T5's termination argument.** The server reports a code and never an index,
+so the client cannot know which entry of a batch was refused. The obvious
+fixes are both wrong: replaying the batch rebuilds what was just refused and
+the flush loop sends it forever, and dropping the batch is the bug. Isolating
+works because it changes the question — send one at a time, and the next 422
+is unambiguous. It terminates because every 422 while isolating removes
+exactly one entry, and `flushed` clears the flag on an empty outbox so
+batching resumes.
+
+The cost, which should be understood before this is approved: between the
+rejection and the isolating flush that finds the offender, the local document
+CONTAINS the invalid state — the duplicate tile is briefly on screen. That is
+one round trip, self-correcting, and it buys back work that was previously
+lost for good. I think that trade is right; it is a trade.
+
+**T9's three shapes.** `file://` + path is correct only by accident on POSIX,
+because the leading `/` reads as an empty authority. Drive letters have no
+leading separator, and UNC paths have a real authority. Getting one of the
+three right and the other two wrong is easy and silent.
+
+### What warrants a second pair of eyes
+
+- **T5's isolating window** — the transient invalid state described above.
+- **`FileRef.placementId`.** Putting the placement on the presented VALUE is
+  arguably impure: the same file in two panes is one file and two values. The
+  alternative is the `Environment`, and pbui carries exactly one per Provider
+  while the Provider wraps the whole workbench, so it cannot vary per tile.
+  The value keeps `actions()` pure and the verb serialisable; the reasoning is
+  on the field. If this is wrong, it is wrong in pbui's shape, not here.
+- **T8's retry loop.** Backoff caps at 30s and never stops. That is right for
+  a workbench meant to stay live across a server restart, and it is a timer
+  that outlives every component.
+- **T9 is untested against Lean on Windows** and says so in the code.
+
+### What should be done in the future
+
+- Nothing outstanding in turboproof: T1–T10 are all done.
+- If Windows becomes a release target, verify `absoluteFileUri` against a real
+  Lean server before believing it.
+
+### Code review instructions
+
+Start with `state/filesTile.ts` — the header explains the singleton confusion
+and is the shortest route into T2. Then `model/fileRefs.ts renameMoves` (T3,
+T9) and `store/renameBinding.ts` (T4). `slice.rejected` (T5) is the one to
+read slowly; its doc comment carries the termination argument.
+
+```bash
+cd turboproof/ui && pnpm exec vitest run && pnpm exec tsc --noEmit
+cd .. && make ui && GOWORK=off go test ./... -count=1
+```
+
+To see each defect, revert the fix and run the named test:
+
+| finding | revert | test that goes red |
+|---|---|---|
+| T2 | route to the last-registered handler | `filesTile.test.ts` (3), `descriptors/file.test.ts` (2) |
+| T3 | drop the `startsWith(from + "/")` branch | `fileRefs.test.ts` (3) |
+| T4 | read `currentDocument()` before the await | `renameBinding.test.ts` (4) |
+| T5 | `slice(action.payload.count)` unconditionally | `seed.test.ts` (2) |
+| T8 | `cached = []` in the catch | `fileRoots.test.ts` (3) |
+| T9 | `file://${encodePath(root.path)}` | `fileRefs.test.ts` (1) |
+
+All six were verified this way.
+
+### Technical details
+
+The two halves of T2, which is the part worth copying elsewhere:
+
+```ts
+// the address, on the value the row presented
+verb: { kind: "renameFile", placementId: file.placementId, nodeId: file.nodeId }
+
+// the table, keyed by the same thing
+export function performFileVerb(verb: FileVerb): void {
+  handlers.get(verb.placementId)?.(verb);
+}
+```
+
+The disposer checks identity before deleting, because React mounts the next
+instance before unmounting the previous one under StrictMode:
+
+```ts
+return () => {
+  if (handlers.get(placementId) === next) handlers.delete(placementId);
+};
+```
+
+Without that, the stale disposer removes the live registration and the tile
+silently stops responding to its own menu — a failure indistinguishable from
+the bug being fixed.
