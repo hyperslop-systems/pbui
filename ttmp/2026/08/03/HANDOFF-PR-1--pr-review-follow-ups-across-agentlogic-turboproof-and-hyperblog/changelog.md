@@ -35,3 +35,15 @@ Step 2: turboproof T2/T3/T4/T5/T8/T9 — verbs addressed by placement, rename as
 - /home/manuel/workspaces/2026-07-30/transcript-agent/turboproof/ui/src/store/renameBinding.ts — re-read after the await, move every displaced document (T3, T4)
 - /home/manuel/workspaces/2026-07-30/transcript-agent/turboproof/ui/src/store/slice.ts — rejected keeps the batch and isolates (T5)
 
+
+## 2026-08-03
+
+Step 3: hyperblog H1-H9 — per-placement post bindings, a launcher that works, a 0600 database, a tier check on read-marks, an atomic OIDC provider, bounded token TTLs, and an honest session list. Plus a finding nobody had made: the pbui Provider had no onPerform, so every object-menu entry in the product did nothing (hyperblog commits aa684a8, d4a073d)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-30/transcript-agent/hyperblog/pkg/server/server.go — atomic.Pointer for the OIDC provider (H5)
+- /home/manuel/workspaces/2026-07-30/transcript-agent/hyperblog/pkg/store/store.go — precreatePrivate — the database is owner-only (H3)
+- /home/manuel/workspaces/2026-07-30/transcript-agent/hyperblog/ui/src/App.tsx — the provider had no onPerform — the tenth finding
+- /home/manuel/workspaces/2026-07-30/transcript-agent/hyperblog/ui/src/model/paneTree.ts — the layout tree, extracted so H1/H7/H8 could be asserted
+

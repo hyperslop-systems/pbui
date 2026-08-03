@@ -12,15 +12,15 @@
 - [x] T8 [P2] turboproof file-root discovery caches its own transient failure (ui/src/state/fileRoots.ts:29) <!-- t:o8mu -->
 - [x] T9 [P1] turboproof Windows roots produce invalid file URIs — ASK whether Windows is supported (ui/src/model/fileRefs.ts:80) <!-- t:aynr -->
 - [x] T10 CI turboproof GoSec G302 on 0o644 — decide deliberately, scoped nosec not a blanket exclude (pkg/filestore/store.go:383) <!-- t:80uh -->
-- [ ] H1 [P1] hyperblog both readers share one cursor; server already models the binding (ui/src/apps/ReaderApp.tsx:19) <!-- t:gz7c -->
-- [ ] H2 [P1] hyperblog sign-out-everywhere is a GET against a POST route, silently fails (ui/src/api/client.ts:316) <!-- t:jbra -->
-- [ ] H3 [P1] hyperblog database file inherits the umask; holds emails and plaintext ID tokens (pkg/store/store.go:104) <!-- t:8vdp -->
-- [ ] H4 [P2] hyperblog PUT read-mark skips the tier check the rest of the paywall enforces (pkg/server/handlers_reading.go:141) <!-- t:sfbf -->
-- [ ] H5 [P2] hyperblog OIDC provider published across a data race while serving (pkg/server/server.go:211) <!-- t:d8sg -->
-- [ ] H6 [P2] hyperblog negative ttlDays silently creates a non-expiring token (pkg/server/handlers_me.go:268) <!-- t:sj34 -->
-- [ ] H7 [P2] hyperblog openLauncher has no case, so no working path to change a pane's view (Workbench.tsx:168) <!-- t:fl2p -->
-- [ ] H8 [P2] hyperblog split duplicates singleton tiles the server will reject (Workbench.tsx:147) <!-- t:pujl -->
-- [ ] H9 [P2] hyperblog session list shows idle-expired sessions for up to 16 days (pkg/store/accounts.go:320) <!-- t:qupu -->
+- [x] H1 [P1] hyperblog both readers share one cursor; server already models the binding (ui/src/apps/ReaderApp.tsx:19) <!-- t:gz7c -->
+- [x] H2 [P1] hyperblog sign-out-everywhere is a GET against a POST route, silently fails (ui/src/api/client.ts:316) <!-- t:jbra -->
+- [x] H3 [P1] hyperblog database file inherits the umask; holds emails and plaintext ID tokens (pkg/store/store.go:104) <!-- t:8vdp -->
+- [x] H4 [P2] hyperblog PUT read-mark skips the tier check the rest of the paywall enforces (pkg/server/handlers_reading.go:141) <!-- t:sfbf -->
+- [x] H5 [P2] hyperblog OIDC provider published across a data race while serving (pkg/server/server.go:211) <!-- t:d8sg -->
+- [x] H6 [P2] hyperblog negative ttlDays silently creates a non-expiring token (pkg/server/handlers_me.go:268) <!-- t:sj34 -->
+- [x] H7 [P2] hyperblog openLauncher has no case, so no working path to change a pane's view (Workbench.tsx:168) <!-- t:fl2p -->
+- [x] H8 [P2] hyperblog split duplicates singleton tiles the server will reject (Workbench.tsx:147) <!-- t:pujl -->
+- [x] H9 [P2] hyperblog session list shows idle-expired sessions for up to 16 days (pkg/store/accounts.go:320) <!-- t:qupu -->
 - [ ] H10 CI hyperblog: vault role hyperblog-private-dependencies missing — INFRA, ask first. Dependency graph off. govulncheck resolves after pbui#9 merges <!-- t:tq11 -->
 - [ ] A1 [P2] agentlogic transcript fetched from the current project, not the row's — regression, see git log -p (SourcePicker.tsx:216) <!-- t:ssbr -->
 - [ ] A2 [P2] agentlogic LinkAction variant=raised does not exist; link loses all styling (DevicePage.tsx:91) <!-- t:bivl -->
