@@ -63,14 +63,14 @@ export function ChannelRow({
       <IconButton
         variant="framed"
         glyph="⌖"
-        label={`accept a field for ${channel}`}
+        accessibleName={`accept a field for ${channel}`}
         title={`accept a <field> for ${channel} — click one anywhere`}
         onClick={onAcceptRequest}
       />
       <IconButton
         variant="framed"
         glyph="×"
-        label={`clear ${channel}`}
+        accessibleName={`clear ${channel}`}
         disabled={!mapped}
         onClick={onClear}
       />

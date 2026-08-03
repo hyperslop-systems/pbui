@@ -17,7 +17,7 @@ const meta = {
   parameters: { tile: false },
   args: {
     points: [3, 5, 4, 8, 9, 7, 12, 14, 13, 18],
-    label: "verbs applied per step",
+    accessibleName: "verbs applied per step",
   },
 } satisfies Meta<typeof Sparkline>;
 
@@ -37,11 +37,11 @@ export const Threshold: Story = {
     <Stack gap={4}>
       <Stack gap={2}>
         <SectionLabel>under budget throughout</SectionLabel>
-        <Sparkline points={[2, 4, 5, 7, 9, 11, 12]} threshold={20} label="under budget" />
+        <Sparkline points={[2, 4, 5, 7, 9, 11, 12]} threshold={20} accessibleName="under budget" />
       </Stack>
       <Stack gap={2}>
         <SectionLabel>crosses at the eighth point</SectionLabel>
-        <Sparkline points={[2, 4, 5, 7, 9, 11, 12, 21, 19]} threshold={20} label="over budget" />
+        <Sparkline points={[2, 4, 5, 7, 9, 11, 12, 21, 19]} threshold={20} accessibleName="over budget" />
       </Stack>
       <Text>
         The dashed line is inside the domain even when it sits above every observed value — the
@@ -65,7 +65,7 @@ export const Gaps: Story = {
       <SectionLabel>a missing sample in the middle</SectionLabel>
       <Sparkline
         points={[4, 6, 9, Number.NaN, Number.NaN, 14, 11, 15]}
-        label="series with a gap"
+        accessibleName="series with a gap"
         width={200}
       />
     </Stack>
@@ -90,7 +90,7 @@ export const Degenerate: Story = {
       ].map(([caption, pts]) => (
         <Stack key={caption as string} gap={1}>
           <SectionLabel>{caption as string}</SectionLabel>
-          <Sparkline points={pts as number[]} label={caption as string} />
+          <Sparkline points={pts as number[]} accessibleName={caption as string} />
         </Stack>
       ))}
       <Text>
@@ -114,7 +114,7 @@ export const Sizes: Story = {
         <Sparkline
           key={`${w}x${h}`}
           points={[3, 8, 5, 12, 9, 15, 11, 18]}
-          label={`${w} by ${h}`}
+          accessibleName={`${w} by ${h}`}
           width={w as number}
           height={h as number}
         />

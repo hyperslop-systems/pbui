@@ -24,7 +24,7 @@ const meta = {
   parameters: { tile: false },
   args: {
     initial: "explore",
-    label: "workspace name",
+    accessibleName: "workspace name",
     fallback: "explore",
     onCommit: () => {},
     onCancel: () => {},
@@ -46,7 +46,7 @@ export const Live: Story = {
           {editing ? (
             <InlineRename
               initial={name}
-              label="workspace name"
+              accessibleName="workspace name"
               fallback={name}
               onCommit={(next) => {
                 setName(next);
@@ -94,7 +94,7 @@ export const DoesNotShiftTheRow: Story = {
       </Button>
       <InlineRename
         initial="explore"
-        label="workspace name"
+        accessibleName="workspace name"
         fallback="explore"
         onCommit={() => {}}
         onCancel={() => {}}

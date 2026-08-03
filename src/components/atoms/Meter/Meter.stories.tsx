@@ -21,7 +21,7 @@ const meta = {
   title: "Design System/Atoms/Meter",
   component: Meter,
   parameters: { tile: false },
-  args: { fraction: 0.62, label: "context window", value: "14.9k / 24k" },
+  args: { fraction: 0.62, accessibleName: "context window", value: "14.9k / 24k" },
 } satisfies Meta<typeof Meter>;
 
 export default meta;
@@ -44,7 +44,7 @@ export const Sizes: Story = {
               key={f}
               size="inline"
               fraction={f}
-              label={`churn ${formatPercent(f)}`}
+              accessibleName={`churn ${formatPercent(f)}`}
               value={formatPercent(f)}
             />
           ))}
@@ -52,7 +52,7 @@ export const Sizes: Story = {
       </Stack>
       <Stack gap={2}>
         <SectionLabel>row — fills the container</SectionLabel>
-        <Meter size="row" fraction={0.62} label="context window" value="14.9k / 24k" />
+        <Meter size="row" fraction={0.62} accessibleName="context window" value="14.9k / 24k" />
       </Stack>
     </Stack>
   ),
@@ -73,8 +73,8 @@ export const Alarm: Story = {
       {[0.5, 0.8, 0.97].map((f) => (
         <Stack key={f} gap={1}>
           <SectionLabel>{formatPercent(f)}</SectionLabel>
-          <Meter fraction={f} label={`plain ${formatPercent(f)}`} value={formatPercent(f)} />
-          <Meter fraction={f} label={`alarm ${formatPercent(f)}`} value={formatPercent(f)} alarm />
+          <Meter fraction={f} accessibleName={`plain ${formatPercent(f)}`} value={formatPercent(f)} />
+          <Meter fraction={f} accessibleName={`alarm ${formatPercent(f)}`} value={formatPercent(f)} alarm />
         </Stack>
       ))}
     </Stack>
@@ -100,7 +100,7 @@ export const Tones: Story = {
         <Meter
           key={name}
           fraction={0.55}
-          label={`${name} share`}
+          accessibleName={`${name} share`}
           tone={`var(${token})`}
           value={name as string}
         />
@@ -132,7 +132,7 @@ export const HostileInput: Story = {
       ].map(([caption, f]) => (
         <Stack key={caption as string} gap={1}>
           <SectionLabel>{caption as string}</SectionLabel>
-          <Meter fraction={f as number} label={caption as string} value={formatShort(f as number)} />
+          <Meter fraction={f as number} accessibleName={caption as string} value={formatShort(f as number)} />
         </Stack>
       ))}
     </Stack>

@@ -117,7 +117,7 @@ export function GalleryPanel({
                   size="tiny"
                   tone="danger"
                   glyph="✕"
-                  label={`delete the snapshot ${snapshot.name}`}
+                  accessibleName={`delete the snapshot ${snapshot.name}`}
                   onClick={() => onDelete(snapshot.id)}
                 />
               </Stack>

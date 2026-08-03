@@ -121,7 +121,7 @@ export function TemplateTable({
                   {renaming === template.id ? (
                     <InlineRename
                       initial={template.name}
-                      label="template name"
+                      accessibleName="template name"
                       fallback={template.name}
                       onCommit={(name) => {
                         onRename(template.id, name);

@@ -53,7 +53,7 @@ export function StepEditor({
     compact = false,
   ) => (
     <SelectInput
-      label={label}
+      accessibleName={label}
       variant="framed"
       width={compact ? "compact" : "auto"}
       value={value}
@@ -81,7 +81,7 @@ export function StepEditor({
             true,
           )}
           <TextInput
-            label="value to compare against"
+            accessibleName="value to compare against"
             size="small"
             value={step.value}
             placeholder="value (blank passes everything)"
@@ -93,7 +93,7 @@ export function StepEditor({
       return (
         <Stack direction="row" gap={2} wrap align="center">
           <TextInput
-            label="name of the derived field"
+            accessibleName="name of the derived field"
             size="small"
             width="compact"
             value={step.name}
@@ -152,7 +152,7 @@ export function StepEditor({
       return (
         <Stack direction="row" gap={2} align="center">
           <TextInput
-            label="rows to keep"
+            accessibleName="rows to keep"
             size="small"
             width="compact"
             inputMode="numeric"

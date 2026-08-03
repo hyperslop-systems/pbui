@@ -82,14 +82,14 @@ export function UploadPanel({
           <SectionLabel>Publish a dataset</SectionLabel>
           <Toolbar tight>
             <SelectInput
-              label="drop"
+              accessibleName="drop"
               value={target.drop}
               placeholder="choose a drop…"
               options={writableDrops.map((drop) => ({ value: drop, label: drop }))}
               onValueChange={(drop) => onTargetChange({ ...target, drop })}
             />
             <TextInput
-              label="dataset name"
+              accessibleName="dataset name"
               placeholder="readings"
               value={target.dataset}
               onValueChange={(dataset) => onTargetChange({ ...target, dataset })}

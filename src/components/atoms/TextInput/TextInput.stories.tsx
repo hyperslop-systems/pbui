@@ -25,7 +25,7 @@ const meta = {
   // Required because every prop below is required on the component. Each story
   // renders `Live` instead, so these are the control-panel defaults rather than
   // what any story shows.
-  args: { label: "dataset name", value: "", onValueChange: () => {} },
+  args: { accessibleName: "dataset name", value: "", onValueChange: () => {} },
 } satisfies Meta<typeof TextInput>;
 
 export default meta;
@@ -35,10 +35,10 @@ type Story = StoryObj<typeof meta>;
 export const TheFourItReplaced: Story = {
   render: () => (
     <Stack gap={3}>
-      <Live label="dataset name" placeholder="readings" />
-      <Live label="token name" placeholder="ci ingest" />
-      <Live label="add a member to lab" placeholder="colleague@example.org" type="email" />
-      <Live label="bearer token" type="password" initial="hunter2hunter2" />
+      <Live accessibleName="dataset name" placeholder="readings" />
+      <Live accessibleName="token name" placeholder="ci ingest" />
+      <Live accessibleName="add a member to lab" placeholder="colleague@example.org" type="email" />
+      <Live accessibleName="bearer token" type="password" initial="hunter2hunter2" />
       <Text size="tiny" tone="faint" prose>
         UploadApp, TokensApp, MemberList and SignInApp each wrote the same four style properties
         inline, character for character (guide §7.3).
@@ -50,7 +50,7 @@ export const TheFourItReplaced: Story = {
 export const Empty: Story = {
   render: () => (
     <Stack gap={2}>
-      <Live label="dataset name" placeholder="readings" />
+      <Live accessibleName="dataset name" placeholder="readings" />
       <Text size="tiny" tone="faint">
         The placeholder is faint, not the value colour — an empty field must not read as a filled
         one.
@@ -62,7 +62,7 @@ export const Empty: Story = {
 export const Invalid: Story = {
   render: () => (
     <Stack gap={2}>
-      <Live label="add a member" initial="not-an-address" invalid />
+      <Live accessibleName="add a member" initial="not-an-address" invalid />
       <Text size="tiny" tone="danger">
         no datadrop account has that address yet
       </Text>
@@ -77,7 +77,7 @@ export const Invalid: Story = {
 export const Disabled: Story = {
   render: () => (
     <Stack gap={2}>
-      <Live label="token name" placeholder="ci ingest" disabled />
+      <Live accessibleName="token name" placeholder="ci ingest" disabled />
       <Text size="tiny" tone="faint" prose>
         TokensApp shows the mint form disabled with the reason beside it, rather than hiding it: a
         rule you cannot see is a rule you cannot learn.
@@ -97,15 +97,15 @@ export const WidthsAndSizes: Story = {
   render: () => (
     <Stack gap={3}>
       <Stack direction="row" gap={2} align="center">
-        <Live label="narrow, small — the document name" width="narrow" size="small" initial="α" />
+        <Live accessibleName="narrow, small — the document name" width="narrow" size="small" initial="α" />
         <Text size="tiny" tone="faint">
           64px, beside a row of chips
         </Text>
       </Stack>
       <Stack direction="row" gap={2} align="center">
-        <Live label="fill, tiny — the bearer token" width="fill" size="tiny" type="password" />
+        <Live accessibleName="fill, tiny — the bearer token" width="fill" size="tiny" type="password" />
       </Stack>
-      <Live label="auto, base — a dataset name" initial="readings" />
+      <Live accessibleName="auto, base — a dataset name" initial="readings" />
     </Stack>
   ),
 };

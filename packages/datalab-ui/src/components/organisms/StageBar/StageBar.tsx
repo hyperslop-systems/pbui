@@ -109,7 +109,7 @@ export function StageBar() {
     <span className={styles.bar}>
       {name}
       <SelectInput
-        label="stage"
+        accessibleName="stage"
         variant="framed"
         size="tiny"
         value={currentId}
@@ -125,7 +125,7 @@ export function StageBar() {
         variant="framed"
         size="tiny"
         glyph="▾"
-        label="this stage's verbs"
+        accessibleName="this stage's verbs"
         title="export, import, inspect — the same menu as a right-click"
         onClick={(event) => {
           // `stopPropagation` for the same reason `Presentation.onClick` does

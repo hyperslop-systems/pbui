@@ -102,7 +102,7 @@ export function TracePanel({ entries }: { entries: readonly TraceEntry[] }) {
         {entries.length > 2 && (
           <Sparkline
             points={activity}
-            label={`${entries.length} verbs applied`}
+            accessibleName={`${entries.length} verbs applied`}
             width={220}
             height={18}
           />

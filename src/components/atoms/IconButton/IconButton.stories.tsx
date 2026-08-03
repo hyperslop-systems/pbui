@@ -7,7 +7,7 @@ const meta = {
   title: "Design System/Atoms/IconButton",
   component: IconButton,
   parameters: { tile: false },
-  args: { glyph: "✕", label: "remove" },
+  args: { glyph: "✕", accessibleName: "remove" },
 } satisfies Meta<typeof IconButton>;
 
 export default meta;
@@ -18,12 +18,12 @@ export const TheGlyphsInUse: Story = {
   render: () => (
     <Stack gap={3}>
       <Stack direction="row" gap={2} align="center">
-        <IconButton variant="framed" glyph="↑" label="move up" />
-        <IconButton variant="framed" glyph="↓" label="move down" />
-        <IconButton variant="framed" glyph="✕" label="remove step" tone="danger" />
-        <IconButton variant="framed" glyph="⌖" label="accept a field for y" />
-        <IconButton variant="framed" glyph="×" label="clear y" />
-        <IconButton glyph="↕" label="resize the split" />
+        <IconButton variant="framed" glyph="↑" accessibleName="move up" />
+        <IconButton variant="framed" glyph="↓" accessibleName="move down" />
+        <IconButton variant="framed" glyph="✕" accessibleName="remove step" tone="danger" />
+        <IconButton variant="framed" glyph="⌖" accessibleName="accept a field for y" />
+        <IconButton variant="framed" glyph="×" accessibleName="clear y" />
+        <IconButton glyph="↕" accessibleName="resize the split" />
       </Stack>
       <Text size="tiny" tone="faint" prose>
         Hover any of them: the label is the accessible name and the tooltip. A glyph-only button
@@ -38,8 +38,8 @@ export const Disabled: Story = {
   render: () => (
     <Stack gap={2}>
       <Stack direction="row" gap={2}>
-        <IconButton variant="framed" glyph="↑" label="move up" disabled />
-        <IconButton variant="framed" glyph="↓" label="move down" />
+        <IconButton variant="framed" glyph="↑" accessibleName="move up" disabled />
+        <IconButton variant="framed" glyph="↓" accessibleName="move down" />
       </Stack>
       <Text size="tiny" tone="faint" prose>
         The first step in a pipeline cannot move up. Every hand-written site that dimmed a button
@@ -53,9 +53,9 @@ export const Disabled: Story = {
 export const Bare: Story = {
   render: () => (
     <Stack direction="row" gap={3} align="center">
-      <IconButton glyph="✕" label="close" />
-      <IconButton glyph="✕" label="close, dangerous" tone="danger" />
-      <IconButton glyph="✕" label="close, tiny" size="tiny" />
+      <IconButton glyph="✕" accessibleName="close" />
+      <IconButton glyph="✕" accessibleName="close, dangerous" tone="danger" />
+      <IconButton glyph="✕" accessibleName="close, tiny" size="tiny" />
     </Stack>
   ),
 };

@@ -124,7 +124,7 @@ export function BundleDialog({
         )}
 
         <TextArea
-          label={`${kind} bundle`}
+          accessibleName={`${kind} bundle`}
           value={text}
           onValueChange={setText}
           invalid={text !== "" && !result.ok}

@@ -350,7 +350,7 @@ export function FileBrowser({
           renamingKey === row.key ? (
             <InlineRename
               initial={node.name}
-              label={`rename ${node.name}`}
+              accessibleName={`rename ${node.name}`}
               fallback={node.name}
               onCommit={(next) => {
                 setRenamingKey(null);

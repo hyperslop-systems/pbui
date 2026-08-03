@@ -14,7 +14,7 @@ const meta = {
   title: "Design System/Atoms/TextArea",
   component: TextArea,
   parameters: { tile: false },
-  args: { label: "bundle", value: "", onValueChange: () => {} },
+  args: { accessibleName: "bundle", value: "", onValueChange: () => {} },
 } satisfies Meta<typeof TextArea>;
 
 export default meta;
@@ -39,13 +39,13 @@ const BUNDLE = `{
 /** Empty, with the placeholder that says what belongs here. */
 export const Empty: Story = {
   render: () => (
-    <Live label="tile bundle" code placeholder={'{ "format": "datadrop.layout", … }'} />
+    <Live accessibleName="tile bundle" code placeholder={'{ "format": "datadrop.layout", … }'} />
   ),
 };
 
 /** Holding JSON, which is the only thing this field is ever used for. */
 export const WithBundle: Story = {
-  render: () => <Live label="tile bundle" code initial={BUNDLE} />,
+  render: () => <Live accessibleName="tile bundle" code initial={BUNDLE} />,
 };
 
 /**
@@ -57,7 +57,7 @@ export const WithBundle: Story = {
 export const Invalid: Story = {
   render: () => (
     <Stack gap={3}>
-      <Live label="tile bundle" code invalid initial={"site,mean_temp,n\nnorth,21.4,18"} />
+      <Live accessibleName="tile bundle" code invalid initial={"site,mean_temp,n\nnorth,21.4,18"} />
       <Text size="tiny" tone="faint" prose>
         The border is dashed, not only red — the state is legible with no colour at all.
       </Text>
@@ -75,7 +75,7 @@ export const Invalid: Story = {
 export const OneLongLine: Story = {
   render: () => (
     <Live
-      label="tile bundle"
+      accessibleName="tile bundle"
       code
       rows={4}
       initial={`{"format":"datadrop.layout","version":1,"kind":"workspace","payload":${"{".repeat(0)}${JSON.stringify(

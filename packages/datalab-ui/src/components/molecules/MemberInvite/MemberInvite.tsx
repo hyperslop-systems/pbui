@@ -38,14 +38,14 @@ export function MemberInvite({
       <Toolbar tight>
         <TextInput
           type="email"
-          label={`add a member to ${drop}`}
+          accessibleName={`add a member to ${drop}`}
           placeholder="colleague@example.org"
           value={email}
           invalid={Boolean(error)}
           onValueChange={setEmail}
         />
         <SelectInput
-          label="role for the new member"
+          accessibleName="role for the new member"
           size="tiny"
           value={role}
           options={roles.map((r) => ({ value: r, label: r }))}

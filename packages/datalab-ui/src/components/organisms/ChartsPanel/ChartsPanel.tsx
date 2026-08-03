@@ -75,7 +75,7 @@ export function ChartsPanel({
                 <Stack direction="row" gap={2} align="center" wrap>
                   <DocChip docId={doc.id} />
                   <TextInput
-                    label="document name"
+                    accessibleName="document name"
                     value={doc.name}
                     width="narrow"
                     size="small"
@@ -101,7 +101,7 @@ export function ChartsPanel({
                     variant="framed"
                     size="tiny"
                     glyph="✕"
-                    label={
+                    accessibleName={
                       docs.length < 2 ? "the last document cannot be deleted" : "delete document"
                     }
                     disabled={docs.length < 2}

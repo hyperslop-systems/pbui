@@ -24,7 +24,7 @@ export interface TextAreaProps
   value: string;
   onValueChange(value: string): void;
   /** Becomes `aria-label`. Say what the field holds. */
-  label: string;
+  accessibleName: string;
   /** Marks the content as failing validation; sets `aria-invalid`. */
   invalid?: boolean;
   /** Lines of visible content. 8 is the import dialog's. */
@@ -42,7 +42,7 @@ export interface TextAreaProps
 export function TextArea({
   value,
   onValueChange,
-  label,
+  accessibleName,
   invalid = false,
   rows = 8,
   code = false,
@@ -51,7 +51,7 @@ export function TextArea({
 }: TextAreaProps) {
   return (
     <textarea
-      aria-label={label}
+      aria-label={accessibleName}
       aria-invalid={invalid || undefined}
       value={value}
       rows={rows}

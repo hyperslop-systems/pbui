@@ -19,13 +19,13 @@ import styles from "./InlineRename.module.css";
  */
 export function InlineRename({
   initial,
-  label,
+  accessibleName,
   fallback,
   onCommit,
   onCancel,
 }: {
   initial: string;
-  label: string;
+  accessibleName: string;
   /** Used when the field is committed empty or whitespace. */
   fallback: string;
   onCommit(name: string): void;
@@ -34,7 +34,7 @@ export function InlineRename({
   return (
     <input
       defaultValue={initial}
-      aria-label={label}
+      aria-label={accessibleName}
       className={styles.input}
       /*
        * Focused on mount, and it is not a convenience.

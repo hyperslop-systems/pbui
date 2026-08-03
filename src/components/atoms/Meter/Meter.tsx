@@ -17,7 +17,7 @@ export interface MeterProps {
    * A `role="progressbar"` with no accessible name is announced as "progress
    * bar" and nothing else, which is worse than not shipping it.
    */
-  label: string;
+  accessibleName: string;
   /** A CSS variable reference for the fill, e.g. "var(--pbui-tone-step)". */
   tone?: string;
   /** Rendered beside the bar, e.g. "18.2k / 24k". Callers format it. */
@@ -49,7 +49,14 @@ export interface MeterProps {
  * knowledge of what it measures. Wrap it in `<Presentation>` if the thing it
  * measures is an object.
  */
-export function Meter({ fraction, label, tone, value, size = "row", alarm = false }: MeterProps) {
+export function Meter({
+  fraction,
+  accessibleName,
+  tone,
+  value,
+  size = "row",
+  alarm = false,
+}: MeterProps) {
   // NaN and ±Infinity are not the same fact and must not render the same way.
   // NaN means "unknown" — 0/0, nothing measured yet — and an empty bar is
   // honest. +Infinity means x/0 with x > 0: unbounded overflow, something used
@@ -70,7 +77,7 @@ export function Meter({ fraction, label, tone, value, size = "row", alarm = fals
       <span
         className={styles.track}
         role="progressbar"
-        aria-label={label}
+        aria-label={accessibleName}
         aria-valuenow={Math.round(safe * 100)}
         aria-valuemin={0}
         aria-valuemax={100}

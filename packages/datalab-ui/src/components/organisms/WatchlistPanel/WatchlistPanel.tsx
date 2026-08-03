@@ -86,7 +86,7 @@ export function WatchlistPanel({
                   variant="framed"
                   size="tiny"
                   tone="danger"
-                  label="remove from watchlist"
+                  accessibleName="remove from watchlist"
                   onClick={() => onRemove(entry.id)}
                   glyph="✕"
                 />

@@ -86,7 +86,7 @@ export interface SelectInputProps
   value: string;
   onValueChange(value: string): void;
   /** Becomes `aria-label`. */
-  label: string;
+  accessibleName: string;
   options: readonly SelectOption[];
   /** Shown as the empty-valued first entry. */
   placeholder?: string;
@@ -108,7 +108,7 @@ export interface SelectInputProps
 export function SelectInput({
   value,
   onValueChange,
-  label,
+  accessibleName,
   options,
   placeholder,
   variant = "native",
@@ -119,7 +119,7 @@ export function SelectInput({
 }: SelectInputProps) {
   return (
     <select
-      aria-label={label}
+      aria-label={accessibleName}
       value={value}
       onChange={(event) => onValueChange(event.target.value)}
       className={[styles.root, styles[variant], styles[size], styles[width], className ?? ""]

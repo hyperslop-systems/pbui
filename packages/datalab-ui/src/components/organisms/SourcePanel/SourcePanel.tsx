@@ -68,7 +68,7 @@ export function SourcePanel({
           <SectionLabel>Token</SectionLabel>
           <TextInput
             type="password"
-            label="bearer token"
+            accessibleName="bearer token"
             placeholder="bearer token (public-read drops need none)"
             value={token}
             width="fill"
@@ -93,7 +93,7 @@ export function SourcePanel({
               />
             ) : (
               <SelectInput
-                label="drop"
+                accessibleName="drop"
                 variant="framed"
                 value={chosenDrop}
                 onValueChange={onDropChange}
@@ -121,7 +121,7 @@ export function SourcePanel({
               <EmptyState message="no datasets in this drop" />
             ) : (
               <SelectInput
-                label="dataset"
+                accessibleName="dataset"
                 variant="framed"
                 value={chosenDataset}
                 onValueChange={onDatasetChange}

@@ -70,7 +70,7 @@ const meta = {
     height: COURT.h,
     backdrop: <Court />,
     marks: SHOTS,
-    label: "shot chart",
+    accessibleName: "shot chart",
   },
 } satisfies Meta<typeof BackdropPanel>;
 
@@ -97,7 +97,7 @@ export const RedundantEncoding: Story = {
         height={COURT.h}
         backdrop={<Court />}
         marks={SHOTS}
-        label="shot chart with redundant encoding"
+        accessibleName="shot chart with redundant encoding"
       />
       <Text>
         Desaturate this in a screenshot tool and it still reads correctly, because the fill carries
@@ -131,7 +131,7 @@ export const WithZoneSummary: Story = {
         height={COURT.h}
         backdrop={<Court />}
         marks={SHOTS}
-        label="shot chart with zones"
+        accessibleName="shot chart with zones"
         header={
           <Stack direction="row" gap={3} wrap>
             {zones.map(({ z, made, attempted }) => (
@@ -164,7 +164,7 @@ export const ADifferentFrame: Story = {
     <BackdropPanel
       width={200}
       height={420}
-      label="rack elevation"
+      accessibleName="rack elevation"
       backdrop={
         <g stroke="var(--pbui-ink)" fill="none" strokeWidth="1.5">
           <rect x="20" y="10" width="160" height="400" fill="var(--pbui-pane-alt)" />

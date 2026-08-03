@@ -52,7 +52,7 @@ export function MemberRow({
       {canEdit && (
         <>
           <SelectInput
-            label={`role of ${member.user.name}`}
+            accessibleName={`role of ${member.user.name}`}
             size="tiny"
             value={member.role}
             disabled={member.isOwner}

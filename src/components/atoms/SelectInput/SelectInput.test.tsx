@@ -25,7 +25,7 @@ afterEach(cleanup);
 function renderOptions() {
   render(
     <SelectInput
-      label="format"
+      accessibleName="format"
       value="csv"
       onValueChange={() => {}}
       options={[

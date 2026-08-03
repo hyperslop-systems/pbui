@@ -106,21 +106,21 @@ export function TileFrame({
             variant="framed"
             size="tiny"
             glyph="⬌"
-            label="split side by side"
+            accessibleName="split side by side"
             onClick={() => onSplit("row")}
           />
           <IconButton
             variant="framed"
             size="tiny"
             glyph="⬍"
-            label="split top and bottom"
+            accessibleName="split top and bottom"
             onClick={() => onSplit("col")}
           />
           <IconButton
             variant="framed"
             size="tiny"
             glyph="✕"
-            label="close this pane"
+            accessibleName="close this pane"
             disabled={!canClose}
             onClick={onClose}
           />

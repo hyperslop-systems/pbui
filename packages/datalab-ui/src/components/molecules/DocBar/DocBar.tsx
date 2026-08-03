@@ -30,7 +30,7 @@ export function DocBar({ viewId, docId }: { viewId: ViewId; docId: DocId | null 
       {shown && <DocChip docId={shown} />}
 
       <SelectInput
-        label="which document this tile shows"
+        accessibleName="which document this tile shows"
         variant="framed"
         size="tiny"
         value={shown ?? ""}
@@ -51,7 +51,7 @@ export function DocBar({ viewId, docId }: { viewId: ViewId; docId: DocId | null 
         variant="framed"
         size="tiny"
         glyph="＋"
-        label="new document in this tile"
+        accessibleName="new document in this tile"
         title="new chart document — this tile re-points to it"
         onClick={() => {
           const action = worldActions.newDoc(null);

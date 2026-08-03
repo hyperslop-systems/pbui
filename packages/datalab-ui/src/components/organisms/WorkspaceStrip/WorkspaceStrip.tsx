@@ -54,7 +54,7 @@ export function WorkspaceStrip() {
             <InlineRename
               key={space.id}
               initial={space.name}
-              label="workspace name"
+              accessibleName="workspace name"
               fallback={space.name}
               // Through `perform`, not `dispatch`, so the rename appears in the
               // trace as a verb like every other user decision.

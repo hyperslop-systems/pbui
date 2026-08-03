@@ -21,7 +21,7 @@ export interface IconButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type" | "aria-label"> {
   glyph: string;
   /** Becomes `aria-label` and `title`. Say the verb: "remove step", not "x". */
-  label: string;
+  accessibleName: string;
   variant?: ButtonVariant;
   tone?: ButtonTone;
   size?: ButtonSize;
@@ -29,7 +29,7 @@ export interface IconButtonProps
 
 export function IconButton({
   glyph,
-  label,
+  accessibleName,
   variant = "bare",
   tone = "default",
   size = "small",
@@ -39,8 +39,8 @@ export function IconButton({
   return (
     <button
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={accessibleName}
+      title={accessibleName}
       className={[
         styles.root,
         styles[variant],

@@ -148,7 +148,7 @@ export function LauncherShell({
     <Dialog title={title} onClose={onClose} closeLabel="close the launcher">
       <div data-part="launcher">
         <TextInput
-          label={searchLabel}
+          accessibleName={searchLabel}
           placeholder={placeholder}
           value={query}
           onValueChange={onQueryChange}
