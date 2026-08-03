@@ -121,10 +121,11 @@ describe("createPbui", () => {
    * focusing worked. Fifteen live sites across three products, plus pbui's own
    * `Pbui.stories.tsx:30`.
    *
-   * The descriptor below is written the way descriptor authors write them, and
-   * the way all fifteen sites are written: a conditional `disabled` beside an
-   * unconditional reason. That pairing reads as one unit and is evaluated as
-   * two, which is the entire defect.
+   * P3.1 then merged the pair into `disabledBecause`, which is what the
+   * descriptor below now uses. These assertions did not change across that
+   * merge — which is the point of keeping them: they pin the BEHAVIOUR (a
+   * reason appears only on an unavailable action) independently of whichever
+   * shape expresses it.
    */
   describe("a disabled reason belongs to a disabled action", () => {
     type MenuVerb = { type: "focus"; id: string };
@@ -139,9 +140,13 @@ describe("createPbui", () => {
               label: "Focus",
               verb: { type: "focus", id: person.id },
               description: "bring this person into view",
-              // The shape every real descriptor uses: predicate, then prose.
-              disabled: environment.focused === person.id,
-              disabledReason: "the cursor is already here",
+              // One field. Under the two-field API this read
+              //     disabled: environment.focused === person.id,
+              //     disabledReason: "the cursor is already here",
+              // which is how every real descriptor wrote it: a predicate and a
+              // prose explanation OF that predicate, evaluated independently.
+              disabledBecause:
+                environment.focused === person.id ? "the cursor is already here" : undefined,
             },
           ],
         },

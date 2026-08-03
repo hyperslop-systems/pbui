@@ -30,11 +30,15 @@ function renderOptions() {
       onValueChange={() => {}}
       options={[
         { value: "csv", label: "CSV" },
-        // The shape a caller writes: predicate, then prose.
-        { value: "parquet", label: "Parquet", disabled: true, reason: "needs a paid plan" },
-        // The illegal state the type still permits until P3.2 merges the pair:
-        // a reason on an option that is perfectly selectable.
-        { value: "json", label: "JSON", reason: "needs a paid plan" },
+        { value: "parquet", label: "Parquet", disabledBecause: "needs a paid plan" },
+        /*
+         * There used to be a third option here — a `reason` on an option with
+         * no `disabled` — to pin the behaviour for the illegal state the old
+         * two-field type permitted. P3.2 merged the pair, so that state is no
+         * longer expressible and the case is gone with it. A test that can no
+         * longer be written is the strongest form of this fix.
+         */
+        { value: "json", label: "JSON" },
       ]}
     />,
   );
@@ -51,11 +55,10 @@ describe("SelectInput options", () => {
     expect(parquet.title).toBe("needs a paid plan");
   });
 
-  test("ignores a reason on an option that is not disabled", () => {
+  test("leaves an option with no reason selectable and unannotated", () => {
     const { json } = renderOptions();
 
     expect(json.disabled).toBe(false);
-    // The defect: this used to be "JSON — needs a paid plan".
     expect(json.textContent).toBe("JSON");
     expect(json.title).toBe("");
   });

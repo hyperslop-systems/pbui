@@ -22,7 +22,11 @@ const registry = createPresentationRegistry<Values, Environment, Verb>({
         id: "select",
         label: "Select person",
         verb: { type: "select", id: person.id },
-        disabled: person.id === environment.currentUserId,
+        // Under the old API this was a bare `disabled` with no explanation —
+        // an action greyed out for no stated reason, which the merged field
+        // no longer permits.
+        disabledBecause:
+          person.id === environment.currentUserId ? "that is you" : undefined,
       },
     ],
   },
@@ -48,7 +52,11 @@ describe("createPresentationRegistry", () => {
         id: "select",
         label: "Select person",
         verb: { type: "select", id: "person-2" },
-        disabled: false,
+        // `person-2` is not the current user, so the action is available.
+        // Under the old API this asserted `disabled: false` — a field that had
+        // to be present and false. Absence is now how "available" is spelled,
+        // which is the same fact with one fewer way to write it wrong.
+        disabledBecause: undefined,
       },
     ]);
   });

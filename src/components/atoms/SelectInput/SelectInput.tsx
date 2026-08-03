@@ -25,13 +25,31 @@ export interface SelectOption {
   value: string;
   label: string;
   /**
-   * Rendered greyed and unselectable.
+   * Present ⇔ the option is unselectable, and the string is why.
    *
-   * A native `<option disabled>` is unselectable by mouse AND by keyboard in
-   * every browser, and screen readers announce it as unavailable. Building a
-   * custom listbox to get a nicer grey would be a large accessibility
-   * regression for a cosmetic gain — so where an option should be greyed, this
-   * is how.
+   * The reason is appended to the label after an em dash and used as the
+   * `title`. It lives on the option rather than in the caller's `label` string
+   * because the two render differently, and because a `title` on a disabled
+   * option is the only hover affordance a native select has.
+   *
+   * # One field, matching `PresentationAction`
+   *
+   * This was `disabled?: boolean` plus `reason?: string`, and the render
+   * guarded on `reason` being set rather than on the option being disabled —
+   * the object menu's defect, reproduced here independently, down to the em
+   * dash. A selectable option would have read "Parquet — needs a paid plan"
+   * while selecting it worked fine. It never shipped for one reason only: no
+   * caller had passed `reason` yet.
+   *
+   * Three components in this library grew that pair by hand and two guarded it
+   * wrong, which is why the fix is the shape rather than the guard. See
+   * `PresentationAction.disabledBecause` for the full argument.
+   *
+   * # A native `<option disabled>` is the right primitive
+   *
+   * Unselectable by mouse AND keyboard in every browser, and announced as
+   * unavailable by screen readers. Building a custom listbox to get a nicer
+   * grey would be a large accessibility regression for a cosmetic gain.
    *
    * **This says nothing about WHEN to grey rather than omit.** It used to: the
    * comment here asserted "never hidden" as a project-wide policy, citing
@@ -44,16 +62,20 @@ export interface SelectOption {
    * Live callers: the drop and role selects in `MemberList`, and the upload
    * form. Both are short lists where a greyed entry is informative.
    */
-  disabled?: boolean;
+  disabledBecause?: string;
+
   /**
-   * Why it is disabled. Appended to the label and used as the `title`.
+   * TOMBSTONES — see `PresentationAction.disabled` for why these are typed
+   * `never` rather than deleted. Options reach this component inside an array
+   * prop, which is checked by assignability rather than by the excess-property
+   * rule, so a deleted field would be silently ignored and every disabled
+   * option would become selectable.
    *
-   * On the option rather than left to the caller's `label` string, because the
-   * two are rendered differently — the reason belongs after an em dash and the
-   * label does not — and because a `title` on a disabled option is the only
-   * hover affordance a native select has.
+   * @deprecated merged into `disabledBecause`
    */
-  reason?: string;
+  disabled?: never;
+  /** @deprecated merged into `disabledBecause` */
+  reason?: never;
 }
 
 export interface SelectInputProps
@@ -110,23 +132,11 @@ export function SelectInput({
         <option
           key={option.value}
           value={option.value}
-          disabled={option.disabled}
-          /*
-           * Guarded on `disabled`, not on `reason` being set.
-           *
-           * This was the object menu's bug (createPbui.tsx:366-378) reproduced
-           * independently, down to the em dash — a selectable option would
-           * have read "Parquet — needs a paid plan" while selecting it worked
-           * fine. It never shipped because no caller passes `reason` yet,
-           * which is the only difference between the two copies.
-           *
-           * Three components in this library grew the same disabled/reason
-           * pair by hand and two of them guarded it wrong. That count is why
-           * P3 merges the pair rather than patching each site.
-           */
-          title={option.disabled ? option.reason : undefined}
+          /* One field, so there is no second one to disagree with it. */
+          disabled={option.disabledBecause !== undefined}
+          title={option.disabledBecause}
         >
-          {option.disabled && option.reason ? `${option.label} — ${option.reason}` : option.label}
+          {option.disabledBecause ? `${option.label} — ${option.disabledBecause}` : option.label}
         </option>
       ))}
     </select>

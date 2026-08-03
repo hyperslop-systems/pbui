@@ -363,34 +363,25 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
               key={action.id}
               data-part="menu-item"
               data-danger={action.danger || undefined}
-              disabled={action.disabled}
               /*
-               * BOTH of these read `disabled` first, and both used to read only
-               * `disabledReason`.
+               * Every one of these reads ONE field, and that is the point.
                *
-               * A descriptor author knows the rule — "you cannot focus the term
-               * the cursor is already on" — and writes it twice, once as a
-               * predicate and once as prose:
+               * P2 fixed this render by guarding the reason on `disabled`
+               * rather than on the reason existing. P3.1 removed the guard's
+               * reason to exist: with `disabledBecause` merged, the field being
+               * set MEANS disabled, so there is nothing left to disagree.
                *
-               *     disabled: environment.cursorTerm === ref.id,
-               *     disabledReason: "the cursor is already here",
-               *
-               * which reads as one unit and is evaluated as two. Guarding on
-               * the reason being SET rather than on the action being disabled
-               * meant every usable action displayed an explanation of why it
-               * could not be used, and lost its real `title` to the same
-               * string. Fifteen live sites across three products.
-               *
-               * P3.1 merges the pair into a single `disabledBecause`, after
-               * which these guards collapse — a merge is only real if the
-               * downstream guards disappear rather than multiply.
+               * That collapse is the test for whether a merge was real. If the
+               * downstream guards had multiplied instead of disappearing, the
+               * two fields would still have been two concepts wearing one name.
                */
-              title={action.disabled ? (action.disabledReason ?? action.description) : action.description}
+              disabled={action.disabledBecause !== undefined}
+              title={action.disabledBecause ?? action.description}
               onClick={() => pbui.perform(action.verb)}
             >
               {action.label}
-              {action.disabled && action.disabledReason && (
-                <span data-part="menu-reason"> — {action.disabledReason}</span>
+              {action.disabledBecause && (
+                <span data-part="menu-reason"> — {action.disabledBecause}</span>
               )}
             </button>
           ))

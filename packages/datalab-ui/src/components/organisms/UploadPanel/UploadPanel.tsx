@@ -115,8 +115,7 @@ export function UploadPanel({
         )}
 
         <FileDropZone
-          disabled={!ready}
-          disabledReason="choose a drop and name the dataset first"
+          disabledBecause={ready ? undefined : "choose a drop and name the dataset first"}
           buttonLabel="Choose CSV files…"
           // CSV first, because that is what the table projection reads and what
           // a chart can be made of — but not exclusively: a dataset is a body of

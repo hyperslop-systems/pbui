@@ -26,8 +26,13 @@ const registry = createPresentationRegistry<ExampleValues, ExampleEnvironment, E
         id: "email",
         label: "Send email",
         verb: { type: "emailPerson", personId: person.id },
-        disabled: person.id === environment.currentUserId,
-        disabledReason: "You cannot email yourself from this example",
+        // One field, one expression. The two-field form this replaced showed
+        // "Send email — You cannot email yourself from this example" on every
+        // person who was NOT you, in this library's own primary story.
+        disabledBecause:
+          person.id === environment.currentUserId
+            ? "You cannot email yourself from this example"
+            : undefined,
       },
     ],
   },
@@ -41,8 +46,11 @@ const registry = createPresentationRegistry<ExampleValues, ExampleEnvironment, E
         label: "Archive project",
         verb: { type: "archiveProject", projectId: project.id },
         danger: true,
-        disabled: project.archived,
-        disabledReason: project.archived ? "Already archived" : undefined,
+        // This one was already correct under the old API — the reason was
+        // conditioned on the same predicate as the disable. Fifteen lines
+        // above, the same author wrote the same idea and got it wrong. That
+        // is the argument for the merge in two adjacent descriptors.
+        disabledBecause: project.archived ? "Already archived" : undefined,
       },
     ],
   },

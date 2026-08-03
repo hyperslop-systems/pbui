@@ -64,12 +64,27 @@ function bindProductDescriptor<Value>(
     describe: descriptor.describe,
     tone: descriptor.tone,
     actions: (value, environment) =>
+      /*
+       * `disabledBecause` passes straight through since pbui 0.4.0.
+       *
+       * These two lines used to be here:
+       *
+       *     disabled: action.disabledBecause !== undefined,
+       *     disabledReason: action.disabledBecause,
+       *
+       * because this product had merged the pair into one field on its own,
+       * years before the library did, and had to translate back into pbui's
+       * two-field shape at this boundary. It was the only one of four products
+       * that never shipped the disabled/reason disconnect — and it paid this
+       * adapter for the privilege. pbui adopted the field and the name from
+       * here (PBUI-HARDEN-1 P3.1), so the translation is gone and not one
+       * descriptor changed.
+       */
       descriptor.actions(value, environment).map((action, index) => ({
         id: `${descriptor.ptype}:${index}:${action.label}`,
         label: action.label,
         verb: action.verb,
-        disabled: action.disabledBecause !== undefined,
-        disabledReason: action.disabledBecause,
+        disabledBecause: action.disabledBecause,
       })),
   };
 }

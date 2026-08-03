@@ -46,15 +46,15 @@ export const Ready: Story = { render: () => <Live /> };
 /**
  * Disabled, with the reason.
  *
- * `disabledReason` rather than a bare `disabled`, because "choose a drop and
- * name the dataset first" is the entire content of the disabled state. A greyed
- * box with no sentence is a puzzle.
+ * The reason IS the disabled state — "choose a drop and name the dataset
+ * first" is the entire content of it, and a greyed box with no sentence is a
+ * puzzle. Since 0.4.0 the type says so: `disabledBecause` is one field, so
+ * there is no way to grey this zone without saying why.
  */
 export const Disabled: Story = {
   render: () => (
     <FileDropZone
-      disabled
-      disabledReason="choose a drop and name the dataset first"
+      disabledBecause="choose a drop and name the dataset first"
       onFiles={() => {}}
     />
   ),

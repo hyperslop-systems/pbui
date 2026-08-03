@@ -246,6 +246,9 @@ export const AcceptFlow: Story = {
       const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
       const y = items.find((i) => i.textContent?.startsWith("Map to y"));
       if (!y) throw new Error("Map to y is hidden — hiding a verb hides its rule");
+      // The DOM button's own `disabled`, not the action's. pbui derives it
+      // from `disabledBecause` now, but this assertion is about what reached
+      // the page and is deliberately unchanged by that.
       if (!y.disabled) throw new Error("Map to y is enabled for a nominal column");
       if (!y.textContent?.includes("quantitative")) throw new Error("no reason given");
     });
