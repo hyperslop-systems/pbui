@@ -13,18 +13,23 @@
  * `--pbui-faint`), and no product at all defined the nine tokens `JsonBlock`
  * and `Dialog` read.
  *
- * The check is deliberately run against the BUILT CSS rather than the source.
- * A token can enter the bundle from any `.module.css`, and reading the source
- * files individually would miss one the moment somebody adds a component. It
- * is the same grep the products run as `make ui-token-check`; running it here
- * too means the library fails first, which is where the fix belongs.
+ * The check reads the SOURCE stylesheets, not the built bundle. The first
+ * version read `dist/` and broke CI on its first run: the publish workflow
+ * orders `test` before `build`, so `dist/` did not exist and the guard failed
+ * with "run pnpm build first". Reading source is better on the merits anyway —
+ * it catches a token the moment it is written rather than after a build, and it
+ * works in a fresh checkout.
+ *
+ * The glob has to cover everything that reaches a consumer: every
+ * `.module.css` under `src/`, the plain stylesheets beside them, and the three
+ * hand-written files in `public/` that ship as separate exports.
  */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const DIST = join(__dirname, "..", "dist");
+const ROOT = join(__dirname, "..");
 
 /** Every `var(--pbui-*)` read in the built CSS, ignoring inline fallbacks. */
 function tokensRead(css: string): Set<string> {
@@ -46,21 +51,45 @@ function tokensDefined(css: string): Set<string> {
   return found;
 }
 
-function builtCss(): string {
-  if (!existsSync(DIST)) return "";
-  return readdirSync(DIST)
-    .filter((name) => name.endsWith(".css"))
-    .map((name) => readFileSync(join(DIST, name), "utf8"))
-    .join("\n");
+/** Every stylesheet that reaches a consumer, read from source. */
+function allCss(): string {
+  const files: string[] = [];
+
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir)) {
+      if (entry === "node_modules" || entry === "dist") continue;
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (entry.endsWith(".css")) files.push(full);
+    }
+  };
+  walk(join(ROOT, "src"));
+  walk(join(ROOT, "public"));
+
+  return files.map((file) => stripComments(readFileSync(file, "utf8"))).join("\n");
+}
+
+/**
+ * Removes CSS comments before scanning.
+ *
+ * Not optional. `src/tokens.css` documents the agentlogic defect by quoting
+ * `var(--pbui-ink-faint)` in prose, and without this the guard reported that
+ * quotation as an undefined token — which it found on its first run against
+ * source. A checker that reads comments is a checker that fails on its own
+ * documentation.
+ */
+function stripComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, " ");
 }
 
 describe("token defaults", () => {
-  const css = builtCss();
+  const css = allCss();
 
-  it("has a built bundle to check", () => {
-    // A skipped guard is a guard nobody notices has stopped running. If dist
-    // is absent the message says to build rather than passing vacuously.
-    expect(css.length, "dist/*.css is empty — run `pnpm build` first").toBeGreaterThan(0);
+  it("found stylesheets to check", () => {
+    // A guard that silently reads nothing passes vacuously forever. This is
+    // the assertion that stops that, and it is why the glob is asserted
+    // rather than assumed.
+    expect(css.length, "no CSS found under src/ or public/").toBeGreaterThan(1000);
   });
 
   it("defines every token it reads", () => {
