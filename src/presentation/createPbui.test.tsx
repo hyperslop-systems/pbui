@@ -110,4 +110,82 @@ describe("createPbui", () => {
       expect(await result).toEqual(reference);
     });
   });
+
+  /**
+   * The object menu explains unavailability ONLY when the action is unavailable.
+   *
+   * The menu used to guard both the reason text and the `title` on
+   * `disabledReason` being SET rather than on the action being disabled, so an
+   * action that worked fine displayed an explanation of why it could not be
+   * used — "Focus this term — the cursor is already here", on a row where
+   * focusing worked. Fifteen live sites across three products, plus pbui's own
+   * `Pbui.stories.tsx:30`.
+   *
+   * The descriptor below is written the way descriptor authors write them, and
+   * the way all fifteen sites are written: a conditional `disabled` beside an
+   * unconditional reason. That pairing reads as one unit and is evaluated as
+   * two, which is the entire defect.
+   */
+  describe("a disabled reason belongs to a disabled action", () => {
+    type MenuVerb = { type: "focus"; id: string };
+
+    function menuPbui() {
+      const registry = createPresentationRegistry<Values, { focused: string }, MenuVerb>({
+        person: {
+          label: (person) => person.name,
+          actions: (person, environment) => [
+            {
+              id: "focus",
+              label: "Focus",
+              verb: { type: "focus", id: person.id },
+              description: "bring this person into view",
+              // The shape every real descriptor uses: predicate, then prose.
+              disabled: environment.focused === person.id,
+              disabledReason: "the cursor is already here",
+            },
+          ],
+        },
+      });
+      return createPbui({ registry, defaultEnvironment: { focused: "" } });
+    }
+
+    function openMenuFor(focused: string) {
+      const pbui = menuPbui();
+      render(
+        <pbui.Provider environment={{ focused }}>
+          <pbui.Presentation reference={{ type: "person", value: { id: "1", name: "Ada" } }}>
+            Ada
+          </pbui.Presentation>
+          <pbui.ObjectMenu />
+        </pbui.Provider>,
+      );
+      fireEvent.contextMenu(screen.getByRole("button", { name: "Ada" }), {
+        clientX: 1,
+        clientY: 1,
+      });
+      return screen.getByRole("menuitem", { name: /Focus/ });
+    }
+
+    test("shows no reason on an enabled action, and keeps its description", () => {
+      const item = openMenuFor("someone-else");
+
+      expect(item.hasAttribute("disabled")).toBe(false);
+      // The defect: this used to be "Focus — the cursor is already here".
+      expect(item.textContent).toBe("Focus");
+      expect(item.querySelector('[data-part="menu-reason"]')).toBeNull();
+      // And the description used to be replaced by the inapplicable reason.
+      expect(item.getAttribute("title")).toBe("bring this person into view");
+    });
+
+    test("shows the reason on a disabled action", () => {
+      const item = openMenuFor("1");
+
+      expect(item.hasAttribute("disabled")).toBe(true);
+      expect(item.textContent).toBe("Focus — the cursor is already here");
+      expect(item.querySelector('[data-part="menu-reason"]')?.textContent).toBe(
+        " — the cursor is already here",
+      );
+      expect(item.getAttribute("title")).toBe("the cursor is already here");
+    });
+  });
 });

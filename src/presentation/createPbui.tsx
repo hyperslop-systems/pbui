@@ -364,11 +364,32 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
               data-part="menu-item"
               data-danger={action.danger || undefined}
               disabled={action.disabled}
-              title={action.disabledReason ?? action.description}
+              /*
+               * BOTH of these read `disabled` first, and both used to read only
+               * `disabledReason`.
+               *
+               * A descriptor author knows the rule — "you cannot focus the term
+               * the cursor is already on" — and writes it twice, once as a
+               * predicate and once as prose:
+               *
+               *     disabled: environment.cursorTerm === ref.id,
+               *     disabledReason: "the cursor is already here",
+               *
+               * which reads as one unit and is evaluated as two. Guarding on
+               * the reason being SET rather than on the action being disabled
+               * meant every usable action displayed an explanation of why it
+               * could not be used, and lost its real `title` to the same
+               * string. Fifteen live sites across three products.
+               *
+               * P3.1 merges the pair into a single `disabledBecause`, after
+               * which these guards collapse — a merge is only real if the
+               * downstream guards disappear rather than multiply.
+               */
+              title={action.disabled ? (action.disabledReason ?? action.description) : action.description}
               onClick={() => pbui.perform(action.verb)}
             >
               {action.label}
-              {action.disabledReason && (
+              {action.disabled && action.disabledReason && (
                 <span data-part="menu-reason"> — {action.disabledReason}</span>
               )}
             </button>

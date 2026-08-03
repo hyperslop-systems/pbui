@@ -186,7 +186,21 @@ describe("FileBrowser", () => {
     expect(v.onDelete).toHaveBeenCalledWith(expect.objectContaining({ name: "Basic.lean" }));
   });
 
-  test("windowing: 5000 siblings mount only a page, sentinel reveals the rest", () => {
+  /*
+   * An explicit timeout, because this test legitimately needs one.
+   *
+   * The second assertion mounts 5001 rows in jsdom, which lands either side of
+   * vitest's 5000ms default depending on what else is running in parallel —
+   * measured at 3 failures in 5 full-suite runs, and 0 in 6 runs of this file
+   * alone. A test that fails half the time under load is worse than no test,
+   * because the habit it teaches is re-running rather than reading.
+   *
+   * Raising the limit rather than shrinking the fixture: 5000 siblings is the
+   * point. `pageSize` exists so that "a 50,000-node .lake/ directory costs
+   * what a 50-node one costs", and a fixture small enough to be fast would not
+   * exercise the claim.
+   */
+  test("windowing: 5000 siblings mount only a page, sentinel reveals the rest", { timeout: 20_000 }, () => {
     const many: FileNode = {
       id: "project:",
       name: "project",

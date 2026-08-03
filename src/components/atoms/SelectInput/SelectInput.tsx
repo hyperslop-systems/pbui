@@ -111,9 +111,22 @@ export function SelectInput({
           key={option.value}
           value={option.value}
           disabled={option.disabled}
-          title={option.reason}
+          /*
+           * Guarded on `disabled`, not on `reason` being set.
+           *
+           * This was the object menu's bug (createPbui.tsx:366-378) reproduced
+           * independently, down to the em dash — a selectable option would
+           * have read "Parquet — needs a paid plan" while selecting it worked
+           * fine. It never shipped because no caller passes `reason` yet,
+           * which is the only difference between the two copies.
+           *
+           * Three components in this library grew the same disabled/reason
+           * pair by hand and two of them guarded it wrong. That count is why
+           * P3 merges the pair rather than patching each site.
+           */
+          title={option.disabled ? option.reason : undefined}
         >
-          {option.reason ? `${option.label} — ${option.reason}` : option.label}
+          {option.disabled && option.reason ? `${option.label} — ${option.reason}` : option.label}
         </option>
       ))}
     </select>
