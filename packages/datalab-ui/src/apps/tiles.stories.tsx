@@ -45,7 +45,7 @@ import { EmptyState, Text } from "@hyperslop-systems/pbui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type React from "react";
 import { useRef } from "react";
-import { Provider } from "react-redux";
+import { Provider, useSelector } from "react-redux";
 import { fixturesFrom, type FixtureData } from "../api/fixtures";
 import { AnalysisProvider } from "../appkit/AnalysisProvider";
 import { AppScope } from "../appkit/AppScope";
@@ -55,8 +55,7 @@ import { WorkbenchProviders } from "../components/pages/Workbench/WorkbenchProvi
 import { census, readings } from "../fixtures";
 import { createDefaultGraphic } from "../model/graphicAuthoring";
 import { AcceptBanner, MouseDocLine, ObjectMenu } from "../pbui";
-import { makeStore, type AppStore, type PreloadedState } from "../store";
-import type { AppView } from "../store/layout";
+import { makeStore, type AppStore, type PreloadedState, type RootState } from "../store";
 import { singleStageLayout } from "../store/stages";
 import { newId } from "../store/world";
 import {
@@ -111,6 +110,34 @@ interface StageOptions {
  * initialiser and would construct two stores, discarding one after its
  * middleware had already started.
  */
+/**
+ * The tile, reading its view from the STORE rather than from a snapshot.
+ *
+ * `Stage` seeds a real placement and a real logical view precisely so that
+ * `DocBar` can re-point the view in the layout slice — the comment below says
+ * so, and says that a synthetic view "makes that control a no-op and the story
+ * teaches it is broken". It then passed the view object captured at
+ * initialisation, so the control dispatched correctly and the tile kept
+ * rendering the old document anyway. The story taught the same wrong thing by
+ * a different route.
+ *
+ * Selecting by id is what subscribes this subtree to the slice. Caught in
+ * review on pbui PR #9.
+ */
+function LiveTile({
+  Component,
+  placementId,
+  viewId,
+}: {
+  Component: React.ComponentType<AppProps>;
+  placementId: string;
+  viewId: string;
+}): React.JSX.Element {
+  const view = useSelector((state: RootState) => state.layout.views[viewId]);
+  if (!view) throw new Error(`the story's view ${viewId} left the layout slice`);
+  return <Component placementId={placementId} view={view} />;
+}
+
 function Stage({
   id,
   Component,
@@ -123,7 +150,7 @@ function Stage({
   Component: React.ComponentType<AppProps>;
 }): React.JSX.Element {
   const storeRef = useRef<AppStore | null>(null);
-  const stageRef = useRef<{ placementId: string; view: AppView } | null>(null);
+  const stageRef = useRef<{ placementId: string; viewId: string } | null>(null);
 
   if (!storeRef.current) {
     const world = empty ? { docs: {}, docOrder: [], activeDocId: null } : seededWorld();
@@ -146,7 +173,7 @@ function Stage({
       seed: !empty,
       fixtures: FIXTURES,
     });
-    stageRef.current = { placementId: tree.id, view: layout.views[tree.viewId]! };
+    stageRef.current = { placementId: tree.id, viewId: tree.viewId };
   }
 
   const stage = stageRef.current!;
@@ -172,7 +199,7 @@ function Stage({
         for the tile decorator, restated because this file bypasses it.
       */}
       <div style={{ minHeight: 0, display: "grid", gridTemplateRows: "1fr" }}>
-        <Component placementId={stage.placementId} view={stage.view} />
+        <LiveTile Component={Component} placementId={stage.placementId} viewId={stage.viewId} />
       </div>
       <MouseDocLine ambient="right-click anything · verbs dispatch into this story's store" />
     </div>

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { EmptyState } from "../../molecules/EmptyState";
 import { InlineRename } from "../../molecules/InlineRename";
 import { Text } from "../../foundation";
+import { isEditableTarget } from "../../../chrome/shortcutRouting";
 import styles from "./FileBrowser.module.css";
 
 /**
@@ -241,6 +242,7 @@ export function FileBrowser({
   emptyState,
   pageSize = DEFAULT_PAGE_SIZE,
 }: FileBrowserProps) {
+  const treeId = useId();
   // The focus row for keyboard navigation; starts on the selection.
   const [focusedKey, setFocusedKey] = useState<string | null>(selectedId);
   // Inline rename: internal by default, controlled when the product drives
@@ -295,7 +297,41 @@ export function FileBrowser({
     else onOpen(node);
   };
 
+  /*
+   * The DOM id of a row, so the tree can name the active one to assistive
+   * technology.
+   *
+   * Every treeitem carries `tabIndex={-1}` and DOM focus stays on the tree
+   * element, which is the correct shape for a composite widget — but without
+   * `aria-activedescendant` a screen reader is never told WHICH item Enter,
+   * F2 or Delete will act on. The roving highlight was visible only as a
+   * `data-focused` attribute and a CSS rule: a sighted user could see it and
+   * nobody else could.
+   *
+   * `useId` rather than the row key alone, because two FileBrowsers on one
+   * page would otherwise mint the same ids.
+   */
+  const rowDomId = (key: string): string => `${treeId}-${key.replace(/[^\w-]/g, "_")}`;
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    /*
+     * A key pressed inside the rename field is not a tree command.
+     *
+     * This handler is on the tree, so every keystroke in `InlineRename`
+     * bubbles into it. Before this guard, renaming a file and pressing DELETE
+     * to edit the name called `onDelete` on the file being renamed — the
+     * product deleted it. Enter committed the rename and then also opened or
+     * toggled the row, and the horizontal arrows moved the tree's focus
+     * instead of the caret.
+     *
+     * Ignoring editable targets rather than stopping propagation inside
+     * `InlineRename`: the rename field is one of several things a product may
+     * render into a row through `renderRow`, and the tree should decline
+     * anything typed into a control rather than require each control to know
+     * about the tree.
+     */
+    if (isEditableTarget(event.target as HTMLElement)) return;
+
     const index = rowIndex(focusedKey);
     const row = index >= 0 ? rows[index] : rows[0];
     if (!row) return;
@@ -318,7 +354,31 @@ export function FileBrowser({
       case "ArrowLeft": {
         event.preventDefault();
         const node = row.node;
-        if (node?.kind === "directory" && expanded.has(node.id)) onToggle(node.id);
+        if (node?.kind === "directory" && expanded.has(node.id)) {
+          onToggle(node.id);
+          return;
+        }
+        /*
+         * ...OR CLIMBS. The component's own documentation says "Left collapses
+         * or climbs" and it only collapsed: on a file, or on an already-closed
+         * directory, ArrowLeft did nothing at all, so a keyboard user could
+         * descend into a tree and not get back out without ArrowUp-ing past
+         * every sibling.
+         *
+         * A doc comment describing behaviour the code does not have is the
+         * defect this whole ticket is named for, and it turned up inside the
+         * component while fixing the others.
+         *
+         * The parent is the nearest PRECEDING row one level shallower, which
+         * is what depth-first order guarantees.
+         */
+        for (let i = index - 1; i >= 0; i--) {
+          const candidate = rows[i];
+          if (candidate && candidate.depth === row.depth - 1) {
+            focusRow(i);
+            return;
+          }
+        }
         return;
       }
       case "Enter":
@@ -350,6 +410,7 @@ export function FileBrowser({
       role="tree"
       aria-label="files"
       tabIndex={0}
+      aria-activedescendant={focusedKey ? rowDomId(focusedKey) : undefined}
       onKeyDown={onKeyDown}
     >
       {rows.map((row) => {
@@ -360,6 +421,7 @@ export function FileBrowser({
               data-part="file-browser-more"
               className={styles.more}
               data-depth={row.depth}
+              id={rowDomId(row.key)}
               role="treeitem"
               aria-selected={false}
               aria-level={row.depth + 1}
@@ -382,6 +444,7 @@ export function FileBrowser({
               key={row.key}
               data-part="file-row"
               data-state={failed === undefined ? "loading" : "failed"}
+              id={rowDomId(row.key)}
               role="treeitem"
               aria-selected={false}
               aria-level={1}
@@ -445,6 +508,7 @@ export function FileBrowser({
             data-depth={row.depth}
             data-selected={isSelected || undefined}
             data-focused={isFocused || undefined}
+            id={rowDomId(row.key)}
             role="treeitem"
             aria-selected={isSelected}
             aria-level={row.depth + 1}

@@ -385,13 +385,37 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
+        // The keydown never bubbles: a host with its own key handling (a tree
+        // routing Enter to "open") must not also fire. What bubbles is the
+        // CLICK synthesised below, which is the gesture the host is listening
+        // for.
         event.stopPropagation();
-        if (acceptable) pbui.satisfyAccept(reference);
-        else if (activate) activate.run?.();
-        else {
-          const box = (event.target as HTMLElement).getBoundingClientRect();
-          open(box.left, box.bottom);
+
+        if (acceptable) {
+          pbui.satisfyAccept(reference);
+          return;
         }
+        if (activate) {
+          /*
+           * Route keyboard activation through the click path rather than
+           * calling `run` here.
+           *
+           * P4.1 made a click with `activate` bubble so the host sees its own
+           * gesture, and left this branch calling `activate.run()` directly —
+           * so mouse and keyboard diverged. Enter ran the presentation's verb
+           * and never reached the host, and `activate` WITHOUT `run` — the
+           * state a `renderRow` wrapper uses, where the host owns the click
+           * entirely — was a complete keyboard no-op.
+           *
+           * `.click()` dispatches a real, bubbling MouseEvent, so there is one
+           * activation path with one set of semantics instead of two that have
+           * to be kept in step. Caught in review on PR #9.
+           */
+          (event.currentTarget as HTMLElement).click();
+          return;
+        }
+        const box = (event.target as HTMLElement).getBoundingClientRect();
+        open(box.left, box.bottom);
       } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
         event.preventDefault();
         event.stopPropagation();

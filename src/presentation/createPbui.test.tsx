@@ -217,6 +217,55 @@ describe("createPbui", () => {
       expect(hostClicks).toEqual([]);
     });
 
+    test("Enter reaches the host too, exactly as a click does", () => {
+      // P4.1 made the CLICK bubble and left the keyboard path calling `run`
+      // directly, so the two diverged: Enter ran the presentation's verb and
+      // the host never saw it.
+      const pbui = makePbui();
+      const hostClicks: string[] = [];
+      const activated: string[] = [];
+
+      render(
+        <pbui.Provider>
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+          <div onClick={() => hostClicks.push("host")}>
+            <pbui.Presentation
+              reference={reference}
+              activate={{ run: () => activated.push("presentation") }}
+            >
+              Ada
+            </pbui.Presentation>
+          </div>
+        </pbui.Provider>,
+      );
+
+      fireEvent.keyDown(screen.getByRole("button", { name: "Ada" }), { key: "Enter" });
+      expect(activated).toEqual(["presentation"]);
+      expect(hostClicks).toEqual(["host"]);
+    });
+
+    test("Enter reaches the host when activate has no run at all", () => {
+      // The `renderRow` shape: the host owns the click entirely and `activate`
+      // exists only to say a left click means the default verb. This was a
+      // complete keyboard no-op.
+      const pbui = makePbui();
+      const hostClicks: string[] = [];
+
+      render(
+        <pbui.Provider>
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+          <div onClick={() => hostClicks.push("host")}>
+            <pbui.Presentation reference={reference} activate={{ doc: "select" }}>
+              Ada
+            </pbui.Presentation>
+          </div>
+        </pbui.Provider>,
+      );
+
+      fireEvent.keyDown(screen.getByRole("button", { name: "Ada" }), { key: "Enter" });
+      expect(hostClicks).toEqual(["host"]);
+    });
+
     test("an inner Presentation's click does not reach an outer one", () => {
       const pbui = makePbui();
       const runs: string[] = [];

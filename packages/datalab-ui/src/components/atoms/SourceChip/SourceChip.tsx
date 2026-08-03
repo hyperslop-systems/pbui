@@ -28,8 +28,7 @@ export function SourceChip({
       reference={{ type: "source", value: source }}
       doc={`<source> ${describeSource(source)}`}
       activate={{
-        run: () =>
-          pbui.perform({ kind: "setSource", docId: pbui.environment.activeDocId, source }),
+        run: () => pbui.perform({ kind: "setSource", docId: pbui.environment.activeDocId, source }),
         doc: `load into chart ${name}`,
       }}
       testId={testId}

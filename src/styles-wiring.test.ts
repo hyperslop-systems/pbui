@@ -93,6 +93,40 @@ describe("stylesheet wiring", () => {
     expect(orphans.map((p) => relative(root, p)), "no sibling imports this").toEqual([]);
   });
 
+  it("never sets font-size on the document root", () => {
+    /*
+     * `font-size` on `:root`/`html` redefines what `1rem` means for the whole
+     * document, and a consumer CANNOT undo it from `body` — rem always
+     * resolves against the root. The typographic baseline shipped that way for
+     * one commit and rescaled every rem-based layout in every consumer from a
+     * 16px basis to an 11.5px one: datalab-ui's LauncherDialog went from
+     * 544x352 to 391x253, a 28% shrink, measured in a browser.
+     *
+     * Typography inherits from `body`; layout scales from `:root`. A design
+     * system may set the first and must not touch the second. This is the
+     * assertion, because the mistake is one character wide.
+     */
+    // Comments stripped FIRST. Without it this matched the `:where(:root)` in
+    // the prose above the rule it was checking, then ran forward to the next
+    // `{` — which is the `body` block — and reported the very fix it exists to
+    // confirm. `tokens-defined.test.ts` learned the same lesson and has the
+    // same one-line defence; a CSS check that reads comments measures nothing.
+    const css = [
+      readFileSync(join(root, "src", "styles.css"), "utf8"),
+      readFileSync(join(root, "src", "tokens.css"), "utf8"),
+    ]
+      .join("\n")
+      .replace(/\/\*[\s\S]*?\*\//g, " ");
+
+    const rootBlocks = [...css.matchAll(/:where\((?::root|html)\)[^{]*\{([^}]*)\}/g)];
+    expect(rootBlocks.length, "no :where(:root) block found — the scan is broken").toBeGreaterThan(0);
+    const offenders = rootBlocks
+      .map((m) => m[1]!)
+      .filter((body) => /(^|[;\s])font-size\s*:/.test(body));
+
+    expect(offenders, "font-size on the root element rescales every consumer's rem").toEqual([]);
+  });
+
   it("keeps the parts files after the component modules", () => {
     /*
      * The cascade, and the reason the order in `src/index.ts` is load-bearing:

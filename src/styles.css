@@ -68,12 +68,31 @@
  * — which is exactly why it survived. The bare consumer is the only one who
  * hits it, and the bare consumer is who this file is for.
  *
- * Zero specificity, so a product's own `:root`/`body` rule wins without
- * needing to know this exists. Colour and background are deliberately NOT set
- * here: the parts below paint their own, and a page-level background is a
- * decision belonging to whoever owns the page.
+ * Zero specificity, so a product's own `body` rule wins without needing to
+ * know this exists. Colour and background are deliberately NOT set here: the
+ * parts below paint their own, and a page-level background is a decision
+ * belonging to whoever owns the page.
+ *
+ * # ON `body`, NOT `:root`, AND THAT DISTINCTION IS THE WHOLE RULE
+ *
+ * `font-size` on the root element redefines what `1rem` means for the entire
+ * document, and a product CANNOT undo it from `body` — rem always resolves
+ * against the root. The first version of this rule sat on `:where(:root)` and
+ * silently rescaled every rem-based layout in every consumer from a 16px basis
+ * to an 11.5px one:
+ *
+ *     LauncherDialog  width: min(34rem, 80vw)  544px -> 391px
+ *                     height: 22rem            352px -> 253px    (-28%)
+ *
+ * Measured in a browser, not reasoned about. Caught in review on PR #9.
+ *
+ * `body` gives the same benefit — a bare consumer inherits the family's
+ * typography instead of 16px Times — and leaves `rem` alone, because rem is a
+ * layout unit that belongs to whoever owns the page. Typography inherits from
+ * `body`; layout scales from `:root`; a design system may set the first and
+ * must not touch the second.
  */
-:where(:root) {
+:where(body) {
   font-family: var(--pbui-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   font-size: var(--pbui-fs-base, 11.5px);
   line-height: var(--pbui-lh-tight, 1.35);

@@ -215,6 +215,74 @@ describe("FileBrowser", () => {
     rerender(<Harness verbs={v} initialExpanded={new Set(["project:", "project:Mini"])} />);
   });
 
+  test("keys typed into the rename field are not tree commands", () => {
+    /*
+     * The tree's key handler is on the tree, so every keystroke inside
+     * InlineRename bubbles into it. Before the guard, pressing DELETE while
+     * renaming called onDelete on the file being renamed — the product deleted
+     * the file the user was in the middle of naming.
+     */
+    const v = verbs();
+    const { container } = render(
+      <Harness verbs={v} initialExpanded={new Set(["project:", "project:Mini"])} />,
+    );
+    const tree = container.querySelector("[role=tree]") as HTMLElement;
+    fireEvent.keyDown(tree, { key: "ArrowDown" });
+    fireEvent.keyDown(tree, { key: "ArrowDown" }); // Basic.lean
+    fireEvent.keyDown(tree, { key: "F2" });
+
+    const input = screen.getByLabelText("rename Basic.lean") as HTMLInputElement;
+    fireEvent.keyDown(input, { key: "Delete" });
+    expect(v.onDelete).not.toHaveBeenCalled();
+
+    // Enter must commit the rename and NOT also open or toggle the row.
+    fireEvent.change(input, { target: { value: "Renamed.lean" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(v.onRename).toHaveBeenCalled();
+    expect(v.onOpen).not.toHaveBeenCalled();
+  });
+
+  test("ArrowLeft climbs to the parent when there is nothing to collapse", () => {
+    // The component documents "Left collapses or climbs" and only collapsed:
+    // on a file, or an already-closed directory, it did nothing, so a keyboard
+    // user could descend and not get back out.
+    const v = verbs();
+    const { container } = render(
+      <Harness verbs={v} initialExpanded={new Set(["project:", "project:Mini"])} />,
+    );
+    const tree = container.querySelector("[role=tree]") as HTMLElement;
+    fireEvent.keyDown(tree, { key: "ArrowDown" }); // Mini
+    fireEvent.keyDown(tree, { key: "ArrowDown" }); // Basic.lean, a FILE at depth 2
+
+    fireEvent.keyDown(tree, { key: "ArrowLeft" });
+    expect(container.querySelector("[data-focused=true]")?.textContent).toContain("Mini");
+    // And nothing was collapsed on the way.
+    expect(v.onToggle).not.toHaveBeenCalled();
+  });
+
+  test("names the active row to assistive technology", () => {
+    /*
+     * Every treeitem is tabIndex={-1} and DOM focus stays on the tree, which is
+     * the right shape for a composite widget — but without
+     * aria-activedescendant a screen reader is never told which row Enter, F2
+     * or Delete will act on. The roving highlight was a data attribute and a
+     * CSS rule: visible to a sighted user and to nobody else.
+     */
+    const v = verbs();
+    const { container } = render(<Harness verbs={v} />);
+    const tree = container.querySelector("[role=tree]") as HTMLElement;
+
+    fireEvent.keyDown(tree, { key: "ArrowDown" });
+    const active = tree.getAttribute("aria-activedescendant");
+    expect(active).toBeTruthy();
+
+    // getElementById rather than a #id selector: jsdom has no CSS.escape, and
+    // the ids contain characters a selector would need escaped anyway.
+    const row = container.ownerDocument.getElementById(active!);
+    expect(row?.getAttribute("data-focused")).toBe("true");
+    expect(row?.textContent).toContain("Mini");
+  });
+
   test("Delete asks the product to delete the focused row", () => {
     const v = verbs();
     const { container } = render(
