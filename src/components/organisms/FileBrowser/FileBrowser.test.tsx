@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { FileBrowser, type FileNode } from "./FileBrowser";
+import { FileBrowser, type FileNode, type RootState } from "./FileBrowser";
 import { createPbui } from "../../../presentation/createPbui";
 import { createPresentationRegistry } from "../../../presentation/registry";
 
@@ -30,7 +30,6 @@ function verbs() {
     onToggle: vi.fn(),
     onSelect: vi.fn(),
     onOpen: vi.fn(),
-    onCreate: vi.fn(),
     onRename: vi.fn(),
     onDelete: vi.fn(),
   };
@@ -41,13 +40,13 @@ function verbs() {
 function Harness({
   verbs: v,
   initialExpanded = new Set<string>(["project:"]),
-  trees = { project: TREE },
+  trees = { project: { status: "ready", tree: TREE } as RootState },
   roots = [{ name: "project" }],
   pageSize,
 }: {
   verbs: ReturnType<typeof verbs>;
   initialExpanded?: Set<string>;
-  trees?: Record<string, FileNode | undefined>;
+  trees?: Record<string, RootState | undefined>;
   roots?: { name: string; label?: string }[];
   pageSize?: number;
 }) {
@@ -73,7 +72,6 @@ function Harness({
         setSelectedId(node.id);
       }}
       onOpen={v.onOpen}
-      onCreate={v.onCreate}
       onRename={v.onRename}
       onDelete={v.onDelete}
       pageSize={pageSize}
@@ -98,6 +96,47 @@ describe("FileBrowser", () => {
       />,
     );
     expect(screen.getByText(/no file roots/)).toBeTruthy();
+  });
+
+  test("a failed root reports why, instead of loading forever", () => {
+    const v = verbs();
+    render(
+      <FileBrowser
+        roots={[{ name: "project" }, { name: "vendor" }]}
+        trees={{
+          project: { status: "ready", tree: TREE },
+          vendor: { status: "failed", reason: "vendor: permission denied" },
+        }}
+        expanded={new Set(["project:"])}
+        onToggle={v.onToggle}
+        selectedId={null}
+        onSelect={v.onSelect}
+        onOpen={v.onOpen}
+        onRename={v.onRename}
+        onDelete={v.onDelete}
+      />,
+    );
+    expect(screen.getByText("vendor: permission denied")).toBeTruthy();
+    // The distinction that did not exist before: this root is NOT loading.
+    expect(screen.queryByText("loading…")).toBeNull();
+  });
+
+  test("a root with no entry yet is still loading", () => {
+    const v = verbs();
+    render(
+      <FileBrowser
+        roots={[{ name: "project" }]}
+        trees={{}}
+        expanded={new Set()}
+        onToggle={v.onToggle}
+        selectedId={null}
+        onSelect={v.onSelect}
+        onOpen={v.onOpen}
+        onRename={v.onRename}
+        onDelete={v.onDelete}
+      />,
+    );
+    expect(screen.getByText("loading…")).toBeTruthy();
   });
 
   test("collapsed children never mount; expanding mounts them", () => {
@@ -215,7 +254,7 @@ describe("FileBrowser", () => {
     };
     const v = verbs();
     const { container } = render(
-      <Harness verbs={v} trees={{ project: many }} pageSize={200} />,
+      <Harness verbs={v} trees={{ project: { status: "ready", tree: many } }} pageSize={200} />,
     );
     const mountedRows = container.querySelectorAll("[data-part=file-row]");
     // 1 root row + 200 children; NOT 5001.
@@ -246,7 +285,7 @@ describe("FileBrowser presentation seam", () => {
     render(
       <FileBrowser
         roots={[{ name: "project" }]}
-        trees={{ project: TREE }}
+        trees={{ project: { status: "ready", tree: TREE } }}
         expanded={new Set(["project:", "project:Mini"])}
         onToggle={v.onToggle}
         selectedId={null}
@@ -270,7 +309,7 @@ describe("FileBrowser presentation seam", () => {
           <button onClick={() => setRenamingId("project:lakefile.lean")}>menu-rename</button>
           <FileBrowser
             roots={[{ name: "project" }]}
-            trees={{ project: TREE }}
+            trees={{ project: { status: "ready", tree: TREE } }}
             expanded={new Set(["project:"])}
             onToggle={v.onToggle}
             selectedId={null}
@@ -328,7 +367,7 @@ describe("FileBrowser presentation seam", () => {
         <filePbui.Provider>
         <FileBrowser
           roots={[{ name: "project" }]}
-          trees={{ project: TREE }}
+          trees={{ project: { status: "ready", tree: TREE } }}
           expanded={expanded}
           onToggle={(id) => {
             v.onToggle(id);

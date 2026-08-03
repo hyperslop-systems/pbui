@@ -112,6 +112,30 @@ export interface PresentationProps<Values extends PresentationValues> {
     /** Names the verb in the mouse-doc strip. Defaults to "activate". */
     doc?: string;
   };
+  /**
+   * Set when this presentation is a child of a COMPOSITE WIDGET — a tree, a
+   * grid, a listbox — that owns the tab stop.
+   *
+   * A presentation is normally `role="button"` with `tabIndex={0}`, which is
+   * right when it stands alone and wrong inside a composite. `renderRow`
+   * produced exactly that:
+   *
+   *     <div role="treeitem" tabindex="-1">
+   *       <span role="button" tabindex="0" aria-label="…">Basic.lean</span>
+   *     </div>
+   *
+   * An interactive control inside a composite widget's item, each with its own
+   * tab stop, and the treeitem's roving `tabIndex={-1}` fighting the
+   * presentation's `tabIndex={0}`. A screen-reader user gets two competing
+   * navigation models, and Tab lands INSIDE rows rather than moving past the
+   * tree. It was visible in pbui's own `WithPresentation` story, which is what
+   * made it a library decision rather than a product mistake.
+   *
+   * One flag rather than separate `role` and `tabIndex` props, because those
+   * two can disagree and this cannot: the container keeps its semantics, the
+   * presentation keeps its menu, its accept behaviour and its mouse-doc.
+   */
+  inComposite?: boolean;
   testId?: string;
 
   /**
@@ -269,6 +293,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     svg = false,
     block = false,
     activate,
+    inComposite = false,
     testId,
   }: PresentationProps<Values>) {
     const pbui = usePbui();
@@ -384,8 +409,13 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         data-tone={tone}
         data-state={acceptable ? "acceptable" : undefined}
         data-testid={testId}
-        tabIndex={0}
-        role="button"
+        /*
+         * Inside a composite widget the container owns the tab stop and moves
+         * focus with arrow keys, so this must not add a second one. `none`
+         * removes the button semantics without removing the element.
+         */
+        tabIndex={inComposite ? -1 : 0}
+        role={inComposite ? "none" : "button"}
         aria-label={doc ?? labelText}
         onClick={handleClick}
         onContextMenu={handleContextMenu}

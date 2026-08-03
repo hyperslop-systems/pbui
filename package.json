@@ -26,7 +26,11 @@
     "./styles.css": "./dist/pbui.css",
     "./components.css": "./dist/components.css",
     "./presentation-parts.css": "./dist/presentation-parts.css",
-    "./chrome.css": "./dist/chrome.css"
+    "./chrome.css": "./dist/chrome.css",
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js"
+    }
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",

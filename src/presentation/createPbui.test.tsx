@@ -113,6 +113,50 @@ describe("createPbui", () => {
   });
 
   /**
+   * Inside a composite widget, the container keeps the tab stop.
+   *
+   * A presentation defaults to `role="button" tabindex="0"`, which is right
+   * standalone and wrong inside a `tree`/`grid`/`listbox` item: two competing
+   * navigation models for a screen-reader user, and a Tab key that lands
+   * inside rows instead of moving past the widget.
+   */
+  describe("composite-widget semantics", () => {
+    const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
+
+    test("is a button with a tab stop when it stands alone", () => {
+      const pbui = makePbui();
+      render(
+        <pbui.Provider>
+          <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
+        </pbui.Provider>,
+      );
+      const el = screen.getByRole("button", { name: "Ada" });
+      expect(el.getAttribute("tabindex")).toBe("0");
+    });
+
+    test("yields role and tab stop to the container when inComposite", () => {
+      const pbui = makePbui();
+      const { container } = render(
+        <pbui.Provider>
+          <div role="tree">
+            <div role="treeitem" tabIndex={-1}>
+              <pbui.Presentation reference={reference} inComposite>
+                Ada
+              </pbui.Presentation>
+            </div>
+          </div>
+        </pbui.Provider>,
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+      const el = container.querySelector('[data-pbui="presentation"]') as HTMLElement;
+      expect(el.getAttribute("role")).toBe("none");
+      expect(el.getAttribute("tabindex")).toBe("-1");
+      // One tab stop for the whole widget, and it is the treeitem's.
+      expect(container.querySelectorAll('[tabindex="0"]').length).toBe(0);
+    });
+  });
+
+  /**
    * A click reaches the host, and stops at the first Presentation ancestor.
    *
    * P4.1 removed the unconditional `stopPropagation()` so that a Presentation

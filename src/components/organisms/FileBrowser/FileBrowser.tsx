@@ -28,10 +28,34 @@ export interface FileNode {
   children?: FileNode[];
 }
 
+/**
+ * What is known about one root right now.
+ *
+ * A discriminated union rather than a nullable tree, so that "still loading"
+ * and "failed to load" are different values instead of the same absence.
+ */
+export type RootState =
+  | { status: "loading" }
+  | { status: "failed"; reason: string }
+  | { status: "ready"; tree: FileNode };
+
 export interface FileBrowserProps {
   roots: { name: string; label?: string }[];
-  /** Loaded trees, keyed by root name. An absent root renders a loading row. */
-  trees: Record<string, FileNode | undefined>;
+  /**
+   * The load state of each root, keyed by root name.
+   *
+   * This was `Record<string, FileNode | undefined>` with `undefined` meaning
+   * "still loading", which left FAILURE inexpressible: a root whose fetch
+   * rejected was indistinguishable from one still in flight, so it displayed
+   * "loading…" forever and the user was never told. `emptyState`'s own doc
+   * comment named "load failure" as one of three surfaces it covered, and the
+   * code consulted it only when there were no roots at all.
+   *
+   * An absent key still means loading, deliberately: products build this map
+   * incrementally and requiring an explicit `{ status: "loading" }` for every
+   * root before the first response is friction with no safety in return.
+   */
+  trees: Record<string, RootState | undefined>;
   /** Which rows are expanded — CONTROLLED, so the product can persist it. */
   expanded: ReadonlySet<string>;
   onToggle(nodeId: string): void;
@@ -43,13 +67,22 @@ export interface FileBrowserProps {
    * menu all produce these; the organism NEVER performs them itself.
    */
   onOpen(node: FileNode): void;
-  /**
-   * Part of the verb contract so every consumer wires the same signature.
-   * The organism itself has no built-in create gesture (inventing
-   * keybindings is worse than leaving it to the product's toolbar/menu),
-   * so it never CALLS this — the product's own chrome does.
+  /*
+   * `onCreate` used to be declared here and was called by nothing.
+   *
+   * The comment explaining that — "the organism itself has no built-in create
+   * gesture, so it never CALLS this" — made the contract deliberate, and left
+   * the failure mode exactly as it was: a doc comment is invisible at the call
+   * site. turboproof wired it end to end (API call, tree reload, error
+   * handling) and shipped a feature with no way to reach it, caught only by
+   * asking "which gesture invokes this?" of every declared verb.
+   *
+   * A sweep of every props interface in src/ found this was the only instance
+   * in the library, so it gets a fix rather than a lint. No consumer passes it
+   * today, so the prop is simply gone. If the organism ever grows a real
+   * create affordance — a `+` on a directory row's hover state, say — the prop
+   * comes back WITH the gesture that calls it.
    */
-  onCreate?(parentId: string, kind: "file" | "directory"): void;
   onRename(node: FileNode, nextName: string): void;
   onDelete(node: FileNode): void;
   /** Product-rendered affordances per row, e.g. a dirty dot. */
@@ -121,6 +154,8 @@ interface VisibleRow {
   /** Set on the "show N more" sentinel: its parent directory's id + count. */
   moreParentId?: string;
   moreCount?: number;
+  /** Set on a root whose load failed: why, in the product's words. */
+  failedReason?: string;
 }
 
 /**
@@ -131,7 +166,7 @@ interface VisibleRow {
  */
 function flattenVisible(
   roots: { name: string; label?: string }[],
-  trees: Record<string, FileNode | undefined>,
+  trees: Record<string, RootState | undefined>,
   expanded: ReadonlySet<string>,
   pageSize: number,
   uncapped: ReadonlySet<string>,
@@ -157,11 +192,16 @@ function flattenVisible(
     }
   };
   for (const root of roots) {
-    const tree = trees[root.name];
-    if (!tree) {
+    const state = trees[root.name];
+    if (!state || state.status === "loading") {
       rows.push({ key: `loading:${root.name}`, depth: 0 });
       continue;
     }
+    if (state.status === "failed") {
+      rows.push({ key: `failed:${root.name}`, depth: 0, failedReason: state.reason });
+      continue;
+    }
+    const tree = state.tree;
     // The root row itself is the tree's head node, labeled by the root, and
     // paged like every other directory.
     const head: FileNode = { ...tree, name: root.label ?? root.name };
@@ -334,10 +374,20 @@ export function FileBrowser({
         }
         const node = row.node;
         if (!node) {
+          // A failed root says so, in the product's words. Before this it
+          // rendered "loading…" and kept rendering it.
+          const failed = row.failedReason;
           return (
-            <div key={row.key} data-part="file-row" data-state="loading" role="treeitem" aria-selected={false} aria-level={1}>
-              <Text size="tiny" tone="faint">
-                loading…
+            <div
+              key={row.key}
+              data-part="file-row"
+              data-state={failed === undefined ? "loading" : "failed"}
+              role="treeitem"
+              aria-selected={false}
+              aria-level={1}
+            >
+              <Text size="tiny" tone={failed === undefined ? "faint" : "danger"}>
+                {failed ?? "loading…"}
               </Text>
             </div>
           );

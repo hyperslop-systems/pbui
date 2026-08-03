@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { FileBrowser, type FileNode } from "./FileBrowser";
+import { FileBrowser, type FileNode, type RootState } from "./FileBrowser";
 
 /**
  * A presentational file tree: tree data, expansion, and selection arrive as
@@ -73,11 +73,11 @@ function log(name: string) {
 
 function Live({
   roots = [{ name: "project", label: "mini (fixture project)" }],
-  trees = { project: PROJECT },
+  trees = { project: { status: "ready", tree: PROJECT } as RootState },
   dirty = new Set<string>(["project:Mini/Basic.lean"]),
 }: {
   roots?: { name: string; label?: string }[];
-  trees?: Record<string, FileNode | undefined>;
+  trees?: Record<string, RootState | undefined>;
   dirty?: Set<string>;
 }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set(["project:"]));
@@ -103,7 +103,6 @@ function Live({
           setSelectedId(node.id);
         }}
         onOpen={log("open")}
-        onCreate={log("create")}
         onRename={log("rename")}
         onDelete={log("delete")}
         renderBadge={(node) =>
@@ -130,21 +129,47 @@ export const Loading: Story = {
   render: () => <Live trees={{}} />,
 };
 
+/**
+ * A root that failed to load says so.
+ *
+ * Before `RootState`, `trees` was `Record<string, FileNode | undefined>` and
+ * `undefined` meant "still loading" — so a root whose fetch rejected was
+ * indistinguishable from one still in flight and displayed "loading…"
+ * forever. The user was never told, and the product had no way to tell them.
+ */
+export const AFailedRoot: Story = {
+  render: () => (
+    <Live
+      roots={[
+        { name: "project", label: "mini (fixture project)" },
+        { name: "vendor", label: "vendor" },
+      ]}
+      trees={{
+        project: { status: "ready", tree: PROJECT },
+        vendor: { status: "failed", reason: "vendor: permission denied" },
+      }}
+    />
+  ),
+};
+
 /** Unicode filenames, including the NFC/NFD pair macOS and Linux disagree on. */
 export const UnicodeNames: Story = {
   render: () => (
     <Live
       trees={{
         project: {
-          id: "project:",
-          name: "project",
-          kind: "directory",
-          children: [
-            { id: "u1", name: "Café.lean", kind: "file" }, // NFC
-            { id: "u2", name: "Café.lean", kind: "file" }, // NFD — same glyphs, different bytes
-            { id: "u3", name: "定理.lean", kind: "file" },
-            { id: "u4", name: "δοκιμή.lean", kind: "file" },
-          ],
+          status: "ready",
+          tree: {
+            id: "project:",
+            name: "project",
+            kind: "directory",
+            children: [
+              { id: "u1", name: "Café.lean", kind: "file" }, // NFC
+              { id: "u2", name: "Café.lean", kind: "file" }, // NFD — same glyphs, different bytes
+              { id: "u3", name: "定理.lean", kind: "file" },
+              { id: "u4", name: "δοκιμή.lean", kind: "file" },
+            ],
+          },
         },
       }}
     />
@@ -163,7 +188,16 @@ export const DeepNesting: Story = {
         children: [node],
       };
     }
-    return <Live trees={{ project: { id: "project:", name: "project", kind: "directory", children: [node] } }} />;
+    return (
+      <Live
+        trees={{
+          project: {
+            status: "ready",
+            tree: { id: "project:", name: "project", kind: "directory", children: [node] },
+          },
+        }}
+      />
+    );
   },
 };
 
@@ -225,7 +259,7 @@ export const WithPresentation: Story = {
           <div style={{ height: 380, display: "flex", border: "1px solid #cbd5e1" }}>
             <FileBrowser
               roots={[{ name: "project" }]}
-              trees={{ project: PROJECT }}
+              trees={{ project: { status: "ready", tree: PROJECT } }}
               expanded={expanded}
               onToggle={(id) =>
                 setExpanded((prev) => {
@@ -238,7 +272,6 @@ export const WithPresentation: Story = {
               selectedId={selectedId}
               onSelect={(node) => setSelectedId(node.id)}
               onOpen={(node) => perform({ type: "open", id: node.id })}
-              onCreate={(parentId, kind) => perform({ type: "create", parentId, kind })}
               onRename={(node, next) => perform({ type: "rename", id: `${node.id} → ${next}` })}
               onDelete={(node) => perform({ type: "delete", id: node.id })}
               rename={{ id: renamingId, onChange: setRenamingId }}
@@ -260,6 +293,9 @@ export const WithPresentation: Story = {
                    * the menu and the mouse doc should say what.
                    */
                   activate={{ doc: "select · directories expand" }}
+                  // The row is a `treeitem` in a `tree`, which owns the tab
+                  // stop; without this the presentation adds a second one.
+                  inComposite
                   doc={`${node.kind} ${node.id}`}
                 >
                   {children}
