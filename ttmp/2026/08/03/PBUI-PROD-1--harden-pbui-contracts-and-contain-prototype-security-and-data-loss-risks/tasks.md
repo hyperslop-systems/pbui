@@ -37,7 +37,7 @@
 
 - [x] Record focused commits and exact validation evidence in the diary and changelog.
 - [x] Relate the primary implementation files and pass `docmgr doctor`.
-- [ ] Dry-run and upload the final design/diary bundle to reMarkable.
+- [x] Dry-run and upload the final design/diary bundle to reMarkable.
 
 ## Deferred register — not part of this ticket's completion
 

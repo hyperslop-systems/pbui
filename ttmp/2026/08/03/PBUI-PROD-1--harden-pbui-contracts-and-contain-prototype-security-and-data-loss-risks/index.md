@@ -1,7 +1,7 @@
 ---
 Title: Harden PBUI contracts and contain prototype security and data-loss risks
 Ticket: PBUI-PROD-1
-Status: active
+Status: complete
 Topics:
     - pbui
     - frontend
@@ -15,7 +15,7 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: 'Production-first implementation ticket: harden shared PBUI contracts and production consumer coverage, fix contained confidentiality and data-integrity defects in hyperblog and turboproof, and explicitly defer prototype architecture and polish.'
-LastUpdated: 2026-08-03T20:32:09.440322251-04:00
+LastUpdated: 2026-08-03T22:25:00-04:00
 WhatFor: 'Ship the small shared, security, and data-loss fixes whose value survives the prototype lifecycle while recording the larger findings without prematurely redesigning prototypes.'
 WhenToUse: 'Use the design guide to review the implementation boundary and the diary to reproduce commits and validation.'
 ---
@@ -40,7 +40,7 @@ Larger prototype refactors and interaction polish are documented and deferred.
 
 ## Status
 
-Current status: **active**
+Current status: **complete**
 
 ## Topics
 

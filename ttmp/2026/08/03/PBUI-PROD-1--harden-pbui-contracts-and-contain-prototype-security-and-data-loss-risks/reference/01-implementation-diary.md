@@ -1,7 +1,7 @@
 ---
 Title: Implementation diary
 Ticket: PBUI-PROD-1
-Status: active
+Status: complete
 Topics:
     - pbui
     - frontend
@@ -37,7 +37,7 @@ RelatedFiles:
       Note: Open-document destination preflight and post-await rebinding implemented in b7bd9fb.
 ExternalSources: []
 Summary: Chronological implementation record for production-first PBUI hardening and contained hyperblog and turboproof security/data-integrity fixes.
-LastUpdated: 2026-08-03T22:10:00-04:00
+LastUpdated: 2026-08-03T22:25:00-04:00
 WhatFor: Preserve the evidence, commands, failures, commits, and review instructions needed to audit or continue PBUI-PROD-1.
 WhenToUse: Read before reviewing, resuming, or extending the implementation.
 ---
@@ -718,4 +718,97 @@ focused commits:
 e903dbd  PBUI + datalab production contract
 08177a5  hyperblog confidentiality + draft integrity
 b7bd9fb  turboproof mutation + document identity
+```
+
+## Step 6: Deliver the review package to reMarkable
+
+The committed five-document ticket bundle was rendered with the annotation-
+friendly editor layout and a depth-two table of contents, then uploaded to the
+dated PBUI-PROD-1 cloud folder. The dry-run and real upload used the same file
+order, name, layout, and destination.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 1)
+
+**Assistant interpretation:** Deliver the finished ticket documentation to the
+user's reMarkable only after validation and a no-mutation dry-run.
+
+**Inferred user intent:** Make the long-form review available for offline,
+annotation-oriented reading without losing the ticket as the source of truth.
+
+### What I did
+
+- Committed the completed review package as `2669316` (`docs: complete
+  production-first hardening guide`).
+- Dry-ran the five explicit Markdown inputs and verified output name,
+  destination, layout, ToC depth, and input order.
+- Uploaded `PBUI-PROD-1 Production First Hardening Guide.pdf` to
+  `/ai/2026/08/03/PBUI-PROD-1` without `--force`.
+- Marked the ticket complete only after the uploader returned success.
+
+### Why
+
+- A dry-run proves selection and destination before the external mutation.
+- Omitting `--force` protects any existing cloud annotations from destructive
+  replacement.
+- The repository remains authoritative; the PDF is a reading artifact.
+
+### What worked
+
+```text
+OK: uploaded PBUI-PROD-1 Production First Hardening Guide.pdf
+    -> /ai/2026/08/03/PBUI-PROD-1
+```
+
+### What didn't work
+
+The first real upload ran inside the network-restricted workspace and produced
+no renderer or uploader output. After repeated polling confirmed the session
+was stalled, it was interrupted. The identical command was retried with
+approved network permission and completed successfully. No overwrite flag was
+used in either attempt.
+
+### What I learned
+
+- The local dry-run is network-free, while cloud delivery needs an explicitly
+  network-enabled execution context in this workspace.
+- A successful uploader result is sufficient verification; routine cloud list
+  calls would add traffic without strengthening the result.
+
+### What was tricky to build
+
+The stalled session did not emit a conventional error. Preserving one upload
+identity, interrupting it, and retrying only after confirming the environment's
+network restriction avoided creating parallel or duplicate uploads.
+
+### What warrants a second pair of eyes
+
+- Check diagram and monospaced code readability on the physical device.
+- Keep annotations on the uploaded PDF; future source changes should use a new
+  document name unless replacing annotations is explicitly intended.
+
+### What should be done in the future
+
+- Treat annotated reMarkable feedback as follow-up input to the repository
+  ticket, not as an untracked fork of the design.
+- Upload a versioned successor rather than forcing replacement if the guide
+  materially changes.
+
+### Code review instructions
+
+- The repository ticket at commit `2669316` is the exact source bundle that was
+  rendered.
+- Review the design document first and use the diary for command/failure detail.
+- The final metadata commit changes delivery/status evidence only, not the
+  uploaded technical content.
+
+### Technical details
+
+```text
+layout:     editor
+toc depth:  2
+name:       PBUI-PROD-1 Production First Hardening Guide
+remote dir: /ai/2026/08/03/PBUI-PROD-1
+overwrite:  disabled
 ```

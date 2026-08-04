@@ -1,7 +1,7 @@
 ---
 Title: Production-first PBUI hardening and prototype containment implementation guide
 Ticket: PBUI-PROD-1
-Status: active
+Status: complete
 Topics:
     - pbui
     - frontend

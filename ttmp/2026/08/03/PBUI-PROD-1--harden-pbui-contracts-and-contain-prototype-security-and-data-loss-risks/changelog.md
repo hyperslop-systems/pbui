@@ -34,3 +34,8 @@ Required JSON/same-origin create and rename requests, rejected missing PUT text,
 - /home/manuel/workspaces/2026-07-30/transcript-agent/turboproof/pkg/server/handlers_files.go — Browser-to-disk mutation guard and required PUT text implemented in b7bd9fb.
 - /home/manuel/workspaces/2026-07-30/transcript-agent/turboproof/pkg/filestore/store.go — Canonical root overlap and directory fingerprint guards implemented in b7bd9fb.
 - /home/manuel/workspaces/2026-07-30/transcript-agent/turboproof/ui/src/store/renameBinding.ts — Destination URI preflight and current-state rebinding implemented in b7bd9fb.
+
+
+## 2026-08-03 - Review package delivered
+
+Completed the 800-line architecture/code-review guide and strict implementation diary, passed docmgr doctor with warnings treated as failures, committed the package as 2669316, and uploaded the five-document PDF bundle to `/ai/2026/08/03/PBUI-PROD-1`.
