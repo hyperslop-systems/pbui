@@ -1,5 +1,14 @@
 # Tasks
 
+## Review and delivery completed
+
+- [x] Read the ticket, prior handoffs, source snapshot, and related architecture data.
+- [x] Re-derive the live GitHub review state and confirm all 38 findings.
+- [x] Review the four repositories and validate Go, frontend, and TypeScript baselines.
+- [x] Write the intern-oriented architecture, design, and code-review guide.
+- [x] Record the investigation diary and relate the primary source files.
+- [x] Validate ticket metadata and upload the review bundle to reMarkable.
+
 ## TODO
 
 - [ ] STEP 1 · pbui styles-wiring.test.ts:121 — regex misses plain `html {`; one line, free <!-- t:v8mt -->
