@@ -685,7 +685,7 @@ concurrent clients, or production FileBrowser adoption.
 
 ### What warrants a second pair of eyes
 
-- Check the full consumer inventory before publishing PBUI 0.4.0; standalone
+- Check the full consumer inventory before publishing PBUI 0.5.0; standalone
   repositories may resolve installed rather than workspace declarations.
 - Review the ticket/defer boundary if the deployment status of either prototype
   changes.
