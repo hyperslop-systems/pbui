@@ -44,7 +44,12 @@ export interface PbuiProviderProps<
 > {
   children: ReactNode;
   environment?: Environment;
-  onPerform?: (verb: Verb) => void | Promise<void>;
+  /**
+   * The product boundary where serialisable presentation verbs become effects.
+   * Required because a provider with no router renders working menus whose
+   * commands silently disappear.
+   */
+  onPerform: (verb: Verb) => void | Promise<void>;
   onAccept?: (result: PresentationReference<Values> | null) => void;
 }
 
@@ -260,7 +265,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         setMouseDoc,
         perform: (verb) => {
           setMenu(null);
-          return onPerform?.(verb);
+          return onPerform(verb);
         },
       }),
       [
@@ -383,6 +388,12 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // A Presentation may wrap a real input or button. Its keystroke belongs
+      // to that nested control, not to this container's activation contract.
+      // Agentlogic's ChangesPanel uses the same ownership rule for rows that
+      // contain their own StepChip control.
+      if (event.target !== event.currentTarget) return;
+
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         // The keydown never bubbles: a host with its own key handling (a tree

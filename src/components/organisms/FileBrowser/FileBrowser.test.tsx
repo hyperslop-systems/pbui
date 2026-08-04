@@ -432,7 +432,7 @@ describe("FileBrowser presentation seam", () => {
       const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set(["project:"]));
       const [selectedId, setSelectedId] = useState<string | null>(null);
       return (
-        <filePbui.Provider>
+        <filePbui.Provider onPerform={() => {}}>
         <FileBrowser
           roots={[{ name: "project" }]}
           trees={{ project: { status: "ready", tree: TREE } }}

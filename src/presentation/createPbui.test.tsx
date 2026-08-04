@@ -12,6 +12,8 @@ type Verb = { type: "select"; id: string };
 
 afterEach(cleanup);
 
+const ignorePerform = () => {};
+
 function makePbui() {
   const registry = createPresentationRegistry<Values, { prefix: string }, Verb>({
     person: {
@@ -39,10 +41,10 @@ describe("createPbui", () => {
 
     render(
       <>
-        <pbui.Provider environment={{ prefix: "A: " }}>
+        <pbui.Provider environment={{ prefix: "A: " }} onPerform={ignorePerform}>
           <pbui.Presentation reference={reference}>A: Ada</pbui.Presentation>
         </pbui.Provider>
-        <pbui.Provider environment={{ prefix: "B: " }}>
+        <pbui.Provider environment={{ prefix: "B: " }} onPerform={ignorePerform}>
           <pbui.Presentation reference={reference}>B: Ada</pbui.Presentation>
         </pbui.Provider>
       </>,
@@ -98,7 +100,7 @@ describe("createPbui", () => {
     }
 
     render(
-      <pbui.Provider>
+      <pbui.Provider onPerform={ignorePerform}>
         <Acceptor />
         <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
       </pbui.Provider>,
@@ -126,7 +128,7 @@ describe("createPbui", () => {
     test("is a button with a tab stop when it stands alone", () => {
       const pbui = makePbui();
       render(
-        <pbui.Provider>
+        <pbui.Provider onPerform={ignorePerform}>
           <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
         </pbui.Provider>,
       );
@@ -137,7 +139,7 @@ describe("createPbui", () => {
     test("yields role and tab stop to the container when inComposite", () => {
       const pbui = makePbui();
       const { container } = render(
-        <pbui.Provider>
+        <pbui.Provider onPerform={ignorePerform}>
           <div role="tree">
             <div role="treeitem" tabIndex={-1}>
               <pbui.Presentation reference={reference} inComposite>
@@ -177,7 +179,7 @@ describe("createPbui", () => {
       const activated: string[] = [];
 
       render(
-        <pbui.Provider>
+        <pbui.Provider onPerform={ignorePerform}>
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div onClick={() => hostClicks.push("host")}>
             <pbui.Presentation
@@ -201,7 +203,7 @@ describe("createPbui", () => {
       const hostClicks: string[] = [];
 
       render(
-        <pbui.Provider>
+        <pbui.Provider onPerform={ignorePerform}>
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div onClick={() => hostClicks.push("host")}>
             <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
@@ -226,7 +228,7 @@ describe("createPbui", () => {
       const activated: string[] = [];
 
       render(
-        <pbui.Provider>
+        <pbui.Provider onPerform={ignorePerform}>
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div onClick={() => hostClicks.push("host")}>
             <pbui.Presentation
@@ -252,7 +254,7 @@ describe("createPbui", () => {
       const hostClicks: string[] = [];
 
       render(
-        <pbui.Provider>
+        <pbui.Provider onPerform={ignorePerform}>
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div onClick={() => hostClicks.push("host")}>
             <pbui.Presentation reference={reference} activate={{ doc: "select" }}>
@@ -271,7 +273,7 @@ describe("createPbui", () => {
       const runs: string[] = [];
 
       render(
-        <pbui.Provider>
+        <pbui.Provider onPerform={ignorePerform}>
           <pbui.Presentation
             reference={{ type: "person", value: { id: "outer", name: "Outer" } }}
             activate={{ run: () => runs.push("outer") }}
@@ -287,6 +289,22 @@ describe("createPbui", () => {
       fireEvent.click(screen.getByRole("button", { name: "Ada" }));
       expect(runs).toEqual(["inner"]);
     });
+
+    test("does not activate when Enter belongs to a nested control", () => {
+      const pbui = makePbui();
+      const runs: string[] = [];
+
+      render(
+        <pbui.Provider onPerform={ignorePerform}>
+          <pbui.Presentation reference={reference} activate={{ run: () => runs.push("outer") }}>
+            <input aria-label="rename person" />
+          </pbui.Presentation>
+        </pbui.Provider>,
+      );
+
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "rename person" }), { key: "Enter" });
+      expect(runs).toEqual([]);
+    });
   });
 
   /**
@@ -301,7 +319,7 @@ describe("createPbui", () => {
   describe("the mouse-doc line describes what a left click will do", () => {
     function hover(node: ReactElement, pbui: ReturnType<typeof makePbui>) {
       const { container } = render(
-        <pbui.Provider>
+        <pbui.Provider onPerform={ignorePerform}>
           {node}
           <pbui.MouseDocLine />
         </pbui.Provider>,
@@ -391,7 +409,7 @@ describe("createPbui", () => {
     function openMenuFor(focused: string) {
       const pbui = menuPbui();
       render(
-        <pbui.Provider environment={{ focused }}>
+        <pbui.Provider environment={{ focused }} onPerform={ignorePerform}>
           <pbui.Presentation reference={{ type: "person", value: { id: "1", name: "Ada" } }}>
             Ada
           </pbui.Presentation>

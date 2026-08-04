@@ -17,6 +17,8 @@ type Verb = { type: "select"; id: string };
 
 afterEach(cleanup);
 
+const ignorePerform = () => {};
+
 function makePbui() {
   const registry = createPresentationRegistry<Values, Record<string, never>, Verb>({
     person: {
@@ -31,7 +33,7 @@ describe("MouseDocLine", () => {
   test("shows READY, the idle doc, and the ambient", () => {
     const pbui = makePbui();
     render(
-      <pbui.Provider>
+      <pbui.Provider onPerform={ignorePerform}>
         <pbui.MouseDocLine ambient="3 workspaces" />
       </pbui.Provider>,
     );
@@ -54,7 +56,7 @@ describe("MouseDocLine", () => {
     }
 
     render(
-      <pbui.Provider>
+      <pbui.Provider onPerform={ignorePerform}>
         <pbui.Presentation reference={reference} doc="<person> Ada">
           Ada
         </pbui.Presentation>
@@ -97,7 +99,7 @@ describe("AcceptBanner", () => {
     }
 
     render(
-      <pbui.Provider>
+      <pbui.Provider onPerform={ignorePerform}>
         <Arm />
         <pbui.AcceptBanner />
       </pbui.Provider>,

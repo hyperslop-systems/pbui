@@ -36,6 +36,17 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
+function rootDeclarationBlocks(css: string): string[] {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, " ");
+  return [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter((match) =>
+      match[1]!
+        .split(",")
+        .some((selector) => /^(?::root|html|:where\((?::root|html)\))$/.test(selector.trim())),
+    )
+    .map((match) => match[2]!);
+}
+
 const root = join(__dirname, "..");
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -114,17 +125,30 @@ describe("stylesheet wiring", () => {
     const css = [
       readFileSync(join(root, "src", "styles.css"), "utf8"),
       readFileSync(join(root, "src", "tokens.css"), "utf8"),
-    ]
-      .join("\n")
-      .replace(/\/\*[\s\S]*?\*\//g, " ");
+    ].join("\n");
 
-    const rootBlocks = [...css.matchAll(/:where\((?::root|html)\)[^{]*\{([^}]*)\}/g)];
-    expect(rootBlocks.length, "no :where(:root) block found — the scan is broken").toBeGreaterThan(0);
+    const rootBlocks = rootDeclarationBlocks(css);
+    expect(rootBlocks.length, "no root selector block found — the scan is broken").toBeGreaterThan(0);
     const offenders = rootBlocks
-      .map((m) => m[1]!)
       .filter((body) => /(^|[;\s])font-size\s*:/.test(body));
 
     expect(offenders, "font-size on the root element rescales every consumer's rem").toEqual([]);
+  });
+
+  it("recognizes every supported spelling of a document-root selector", () => {
+    const blocks = rootDeclarationBlocks(`
+      html { color: red; }
+      :root, body { color: blue; }
+      :where(:root) { color: green; }
+      :where(html) { color: purple; }
+      html body { font-size: 12px; }
+    `);
+    expect(blocks).toEqual([
+      " color: red; ",
+      " color: blue; ",
+      " color: green; ",
+      " color: purple; ",
+    ]);
   });
 
   it("keeps the parts files after the component modules", () => {
