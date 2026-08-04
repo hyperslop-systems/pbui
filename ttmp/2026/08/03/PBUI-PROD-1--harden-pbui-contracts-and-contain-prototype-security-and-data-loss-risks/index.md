@@ -6,8 +6,8 @@ Topics:
     - pbui
     - frontend
     - backend
-    - security
-    - testing
+    - review
+    - refactoring
     - onboarding
 DocType: index
 Intent: long-term
