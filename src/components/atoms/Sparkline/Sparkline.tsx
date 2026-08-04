@@ -4,7 +4,7 @@ export interface SparklineProps {
   /** The series, in order. Non-finite entries are treated as gaps. */
   points: number[];
   /** The accessible name. Required, for the same reason Meter's is. */
-  label: string;
+  accessibleName: string;
   /**
    * Draws a dashed reference line, e.g. a budget. Points at or above it take
    * the alert tone.
@@ -31,7 +31,7 @@ export interface SparklineProps {
  */
 export function Sparkline({
   points,
-  label,
+  accessibleName,
   threshold,
   tone,
   width = 120,
@@ -73,7 +73,7 @@ export function Sparkline({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={label}
+      aria-label={accessibleName}
       preserveAspectRatio="none"
     >
       {threshold !== undefined ? (

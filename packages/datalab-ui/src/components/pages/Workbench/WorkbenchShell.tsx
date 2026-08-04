@@ -360,7 +360,7 @@ export function WorkbenchShell({
                   variant="framed"
                   size="tiny"
                   glyph={fullFrame ? "⤡" : "⤢"}
-                  label={fullFrame ? "leave full frame (Esc)" : "fill the window"}
+                  accessibleName={fullFrame ? "leave full frame (Esc)" : "fill the window"}
                   title={
                     fullFrame
                       ? "shrink back into the page — Esc does the same"

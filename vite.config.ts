@@ -5,9 +5,14 @@ export default defineConfig({
   plugins: [react()],
   build: {
     lib: {
-      entry: "src/index.ts",
+      /*
+       * Two entries. `index` is the library; `vite` is the consumer-side
+       * config preset (`@hyperslop-systems/pbui/vite`), which exists so the
+       * duplicate-React resolution requirement ships WITH the package rather
+       * than living in each product's memory — see src/vite.ts.
+       */
+      entry: { index: "src/index.ts", vite: "src/vite.ts" },
       formats: ["es"],
-      fileName: "index",
       cssFileName: "pbui",
     },
     rollupOptions: {

@@ -116,14 +116,14 @@ export function TokensPanel({
           )}
           <Toolbar tight>
             <TextInput
-              label="token name"
+              accessibleName="token name"
               placeholder="ci ingest"
               value={name}
               disabled={!mintable}
               onValueChange={setName}
             />
             <SelectInput
-              label="expires in"
+              accessibleName="expires in"
               value={expiresIn}
               disabled={!mintable}
               onValueChange={setExpiresIn}

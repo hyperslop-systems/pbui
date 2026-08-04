@@ -82,14 +82,14 @@ export function UploadPanel({
           <SectionLabel>Publish a dataset</SectionLabel>
           <Toolbar tight>
             <SelectInput
-              label="drop"
+              accessibleName="drop"
               value={target.drop}
               placeholder="choose a drop…"
               options={writableDrops.map((drop) => ({ value: drop, label: drop }))}
               onValueChange={(drop) => onTargetChange({ ...target, drop })}
             />
             <TextInput
-              label="dataset name"
+              accessibleName="dataset name"
               placeholder="readings"
               value={target.dataset}
               onValueChange={(dataset) => onTargetChange({ ...target, dataset })}
@@ -115,8 +115,7 @@ export function UploadPanel({
         )}
 
         <FileDropZone
-          disabled={!ready}
-          disabledReason="choose a drop and name the dataset first"
+          disabledBecause={ready ? undefined : "choose a drop and name the dataset first"}
           buttonLabel="Choose CSV files…"
           // CSV first, because that is what the table projection reads and what
           // a chart can be made of — but not exclusively: a dataset is a body of

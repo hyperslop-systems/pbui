@@ -397,7 +397,7 @@ function LauncherModal({
     <Dialog title={HEADINGS[invocation.kind]} onClose={close} closeLabel="close the launcher">
       <div className={styles.body}>
         <TextInput
-          label="search views or type + for a new view"
+          accessibleName="search views or type + for a new view"
           placeholder="search views…  + new view  ws2 one workspace"
           value={query}
           onValueChange={setQuery}

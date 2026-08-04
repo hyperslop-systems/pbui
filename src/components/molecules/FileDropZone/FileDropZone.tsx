@@ -24,20 +24,41 @@ import styles from "./FileDropZone.module.css";
  */
 export function FileDropZone({
   onFiles,
-  disabled = false,
-  disabledReason,
+  disabledBecause,
   accept,
   label = "drop files here, or click to choose",
   buttonLabel = "Choose files…",
 }: {
   onFiles(files: FileList): void;
-  disabled?: boolean;
-  /** Shown instead of `label` when disabled. Say what to do, not what is wrong. */
-  disabledReason?: string;
+  /**
+   * Present ⇔ the zone rejects files, and the string is why — shown in place
+   * of `label`. Say what to do, not what is wrong: "choose a drop and name the
+   * dataset first" rather than "no drop selected".
+   *
+   * The third of the three `disabled` + explanation pairs in this library, and
+   * the only one whose render guarded correctly. The type still permitted the
+   * disconnect, and permitted the quieter defect the other two shared: a
+   * disabled zone with no reason, which fell back to the generic label and told
+   * the user nothing. Neither is expressible now. See
+   * `PresentationAction.disabledBecause`.
+   */
+  disabledBecause?: string;
+  /**
+   * TOMBSTONES — see `PresentationAction.disabled`. JSX props ARE checked by
+   * the excess-property rule, so deleting these would already be an error
+   * here; they are kept for a clearer message and for symmetry with the other
+   * two, which need them.
+   *
+   * @deprecated merged into `disabledBecause`
+   */
+  disabled?: never;
+  /** @deprecated merged into `disabledBecause` */
+  disabledReason?: never;
   accept?: string;
   label?: string;
   buttonLabel?: string;
 }) {
+  const disabled = disabledBecause !== undefined;
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -78,7 +99,8 @@ export function FileDropZone({
         onClick={open}
       >
         <Text size="small" tone={disabled ? "faint" : undefined}>
-          {disabled ? (disabledReason ?? label) : label}
+          {/* No `?? label` fallback: a disabled zone now always has a reason. */}
+          {disabledBecause ?? label}
         </Text>
         <input
           ref={input}

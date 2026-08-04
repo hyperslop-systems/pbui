@@ -31,7 +31,7 @@ export interface TextInputProps
   value: string;
   onValueChange(value: string): void;
   /** Becomes `aria-label`. Say what the field holds. */
-  label: string;
+  accessibleName: string;
   type?: "text" | "password" | "email" | "search";
   /** Marks the field as failing validation; sets `aria-invalid`. */
   invalid?: boolean;
@@ -56,7 +56,7 @@ export interface TextInputProps
 export function TextInput({
   value,
   onValueChange,
-  label,
+  accessibleName,
   type = "text",
   invalid = false,
   width = "auto",
@@ -67,7 +67,7 @@ export function TextInput({
   return (
     <input
       type={type}
-      aria-label={label}
+      aria-label={accessibleName}
       aria-invalid={invalid || undefined}
       value={value}
       onChange={(event) => onValueChange(event.target.value)}

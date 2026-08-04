@@ -1,6 +1,6 @@
 import { PhaseRule } from "../PhaseRule";
 import { Wordmark, type WordmarkSize } from "../Wordmark";
-import styles from "../Brand.module.css";
+import styles from "./Lockup.module.css";
 
 /**
  * Parent brand, wordmark, four-bar rule — the sheet's logo lockup.
@@ -51,7 +51,14 @@ export function Lockup({
     >
       {parent && <div className={styles.parent}>A Hyperslop product</div>}
       <Wordmark size={size} />
-      <PhaseRule labels={labels} icons={icons} />
+      {/*
+        The size travels DOWN as a prop. It used to travel sideways, as
+        `.lockup_masthead .bar` in a stylesheet the two components shared —
+        which made the rule's appearance a property of its container rather than
+        of itself, and left the masthead's 4px bar defined in a file that would
+        outlive deleting `PhaseRule` entirely.
+      */}
+      <PhaseRule labels={labels} icons={icons} size={size} />
     </div>
   );
 }
@@ -79,7 +86,13 @@ export function ClaimBlock({ className }: { className?: string }) {
         <br />
         Insight out.
       </div>
-      <PhaseRule labels on="ink" className={styles.claimRule} />
+      {/*
+        No `className` any more. It used to carry `.claimRule`, whose only rule
+        was `.claimRule .phaseLabel { color: inherit }` — dead the day `on="ink"`
+        was added, because that sets the colour as an inline style and an inline
+        style wins against any class. Verified by screenshot before removal.
+      */}
+      <PhaseRule labels on="ink" />
     </div>
   );
 }

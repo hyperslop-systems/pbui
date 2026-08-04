@@ -74,8 +74,10 @@ export function GalleryPanel({
                 <Presentation
                   reference={{ type: "chart", value: snapshot.id }}
                   doc={`<chart> snapshot ${snapshot.name}`}
-                  onActivate={() => onRestore(snapshot.id)}
-                  activateDoc={`restore into chart ${activeDocName}`}
+                  activate={{
+                    run: () => onRestore(snapshot.id),
+                    doc: `restore into chart ${activeDocName}`,
+                  }}
                 >
                   <Chip label={snapshot.name} tone="var(--pbui-tone-geom)" strong />
                 </Presentation>
@@ -115,7 +117,7 @@ export function GalleryPanel({
                   size="tiny"
                   tone="danger"
                   glyph="✕"
-                  label={`delete the snapshot ${snapshot.name}`}
+                  accessibleName={`delete the snapshot ${snapshot.name}`}
                   onClick={() => onDelete(snapshot.id)}
                 />
               </Stack>

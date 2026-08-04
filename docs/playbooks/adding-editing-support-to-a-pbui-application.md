@@ -1,5 +1,13 @@
 # Adding editing support to a PBUI application
 
+> **The three PBUI playbooks, and which one you want:**
+>
+> | If you are… | Read |
+> |---|---|
+> | starting a new application on PBUI | [building-a-new-hyperslop-systems-app-on-pbui.md](./building-a-new-hyperslop-systems-app-on-pbui.md) |
+> | moving an existing frontend to the component convention | [refactoring-a-pbui-app-into-atoms-molecules-and-organisms.md](./refactoring-a-pbui-app-into-atoms-molecules-and-organisms.md) |
+> | making an application edit durable workbench state | [adding-editing-support-to-a-pbui-application.md](./adding-editing-support-to-a-pbui-application.md) |
+
 This playbook explains how to make a Datalab application edit durable workbench
 state. It covers the frontend path implemented in PBUI and the server contract
 implemented by Datadrop. The intended reader can follow the procedure without

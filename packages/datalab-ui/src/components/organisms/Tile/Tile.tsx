@@ -124,7 +124,7 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
           // read-on-Enter / Escape-means-never-happened semantics.
           <InlineRename
             initial={view?.title ?? ""}
-            label="view name"
+            accessibleName="view name"
             // Empty commits as empty, which the reducer normalises back to
             // "no label". `InlineRename`'s fallback exists for a workspace,
             // where a blank name leaves nothing to click; a tile always has a
@@ -263,7 +263,7 @@ function TileButton({
       variant="framed"
       size="tiny"
       glyph={children}
-      label={label}
+      accessibleName={label}
       disabled={disabled}
       onClick={onClick}
     />

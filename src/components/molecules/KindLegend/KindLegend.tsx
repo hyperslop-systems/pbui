@@ -18,7 +18,7 @@ export interface KindLegendProps {
   /** Formats `total`. Defaults to the shared short-number formatter. */
   format?: (n: number) => string;
   /** The accessible name for the group. */
-  label: string;
+  accessibleName: string;
 }
 
 /**
@@ -33,7 +33,11 @@ export interface KindLegendProps {
  * descending-by-total, and a legend that reorders as its data changes reads as
  * flicker rather than as information.
  */
-export function KindLegend({ kinds, format = formatShortNumber, label }: KindLegendProps) {
+export function KindLegend({
+  kinds,
+  format = formatShortNumber,
+  accessibleName,
+}: KindLegendProps) {
   const sorted = [...kinds].sort((a, b) => b.total - a.total);
   const max = sorted.reduce((acc, k) => Math.max(acc, k.total), 0);
 
@@ -50,7 +54,7 @@ export function KindLegend({ kinds, format = formatShortNumber, label }: KindLeg
   // it is silently dropped. Typecheck did not object and the tests did not
   // either — the missing accessible name was only visible in the rendered DOM.
   return (
-    <ul className={styles.list} aria-label={label}>
+    <ul className={styles.list} aria-label={accessibleName}>
       {sorted.map((k) => (
         <li key={k.kind} className={styles.row}>
           <span className={styles.swatch} style={{ background: k.tone }} aria-hidden="true" />
@@ -59,7 +63,7 @@ export function KindLegend({ kinds, format = formatShortNumber, label }: KindLeg
             <Meter
               fraction={max === 0 ? 0 : k.total / max}
               tone={k.tone}
-              label={`${k.kind}: ${format(k.total)} across ${k.count}`}
+              accessibleName={`${k.kind}: ${format(k.total)} across ${k.count}`}
             />
           </span>
           <span className={styles.total}>

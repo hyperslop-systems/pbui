@@ -1,0 +1,14 @@
+/*
+ * Storybook's base environment: what every PRODUCT's reset/app css establishes
+ * (a base font on the document) so library chrome that inherits — object
+ * menus, dialogs — renders in the design system's voice. Tokens come from
+ * preview.ts's tokens.css import; this file is the body-level default a
+ * product would supply.
+ */
+body {
+  font-family: var(--pbui-font);
+  font-size: var(--pbui-fs-base);
+  line-height: var(--pbui-lh-tight);
+  color: var(--pbui-ink);
+  background: var(--pbui-paper);
+}

@@ -70,19 +70,19 @@ describe("<field> offers impossible mappings, disabled, with the reason", () => 
     // Present, so the user learns the rule...
     expect(y).toBeDefined();
     // ...and disabled, so they cannot produce a chart that refuses to draw.
-    expect(y?.disabledReason).toContain("quantitative");
+    expect(y?.disabledBecause).toContain("quantitative");
   });
 
   test("x accepts every type", () => {
     for (const name of ["data.station", "data.temp_c", "time"]) {
       const actions = actionsFor("field", { docId: null, name }, env());
-      expect(verbOf("Map to x", actions)?.disabledReason).toBeUndefined();
+      expect(verbOf("Map to x", actions)?.disabledBecause).toBeUndefined();
     }
   });
 
   test("a field the pipeline no longer produces disables every channel", () => {
     const actions = actionsFor("field", { docId: null, name: "mean_gone" }, env());
-    expect(verbOf("Map to x", actions)?.disabledReason).toBe("not in the pipeline output");
+    expect(verbOf("Map to x", actions)?.disabledBecause).toBe("not in the pipeline output");
   });
 });
 
@@ -190,12 +190,12 @@ describe("the layout descriptors", () => {
     // user who never sees Duplicate on a trace tile concludes it is missing.
     const trace = { ...tile, app: "trace", duplicable: false };
     const duplicate = actionsFor("tile", trace, env()).find((a) => a.label === "Duplicate");
-    expect(duplicate?.disabledReason).toBe("a second trace tile would show the same thing");
+    expect(duplicate?.disabledBecause).toBe("a second trace tile would show the same thing");
   });
 
   test("the last tile in a workspace cannot close, and says so", () => {
     const alone = actionsFor("tile", { ...tile, canClose: false }, env());
-    expect(alone.find((a) => a.label === "Remove from this workspace")?.disabledReason).toBe(
+    expect(alone.find((a) => a.label === "Remove from this workspace")?.disabledBecause).toBe(
       "the last tile in a workspace cannot close",
     );
   });
@@ -234,10 +234,10 @@ describe("the layout descriptors", () => {
       canDelete: true,
     };
     const actions = actionsFor("workspace", pinned, env());
-    expect(actions.find((a) => a.label === "Rename this workspace …")?.disabledReason).toBe(
+    expect(actions.find((a) => a.label === "Rename this workspace …")?.disabledBecause).toBe(
       "defined in code — cannot be renamed",
     );
-    expect(actions.find((a) => a.label === "Delete")?.disabledReason).toBe(
+    expect(actions.find((a) => a.label === "Delete")?.disabledBecause).toBe(
       "defined in code — cannot be deleted",
     );
   });
@@ -251,7 +251,7 @@ describe("the layout descriptors", () => {
       canDelete: false,
     };
     expect(
-      actionsFor("workspace", last, env()).find((a) => a.label === "Delete")?.disabledReason,
+      actionsFor("workspace", last, env()).find((a) => a.label === "Delete")?.disabledBecause,
     ).toBe("the last workspace in a stage cannot be deleted");
   });
 
@@ -299,12 +299,12 @@ describe("the account descriptors", () => {
   test("a token's menu offers revocation, and explains when it cannot", () => {
     const live = actionsFor("token", token, env());
     expect(live[0]?.verb).toEqual({ kind: "revokeToken", tokenId: token.id });
-    expect(live[0]?.disabledReason).toBeUndefined();
+    expect(live[0]?.disabledBecause).toBeUndefined();
 
     const revoked = actionsFor("token", { ...token, revokedAt: "2026-07-25T00:00:00Z" }, env());
     // Greyed with a reason rather than hidden: a user who never sees the entry
     // never learns the token is already dead.
-    expect(revoked[0]?.disabledReason).toBe("this token is already revoked");
+    expect(revoked[0]?.disabledBecause).toBe("this token is already revoked");
   });
 
   test("nothing a token presentation exposes can carry a secret", () => {
@@ -329,7 +329,7 @@ describe("the account descriptors", () => {
     };
     for (const action of actionsFor("member", owner, env())) {
       if (action.verb.kind === "setMemberRole" || action.verb.kind === "removeMember") {
-        expect(action.disabledReason).toBe("the owner's role cannot be changed");
+        expect(action.disabledBecause).toBe("the owner's role cannot be changed");
       }
     }
 

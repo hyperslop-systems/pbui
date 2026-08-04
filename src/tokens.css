@@ -1,0 +1,169 @@
+/*
+ * THE DEFAULT VALUES FOR EVERY TOKEN PBUI READS.
+ *
+ * # Why this file exists
+ *
+ * PBUI's components are written against design tokens — `border:
+ * var(--pbui-border-hair)`, `color: var(--pbui-faint)` — and until this file
+ * existed it defined NONE of them. Forty-four names were read across the
+ * bundle and zero were given a value. (Three appear to be defined in
+ * `Surface.module.css`, but those are re-pointings inside `.inverted`, not
+ * defaults.)
+ *
+ * That is a silent failure of the worst kind. An undefined custom property
+ * does not fall back to an initial value and does not warn: it makes the
+ * ENTIRE declaration invalid at computed-value time. `border:
+ * var(--pbui-border-hair)` with the token missing is not a thin border or a
+ * default border — it is NO border. There is no build error, no console
+ * warning, and no failing test. The component simply renders wrong, and only
+ * a human looking at a screen finds out.
+ *
+ * Every product rediscovered this independently:
+ *
+ *   - agentlogic ran for weeks with 43 tokens read and 0 defined, and grew
+ *     828 lines of hand-written CSS compensating for components it believed
+ *     were ugly.
+ *   - agentlogic also shipped `var(--pbui-ink-faint)` — a typo for
+ *     `--pbui-faint` — which meant the dotted resize grip in every split
+ *     divider never rendered at all. Nothing reported it.
+ *   - hyperblog aliased `--pbui-blue`, `--pbui-mustard` and five siblings
+ *     invented from a design sketch. None of those names exist, so every
+ *     chip's 4px tone edge silently fell back to ink.
+ *   - The nine tokens `JsonBlock` and `Dialog` read are defined by no product
+ *     either, but those nine are read WITH inline fallbacks — `var(--pbui-
+ *     code-surface, #0f172a)`. They therefore render, but in a slate-blue
+ *     palette nothing else in the family uses. That is a milder failure than
+ *     the others here and is worth stating precisely: not broken, off-system.
+ *
+ * The second-order cost is larger than the first. When PBUI's components
+ * render bare, a raw `<button>` with an inline style genuinely looks better
+ * than `<Button>`, so people write the raw button — and the design system
+ * quietly stops being used. agentlogic reached 6 of PBUI's ~28 components by
+ * exactly this route, and hyperblog hand-rolled a chip, a button, an input
+ * and an empty state in its first draft. A CSS defect produced a
+ * component-adoption decision.
+ *
+ * # How this file avoids overriding anybody
+ *
+ * Every rule below is wrapped in `:where(:root)`, which has ZERO
+ * specificity. A product's own `:root { --pbui-ink: … }` has specificity
+ * (0,1,0) and therefore wins, REGARDLESS OF IMPORT ORDER. That last clause
+ * is the point: the family's documented order loads the product's tokens.css
+ * BEFORE pbui's stylesheet, so a normal `:root` block here would override
+ * every product's palette. Zero specificity makes the question moot.
+ *
+ * The same technique is already used by `src/styles.css` for the
+ * presentation parts, and for the same reason.
+ *
+ * `Surface.module.css`'s `.inverted :where(*)` re-pointings also have a class
+ * in them, so they continue to win over these defaults inside an inverted
+ * surface. That is the intended behaviour and is why they are not repeated
+ * here.
+ *
+ * # What these values are
+ *
+ * The datalab-ui palette, which is the family's reference implementation and
+ * the source the other three products copied from. A consumer who imports
+ * PBUI and defines nothing now gets the family look rather than an unstyled
+ * page. A consumer who wants a different look overrides the names it cares
+ * about and inherits the rest.
+ *
+ * # If you add a token to a component
+ *
+ * Add its default here in the same commit. `make ui-token-check` in the
+ * products greps the built CSS for names that are read and never defined;
+ * once this file exists, a token missing from it is the only way that check
+ * can fail.
+ */
+
+:where(:root) {
+  /* ---- surfaces ---------------------------------------------------------- */
+  --pbui-paper: #ffffff;
+  --pbui-pane: #ffffff;
+  --pbui-pane-alt: #f1f1ee;
+  --pbui-ink: #23262b;
+
+  /*
+   * Ink for something that draws its OWN pale background, whatever surface it
+   * is sitting on. `Surface.inverted` re-points `--pbui-ink` to paper for
+   * every descendant, which is right for text on the dark bar and wrong for a
+   * control that paints `--pbui-pane` behind itself — that comes out white on
+   * white. This token is deliberately NOT re-pointed by `.inverted`, and that
+   * absence is the whole of its job.
+   */
+  --pbui-ink-on-pane: #23262b;
+
+  --pbui-faint: #696e75;
+  /* Faint ink for the dark bar. The ordinary faint grey is ~1.5:1 there. */
+  --pbui-faint-inverted: #918c85;
+  --pbui-line: #d9d9d4;
+  --pbui-selected: #fdeec6;
+
+  /* ---- status ------------------------------------------------------------ */
+  --pbui-danger: #b64b37;
+  --pbui-ok: #317a53;
+
+  /* ---- borders ----------------------------------------------------------- */
+  --pbui-border-hair: 1px solid var(--pbui-ink);
+  --pbui-border-firm: 2px solid var(--pbui-ink);
+  --pbui-focus-ring: 2px solid var(--pbui-ink);
+  --pbui-focus-offset: 1px;
+
+  /*
+   * Zero everywhere. A deliberate exception must name itself rather than
+   * quietly rounding one corner of one component.
+   */
+  --pbui-radius: 0;
+
+  /* ---- type -------------------------------------------------------------- */
+  --pbui-font: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --pbui-fs-micro: 8.5px;
+  --pbui-fs-tiny: 9.5px;
+  --pbui-fs-small: 10.5px;
+  --pbui-fs-base: 11.5px;
+  --pbui-fs-title: 13px;
+  --pbui-lh-tight: 1.35;
+  --pbui-lh-prose: 1.5;
+  --pbui-track-label: 0.08em;
+
+  /* ---- space ------------------------------------------------------------- */
+  --pbui-space-1: 2px;
+  --pbui-space-2: 4px;
+  --pbui-space-3: 6px;
+  --pbui-space-4: 10px;
+  --pbui-space-5: 16px;
+
+  /* ---- tones ------------------------------------------------------------- */
+  /* The 4px left edge that names a presentation's type. */
+  --pbui-tone-edge: 4px;
+  --pbui-tone-field: #7aa6c9;
+  --pbui-tone-neutral: #8892a8;
+  --pbui-type-t: #7cae9b;
+  --pbui-cat-3: #f2ad00;
+
+  /* ---- JsonBlock --------------------------------------------------------- */
+  /*
+   * Read by JsonBlock WITH inline fallbacks, so these never rendered as
+   * nothing — they rendered as `#0f172a` on `#e2e8f0`, a slate-blue pair from
+   * no family palette. Defining them here brings the inspector onto the
+   * system. The inline fallbacks in components.css stay: a read with a
+   * fallback is safe by construction and the token check does not flag it.
+   */
+  --pbui-code-surface: var(--pbui-pane-alt);
+  --pbui-code-text: var(--pbui-ink);
+  --pbui-code-danger: var(--pbui-danger);
+
+  /* ---- Dialog ------------------------------------------------------------ */
+  /*
+   * Read by Dialog, also with inline fallbacks — including a 0.5rem radius and
+   * a 1rem space, which contradict the family's zero-radius, 2-16px scale.
+   * datalab-ui overrides them in a separate dialogs.css; nobody else did, so
+   * every other product's dialogs have rounded corners nothing else has.
+   */
+  --pbui-dialog-surface: var(--pbui-pane);
+  --pbui-dialog-text: var(--pbui-ink);
+  --pbui-dialog-border: var(--pbui-border-firm);
+  --pbui-dialog-backdrop: rgb(35 38 43 / 28%);
+  --pbui-dialog-radius: var(--pbui-radius);
+  --pbui-dialog-space: var(--pbui-space-4);
+}

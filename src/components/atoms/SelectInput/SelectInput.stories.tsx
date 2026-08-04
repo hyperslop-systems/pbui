@@ -24,7 +24,7 @@ const meta = {
   component: SelectInput,
   parameters: { tile: false },
   // See TextInput.stories: control-panel defaults, not what the stories render.
-  args: { label: "role", value: "reader", options: ROLES, onValueChange: () => {} },
+  args: { accessibleName: "role", value: "reader", options: ROLES, onValueChange: () => {} },
 } satisfies Meta<typeof SelectInput>;
 
 export default meta;
@@ -33,9 +33,9 @@ type Story = StoryObj<typeof meta>;
 export const Populated: Story = {
   render: () => (
     <Stack gap={3}>
-      <Live label="role for the new member" options={ROLES} initial="reader" size="tiny" />
+      <Live accessibleName="role for the new member" options={ROLES} initial="reader" size="tiny" />
       <Live
-        label="expires in"
+        accessibleName="expires in"
         initial="90d"
         options={[
           { value: "90d", label: "90 days" },
@@ -58,7 +58,7 @@ export const WithPlaceholder: Story = {
   render: () => (
     <Stack gap={2}>
       <Live
-        label="drop"
+        accessibleName="drop"
         placeholder="choose a drop…"
         options={[
           { value: "lab", label: "lab" },
@@ -77,7 +77,7 @@ export const WithPlaceholder: Story = {
 export const Empty: Story = {
   render: () => (
     <Stack gap={2}>
-      <Live label="drop" placeholder="choose a drop…" options={[]} />
+      <Live accessibleName="drop" placeholder="choose a drop…" options={[]} />
       <Text size="tiny" tone="faint">
         you are not a writer on any drop yet
       </Text>
@@ -86,5 +86,5 @@ export const Empty: Story = {
 };
 
 export const Disabled: Story = {
-  render: () => <Live label="expires in" options={ROLES} initial="reader" disabled />,
+  render: () => <Live accessibleName="expires in" options={ROLES} initial="reader" disabled />,
 };

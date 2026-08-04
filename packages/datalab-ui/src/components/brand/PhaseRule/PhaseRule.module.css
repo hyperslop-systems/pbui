@@ -1,0 +1,83 @@
+/*
+ * The four-bar rule's geometry.
+ *
+ * Sizes are the only thing this file decides; every colour is a token from
+ * brand.css, which is aliases all the way down to tokens.css (DR-98).
+ *
+ * The three size rules at the bottom used to live in the lockup's half of a
+ * shared sheet, as `.lockup_masthead .bar` — a descendant selector reaching
+ * into this component's internals from the one above it. They are here, keyed
+ * off this component's own `size` prop, because the alternative is a rule that
+ * survives deleting the element it styles and a component whose appearance
+ * depends on who is rendering it.
+ */
+
+.rule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  width: 100%;
+}
+
+.bars {
+  display: grid;
+  /* Four EQUAL bars, spanning the full width of whatever contains them — which
+     `.lockup` sets to the wordmark's width, so the rule sits exactly under the
+     letters as the sheet draws it. */
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--brand-rule-gap);
+  width: 100%;
+}
+
+.bar {
+  height: var(--brand-rule-height);
+  display: block;
+}
+
+.phases {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--brand-rule-gap);
+  align-items: start;
+}
+
+.phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+}
+
+.phaseIcon {
+  display: inline-flex;
+}
+
+.phaseLabel {
+  font-family: var(--brand-font-text);
+  font-size: var(--brand-fs-eyebrow);
+  font-weight: 700;
+  letter-spacing: var(--brand-track-eyebrow);
+  text-transform: uppercase;
+  color: var(--brand-faint);
+  /* The words are as long as UNDERSTAND and the columns are a quarter of the
+     lockup; wrapping is better than overflowing into the neighbour. */
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Smaller sizes get a proportionally thinner rule: an 8px bar under a 15px
+   wordmark reads as a highlighter stripe rather than as a rule. */
+.rule_masthead .bar {
+  height: 4px;
+}
+
+.rule_footer .bar {
+  height: 3px;
+}
+
+.rule_masthead,
+.rule_footer {
+  gap: 0;
+}

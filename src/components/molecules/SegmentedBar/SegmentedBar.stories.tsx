@@ -23,7 +23,7 @@ const meta = {
   component: SegmentedBar,
   parameters: { tile: false },
   args: {
-    label: "context window",
+    accessibleName: "context window",
     segments: [
       {
         id: "sys",
@@ -72,12 +72,12 @@ export const CompositionVersusBudget: Story = {
       <Stack gap={4}>
         <Stack gap={2}>
           <SectionLabel>no total — a composition</SectionLabel>
-          <SegmentedBar label="composition" segments={segments} />
+          <SegmentedBar accessibleName="composition" segments={segments} />
         </Stack>
         <Stack gap={2}>
           <SectionLabel>total 24 000 — a budget, with headroom hatched</SectionLabel>
           <SegmentedBar
-            label="budget"
+            accessibleName="budget"
             segments={segments}
             total={24_000}
             summary={`${formatShortNumber(14_020)} / ${formatShortNumber(24_000)} · ${formatPercent(14_020 / 24_000)}`}
@@ -109,7 +109,7 @@ export const CompositionVersusBudget: Story = {
  */
 export const Overflow: Story = {
   args: {
-    label: "over budget",
+    accessibleName: "over budget",
     total: 10_000,
     segments: [
       { id: "a", weight: 8400, tone: "var(--pbui-tone-source)", label: "file bodies" },
@@ -134,7 +134,7 @@ export const Density: Story = {
         {[3, 12, 60].map((n) => (
           <Stack key={n} gap={2}>
             <SectionLabel>{n} segments</SectionLabel>
-            <SegmentedBar label={`${n} segments`} segments={make(n)} />
+            <SegmentedBar accessibleName={`${n} segments`} segments={make(n)} />
           </Stack>
         ))}
         <Text>
@@ -150,7 +150,7 @@ export const Density: Story = {
 /** Pinned and dimmed, which are states rather than identities. */
 export const States: Story = {
   args: {
-    label: "segment states",
+    accessibleName: "segment states",
     total: undefined,
     segments: [
       { id: "a", weight: 3, tone: "var(--pbui-tone-source)", label: "ordinary" },
@@ -174,16 +174,16 @@ export const Degenerate: Story = {
     <Stack gap={4}>
       <Stack gap={2}>
         <SectionLabel>no segments at all</SectionLabel>
-        <SegmentedBar label="empty" segments={[]} />
+        <SegmentedBar accessibleName="empty" segments={[]} />
       </Stack>
       <Stack gap={2}>
         <SectionLabel>no segments, but a total — all headroom</SectionLabel>
-        <SegmentedBar label="all headroom" segments={[]} total={1000} />
+        <SegmentedBar accessibleName="all headroom" segments={[]} total={1000} />
       </Stack>
       <Stack gap={2}>
         <SectionLabel>every weight zero</SectionLabel>
         <SegmentedBar
-          label="all zero"
+          accessibleName="all zero"
           segments={[
             { id: "a", weight: 0, tone: "var(--pbui-tone-source)", label: "a" },
             { id: "b", weight: 0, tone: "var(--pbui-tone-field)", label: "b" },
@@ -193,7 +193,7 @@ export const Degenerate: Story = {
       <Stack gap={2}>
         <SectionLabel>a negative weight, which must not invert the layout</SectionLabel>
         <SegmentedBar
-          label="negative"
+          accessibleName="negative"
           segments={[
             {
               id: "a",
@@ -224,7 +224,7 @@ export const WithLegend: Story = {
     return (
       <Stack gap={3}>
         <SegmentedBar
-          label="context window"
+          accessibleName="context window"
           total={24_000}
           summary={`${formatShortNumber(14_920)} / ${formatShortNumber(24_000)} · ${formatPercent(14_920 / 24_000)}`}
           segments={kinds.map((k) => ({
@@ -234,7 +234,7 @@ export const WithLegend: Story = {
             label: `${k.kind} · ${formatShortNumber(k.total)}`,
           }))}
         />
-        <KindLegend label="context window composition" kinds={kinds} />
+        <KindLegend accessibleName="context window composition" kinds={kinds} />
       </Stack>
     );
   },

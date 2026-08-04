@@ -41,7 +41,7 @@ export interface SegmentedBarProps {
    */
   renderSegment?: (segment: Segment, body: ReactNode) => ReactNode;
   /** The accessible name for the bar. */
-  label: string;
+  accessibleName: string;
   /** Rendered above the bar on the right, e.g. "18.2k / 24k · 76%". */
   summary?: ReactNode;
 }
@@ -63,7 +63,7 @@ export function SegmentedBar({
   segments,
   total,
   renderSegment,
-  label,
+  accessibleName,
   summary,
 }: SegmentedBarProps) {
   const sum = segments.reduce((acc, s) => acc + Math.max(0, s.weight), 0);
@@ -83,7 +83,7 @@ export function SegmentedBar({
       <div
         className={styles.bar}
         role="img"
-        aria-label={label}
+        aria-label={accessibleName}
         data-over={over ? "true" : undefined}
       >
         {segments.map((segment) => {

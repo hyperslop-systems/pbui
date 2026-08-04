@@ -45,7 +45,7 @@ export interface ResultLogProps<Type extends string = string> {
   /** Scroll to the newest line as lines arrive. */
   follow?: boolean;
   /** The accessible name for the log. */
-  label: string;
+  accessibleName: string;
   /** Shown when there are no lines. */
   empty?: ReactNode;
 }
@@ -74,7 +74,7 @@ export function ResultLog<Type extends string = string>({
   lines,
   renderObject,
   follow = true,
-  label,
+  accessibleName,
   empty,
 }: ResultLogProps<Type>) {
   const end = useRef<HTMLDivElement>(null);
@@ -90,7 +90,7 @@ export function ResultLog<Type extends string = string>({
 
   if (lines.length === 0) {
     return (
-      <div className={styles.log} role="log" aria-label={label}>
+      <div className={styles.log} role="log" aria-label={accessibleName}>
         <Text size="small" tone="faint">
           {empty ?? "Nothing yet."}
         </Text>
@@ -99,7 +99,7 @@ export function ResultLog<Type extends string = string>({
   }
 
   return (
-    <div className={styles.log} role="log" aria-label={label}>
+    <div className={styles.log} role="log" aria-label={accessibleName}>
       {/* Segment keys are indices. Segments have no identity of their own, a
           line is rewritten wholesale rather than reordered in place, and the
           line itself is keyed by id — so the usual index-key hazard (React

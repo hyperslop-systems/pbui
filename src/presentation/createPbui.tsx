@@ -44,9 +44,23 @@ export interface PbuiProviderProps<
 > {
   children: ReactNode;
   environment?: Environment;
-  onPerform?: (verb: Verb) => void | Promise<void>;
+  /**
+   * The product boundary where serialisable presentation verbs become effects.
+   * Required because a provider with no router renders working menus whose
+   * commands silently disappear.
+   */
+  onPerform: (verb: Verb) => void | Promise<void>;
   onAccept?: (result: PresentationReference<Values> | null) => void;
 }
+
+/**
+ * Marks a click as already handled by a Presentation, so that a Presentation
+ * ANCESTOR ignores it while the host element still receives it.
+ *
+ * `Symbol.for` rather than `Symbol()` so two copies of pbui on one page — the
+ * duplicate-React situation the packaging guard covers — still agree.
+ */
+const PRESENTATION_HANDLED = Symbol.for("pbui.presentation.handled");
 
 export interface PresentationProps<Values extends PresentationValues> {
   reference: PresentationReference<Values>;
@@ -55,9 +69,91 @@ export interface PresentationProps<Values extends PresentationValues> {
   doc?: string;
   svg?: boolean;
   block?: boolean;
-  onActivate?: () => void;
-  activateDoc?: string;
+  /**
+   * What a left click does, and what to call it in the mouse-doc strip.
+   *
+   * Present ⇔ this presentation has a default verb. Absent ⇔ a left click
+   * opens the object menu, like a right click.
+   *
+   *     activate={{ run: () => onGeom(option), doc: "use this geom" }}
+   *
+   * # Why these are one prop
+   *
+   * They were `onActivate?: () => void` and `activateDoc?: string`, and the
+   * doc was read only inside the branch that tested the handler:
+   *
+   *     : onActivate ? `L: ${activateDoc ?? "activate"}   R: menu` : "L/R: menu"
+   *
+   * So `activateDoc` without `onActivate` type-checked, rendered nothing, and
+   * said nothing — the same shape as `disabledReason` without `disabled`, one
+   * layer up. No product had written it yet, which is the condition under
+   * which such a defect survives indefinitely rather than a reason to leave it.
+   *
+   * The cost is honest: six call sites got slightly wordier, trading
+   * `onActivate={fn} activateDoc="x"` for `activate={{ run: fn, doc: "x" }}`.
+   * What is bought is that the doc can no longer be orphaned, and that the
+   * mouse-doc string and the behaviour it describes are one value.
+   */
+  activate?: {
+    /**
+     * Runs on left click and on Enter/Space.
+     *
+     * OPTIONAL, which encodes a third state the old pair could not express.
+     * The presence of `activate` says "a left click does something rather than
+     * opening the menu"; `run` says whether THIS element is what does it.
+     *
+     *   activate absent            L opens the menu, like R.
+     *   activate with run          this element acts, and the host also sees
+     *                              the click (P4.1).
+     *   activate without run       the HOST owns the click entirely; this
+     *                              element only names it in the mouse doc.
+     *
+     * The third is what a `renderRow` wrapper wants. Before P4.1 a product had
+     * to re-implement the organism's own select-and-toggle inside `run` just
+     * to undo the swallowed click; now the row's handler runs on its own and
+     * duplicating it would fire the toggle twice.
+     */
+    run?(): void;
+    /** Names the verb in the mouse-doc strip. Defaults to "activate". */
+    doc?: string;
+  };
+  /**
+   * Set when this presentation is a child of a COMPOSITE WIDGET — a tree, a
+   * grid, a listbox — that owns the tab stop.
+   *
+   * A presentation is normally `role="button"` with `tabIndex={0}`, which is
+   * right when it stands alone and wrong inside a composite. `renderRow`
+   * produced exactly that:
+   *
+   *     <div role="treeitem" tabindex="-1">
+   *       <span role="button" tabindex="0" aria-label="…">Basic.lean</span>
+   *     </div>
+   *
+   * An interactive control inside a composite widget's item, each with its own
+   * tab stop, and the treeitem's roving `tabIndex={-1}` fighting the
+   * presentation's `tabIndex={0}`. A screen-reader user gets two competing
+   * navigation models, and Tab lands INSIDE rows rather than moving past the
+   * tree. It was visible in pbui's own `WithPresentation` story, which is what
+   * made it a library decision rather than a product mistake.
+   *
+   * One flag rather than separate `role` and `tabIndex` props, because those
+   * two can disagree and this cannot: the container keeps its semantics, the
+   * presentation keeps its menu, its accept behaviour and its mouse-doc.
+   */
+  inComposite?: boolean;
   testId?: string;
+
+  /**
+   * TOMBSTONES — merged into `activate` in 0.4.0. JSX props are excess-property
+   * checked, so these would already error if deleted; they are typed `never`
+   * for a message that names the replacement rather than one that says the prop
+   * does not exist.
+   *
+   * @deprecated use `activate={{ run, doc }}`
+   */
+  onActivate?: never;
+  /** @deprecated use `activate={{ run, doc }}` */
+  activateDoc?: never;
 }
 
 export interface PbuiContextValue<
@@ -169,7 +265,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         setMouseDoc,
         perform: (verb) => {
           setMenu(null);
-          return onPerform?.(verb);
+          return onPerform(verb);
         },
       }),
       [
@@ -201,8 +297,8 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     doc,
     svg = false,
     block = false,
-    onActivate,
-    activateDoc,
+    activate,
+    inComposite = false,
     testId,
   }: PresentationProps<Values>) {
     const pbui = usePbui();
@@ -215,8 +311,8 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
 
     const clickDoc = acceptable
       ? "L: ACCEPT   R: menu"
-      : onActivate
-        ? `L: ${activateDoc ?? "activate"}   R: menu`
+      : activate
+        ? `L: ${activate.doc ?? "activate"}   R: menu`
         : "L/R: menu";
     const describe = () => `${doc ?? `<${reference.type}>`}   —   ${clickDoc}`;
     const open = (x: number, y: number) => pbui.openMenu(reference, x, y);
@@ -227,28 +323,110 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
       open(event.clientX, event.clientY);
     };
 
+    /*
+     * WHEN A PRESENTATION SWALLOWS THE CLICK, AND WHEN IT LETS IT THROUGH.
+     *
+     * This used to open with an unconditional `event.stopPropagation()`, which
+     * is correct for the two cases where the Presentation itself acts and
+     * wrong for the case where the HOST does.
+     *
+     * `renderRow` exists so a product can wrap an organism's row content in a
+     * Presentation. The Presentation then sits INSIDE the row element, so a
+     * click on the label was stopped before the row's own handler ran. In
+     * turboproof that meant directories stopped expanding and selection
+     * stopped working the moment file rows became presentation objects; in
+     * pbui's own `WithPresentation` story it means clicking a directory's
+     * label selects it and does not expand it, while clicking two pixels left
+     * on the indent does. The library shipped a demo of its own bug.
+     *
+     * A product could restore `onSelect` and `onToggle` through the activate
+     * handler — turboproof did, duplicating logic the organism already had —
+     * but not `setFocusedKey`, which is `useState` inside `FileBrowser` with
+     * no prop and no handle. So arrow-key navigation kept moving from whatever
+     * row was last focused by a NON-label click. The seam pbui built for
+     * products was mutually exclusive with the organism's keyboard model.
+     *
+     * Now:
+     *
+     *   acceptable   stop. The accept flow commits; nothing else may also fire.
+     *   activate     run, then LET IT BUBBLE. The host sees its own click.
+     *   otherwise    stop, and open the menu. Opening a menu is this element
+     *                acting, and a menu-open that also selects a row is wrong.
+     *
+     * The nested case is why marking beats plain bubbling. A Presentation
+     * inside another Presentation previously relied on the inner one's
+     * unconditional stop to keep the outer from acting too; with bubbling
+     * restored, the outer would open its menu on a click meant for the inner.
+     * Marking the native event lets the click reach the host — an ordinary
+     * element with an ordinary handler — while any Presentation ancestor
+     * ignores it. Nothing nests presentations today; the accept flow makes it
+     * a natural shape (an acceptable object containing presented children),
+     * and this is cheaper than finding out later.
+     */
     const handleClick = (event: MouseEvent) => {
-      event.stopPropagation();
+      const native = event.nativeEvent as MouseEvent["nativeEvent"] & {
+        [PRESENTATION_HANDLED]?: true;
+      };
+      if (native[PRESENTATION_HANDLED]) return;
+      native[PRESENTATION_HANDLED] = true;
+
       if (acceptable) {
         event.preventDefault();
+        event.stopPropagation();
         pbui.satisfyAccept(reference);
-      } else if (onActivate) {
-        onActivate();
-      } else {
-        open(event.clientX, event.clientY);
+        return;
       }
+      if (activate) {
+        // No stopPropagation: the host row's own gesture is not this
+        // element's to cancel. `run` is optional precisely so a product can
+        // say "the host owns this click" and still name it in the mouse doc.
+        activate.run?.();
+        return;
+      }
+      event.stopPropagation();
+      open(event.clientX, event.clientY);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // A Presentation may wrap a real input or button. Its keystroke belongs
+      // to that nested control, not to this container's activation contract.
+      // Agentlogic's ChangesPanel uses the same ownership rule for rows that
+      // contain their own StepChip control.
+      if (event.target !== event.currentTarget) return;
+
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
+        // The keydown never bubbles: a host with its own key handling (a tree
+        // routing Enter to "open") must not also fire. What bubbles is the
+        // CLICK synthesised below, which is the gesture the host is listening
+        // for.
         event.stopPropagation();
-        if (acceptable) pbui.satisfyAccept(reference);
-        else if (onActivate) onActivate();
-        else {
-          const box = (event.target as HTMLElement).getBoundingClientRect();
-          open(box.left, box.bottom);
+
+        if (acceptable) {
+          pbui.satisfyAccept(reference);
+          return;
         }
+        if (activate) {
+          /*
+           * Route keyboard activation through the click path rather than
+           * calling `run` here.
+           *
+           * P4.1 made a click with `activate` bubble so the host sees its own
+           * gesture, and left this branch calling `activate.run()` directly —
+           * so mouse and keyboard diverged. Enter ran the presentation's verb
+           * and never reached the host, and `activate` WITHOUT `run` — the
+           * state a `renderRow` wrapper uses, where the host owns the click
+           * entirely — was a complete keyboard no-op.
+           *
+           * `.click()` dispatches a real, bubbling MouseEvent, so there is one
+           * activation path with one set of semantics instead of two that have
+           * to be kept in step. Caught in review on PR #9.
+           */
+          (event.currentTarget as HTMLElement).click();
+          return;
+        }
+        const box = (event.target as HTMLElement).getBoundingClientRect();
+        open(box.left, box.bottom);
       } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
         event.preventDefault();
         event.stopPropagation();
@@ -266,8 +444,13 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         data-tone={tone}
         data-state={acceptable ? "acceptable" : undefined}
         data-testid={testId}
-        tabIndex={0}
-        role="button"
+        /*
+         * Inside a composite widget the container owns the tab stop and moves
+         * focus with arrow keys, so this must not add a second one. `none`
+         * removes the button semantics without removing the element.
+         */
+        tabIndex={inComposite ? -1 : 0}
+        role={inComposite ? "none" : "button"}
         aria-label={doc ?? labelText}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
@@ -363,13 +546,25 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
               key={action.id}
               data-part="menu-item"
               data-danger={action.danger || undefined}
-              disabled={action.disabled}
-              title={action.disabledReason ?? action.description}
+              /*
+               * Every one of these reads ONE field, and that is the point.
+               *
+               * P2 fixed this render by guarding the reason on `disabled`
+               * rather than on the reason existing. P3.1 removed the guard's
+               * reason to exist: with `disabledBecause` merged, the field being
+               * set MEANS disabled, so there is nothing left to disagree.
+               *
+               * That collapse is the test for whether a merge was real. If the
+               * downstream guards had multiplied instead of disappearing, the
+               * two fields would still have been two concepts wearing one name.
+               */
+              disabled={action.disabledBecause !== undefined}
+              title={action.disabledBecause ?? action.description}
               onClick={() => pbui.perform(action.verb)}
             >
               {action.label}
-              {action.disabledReason && (
-                <span data-part="menu-reason"> — {action.disabledReason}</span>
+              {action.disabledBecause && (
+                <span data-part="menu-reason"> — {action.disabledBecause}</span>
               )}
             </button>
           ))

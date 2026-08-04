@@ -52,7 +52,7 @@ const meta = {
   title: "Component Library/Molecules/ResultLog",
   component: ResultLog,
   parameters: { tile: false },
-  args: { lines: LINES, label: "listener output" },
+  args: { lines: LINES, accessibleName: "listener output" },
 } satisfies Meta<typeof ResultLog>;
 
 export default meta;
@@ -72,7 +72,7 @@ export const Default: Story = {};
 export const NoWrapper: Story = {
   render: () => (
     <Stack gap={3}>
-      <ResultLog lines={LINES} label="unwrapped" />
+      <ResultLog lines={LINES} accessibleName="unwrapped" />
       <Text>
         The chips are inert here. A caller that wants them live passes `renderObject` and wraps each
         one in `&lt;Presentation&gt;` — the log itself never imports it.
@@ -132,7 +132,7 @@ export const Chaining: Story = {
         <SectionLabel>every number below is clickable, including results</SectionLabel>
         <ResultLog
           lines={lines}
-          label="chaining"
+          accessibleName="chaining"
           renderObject={(segment, body) => (
             <button
               type="button"
@@ -181,11 +181,11 @@ export const Empty: Story = {
     <Stack gap={4}>
       <Stack gap={2}>
         <SectionLabel>default</SectionLabel>
-        <ResultLog lines={[]} label="empty" />
+        <ResultLog lines={[]} accessibleName="empty" />
       </Stack>
       <Stack gap={2}>
         <SectionLabel>with a message</SectionLabel>
-        <ResultLog lines={[]} label="empty with message" empty="No results yet — run a command." />
+        <ResultLog lines={[]} accessibleName="empty with message" empty="No results yet — run a command." />
       </Stack>
     </Stack>
   ),

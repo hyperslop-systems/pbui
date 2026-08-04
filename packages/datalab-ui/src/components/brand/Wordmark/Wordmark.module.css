@@ -1,0 +1,40 @@
+/*
+ * The wordmark's geometry.
+ *
+ * Sizes are the only thing this file decides; every colour is a token from
+ * brand.css, which is aliases all the way down to tokens.css (DR-98).
+ */
+
+.wordmark {
+  display: block;
+  /* `currentColor`, so a lockup on the dark bar inverts by inheritance rather
+     than by a second class. This is the whole reason the glyphs are one path
+     each with no fill of their own. */
+  fill: currentColor;
+  height: auto;
+}
+
+/*
+ * Sized by HEIGHT, not by width.
+ *
+ * The wordmark is 5.76 units wide per unit tall, so a width-based size makes
+ * the cap height depend on the drawing — and the cap height is what has to
+ * agree with the type beside it. Height is the dimension a designer means.
+ */
+.hero {
+  height: 92px;
+}
+
+.masthead {
+  height: 22px;
+}
+
+.footer {
+  height: 15px;
+}
+
+@media (max-width: 720px) {
+  .hero {
+    height: 56px;
+  }
+}

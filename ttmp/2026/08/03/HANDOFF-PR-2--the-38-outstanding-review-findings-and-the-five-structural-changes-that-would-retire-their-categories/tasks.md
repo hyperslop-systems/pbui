@@ -1,0 +1,50 @@
+# Tasks
+
+## Review and delivery completed
+
+- [x] Read the ticket, prior handoffs, source snapshot, and related architecture data.
+- [x] Re-derive the live GitHub review state and confirm all 38 findings.
+- [x] Review the four repositories and validate Go, frontend, and TypeScript baselines.
+- [x] Write the intern-oriented architecture, design, and code-review guide.
+- [x] Record the investigation diary and relate the primary source files.
+- [x] Validate ticket metadata and upload the review bundle to reMarkable.
+
+## TODO
+
+- [ ] STEP 1 · pbui styles-wiring.test.ts:121 — regex misses plain `html {`; one line, free <!-- t:v8mt -->
+- [ ] STEP 2 · R1 pbui: make onPerform REQUIRED on PbuiProvider (createPbui.tsx:263) — retires the whole silent-no-op class <!-- t:7xbu -->
+- [ ] STEP 3a · [P1] hyperblog search.go:127 — paywall ORACLE; locked bodies are searchable. Fix via R3 <!-- t:b7uy -->
+- [ ] STEP 3b · [P1] turboproof handlers_files.go:117 — create/rename accept simple cross-origin POSTs <!-- t:m28t -->
+- [ ] STEP 3c · [P1] hyperblog handlers_workbenches.go:351 — no Cache-Control/Vary on owner-private GETs <!-- t:5gyu -->
+- [ ] STEP 3 · R3 hyperblog: Corpus.For(tier) -> *ReaderView so searching unredacted prose is a compile error <!-- t:g305 -->
+- [ ] STEP 4 · R2 hyperblog: split Verb into LayoutVerb|DomainVerb, assertNever both interpreters (closes rest.ts:250 + App.tsx:155) <!-- t:ew6x -->
+- [ ] STEP 5a · [P1] turboproof renameBinding.ts:80 — MINE: rename onto an occupied URI breaks one-doc-per-URI <!-- t:6zlm -->
+- [ ] STEP 5b · turboproof store.go:480 — MINE: fingerprintAt streams a directory -> EISDIR -> 500 <!-- t:9ea3 -->
+- [ ] STEP 5c · hyperblog ShellApps.tsx:225 — MINE: launcher re-offers a singleton already present <!-- t:p5tn -->
+- [ ] STEP 5d · pbui FileBrowser a11y follow-ups as ONE commit: :247 focus init, :314 rowDomId collisions, :291 sentinel focus, :422 sentinel focus ring — all MINE <!-- t:thy6 -->
+- [ ] STEP 6 · R5 pbui: one useContainerKeys hook with the editable-descendant guard; adopt in FileBrowser, createPbui:387, ChangesPanel <!-- t:co6m -->
+- [ ] STEP 6b · pbui createPbui.tsx:442 — inComposite leaves no keyboard route to a composite row's menu; design with R5 <!-- t:1zae -->
+- [ ] STEP 7a · [P1] turboproof store.go:199 — overlapping roots alias one file to two URIs; reject at New() <!-- t:zg25 -->
+- [ ] STEP 7b · [P1] turboproof SaveControl.tsx:70 — a 404 on a deleted file should enter the existing missing flow <!-- t:8hhq -->
+- [ ] STEP 7c · [P1] hyperblog NoteEditor.tsx:66 — closing a question overwrites the draft the blur just saved <!-- t:1rtt -->
+- [ ] STEP 7d · turboproof store.go:521 + :328 — in-root symlinks: save replaces the link; dir symlinks list as files. Do together <!-- t:v91f -->
+- [ ] STEP 7e · turboproof handlers_files.go:82 — {} and {"text":null} truncate the file; presence-aware decode <!-- t:6mzh -->
+- [ ] STEP 7f · turboproof sync.tsx:224 — catch(()=>null) conflates a transient failure with a 404 and detaches permanently <!-- t:1w63 -->
+- [ ] STEP 7g · turboproof sync.tsx:149 — an offline seed is recorded as delivered and never retried <!-- t:1uex -->
+- [ ] STEP 7h · turboproof fileTree.ts:49 — refresh discards loaded descendants; reloadRoots already merges <!-- t:d2ue -->
+- [ ] STEP 7i · turboproof FilesApp.tsx:305 — one failed root blanks the whole browser (the code already flagged this) <!-- t:ejz8 -->
+- [ ] STEP 7j · hyperblog markdown.go:130 — every ReadDir error read as 'absent'; server boots blank <!-- t:2m9g -->
+- [ ] STEP 7k · hyperblog markdown.go:299 — dates validated by len==10; 2026-99-99 passes <!-- t:2jiy -->
+- [ ] STEP 7l · hyperblog problem.go:155 — trailing JSON accepted while unknown fields are refused <!-- t:8wc4 -->
+- [ ] STEP 7m · hyperblog handlers_corpus.go:108 — nil Series serialises as null; frontend .map crashes at boot <!-- t:08bu -->
+- [ ] STEP 7n · hyperblog handlers_me.go:260 — a misspelled scope is dropped and a narrower token returned 201 <!-- t:ros2 -->
+- [ ] STEP 7o · hyperblog handlers_auth.go:136 — first-sign-in probe is not atomic; duplicate opening ledger <!-- t:h9nh -->
+- [ ] STEP 7p · hyperblog handlers_auth.go:239 — auth_error is emitted and no UI code reads it <!-- t:utfl -->
+- [ ] STEP 7q · hyperblog serve.go:179 — discovery gives up permanently; log says 'until it returns' <!-- t:ax2j -->
+- [ ] STEP 7r · hyperblog reader.go:164 — --disable rewrites email/name/tier from creation defaults <!-- t:bn2b -->
+- [ ] STEP 7s · hyperblog Prose.tsx:42 — inline Markdown backticks render verbatim <!-- t:o6i6 -->
+- [ ] STEP 7t · hyperblog term.ts:24 — describe() queries bookmarks with a space, markKey uses NUL. One line <!-- t:mjwq -->
+- [ ] STEP 7u · pbui FileBrowser/index.ts:3 — export RootState from the barrel <!-- t:qrmv -->
+- [ ] STEP 8 · R4 hyperblog: scope useWorld away from tiles — READ ALL 11 CALL SITES FIRST, do not start with the refactor <!-- t:pc5d -->
+- [ ] ASK FIRST · hyperblog types.go:146 — the free/member entitlement mismatch is a PRODUCT decision, not a defect <!-- t:s0z1 -->
+- [ ] Consider: one composition smoke test per product (mount the real root, perform one gesture) <!-- t:dg2t -->

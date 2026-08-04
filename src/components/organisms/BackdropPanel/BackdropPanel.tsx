@@ -34,7 +34,7 @@ export interface BackdropPanelProps<Value = unknown> {
   backdrop: ReactNode;
   marks: BackdropMark<Value>[];
   /** The accessible name for the whole figure. */
-  label: string;
+  accessibleName: string;
   /** Wraps a mark when the caller wants it to be a live domain object. */
   renderMark?: (mark: BackdropMark<Value>, body: ReactNode) => ReactNode;
   /** Rendered above the figure: zone summaries, a legend, a count. */
@@ -60,7 +60,7 @@ export function BackdropPanel<Value = unknown>({
   height,
   backdrop,
   marks,
-  label,
+  accessibleName,
   renderMark,
   header,
 }: BackdropPanelProps<Value>) {
@@ -72,7 +72,7 @@ export function BackdropPanel<Value = unknown>({
           className={styles.figure}
           viewBox={`0 0 ${width} ${height}`}
           role="img"
-          aria-label={label}
+          aria-label={accessibleName}
         >
           {backdrop}
           {marks.map((mark) =>

@@ -140,23 +140,25 @@ const lines: ResultLine<"person">[] = [{
 function App() {
   return (
     <>
-      <first.Provider>
+      <first.Provider onPerform={() => {}}>
         <first.Presentation reference={{ type: "person", value: person }}>
           <Button>First instance</Button>
         </first.Presentation>
       </first.Provider>
-      <second.Provider>
+      <second.Provider onPerform={() => {}}>
         <second.Presentation reference={{ type: "person", value: person }}>
           <Button>Second instance</Button>
         </second.Presentation>
       </second.Provider>
-      <ResultLog lines={lines} label="Results" />
+      <ResultLog lines={lines} accessibleName="Results" />
       <BackdropPanel
         width={100}
         height={100}
         backdrop={<rect width="100" height="100" fill="transparent" />}
+        // A mark's own label is its VISIBLE text and is deliberately NOT
+        // renamed: only each component's aria-only prop became accessibleName.
         marks={[{ id: "mark-1", x: 20, y: 20, r: 5, label: "Ada", value: person }]}
-        label="People map"
+        accessibleName="People map"
         renderMark={(_mark, body) => body}
       />
     </>

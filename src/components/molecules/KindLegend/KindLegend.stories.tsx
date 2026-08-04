@@ -17,7 +17,7 @@ const meta = {
   component: KindLegend,
   parameters: { tile: false },
   args: {
-    label: "context window composition",
+    accessibleName: "context window composition",
     kinds: [
       { kind: "file", tone: "var(--pbui-tone-source)", total: 8400, count: 12 },
       { kind: "tool", tone: "var(--pbui-tone-field)", total: 4100, count: 7 },
@@ -41,7 +41,7 @@ export const Default: Story = {};
  */
 export const SortsItself: Story = {
   args: {
-    label: "deliberately shuffled input",
+    accessibleName: "deliberately shuffled input",
     kinds: [
       { kind: "memory", tone: "var(--pbui-tone-step)", total: 900, count: 5 },
       { kind: "file", tone: "var(--pbui-tone-source)", total: 8400, count: 12 },
@@ -58,7 +58,7 @@ export const Formatters: Story = {
       <Stack gap={2}>
         <SectionLabel>bytes</SectionLabel>
         <KindLegend
-          label="dataset composition by bytes"
+          accessibleName="dataset composition by bytes"
           format={formatBytes}
           kinds={[
             { kind: "csv", tone: "var(--pbui-tone-source)", total: 9_400_000, count: 3 },
@@ -70,7 +70,7 @@ export const Formatters: Story = {
       <Stack gap={2}>
         <SectionLabel>durations</SectionLabel>
         <KindLegend
-          label="time by verb kind"
+          accessibleName="time by verb kind"
           format={formatDuration}
           kinds={[
             { kind: "evaluate", tone: "var(--pbui-tone-step)", total: 4200, count: 31 },
@@ -89,12 +89,12 @@ export const Degenerate: Story = {
     <Stack gap={4}>
       <Stack gap={2}>
         <SectionLabel>no kinds at all</SectionLabel>
-        <KindLegend label="empty" kinds={[]} />
+        <KindLegend accessibleName="empty" kinds={[]} />
       </Stack>
       <Stack gap={2}>
         <SectionLabel>every total is zero — the bars divide by the max</SectionLabel>
         <KindLegend
-          label="all zero"
+          accessibleName="all zero"
           kinds={[
             { kind: "file", tone: "var(--pbui-tone-source)", total: 0, count: 0 },
             { kind: "tool", tone: "var(--pbui-tone-field)", total: 0, count: 0 },
@@ -111,7 +111,7 @@ export const Degenerate: Story = {
 /** Long kind names truncate rather than pushing the bars out of alignment. */
 export const LongNames: Story = {
   args: {
-    label: "long names",
+    accessibleName: "long names",
     kinds: [
       {
         kind: "a-very-long-kind-name-indeed",

@@ -223,8 +223,7 @@ export function EncodingPanel({
                   key={option}
                   reference={{ type: "geom", value: option }}
                   doc={`<geom> ${option}`}
-                  onActivate={() => onGeom(option)}
-                  activateDoc="use this geom"
+                  activate={{ run: () => onGeom(option), doc: "use this geom" }}
                 >
                   <span
                     className={[styles.geom, geom === option ? styles.selected : ""]

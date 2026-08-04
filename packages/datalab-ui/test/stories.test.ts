@@ -163,8 +163,72 @@ describe("story coverage", () => {
         "Applications/Tour",
         // DATADROP-14: the front door, which contains the tour band.
         "Applications/Marketing",
+        // DATALAB-UI-AUDIT-1: every registered application, rendered from the
+        // registry. Under Applications rather than Component Library because a
+        // tile is not a component — it is a container over one, and what its
+        // story shows is the wiring above the panel.
+        "Applications/Tiles",
       ]).toContain(group);
     }
+  });
+});
+
+/**
+ * Every registered application has a story of its own.
+ *
+ * The organisms were storied and the *containers above them* were not, which is
+ * the half where the hooks, the derivations, the signed-out branch and the "no
+ * document" branch live. `apps/tiles.stories.tsx` closes that, and this is what
+ * stops it reopening: a twenty-eighth application whose author never opened
+ * Storybook fails here rather than shipping unseen.
+ *
+ * Parsed rather than imported, for the reason `apps.test.ts` gives — importing
+ * `apps/all` pulls in React, every component beneath it and their CSS modules.
+ * `registerApp({ id: "…" })` and `renderTile("…")` are literals in every file we
+ * write, and saying so is what makes relying on them fair.
+ */
+describe("tile story coverage", () => {
+  const TILE_STORIES = join(SRC, "apps", "tiles.stories.tsx");
+
+  function registeredIds(): string[] {
+    const found: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const path = join(dir, entry);
+        if (statSync(path).isDirectory()) walk(path);
+        else if (/\.tsx?$/.test(path) && !path.endsWith(".stories.tsx")) {
+          const pattern = /registerApp\(\{([\s\S]*?)\n\}\);/g;
+          const source = readFileSync(path, "utf8");
+          let match: RegExpExecArray | null;
+          while ((match = pattern.exec(source)) !== null) {
+            const id = /\bid:\s*["']([^"']+)["']/.exec(match[1] as string)?.[1];
+            if (id) found.push(id);
+          }
+        }
+      }
+    };
+    walk(join(SRC, "apps"));
+    return found.sort();
+  }
+
+  const IDS = registeredIds();
+
+  test("there are applications to check", () => {
+    expect(IDS.length).toBeGreaterThan(20);
+  });
+
+  test("apps/tiles.stories.tsx exists", () => {
+    // Without it the coverage check below would pass by reading nothing.
+    expect(fileExists(TILE_STORIES)).toBe(true);
+  });
+
+  test("every registered application is rendered by a story of its own", () => {
+    const source = readFileSync(TILE_STORIES, "utf8");
+    // The contact sheet renders every application from `allApps()`, so a new one
+    // is never invisible — but a frame in a grid of twenty-eight is not the same
+    // as a story with a name and a sentence saying what state it shows.
+    const missing = IDS.filter((id) => !source.includes(`renderTile("${id}"`));
+    expect(missing).toEqual([]);
   });
 });
 
