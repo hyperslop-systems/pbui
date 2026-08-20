@@ -176,3 +176,65 @@ function hasUsableTree(node: Node, doc: WorkbenchDocument): boolean {
   }
   return false;
 }
+
+/**
+ * The appId `specOf` gives a leaf it cannot resolve.
+ *
+ * Empty rather than a plausible-looking placeholder: the spec is meant to be
+ * handed back to `layout()`/`workspace.create`, and every caller that
+ * validates appIds against the registry rejects `""` loudly. A placeholder
+ * like "unknown" would instead have to be registered, or would silently
+ * re-create a broken tile as a real one.
+ */
+export const MISSING_APP_ID = "";
+
+/**
+ * The inverse of `buildLayout`: one workspace's tree back into the dialect
+ * that built it, so a description round-trips into a `create`.
+ *
+ * "Make the right column 30 % instead of 40 %" is then a `specOf`, one field
+ * changed, and a `layout()` — no second vocabulary for reading a layout and
+ * writing one. Node ids and view ids are deliberately dropped: they are
+ * minted per document, and a spec carrying them would re-create tiles that
+ * collide with the ones it was read from.
+ *
+ * Nothing here throws. A leaf whose view has vanished from `doc.views`
+ * (a hand-edited document, a `viewDelete` that outran its `close`) yields
+ * `{ kind: "tile", appId: MISSING_APP_ID, title: "missing view <id>" }` —
+ * the same words `Tile` renders for it — and a split with a missing child
+ * yields that tile in the child's place, because a description that throws
+ * halfway leaves the agent with nothing to reason about, and a document too
+ * broken to describe is exactly the one it most needs described.
+ */
+export function specOf(doc: WorkbenchDocument, node: Node): LayoutSpec {
+  if (node.body.case === "split") {
+    const { direction, ratio, a, b } = node.body.value;
+    return {
+      kind: "split",
+      // COLUMN is the only stacking direction; UNSPECIFIED reads as "row",
+      // which is what the Surface draws for it.
+      direction: direction === Direction.COLUMN ? "col" : "row",
+      // Verbatim, unclamped: `describe` reports what the document says, and
+      // a ratio outside [0.1, 0.9] is a finding for the caller's validator,
+      // not something to launder into a lie about the layout on screen.
+      ratio,
+      a: a ? specOf(doc, a) : missingTile("missing pane"),
+      b: b ? specOf(doc, b) : missingTile("missing pane"),
+    };
+  }
+  const viewId = node.body.case === "leaf" ? node.body.value.viewId : "";
+  const view = doc.views[viewId];
+  if (!view) return missingTile(`missing view ${viewId}`);
+  return {
+    kind: "tile",
+    appId: view.appId,
+    // Both omitted when empty, so `specOf(layout(spec))` is deep-equal to
+    // `spec` rather than to `spec` plus two empty fields.
+    ...(Object.keys(view.documents).length > 0 ? { documents: { ...view.documents } } : {}),
+    ...(view.title ? { title: view.title } : {}),
+  };
+}
+
+function missingTile(label: string): LayoutSpec {
+  return { kind: "tile", appId: MISSING_APP_ID, title: label };
+}

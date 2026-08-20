@@ -9,6 +9,8 @@ export {
   workspaceCreateMutation,
   tile,
   split,
+  specOf,
+  MISSING_APP_ID,
   singleTile,
   emptyDocument,
   serializeDocument,
@@ -17,6 +19,15 @@ export {
   WORKBENCH_SCHEMA_VERSION,
 } from "./document";
 export type { BuiltLayout, LayoutOptions, LayoutSpec, WorkspaceSpec } from "./document";
+export { describeWorkbench } from "./describe";
+export type {
+  DescribeOptions,
+  DescribedApp,
+  DescribedSplit,
+  DescribedTile,
+  DescribedWorkspace,
+  WorkbenchDescription,
+} from "./describe";
 export { createWorkbenchStore, useWorkbenchStore } from "./store";
 export type { WorkbenchState, WorkbenchStore, WorkbenchStoreOptions } from "./store";
 export {

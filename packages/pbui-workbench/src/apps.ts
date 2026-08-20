@@ -39,6 +39,16 @@ export interface AppDescriptor {
    * "go to the existing tile" rather than a second one.
    */
   docBound?: boolean;
+  /**
+   * The binding keys a doc-bound application requires — the keys of
+   * `view.documents` without which it has nothing to show. Declaring them
+   * costs one optional field and turns the silently empty tile ("open a sku
+   * tile" with no sku) into something a caller can refuse before placing:
+   * `app "sku" needs a "product" binding; got {}`. Read by `describeWorkbench`
+   * so an agent knows what to bind; the workbench itself never enforces it,
+   * because a product may bind a tile after placing it.
+   */
+  bindings?: string[];
   /** The title of ONE view; defaults to `title`. Receives the bindings so a doc-bound app can name its document. */
   titleFor?(view: AppView): string;
   /**
