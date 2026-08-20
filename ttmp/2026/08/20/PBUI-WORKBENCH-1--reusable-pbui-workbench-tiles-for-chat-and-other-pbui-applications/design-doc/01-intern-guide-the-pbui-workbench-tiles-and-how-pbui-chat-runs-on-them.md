@@ -120,7 +120,7 @@ The Cmd-K launcher's modal, search input, grouped rows and keyboard loop. The pr
 
 `routeWorkbenchKey(event, context, platform)` is a pure function returning `{kind: "ignore"} | {kind: "open-launcher"}`. It opens the launcher on Mod-K unless the launcher, a dialog, the object menu, accept mode or an inline rename already owns the keyboard. `isModKey` picks ⌘ on Apple platforms and Ctrl elsewhere; `isEditableTarget` is structural so it is testable in node. Escape is deliberately absent: the topmost transient surface owns it, through `pbui/src/surfaces.ts`.
 
-**A fact worth knowing:** until this ticket, `TileFrame` and `LauncherShell` had no consumer in the repository except their own tests; datalab-ui consumes only `useTileDrag`, `DropZoneOverlay`, `routeWorkbenchKey` and `isEditableTarget`, and hand-rolls its own frame and launcher. The reusable shell is their first real caller.
+**A fact worth knowing:** inside the pbui repository, `TileFrame` and `LauncherShell` had no consumer except their own tests — datalab-ui consumes only `useTileDrag`, `DropZoneOverlay`, `routeWorkbenchKey` and `isEditableTarget`, and hand-rolls its own frame and launcher. Outside it, agentlogic, turboproof and hyperblog do import `TileFrame` + `useTileDrag` (turboproof also `LauncherShell` + `splitDirectionFor`), each inside a shell of its own (PBUI-WORKBENCH-2 analyses them). The chrome is shared; the shell is not — and the reusable shell is the first package to own that middle layer.
 
 ## 3 · The workbench document and its applier
 

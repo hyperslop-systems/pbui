@@ -9,13 +9,24 @@ Topics:
 DocType: design-doc
 Intent: long-term
 Owners: []
-RelatedFiles: []
+RelatedFiles:
+    - Path: repo://packages/pbui-workbench/src/components/Launcher/Launcher.tsx
+      Note: Launcher that gains the rows/choose slot and per-pane invocation
+    - Path: repo://packages/pbui-workbench/src/createWorkbench.tsx
+      Note: Options surface that gains store injection, hooks, splitPolicy and binding
+    - Path: repo://packages/pbui-workbench/src/store.ts
+      Note: WorkbenchStore interface a Redux adapter implements
+    - Path: repo://packages/pbui-workbench/src/verbs.ts
+      Note: Verb handlers the additions extend (workspaces, replace/link/rebind, zone-aware open)
+    - Path: repo://packages/workbench-protocol/src/client/builders.ts
+      Note: createWorkbenchClient config (sourceBinding, launcherAppId) the binding option adopts
 ExternalSources: []
-Summary: "An intern-level analysis, design and implementation guide for making agentlogic, turboproof, hyperblog and datalab-ui share one workbench shell (@hyperslop-systems/pbui-workbench): what each product built, a feature matrix against the package, the features worth lifting into the shared core with API sketches, and a per-product migration plan with risks and verification."
+Summary: 'An intern-level analysis, design and implementation guide for making agentlogic, turboproof, hyperblog and datalab-ui share one workbench shell (@hyperslop-systems/pbui-workbench): what each product built, a feature matrix against the package, the features worth lifting into the shared core with API sketches, and a per-product migration plan with risks and verification.'
 LastUpdated: 2026-08-20T14:29:03.751088984-04:00
-WhatFor: "Let someone new execute the unification product by product without re-reading five repositories, and give reviewers one place to challenge what goes into the shared core."
-WhenToUse: "Read before extending pbui-workbench or migrating any product onto it; §4 is the matrix, §5 the core additions, §6 the migrations."
+WhatFor: Let someone new execute the unification product by product without re-reading five repositories, and give reviewers one place to challenge what goes into the shared core.
+WhenToUse: Read before extending pbui-workbench or migrating any product onto it; §4 is the matrix, §5 the core additions, §6 the migrations.
 ---
+
 
 # Intern guide: unifying the PBUI applications around one workbench package
 
