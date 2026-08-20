@@ -319,3 +319,70 @@ func indexOf(s, sub string) int {
 	}
 	return -1
 }
+
+// withWorkbenchTypes returns the demo vocabulary plus the tile/workspace types
+// PBUI-AGENT-2 adds, so the prompt's workbench section can be exercised before
+// the TypeScript side declares them.
+func withWorkbenchTypes(v *Vocabulary) *Vocabulary {
+	copied := *v
+	copied.Types = map[string]TypeSpec{}
+	for name, spec := range v.Types {
+		copied.Types[name] = spec
+	}
+	copied.Types["tile"] = TypeSpec{Doc: "one pane of the workbench", IDHint: "placement id"}
+	copied.Types["workspace"] = TypeSpec{Doc: "a named tree of tiles", IDHint: "workspace id"}
+	return &copied
+}
+
+func TestWorkbenchPromptSectionIsGatedOnTheTileType(t *testing.T) {
+	// A product with a fixed layout has no workbench tools in its manifest;
+	// telling its model about workspaces would invite calls that go nowhere.
+	plain := SystemPromptSection(loadDemoVocabulary(t))
+	if contains(plain, "## The workspace") {
+		t.Error("a vocabulary without a tile type must not get the workspace section")
+	}
+	for _, name := range []string{ToolWorkbenchDescribe, ToolWorkbenchCreateWorkspace, ToolWorkbenchPerform} {
+		if contains(plain, name) {
+			t.Errorf("prompt names %s without a tile type", name)
+		}
+	}
+
+	full := SystemPromptSection(withWorkbenchTypes(loadDemoVocabulary(t)))
+	for _, want := range []string{
+		"## The workspace",
+		ToolWorkbenchDescribe,
+		ToolWorkbenchCreateWorkspace,
+		ToolWorkbenchOpenTile,
+		ToolWorkbenchPerform,
+		ToolWorkbenchSwitchWorkspace,
+		// The worked example: PBUI-AGENT-1 recorded the model guessing a shape
+		// for pbui_widget until the description carried a complete value.
+		`"kind":"split"`,
+		`"ratio":0.55`,
+		"Never invent an id",
+		// Destroying a tile is a proposal, not an action.
+		ToolPropose,
+		"[[workspace:<workspaceId>|name]]",
+	} {
+		if !contains(full, want) {
+			t.Errorf("workbench section missing %q", want)
+		}
+	}
+}
+
+func TestWorkbenchPromptOmitsMentionsWithoutTheWorkspaceType(t *testing.T) {
+	v := loadDemoVocabulary(t)
+	copied := *v
+	copied.Types = map[string]TypeSpec{}
+	for name, spec := range v.Types {
+		copied.Types[name] = spec
+	}
+	copied.Types["tile"] = TypeSpec{Doc: "one pane", IDHint: "placement id"}
+	s := SystemPromptSection(&copied)
+	if !contains(s, "## The workspace") {
+		t.Fatal("tile type alone should still produce the section")
+	}
+	if contains(s, "[[workspace:<workspaceId>|name]]") {
+		t.Error("a product without a workspace type must not be told to mention workspaces")
+	}
+}

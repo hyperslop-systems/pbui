@@ -6,6 +6,20 @@ import (
 	"strings"
 )
 
+// Workbench tool names. These tools are FRONTEND tools: the browser
+// advertises them in its manifest and pinocchio's bridge registers them for
+// the model, so nothing in this package implements them. They are named here
+// because the generated prompt has to tell the model they exist, and one
+// misspelling between the prompt and the browser is a tool the model calls
+// and never reaches.
+const (
+	ToolWorkbenchDescribe        = "workbench_describe"
+	ToolWorkbenchCreateWorkspace = "workbench_create_workspace"
+	ToolWorkbenchOpenTile        = "workbench_open_tile"
+	ToolWorkbenchPerform         = "workbench_perform"
+	ToolWorkbenchSwitchWorkspace = "workbench_switch_workspace"
+)
+
 // SystemPromptSection renders the model-facing description of the vocabulary.
 // It is generated so that adding a type to the registry changes the model's
 // instructions without anyone editing prose.
@@ -49,6 +63,34 @@ func SystemPromptSection(v *Vocabulary) string {
 	}
 	b.WriteString("To ask the user to choose an object, call " + ToolAccept + " with the types you accept; the user clicks any matching object on screen and you receive the reference. To ask for approval before a consequential action, call " + ToolPropose + ". To recall what the user did, call " + ToolTrace + ".\n")
 	b.WriteString("The user's message may end with a `pbui-refs` section listing objects they pointed at; treat those as authoritative and refer to them by their mentions.\n")
+	b.WriteString(workbenchSection(v))
+	return b.String()
+}
+
+// workbenchSection describes the user's screen, and is emitted only for a
+// product that declares a `tile` type. A product whose UI is a fixed layout
+// has no workbench tools in its manifest, and telling its model about
+// workspaces would invite calls that go nowhere.
+func workbenchSection(v *Vocabulary) string {
+	if !v.KnowsType("tile") {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n## The workspace\n")
+	b.WriteString("The user's screen is a workbench: one or more workspaces, each a tree of tiles, each tile showing one application. ")
+	b.WriteString("Call " + ToolWorkbenchDescribe + " before changing anything — it returns the application ids, the placement ids and the current layout. Never invent an id; every id you use must have come from a tool result.\n")
+	b.WriteString("To build a whole screen at once, call " + ToolWorkbenchCreateWorkspace + " with a layout. A tile is {\"kind\":\"tile\",\"appId\":\"...\"} and a split is {\"kind\":\"split\",\"direction\":\"row\"|\"col\",\"ratio\":0.5,\"a\":...,\"b\":...}, where \"row\" places a and b side by side, \"col\" stacks them, and ratio is a's share between 0.1 and 0.9. ")
+	// The worked example is not decoration. PBUI-AGENT-1 recorded the model
+	// guessing a shape for pbui_widget and failing until the description
+	// carried a complete, valid value; the same fix applies to any nested
+	// argument a model has to construct in one shot.
+	b.WriteString("For example: {\"name\":\"Gold desk\",\"layout\":{\"kind\":\"split\",\"direction\":\"row\",\"ratio\":0.55,\"a\":{\"kind\":\"tile\",\"appId\":\"chat\"},\"b\":{\"kind\":\"split\",\"direction\":\"col\",\"ratio\":0.4,\"a\":{\"kind\":\"tile\",\"appId\":\"metals\"},\"b\":{\"kind\":\"tile\",\"appId\":\"inventory\"}}}}.\n")
+	b.WriteString("To open one application on a specific document, call " + ToolWorkbenchOpenTile + "; if a tile already shows those exact bindings the result says so and you should not open it again. ")
+	b.WriteString("For a single change to the current layout — split, close, rename, move, resize, switch workspace — call " + ToolWorkbenchPerform + " with one or two verbs, and " + ToolWorkbenchSwitchWorkspace + " to change which workspace is on screen.\n")
+	b.WriteString("Closing a tile or deleting a workspace destroys something the user may be reading: propose it with " + ToolPropose + " and let them decide, rather than doing it. Rearranging the screen is a favour, not a habit — change the layout when asked, or when a result genuinely does not fit, and say what you changed.\n")
+	if v.KnowsType("workspace") {
+		b.WriteString("Refer to what you made by its mention, so the user can act on it: a tile is [[tile:<placementId>|label]] and a workspace is [[workspace:<workspaceId>|name]].\n")
+	}
 	return b.String()
 }
 
