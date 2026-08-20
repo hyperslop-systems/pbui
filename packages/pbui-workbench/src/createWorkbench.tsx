@@ -2,10 +2,11 @@ import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { createAppRegistry, isAppRegistry, type AppDescriptor, type AppRegistry } from "./apps";
 import { WorkbenchLauncher } from "./components/Launcher";
 import { WorkbenchSurface } from "./components/Surface";
+import { WorkspaceStrip } from "./components/WorkspaceStrip";
 import { WorkbenchContext } from "./context";
 import { parseDocument, serializeDocument } from "./document";
 import { createWorkbenchStore, useWorkbenchStore, type WorkbenchStore, type WorkbenchStoreOptions } from "./store";
-import type { LauncherProps, SurfaceProps, Workbench } from "./types";
+import type { LauncherProps, SurfaceProps, Workbench, WorkspaceStripProps } from "./types";
 import { createVerbHandlers, performWorkbenchVerb } from "./verbs";
 
 export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
@@ -73,6 +74,13 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       return (
         <WorkbenchContext.Provider value={workbench}>
           <WorkbenchLauncher {...props} />
+        </WorkbenchContext.Provider>
+      );
+    },
+    WorkspaceStrip: function Strip(props: WorkspaceStripProps) {
+      return (
+        <WorkbenchContext.Provider value={workbench}>
+          <WorkspaceStrip {...props} />
         </WorkbenchContext.Provider>
       );
     },

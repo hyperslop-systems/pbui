@@ -39,7 +39,14 @@ export type {
 } from "./verbs";
 export { createWorkbench } from "./createWorkbench";
 export type { CreateWorkbenchOptions } from "./createWorkbench";
-export type { LauncherProps, SurfaceProps, TilePlacementInfo, Workbench } from "./types";
+export type {
+  LauncherProps,
+  SurfaceProps,
+  TilePlacementInfo,
+  Workbench,
+  WorkspacePlacementInfo,
+  WorkspaceStripProps,
+} from "./types";
 export { WorkbenchContext, useWorkbench } from "./context";
 export { Tile } from "./components/Tile";
 export type { TileProps } from "./components/Tile";
@@ -47,3 +54,4 @@ export { SplitPane } from "./components/SplitPane";
 export type { SplitPaneProps } from "./components/SplitPane";
 export { WorkbenchSurface } from "./components/Surface";
 export { WorkbenchLauncher } from "./components/Launcher";
+export { WorkspaceStrip } from "./components/WorkspaceStrip";

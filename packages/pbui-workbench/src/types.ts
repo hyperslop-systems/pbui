@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import type { ShortcutContext } from "@hyperslop-systems/pbui";
-import type { AppView, Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop-systems/workbench-protocol";
 import type { AppDescriptor, AppRegistry } from "./apps";
 import type { WorkbenchState, WorkbenchStore } from "./store";
 import type { WorkbenchVerb, WorkbenchVerbHandlers } from "./verbs";
@@ -27,6 +27,26 @@ export interface SurfaceProps {
   /** Drop-overlay labels, for products that word them differently. */
   swapLabel?: string;
   dockLabel?: string;
+}
+
+/** What `renderWorkspace` learns about the workspace it is drawing. */
+export interface WorkspacePlacementInfo {
+  active: boolean;
+  /** Leaves in its tree; a linked view is counted once per tile. */
+  tileCount: number;
+  select(): boolean;
+}
+
+export interface WorkspaceStripProps {
+  /**
+   * Draw one workspace yourself — a product's `<workspace>` Presentation, so
+   * the strip and the object menu offer the same verbs. Returning `undefined`
+   * falls back to the default button.
+   */
+  renderWorkspace?(workspace: Workspace, placement: WorkspacePlacementInfo): ReactNode;
+  className?: string;
+  /** Show a "+" that creates a workspace with this name. Omitted: no button. */
+  addLabel?: string;
 }
 
 export interface LauncherProps {
@@ -64,4 +84,5 @@ export interface Workbench {
   setRoot(element: HTMLElement | null): void;
   Surface: ComponentType<SurfaceProps>;
   Launcher: ComponentType<LauncherProps>;
+  WorkspaceStrip: ComponentType<WorkspaceStripProps>;
 }
