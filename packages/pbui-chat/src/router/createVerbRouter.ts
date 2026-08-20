@@ -92,15 +92,16 @@ export function targetOf(verb: VerbLike): Reference | undefined {
 export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptions<Verb>): VerbRouter<Verb> {
   let binding: RouterBinding | null = null;
   let clientSeq = 0;
+  let reportQueue = Promise.resolve();
   const fetchImpl = options.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
 
   function familyOf(verb: Verb): VerbFamily {
     return options.families(verb);
   }
 
-  async function report(actor: Actor, verb: Verb, target: Reference | undefined, outcome: Outcome) {
-    if (options.report === false || !binding) return;
-    const sessionId = binding.client.getStore().getState().overlay.sessionId;
+  async function report(reportBinding: RouterBinding | null, actor: Actor, verb: Verb, target: Reference | undefined, outcome: Outcome) {
+    if (options.report === false || !reportBinding) return;
+    const sessionId = reportBinding.client.getStore().getState().overlay.sessionId;
     if (!sessionId) return;
     clientSeq += 1;
     const body = {
@@ -110,7 +111,7 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
       ...(target ? { target } : {}),
       outcome,
     };
-    const prefix = binding.basePrefix ?? options.basePrefix ?? "";
+    const prefix = reportBinding.basePrefix ?? options.basePrefix ?? "";
     try {
       const response = await fetchImpl(`${prefix}/api/chat/sessions/${encodeURIComponent(sessionId)}/verbs`, {
         method: "POST",
@@ -160,7 +161,12 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
         }
       }
 
-      void report(actor, verb, target, outcome);
+      const reportBinding = binding;
+      const pendingReport = reportQueue.then(() => report(reportBinding, actor, verb, target, outcome));
+      // Keep the queue usable even if report is later changed to propagate an
+      // error; perform itself still waits for this report before returning.
+      reportQueue = pendingReport.catch(() => undefined);
+      await pendingReport;
       return outcome;
     },
   };

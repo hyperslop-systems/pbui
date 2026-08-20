@@ -53,6 +53,27 @@ describe("createVerbRouter", () => {
     });
   });
 
+  test("serializes reports in perform invocation order", async () => {
+    let releaseFirst!: () => void;
+    const firstResponse = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    const bodies: Array<{ verb: { kind: string; ref?: Reference } }> = [];
+    const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      if (bodies.length === 1) await firstResponse;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    const router = createVerbRouter<{ kind: string; ref: Reference }>({ families: () => "local", local: () => undefined, fetch: fetchImpl });
+    router.bind(binding(fetchImpl));
+
+    const first = router.perform({ kind: "inspect", ref: product });
+    const second = router.perform({ kind: "inspect", ref: { ...product, id: "2050" } });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1));
+    releaseFirst();
+    await Promise.all([first, second]);
+
+    expect(bodies.map((body) => body.verb.ref?.id)).toEqual(["2049", "2050"]);
+  });
+
   test("invalid verbs are rejected without dispatch, and still reported", async () => {
     const fetchImpl = okFetch();
     const local = vi.fn();

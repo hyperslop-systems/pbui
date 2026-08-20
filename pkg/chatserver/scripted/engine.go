@@ -121,8 +121,8 @@ func (e *Engine) HandleStart(ctx context.Context, cmd sessionstream.Command, _ *
 		return fmt.Errorf("start payload must be %T, got %T", &chatappv1.StartInferenceCommand{}, cmd.Payload)
 	}
 	prompt := strings.TrimSpace(payload.GetPrompt())
-	if prompt == "" {
-		return errors.New("prompt is empty")
+	if prompt == "" && len(payload.GetAttachments()) == 0 {
+		return errors.New("prompt and attachments are empty")
 	}
 	messageID := e.nextMessageID()
 	if err := publish(ctx, cmd.SessionId, pub, chatapp.EventUserMessageAccepted, &chatappv1.ChatUserMessageAccepted{

@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	gepevents "github.com/go-go-golems/geppetto/pkg/events"
 	widgetv1 "github.com/go-go-golems/pinocchio/pkg/chatapp/pb/proto/pinocchio/chatapp/widgets/v1"
 	"github.com/go-go-golems/pinocchio/pkg/chatapp/widgets"
 	sessionstream "github.com/go-go-golems/sessionstream/pkg/sessionstream"
@@ -176,6 +177,35 @@ func TestEmitWidgetInvalidPublishesError(t *testing.T) {
 	}
 	if p := c.payloads[0].(*widgetv1.WidgetInstanceStarted); p.WidgetName != WidgetNameError || p.InstanceId != "m1-w1-error" {
 		t.Errorf("error widget: %+v", p)
+	}
+}
+
+type captureSink struct{ events []gepevents.Event }
+
+func (s *captureSink) PublishEvent(event gepevents.Event) error {
+	s.events = append(s.events, event)
+	return nil
+}
+
+func TestWidgetToolReturnsPublishedWidgetID(t *testing.T) {
+	p, err := New(Options{Vocabulary: loadDemoVocabulary(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &captureSink{}
+	ctx := gepevents.WithEventSinks(context.Background(), sink)
+	out, err := p.runWidgetTool(ctx, WidgetToolInput{Document: map[string]any{
+		"title": "Health", "children": []any{map[string]any{"kind": "text", "text": "ok"}},
+	}})
+	if err != nil || out.Status != "published" || out.WidgetID == "" {
+		t.Fatalf("widget result: %+v, %v", out, err)
+	}
+	if len(sink.events) != 1 {
+		t.Fatalf("published events: %d", len(sink.events))
+	}
+	event, ok := sink.events[0].(*EventWidgetRequested)
+	if !ok || event.WidgetID != out.WidgetID {
+		t.Fatalf("event id does not match result: %#v vs %q", sink.events[0], out.WidgetID)
 	}
 }
 

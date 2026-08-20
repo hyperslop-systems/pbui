@@ -129,14 +129,12 @@ func (p *Plugin) runWidgetTool(ctx context.Context, in WidgetToolInput) (WidgetT
 	if p.limits.WidgetBytes > 0 && len(raw) > p.limits.WidgetBytes {
 		return WidgetToolOutput{Status: "error", Error: fmt.Sprintf("document is %d bytes, limit %d", len(raw), p.limits.WidgetBytes)}, nil
 	}
-	// The message id is not known here; the plugin assigns the widget id when
-	// it handles the event (it knows the message from the runtime context).
-	gepevents.PublishEventToContext(ctx, NewWidgetRequestedEvent(gepevents.EventMetadata{}, "", doc))
-	title := doc.Title()
-	if title == "" {
-		title = "widget"
-	}
-	return WidgetToolOutput{WidgetID: "(assigned when published; mention the title instead: " + title + ")", Status: "published"}, nil
+	// The tool executes before the runtime event is enriched with its message
+	// id, so allocate from a plugin-wide namespace and carry that exact id on
+	// the event. The runtime handler must not replace it.
+	widgetID := p.NextWidgetID("widget")
+	gepevents.PublishEventToContext(ctx, NewWidgetRequestedEvent(gepevents.EventMetadata{}, widgetID, doc))
+	return WidgetToolOutput{WidgetID: widgetID, Status: "published"}, nil
 }
 
 func (p *Plugin) runTraceTool(sid sessionstream.SessionId, in TraceToolInput) TraceToolOutput {

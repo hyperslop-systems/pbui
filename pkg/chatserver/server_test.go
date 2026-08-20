@@ -137,7 +137,7 @@ func TestAttachmentsArePreservedInScriptedMessages(t *testing.T) {
 	server, ts := newTestServer(t)
 	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
 	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/messages", map[string]any{
-		"prompt":      "look at this",
+		"prompt":      "",
 		"attachments": []any{map[string]any{"attachment_id": "image-1"}},
 	})
 	waitIdle(t, server, sid)
