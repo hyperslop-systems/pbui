@@ -13,3 +13,6 @@
 - [ ] Phase 5: turboproof migration (6.2) <!-- t:zcmh -->
 - [ ] Phase 6: hyperblog migration (6.3) + 5.H seeding/scoping/parity/export <!-- t:dpm4 -->
 - [ ] Phase 7: datalab-ui migration (6.4), re-planned after 3/5/6 <!-- t:0f09 -->
+- [ ] BLOCKER: publish @hyperslop-systems/pbui-workbench to GitHub Packages; no product migration can install without it <!-- t:km5u -->
+- [ ] C1 findings not yet fixed: reset(factory?), a chrome door to per-pane launcher.open, renderTitle composing the xN badge, launcher workspace scope, document AppDescriptor.available <!-- t:4ygg -->
+- [ ] Re-read 6.3 (hyperblog) before C3: finding 1 invalidates its per-application split-policy assumption <!-- t:77j8 -->

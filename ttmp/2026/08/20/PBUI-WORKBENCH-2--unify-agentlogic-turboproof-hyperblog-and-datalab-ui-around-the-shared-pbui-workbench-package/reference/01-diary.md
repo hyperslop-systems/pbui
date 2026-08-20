@@ -402,3 +402,250 @@ browser (embedded binary, :8090)                                  ON SCREEN list
 ```
 
 Phase 2's acceptance gesture, honestly scored: the launcher-focus third and the divider third are met and verified in a browser; the "right-click any tile title shows the helper's verbs" third is **not**, because it needs a product `<tile>` presentation (PBUI-AGENT-2 B2). The helper is built and unit-tested against every state; nothing renders it yet.
+
+## Step 5: C1 — the agentlogic migration
+
+agentlogic renders on `@hyperslop-systems/pbui-workbench` now. `organisms/TileTree` (200 lines) and `organisms/LauncherPanel` (174 with its stories and CSS) are deleted, the verb half of `store/workbenchContext.tsx` is gone, and the eighteen-symbol re-export block in `store/workbench.ts` is gone with it. What replaced them is 147 lines: `store/workbenchShell.tsx`, which hands the package this product's registry and its three policies — `splitPolicy: { app: "launcher" }`, a `binding` over the transcript reference format, and `available: () => false` on the empty pane. Net for `ui/`: **+619 / −851**, and the product gained ⌘K, a launcher with search, an error boundary per tile, keyboard-resizable dividers that announce "62 percent", the `×N` linked badge and per-pane invocation — none of which it had.
+
+The migration is complete and green, with **one behaviour change** that the package cannot currently express: `resolvePolicy` forces `"link"` for a singleton BEFORE it consults the product's split policy, so splitting `deck` or `trace` now links a second placement of the one view instead of opening a launcher pane. That pane would have been a dead end, so the tile's NAME became the door to the per-pane launcher — which incidentally closes the sequencing gap Step 4 recorded ("per-pane invocation has no user-facing door yet"). Section **"What the core was missing"** below is the list this migration existed to produce; item 1 is that one.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Assistant interpretation:** Execute §7 Phase 3 / §6.1 — move agentlogic's shell onto the package, delete the copies the package now owns, keep its outbox and rebase loop working, commit at sensible boundaries, and record every capability the core turned out to lack.
+
+**Inferred user intent:** Prove the core additions of Phases 1 and 2 against a real product, and get back the list of what is still missing before three more products pay the same cost.
+
+**Commits (code, `agentlogic`):**
+- `15121fe` — "PBUI-WORKBENCH-2 C1: agentlogic on the shared workbench package"
+- `2e877ed` — "PBUI-WORKBENCH-2 C1: the empty pane is produced, never offered"
+- `b0b8771` — "PBUI-WORKBENCH-2 C1: drop the dead withWorkspace decorator"
+
+Nothing under `pbui/` was touched except this diary. `pbui-workbench` stayed read-only, which is why every finding below is written down rather than fixed.
+
+### What I did
+- **`ui/src/store/workbenchShell.tsx` (new, 147)** — `toDescriptor` (the twelve-line adapter over `appkit/registry`), `createShell` (the `createWorkbench` call with the three policies), and a `ShellContext`/`useShell` pair so tiles reach the workbench.
+- **`ui/src/store/workbenchContext.tsx` (401, was 413)** — the verbs are gone; the file is the two storages and nothing else. The outbox is fed by `onMutate`; the 409 rebase still replays mutation by mutation through the protocol's `applyMutation` and ends in `store.replaceDocument`. The workspace pointer is persisted from a store subscription instead of its own `useState`.
+- **`ui/src/store/workbench.ts` (117, was 169)** — the re-export block and `createWorkbenchClient` deleted; constants and `defaultWorkbench()` kept.
+- **`ui/src/components/pages/Workbench/Workbench.tsx` (120)** — `<shell.WorkspaceStrip renderWorkspace=…>` + `<shell.Surface renderTitle=…>` + `<shell.Launcher />`.
+- **`ui/src/apps/LauncherApp.tsx` (54)** — the grid of buttons became one button performing `verbs.openLauncher(placementId)`.
+- **`ui/src/components/organisms/BoundWorld/BoundWorld.tsx`** — takes `documents` as a prop and calls the config-free `boundDocumentId(view, TRANSCRIPT_BINDING)`; it no longer reads a store, which is what `organisms/index.ts` says an organism is.
+- **Deleted** `organisms/TileTree/` (tsx 200, css 53, stories 53, index 1) and `organisms/LauncherPanel/` (tsx 61, css 44, stories 67, index 2); `TileTree.tones.test.ts` moved to `appkit/tones.test.ts`; the dead `withWorkspace` Storybook decorator removed.
+- **`ui/src/store/workbench.test.ts` (277, was 192)** — rewritten against `createShell()` rather than the protocol builders: the split policy (both branches), close and the last-tile guard, replace-in-place/link/bind, workspace select, swap, dock, and the widened resize clamp.
+- **`ui/src/main.tsx` and `ui/.storybook/preview.tsx`** — `@hyperslop-systems/pbui-workbench/styles.css` after `chrome.css`, before `app.css`, in both (`styles-parity.test.ts` passes unchanged: its filter matches the new specifier).
+- **`ui/package.json`** — `"@hyperslop-systems/pbui-workbench": "^0.1.0"`.
+
+### Why
+- §6.1 is the plan and it held. The only structural choice it left open was where the workbench object lives: the guide says `store/workbenchShell.ts` at module level, and I built it per provider (`useMemo` inside `WorkbenchProvider`) instead. A module singleton would have made every Storybook story share one document and one localStorage write, and `withSession`-decorated tile stories already mount several components per page.
+- The brief asked for a `WorkbenchStore` **adapter** over agentlogic's existing state. I did not build one, and the design agrees: §5.A says "`onMutate` is what agentlogic's context uses to enqueue for its flush without giving up its own rebase loop", and §6.1 step 3 says the context "subscribes to `wb.store` instead of owning `doc`". An adapter is for the Redux products (C2, C4). With a store injected, `createWorkbench` ignores `onMutate` entirely (`createWorkbench.tsx:47-52`) — the two are alternatives, not a pair.
+- `available: () => false` on the launcher app rather than leaving it in the rows: `LauncherPanel` filtered `launcher` out of its grid, so offering "new tile" as a placeable application would have been a behaviour the product never had.
+
+### What worked
+- The adapter really is twelve lines. `appkit/registry`'s `AppProps` and the package's are the same `{ placementId, view }` object, because both came from AGENTLOGIC-3/DR-31, so tile components are handed straight through untouched. Fifteen tiles, zero edits.
+- `binding` reproduced `createWorkbenchClient`'s rule exactly, including the exclusion: `unbound: ["launcher"]` is the data form of `appId !== config.launcherAppId` (`builders.ts:363`).
+- The browser pass met every gesture in §6.1's Verify list on the first run, against the embedded binary on :8099 with a root token:
+  - four workspaces switch, the strip carries `aria-pressed`, and the choice survives F5 (`agentlogic.workbench.v2.workspace` = `ws-32ab554d-ebd6`);
+  - Ctrl-K names its target — *"a new tile opens below “changes”"* — and `ON SCREEN` lists all thirteen placed views including the singleton `run deck` as *"in another workspace"*, which is the "`deck` is offered as go to" line of the plan;
+  - a divider drag moved 62 → 75 percent and wrote localStorage **once** for the whole drag (I patched `Storage.prototype.setItem` to count) — the "a drag is one write and not a flood" invariant survived the move to the package's `SplitPane`;
+  - signed in, one split took the server from revision 1 to 2 and from 4 leaves to 5 with one `launcher` view — meaning `pkg/workbench.Validate` accepted a batch the shell produced, which is the strongest single check in the whole migration;
+  - an external write (`workspaceRename` posted with a fresh `Idempotency-Key`) renamed workspace 0 and the strip updated with no reload — SSE convergence intact;
+  - binding a view to a dangling transcript ref rendered *"⚠ The bound transcript did not load — skyline/nope"* inside its tile, which is `BoundWorld` working through its new prop.
+- `make ci-check` is clean end to end (`exit=0`): fmt-check, lint, glazed-lint, logcopter-check, schema-check, `go test ./...`, `go generate`, `go build`, then `ui-test` (typecheck + 126 vitest + `ui-token-check`).
+
+### What didn't work
+- **`pnpm install` cannot resolve the dependency, and this blocks CI until `pbui-workbench` is published.** Two separate failures:
+
+  ```
+  $ npm view @hyperslop-systems/pbui-workbench versions --registry=https://npm.pkg.github.com
+  npm error 404 Not Found - GET https://npm.pkg.github.com/@hyperslop-systems%2fpbui-workbench
+  npm error 404  - npm package "pbui-workbench" does not exist under owner "hyperslop-systems"
+  ```
+
+  ```
+  $ pnpm install --frozen-lockfile         # in agentlogic/ui, twice
+  Progress: resolved 259, reused 256, downloaded 1, added 242
+   ERR_PNPM_FETCH_403  GET https://npm.pkg.github.com/download/@hyperslop-systems/workbench-protocol/0.2.0/cdaab67031adc3043b447ddd1a9e7ab8b2a4f7f1: Forbidden - 403
+  ```
+
+  The 403 on `workbench-protocol@0.2.0` is the checked-in `.npmrc` token; `make ui-install` uses a Vault-stored token instead, and the sandbox refused both the `vault kv get` and the `make ui-install` that wraps it ("Blocked by classifier"). I verified locally by `pnpm pack`ing the three packages out of the `pbui` worktree and pointing pnpm at the tarballs through an untracked `ui/pnpm-workspace.yaml` `overrides:` block — which keeps `package.json` honest, unlike a `pnpm.overrides` entry. **That file is deleted and `ui/pnpm-lock.yaml` is restored to its committed state**, so the tree carries a `package.json` naming `^0.1.0` and a lockfile without it. That is the honest state: it fails pointing at the publish rather than at a `file:/tmp` path.
+- `ERR_PNPM_ENAMETOOLONG ... open '/home/manuel/.local/share/pnpm/store/v10/index/62/bbad…-file+..+..+..+..+..+..+..+tmp+claude-1000+-home-manuel-workspaces-2026-08-20-add-pbui-agent+b0cd4f44-…+scratchpad+tarballs+hyperslop-systems-workbench-protocol-0.22720682'` — pnpm encodes a `file:` dependency's whole path into a store index filename, so the scratchpad path blew past 255 bytes. Moving the tarballs to `/tmp/pbui-tgz/` fixed it.
+- `422 workbench: invalid_document at documents["d-ref"]: document schema version 0 is not 1` when I seeded a transcript reference by hand for the binding check. `DocumentPayload.schemaVersion` has no default and protojson omits it; the Go validator requires 1. Not a product defect — my test payload.
+- `pkill -f "agentlogic serve"` killed the shell running it (`Exit code 144`): the pattern matched my own `bash -c` command line. `ss -lptn 'sport = :8099'` → `kill $pid` is the version that works.
+- `error TS6133: 'workbench' is declared but its value is never read` did NOT happen here, because Step 4 already dropped that parameter — noted only because §5.G's signature still reads `createTileDescriptor(wb, …)` and a reader following the design literally will write the wrong call.
+
+### What I learned
+- **The design's §2.1 is wrong about one thing and it matters.** It says agentlogic's split "always mints a **launcher view** in the new pane". `createWorkbenchClient.splitPlacement` does — it is unconditional — but the package's `split` does not, because `resolvePolicy` short-circuits singletons. The feature-matrix row "Split policy (duplicate / link / launcher pane) — agentlogic: launcher" is therefore only true for agentlogic's eight non-singleton tiles; the six singletons (`about`, `context`, `deck`, `inspector`, `tasks`, `trace`) behave differently after the migration. The matrix reads as if `splitPolicy` closes the gap; it closes 8/14 of it.
+- **`replace` changed shape without changing behaviour a user can see.** The old `replaceApp` retargeted a view in place only when it was a *launcher* view with one placement, and minted a new view otherwise; the package retargets whenever `placementCount === 1`, whatever the application. So a pane replacing `files` with `diffs` now keeps its view id instead of getting a fresh one. Nothing in agentlogic keys state by view id, so it is invisible — but a product that does (turboproof's `filesTile.ts` routes by placement, datalab keys by view) should check before assuming this is a no-op. The package's version also GCs the orphaned view in both cases, where the old one leaked any non-launcher view it displaced.
+- `parseDocument` in the package is deliberately tolerant and agentlogic's `loadLocal` is deliberately rejecting (`fromJson(..., { ignoreUnknownFields: false })`). I kept agentlogic's, which is why §5.F's strict reader is not blocking here — but a product that adopts `createLocalPersistence` when it lands will silently swap one policy for the other.
+- A `useSyncExternalStore` store is genuinely testable without React: `store/workbench.test.ts` builds a whole workbench, performs eight verbs and asserts on the document with no renderer at all. That is a bigger practical win than it looks — the old file could only test the mutation builders.
+
+### What was tricky to build
+
+**1. The singleton split, and giving the resulting pane a way out.**
+*Cause:* `verbs.ts:404-412` — `resolvePolicy` returns `"link"` for `app?.singleton || app?.duplicable === false` before it looks at `splitPolicy`. The guard exists to stop `"duplicate"` minting a second view of a singleton (`duplicate_singleton` in `pkg/workbench`), but it also swallows `{ app: "launcher" }`, which mints a view of a *different* application and cannot trip that validator.
+*Symptom:* clicking ⬌ on the `run deck` tile produced `["run deck ×2", "run deck ×2", "tasks", "timeline", "conversation"]` — two panes of one view, where every previous version of the product gave an empty pane with a picker. Worse than cosmetic: the new pane shows no launcher, agentlogic registers no `<tile>` presentation, so `createTileDescriptor`'s "Show something else here…" is unreachable, and the global ⌘K *places* rather than *replaces* — the user's only exits were "close it" or "add a third pane".
+*Fix, product-side:* the tile's title became a `Button` performing `verbs.openLauncher(placement.placementId)`, passed through `Surface`'s `renderTitle`. The name rather than an added button because `[data-part="tile-title"]` is `overflow: hidden; text-overflow: ellipsis` (`chrome.css:53-61`) — a trailing button is the first thing clipped, so the door would vanish on exactly the tiles with long names. Verified: clicking the duplicate deck's title opened *"Show in “run deck”"* with `SHOW HERE` / `REPLACE WITH`, and choosing a row turned that pane into `run chart ×2`. `renderTitle` also replaces the package's default badge, so the `×N` span had to be re-rendered by hand.
+*Fix, core-side:* not made — see finding 1 below.
+
+**2. The import cycle the BoundWorld move would have created.**
+*Cause:* the package's `Tile` renders `app.Component` directly, where `TileTree` used to render `<BoundWorld view={view}><Component/></BoundWorld>` between the frame and the application. §6.1 step 6 says wrap at registration — but registration lives in `workbenchShell`, `BoundWorld` read the workbench through `useWorkbench()`, and `workbenchContext` imports `workbenchShell`: a three-module cycle whose only saving grace would have been ESM function hoisting.
+*Fix:* `BoundWorld` takes `documents: Record<string, DocumentPayload>` as a prop and resolves the binding with the config-free `boundDocumentId(view, TRANSCRIPT_BINDING)`. A four-line `BoundWorldGate` inside `workbenchShell` reads `useShell().useDocument().documents` and passes it down. The cycle is gone, `workbenchClient` was deleted with it, and `BoundWorld` now obeys the rule its own folder's `index.ts` states in capitals ("IT DOES NOT FETCH AND IT DOES NOT DISPATCH" — it still fetches archives, which is its job, but it no longer dispatches or reads a store).
+
+**3. Three mutually-referential things created in one render.**
+*Cause:* the shell must exist before `flush` (it adopts documents into it), `flush` and `scheduleFlush` reference each other, and the shell's `onMutate` closure has to reach `scheduleFlush` — which does not exist when `useMemo` runs.
+*Symptom:* the obvious ordering makes `onMutate` capture `undefined` and the outbox silently never flushes; the failure is invisible because the document is still correct locally.
+*Fix:* one `scheduleRef = useRef<() => void>(() => {})`, assigned during render after `scheduleFlush` is defined. `onMutate` and `flush`'s `finally` both call `scheduleRef.current()`. The initial no-op matters: `onMutate` can fire before the first assignment only if a verb runs during the `useMemo`, which `selectWorkspace` does — and `selectWorkspace` is `setState`, not `mutate`, so it never reaches `onMutate` anyway.
+
+**4. Restoring the stored workspace without a second source of truth.**
+*Cause:* the shell's `workspaceId` defaults to `workspaces[0]`, and the stored pointer can name a workspace the document no longer has.
+*Fix:* call `created.verbs.selectWorkspace(stored)` inside the same `useMemo` that creates the shell — it returns `false` and changes nothing when the id is unknown, so the fallback is the verb's own. Persisting is a `store.subscribe` that compares against a captured `last`, not a React effect on a selector: `replaceDocument` can change `workspaceId` (a refetch whose ids differ falls back to `workspaces[0]`), and that path must write too. Verified by hand: reset re-selected `run` after the ids changed.
+
+### What warrants a second pair of eyes
+- **The tile title is now a button in every tile.** It is the only new UI this migration adds, it exists to compensate for finding 1, and it should be deleted the moment `splitPolicy` wins over the singleton rule. Someone may prefer the regression to the button.
+- **`reset` is agentlogic's, not the package's.** `wb.reset()` returns to the document captured at construction, which after a reload is the *stored* one — "reset" would restore the layout the user is trying to escape. `resetLayout` therefore builds a fresh `defaultWorkbench()` and calls `replaceDocument` + `PUT`. This is §5.H's `reset(factory?)` in product form.
+- **`onRejected` now logs `${error.code} at ${error.path}: ${error.detail}`.** `detail` is the field Step 3 added. If the field is ever removed, this reads `undefined` in a console message and nothing fails.
+- The 409 rebase deliberately bypasses `wb.mutate`. If anyone "tidies" it to go through the shell, a rebase that hits one stale mutation will drop the entire queue.
+- `available: () => false` hides the launcher application from the rows but a *placed* launcher pane still appears in `ON SCREEN` as "new tile". Choosing it links a second empty pane, which is legal and slightly silly.
+
+### What should be done in the future
+- **Publish `@hyperslop-systems/pbui-workbench@0.1.0`** and regenerate `ui/pnpm-lock.yaml`. Nothing else in this migration can reach CI until then. The same blocker lands on C2/C3/C4.
+- Fix the `.npmrc` / Vault token for `@hyperslop-systems/workbench-protocol@0.2.0` — it 403s for the committed credential.
+- When `PBUI-AGENT-2` B2 gives agentlogic a `<tile>` presentation, replace the title button with `createTileDescriptor()` and delete the `renderTitle` override; the object menu then carries split/close/rename/duplicate as well.
+- §5.F's `createLocalPersistence` + strict `parseDocument` would delete `loadLocal`/`storeLocal` from `workbenchContext`; §5.F's sync module would delete the rest of the file. agentlogic is the reference implementation for both — its loop is the one §5.F was drafted from.
+- Inline rename: `setTitle` exists and nothing calls it; agentlogic has no rename UI.
+
+### What the core was missing
+
+The list this migration existed to produce. Each is a real agentlogic behaviour the package could not express, with the smallest API that would unblock it. **None were implemented** (`pbui-workbench` was read-only for this work).
+
+**1. `splitPolicy` cannot override the singleton link rule. (blocking, the one behaviour change)**
+`verbs.ts:404-412` returns `"link"` for a singleton before consulting the policy, so `{ app: "launcher" }` is honoured for 8 of agentlogic's 14 applications and silently ignored for the 6 singletons. The guard is correct for `"duplicate"` and wrong for `{ app }`: an explicit application id mints a view of a *different* application and cannot produce `duplicate_singleton`.
+*Smallest fix:* resolve the policy first and let an object form win.
+```ts
+const resolved = typeof splitPolicy === "function" ? splitPolicy(view, app) : splitPolicy;
+if (resolved && typeof resolved === "object") return resolved;   // a named app never duplicates THIS view
+if (app?.singleton || app?.duplicable === false) return "link";
+return resolved ?? "duplicate";
+```
+*Blocks:* hyperblog too — §6.3's risk note assumes `{app:"launcher"}` covers its singletons, and it does not.
+
+**2. `BindingConfig` is applied by `openView` and `replace` but not by `split`/`place`.**
+`split(placementId, direction, appId)` calls the protocol's config-free `splitPlacement`, and `place` goes through `split`, so a tile placed from the global launcher is born unbound while the same application replaced into a pane is bound. In agentlogic the default document holds no documents, so this is invisible today and wrong the moment a signed-in browser places a tile beside bound ones.
+*Smallest fix:* have `split`'s `appId` branch and the `{ app }` policy branch mint their view with `defaultBindings(current, appId)` rather than calling `splitPlacement`, which is the same three lines `openView` already runs.
+
+**3. No `reset(factory?)`.**
+`reset()` closes over the `initial` object, so a product whose `initial` came from storage cannot use it. Every persisted product hits this. Already noted as §5.H; C1 is the second sighting.
+*Smallest fix:* `reset(factory?: () => WorkbenchDocument)` → `store.replaceDocument(factory?.() ?? initial)`.
+
+**4. No door to per-pane launcher invocation in the chrome.**
+Step 4 recorded this as a sequencing gap; C1 is where it bites, because finding 1 makes per-pane replacement necessary rather than merely nice. A product with no `<tile>` presentation has no way to reach `launcher.open({ placementId })` without overriding `renderTitle`.
+*Smallest fix:* either an optional `onReplace` on `TileFrame` rendering a small button beside ⬌/⬍/✕, or a `Surface` prop `tileAction?(placement): ReactNode` for a slot in the tile bar that is NOT inside the ellipsising title.
+
+**5. `renderTitle` replaces the linked badge instead of composing with it.**
+Overriding the title to add anything means re-implementing `×N` and its tooltip (`Tile.tsx:97-109`) by hand, in every product. Three products want a custom title *and* the badge.
+*Smallest fix:* pass the default node in: `renderTitle?(view, placement, defaultTitle: ReactNode)`.
+
+**6. `defaultLauncherRows` lists views from every workspace with no way to scope.**
+agentlogic's Ctrl-K listed thirteen rows for four workspaces, nine of them "in another workspace". Already flagged in Step 4's second-pair-of-eyes; C1 confirms it is the common case, not the exotic one.
+*Smallest fix:* `<Launcher scope?: "workspace" | "document">`, default `"document"` (today's behaviour).
+
+**7. `AppDescriptor.available` gates the launcher only, which is right — and undiscoverable.**
+It took reading `launcherRows.ts:276` to be sure hiding the launcher application from the rows would not stop a stored layout rendering its panes. The behaviour is correct and tested in the package; nothing on the descriptor says so.
+*Smallest fix:* documentation only — one sentence on the field. (It already has one; it should say "the launcher's rows ONLY" in the first clause rather than the third sentence.)
+
+**8. Store injection and `onMutate` are alternatives, and the design reads as if they compose.**
+`createWorkbench.tsx:47-52` passes the hooks to `createWorkbenchStore` only when `options.store` is absent, so `createWorkbench({ store, onMutate })` — which §5.A's prose and this ticket's C1 brief both suggest — silently drops `onMutate`. agentlogic dodged it by not injecting a store; C2 and C4 will not.
+*Smallest fix:* either call `options.onMutate` from `createWorkbench`'s own `mutate` wrapper regardless of who owns the store, or `throw` when both are given.
+
+**Not missing, worth recording as verified:** `workspaces()`/`workspace.select`/`WorkspaceStrip` covered agentlogic's four workspaces with no gaps; `tile.replace`/`tile.link` reproduced `replaceApp`'s three cases exactly; `SplitPane` preserved the one-write-per-drag invariant; `onMutate` fires only for committed mutation batches, so the outbox never saw an activation or a launcher toggle.
+
+### Code review instructions
+- Read in this order: `agentlogic/ui/src/store/workbenchShell.tsx` (the whole product policy, 147 lines — start at `createShell`), then `workbenchContext.tsx` from `WorkbenchProvider` down (the `useMemo`, `adopt`, and the `scheduleRef` knot), then `components/pages/Workbench/Workbench.tsx` (the two slots).
+- Check by hand: the 409 rebase in `flush` still uses `applyMutation` per mutation and ends in `adopt`, never `wb.mutate`; `onMutate` writes localStorage *and* enqueues, and nothing else writes localStorage on a gesture; `BoundWorld` imports no store.
+- Validate — from `agentlogic/`, with `@hyperslop-systems/pbui-workbench` installed (see the publish blocker above):
+  ```
+  NODE_AUTH_TOKEN=… make ci-check          # fmt, lint, glazed-lint, logcopter, schema, go test, build, ui-test
+  pnpm --dir ui run build-storybook
+  ```
+- Run: `make ui && GOWORK=off go run ./cmd/agentlogic serve --listen :8099 --secure-cookies=false`, open `/ui/`, "Open the sample session". Then: click along the four workspaces and reload; Ctrl-K and read the status line; split `timeline` (empty pane) and split `run deck` (linked twin); click the twin's NAME and pick something else; drag a divider.
+
+### Technical details
+
+The whole of agentlogic's configuration of the shell:
+
+```ts
+// ui/src/store/workbenchShell.tsx
+createWorkbench({
+  apps: allApps().map(toDescriptor),
+  initial: options.initial ?? defaultWorkbench(),
+  splitPolicy: { app: LAUNCHER_APP },
+  binding: {
+    source: TRANSCRIPT_BINDING,                                   // "transcript"
+    isBindable: (p) => p.format === TRANSCRIPT_REF_FORMAT,        // "agentlogic.transcript-ref"
+    unbound: [LAUNCHER_APP],
+  },
+  onMutate, onRejected,
+});
+
+// the adapter, per registered tile
+defineApp({
+  id, title, tone, singleton,
+  duplicable: !singleton,
+  docBound: false,          // a tile is a view of the WORLD; the binding narrows which world
+  blurb,
+  ...(id === LAUNCHER_APP ? { available: () => false } : {}),
+  Component: Adapted,       // <BoundWorldGate view><Inner placementId view/></BoundWorldGate>
+});
+```
+
+Line counts, `ui/` only, `ef3bcf3..b0b8771`:
+
+```
+deleted   organisms/TileTree/        307   (tsx 200, css 53, stories 53, index 1)
+deleted   organisms/LauncherPanel/   174   (tsx 61, css 44, stories 67, index 2)
+deleted   store/workbench.ts          64   (the re-export block + createWorkbenchClient)
+deleted   store/workbenchContext.tsx 114   (the verb half)
+deleted   .storybook/decorators.tsx   13   (withWorkspace)
+added     store/workbenchShell.tsx   147
+added     store/workbench.test.ts    203   (rewritten; -118)
+added     pages/Workbench/*           88   (tsx 58, css 30)
+                                    ————
+total                              +619 / −851
+```
+
+Verification run:
+
+```
+pnpm --dir ui run typecheck                        ok
+pnpm --dir ui run test                             15 files, 126 tests (was 121), 1 skipped
+pnpm --dir ui run build                            index-*.js 433.46 kB (was 410.37), css 49.42 kB (was 48.21)
+pnpm --dir ui run build-storybook                  ok
+make ui-token-check                                all read tokens are defined
+GOWORK=off go test ./...                           ok, incl. pkg/workbenchapp (catalog ↔ fixture parity)
+make ci-check                                      exit=0
+browser (embedded binary, :8099, root token)       4 workspaces + reload; Ctrl-K names its target;
+                                                   ON SCREEN lists deck as "in another workspace";
+                                                   split timeline → launcher pane; split deck → "run deck ×2";
+                                                   title button → "Show in “run deck”" → "run chart ×2";
+                                                   divider 62→75 %, ONE localStorage write per drag;
+                                                   server revision 1→2, 4→5 leaves, Validate accepted;
+                                                   external workspaceRename converged over SSE;
+                                                   dangling transcript ref → the BoundWorld callout
+pnpm install                                       BLOCKED — pbui-workbench 0.1.0 unpublished (404),
+                                                   workbench-protocol 0.2.0 403s for the committed token
+```
+
+The registry fixture and `pkg/workbenchapp/catalog.go` are **unchanged**: `launcher` is still a live application (the split policy mints one on every split of a non-singleton), so the "remove the launcher row from both sides" step in §6.1's risk note does not apply.
+
+### Follow-up: three of C1's findings fixed in the core (commit `5e4d592`)
+
+Findings 1, 2 and 8 were fixed immediately rather than filed, because all three block the next migrations and all three are small. Verified against the source before trusting the report; all three were real, and all three were in code Phase 1 shipped.
+
+- **Finding 1 — `splitPolicy: { app }` inoperative for singletons.** Confirmed at `verbs.ts` `resolvePolicy`: the singleton guard returned `"link"` before the policy was read. My own comment carried the flawed reasoning — `duplicate_singleton` is a hazard of *duplicating*, and `{ app }` places a different application, so nothing is duplicated. The guard now applies to `"duplicate"` only. **This also invalidates §6.3's assumption for hyperblog**, whose split policy is per-application; re-read that plan before C3.
+- **Finding 2 — a tile placed by `split(placementId, dir, appId)` was born unbound.** It used the protocol's `splitPlacement`, which mints a view with no documents. `place()` routes through `split`, so the global launcher had it too. Both now mint the view with the same `defaultBindings` `openView` applies.
+- **Finding 8 — `createWorkbench({ store, onMutate })` silently dropped the hook.** The adapter owning the hooks is defensible; dropping them without a word is not. The combination now throws at construction, naming where the hooks belong. C2 and C4 are both Redux products and would each have hit it.
+
+Five tests added (114 in the package). The remaining five findings — no `reset(factory?)`, no chrome door to per-pane `launcher.open`, `renderTitle` replacing rather than composing the `×N` badge, `defaultLauncherRows` having no workspace scope, and `AppDescriptor.available`'s contract being buried in prose — are queued as tasks rather than fixed, because each is a design choice rather than a defect and three of them want a second product's opinion first.
+
+**The unblocked prerequisite this exposed:** agentlogic cannot `pnpm install` from a registry, because `@hyperslop-systems/pbui-workbench` is unpublished. C1 verified by packing tarballs from the worktree behind an untracked overrides block, so its `package.json` names `^0.1.0` while its lockfile does not contain it — honestly broken, pointing at the publish. **No further product migration can be merged until that package is published.** That is now the gating item for C2, C3 and C4, ahead of any code.
