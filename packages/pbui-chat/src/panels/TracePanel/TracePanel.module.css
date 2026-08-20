@@ -1,0 +1,55 @@
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--pbui-fs-small);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 4ch 5ch minmax(8ch, auto) 1fr auto 8ch;
+  align-items: baseline;
+  gap: var(--pbui-space-2);
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-bottom: var(--pbui-border-grid);
+}
+
+.row[data-actor="agent"] {
+  background: var(--pbui-pane-alt);
+}
+
+.row[data-outcome="rejected"] .verb {
+  text-decoration: line-through;
+}
+
+.seq,
+.actor,
+.time {
+  font-variant-numeric: tabular-nums;
+}
+
+.verb {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.target {
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.outcome {
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  text-align: right;
+}

@@ -1,0 +1,58 @@
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-message, var(--pbui-tone-neutral));
+  min-width: 0;
+}
+
+.user {
+  background: var(--pbui-pane-alt);
+  border-left-color: var(--pbui-ink);
+}
+
+.assistant {
+  background: var(--pbui-pane);
+}
+
+.row[data-state="streaming"] {
+  border-left-style: dashed;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pbui-space-3);
+}
+
+.role {
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-label);
+  cursor: pointer;
+}
+
+.thinking {
+  padding: 0 var(--pbui-space-3);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-line);
+}
+
+.summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.summary::before {
+  content: "▸ ";
+  color: var(--pbui-faint);
+}
+
+.thinking[open] .summary::before {
+  content: "▾ ";
+}
+
+.thinkingBody {
+  display: block;
+  padding: var(--pbui-space-2) 0 var(--pbui-space-2) var(--pbui-space-4);
+  white-space: pre-wrap;
+}

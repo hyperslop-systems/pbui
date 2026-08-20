@@ -1,0 +1,30 @@
+.tiles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-3);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pbui-space-2);
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+  border-bottom: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+}
+
+.title {
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-label);
+}
+
+.body {
+  padding: var(--pbui-space-3);
+}

@@ -1,0 +1,46 @@
+.markdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-3);
+  font-size: var(--pbui-fs-base);
+  line-height: var(--pbui-lh-prose);
+  color: var(--pbui-ink);
+  overflow-wrap: anywhere;
+}
+
+.paragraph {
+  margin: 0;
+}
+
+.heading {
+  display: block;
+  margin: 0;
+  letter-spacing: var(--pbui-track-label);
+  text-transform: uppercase;
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--pbui-space-5);
+  list-style: square;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+}
+
+.pre {
+  margin: 0;
+  padding: var(--pbui-space-3);
+  border: var(--pbui-border-grid);
+  background: var(--pbui-pane-alt);
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.mention {
+  display: inline;
+  padding: 0 var(--pbui-space-1);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-neutral);
+  background: var(--pbui-pane-alt);
+  cursor: pointer;
+}

@@ -1,0 +1,20 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-3);
+  padding: var(--pbui-space-3);
+  min-width: 0;
+}
+
+.entry {
+  min-width: 0;
+}
+
+.unknown {
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+  border: var(--pbui-border-rule);
+}
+
+.unknown summary {
+  cursor: pointer;
+}

@@ -1,0 +1,16 @@
+/*
+ * The few rules that belong to parts rather than to a component. Everything
+ * else lives in the component's own module; this file exists so a consumer
+ * importing `@hyperslop-systems/pbui-chat/styles.css` gets the part
+ * selectors products may style from outside.
+ */
+
+/* The focus-capture wrapper around every wire reference has no box of its own. */
+[data-part="ref"] {
+  display: contents;
+}
+
+/* A presentation carrying a reference is a target, whatever it wraps. */
+[data-part="ref"] > [data-pbui="presentation"] {
+  cursor: context-menu;
+}
