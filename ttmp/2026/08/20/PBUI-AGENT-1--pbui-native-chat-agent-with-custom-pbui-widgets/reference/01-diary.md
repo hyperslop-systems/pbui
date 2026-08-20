@@ -358,3 +358,67 @@ GET  /{$} · /ui/{path...} · /static/{path...}
 ```
 
 Widget instance names: `pbui.refs` (`<messageId>-refs`, props `{schema_version, refs{"type:id": Reference}}`), `pbui.widget` (`<messageId>-w<n>`, props = document), `pbui.error` (`<widgetId>-error`, props `{message, document?, at}`). Trace: command `PbuiVerbPerformed`, event `PbuiVerbRecorded`, UI event `PbuiTraceEntryUpsert`, entity `PbuiTraceEntry` (id `trace-<seq>`).
+
+## Step 5: TypeScript package lands, prod profile runs the embedded binary, the real model path works
+
+The TypeScript half was built by a subagent against the contract from Step 4 and came back green (43 tests; typecheck; lib, demo and storybook builds; the demo's `exportVocabulary()` deep-equals the Go-embedded `vocabulary.json`). I verified its checks myself, committed it (`a7960e4`), and then ran the whole product the way an operator would: `devctl up --profile prod` built pbui, the demo SPA and `bin/pbui-chat` with `-tags embed`, and served it on :8090; in a Playwright browser the page rendered the legend, composer and mouse-doc line, a "low stock" question produced an answer whose nouns are presentations, a streaming table whose headers are `field` objects and rows `row` objects, and verb chips; right-clicking a product opened the PBUI object menu with a `disabledBecause` entry ("Draft a reorder — needs approver role"); "Add to watchlist" updated the watchlist and recorded trace entry #1.
+
+The user asked whether this was a real backend. It is the real Go server (pinocchio chatapp, sessionstream hydration and websocket, the pbuichat plugin), but the answers came from the scripted engine. A pinocchio profile registry exists on this machine, so I wired the real path properly and ran it against `gpt-5-nano-low`: after three fixes (below) the model calls `shop_products`, the result is projected into a table widget, the model's own `pbui_widget` call is accepted after the validator's messages corrected it, and the final prose's mentions resolve into a `pbui.refs` entity. Committed as `086c82c`.
+
+### Prompt Context
+
+**User prompt (verbatim, mid-turn):** "is this a real backend?"
+
+**Assistant interpretation:** Clarify what is real (server, transport, plugin) versus scripted (the model), and if credentials exist, prove the real model path.
+
+**Inferred user intent:** Know whether the demo reflects the production architecture or a mock.
+
+**Commit (code):** a7960e4 — "pbui-chat: TypeScript package and demo product"; e052ea3 — "demo data tools for the real runtime; devctl build.run schema fix"; 086c82c — "make the real runtime emit refs and projections"
+
+### What I did
+- Re-ran the TS gates (`typecheck`, 43 vitest tests, demo typecheck); committed `packages/pbui-chat` + demo, `pnpm-workspace.yaml` (added the demo), lockfile, the reformatted `vocabulary.json`.
+- Patched the demo `vite.config.ts` with a `closeBundle` plugin that re-creates `pkg/chatui/embed/.gitkeep` (`emptyOutDir` deleted it); fixed `make chat-ui` and the devctl build step to use `pnpm --include-workspace-root --filter @hyperslop-systems/pbui build` (pnpm excludes the root from filtered runs).
+- `devctl up --profile prod`: the build ran, then `E_CONFIG_INVALID: could not resolve launch plan`; with `--skip-build` it launched, which isolated the cause to my `build.run` response. `devctl help plugin-authoring` §6.3 wants `steps[{name, ok, duration_ms}]` and `artifacts` as a name→path map; rewrote `build_steps`.
+- Browser check through the Playwright MCP on http://127.0.0.1:8090/ (embedded binary): snapshot of the conversation, object menu, watchlist and trace; screenshot saved as `pbui-chat-low-stock.png`.
+- Added `pkg/chatserver/demo/tools.go` (`shop_products`, `shop_product`) and an `Options.Tools` hook so a real model can learn the inventory; default projection rule `RowsToTable("shop_products","rows")`.
+- Ran `go run ./cmd/pbui-chat serve --port 8091 --real-runtime --profile gpt-5-nano-low --profile-registries ~/.config/pinocchio/profiles.yaml` in tmux and drove it with curl; iterated until refs, projection and model widgets all appeared in the snapshot.
+
+### Why
+- The prod profile is the only path that proves the embedded binary, the SPA route boundaries and hydration together.
+- The user's question deserved a demonstration, not an assurance; the registry made one possible.
+
+### What worked
+- The TS package integrated with the Go server without a single contract mismatch: the widget-instance shapes, the `/verbs` body, the human-tool result shapes and the vocabulary all matched on first contact.
+- gpt-5-nano-low used the tools as intended and recovered from two rejected widget documents using the validator's error strings ("verbs[3]: verb reorder is missing productId").
+
+### What didn't work
+- `devctl up --profile prod --force`: `E_USAGE: unknown flag: --force` (and `status --tail-lines`); the installed devctl has neither flag. Used plain `up`/`status`.
+- `devctl up --profile prod` → `E_CONFIG_INVALID: could not resolve launch plan` caused by the `build.run` response shape (see above).
+- First real run: `resolve pinocchio profile "gpt-5-nano-low": open /home/manuel/workspaces/2026-06-30/benchmark-cpu-inference/rag-ttc/profiles.yaml: no such file or directory` — the default registry path came from a stale pinocchio config; passing `--profile-registries ~/.config/pinocchio/profiles.yaml` fixed it (the devctl `dev-real` profile already passes it).
+- Second real run: the model answered correctly but no `pbui.widget` for the tool result and no `pbui.refs` appeared. Two distinct causes: (1) `chatapp.Engine.handleFeatureRuntimeEvent` returns at the first plugin reporting `handled=true`, and the tool-call plugin claims tool events — pbuichat must be first in the list; (2) pinocchio's `runtimeEventSink.PublishEvent` handles `EventTextSegmentStarted/Delta/Finished` in its own `switch` and only the `default` branch reaches plugins, so `HandleRuntimeEvent` never sees finished text. Fixed with a `ComposedRuntime.WrapSink` wrapper (`runBinding`/`refsSink` in `real_runtime.go`) bound to the session publisher through `RuntimeContext`.
+- The model's first `pbui_widget` call guessed a schema (`document.document.columns/rows/type`) → "widget has no children". Added a worked example to the tool description and to the generated prompt; subsequent runs produced valid documents within one retry.
+- A `gofmt` rejection by lefthook on a long closure line; `golangci-lint fmt` fixed it.
+
+### What I learned
+- The scripted engine masked two real-runtime seams (plugin ordering, the sink switch) because it calls the emitter directly. A scripted engine is valuable, but the real path must be run at least once before claiming the plugin works.
+- `WrapSink` is the general-purpose "see every geppetto event" hook in pinocchio's runtime; plugins see only what the sink does not consume.
+- devctl's `plan` validates `launch.plan` but not `build.run`; a malformed build response surfaces later as a launch-plan error.
+
+### What was tricky to build
+- Binding the sink wrapper to the session: the wrapper is created when the `PromptRequest` is built (session known, message id not), while `RuntimeContext` is called when the run starts (message id known). A small mutex-guarded `runBinding` shared by both closures carries `sid/messageID/pub` across that gap.
+
+### What warrants a second pair of eyes
+- The `profiles.yaml` on this machine carries an inline API key; it appeared in a tool output while inspecting the profile stack. Nothing was copied anywhere, but the file should move to `env:` references.
+- `refsSink` uses `context.Background()` for resolution; a per-run context with a timeout would be better once resolvers hit databases.
+
+### What should be done in the future
+- Tiles: the user asked for proper PBUI workbench tiles (drag, dock, resize, launcher) reusable across PBUI apps — in progress as `packages/pbui-workbench` (Step 6).
+- Return the real widget id from `pbui_widget` by carrying the message id in the run context.
+
+### Code review instructions
+- `pkg/chatserver/real_runtime.go` (`runBinding`, `refsSink`, plugin order comment in `server.go`), `pkg/chatserver/demo/tools.go`, `plugins/devctl_pbui_chat.py` (`build_steps`).
+- Validate: `devctl up --profile prod` then open http://127.0.0.1:8090/; `go run ./cmd/pbui-chat serve --port 8091 --real-runtime --profile gpt-5-nano-low --profile-registries ~/.config/pinocchio/profiles.yaml` and ask "which gold eagles are low on stock?".
+
+### Technical details
+
+Hydrated snapshot of the real run (abridged): `ChatToolCall shop_products {"category":"7","low_stock":true,"metal":"gold"}` → `ChatWidgetInstance chat-msg-1-w1 pbui.widget [table]` → `ChatToolCall pbui_widget` (rejected: "verbs[0]: verb reorder is missing productId") → `ChatToolCall pbui_widget` → `ChatWidgetInstance chat-msg-1-w2 pbui.widget [table] verbs=2` → assistant text with `[[product:2049|…]]` → `ChatWidgetInstance chat-msg-1-refs pbui.refs refs=[product:2049, product:2051, product:2077]`.

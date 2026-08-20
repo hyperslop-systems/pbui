@@ -11,3 +11,4 @@
 - [ ] Tier 0: demo binary with mock runtime; coinvault wiring behind a flag <!-- t:c25n -->
 - [ ] Resolve open decisions D1-D7 in design-doc/02 §11 with the team <!-- t:3eti -->
 - [ ] Write Obsidian vault project report (textbook style) and push go-go-parc <!-- t:vz4f -->
+- [ ] Tiles: pbui-workbench package (TileFrame/useTileDrag/resize/launcher) and chat apps; demo on tiles <!-- t:k7i4 -->
