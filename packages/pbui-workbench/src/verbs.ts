@@ -23,7 +23,6 @@ import {
   resizeSplit,
   snapRatio,
   splitNode,
-  splitPlacement,
   swapPlacements,
   viewsOfApp,
   workspaceOfPlacement,
@@ -403,12 +402,22 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
   /** What a bare split puts in the new pane. */
   const resolvePolicy = (view: AppView): "duplicate" | "link" | { app: string } => {
     const app = apps.get(view.appId);
-    // A singleton or a non-duplicable application links whatever the policy
-    // says: a second VIEW of a singleton is what pkg/workbench rejects as
-    // duplicate_singleton, so the policy cannot override this.
-    if (app?.singleton || app?.duplicable === false) return "link";
-    if (!splitPolicy) return "duplicate";
-    return typeof splitPolicy === "function" ? splitPolicy(view, app) : splitPolicy;
+    const wanted = !splitPolicy
+      ? "duplicate"
+      : typeof splitPolicy === "function"
+        ? splitPolicy(view, app)
+        : splitPolicy;
+    // The singleton guard applies to DUPLICATION only. A second view of a
+    // singleton is what pkg/workbench rejects as duplicate_singleton — but
+    // `{ app }` puts a DIFFERENT application in the new pane, so there is no
+    // second view of anything and nothing to reject.
+    //
+    // Getting this wrong made a product's "every split opens an empty pane"
+    // policy silently inoperative for exactly its singletons, which is the
+    // half of its applications most likely to be split (agentlogic: 6 of 14).
+    // Found by the C1 migration, which is what migrations are for.
+    if (wanted === "duplicate" && (app?.singleton || app?.duplicable === false)) return "link";
+    return wanted;
   };
 
   /** The tile a global operation targets: the named one, else the active one, else the first. */
@@ -426,6 +435,20 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     store.setState({ activePlacementId: placementId });
   };
 
+  /** A new pane holding a fresh view of `appId`, bound the way a placed tile is. */
+  const splitWithNewView = (
+    current: WorkbenchDocument,
+    placementId: string,
+    direction: SplitDirection,
+    appId: string,
+  ): Mutation[] => {
+    const view = create(AppViewSchema, { id: newId("v"), appId, documents: defaultBindings(current, appId) });
+    return [
+      mutation({ case: "viewCreate", value: { view } }),
+      ...splitWithView(current, placementId, direction, view.id),
+    ];
+  };
+
   const split: WorkbenchVerbHandlers["split"] = (placementId, direction, appId) => {
     const current = doc();
     const workspaceId = workspaceOfPlacement(current, placementId);
@@ -438,7 +461,14 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     if (appId) {
       const app = apps.get(appId);
       const existing = app?.singleton ? viewsOfApp(current, appId)[0] : undefined;
-      mutations = existing ? splitWithView(current, placementId, direction, existing.id) : splitPlacement(current, placementId, direction, appId);
+      // Not the protocol's `splitPlacement`: it mints a view with no
+      // documents, so a product with a `binding` config gets a tile that
+      // opens empty and reads as broken. Mint it here so the same default
+      // bindings `openView` applies also apply to a split and to the
+      // launcher's `place`, which routes through here.
+      mutations = existing
+        ? splitWithView(current, placementId, direction, existing.id)
+        : splitWithNewView(current, placementId, direction, appId);
     } else if (!currentView) {
       return null;
     } else {
@@ -460,7 +490,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
         const existing = apps.get(policy.app)?.singleton ? viewsOfApp(current, policy.app)[0] : undefined;
         mutations = existing
           ? splitWithView(current, placementId, direction, existing.id)
-          : splitPlacement(current, placementId, direction, policy.app);
+          : splitWithNewView(current, placementId, direction, policy.app);
       }
     }
     const created = newPlacementIdOf(mutations);

@@ -634,3 +634,86 @@ describe("replace, link, rebind, split policy (5.C)", () => {
     expect(wb.store.getState().document.views[viewOf(tree, placement)]?.documents).toEqual({});
   });
 });
+
+/* ---- defects the C1 (agentlogic) migration found ----------------------- */
+
+describe("split policy and bindings, as C1 needed them", () => {
+  it("splitPolicy {app} wins over the singleton link rule", () => {
+    // The guard exists because a second VIEW of a singleton is
+    // duplicate_singleton — but `{app}` puts a DIFFERENT application in the
+    // new pane, so there is nothing to duplicate. Pre-empting the policy made
+    // 'every split opens an empty pane' silently inoperative for exactly the
+    // applications most likely to be split.
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("notes"), tile("counter"))),
+      splitPolicy: { app: "counter" },
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(notesPlacement!, "col")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    expect(viewOf(tree, created)).not.toBe(viewOf(tree, notesPlacement!));
+    expect(wb.store.getState().document.views[viewOf(tree, created)]?.appId).toBe("counter");
+  });
+
+  it("a singleton still links when the policy says duplicate", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("notes"), tile("counter"))),
+      splitPolicy: "duplicate",
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(notesPlacement!, "col")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    expect(viewOf(tree, created)).toBe(viewOf(tree, notesPlacement!));
+    expect(viewsOfApp(wb.store.getState().document, "notes")).toHaveLength(1);
+  });
+
+  it("a tile placed by split with an appId is bound like one opened by openView", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter", { documents: { source: "d7" } }),
+      binding: { source: "source" },
+    });
+    wb.mutate([
+      create(MutationSchema, {
+        body: { case: "documentPut", value: { document: create(DocumentPayloadSchema, { id: "d7", format: "test.doc", schemaVersion: 1 }) } },
+      }),
+    ]);
+    const workspaceId = wb.store.getState().workspaceId;
+    const [only] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(only!, "row", "counter")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    // Before the fix this went through the protocol's splitPlacement, which
+    // mints a view with no documents: the tile opened empty and read as broken.
+    expect(wb.store.getState().document.views[viewOf(tree, created)]?.documents).toEqual({ source: "d7" });
+  });
+
+  it("place() binds too, since the launcher routes through split", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter", { documents: { source: "d7" } }),
+      binding: { source: "source" },
+    });
+    wb.mutate([
+      create(MutationSchema, {
+        body: { case: "documentPut", value: { document: create(DocumentPayloadSchema, { id: "d7", format: "test.doc", schemaVersion: 1 }) } },
+      }),
+    ]);
+    const created = wb.verbs.place("counter")!;
+    const tree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, created)]?.documents).toEqual({ source: "d7" });
+  });
+
+  it("refuses a store together with the hooks it would silently ignore", () => {
+    const own = createWorkbenchStore(singleTile("counter"));
+    expect(() =>
+      createWorkbench({ apps: demoApps, initial: singleTile("counter"), store: own, onMutate: () => undefined }),
+    ).toThrow(/owns its own mutation hooks/);
+    // Either alone is fine.
+    expect(() => createWorkbench({ apps: demoApps, initial: singleTile("counter"), store: own })).not.toThrow();
+    expect(() => createWorkbench({ apps: demoApps, initial: singleTile("counter"), onMutate: () => undefined })).not.toThrow();
+  });
+});

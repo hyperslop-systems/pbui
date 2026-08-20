@@ -17,8 +17,9 @@ export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
   /**
    * A product-owned store to back the shell with, instead of the one this
    * function would create. A Redux product passes an adapter here so its
-   * slice stays the single source of truth; `onMutate`/`onRejected` are then
-   * that store's business and are ignored.
+   * slice stays the single source of truth, and the adapter owns the
+   * mutation hooks — so passing `store` AND `onMutate`/`onRejected` is a
+   * construction error rather than a silent drop.
    */
   store?: WorkbenchStore;
   /**
@@ -44,6 +45,15 @@ export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
 export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
   const apps = isAppRegistry(options.apps) ? options.apps : createAppRegistry(options.apps);
   const initial = options.initial;
+  // Both, and one of them would do nothing. Silently ignoring the hooks cost
+  // the C1 migration time spent wondering why its outbox never filled; the
+  // fix is to make the illegal combination unrepresentable at the door.
+  if (options.store && (options.onMutate || options.onRejected)) {
+    throw new Error(
+      "pbui-workbench: createWorkbench({ store }) owns its own mutation hooks — " +
+        "pass onMutate/onRejected to createWorkbenchStore, or to your adapter, not here",
+    );
+  }
   const store =
     options.store ??
     createWorkbenchStore(initial, {
