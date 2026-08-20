@@ -1,0 +1,22 @@
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pbui-space-2);
+}
+
+.type {
+  margin-left: var(--pbui-space-2);
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-faint);
+  text-transform: uppercase;
+}

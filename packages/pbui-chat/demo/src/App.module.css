@@ -1,0 +1,34 @@
+.shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  background: var(--pbui-wash);
+}
+
+.masthead {
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+}
+
+.wordmark {
+  letter-spacing: var(--pbui-track-banner);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* A one-cell grid, so the workbench surface gets a committed height and
+ * every tile below it can size itself (pbui playbook §6a). */
+.canvas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  padding: var(--pbui-space-4);
+  min-height: 0;
+}

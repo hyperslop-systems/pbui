@@ -1,0 +1,10 @@
+/*
+ * The part selectors a product may style from outside. Component rules live
+ * in each component's module; this file carries only what spans components:
+ * the active-tile outline, scoped to the moment a keyboard operation needs a
+ * target (the launcher is open), so it never reads as "selected".
+ */
+[data-part="workbench"][data-launcher-open] [data-part="workbench-tile"][data-active] > [data-part="tile"] {
+  outline: var(--pbui-focus-ring);
+  outline-offset: -2px;
+}

@@ -1,6 +1,7 @@
 .PHONY: lint lintmax fmt-check docker-lint gosec govulncheck test build \
 	ci-check logcopter-generate logcopter-check glazed-lint \
-	protocol-generate protocol-check
+	protocol-generate protocol-check \
+	chat-ui chat-build chat-serve chat-test
 
 GO_PACKAGES ?= ./...
 LOGCOPTER_PACKAGES ?= ./pkg/...
@@ -47,10 +48,32 @@ logcopter-check:
 glazed-lint:
 	GOWORK=off go tool glazed-lint $(GLAZED_LINT_FLAGS) $(GO_PACKAGES)
 
+# Two buf templates: the workbench protocol feeds @hyperslop-systems/workbench-protocol,
+# the chat protocol feeds @hyperslop-systems/pbui-chat. Both emit Go into gen/go.
 protocol-generate:
-	buf generate
+	buf generate --template buf.gen.yaml --path proto/hyperslop/pbui/workbench
+	buf generate --template buf.gen.chat.yaml --path proto/hyperslop/pbui/chat
 
 protocol-check:
 	buf lint
-	buf generate
-	git diff --exit-code -- gen/go packages/workbench-protocol/src/generated
+	$(MAKE) protocol-generate
+	git diff --exit-code -- gen/go packages/workbench-protocol/src/generated packages/pbui-chat/src/generated
+
+# ── pbui-chat: the PBUI-native chat agent (cmd/pbui-chat) ────────────────────
+# Install JS deps once with: pnpm install --filter '!@hyperslop-systems/datalab-ui'
+
+chat-ui:
+	pnpm --include-workspace-root --filter @hyperslop-systems/pbui build
+	pnpm --filter @hyperslop-systems/pbui-workbench build
+	pnpm --filter @hyperslop-systems/pbui-chat build
+	pnpm --filter @hyperslop-systems/pbui-chat-demo build
+
+chat-build: chat-ui
+	GOWORK=off go build -tags embed -o bin/pbui-chat ./cmd/pbui-chat
+
+chat-serve:
+	GOWORK=off go run ./cmd/pbui-chat serve --port 8090
+
+chat-test:
+	GOWORK=off go test ./pkg/pbuichat/... ./pkg/chatserver/... ./pkg/chatui/... ./cmd/pbui-chat/...
+	pnpm --filter @hyperslop-systems/pbui-chat test

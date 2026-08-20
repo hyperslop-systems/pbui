@@ -1,0 +1,30 @@
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  padding: var(--pbui-space-3);
+  border-top: var(--pbui-border-hair);
+  background: var(--pbui-pane);
+}
+
+.refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pbui-space-2);
+}
+
+.type {
+  margin-left: var(--pbui-space-2);
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-faint);
+  text-transform: uppercase;
+}
+
+.text {
+  width: 100%;
+  resize: vertical;
+}
+
+.spacer {
+  flex: 1;
+}

@@ -1,0 +1,37 @@
+profile:
+  active: dev
+
+profiles:
+  dev:
+    display_name: pbui-chat (dev)
+    description: Go server with the scripted demo engine on :8090 plus the Vite dev server for the pbui-chat demo on :5174 (HMR, proxied /api and websocket).
+    plugins:
+      - pbui-chat
+    env:
+      PBUI_CHAT_MODE: dev
+      PBUI_CHAT_LOG_LEVEL: debug
+
+  dev-real:
+    display_name: pbui-chat (dev, real runtime)
+    description: Like dev, but the Go server runs a real pinocchio profile (PROFILE_SLUG, PROFILE_REGISTRY) with the PBUI tools.
+    plugins:
+      - pbui-chat
+    env:
+      PBUI_CHAT_MODE: dev
+      PBUI_CHAT_LOG_LEVEL: debug
+      PBUI_CHAT_REAL_RUNTIME: "true"
+
+  prod:
+    display_name: pbui-chat (prod)
+    description: Build the demo SPA, compile a single binary with the UI embedded (-tags embed), and serve it on :8090 with SQLite stores under var/devctl.
+    plugins:
+      - pbui-chat
+    env:
+      PBUI_CHAT_MODE: prod
+      PBUI_CHAT_LOG_LEVEL: info
+
+plugins:
+  - id: pbui-chat
+    path: python3
+    args: ["./plugins/devctl_pbui_chat.py"]
+    priority: 10

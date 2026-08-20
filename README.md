@@ -92,6 +92,28 @@ The separate **Publish Datalab UI** workflow applies the same gates to
 rewrites the workspace PBUI dependency to a normal semver dependency before
 uploading to GitHub Packages.
 
+## PBUI chat agent (`pbui-chat`)
+
+`cmd/pbui-chat` is a chat agent whose every structured output is a PBUI
+presentation object: mentions in prose become live objects with verbs, widgets
+are declarative documents of PBUI components, user actions are serialisable
+verbs recorded in a trace. `pkg/pbuichat` is the pinocchio `chatapp.ChatPlugin`
+and tool set; `pkg/chatserver` wires it behind `net/http`; `packages/pbui-chat`
+is the React package (`@hyperslop-systems/pbui-chat`) with a demo product under
+`packages/pbui-chat/demo` that the binary embeds.
+
+```bash
+pnpm install --filter '!@hyperslop-systems/datalab-ui'   # datalab-ui needs a GitHub Packages token
+make chat-ui          # build pbui + the demo SPA into pkg/chatui/embed
+make chat-serve       # scripted demo engine on http://127.0.0.1:8090
+make chat-build       # single binary with the UI embedded: bin/pbui-chat
+devctl up             # dev profile: go run + vite on :5174; `devctl up --profile prod` builds and runs bin/pbui-chat
+GOWORK=off go run ./cmd/pbui-chat serve --real-runtime --profile <pinocchio-profile>
+```
+
+The design and diary live in
+`ttmp/2026/08/20/PBUI-AGENT-1--pbui-native-chat-agent-with-custom-pbui-widgets/`.
+
 ## Go and protocol development
 
 The repository is also the canonical Go module for PBUI workbench validation,

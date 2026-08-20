@@ -1,0 +1,13 @@
+.line {
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-neutral);
+  background: var(--pbui-pane-alt);
+}
+
+.line[data-state="pending"] {
+  border-left-color: var(--pbui-danger);
+}
+
+.line[data-state="picked"] {
+  border-left-color: var(--pbui-ok);
+}

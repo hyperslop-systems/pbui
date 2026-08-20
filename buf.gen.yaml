@@ -1,4 +1,6 @@
 version: v2
+# Workbench protocol: Go + the @hyperslop-systems/workbench-protocol TS package.
+# Invoked with `--path proto/hyperslop/pbui/workbench` (see Makefile).
 plugins:
   - local: protoc-gen-go
     out: gen/go
