@@ -31,6 +31,7 @@ type realRuntimeFactory struct {
 	configFile        string
 	parsedValues      *values.Values
 	systemPrompt      string
+	tools             func(registry geptools.ToolRegistry, sid sessionstream.SessionId) error
 	plugin            *pbuichat.Plugin
 	frontendTools     *frontendtools.Manager
 	turnStore         chatstore.TurnStore
@@ -51,6 +52,7 @@ func newRealRuntimeFactory(opts Options, plugin *pbuichat.Plugin, frontendTools 
 		configFile:        strings.TrimSpace(opts.ConfigFile),
 		parsedValues:      opts.ParsedValues,
 		systemPrompt:      prompt + "\n\n" + pbuichat.SystemPromptSection(plugin.Vocabulary()),
+		tools:             opts.Tools,
 		plugin:            plugin,
 		frontendTools:     frontendTools,
 		turnStore:         turnStore,
@@ -88,6 +90,11 @@ func (f *realRuntimeFactory) promptRequest(ctx context.Context, sid sessionstrea
 	registry := geptools.NewInMemoryToolRegistry()
 	if err := f.plugin.RegisterTools(registry, sid); err != nil {
 		return chatapp.PromptRequest{}, errors.Wrap(err, "register pbui tools")
+	}
+	if f.tools != nil {
+		if err := f.tools(registry, sid); err != nil {
+			return chatapp.PromptRequest{}, errors.Wrap(err, "register product tools")
+		}
 	}
 	if f.frontendTools != nil {
 		if err := f.frontendTools.RegisterManifestTools(sid, registry); err != nil {

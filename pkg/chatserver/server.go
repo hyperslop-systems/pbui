@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	geptools "github.com/go-go-golems/geppetto/pkg/inference/tools"
 	chatapp "github.com/go-go-golems/pinocchio/pkg/chatapp"
 	"github.com/go-go-golems/pinocchio/pkg/chatapp/frontendtools"
 	"github.com/go-go-golems/pinocchio/pkg/chatapp/plugins"
@@ -46,6 +47,16 @@ func NewServer(ctx context.Context, opts Options) (*Server, func() error, error)
 	resolver := opts.Resolver
 	if resolver == nil {
 		resolver = demo.Resolver()
+	}
+	if opts.Vocabulary == nil {
+		if opts.Tools == nil {
+			opts.Tools = func(registry geptools.ToolRegistry, _ sessionstream.SessionId) error {
+				return demo.RegisterTools(registry)
+			}
+		}
+		if opts.Projection == nil {
+			opts.Projection = demo.ProjectionRules()
+		}
 	}
 	limits := opts.Limits
 	if limits == (pbuichat.Limits{}) {

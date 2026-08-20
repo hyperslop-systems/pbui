@@ -144,22 +144,35 @@ def run(cmd, repo, deadline_ms, cwd=None):
 
 
 def build_steps(repo, cfg, dry_run, deadline_ms):
+    """Run the prod build: pbui lib -> demo SPA -> embedded binary.
+
+    Response shape per `devctl help plugin-authoring` §6.3: steps[] with
+    {name, ok, duration_ms}, artifacts as a name -> path map.
+    """
+    import time
+
     steps = []
-    if dry_run:
-        return [{"name": "ui", "status": "skipped"}, {"name": "binary", "status": "skipped"}], []
-    code = run(["pnpm", "--filter", "@hyperslop-systems/pbui", "build"], repo, deadline_ms)
-    steps.append({"name": "pbui-lib", "status": "ok" if code == 0 else "failed", "exit_code": code})
-    if code != 0:
-        return steps, []
-    code = run(["pnpm", "--filter", "@hyperslop-systems/pbui-chat-demo", "build"], repo, deadline_ms)
-    steps.append({"name": "ui", "status": "ok" if code == 0 else "failed", "exit_code": code})
-    if code != 0:
-        return steps, []
+    artifacts = {}
+
+    def step(name, cmd, env=None):
+        started = time.monotonic()
+        if dry_run:
+            log(f"dry-run: {' '.join(cmd)}")
+            code = 0
+        else:
+            timeout = max(1, int(deadline_ms or 900000) // 1000)
+            log("run: " + " ".join(cmd))
+            code = subprocess.run(cmd, cwd=str(repo), env=env, stdout=sys.stderr, stderr=sys.stderr, timeout=timeout).returncode
+        steps.append({"name": name, "ok": code == 0, "duration_ms": int((time.monotonic() - started) * 1000)})
+        return code == 0
+
+    if not step("pbui-lib", ["pnpm", "--include-workspace-root", "--filter", "@hyperslop-systems/pbui", "build"]):
+        return steps, artifacts
+    if not step("ui", ["pnpm", "--filter", "@hyperslop-systems/pbui-chat-demo", "build"]):
+        return steps, artifacts
     env = dict(os.environ, GOWORK="off")
-    log("run: go build -tags embed -o bin/pbui-chat ./cmd/pbui-chat")
-    result = subprocess.run(["go", "build", "-tags", "embed", "-o", "bin/pbui-chat", "./cmd/pbui-chat"], cwd=str(repo), env=env, stdout=sys.stderr, stderr=sys.stderr, timeout=max(1, int(deadline_ms or 900000) // 1000))
-    steps.append({"name": "binary", "status": "ok" if result.returncode == 0 else "failed", "exit_code": result.returncode})
-    artifacts = [{"name": "pbui-chat", "path": str(repo / "bin" / "pbui-chat")}] if result.returncode == 0 else []
+    if step("binary", ["go", "build", "-tags", "embed", "-o", "bin/pbui-chat", "./cmd/pbui-chat"], env=env):
+        artifacts["pbui-chat"] = str(repo / "bin" / "pbui-chat")
     return steps, artifacts
 
 
@@ -193,7 +206,8 @@ for raw in sys.stdin:
             respond(rid, {"valid": len(errors) == 0, "errors": errors, "warnings": warnings})
         elif op == "build.run":
             if not prod:
-                respond(rid, {"steps": [{"name": "ui", "status": "skipped", "detail": "dev mode serves the UI from vite"}], "artifacts": []})
+                log("dev mode: the UI is served by vite; nothing to build")
+                respond(rid, {"steps": [], "artifacts": {}})
             else:
                 steps, artifacts = build_steps(repo, cfg, bool(ctx.get("dry_run")), ctx.get("deadline_ms"))
                 respond(rid, {"steps": steps, "artifacts": artifacts})

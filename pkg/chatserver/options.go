@@ -6,6 +6,9 @@ package chatserver
 import (
 	"time"
 
+	geptools "github.com/go-go-golems/geppetto/pkg/inference/tools"
+	sessionstream "github.com/go-go-golems/sessionstream/pkg/sessionstream"
+
 	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/hyperslop-systems/pbui/pkg/pbuichat"
 )
@@ -32,6 +35,9 @@ type Options struct {
 	Resolver   pbuichat.Resolver
 	Projection []pbuichat.ProjectionRule
 	Limits     pbuichat.Limits
+	// Tools registers product tools into each real-runtime registry; defaults
+	// to the demo data tools when Vocabulary is nil.
+	Tools func(registry geptools.ToolRegistry, sid sessionstream.SessionId) error
 }
 
 func (o Options) chunkDelay() time.Duration {
