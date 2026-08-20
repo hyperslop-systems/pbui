@@ -1,13 +1,13 @@
 version: v2
-# Workbench protocol: Go + the @hyperslop-systems/workbench-protocol TS package.
-# Invoked with `--path proto/hyperslop/pbui/workbench` (see Makefile).
+# Chat protocol: Go + the @hyperslop-systems/pbui-chat TS package.
+# Invoked with `--path proto/hyperslop/pbui/chat` (see Makefile).
 plugins:
   - local: protoc-gen-go
     out: gen/go
     opt:
       - paths=source_relative
   - local: packages/workbench-protocol/node_modules/.bin/protoc-gen-es
-    out: packages/workbench-protocol/src/generated
+    out: packages/pbui-chat/src/generated
     opt:
       - target=ts
       - import_extension=none

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "product": "pbui-chat-demo",
+  "types": {
+    "product": {
+      "doc": "a sellable coin SKU in the shop inventory",
+      "idHint": "products.id (a number)",
+      "tone": "var(--pbui-tone-product)",
+      "verbs": ["inspect", "watch", "compareWith", "askAgent", "reorder"],
+      "example": "[[product:2049|1oz American Gold Eagle 2024]]"
+    },
+    "category": {
+      "doc": "a product category",
+      "idHint": "categories.id",
+      "tone": "var(--pbui-tone-category)",
+      "verbs": ["inspect", "askAgent", "addFilter"],
+      "example": "[[category:7|American Gold Eagles]]"
+    },
+    "metal": {
+      "doc": "a precious metal (gold, silver, platinum, palladium)",
+      "idHint": "metal slug",
+      "tone": "var(--pbui-tone-metal)",
+      "verbs": ["inspect", "addFilter", "askAgent"],
+      "example": "[[metal:gold|gold]]"
+    },
+    "order": {
+      "doc": "a customer order",
+      "idHint": "orders.id",
+      "tone": "var(--pbui-tone-order)",
+      "verbs": ["inspect", "watch", "askAgent"],
+      "example": "[[order:88213|order 88213]]"
+    },
+    "field": {
+      "doc": "a column of a table the agent produced",
+      "idHint": "<tableId>.<column>",
+      "tone": "var(--pbui-tone-field)",
+      "verbs": ["inspect", "addFilter", "sortBy", "askAgent"],
+      "example": "[[field:t3.qty|qty]]"
+    },
+    "row": {
+      "doc": "one row of a table the agent produced",
+      "idHint": "<tableId>#<rowIndex>",
+      "tone": "var(--pbui-tone-row)",
+      "verbs": ["inspect", "watch", "askAgent"]
+    },
+    "source": {
+      "doc": "a piece of evidence the agent cited",
+      "idHint": "evidence id E<n>",
+      "tone": "var(--pbui-tone-source)",
+      "verbs": ["inspect", "askAgent"],
+      "example": "[[source:E2|pricing policy §3]]"
+    },
+    "widget": {
+      "doc": "a widget the agent published",
+      "idHint": "widget id returned by pbui_widget",
+      "tone": "var(--pbui-tone-widget)",
+      "verbs": ["inspect", "openInTile", "askAgent"]
+    },
+    "tool": {
+      "doc": "a tool call the agent made",
+      "idHint": "tool call id",
+      "tone": "var(--pbui-tone-tool)",
+      "verbs": ["inspect", "rerunTool", "askAgent"]
+    },
+    "proposal": {
+      "doc": "a consequential action awaiting a human decision",
+      "idHint": "proposal id",
+      "tone": "var(--pbui-tone-proposal)",
+      "verbs": ["inspect", "resolveProposal", "askAgent"]
+    },
+    "traceEntry": {
+      "doc": "one performed verb in the session trace",
+      "idHint": "sequence number",
+      "tone": "var(--pbui-tone-trace)",
+      "verbs": ["inspect", "askAgent"]
+    },
+    "unresolved": {
+      "doc": "a mention the server could not resolve",
+      "idHint": "the original type and id",
+      "tone": "var(--pbui-tone-neutral)",
+      "verbs": ["askAgent"]
+    }
+  },
+  "verbs": {
+    "inspect": { "doc": "show the object in the inspector", "fields": { "ref": "ref" } },
+    "watch": { "doc": "pin the object to the watchlist", "fields": { "ref": "ref" } },
+    "compareWith": { "doc": "compare the object with another of the same type (enters accept mode)", "fields": { "left": "ref", "right?": "ref" } },
+    "askAgent": { "doc": "send the agent a question about the objects", "fields": { "template": "string", "refs": "refs" } },
+    "addFilter": { "doc": "filter a table by a field", "fields": { "tableId": "string", "field": "string", "op": "string", "value": "string" } },
+    "sortBy": { "doc": "sort a table by a field", "fields": { "tableId": "string", "field": "string", "dir": "string" } },
+    "openInTile": { "doc": "open the widget in its own tile", "fields": { "widgetId": "string" } },
+    "rerunTool": { "doc": "ask the agent to run the tool again", "fields": { "toolCallId": "string", "args?": "object" } },
+    "resolveProposal": { "doc": "approve or reject a proposal", "fields": { "id": "string", "decision": "string" }, "danger": true },
+    "reorder": { "doc": "draft a reorder for the product", "fields": { "productId": "string" }, "danger": true }
+  },
+  "widget": {
+    "schema_version": 1,
+    "kinds": ["text", "refs", "meter", "sparkline", "segmented", "stat", "callout", "table", "log", "form", "widget"],
+    "layouts": ["stack", "row", "grid"]
+  },
+  "conversions": [
+    { "from": "row", "to": "product" }
+  ]
+}

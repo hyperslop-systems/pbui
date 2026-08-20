@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package hyperslop.pbui.chat.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hyperslop-systems/pbui/gen/go/hyperslop/pbui/chat/v1;chatv1";
+
+// Reference is a presentation reference as it travels between the agent
+// backend and the browser: the presentation type, the stable id the model may
+// name, the resolved value (absent while unresolved), and its provenance.
+message Reference {
+  string type = 1;
+  string id = 2;
+  google.protobuf.Struct value = 3;
+  Provenance provenance = 4;
+}
+
+// Provenance records where a reference was minted.
+message Provenance {
+  string message_id = 1;
+  string tool_call_id = 2;
+  string widget_id = 3;
+}
+
+// Actor distinguishes verbs performed by a person from verbs the router
+// performed on the agent's behalf.
+enum Actor {
+  ACTOR_UNSPECIFIED = 0;
+  ACTOR_HUMAN = 1;
+  ACTOR_AGENT = 2;
+}
+
+// VerbPerformedCommand is submitted by the browser after the verb router
+// performed (or rejected) a presentation verb.
+message VerbPerformedCommand {
+  string client_seq = 1;
+  Actor actor = 2;
+  google.protobuf.Struct verb = 3;
+  Reference target = 4;
+  string outcome = 5;
+}
+
+// TraceEntry is the backend event and the durable timeline entity recording
+// one performed verb. The sequence number is assigned server-side per session.
+message TraceEntry {
+  uint64 seq = 1;
+  Actor actor = 2;
+  google.protobuf.Struct verb = 3;
+  Reference target = 4;
+  string outcome = 5;
+  google.protobuf.Timestamp at = 6;
+  string client_seq = 7;
+}
+
+// WidgetRequestedEvent is the geppetto-side event a backend tool publishes
+// when the model asks for a widget document; the chat plugin turns it into
+// widget-instance events. It is a named message so the schema policy applies
+// to it as well, even though it does not travel to the browser.
+message WidgetRequestedEvent {
+  string widget_id = 1;
+  string parent_message_id = 2;
+  google.protobuf.Struct document = 3;
+}
