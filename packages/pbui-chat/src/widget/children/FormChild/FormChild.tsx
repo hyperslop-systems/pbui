@@ -28,16 +28,20 @@ export function FormChild({ child }: FormChildProps) {
   const chat = usePbuiChat();
   const pbui = chat.pbui.usePbui();
   const [values, setValues] = useState<Record<string, FieldValue>>({});
+  const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
 
   const set = (name: string, value: FieldValue) => setValues((v) => ({ ...v, [name]: value }));
 
   const missing = child.fields.filter((f) => f.required && !values[f.name]).map((f) => f.label);
   const disabledBecause = submitted
     ? "already submitted"
-    : missing.length > 0
-      ? `needs ${missing.join(", ")}`
-      : undefined;
+    : busy
+      ? "submitting"
+      : missing.length > 0
+        ? `needs ${missing.join(", ")}`
+        : undefined;
 
   const pick = async (field: FormField) => {
     const types = field.accepts && field.accepts.length > 0 ? field.accepts : Object.keys(chat.vocabulary.types);
@@ -47,31 +51,40 @@ export function FormChild({ child }: FormChildProps) {
 
   const submit = async () => {
     if (disabledBecause) return;
-    setSubmitted(true);
-    const plain: Record<string, unknown> = {};
-    const refs: Reference[] = [];
-    for (const field of child.fields) {
-      const value = values[field.name];
-      if (value && typeof value === "object") {
-        refs.push(value);
-        plain[field.name] = value;
-      } else if (field.input === "number" && value) {
-        plain[field.name] = Number(value);
-      } else {
-        plain[field.name] = value ?? null;
+    setBusy(true);
+    setSubmitError(undefined);
+    try {
+      const plain: Record<string, unknown> = {};
+      const refs: Reference[] = [];
+      for (const field of child.fields) {
+        const value = values[field.name];
+        if (value && typeof value === "object") {
+          refs.push(value);
+          plain[field.name] = value;
+        } else if (field.input === "number" && value) {
+          plain[field.name] = Number(value);
+        } else {
+          plain[field.name] = value ?? null;
+        }
       }
+      if (child.verb) {
+        const outcome = await chat.router.perform({ ...(child.verb as { kind: string }), values: plain });
+        if (outcome.startsWith("rejected:")) throw new Error(outcome.slice("rejected:".length));
+      } else {
+        const parts = child.fields.map((field) => {
+          const value = values[field.name];
+          const shown =
+            value && typeof value === "object" ? formatMention(value, chat.labelFor(value)) : String(value ?? "");
+          return `${field.label}: ${shown}`;
+        });
+        await chat.send({ prompt: `${child.submitLabel ?? "Form"} — ${parts.join("; ")}`, refs });
+      }
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
     }
-    if (child.verb) {
-      await chat.router.perform({ ...(child.verb as { kind: string }), values: plain });
-      return;
-    }
-    const parts = child.fields.map((field) => {
-      const value = values[field.name];
-      const shown =
-        value && typeof value === "object" ? formatMention(value, chat.labelFor(value)) : String(value ?? "");
-      return `${field.label}: ${shown}`;
-    });
-    await chat.send({ prompt: `${child.submitLabel ?? "Form"} — ${parts.join("; ")}`, refs });
   };
 
   return (
@@ -96,9 +109,9 @@ export function FormChild({ child }: FormChildProps) {
         <Button type="submit" variant="raised" size="small" disabled={disabledBecause !== undefined} title={disabledBecause}>
           {child.submitLabel ?? "Submit"}
         </Button>
-        {disabledBecause && (
-          <Text size="tiny" tone="faint">
-            {disabledBecause}
+        {(submitError || disabledBecause) && (
+          <Text size="tiny" tone={submitError ? "danger" : "faint"}>
+            {submitError ?? disabledBecause}
           </Text>
         )}
       </div>

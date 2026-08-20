@@ -91,6 +91,7 @@ func NewServer(ctx context.Context, opts Options) (*Server, func() error, error)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "open hydration store")
 	}
+	plugin.SetHydrationStore(store)
 	turnsSpec := serverkit.StoreSpec{Backend: serverkit.StoreBackendMemory}
 	if opts.TurnsDB != "" {
 		turnsSpec = serverkit.StoreSpec{Backend: serverkit.StoreBackendSQLite, Path: opts.TurnsDB}

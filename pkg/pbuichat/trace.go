@@ -28,17 +28,23 @@ const (
 // tool can answer without a store round trip. The hydration store holds the
 // durable copy through the timeline projection.
 type traceStore struct {
-	mu      sync.Mutex
-	keep    int
-	seq     map[sessionstream.SessionId]uint64
-	entries map[sessionstream.SessionId][]*chatv1.TraceEntry
+	mu       sync.Mutex
+	keep     int
+	seq      map[sessionstream.SessionId]uint64
+	entries  map[sessionstream.SessionId][]*chatv1.TraceEntry
+	hydrated map[sessionstream.SessionId]bool
 }
 
 func newTraceStore(keep int) *traceStore {
 	if keep <= 0 {
 		keep = DefaultLimits.TraceKeep
 	}
-	return &traceStore{keep: keep, seq: map[sessionstream.SessionId]uint64{}, entries: map[sessionstream.SessionId][]*chatv1.TraceEntry{}}
+	return &traceStore{
+		keep:     keep,
+		seq:      map[sessionstream.SessionId]uint64{},
+		entries:  map[sessionstream.SessionId][]*chatv1.TraceEntry{},
+		hydrated: map[sessionstream.SessionId]bool{},
+	}
 }
 
 func (s *traceStore) next(sid sessionstream.SessionId) uint64 {
@@ -48,13 +54,38 @@ func (s *traceStore) next(sid sessionstream.SessionId) uint64 {
 	return s.seq[sid]
 }
 
-// seed raises the counter to at least n (used when a session rehydrates).
-func (s *traceStore) seed(sid sessionstream.SessionId, n uint64) {
+// hydrate merges persisted entries into the in-memory trace and raises the
+// allocator before a new sequence can be issued.
+func (s *traceStore) hydrate(sid sessionstream.SessionId, persisted []*chatv1.TraceEntry) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.seq[sid] < n {
-		s.seq[sid] = n
+	bySeq := make(map[uint64]*chatv1.TraceEntry, len(s.entries[sid])+len(persisted))
+	for _, entry := range append(s.entries[sid], persisted...) {
+		if entry == nil {
+			continue
+		}
+		seq := entry.GetSeq()
+		bySeq[seq] = proto.Clone(entry).(*chatv1.TraceEntry)
+		if s.seq[sid] < seq {
+			s.seq[sid] = seq
+		}
 	}
+	list := make([]*chatv1.TraceEntry, 0, len(bySeq))
+	for _, entry := range bySeq {
+		list = append(list, entry)
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].GetSeq() < list[j].GetSeq() })
+	if len(list) > s.keep {
+		list = list[len(list)-s.keep:]
+	}
+	s.entries[sid] = list
+	s.hydrated[sid] = true
+}
+
+func (s *traceStore) isHydrated(sid sessionstream.SessionId) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.hydrated[sid]
 }
 
 func (s *traceStore) add(sid sessionstream.SessionId, entry *chatv1.TraceEntry) {
@@ -88,6 +119,9 @@ func (s *traceStore) list(sid sessionstream.SessionId, sinceSeq uint64, limit in
 // (recording an invalid verb with a rejected outcome rather than dropping it:
 // the trace must reflect what the UI did), and publishes PbuiVerbRecorded.
 func (p *Plugin) HandleVerbPerformed(ctx context.Context, cmd sessionstream.Command, _ *sessionstream.Session, pub sessionstream.EventPublisher) error {
+	if err := p.HydrateTrace(ctx, cmd.SessionId); err != nil {
+		return errors.Wrap(err, "hydrate trace")
+	}
 	payload, ok := cmd.Payload.(*chatv1.VerbPerformedCommand)
 	if !ok || payload == nil {
 		return fmt.Errorf("%s payload must be %T, got %T", CommandVerbPerformed, &chatv1.VerbPerformedCommand{}, cmd.Payload)

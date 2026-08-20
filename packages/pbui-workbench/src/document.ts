@@ -109,10 +109,25 @@ export function parseDocument(json: string | null | undefined): WorkbenchDocumen
   if (!json) return null;
   try {
     const doc = fromJson(WorkbenchDocumentSchema, JSON.parse(json));
-    if (doc.format !== WORKBENCH_FORMAT) return null;
-    if (doc.workspaces.length === 0 || !doc.workspaces[0]?.tree) return null;
+    if (doc.format !== WORKBENCH_FORMAT || doc.schemaVersion !== WORKBENCH_SCHEMA_VERSION) return null;
+    if (doc.workspaces.length === 0) return null;
+    for (const workspace of doc.workspaces) {
+      if (!workspace.tree || !hasUsableTree(workspace.tree, doc)) return null;
+    }
     return doc;
   } catch {
     return null;
   }
+}
+
+function hasUsableTree(node: Node, doc: WorkbenchDocument): boolean {
+  if (!node.id) return false;
+  if (node.body.case === "leaf") {
+    return Boolean(node.body.value.viewId && doc.views[node.body.value.viewId]);
+  }
+  if (node.body.case === "split") {
+    const { a, b } = node.body.value;
+    return Boolean(a && b && hasUsableTree(a, doc) && hasUsableTree(b, doc));
+  }
+  return false;
 }

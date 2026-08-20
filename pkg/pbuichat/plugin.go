@@ -27,9 +27,10 @@ type Options struct {
 // replaces them: HandleRuntimeEvent always reports handled=false.
 type Plugin struct {
 	*Emitter
-	vocab *Vocabulary
-	rules []ProjectionRule
-	trace *traceStore
+	vocab          *Vocabulary
+	rules          []ProjectionRule
+	trace          *traceStore
+	hydrationStore sessionstream.HydrationStore
 	// widgetCount numbers widgets per message for stable ids.
 	widgetCount map[string]int
 }
@@ -59,6 +60,35 @@ func New(opts Options) (*Plugin, error) {
 
 // Vocabulary returns the plugin's vocabulary.
 func (p *Plugin) Vocabulary() *Vocabulary { return p.vocab }
+
+// SetHydrationStore supplies the durable timeline used to restore trace state.
+// It must be called during setup, before commands are handled.
+func (p *Plugin) SetHydrationStore(store sessionstream.HydrationStore) {
+	p.hydrationStore = store
+}
+
+// HydrateTrace restores persisted entries and seeds the sequence allocator.
+func (p *Plugin) HydrateTrace(ctx context.Context, sid sessionstream.SessionId) error {
+	if p.trace.isHydrated(sid) {
+		return nil
+	}
+	if p.hydrationStore == nil {
+		p.trace.hydrate(sid, nil)
+		return nil
+	}
+	view, err := p.hydrationStore.View(ctx, sid)
+	if err != nil {
+		return err
+	}
+	persisted := make([]*chatv1.TraceEntry, 0)
+	for _, entity := range view.List(TimelineEntityTrace) {
+		if entry, ok := entity.Payload.(*chatv1.TraceEntry); ok && entry != nil {
+			persisted = append(persisted, entry)
+		}
+	}
+	p.trace.hydrate(sid, persisted)
+	return nil
+}
 
 // RegisterSchemas registers the trace command, event, UI event and entity.
 func (p *Plugin) RegisterSchemas(reg *sessionstream.SchemaRegistry) error {
@@ -160,17 +190,9 @@ func (p *Plugin) ProjectTimeline(_ context.Context, ev sessionstream.Event, _ *s
 	if !ok || entry == nil {
 		return nil, true, fmt.Errorf("unexpected %s payload %T", EventVerbRecorded, ev.Payload)
 	}
-	// A rehydrated session restarts the in-memory counter; seed it from the
-	// view so new entries never collide with persisted ones.
-	if view != nil {
-		var maxSeq uint64
-		for _, e := range view.List(TimelineEntityTrace) {
-			if t, ok := e.Payload.(*chatv1.TraceEntry); ok && t.GetSeq() > maxSeq {
-				maxSeq = t.GetSeq()
-			}
-		}
-		p.trace.seed(ev.SessionId, maxSeq)
-	}
+	// Command handling hydrates before allocating the sequence. Persistence
+	// only needs to apply this event to the supplied view.
+	_ = view
 	out := []sessionstream.TimelineEntity{{Kind: TimelineEntityTrace, Id: traceEntryID(entry.GetSeq()), Payload: entry}}
 	keep := p.limits.TraceKeep
 	if keep > 0 && entry.GetSeq() > uint64(keep) {

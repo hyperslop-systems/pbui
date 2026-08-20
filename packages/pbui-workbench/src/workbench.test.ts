@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
 import { leaves, SNAP_RATIOS } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "./createWorkbench";
-import { layout, parseDocument, singleTile, split, tile } from "./document";
+import { layout, parseDocument, serializeDocument, singleTile, split, tile } from "./document";
 import { counterApp, demoApps, notesApp } from "./stories/demoApps";
 import { performWorkbenchVerb, workbenchVerbs } from "./verbs";
 
@@ -31,6 +31,20 @@ afterEach(() => {
 });
 
 describe("layout builders", () => {
+  test("parseDocument rejects unsupported or structurally broken documents", () => {
+    const valid = layout(split("row", 0.5, tile("counter"), tile("notes")));
+    const unsupported = JSON.parse(serializeDocument(valid));
+    unsupported.schemaVersion = 999;
+    expect(parseDocument(JSON.stringify(unsupported))).toBeNull();
+
+    const missingView = JSON.parse(serializeDocument(valid));
+    const leaf = missingView.workspaces[0].tree.split.a;
+    delete missingView.views[leaf.leaf.viewId];
+    expect(parseDocument(JSON.stringify(missingView))).toBeNull();
+
+    expect(parseDocument(serializeDocument(valid))).not.toBeNull();
+  });
+
   test("layout() builds a protocol document through the applier", () => {
     const doc = layout(split("row", 0.6, tile("counter"), tile("notes", { documents: { note: "n1" }, title: "my notes" })), { id: "wb-test" });
     expect(doc.format).toBe("pbui.workbench");

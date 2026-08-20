@@ -127,6 +127,7 @@ func (e *Engine) HandleStart(ctx context.Context, cmd sessionstream.Command, _ *
 	messageID := e.nextMessageID()
 	if err := publish(ctx, cmd.SessionId, pub, chatapp.EventUserMessageAccepted, &chatappv1.ChatUserMessageAccepted{
 		MessageId: messageID + "-user", Role: "user", Text: prompt, Content: prompt, Status: "accepted",
+		Attachments: payload.GetAttachments(),
 	}); err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -132,6 +133,23 @@ func TestLowStockProducesRefsAndWidgets(t *testing.T) {
 	}
 }
 
+func TestAttachmentsArePreservedInScriptedMessages(t *testing.T) {
+	server, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/messages", map[string]any{
+		"prompt":      "look at this",
+		"attachments": []any{map[string]any{"attachment_id": "image-1"}},
+	})
+	waitIdle(t, server, sid)
+
+	for _, entity := range snapshot(t, ts, sid).Entities {
+		if entity.Kind == "ChatMessage" && strings.Contains(string(entity.Payload), `"attachmentId":"image-1"`) {
+			return
+		}
+	}
+	t.Fatal("user message did not retain attachment image-1")
+}
+
 func TestVerbTraceIsRecordedAndReadable(t *testing.T) {
 	server, ts := newTestServer(t)
 	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
@@ -170,6 +188,46 @@ func TestVerbTraceIsRecordedAndReadable(t *testing.T) {
 	}
 	if !found {
 		t.Error("trace scenario did not narrate entry #1")
+	}
+}
+
+func TestTraceRehydratesBeforeAllocatingAfterRestart(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "timeline.sqlite")
+	start := func() (*Server, *httptest.Server, func()) {
+		server, cleanup, err := NewServer(context.Background(), Options{TimelineDB: db, ChunkDelay: time.Millisecond})
+		if err != nil {
+			t.Fatalf("new persistent server: %v", err)
+		}
+		mux := http.NewServeMux()
+		server.RegisterRoutes(mux)
+		ts := httptest.NewServer(mux)
+		return server, ts, func() { ts.Close(); _ = cleanup() }
+	}
+
+	_, first, closeFirst := start()
+	sid := postJSON(t, first.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	postJSON(t, first.URL+"/api/chat/sessions/"+sid+"/verbs", map[string]any{
+		"actor": "human", "verb": map[string]any{"kind": "watch"}, "outcome": "performed",
+	})
+	closeFirst()
+
+	server, second, closeSecond := start()
+	defer closeSecond()
+	postJSON(t, second.URL+"/api/chat/sessions/"+sid+"/verbs", map[string]any{
+		"actor": "human", "verb": map[string]any{"kind": "watch"}, "outcome": "performed",
+	})
+	entries := server.Plugin().Trace(sessionstream.SessionId(sid), 0, 10)
+	if len(entries) != 2 || entries[0].GetSeq() != 1 || entries[1].GetSeq() != 2 {
+		t.Fatalf("rehydrated trace sequences: %+v", entries)
+	}
+	var ids []string
+	for _, entity := range snapshot(t, second, sid).Entities {
+		if entity.Kind == pbuichat.TimelineEntityTrace {
+			ids = append(ids, entity.ID)
+		}
+	}
+	if len(ids) != 2 {
+		t.Fatalf("persisted traces were overwritten: %v", ids)
 	}
 }
 

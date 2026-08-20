@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	chatapp "github.com/go-go-golems/pinocchio/pkg/chatapp"
 	"github.com/go-go-golems/pinocchio/pkg/chatapp/frontendtools"
 	toolv1 "github.com/go-go-golems/pinocchio/pkg/chatapp/pb/proto/pinocchio/chatapp/frontendtools/v1"
 	chatappv1 "github.com/go-go-golems/pinocchio/pkg/chatapp/pb/proto/pinocchio/chatapp/v1"
@@ -23,9 +24,10 @@ const maxBodyBytes = 1 << 20
 // submitMessageRequest is the app-owned message body: chat-provider's
 // {prompt, attachments} plus the PBUI additions {refs, focus}.
 type submitMessageRequest struct {
-	Prompt string               `json:"prompt"`
-	Refs   []pbuichat.Reference `json:"refs,omitempty"`
-	Focus  *pbuichat.Focus      `json:"focus,omitempty"`
+	Prompt      string                    `json:"prompt"`
+	Attachments []serverkit.AttachmentRef `json:"attachments,omitempty"`
+	Refs        []pbuichat.Reference      `json:"refs,omitempty"`
+	Focus       *pbuichat.Focus           `json:"focus,omitempty"`
 }
 
 type toolDescriptorRequest struct {
@@ -120,8 +122,21 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	prompt := strings.TrimSpace(in.Prompt)
-	if prompt == "" {
-		writeError(w, http.StatusBadRequest, "missing prompt")
+	attachments := make([]chatapp.Attachment, 0, len(in.Attachments))
+	for _, ref := range in.Attachments {
+		id := strings.TrimSpace(ref.AttachmentID)
+		if id == "" {
+			writeError(w, http.StatusBadRequest, "attachment_id must not be empty")
+			return
+		}
+		attachments = append(attachments, chatapp.Attachment{ID: id, Kind: chatapp.AttachmentKindImage})
+	}
+	if prompt == "" && len(attachments) == 0 {
+		writeError(w, http.StatusBadRequest, "missing prompt or attachments")
+		return
+	}
+	if err := s.plugin.HydrateTrace(r.Context(), sid); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if s.real != nil {
@@ -131,6 +146,7 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		req.Attachments = attachments
 		if err := s.service.SubmitPromptRequest(r.Context(), sid, req); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -139,7 +155,10 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.scripted.SetPendingContext(sid, in.Refs, in.Focus)
-	if err := s.hub.Submit(r.Context(), sid, scripted.CommandStart, &chatappv1.StartInferenceCommand{Prompt: prompt}); err != nil {
+	if err := s.hub.Submit(r.Context(), sid, scripted.CommandStart, &chatappv1.StartInferenceCommand{
+		Prompt:      prompt,
+		Attachments: chatapp.AttachmentsToProto(attachments),
+	}); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
