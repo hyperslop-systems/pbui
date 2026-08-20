@@ -105,3 +105,85 @@ const pbui = createPbui<Values, Environment, Verb>({ registry, defaultEnvironmen
 const { accept, openMenu, perform, environment } = pbui.usePbui();
 const picked = await accept({ types: ["field","txn"], prompt: "pick the field to group by", filter? });
 ```
+
+## Step 2: Map the chat stack (coinvault, pinocchio, react-chat, sessionstream, geppetto, datalab, hyperslop-cli) and write the feature showcase
+
+With PBUI's contract pinned down, the four explorer agents returned their maps and I cross-checked the load-bearing claims against source (`widget.proto`, `frontend_tool.proto`, `widgets/plugin.go`, `features.go`, `widgetRegistry.ts`, `toolRegistry.ts`, `extensions.ts`, `createChatClient.ts`, `service.go`). The picture that emerged: **every layer needed for a PBUI chat agent already exists, and the one thing missing is the object layer itself.** Pinocchio has a generic widget plugin (`WidgetInstanceStarted/Patched/Completed/Removed` → durable `ChatWidgetInstance` with `props: Struct`), react-chat's chat-provider has `defineWidget`/`WidgetOutlet` plus frontend/human tools and a unified live+hydrate adapter API, sessionstream gives snapshot-before-live hydration and the preview/commit pattern, geppetto gives `NewToolFromFunc` and `PublishEventToContext`, and hyperslop-cli/datalab already expose an agent-facing workbench `MutationBatch` API. Coinvault is the cautionary reference: eight bespoke widgets at ~13 edit points each.
+
+I then wrote `design-doc/01-feature-showcase-for-a-pbui-native-chat-agent.md`: 22 features in five groups (objects everywhere; the verb round trip; custom widgets as composed presentations; workbench integration; agent self-knowledge), each with an ASCII mock-up and a "how it works" paragraph naming the existing mechanism it rides on, plus a five-minute demo script and a six-tier build order. Committed as `7a8e536`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Fold the package research into the ticket, then produce the requested feature-suggestion document with ASCII screenshots before the design doc.
+
+**Inferred user intent:** See the space of what "PBUI-native" makes possible (and cheap) before committing to a protocol, so the design doc optimises for the right things.
+
+**Commit (docs):** 7a8e536 — "PBUI-AGENT-1: feature showcase doc with ASCII mock-ups"
+
+### What I did
+- Read the four explorer reports; verified the key files directly: `pinocchio/proto/pinocchio/chatapp/widgets/v1/widget.proto`, `pinocchio/proto/pinocchio/chatapp/frontendtools/v1/frontend_tool.proto`, `pinocchio/pkg/chatapp/widgets/plugin.go`, `pinocchio/pkg/chatapp/features.go`, `pinocchio/pkg/chatapp/service.go` (`PromptRequest{Prompt, Attachments, IdempotencyKey, Runtime, InitialTurn, OnFinalTurn}`), `react-chat/packages/chat-provider/src/{widgets/widgetRegistry.ts,tools/toolRegistry.ts,core/extensions.ts,core/createChatClient.ts}`.
+- Wrote and committed the showcase doc; related six files; ticked task 2; added a changelog entry.
+
+### Why
+- The showcase has to be grounded in mechanisms that exist, or the design doc would be writing a new chat stack instead of an object layer on the existing one.
+
+### What worked
+- The explorer fan-out (4 agents, ~350–435 s each) covered eight repos in parallel without overlap; every "how it works" paragraph in the showcase names a real file.
+
+### What didn't work
+- `cat >> ttmp/...` and `git add` failed once with `no such file or directory` / `fatal: not a git repository` because the shell cwd had drifted to the workspace root between calls; re-ran with `cd /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui` prefixed. (Absolute paths from here on.)
+- One correction to an explorer claim: react-chat's report said "CoinVault is referenced only via a migration guide" — true for react-chat's tree, but coinvault itself depends on `@go-go-golems/chat-provider` v0.2.1 solely for `buildWebSocketURL`; the frontend port is tracked as COINVAULT-044 and is not done.
+
+### What I learned
+- **Transport is WebSocket-only** in pinocchio/react-chat/coinvault (sessionstream `transport/ws`); the PBUI *workbench* streams SSE revision invalidations. Two different push models meet in this product.
+- **Schema policy**: sessionstream-lint / `make schema-vet` rejects a top-level `structpb.Struct` payload; an inner `Struct` field (as in `WidgetInstanceEntity.props`) is allowed. So a generic PBUI payload must be a named proto message wrapping a Struct or typed fields.
+- **`ChatWidgetAction` is a dead letter**: `WidgetActionCommand` exists in `widget.proto` and `CommandWidgetAction = "ChatWidgetAction"` is a constant, but `WidgetPlugin.RegisterSchemas` never registers it and no handler exists. The only browser→backend interaction today is the frontend-tool bridge (`FrontendToolManifestCommand` / `FrontendToolResultCommand`; `Manager.Request` blocks the tool loop until the browser answers).
+- **Human tools** in chat-provider (`mode: 'human'`, `render({input, respond, reject})`) are the natural carrier for "agent asks for an object" (accept mode) and for proposals; they hydrate (`reconcileFrontendToolRequests` re-parks pending calls after reload).
+- **Timeline = UI truth, turns = model-context truth** (pinocchio): the widget entity and the turn block are separate; anything the model must *see again* has to be in a turn block, not only in a timeline entity.
+- `PromptRequest.InitialTurn` lets the app seed the user turn with extra blocks — the cheapest way to give the model typed references (`refs[]`) without changing pinocchio.
+- Coinvault's anti-hallucination rules are worth keeping: the model supplies *ids*, the server resolves values (`projectionlookup`); evidence ids only; closed enums; failures become an error entity rather than silence.
+- sessionstream Pattern 2 (batch-patch-into-delta): carry the accumulated state in every patch so a reconnecting client hydrates the whole widget; previews are live-only; the commit clears the preview.
+- DATADROP-11 already ported the "agent workbench" widgets (TransportBar, SegmentedBar, DiffHunk, Sparkline, ResultLog) into pbui and deliberately did *not* declare agent presentation types ("do not declare a presentation type until something renders it and a descriptor answers for it") — this ticket is where they get declared.
+
+### What was tricky to build
+- Choosing the mock-up domain. Coinvault's (products, SQL, evidence) makes the features concrete; datalab's (drops, fields) proves neutrality. I used coinvault for 20 mock-ups and datalab for one (E3), and kept every mechanism paragraph domain-free.
+- Keeping ASCII boxes legible inside a Markdown code fence while showing nested menus; I used a fixed legend (`<type …>`, `▾`, `[ verb ]`, `┆`) and kept each mock-up under 80 columns.
+
+### What warrants a second pair of eyes
+- Tier ordering in §G: I put "custom widgets" (tier 2) *after* "round trip" (tier 1) because verbs-as-data both ways is the novel claim; a reviewer optimising for replacing coinvault's pipeline quickly might swap them.
+- B4's claim that accept mode can be carried by a human tool with no wire change — true for the request/result path, but the *accept banner must survive reload*; that relies on `reconcileFrontendToolRequests` re-parking the pending call, which I verified exists but did not run.
+
+### What should be done in the future
+- Design doc (Step 3): decide the named proto message for PBUI objects, the refs-on-send contract, the verb schema generation, and where the code lives.
+
+### Code review instructions
+- Read `design-doc/01-feature-showcase-for-a-pbui-native-chat-agent.md` §0 and §G first, then any one feature in full; check its "how it works" against the file it names.
+- Key reference files: `pinocchio/pkg/chatapp/widgets/plugin.go`, `pinocchio/proto/pinocchio/chatapp/widgets/v1/widget.proto`, `react-chat/packages/chat-provider/src/tools/toolRegistry.ts`, `coinvault/internal/webchat/coinvault_projection_feature.go`, `hyperslop-cli/pkg/client/workbenches.go`.
+
+### Technical details
+
+The existing seams the showcase relies on (verified):
+
+```go
+// pinocchio/pkg/chatapp/features.go
+type ChatPlugin interface {
+    RegisterSchemas(reg *sessionstream.SchemaRegistry) error
+    HandleRuntimeEvent(ctx, runtime RuntimeEventContext, event gepevents.Event) (handled bool, err error)
+    ProjectUI(ctx, ev, session, view) ([]sessionstream.UIEvent, bool, error)
+    ProjectTimeline(ctx, ev, session, view) ([]sessionstream.TimelineEntity, bool, error)
+}
+// pinocchio/pkg/chatapp/widgets/plugin.go
+PublishWidgetInstanceStarted(ctx, sid, pub, &widgetv1.WidgetInstanceStarted{InstanceId, WidgetName, ParentMessageId, Status, Props})
+PublishWidgetInstancePatched(ctx, sid, pub, &widgetv1.WidgetInstancePatched{InstanceId, Status, Patch, PatchPaths})
+PublishWidgetInstanceCompleted / PublishWidgetInstanceRemoved
+```
+
+```ts
+// react-chat/packages/chat-provider
+defineWidget(name, Component<WidgetProps{instanceId, widgetName, status, props}>)
+defineChatExtensions({ name, tools, widgets, timelineAdapters, install })
+HumanTool{ mode:'human', parameters: zod, render({toolCallId, input, respond, reject}) }
+ChatProviderConfig{ sendMessageBody?: (req: {prompt, attachments?}) => body }
+```
