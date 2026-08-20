@@ -36,6 +36,27 @@ const types: Record<PresentationType, TypeSpec> = {
     verbs: ["inspect", "watch", "askAgent"],
     example: "[[order:88213|order 88213]]",
   },
+  tile: {
+    doc: "one pane of the user's screen, showing one application",
+    idHint: "placementId, from workbench_describe",
+    tone: TONES.tile,
+    verbs: ["tile.split", "tile.close", "tile.replace", "tile.link", "view.setTitle", "view.goTo", "askAgent"],
+    example: "[[tile:n-7|inventory]]",
+  },
+  workspace: {
+    doc: "a named tree of tiles; the user sees one at a time",
+    idHint: "workspaceId, from workbench_describe",
+    tone: TONES.workspace,
+    verbs: ["workspace.select", "workspace.rename", "workspace.delete", "workspace.clone", "askAgent"],
+    example: "[[workspace:ws-2|Gold desk]]",
+  },
+  app: {
+    doc: "an application that can be placed in a tile",
+    idHint: "appId, from workbench_describe",
+    tone: TONES.app,
+    verbs: ["app.place", "askAgent"],
+    example: "[[app:inventory|inventory]]",
+  },
   field: {
     doc: "a column of a table the agent produced",
     idHint: "<tableId>.<column>",

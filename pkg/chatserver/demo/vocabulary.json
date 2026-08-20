@@ -48,6 +48,44 @@
       ],
       "example": "[[order:88213|order 88213]]"
     },
+    "tile": {
+      "doc": "one pane of the user's screen, showing one application",
+      "idHint": "placementId, from workbench_describe",
+      "tone": "var(--pbui-selected)",
+      "verbs": [
+        "tile.split",
+        "tile.close",
+        "tile.replace",
+        "tile.link",
+        "view.setTitle",
+        "view.goTo",
+        "askAgent"
+      ],
+      "example": "[[tile:n-7|inventory]]"
+    },
+    "workspace": {
+      "doc": "a named tree of tiles; the user sees one at a time",
+      "idHint": "workspaceId, from workbench_describe",
+      "tone": "var(--pbui-tone-neutral)",
+      "verbs": [
+        "workspace.select",
+        "workspace.rename",
+        "workspace.delete",
+        "workspace.clone",
+        "askAgent"
+      ],
+      "example": "[[workspace:ws-2|Gold desk]]"
+    },
+    "app": {
+      "doc": "an application that can be placed in a tile",
+      "idHint": "appId, from workbench_describe",
+      "tone": "var(--pbui-pane-alt)",
+      "verbs": [
+        "app.place",
+        "askAgent"
+      ],
+      "example": "[[app:inventory|inventory]]"
+    },
     "field": {
       "doc": "a column of a table the agent produced",
       "idHint": "<tableId>.<column>",
@@ -199,6 +237,149 @@
         "productId": "string"
       },
       "danger": true
+    },
+    "tile.split": {
+      "doc": "open a new pane beside a tile",
+      "fields": {
+        "placementId": "string",
+        "direction": "string",
+        "appId?": "string"
+      }
+    },
+    "tile.close": {
+      "doc": "close a tile",
+      "fields": {
+        "placementId": "string"
+      },
+      "danger": true
+    },
+    "tile.swap": {
+      "doc": "exchange what two tiles show",
+      "fields": {
+        "a": "string",
+        "b": "string"
+      }
+    },
+    "tile.dock": {
+      "doc": "move a tile to an edge of another",
+      "fields": {
+        "source": "string",
+        "target": "string",
+        "zone": "string"
+      }
+    },
+    "tile.activate": {
+      "doc": "make a tile the keyboard target",
+      "fields": {
+        "placementId": "string"
+      }
+    },
+    "tile.replace": {
+      "doc": "show a different application in a tile",
+      "fields": {
+        "placementId": "string",
+        "appId": "string",
+        "documents?": "object"
+      },
+      "danger": true
+    },
+    "tile.link": {
+      "doc": "show an existing view in a tile too",
+      "fields": {
+        "placementId": "string",
+        "viewId": "string"
+      }
+    },
+    "split.resize": {
+      "doc": "move a divider",
+      "fields": {
+        "splitId": "string",
+        "ratio": "number"
+      }
+    },
+    "app.place": {
+      "doc": "open an application beside the active tile",
+      "fields": {
+        "appId": "string",
+        "from?": "string"
+      }
+    },
+    "view.setTitle": {
+      "doc": "name a tile, or clear its name",
+      "fields": {
+        "viewId": "string",
+        "title": "string"
+      }
+    },
+    "view.open": {
+      "doc": "open an application on specific documents in a new tile",
+      "fields": {
+        "appId": "string",
+        "documents": "object",
+        "near?": "string",
+        "title?": "string"
+      }
+    },
+    "view.rebind": {
+      "doc": "point a tile at different documents",
+      "fields": {
+        "viewId": "string",
+        "documents": "object"
+      }
+    },
+    "view.goTo": {
+      "doc": "go to the tile showing a view",
+      "fields": {
+        "viewId": "string"
+      }
+    },
+    "workspace.select": {
+      "doc": "show a different workspace",
+      "fields": {
+        "workspaceId": "string"
+      }
+    },
+    "workspace.create": {
+      "doc": "create a workspace of tiles",
+      "fields": {
+        "name": "string",
+        "spec?": "object",
+        "workspaceId?": "string",
+        "select?": "boolean"
+      }
+    },
+    "workspace.rename": {
+      "doc": "rename a workspace",
+      "fields": {
+        "workspaceId": "string",
+        "name": "string"
+      }
+    },
+    "workspace.delete": {
+      "doc": "delete a workspace and its tiles",
+      "fields": {
+        "workspaceId": "string"
+      },
+      "danger": true
+    },
+    "workspace.clone": {
+      "doc": "duplicate a workspace",
+      "fields": {
+        "workspaceId": "string",
+        "name?": "string",
+        "newWorkspaceId?": "string",
+        "select?": "boolean"
+      }
+    },
+    "launcher.open": {
+      "doc": "open the launcher",
+      "fields": {
+        "placementId?": "string"
+      }
+    },
+    "launcher.close": {
+      "doc": "close the launcher",
+      "fields": {}
     }
   },
   "widget": {

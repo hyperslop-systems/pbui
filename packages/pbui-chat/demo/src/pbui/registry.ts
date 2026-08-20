@@ -2,6 +2,7 @@ import {
   createPresentationRegistry,
   type PresentationDescriptor as GenericPresentationDescriptor,
 } from "@hyperslop-systems/pbui";
+import { appDescriptor } from "./descriptors/app";
 import { categoryDescriptor } from "./descriptors/category";
 import { fieldDescriptor } from "./descriptors/field";
 import { metalDescriptor } from "./descriptors/metal";
@@ -10,10 +11,12 @@ import { productDescriptor } from "./descriptors/product";
 import { proposalDescriptor } from "./descriptors/proposal";
 import { rowDescriptor } from "./descriptors/row";
 import { sourceDescriptor } from "./descriptors/source";
+import { tileDescriptor } from "./descriptors/tile";
 import { toolDescriptor } from "./descriptors/tool";
 import { traceEntryDescriptor } from "./descriptors/traceEntry";
 import { unresolvedDescriptor } from "./descriptors/unresolved";
 import { widgetDescriptor } from "./descriptors/widget";
+import { workspaceDescriptor } from "./descriptors/workspace";
 import type { Environment, PresentationType, Values } from "./types";
 import type { Action, Verb } from "./verbs";
 
@@ -50,6 +53,9 @@ export const registry = createPresentationRegistry<Values, Environment, Verb>({
   category: bind(categoryDescriptor),
   metal: bind(metalDescriptor),
   order: bind(orderDescriptor),
+  tile: bind(tileDescriptor),
+  workspace: bind(workspaceDescriptor),
+  app: bind(appDescriptor),
   field: bind(fieldDescriptor),
   row: bind(rowDescriptor),
   source: bind(sourceDescriptor),

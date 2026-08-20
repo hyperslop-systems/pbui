@@ -320,24 +320,31 @@ func indexOf(s, sub string) int {
 	return -1
 }
 
-// withWorkbenchTypes returns the demo vocabulary plus the tile/workspace types
-// PBUI-AGENT-2 adds, so the prompt's workbench section can be exercised before
-// the TypeScript side declares them.
-func withWorkbenchTypes(v *Vocabulary) *Vocabulary {
+// withoutTypes returns the vocabulary with some types removed, so the prompt's
+// gating can be exercised from both sides. The demo product declares tile and
+// workspace, which is why the NEGATIVE case is the one that needs building.
+func withoutTypes(v *Vocabulary, drop ...string) *Vocabulary {
+	gone := map[string]bool{}
+	for _, name := range drop {
+		gone[name] = true
+	}
 	copied := *v
 	copied.Types = map[string]TypeSpec{}
 	for name, spec := range v.Types {
+		if gone[name] {
+			continue
+		}
 		copied.Types[name] = spec
 	}
-	copied.Types["tile"] = TypeSpec{Doc: "one pane of the workbench", IDHint: "placement id"}
-	copied.Types["workspace"] = TypeSpec{Doc: "a named tree of tiles", IDHint: "workspace id"}
 	return &copied
 }
 
 func TestWorkbenchPromptSectionIsGatedOnTheTileType(t *testing.T) {
 	// A product with a fixed layout has no workbench tools in its manifest;
 	// telling its model about workspaces would invite calls that go nowhere.
-	plain := SystemPromptSection(loadDemoVocabulary(t))
+	// `app` goes too: its idHint names workbench_describe, which is where an
+	// agent learns application ids — true, and not the workspace section.
+	plain := SystemPromptSection(withoutTypes(loadDemoVocabulary(t), "tile", "workspace", "app"))
 	if contains(plain, "## The workspace") {
 		t.Error("a vocabulary without a tile type must not get the workspace section")
 	}
@@ -347,7 +354,7 @@ func TestWorkbenchPromptSectionIsGatedOnTheTileType(t *testing.T) {
 		}
 	}
 
-	full := SystemPromptSection(withWorkbenchTypes(loadDemoVocabulary(t)))
+	full := SystemPromptSection(loadDemoVocabulary(t))
 	for _, want := range []string{
 		"## The workspace",
 		ToolWorkbenchDescribe,
@@ -371,14 +378,7 @@ func TestWorkbenchPromptSectionIsGatedOnTheTileType(t *testing.T) {
 }
 
 func TestWorkbenchPromptOmitsMentionsWithoutTheWorkspaceType(t *testing.T) {
-	v := loadDemoVocabulary(t)
-	copied := *v
-	copied.Types = map[string]TypeSpec{}
-	for name, spec := range v.Types {
-		copied.Types[name] = spec
-	}
-	copied.Types["tile"] = TypeSpec{Doc: "one pane", IDHint: "placement id"}
-	s := SystemPromptSection(&copied)
+	s := SystemPromptSection(withoutTypes(loadDemoVocabulary(t), "workspace"))
 	if !contains(s, "## The workspace") {
 		t.Fatal("tile type alone should still produce the section")
 	}

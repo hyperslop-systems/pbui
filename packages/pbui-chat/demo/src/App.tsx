@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./App.module.css";
 import { chat } from "./chat";
 import { TONES, type Environment, type PresentationType } from "./pbui/types";
+import { tileRefOf } from "@hyperslop-systems/pbui-workbench";
 import { resetLayout, workbench } from "./workbench";
 
 /*
@@ -82,9 +83,14 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
 }
 
 /**
- * The tiles, and the launcher behind ⌘K. The title slot is plain text for
- * now; the follow-up is a `<tile>` presentation in the vocabulary, so the
- * object menu offers the same split/close/rename verbs the bar buttons do.
+ * The tiles, and the launcher behind ⌘K.
+ *
+ * Each tile's title IS a `<tile>` presentation, so right-clicking the bar
+ * offers the same split / show-something-else / rename / close verbs the bar
+ * buttons perform — two doors, one set of verbs — with `disabledBecause`
+ * recomputed from the tile's state on every render. The verbs come from
+ * pbui-workbench's `createTileDescriptor`, so every product in the family
+ * words them identically.
  */
 function Workbench() {
   const pbui = chat.pbui.usePbui();
@@ -98,11 +104,26 @@ function Workbench() {
           and switch to it; without this the user could not switch back. */}
       <workbench.WorkspaceStrip addLabel="workspace" />
       <workbench.Surface
-        renderTitle={(_view, placement) => (
-          <Text size="tiny" strong title={placement.placementCount > 1 ? `shown in ${placement.placementCount} tiles` : undefined}>
-            {placement.label}
-          </Text>
-        )}
+        renderTitle={(_view, placement) => {
+          const tile = tileRefOf(workbench, placement.placementId);
+          if (!tile) return <Text size="tiny" strong>{placement.label}</Text>;
+          return (
+            <chat.pbui.Presentation
+              reference={{ type: "tile", value: { type: "tile", id: tile.placementId, value: tile } }}
+              doc={`tile showing ${tile.title}`}
+              inComposite
+            >
+              <Text size="tiny" strong>
+                {tile.title}
+              </Text>
+              {tile.placementCount > 1 ? (
+                <Text size="tiny" tone="faint">
+                  {` ×${tile.placementCount}`}
+                </Text>
+              ) : null}
+            </chat.pbui.Presentation>
+          );
+        }}
       />
       <workbench.Launcher title="Place an application" shortcutContext={shortcutContext} />
     </>

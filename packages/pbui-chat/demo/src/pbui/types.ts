@@ -49,6 +49,36 @@ export type OrderValue = {
   items?: number;
 };
 
+/**
+ * A tile, as an object. Mirrors pbui-workbench's `TileRef` minus its
+ * `placementId`, which IS the reference id — the same split every other type
+ * here makes between identity and resolved value.
+ */
+export type TileValue = {
+  viewId: string;
+  appId: string;
+  title: string;
+  /** Set only when a human named this tile, so Rename can offer to clear it. */
+  customTitle?: string;
+  placementCount: number;
+  canClose: boolean;
+  duplicable: boolean;
+  workspaceId?: string;
+};
+
+export type WorkspaceValue = {
+  name: string;
+  tileCount: number;
+  active: boolean;
+};
+
+export type AppValue = {
+  title: string;
+  singleton: boolean;
+  docBound: boolean;
+  blurb?: string;
+};
+
 export type FieldValue = {
   tableId: string;
   name: string;
@@ -66,6 +96,9 @@ export interface Values {
   category: Reference<CategoryValue>;
   metal: Reference<MetalValue>;
   order: Reference<OrderValue>;
+  tile: Reference<TileValue>;
+  workspace: Reference<WorkspaceValue>;
+  app: Reference<AppValue>;
   field: Reference<FieldValue>;
   row: Reference<RowValue>;
   source: Reference<SourceValue>;
@@ -93,6 +126,9 @@ export const TONES: Record<PresentationType, string> = {
   category: "var(--pbui-tone-category)",
   metal: "var(--pbui-tone-metal)",
   order: "var(--pbui-tone-order)",
+  tile: "var(--pbui-selected)",
+  workspace: "var(--pbui-tone-neutral)",
+  app: "var(--pbui-pane-alt)",
   field: "var(--pbui-tone-field)",
   row: "var(--pbui-tone-row)",
   source: "var(--pbui-tone-source)",

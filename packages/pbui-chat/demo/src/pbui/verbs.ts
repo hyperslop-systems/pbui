@@ -1,4 +1,5 @@
 import { ReferenceSchema, type VerbDocs } from "@hyperslop-systems/pbui-chat";
+import { describeWorkbenchVerb, type WorkbenchVerb } from "@hyperslop-systems/pbui-workbench";
 import { z } from "zod";
 
 /**
@@ -18,6 +19,35 @@ export const VerbSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("rerunTool"), toolCallId: z.string(), args: z.record(z.string(), z.unknown()).optional() }),
   z.object({ kind: z.literal("resolveProposal"), id: z.string(), decision: z.enum(["approve", "reject"]) }),
   z.object({ kind: z.literal("reorder"), productId: z.string() }),
+
+  /*
+   * The workbench verbs, spelled EXACTLY as `@hyperslop-systems/pbui-workbench`
+   * spells them. The agent's tools emit these objects unchanged and the local
+   * handler hands them to `performWorkbenchVerb`, so one action has one name
+   * across the tool schema, the vocabulary, the object menu and the trace. A
+   * parallel set of product names would mean four places to keep in step and
+   * a translation layer that exists only to rename things.
+   */
+  z.object({ kind: z.literal("tile.split"), placementId: z.string(), direction: z.enum(["row", "col"]), appId: z.string().optional() }),
+  z.object({ kind: z.literal("tile.close"), placementId: z.string() }),
+  z.object({ kind: z.literal("tile.swap"), a: z.string(), b: z.string() }),
+  z.object({ kind: z.literal("tile.dock"), source: z.string(), target: z.string(), zone: z.enum(["left", "right", "top", "bottom"]) }),
+  z.object({ kind: z.literal("tile.activate"), placementId: z.string() }),
+  z.object({ kind: z.literal("tile.replace"), placementId: z.string(), appId: z.string(), documents: z.record(z.string(), z.string()).optional() }),
+  z.object({ kind: z.literal("tile.link"), placementId: z.string(), viewId: z.string() }),
+  z.object({ kind: z.literal("split.resize"), splitId: z.string(), ratio: z.number() }),
+  z.object({ kind: z.literal("app.place"), appId: z.string(), from: z.string().optional() }),
+  z.object({ kind: z.literal("view.setTitle"), viewId: z.string(), title: z.string() }),
+  z.object({ kind: z.literal("view.open"), appId: z.string(), documents: z.record(z.string(), z.string()), near: z.string().optional(), title: z.string().optional() }),
+  z.object({ kind: z.literal("view.rebind"), viewId: z.string(), documents: z.record(z.string(), z.string()) }),
+  z.object({ kind: z.literal("view.goTo"), viewId: z.string() }),
+  z.object({ kind: z.literal("workspace.select"), workspaceId: z.string() }),
+  z.object({ kind: z.literal("workspace.create"), name: z.string(), spec: z.record(z.string(), z.unknown()).optional(), workspaceId: z.string().optional(), select: z.boolean().optional() }),
+  z.object({ kind: z.literal("workspace.rename"), workspaceId: z.string(), name: z.string() }),
+  z.object({ kind: z.literal("workspace.delete"), workspaceId: z.string() }),
+  z.object({ kind: z.literal("workspace.clone"), workspaceId: z.string(), name: z.string().optional(), newWorkspaceId: z.string().optional(), select: z.boolean().optional() }),
+  z.object({ kind: z.literal("launcher.open"), placementId: z.string().optional() }),
+  z.object({ kind: z.literal("launcher.close") }),
 ]);
 
 export type Verb = z.infer<typeof VerbSchema>;
@@ -35,6 +65,27 @@ export const VERB_DOCS: VerbDocs = {
   rerunTool: { doc: "ask the agent to run the tool again" },
   resolveProposal: { doc: "approve or reject a proposal", danger: true },
   reorder: { doc: "draft a reorder for the product", danger: true },
+
+  "tile.split": { doc: "open a new pane beside a tile" },
+  "tile.close": { doc: "close a tile", danger: true },
+  "tile.swap": { doc: "exchange what two tiles show" },
+  "tile.dock": { doc: "move a tile to an edge of another" },
+  "tile.activate": { doc: "make a tile the keyboard target" },
+  "tile.replace": { doc: "show a different application in a tile", danger: true },
+  "tile.link": { doc: "show an existing view in a tile too" },
+  "split.resize": { doc: "move a divider" },
+  "app.place": { doc: "open an application beside the active tile" },
+  "view.setTitle": { doc: "name a tile, or clear its name" },
+  "view.open": { doc: "open an application on specific documents in a new tile" },
+  "view.rebind": { doc: "point a tile at different documents" },
+  "view.goTo": { doc: "go to the tile showing a view" },
+  "workspace.select": { doc: "show a different workspace" },
+  "workspace.create": { doc: "create a workspace of tiles" },
+  "workspace.rename": { doc: "rename a workspace" },
+  "workspace.delete": { doc: "delete a workspace and its tiles", danger: true },
+  "workspace.clone": { doc: "duplicate a workspace" },
+  "launcher.open": { doc: "open the launcher" },
+  "launcher.close": { doc: "close the launcher" },
 };
 
 export interface Action {
@@ -68,5 +119,9 @@ export function describeVerb(verb: Verb): string {
       return `${verb.decision} proposal ${verb.id}`;
     case "reorder":
       return `reorder product ${verb.productId}`;
+    default:
+      // The workbench verbs describe themselves; pbui-workbench owns the
+      // wording so the object menu, the chrome buttons and the trace agree.
+      return describeWorkbenchVerb(verb as unknown as WorkbenchVerb);
   }
 }

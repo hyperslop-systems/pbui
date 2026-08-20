@@ -1,4 +1,5 @@
 import { createPbuiChat, createVerbRouter, type VerbFamily } from "@hyperslop-systems/pbui-chat";
+import { isWorkbenchVerb, performWorkbenchVerb, type WorkbenchVerb } from "@hyperslop-systems/pbui-workbench";
 import { pbui } from "./pbui/runtime";
 import { registry } from "./pbui/registry";
 import type { Environment, Values } from "./pbui/types";
@@ -20,12 +21,48 @@ const FAMILIES: Record<VerbKind, VerbFamily> = {
   rerunTool: "agent",
   reorder: "agent",
   resolveProposal: "tool",
+
+  /*
+   * Every workbench verb is LOCAL: it changes this browser's layout and
+   * nothing else. Routing them through the router rather than calling
+   * `wb.verbs.*` directly is what puts an agent's rearrangement in the trace
+   * beside a human's, with the same validation and the same rejection
+   * strings — the price is this one indirection.
+   */
+  "tile.split": "local",
+  "tile.close": "local",
+  "tile.swap": "local",
+  "tile.dock": "local",
+  "tile.activate": "local",
+  "tile.replace": "local",
+  "tile.link": "local",
+  "split.resize": "local",
+  "app.place": "local",
+  "view.setTitle": "local",
+  "view.open": "local",
+  "view.rebind": "local",
+  "view.goTo": "local",
+  "workspace.select": "local",
+  "workspace.create": "local",
+  "workspace.rename": "local",
+  "workspace.delete": "local",
+  "workspace.clone": "local",
+  "launcher.open": "local",
+  "launcher.close": "local",
 };
 
 export const router = createVerbRouter<Verb>({
   families: (verb) => FAMILIES[verb.kind],
 
   local: (verb, ctx) => {
+    // The workbench owns its own verbs; `performWorkbenchVerb` is the single
+    // dispatcher, so a verb added to the package needs no case here.
+    if (isWorkbenchVerb(verb)) {
+      const wb = chat.workbench();
+      if (!wb) throw new Error("no workbench is attached");
+      performWorkbenchVerb(wb.verbs, verb as unknown as WorkbenchVerb);
+      return;
+    }
     switch (verb.kind) {
       case "inspect":
         ctx.store.inspect(verb.ref, `<${verb.ref.type}> ${ctx.labelFor(verb.ref)}`);
