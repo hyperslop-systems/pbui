@@ -6,3 +6,18 @@ export { AcceptStatus } from "./AcceptStatus";
 export type { AcceptStatusProps } from "./AcceptStatus";
 export { ProposalCard } from "./ProposalCard";
 export type { ProposalCardProps, ProposalDecision } from "./ProposalCard";
+export {
+  createWorkbenchTools,
+  LayoutSpecSchema,
+  DEFAULT_LIMITS,
+  DEFAULT_POLICY,
+  WORKBENCH_VERB_KINDS,
+} from "./workbenchTools";
+export type {
+  PolicyDecision,
+  UndoEntry,
+  WorkbenchPolicy,
+  WorkbenchToolLimits,
+  WorkbenchTools,
+  WorkbenchToolsOptions,
+} from "./workbenchTools";
