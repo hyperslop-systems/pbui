@@ -47,6 +47,10 @@ export function createDemoApps(): AppDescriptor[] {
       tone: "var(--pbui-tone-product)",
       singleton: false,
       docBound: true,
+      // Declared so a caller can refuse `open a sku tile` with nothing bound
+      // BEFORE placing it; an unbound doc-bound tile opens empty, which reads
+      // as a broken tile rather than as a mistake in the request.
+      bindings: [SKU_BINDING],
       // `false` because a split must LINK a second placement of this view
       // rather than mint a second detail tile for the same SKU — the same
       // rule `openView` enforces when the bindings are identical.
@@ -71,6 +75,7 @@ export function createDemoApps(): AppDescriptor[] {
       tone: "var(--pbui-tone-neutral)",
       singleton: false,
       docBound: true,
+      bindings: [NOTE_BINDING],
       duplicable: false,
       group: SHOP_GROUP,
       blurb: "a scratchpad kept in the workbench document itself",
