@@ -15,6 +15,16 @@ RelatedFiles:
       Note: Playbook for new PBUI-family apps; section 6 states the presentation protocol rules
     - Path: repo://packages/datalab-ui/src/pbui/verbs.ts
       Note: Production example of verbs-as-data vocabulary
+    - Path: repo://pkg/chatserver/scripted/scenarios.go
+      Note: Demo scenarios (mentions, streaming table, accept/propose) (commit dfe42fa)
+    - Path: repo://pkg/chatserver/server.go
+      Note: 'Server wiring: chatapp + sessionstream + pbuichat + scripted engine (commit dfe42fa)'
+    - Path: repo://pkg/pbuichat/emitter.go
+      Note: Emission contract shared by the real runtime and the scripted engine (commit dfe42fa)
+    - Path: repo://pkg/pbuichat/plugin.go
+      Note: chatapp.ChatPlugin mapping geppetto events to refs/widgets and trace projections (commit dfe42fa)
+    - Path: repo://plugins/devctl_pbui_chat.py
+      Note: devctl plugin with dev/dev-real/prod profiles (commit dfe42fa)
     - Path: repo://proto/hyperslop/pbui/workbench/v1/workbench.proto
       Note: Workbench document + mutation protocol an agent could drive
     - Path: repo://src/presentation/createPbui.tsx
@@ -27,6 +37,7 @@ LastUpdated: 2026-08-20T10:54:07.856409214-04:00
 WhatFor: Record what was investigated, decided, and left open while designing the PBUI-native chat agent, so a second engineer can resume without re-deriving it.
 WhenToUse: Read before resuming work on PBUI-AGENT-1 or reviewing its design docs.
 ---
+
 
 
 # Diary
@@ -256,3 +267,94 @@ Commits on `task/add-pbui-agent` in the pbui worktree for this ticket:
 | `7944c1a` | design-doc/02 design, index overview, tier-0 tasks |
 
 Nothing outside `pbui/ttmp/2026/08/20/PBUI-AGENT-1--…/` was modified; no code was written in any repo.
+
+## Step 4: Implement the Go side in pbui — proto, `pbuichat` plugin, `chatserver`, scripted engine, SPA embed, `pbui-chat` command, devctl
+
+The user asked for the design to be implemented inside pbui, with a Go server backend in pbui too, plus devctl profiles for dev and prod. This step is the Go half. It follows design §5/§6 closely with two deliberate simplifications recorded below: the vocabulary validator is structural (known types, verb kinds and required fields with coarse types, widget-document shape and limits) rather than a JSON-Schema engine, and user refs reach the real runtime as a `pbui-refs` fenced section appended to the prompt rather than as a separate turn block. Everything compiles under `GOWORK=off` (the Makefile/CI mode) against the published versions pinned in `go.mod` — pinocchio v0.11.12, sessionstream v0.1.2, geppetto v0.13.10, glazed v1.4.3 — which match the local worktree HEADs.
+
+The scripted engine is the piece that makes the product demoable without a model: it answers eight intents (help, low stock, health dashboard, reorder with accept + proposal, compare, form, error, top sellers, trace) through exactly the emission code the real runtime uses (`Emitter.EmitRefsForText`, `EmitWidget`, `EmitStreamingTable`) and the frontend-tool bridge (`Manager.Request` for `pbui_accept`/`pbui_propose`). Five end-to-end tests drive the HTTP surface and assert on the hydrated snapshot.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Implement it, as part of pbui, with a go server backend in pbui as well .
+ 
+   write a detailed project report for the obsidian vault as a deep dive technical analysis blog post using a textbook
+  writing style (no analogies, see skill).
+   Commit and push the bsidian vault when done (go-go-parc vault)."
+
+**User prompt (verbatim, mid-turn):** "add a devctl setup to launch it (dev and prod versions) in pbui as well. (see skill)"
+
+**Assistant interpretation:** Build the design for real inside the pbui repo: Go plugin + Go HTTP server + TS package + demo SPA embedded in the binary, with devctl dev/prod profiles; then write a textbook-style technical report into the go-go-parc Obsidian vault and push it.
+
+**Inferred user intent:** A working, runnable PBUI chat agent in pbui (not just a design), reproducible via devctl, and a durable write-up.
+
+### What I did
+- `proto/hyperslop/pbui/chat/v1/chat.proto` (`Reference`, `Provenance`, `Actor`, `VerbPerformedCommand`, `TraceEntry`, `WidgetRequestedEvent`); split buf templates (`buf.gen.yaml` for workbench, `buf.gen.chat.yaml` for chat) invoked with `--path`; Go gen in `gen/go/hyperslop/pbui/chat/v1`, TS gen in `packages/pbui-chat/src/generated`.
+- `pkg/pbuichat`: `vocabulary.go` (parse/validate `vocabulary.json`, `ValidateVerb`, `ValidateReference`), `mentions.go` (`[[type:id|label]]` scanner), `widgetdoc.go` (closed child-kind set, limits, `ValidateWidgetDocument`, `NewTableDocument`), `reference.go`, `resolver.go` (`Resolver`, `ResolverMux`, `StaticResolver`), `emitter.go` (`pbui.refs` / `pbui.widget` / `pbui.error` through pinocchio's widget events), `plugin.go` (`chatapp.ChatPlugin`: runtime events → refs/widgets; `RowsToTable` projection; trace projections), `trace.go` (`PbuiVerbPerformed` command handler with per-session `seq`, in-memory ring + timeline entity), `events.go` (geppetto event `pbui-widget-requested`), `tools.go` (`pbui_widget`, `pbui_trace`, `pbui_describe_types` via `NewToolFromFunc`), `prompt.go` (`SystemPromptSection`, `RenderRefsSuffix`), 7 unit tests.
+- `pkg/chatserver`: `server.go` (schema registry, hydration/turn stores via `serverkit.StoreSpec`, ws transport, chatapp engine + plugins, hub installs), `handlers.go` (Go 1.22 patterns: sessions, snapshot, messages with `{prompt, refs, focus}`, stop, tools manifest/results, `/verbs`, `/api/pbui/vocabulary`, `/api/chat/ws`), `real_runtime.go` (pinocchio `profilebootstrap` → engine wrapped with a system-prompt middleware, PBUI tools + browser tools in one registry, `BridgeExecutor`), `demo/` (vocabulary.json + 8-SKU world + resolvers), `scripted/` (engine + scenarios), `server_test.go` (5 e2e tests).
+- `pkg/chatui`: `embed.go` (`//go:build embed`, `all:embed`), `embed_none.go` (on-disk), `generate.go` (behind `generate_ui` tag so CI's `go generate ./...` needs no node), `spa.go` (`GET /{$}`, `/ui/{path...}`, `/static/{path...}` with no fallback) + test.
+- `cmd/pbui-chat`: glazed `serve` (host/port/timeline-db/turns-db/chunk-delay/real-runtime/system-prompt + pinocchio profile section) and `prompt` (prints the generated section).
+- `.devctl.yaml` profiles `dev`, `dev-real`, `prod`; `plugins/devctl_pbui_chat.py` (config.mutate, validate.run, build.run for prod, launch.plan, commands ui-build/vocab/prompt). Makefile: `chat-ui`, `chat-build`, `chat-serve`, `chat-test`; `protocol-generate/check` cover both templates. `.gitignore`: `pkg/chatui/embed/*` except `.gitkeep`, `bin/`, `var/`.
+- `go work use …` at the workspace root (go.work now says `go 1.26.6`), `GOWORK=off go mod tidy`, logcopter regeneration for the new packages.
+
+### Why
+- Riding pinocchio's widget entity for refs and widgets keeps one hydration path and satisfies the schema policy; only the trace needed a new wire type.
+- A scripted engine lets the browser, CI and the devctl `prod` profile work without credentials, and is the fixture source for the TS stories.
+- The build-tag guard on `go generate` keeps the Go CI job node-free while still offering one command to build the UI.
+
+### What worked
+- `pbuichat` tests passed on the first run; the five `chatserver` e2e tests (refs + widgets after a run, trace recording incl. rejected verbs, accept → propose round trip via `/tools/manifest` + `/tools/results`, error widget, vocabulary endpoint) passed on the first run.
+- `golangci-lint run` → 0 issues after fixing two `predeclared` names (`max`, `real`); `glazed-lint` and `logcopter-check` clean.
+
+### What didn't work
+- `pnpm install --frozen-lockfile` at the pbui root failed: `ERR_PNPM_FETCH_403 GET https://npm.pkg.github.com/download/@hyperslop-systems/plot/0.2.0/… Forbidden` (datalab-ui's dependency; the local token has no access). Workaround: `pnpm install --no-frozen-lockfile --filter '!@hyperslop-systems/datalab-ui'` — succeeded and left the lockfile unchanged. Recorded in the Makefile comment and the devctl validate warning.
+- `go build ./pbui/...` in workspace mode failed with `module sessionstream listed in go.work file requires go >= 1.26.6, but go.work lists go 1.25`; fixed with `go work use` (bumps go.work to 1.26.6).
+- First `go vet` after adding deps: dozens of `missing go.sum entry` lines → `GOWORK=off go mod tidy` (twice: once for the plugin, once for the command's glazed logging imports).
+- `buf generate` with one template failed: `plugin packages/workbench-protocol/node_modules/.bin/protoc-gen-es: … no such file` (no node_modules yet) and buf v2 has no per-plugin path filter, hence two templates + `--path`.
+- Two lefthook pre-commit rejections: first `golangci-lint fmt --diff` on a one-line test helper; second the full `go test ./...` ran while the server package was half-written (`no required module provides package …/chatserver/scripted`) plus two typecheck errors: `serverkit.EncodeSnapshotResponse` takes a `func([]SnapshotEntity) string`, and `middleware.NewEngineWithMiddleware` does not exist (geppetto's `newEngineWithMiddlewares` is unexported in `toolloop/enginebuilder`) — restated as a 10-line `withMiddlewares` using `middleware.Chain`.
+- `profilebootstrap.ProfileSettingsSlug` does not exist; it is `ProfileSettingsSectionSlug`, and `ProfileSettings` has no `ConfigFile` (dropped; `ParsedValues` carries it).
+- logcopter-gen creates a package-level `log` in every `pkg/...` package, which collided with my `zerolog/log` imports (`other declaration of log`); dropped the imports and used the generated logger (zerolog-compatible API).
+
+### What I learned
+- Patch merge semantics differ: the Go timeline projection *replaces* a path listed in `patch_paths`, while chat-provider *appends* arrays for listed paths. The only encoding both treat identically is a patch without `patch_paths` carrying the whole accumulated top-level value — which is sessionstream's batch-patch-into-delta pattern anyway. `Emitter.PatchWidget` documents this.
+- `RuntimeEventContext.Publish` and `sessionstream.EventPublisher` differ only in binding the session id; one `Publisher` func type lets the real runtime and the scripted engine share every emission path.
+- A tool executed by geppetto does not know the chat message id; publishing a custom geppetto event from the tool (`PublishEventToContext`) and letting the plugin's `HandleRuntimeEvent` (which has `runtime.MessageID`) assign the widget id is the clean seam.
+- lefthook runs the *whole* Go gate (fmt, lint, logcopter, glazed-lint, tests, build) on every commit in pbui — about 25 s; half-written packages block unrelated commits.
+
+### What was tricky to build
+- Keeping live and hydrated widget state identical (see merge semantics above). Symptom if wrong: a streaming table looks right live and shows only the last batch after reload. Fix: accumulated top-level values, no paths.
+- Per-session sequence numbers for the trace across restarts: the in-memory counter is seeded from the timeline view's highest `seq` inside `ProjectTimeline`, so a rehydrated session never reuses a number.
+- The frontend-tool round trip in tests: `Manager.Request` blocks the scripted goroutine until `/tools/results` arrives; the test polls the snapshot for a `ChatFrontendToolCall` with `status:"requested"` and answers it, twice (accept, then propose).
+
+### What warrants a second pair of eyes
+- `Plugin` embeds `*Emitter` and reuses its mutex for `widgetCount`; fine today, but a separate lock is cleaner if the plugin grows state.
+- `pbui_widget` returns a placeholder widget id (the id is assigned when the event is handled); the model is told to mention the title. If precise ids matter, the tool needs the message id via context (a small pinocchio change or a context key set in `RuntimeContext`).
+- The real runtime path compiles but was not exercised against a provider (no credentials in this environment).
+- Limits defaults (32 refs/message, 64 children, depth 3, 500 rows, 500 trace entries) are untuned.
+
+### What should be done in the future
+- Exercise `--real-runtime` with a pinocchio profile; add a recorded-run test.
+- Pass refs as a typed turn block (`InitialTurn`) instead of a prompt suffix once the model-facing shape has settled.
+- Propose `client.submitCommand` upstream in chat-provider so `/verbs` can retire.
+
+### Code review instructions
+- Start at `pkg/pbuichat/emitter.go` (the emission contract) and `pkg/pbuichat/plugin.go` (how runtime events map to it); then `pkg/chatserver/server.go` for wiring and `pkg/chatserver/scripted/scenarios.go` for the demo behaviour.
+- Validate: `make chat-test` (Go part: `GOWORK=off go test ./pkg/pbuichat/... ./pkg/chatserver/... ./pkg/chatui/...`), `GOWORK=off golangci-lint run`, `make protocol-check`, `GOWORK=off go run ./cmd/pbui-chat prompt`.
+- Run: `GOWORK=off go run ./cmd/pbui-chat serve --port 8090` then `curl -X POST localhost:8090/api/chat/sessions -d '{}'`.
+
+### Technical details
+
+```
+POST /api/chat/sessions                      -> {sessionId}
+POST /api/chat/sessions/{id}/messages        {prompt, refs?: Reference[], focus?}
+POST /api/chat/sessions/{id}/stop
+GET  /api/chat/sessions/{id}                 hydrated snapshot (serverkit encoding)
+POST /api/chat/sessions/{id}/tools/manifest  {revision, tools[{name, mode, inputSchema, available}]}
+POST /api/chat/sessions/{id}/tools/results   {toolCallId, toolName, result, status}
+POST /api/chat/sessions/{id}/verbs           {clientSeq, actor, verb, target?, outcome}
+GET  /api/pbui/vocabulary                    vocabulary.json
+GET  /api/chat/ws                            sessionstream websocket (snapshot, then live)
+GET  /{$} · /ui/{path...} · /static/{path...}
+```
+
+Widget instance names: `pbui.refs` (`<messageId>-refs`, props `{schema_version, refs{"type:id": Reference}}`), `pbui.widget` (`<messageId>-w<n>`, props = document), `pbui.error` (`<widgetId>-error`, props `{message, document?, at}`). Trace: command `PbuiVerbPerformed`, event `PbuiVerbRecorded`, UI event `PbuiTraceEntryUpsert`, entity `PbuiTraceEntry` (id `trace-<seq>`).
