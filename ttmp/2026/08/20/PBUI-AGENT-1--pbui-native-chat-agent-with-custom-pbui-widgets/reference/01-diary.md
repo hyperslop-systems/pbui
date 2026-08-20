@@ -187,3 +187,72 @@ defineChatExtensions({ name, tools, widgets, timelineAdapters, install })
 HumanTool{ mode:'human', parameters: zod, render({toolCallId, input, respond, reject}) }
 ChatProviderConfig{ sendMessageBody?: (req: {prompt, attachments?}) => body }
 ```
+
+## Step 3: Write the design doc, decide placement, seed the implementation tasks
+
+The design doc (`design-doc/02`) turns the showcase into a contract. The central decision was *how little* new wire surface to add: objects and widgets ride inside pinocchio's existing `ChatWidgetInstance` entity (`widget_name ∈ {pbui.refs, pbui.widget, pbui.error}`, document in `props`), accept/proposals ride the frontend-tool bridge as human tools, and the only new command is `PbuiVerbPerformed` → `PbuiTraceEntry` — the typed replacement for pinocchio's never-wired `ChatWidgetAction`. The second decision was the single source of truth for the vocabulary: the product's zod-typed `Values`/`Verb`/widget-document schemas export a `vocabulary.json` that the Go plugin embeds to validate model output, generate the system-prompt section and answer `pbui_describe_types`, with a CI staleness check in the playbook's `schema-check` shape.
+
+Placement: TS `@hyperslop-systems/pbui-chat` in `pbui/packages/pbui-chat`, Go `pbuichat` in `pbui/pkg/pbuichat`, `chat.proto` beside `workbench.proto`, a demo binary with a mock runtime, coinvault as the first product behind a flag, datalab-ui second. The known cost — pbui's `go.mod` pulling pinocchio/sessionstream/geppetto — is recorded as D2/R1 with a mechanical exit. Committed as `7944c1a`; the ticket index now has an overview and a reading order, and four Tier-0 tasks are queued.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Produce the design doc for the PBUI chat agent with custom widget capability, grounded in the showcase and the verified seams.
+
+**Inferred user intent:** A design an engineer can start implementing (Tier 0) without further research, and a reviewer can challenge decision by decision.
+
+**Commit (docs):** 7944c1a — "PBUI-AGENT-1: design doc for the PBUI-native chat agent; index overview; tier-0 tasks"
+
+### What I did
+- Wrote `design-doc/02-design-pbui-native-chat-agent-with-custom-pbui-widgets.md` (754 lines): §2 system map, §3 vocabulary, §4 seam table, §5 contract (chat-layer types, wire payloads, `chat.proto`, refs/focus on send, widget document, `vocabulary.json`), §6 Go package, §7 TS package, §8 four sequences, §9 hydration/consistency/trust, §10 placement + tiers with gesture-stated acceptance + required tests, §11 decisions D1–D7 and risks R1–R4, §12 appendix (descriptor, verb schema, hydrated refs entity, coinvault wiring).
+- Related ten files to the design doc; filled `index.md`; ticked tasks 3–4; added four Tier-0/decision tasks; changelog entry; committed.
+
+### Why
+- Reusing `ChatWidgetInstance` avoids a second hydration path and stays inside the schema policy (inner `Struct` only); the one new command is the one channel that genuinely does not exist.
+- Putting the vocabulary in zod lets descriptors, chip validation, the Go validator and the system prompt all derive from one declaration — the "two hand-written copies drift, silently" lesson from playbook §5.
+
+### What worked
+- Every row in the §4 seam table points at a file I had read; the four sequence diagrams could be written from the verified function names (`Manager.Request`, `BridgeExecutor`, `PublishWidgetInstancePatched`, `InitialTurn`).
+- `docmgr validate frontmatter` passed on both design docs.
+
+### What didn't work
+- N/A for this step (no commands failed).
+
+### What I learned
+- chat-provider 0.5 has no generic "submit command" on the client; frontend-tool results go through an HTTP route that the app turns into `hub.Submit`. The verb report therefore needs an app route for v1 (D4) — a small but real gap worth proposing upstream as `client.submitCommand`.
+- The widget document needs an explicit `unresolved` rewrite rule and a `pbui.error` widget so that *every* failure mode is visible in the timeline; coinvault's `projection_error` taught that silence is the worst outcome.
+- "Verb availability is never stored": recomputing `disabledBecause` from entity state in the descriptor is what makes reload-correct proposals free.
+
+### What was tricky to build
+- Separating **timeline truth** from **model truth**. The server-published `pbui.refs` entity is UI-only (the model already said those ids); user refs must go into a turn block (`pbui.refs@v1`) or the model never sees them again after the next turn. Getting this wrong would make "compare these two" work once and then silently forget the objects.
+- Deciding whether the model emits widgets via hidden blocks (coinvault's way, `structuredsink`) or a tool. I chose the tool (D3): provider-validated arguments, an id the model can mention, no prose contamination; the extractor path stays available.
+- Naming the actor on the trace: the browser is the only place a verb becomes an effect, so it reports both human and agent verbs; the server assigns `seq`. An agent verb that the model *asked for* but the router *rejected* is still recorded (`outcome: rejected:…`), which is what makes the trace an audit rather than a log of successes.
+
+### What warrants a second pair of eyes
+- D1 (reuse `ChatWidgetInstance`): a reviewer may prefer a typed `PbuiObjectEntity` from day one; the exit is cheap but not free.
+- D2 (Go package in pbui): dependency weight on a library repo.
+- §9's claim that accept mode survives reload via `reconcileFrontendToolRequests` — verified by reading, not by running (R3).
+- The `Limits` defaults (32 refs/message, 64 children, depth 3, 500 rows/document) are guesses; they should be tuned against coinvault's real answers.
+
+### What should be done in the future
+- Tier 0 as listed in design §10.2 and in the task list; resolve D1–D7 before writing `chat.proto`.
+- Propose `client.submitCommand` upstream in react-chat to retire D4's app route.
+- Consider writing the `vocabulary.json` staleness check and the Go/TS widget-document parity fixtures *first* (they are what keeps both sides honest).
+
+### Code review instructions
+- Read design §5 (contract) and §11 (decisions) first; then §6.2/§6.3 against `pinocchio/pkg/chatapp/features.go` and `widgets/plugin.go`; then §7.2 against `react-chat/packages/chat-provider/src/core/extensions.ts` and `tools/toolRegistry.ts`.
+- Validate docs: `docmgr doctor --ticket PBUI-AGENT-1`, `docmgr validate frontmatter --doc <each design doc>`.
+
+### Technical details
+
+Commits on `task/add-pbui-agent` in the pbui worktree for this ticket:
+
+| Commit | Content |
+|---|---|
+| `6b0a960` | ticket opened, diary step 1 |
+| `7a8e536` | design-doc/01 feature showcase |
+| `94c40d3` | diary step 2 |
+| `7944c1a` | design-doc/02 design, index overview, tier-0 tasks |
+
+Nothing outside `pbui/ttmp/2026/08/20/PBUI-AGENT-1--…/` was modified; no code was written in any repo.
