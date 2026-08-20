@@ -53,8 +53,24 @@ export function emptyDocument(options: LayoutOptions = {}): WorkbenchDocument {
   });
 }
 
-export function layout(spec: LayoutSpec, options: LayoutOptions = {}): WorkbenchDocument {
+/** What `buildLayout` produces: the views to create, and the tree that places them. */
+export interface BuiltLayout {
+  /** `viewCreate` per tile, in reading order. */
+  mutations: Mutation[];
+  /** The placement tree, ready for a `workspaceCreate`. */
+  tree: Node;
+  views: { viewId: string; appId: string; title?: string }[];
+}
+
+/**
+ * Turn a spec into `viewCreate` mutations and a placement tree WITHOUT a
+ * workspace, so the same builder serves `layout()` (one workspace over an
+ * empty document), `workspaces()` (several), and the `workspace.create` verb
+ * (one more inside a document that already exists).
+ */
+export function buildLayout(spec: LayoutSpec): BuiltLayout {
   const mutations: Mutation[] = [];
+  const views: BuiltLayout["views"] = [];
   const build = (node: LayoutSpec): Node => {
     if (node.kind === "tile") {
       const view = create(AppViewSchema, {
@@ -64,6 +80,7 @@ export function layout(spec: LayoutSpec, options: LayoutOptions = {}): Workbench
         ...(node.title ? { title: node.title } : {}),
       });
       mutations.push(create(MutationSchema, { body: { case: "viewCreate", value: { view } } }));
+      views.push({ viewId: view.id, appId: node.appId, ...(node.title ? { title: node.title } : {}) });
       return leafNode(view.id);
     }
     // Both children are built BEFORE the split so viewCreate mutations land
@@ -73,18 +90,46 @@ export function layout(spec: LayoutSpec, options: LayoutOptions = {}): Workbench
     return splitNode(node.direction === "row" ? Direction.ROW : Direction.COLUMN, a, b, node.ratio);
   };
   const tree = build(spec);
-  mutations.push(
-    create(MutationSchema, {
-      body: {
-        case: "workspaceCreate",
-        value: {
-          workspaceId: options.workspaceId ?? "main",
-          name: options.workspaceName ?? "main",
-          rootPlacement: tree,
-        },
-      },
-    }),
-  );
+  return { mutations, tree, views };
+}
+
+export function workspaceCreateMutation(workspaceId: string, name: string, tree: Node): Mutation {
+  return create(MutationSchema, {
+    body: { case: "workspaceCreate", value: { workspaceId, name, rootPlacement: tree } },
+  });
+}
+
+export function layout(spec: LayoutSpec, options: LayoutOptions = {}): WorkbenchDocument {
+  const built = buildLayout(spec);
+  return applyMutations(emptyDocument(options), [
+    ...built.mutations,
+    workspaceCreateMutation(options.workspaceId ?? "main", options.workspaceName ?? "main", built.tree),
+  ]);
+}
+
+/** One workspace in a multi-workspace seed. */
+export interface WorkspaceSpec {
+  id?: string;
+  name: string;
+  spec: LayoutSpec;
+}
+
+/**
+ * A document with several workspaces, in order; the first one is what a fresh
+ * store renders. Ids default to `newId("ws")` rather than to the name, so two
+ * workspaces a user calls the same thing do not collide as `duplicate_id`.
+ */
+export function workspaces(list: readonly WorkspaceSpec[], options: LayoutOptions = {}): WorkbenchDocument {
+  if (list.length === 0) throw new Error("pbui-workbench: workspaces() needs at least one workspace");
+  const mutations: Mutation[] = [];
+  const seen = new Set<string>();
+  for (const item of list) {
+    const built = buildLayout(item.spec);
+    const id = item.id ?? newId("ws");
+    if (seen.has(id)) throw new Error(`pbui-workbench: workspace id "${id}" is used twice`);
+    seen.add(id);
+    mutations.push(...built.mutations, workspaceCreateMutation(id, item.name, built.tree));
+  }
   return applyMutations(emptyDocument(options), mutations);
 }
 

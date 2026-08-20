@@ -4,6 +4,9 @@ export { defineApp, createAppRegistry } from "./apps";
 export type { AppDescriptor, AppProps, AppRegistry, DefineAppInput } from "./apps";
 export {
   layout,
+  workspaces,
+  buildLayout,
+  workspaceCreateMutation,
   tile,
   split,
   singleTile,
@@ -13,9 +16,9 @@ export {
   WORKBENCH_FORMAT,
   WORKBENCH_SCHEMA_VERSION,
 } from "./document";
-export type { LayoutOptions, LayoutSpec } from "./document";
+export type { BuiltLayout, LayoutOptions, LayoutSpec, WorkspaceSpec } from "./document";
 export { createWorkbenchStore, useWorkbenchStore } from "./store";
-export type { WorkbenchState, WorkbenchStore } from "./store";
+export type { WorkbenchState, WorkbenchStore, WorkbenchStoreOptions } from "./store";
 export {
   workbenchVerbs,
   performWorkbenchVerb,
@@ -26,7 +29,14 @@ export {
   clampRatio,
   placementCount,
 } from "./verbs";
-export type { SplitDirection, WorkbenchVerb, WorkbenchVerbKind, WorkbenchVerbHandlers, VerbEnvironment } from "./verbs";
+export type {
+  CrossWorkspace,
+  SplitDirection,
+  WorkbenchVerb,
+  WorkbenchVerbKind,
+  WorkbenchVerbHandlers,
+  VerbEnvironment,
+} from "./verbs";
 export { createWorkbench } from "./createWorkbench";
 export type { CreateWorkbenchOptions } from "./createWorkbench";
 export type { LauncherProps, SurfaceProps, TilePlacementInfo, Workbench } from "./types";

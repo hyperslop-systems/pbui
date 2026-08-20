@@ -18,9 +18,34 @@ export interface WorkbenchState {
 }
 
 /**
+ * What a product may observe about the document without owning the store.
+ *
+ * `onMutate` fires once per COMMITTED batch, after the new document is in
+ * state, and is what a product's outbox or persistence layer subscribes to —
+ * a store subscription would also fire for activation and launcher toggles,
+ * which are this browser's business and must never reach a server.
+ *
+ * `onRejected` replaces the default `console.warn` for a batch the applier
+ * refused. It exists because the caller otherwise learns only `false`: the
+ * `MutationError`'s `code`/`path`/`detail` are the only actionable thing, and
+ * an agent-facing caller has to hand them back to whoever proposed the batch.
+ */
+export interface WorkbenchStoreOptions {
+  onMutate?(mutations: Mutation[], next: WorkbenchDocument): void;
+  onRejected?(mutations: Mutation[], error: MutationError): void;
+}
+
+/**
  * A `useSyncExternalStore` store rather than Redux or context: the verbs are
  * plain code a router can call before React exists, and a product's own
  * components read it with a selector.
+ *
+ * A product that already owns its document — a Redux slice, a server-backed
+ * controller — implements this interface as an adapter and passes it to
+ * `createWorkbench({ store })` rather than mirroring state into a second
+ * source of truth. `getState` must return a CACHED snapshot refreshed on each
+ * upstream notification; a fresh object per call makes `useSyncExternalStore`
+ * loop forever.
  */
 export interface WorkbenchStore {
   getState(): WorkbenchState;
@@ -37,7 +62,10 @@ export interface WorkbenchStore {
   replaceDocument(document: WorkbenchDocument): void;
 }
 
-export function createWorkbenchStore(initial: WorkbenchDocument): WorkbenchStore {
+export function createWorkbenchStore(
+  initial: WorkbenchDocument,
+  options: WorkbenchStoreOptions = {},
+): WorkbenchStore {
   let state: WorkbenchState = {
     document: initial,
     workspaceId: initial.workspaces[0]?.id ?? "",
@@ -69,10 +97,14 @@ export function createWorkbenchStore(initial: WorkbenchDocument): WorkbenchStore
       try {
         const document = applyMutations(state.document, mutations);
         setState({ document });
+        // After the commit, so a handler that reads the store sees the new
+        // document rather than the one it is being told about.
+        options.onMutate?.(mutations, document);
         return true;
       } catch (error) {
         if (error instanceof MutationError) {
-          console.warn(`pbui-workbench: dropped a mutation batch — ${error.message}`);
+          if (options.onRejected) options.onRejected(mutations, error);
+          else console.warn(`pbui-workbench: dropped a mutation batch — ${error.message}`);
           return false;
         }
         throw error;

@@ -4,15 +4,22 @@ import { WorkbenchLauncher } from "./components/Launcher";
 import { WorkbenchSurface } from "./components/Surface";
 import { WorkbenchContext } from "./context";
 import { parseDocument, serializeDocument } from "./document";
-import { createWorkbenchStore, useWorkbenchStore } from "./store";
+import { createWorkbenchStore, useWorkbenchStore, type WorkbenchStore, type WorkbenchStoreOptions } from "./store";
 import type { LauncherProps, SurfaceProps, Workbench } from "./types";
 import { createVerbHandlers, performWorkbenchVerb } from "./verbs";
 
-export interface CreateWorkbenchOptions {
+export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
   /** The applications this workbench offers — a list, or a registry built with `createAppRegistry`. */
   apps: readonly AppDescriptor[] | AppRegistry;
   /** The starting layout: a document from `layout()`/`singleTile()`, or one restored from `serialize()`. */
   initial: WorkbenchDocument;
+  /**
+   * A product-owned store to back the shell with, instead of the one this
+   * function would create. A Redux product passes an adapter here so its
+   * slice stays the single source of truth; `onMutate`/`onRejected` are then
+   * that store's business and are ignored.
+   */
+  store?: WorkbenchStore;
 }
 
 /**
@@ -24,7 +31,12 @@ export interface CreateWorkbenchOptions {
 export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
   const apps = isAppRegistry(options.apps) ? options.apps : createAppRegistry(options.apps);
   const initial = options.initial;
-  const store = createWorkbenchStore(initial);
+  const store =
+    options.store ??
+    createWorkbenchStore(initial, {
+      ...(options.onMutate ? { onMutate: options.onMutate } : {}),
+      ...(options.onRejected ? { onRejected: options.onRejected } : {}),
+    });
   let rootElement: HTMLElement | null = null;
   const root = () => rootElement;
   const verbs = createVerbHandlers({ store, apps, root });

@@ -5,6 +5,7 @@ import {
   Direction,
   type Mutation,
   MutationSchema,
+  type Node,
   PlacementPosition,
   type WorkbenchDocument,
 } from "@hyperslop-systems/workbench-protocol";
@@ -18,6 +19,7 @@ import {
   placementCount,
   resizeSplit,
   snapRatio,
+  splitNode,
   splitPlacement,
   swapPlacements,
   viewsOfApp,
@@ -27,9 +29,18 @@ import {
 } from "@hyperslop-systems/workbench-protocol/client";
 import { splitDirectionFor } from "@hyperslop-systems/pbui";
 import type { AppRegistry } from "./apps";
+import { buildLayout, workspaceCreateMutation, type LayoutSpec } from "./document";
 import type { WorkbenchStore } from "./store";
 
 export type SplitDirection = "row" | "col";
+
+/**
+ * What `place` does when the singleton it would place already has a view in
+ * ANOTHER workspace. `"switch"` goes there (turboproof's and datalab-ui's
+ * behaviour, and the least surprising); `"link"` gives this workspace a
+ * second placement of the same view.
+ */
+export type CrossWorkspace = "switch" | "link";
 
 /**
  * The tile verbs AS DATA, so a product can put them in an object menu beside
@@ -47,6 +58,11 @@ export type WorkbenchVerb =
   | { kind: "app.place"; appId: string; from?: string }
   | { kind: "view.setTitle"; viewId: string; title: string }
   | { kind: "view.open"; appId: string; documents: Record<string, string>; near?: string; title?: string }
+  | { kind: "workspace.select"; workspaceId: string }
+  | { kind: "workspace.create"; name: string; spec?: LayoutSpec; workspaceId?: string; select?: boolean }
+  | { kind: "workspace.rename"; workspaceId: string; name: string }
+  | { kind: "workspace.delete"; workspaceId: string }
+  | { kind: "workspace.clone"; workspaceId: string; name?: string; newWorkspaceId?: string; select?: boolean }
   | { kind: "launcher.open" }
   | { kind: "launcher.close" };
 
@@ -72,6 +88,18 @@ export const workbenchVerbs = {
     documents,
     ...options,
   }),
+  selectWorkspace: (workspaceId: string): WorkbenchVerb => ({ kind: "workspace.select", workspaceId }),
+  createWorkspace: (
+    name: string,
+    spec?: LayoutSpec,
+    options: { workspaceId?: string; select?: boolean } = {},
+  ): WorkbenchVerb => ({ kind: "workspace.create", name, ...(spec ? { spec } : {}), ...options }),
+  renameWorkspace: (workspaceId: string, name: string): WorkbenchVerb => ({ kind: "workspace.rename", workspaceId, name }),
+  deleteWorkspace: (workspaceId: string): WorkbenchVerb => ({ kind: "workspace.delete", workspaceId }),
+  cloneWorkspace: (
+    workspaceId: string,
+    options: { name?: string; newWorkspaceId?: string; select?: boolean } = {},
+  ): WorkbenchVerb => ({ kind: "workspace.clone", workspaceId, ...options }),
   openLauncher: (): WorkbenchVerb => ({ kind: "launcher.open" }),
   closeLauncher: (): WorkbenchVerb => ({ kind: "launcher.close" }),
 };
@@ -79,7 +107,7 @@ export const workbenchVerbs = {
 export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
   if (!value || typeof value !== "object") return false;
   const kind = (value as { kind?: unknown }).kind;
-  return typeof kind === "string" && /^(tile|split|app|view|launcher)\./.test(kind);
+  return typeof kind === "string" && /^(tile|split|app|view|workspace|launcher)\./.test(kind);
 }
 
 export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
@@ -102,6 +130,16 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return verb.title ? `rename the tile to “${verb.title}”` : "clear the tile's name";
     case "view.open":
       return `open ${verb.appId} in a new tile`;
+    case "workspace.select":
+      return "go to that workspace";
+    case "workspace.create":
+      return `create the workspace “${verb.name}”`;
+    case "workspace.rename":
+      return `rename the workspace to “${verb.name}”`;
+    case "workspace.delete":
+      return "delete this workspace and its tiles";
+    case "workspace.clone":
+      return "duplicate this workspace";
     case "launcher.open":
       return "open the launcher";
     case "launcher.close":
@@ -129,7 +167,7 @@ export interface WorkbenchVerbHandlers {
    * else splits the active tile — or `from` — along its longer RENDERED axis
    * so a new view never destroys a working tile and never lands as a sliver.
    */
-  place(appId: string, options?: { from?: string }): string | null;
+  place(appId: string, options?: { from?: string; crossWorkspace?: CrossWorkspace }): string | null;
   setTitle(viewId: string, title: string): boolean;
   /**
    * Open an application on specific document bindings beside a tile. A
@@ -138,6 +176,34 @@ export interface WorkbenchVerbHandlers {
    */
   openView(appId: string, documents: Record<string, string>, options?: { near?: string; title?: string }): string | null;
   activate(placementId: string | null): void;
+  /**
+   * Render another workspace. Local state, not a mutation: which workspace
+   * THIS browser is looking at is not part of the layout (DATADROP-18 §1.4).
+   * Clears the active placement, because a placement of another workspace
+   * must never stay the target of a global operation.
+   */
+  selectWorkspace(workspaceId: string): boolean;
+  /**
+   * Add a workspace. Without a spec it holds one tile of the first registered
+   * application, which is the shortest thing that renders; `select` defaults
+   * to true because a workspace nobody is looking at is invisible feedback.
+   * Returns the new id, or null when the applier refused the batch.
+   */
+  createWorkspace(name: string, spec?: LayoutSpec, options?: { workspaceId?: string; select?: boolean }): string | null;
+  renameWorkspace(workspaceId: string, name: string): boolean;
+  /**
+   * Remove a workspace and every view no remaining workspace places. Refused
+   * on the last workspace by the applier (`last_workspace`); selecting falls
+   * back to the first survivor when the deleted one was on screen.
+   */
+  deleteWorkspace(workspaceId: string): boolean;
+  /**
+   * Duplicate a workspace's tree. A duplicable application's view is CLONED
+   * (the copy is independent); a singleton's or a `duplicable:false`
+   * application's view is REFERENCED, so the copy stays in lockstep with the
+   * original — the same rule `split` follows for one tile, applied to a tree.
+   */
+  cloneWorkspace(workspaceId: string, options?: { name?: string; newWorkspaceId?: string; select?: boolean }): string | null;
   openLauncher(): void;
   closeLauncher(): void;
 }
@@ -194,6 +260,27 @@ function sameBindings(a: Record<string, string>, b: Record<string, string>): boo
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
   return keysA.length === keysB.length && keysA.every((key) => a[key] === b[key]);
+}
+
+/** The first workspace that places the view, anywhere in the document. */
+function workspaceOfView(doc: WorkbenchDocument, viewId: string): string | null {
+  for (const workspace of doc.workspaces) {
+    for (const leaf of leaves(workspace.tree)) {
+      if (leaf.body.case === "leaf" && leaf.body.value.viewId === viewId) return workspace.id;
+    }
+  }
+  return null;
+}
+
+/** Every view id the document declares that no workspace places. */
+function orphanViewIds(doc: WorkbenchDocument): string[] {
+  const placed = new Set<string>();
+  for (const workspace of doc.workspaces) {
+    for (const leaf of leaves(workspace.tree)) {
+      if (leaf.body.case === "leaf") placed.add(leaf.body.value.viewId);
+    }
+  }
+  return Object.keys(doc.views).filter((viewId) => !placed.has(viewId));
 }
 
 function firstPlacementOfView(doc: WorkbenchDocument, workspaceId: string, viewId: string): string | null {
@@ -293,7 +380,17 @@ export function createVerbHandlers({ store, apps, root }: VerbEnvironment): Work
       if (existing) {
         const placement = goTo(current, existing.id);
         if (placement) return placement;
-        // Placed in another workspace, or nowhere: link it here.
+        // Placed in ANOTHER workspace, or nowhere at all. Going there is the
+        // least surprising answer for a singleton the user asked to see, so
+        // it is the default; `link` is for products that want a second
+        // placement of the same view in this workspace instead.
+        const elsewhere = workspaceOfView(current, existing.id);
+        if (elsewhere && (options.crossWorkspace ?? "switch") === "switch") {
+          selectWorkspace(elsewhere);
+          const there = firstPlacementOfView(doc(), elsewhere, existing.id);
+          if (there) activate(there);
+          return there;
+        }
         const target = targetPlacement(options.from);
         if (!target) return null;
         const mutations = splitWithView(current, target, splitDirectionFor(target, root()), existing.id);
@@ -351,6 +448,89 @@ export function createVerbHandlers({ store, apps, root }: VerbEnvironment): Work
     ]);
   };
 
+  const selectWorkspace: WorkbenchVerbHandlers["selectWorkspace"] = (workspaceId) => {
+    const state = store.getState();
+    if (!state.document.workspaces.some((item) => item.id === workspaceId)) return false;
+    if (state.workspaceId === workspaceId) return true;
+    // activePlacementId belongs to the workspace we are leaving; keeping it
+    // would aim every global verb at a tile nobody can see.
+    store.setState({ workspaceId, activePlacementId: null });
+    return true;
+  };
+
+  const createWorkspace: WorkbenchVerbHandlers["createWorkspace"] = (name, spec, options = {}) => {
+    const fallbackApp = apps.list()[0];
+    const effective = spec ?? (fallbackApp ? ({ kind: "tile", appId: fallbackApp.id } as LayoutSpec) : null);
+    if (!effective) return null;
+    const built = buildLayout(effective);
+    const workspaceId = options.workspaceId ?? newId("ws");
+    if (!store.mutate([...built.mutations, workspaceCreateMutation(workspaceId, name, built.tree)])) return null;
+    if (options.select !== false) selectWorkspace(workspaceId);
+    return workspaceId;
+  };
+
+  const renameWorkspace: WorkbenchVerbHandlers["renameWorkspace"] = (workspaceId, name) =>
+    store.mutate([mutation({ case: "workspaceRename", value: { workspaceId, name: name.trim() } })]);
+
+  const deleteWorkspace: WorkbenchVerbHandlers["deleteWorkspace"] = (workspaceId) => {
+    const current = doc();
+    if (!current.workspaces.some((item) => item.id === workspaceId)) return false;
+    // Views the workspace held and nothing else places would otherwise
+    // accumulate in `document.views` for the life of the session. The deletes
+    // ride in the SAME batch, after the workspace is gone, so `viewDelete`
+    // sees a placement count of zero rather than `view_in_use`.
+    const without = { ...current, workspaces: current.workspaces.filter((item) => item.id !== workspaceId) };
+    const mutations: Mutation[] = [mutation({ case: "workspaceDelete", value: { workspaceId } })];
+    for (const viewId of orphanViewIds(without)) {
+      mutations.push(mutation({ case: "viewDelete", value: { viewId } }));
+    }
+    if (!store.mutate(mutations)) return false;
+    if (store.getState().workspaceId === workspaceId) {
+      const survivor = store.getState().document.workspaces[0];
+      if (survivor) selectWorkspace(survivor.id);
+    }
+    return true;
+  };
+
+  const cloneWorkspace: WorkbenchVerbHandlers["cloneWorkspace"] = (workspaceId, options = {}) => {
+    const current = doc();
+    const source = current.workspaces.find((item) => item.id === workspaceId);
+    if (!source?.tree) return null;
+    const mutations: Mutation[] = [];
+    // A duplicable application's view is cloned so the copy has its own
+    // bindings and title; a singleton's is referenced, because a second view
+    // of a singleton is exactly what `pkg/workbench` rejects as
+    // `duplicate_singleton`.
+    // Null rather than a placeholder for a malformed node: a tree with an
+    // empty leaf would pass the applier and fail `parseDocument` on the next
+    // reload, which is a much worse failure than refusing the clone here.
+    const copy = (node: Node): Node | null => {
+      if (node.body.case === "leaf") {
+        const viewId = node.body.value.viewId;
+        const view = current.views[viewId];
+        const app = view ? apps.get(view.appId) : null;
+        if (!view || app?.singleton || app?.duplicable === false) return leafNode(viewId);
+        const newViewId = newId("v");
+        mutations.push(mutation({ case: "viewClone", value: { sourceViewId: viewId, newViewId } }));
+        return leafNode(newViewId);
+      }
+      if (node.body.case !== "split") return null;
+      const { direction, ratio, a, b } = node.body.value;
+      if (!a || !b) return null;
+      const copiedA = copy(a);
+      const copiedB = copy(b);
+      if (!copiedA || !copiedB) return null;
+      return splitNode(direction, copiedA, copiedB, ratio);
+    };
+    const tree = copy(source.tree);
+    if (!tree) return null;
+    const newWorkspaceId = options.newWorkspaceId ?? newId("ws");
+    mutations.push(workspaceCreateMutation(newWorkspaceId, options.name ?? `${source.name} copy`, tree));
+    if (!store.mutate(mutations)) return null;
+    if (options.select !== false) selectWorkspace(newWorkspaceId);
+    return newWorkspaceId;
+  };
+
   const dock: WorkbenchVerbHandlers["dock"] = (source, target, zone) => {
     const current = doc();
     const sourceNode = findNode(workspaceTree(current, workspaceOfPlacement(current, source) ?? ""), source);
@@ -372,6 +552,11 @@ export function createVerbHandlers({ store, apps, root }: VerbEnvironment): Work
     setTitle,
     openView,
     activate,
+    selectWorkspace,
+    createWorkspace,
+    renameWorkspace,
+    deleteWorkspace,
+    cloneWorkspace,
     openLauncher: () => store.setState({ launcherOpen: true }),
     closeLauncher: () => store.setState({ launcherOpen: false }),
   };
@@ -408,6 +593,28 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       handlers.openView(verb.appId, verb.documents, {
         ...(verb.near ? { near: verb.near } : {}),
         ...(verb.title ? { title: verb.title } : {}),
+      });
+      return;
+    case "workspace.select":
+      handlers.selectWorkspace(verb.workspaceId);
+      return;
+    case "workspace.create":
+      handlers.createWorkspace(verb.name, verb.spec, {
+        ...(verb.workspaceId ? { workspaceId: verb.workspaceId } : {}),
+        ...(verb.select !== undefined ? { select: verb.select } : {}),
+      });
+      return;
+    case "workspace.rename":
+      handlers.renameWorkspace(verb.workspaceId, verb.name);
+      return;
+    case "workspace.delete":
+      handlers.deleteWorkspace(verb.workspaceId);
+      return;
+    case "workspace.clone":
+      handlers.cloneWorkspace(verb.workspaceId, {
+        ...(verb.name ? { name: verb.name } : {}),
+        ...(verb.newWorkspaceId ? { newWorkspaceId: verb.newWorkspaceId } : {}),
+        ...(verb.select !== undefined ? { select: verb.select } : {}),
       });
       return;
     case "launcher.open":
