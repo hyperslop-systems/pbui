@@ -22,7 +22,7 @@ export function ChatApp(_: AppProps) {
         <Messages />
       </div>
       <Composer />
-      <MouseDocLine ambient={overlay.sessionId ? `session ${overlay.sessionId}` : "no session yet"} />
+      <MouseDocLine ambient={overlay.sessionId ? `session ${overlay.sessionId.slice(0, 8)}` : "no session yet"} />
     </div>
   );
 }

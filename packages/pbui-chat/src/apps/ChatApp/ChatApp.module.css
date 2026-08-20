@@ -15,3 +15,16 @@
   overflow: auto;
   padding: var(--pbui-space-3);
 }
+
+/* The mouse-doc line is the third grid row; its ambient slot is nowrap and
+ * would otherwise widen the row past a narrow tile by a few pixels. */
+.app > [data-part="mouse-doc"] {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.app [data-part="mouse-doc-ambient"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
