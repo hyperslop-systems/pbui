@@ -126,3 +126,61 @@ I wrote §§0–6 of the intern guide: the presentation protocol the tiles sit o
 
 ### Technical details
 - Guide file: `design-doc/01-intern-guide-the-pbui-workbench-tiles-and-how-pbui-chat-runs-on-them.md`.
+
+## Step 3: The shell lands, the demo runs on tiles, and a layout bug the tiles exposed
+
+The implementation agent delivered `@hyperslop-systems/pbui-workbench` and the chat apps; I re-ran its gates (28 + 43 tests, demo build), committed (`a6fa46e`), rebuilt the embedded binary through `devctl up --profile prod` (the corrected `build.run` now passes: `pbui-lib → ui → binary`), and drove the real-model server through the tiles UI in a browser: projected table, model widget with chips, mentions and a `[[widget:…]]` mention all rendered inside the chat tile (`various/` screenshots).
+
+The user then reported a layout defect from their own session: with the chat tile narrowed, a table widget ran past the tile's right edge and the tile body scrolled horizontally; hovering any object made it lay out correctly. I reproduced it by narrowing the root split to 25 % (tile 349 px): the transcript, an `overflow:auto` block, measured 707 px — the table's intrinsic width — and every ancestor up to the tile body reported `scrollWidth > clientWidth`. Patching styles live in the page isolated the cause in one step: `ChatApp.module.css` declared `display: grid` with `grid-template-rows` and **no `grid-template-columns`**, so the implicit column track is `auto`, which sizes to the widest child's max-content. Setting `grid-template-columns: minmax(0, 1fr)` made the transcript 334 px and the table scroll inside its own container. The hover "fix" was a re-layout artefact, not a state difference.
+
+### Prompt Context
+
+**User prompt (verbatim):** "[Image #4] [Image #5] [Image #6] <- There's something weird with the layout of the table in the chat, when I hoveer another object, it's properly bound within the tile, but when I don't hover over it, it's not (and this is when hovering in another tile)."
+
+**User prompt (verbatim, follow-up):** "what packages did you create? is the chat stuff going to be reusable across say datalab or agentlogic or so?"
+
+**Assistant interpretation:** Diagnose and fix the overflow; explain the package layout and its reusability across PBUI products.
+
+**Inferred user intent:** A chat tile that behaves like every other tile, and confidence that the new packages are shared infrastructure rather than a one-off demo.
+
+**Commit (code):** a6fa46e — "pbui-workbench: reusable PBUI workbench tiles; pbui-chat apps and demo on tiles"; 83a5325 — "pbui-chat: fix chat tile overflow (implicit grid column), guard grids, fix UI build order"
+
+### What I did
+- Verified and committed the tiles package, the chat apps and the demo; kept the browser screenshot in `various/01-browser-tiles-open-in-tile.png`; added `.devctl/` to `.gitignore`.
+- Reproduced the overflow with Playwright: narrowed the split by dispatching `ArrowLeft` keydowns on the `role="separator"` divider (the hook handles one step per frame, so six dispatches with a frame between each), then walked the ancestor chain reporting `clientWidth/scrollWidth/overflow-x/min-width` and tried four candidate fixes as inline styles; only the grid column template changed the result.
+- Fixed `ChatApp.module.css`; added `packages/pbui-chat/test/grid-columns.test.ts`, which scans every CSS module in pbui-chat and pbui-workbench and fails on a `display: grid` rule without a column template (a `/* grid-columns: inline */` marker opts out a rule whose template is computed at runtime — the split pane). The test immediately flagged the split rule, which is the intended behaviour.
+- Found that the first rebuild did not ship the fix: the demo consumes `@hyperslop-systems/pbui-chat` through its `dist`, so the library must be rebuilt first. `make chat-ui` and the devctl `build.run` now build `pbui-workbench` and `pbui-chat` before the demo.
+- Re-verified on a fresh scripted server: tile 349 px → transcript 334 px, table scrolls inside `.scroll` (293/554), no tile-body overflow beyond a 3 px rounding residue from the mouse-doc line's `nowrap` text.
+
+### Why
+- A structural CSS test is the only cheap guard for this class of defect; jsdom cannot measure layout.
+- The build-order fix belongs in the Makefile and the devctl plugin, not in memory.
+
+### What worked
+- Live style patching in the page was faster than reasoning about grid sizing rules; the first candidate (`minmax(0, 1fr)` on the app grid) was conclusive.
+
+### What didn't work
+- Pressing `ArrowLeft` through Playwright's keyboard after clicking the divider did not resize (focus did not land on the divider); dispatching `KeyboardEvent`s on the element did, one step per animation frame.
+- `grep -c "grid-template-columns:minmax(0,1fr);…"` against the prod bundle returned 0 after the devctl rebuild even though the served page had the rule; the minifier's property order differs between builds — do not use byte-exact greps on minified CSS as a check.
+
+### What I learned
+- An implicit grid track is `auto`, and `auto` sizes to max-content; `minmax(0, 1fr)` on *both* axes is the rule for any container that may hold a wide widget.
+- The demo's Vite build resolves workspace packages through their `exports` → `dist`; a source edit in a library is invisible to the demo until that library is rebuilt.
+
+### What was tricky to build
+- Distinguishing "the fix is wrong" from "the fix did not ship": the computed `grid-template-columns` on the live element (`722px` vs `348.5px`) and the shipped rule text answered it.
+
+### What warrants a second pair of eyes
+- The one-time anomaly the implementation agent reported (an extra unbound `widget` tile seen once, never persisted, not reproduced).
+- The mouse-doc line's long text still overflows by a few pixels in a very narrow tile.
+
+### What should be done in the future
+- A `tile` presentation type in the chat vocabulary so tile titles carry the tile descriptor's verbs.
+- Hosted workbench mode (§6.5 of the guide).
+
+### Code review instructions
+- `packages/pbui-chat/src/apps/ChatApp/ChatApp.module.css`, `packages/pbui-chat/test/grid-columns.test.ts`, `Makefile` (`chat-ui`), `plugins/devctl_pbui_chat.py` (`build_steps`).
+- Reproduce: `devctl up --profile prod`, open http://127.0.0.1:8090/, ask "which gold eagles are low on stock?", drag the root divider left until the chat tile is ~350 px wide.
+
+### Technical details
+- Measurements before the fix (tile 349 px): `transcript=707 chatApp=349/722 tileBody=349/722`; after: `transcript=334 chatApp=349/352 tableScroll=293/554 (scrolls inside the widget)`.
