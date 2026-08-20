@@ -1,0 +1,12 @@
+.app {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.transcript {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pbui-space-3);
+}

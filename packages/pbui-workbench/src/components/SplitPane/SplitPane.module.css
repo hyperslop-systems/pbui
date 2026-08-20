@@ -1,0 +1,70 @@
+.split {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+
+.row {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.col {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  touch-action: none;
+  outline-offset: -2px;
+}
+
+.row > .divider {
+  width: var(--pbui-space-4);
+  cursor: col-resize;
+}
+
+.col > .divider {
+  height: var(--pbui-space-4);
+  cursor: row-resize;
+}
+
+.divider:hover,
+.divider:focus-visible {
+  background: var(--pbui-pane-alt);
+}
+
+.divider[data-state="dragging"] {
+  background: var(--pbui-selected);
+}
+
+/* A snapped divider changes colour, so the magnet is seen and not merely felt. */
+.divider[data-state="snapped"] {
+  background: var(--pbui-ok);
+}
+
+.grip {
+  display: block;
+}
+
+.row > .divider > .grip {
+  border-left: 2px dotted var(--pbui-line);
+  width: 2px;
+  height: 26px;
+}
+
+.col > .divider > .grip {
+  border-top: 2px dotted var(--pbui-line);
+  height: 2px;
+  width: 26px;
+}

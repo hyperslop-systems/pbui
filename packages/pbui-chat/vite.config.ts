@@ -13,6 +13,9 @@ const external = [
   "@bufbuild/protobuf",
   "@hyperslop-systems/pbui",
   "@hyperslop-systems/pbui/presentation",
+  "@hyperslop-systems/pbui-workbench",
+  "@hyperslop-systems/workbench-protocol",
+  "@hyperslop-systems/workbench-protocol/client",
   "@go-go-golems/chat-provider",
 ];
 
@@ -45,7 +48,8 @@ export default defineConfig({
         external.includes(id) ||
         id.startsWith("@go-go-golems/chat-provider/") ||
         id.startsWith("@bufbuild/protobuf/") ||
-        id.startsWith("@hyperslop-systems/pbui/"),
+        id.startsWith("@hyperslop-systems/pbui/") ||
+        id.startsWith("@hyperslop-systems/workbench-protocol/"),
     },
     sourcemap: true,
   },

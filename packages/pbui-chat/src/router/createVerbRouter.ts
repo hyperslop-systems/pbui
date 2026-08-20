@@ -25,6 +25,14 @@ export interface RouterContext {
    * by mentions of the corresponding refs; the refs ride along in the body.
    */
   sendToAgent(template: string, refs: readonly Reference[]): Promise<void>;
+  /**
+   * Open a widget instance in its own tile. With a workbench attached to
+   * the chat this opens a `widget` tile beside the active one; without one
+   * it falls back to the chat store's `tiles` list, which `TilesPanel`
+   * renders. Handlers call this rather than the store so the product's
+   * `openInTile` verb does the right thing either way.
+   */
+  openTile(widgetId: string): void;
   /** Perform another verb (for handlers that decompose into one). */
   perform: VerbRouter<VerbLike>["perform"];
 }

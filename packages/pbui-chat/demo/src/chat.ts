@@ -41,7 +41,9 @@ export const router = createVerbRouter<Verb>({
         ctx.store.sortBy(verb.tableId, verb.field, verb.dir);
         return;
       case "openInTile":
-        ctx.store.openTile(verb.widgetId);
+        // A widget tile in the workbench when one is attached, else the
+        // TilesPanel list; the binding decides.
+        ctx.openTile(verb.widgetId);
         return;
       default:
         throw new Error(`${verb.kind} is not a local verb`);

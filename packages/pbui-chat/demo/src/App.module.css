@@ -23,56 +23,12 @@
   min-width: 0;
 }
 
-.grid {
+/* A one-cell grid, so the workbench surface gets a committed height and
+ * every tile below it can size itself (pbui playbook §6a). */
+.canvas {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
-  gap: var(--pbui-space-4);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   padding: var(--pbui-space-4);
   min-height: 0;
-}
-
-.chat {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  min-width: 0;
-}
-
-.transcript {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-
-.side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pbui-space-4);
-  min-height: 0;
-  overflow: auto;
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.panelHead {
-  padding: var(--pbui-space-1) var(--pbui-space-3);
-  border-bottom: var(--pbui-border-hair);
-  background: var(--pbui-pane-alt);
-}
-
-.panelBody {
-  padding: var(--pbui-space-3);
-  max-height: 40vh;
-  overflow: auto;
-}
-
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 2fr) minmax(0, 1fr);
-  }
 }

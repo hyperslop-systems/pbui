@@ -1,0 +1,28 @@
+/* The cell is a one-cell grid, so the frame inside it gets a committed
+ * height (playbook §6a) and the application can size itself to it. */
+.cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A one-cell grid again for the application: the frame's body is a flex
+ * column, and a flex child with `height: 100%` resolves against nothing. */
+.body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.empty {
+  padding: var(--pbui-space-4);
+}
+
+.retry {
+  margin-top: var(--pbui-space-3);
+}

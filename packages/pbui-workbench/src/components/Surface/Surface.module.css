@@ -1,0 +1,14 @@
+/* The surface is a one-cell grid: whatever the host gives it, the tree
+ * fills, and every tile below gets a committed height. */
+.surface {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  background: var(--pbui-wash, var(--pbui-paper));
+}
+
+.empty {
+  padding: var(--pbui-space-4);
+}

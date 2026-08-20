@@ -15,6 +15,7 @@ function binding(fetchImpl: typeof fetch, sessionId = "s1"): RouterBinding {
     accept: async () => null,
     labelFor: (r) => r.id,
     sendToAgent: async () => undefined,
+    openTile: () => undefined,
     ...({ fetch: fetchImpl } as object),
   };
 }

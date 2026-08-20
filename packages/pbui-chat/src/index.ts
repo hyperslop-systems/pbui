@@ -9,6 +9,8 @@ export * from "./router";
 export * from "./adapters";
 export * from "./tools";
 export * from "./panels";
+export * from "./apps";
+export { findWidgetEntity, widgetTitleOf } from "./widget/findWidgetEntity";
 export { toneVar, calloutVariant } from "./tone";
 export { PbuiChatContext, usePbuiChat } from "./context";
 export type { PbuiChatContextValue } from "./context";

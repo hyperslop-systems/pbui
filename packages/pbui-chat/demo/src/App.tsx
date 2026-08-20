@@ -1,10 +1,11 @@
-import { AppBody, CheckboxRow, KindLegend, SectionLabel, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, CheckboxRow, KindLegend, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
 import { ChatProvider, selectOverlay, useChatClient, useChatSelector, type ChatProviderConfig } from "@go-go-golems/chat-provider";
 import { useReferenceIndex } from "@hyperslop-systems/pbui-chat";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./App.module.css";
 import { chat } from "./chat";
 import { TONES, type Environment, type PresentationType } from "./pbui/types";
+import { resetLayout, workbench } from "./workbench";
 
 /*
  * Module-level so `ChatProvider`'s `useMemo` keyed on it runs once; a config
@@ -18,6 +19,8 @@ const chatConfig: ChatProviderConfig = {
 };
 
 const LEGEND_TYPES: PresentationType[] = ["product", "category", "metal", "order", "field", "row", "source", "widget", "tool", "proposal"];
+
+const isApple = typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform);
 
 export function App() {
   const [canApprove, setCanApprove] = useState(false);
@@ -56,35 +59,20 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
             <span className={styles.spacer} />
             <Legend />
             <CheckboxRow checked={canApprove} onCheckedChange={onCanApproveChange} label="approver role" size="tiny" />
+            <Button size="tiny" variant="framed" onClick={() => workbench.verbs.openLauncher()} title="open the launcher to place an application">
+              {isApple ? "⌘K" : "Ctrl+K"} · launcher
+            </Button>
+            <Button size="tiny" onClick={resetLayout} title="back to the default tiles">
+              reset layout
+            </Button>
             <Text size="tiny" tone="faint">
               {overlay.wsStatus}
             </Text>
           </Toolbar>
         </Surface>
 
-        <main className={styles.grid}>
-          <Surface as="section" tone="pane" border="hair" className={styles.chat} aria-label="conversation">
-            <AppBody flush className={styles.transcript}>
-              <chat.Messages />
-            </AppBody>
-            <chat.Composer />
-            <chat.MouseDocLine ambient={overlay.sessionId ? `session ${overlay.sessionId}` : "no session yet"} />
-          </Surface>
-
-          <aside className={styles.side} aria-label="panels">
-            <Panel label="inspector">
-              <chat.InspectorPanel />
-            </Panel>
-            <Panel label="watchlist">
-              <chat.WatchlistPanel />
-            </Panel>
-            <Panel label="trace">
-              <chat.TracePanel />
-            </Panel>
-            <Panel label="tiles">
-              <chat.TilesPanel />
-            </Panel>
-          </aside>
+        <main className={styles.canvas}>
+          <Workbench />
         </main>
       </div>
       <chat.ObjectMenu />
@@ -93,14 +81,28 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
   );
 }
 
-function Panel({ label, children }: { label: string; children: React.ReactNode }) {
+/**
+ * The tiles, and the launcher behind ⌘K. The title slot is plain text for
+ * now; the follow-up is a `<tile>` presentation in the vocabulary, so the
+ * object menu offers the same split/close/rename verbs the bar buttons do.
+ */
+function Workbench() {
+  const pbui = chat.pbui.usePbui();
+  const shortcutContext = useCallback(
+    () => ({ objectMenuOpen: pbui.menu !== null, acceptingPresentation: pbui.accepting !== null }),
+    [pbui.menu, pbui.accepting],
+  );
   return (
-    <Surface as="section" tone="pane" border="hair" className={styles.panel} aria-label={label}>
-      <div className={styles.panelHead}>
-        <SectionLabel>{label}</SectionLabel>
-      </div>
-      <div className={styles.panelBody}>{children}</div>
-    </Surface>
+    <>
+      <workbench.Surface
+        renderTitle={(_view, placement) => (
+          <Text size="tiny" strong title={placement.placementCount > 1 ? `shown in ${placement.placementCount} tiles` : undefined}>
+            {placement.label}
+          </Text>
+        )}
+      />
+      <workbench.Launcher title="Place an application" shortcutContext={shortcutContext} />
+    </>
   );
 }
 

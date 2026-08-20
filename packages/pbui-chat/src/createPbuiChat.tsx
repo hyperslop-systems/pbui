@@ -1,10 +1,12 @@
 import type { PbuiInstance, PresentationRegistry, PresentationValues } from "@hyperslop-systems/pbui";
 import {
   defineChatExtensions,
+  selectTimelineEntities,
   useChatClient,
   type ChatExtension,
   type SendMessageRequest,
 } from "@go-go-golems/chat-provider";
+import type { Workbench } from "@hyperslop-systems/pbui-workbench";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { traceAdapter } from "./adapters/traceAdapter";
 import { Composer } from "./composer/Composer";
@@ -21,6 +23,8 @@ import { fromPresentationReference, toPresentationReference } from "./types";
 import { exportVocabulary } from "./vocabulary/defineVocabulary";
 import type { Vocabulary } from "./vocabulary/schemas";
 import { pbuiWidgets } from "./widget/definitions";
+import { findWidgetEntity, widgetTitleOf } from "./widget/findWidgetEntity";
+import { WIDGET_BINDING } from "./apps/WidgetApp";
 
 export interface CreatePbuiChatOptions<Values extends PresentationValues, Environment, Verb extends VerbLike> {
   /** The product's `createPbui()` instance. */
@@ -33,6 +37,12 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
   basePrefix?: string;
   /** Supply one to share it with product code created before the chat. */
   store?: PbuiChatStore;
+  /**
+   * A pbui-workbench to open widget tiles in. Usually attached AFTER
+   * construction with `chat.attachWorkbench(wb)`, because the workbench's
+   * apps (`createChatApps(chat)`) need the chat first.
+   */
+  workbench?: Workbench;
 }
 
 export interface PbuiChatProviderProps<Environment> {
@@ -66,6 +76,24 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   const basePrefix = options.basePrefix ?? "";
 
   let pending: PendingSend | null = null;
+  let workbench: Workbench | null = options.workbench ?? null;
+
+  /**
+   * Where "Open in tile" goes. With a workbench: a `widget` tile bound to
+   * the instance, beside the tile the user is in, titled like the widget.
+   * Without one: the store's `tiles` list, for `TilesPanel`.
+   */
+  function openTileWith(getEntities: () => ReturnType<typeof selectTimelineEntities>) {
+    return (widgetId: string) => {
+      if (!workbench) {
+        store.openTile(widgetId);
+        return;
+      }
+      const title = widgetTitleOf(findWidgetEntity(getEntities(), widgetId), widgetId);
+      const near = workbench.activePlacementId();
+      workbench.verbs.openView("widget", { [WIDGET_BINDING]: widgetId }, { ...(near ? { near } : {}), title });
+    };
+  }
 
   const extension: ChatExtension = defineChatExtensions({
     name: "pbui-chat",
@@ -139,6 +167,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
           return picked ? fromPresentationReference(picked) : null;
         },
         labelFor,
+        openTile: openTileWith(() => selectTimelineEntities(client.getStore().getState())),
         sendToAgent: async (template, refs) => {
           const prompt = template.replace(/\{(\d+)\}/g, (whole, index: string) => {
             const reference = refs[Number(index)];
@@ -190,6 +219,12 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     vocabulary,
     registry,
     pbui,
+    /** Route `openInTile` to a workbench's `widget` tiles from now on (null detaches). */
+    attachWorkbench(next: Workbench | null) {
+      workbench = next;
+    },
+    /** The attached workbench, if any. */
+    workbench: () => workbench,
   };
 }
 

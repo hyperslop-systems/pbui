@@ -2,12 +2,16 @@ import { Button, EmptyState, Surface, Text } from "@hyperslop-systems/pbui";
 import { selectTimelineEntities, useChatSelector, WidgetOutlet } from "@go-go-golems/chat-provider";
 import { usePbuiChat } from "../../context";
 import { usePbuiChatStore } from "../../store/chatStore";
+import { findWidgetEntity, widgetTitleOf } from "../../widget/findWidgetEntity";
 import styles from "./TilesPanel.module.css";
 
 /**
- * Widgets the `openInTile` verb moved out of the transcript. Each renders
- * through chat-provider's `WidgetOutlet`, so it is the same live instance
- * (patches still arrive) — only its place on the page changed.
+ * Widgets the `openInTile` verb moved out of the transcript, for a product
+ * WITHOUT a workbench attached. Each renders through chat-provider's
+ * `WidgetOutlet`, so it is the same live instance (patches still arrive) —
+ * only its place on the page changed. With a workbench, `openInTile` opens
+ * a real `widget` tile instead (see `createChatApps`) and this panel stays
+ * empty.
  */
 export function TilesPanel() {
   const chat = usePbuiChat();
@@ -21,9 +25,9 @@ export function TilesPanel() {
   return (
     <div data-part="tiles" className={styles.tiles}>
       {tiles.map((widgetId) => {
-        const entity = entities.find((e) => e.kind === "widget" && (e.props.instanceId === widgetId || e.id === widgetId));
+        const entity = findWidgetEntity(entities, widgetId);
         const props = (entity?.props.props as Record<string, unknown> | undefined) ?? {};
-        const title = typeof props.title === "string" ? props.title : widgetId;
+        const title = widgetTitleOf(entity, widgetId);
         return (
           <Surface key={widgetId} tone="pane" border="hair" padding={0} className={styles.tile} role="region" aria-label={title}>
             <div className={styles.head}>

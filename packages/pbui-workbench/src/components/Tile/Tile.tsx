@@ -1,0 +1,131 @@
+import { Component as ReactComponent, type ErrorInfo, type ReactNode } from "react";
+import { Button, Callout, EmptyState, Text, TileFrame, useTileDrag } from "@hyperslop-systems/pbui";
+import type { Node } from "@hyperslop-systems/workbench-protocol";
+import { placementCount } from "@hyperslop-systems/workbench-protocol/client";
+import { useWorkbench } from "../../context";
+import type { SurfaceProps, TilePlacementInfo } from "../../types";
+import { canClose as canClosePlacement } from "../../verbs";
+import styles from "./Tile.module.css";
+
+export interface TileProps extends Pick<SurfaceProps, "renderTitle" | "swapLabel" | "dockLabel"> {
+  node: Node;
+}
+
+/**
+ * One leaf of the split tree: pbui's `TileFrame` around the application.
+ *
+ * The tile is the CONTAINER (playbook §6): it resolves the view and the app
+ * descriptor, wires the frame's buttons and the drag grip to the workbench
+ * verbs, and hands the application a one-cell grid with a committed height.
+ * It holds no application state and no layout logic of its own.
+ */
+export function Tile({ node, renderTitle, swapLabel, dockLabel }: TileProps) {
+  const workbench = useWorkbench();
+  const document = workbench.useDocument();
+  const active = workbench.useWorkbenchState((state) => state.activePlacementId === node.id);
+  const viewId = node.body.case === "leaf" ? node.body.value.viewId : "";
+  const view = document.views[viewId];
+  const app = view ? workbench.apps.get(view.appId) : null;
+  const canClose = canClosePlacement(document, node.id);
+
+  const drag = useTileDrag({
+    id: node.id,
+    onSwap: (source, target) => workbench.verbs.swap(source, target),
+    onDock: (source, target, zone) => workbench.verbs.dock(source, target, zone),
+  });
+
+  const label = view ? (view.title || (app ? (app.titleFor?.(view) ?? app.title) : view.appId)) : `missing view ${viewId}`;
+  const info: TilePlacementInfo = {
+    placementId: node.id,
+    app,
+    label,
+    canClose,
+    placementCount: view ? placementCount(document, view.id) : 0,
+  };
+  const title = view && renderTitle ? renderTitle(view, info) : label;
+  const activate = () => workbench.verbs.activate(node.id);
+
+  return (
+    <div
+      className={styles.cell}
+      data-part="workbench-tile"
+      data-active={active || undefined}
+      // Capture, so the tile becomes the context BEFORE a button or the grip
+      // handles the event; neither handler moves DOM focus.
+      onPointerDownCapture={activate}
+      onFocusCapture={activate}
+    >
+      <TileFrame
+        placementId={node.id}
+        tone={app?.tone ?? "var(--pbui-pane-alt)"}
+        title={title}
+        canClose={canClose}
+        onSplit={(direction) => workbench.verbs.split(node.id, direction)}
+        onClose={() => workbench.verbs.close(node.id)}
+        grip={{ onPointerDown: drag.onGripPointerDown }}
+        dropZone={drag.zone}
+        dragging={drag.dragging}
+        registerElement={drag.register}
+        swapLabel={swapLabel}
+        dockLabel={dockLabel}
+      >
+        <div className={styles.body}>
+          {view && app ? (
+            <TileBoundary resetKey={`${view.id}:${view.appId}`} title={app.title}>
+              <app.Component placementId={node.id} view={view} />
+            </TileBoundary>
+          ) : (
+            <div className={styles.empty}>
+              <EmptyState
+                message={view ? `no application called “${view.appId}”` : `no view called “${viewId}”`}
+                hint="close this tile, or open another application from the launcher (⌘K)"
+              />
+            </div>
+          )}
+        </div>
+      </TileFrame>
+    </div>
+  );
+}
+
+interface TileBoundaryProps {
+  resetKey: string;
+  title: string;
+  children: ReactNode;
+}
+
+/**
+ * An application that throws takes down its own tile, not the workbench.
+ * The boundary resets when the view changes underneath it, and on request.
+ */
+class TileBoundary extends ReactComponent<TileBoundaryProps, { error: Error | null; resetKey: string }> {
+  state = { error: null as Error | null, resetKey: this.props.resetKey };
+
+  static getDerivedStateFromProps(props: TileBoundaryProps, state: { error: Error | null; resetKey: string }) {
+    return props.resetKey !== state.resetKey ? { error: null, resetKey: props.resetKey } : null;
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`pbui-workbench: ${this.props.title} failed to render`, error, info.componentStack);
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className={styles.empty}>
+        <Callout variant="warning" title={`${this.props.title} could not render`}>
+          <Text size="small" prose>
+            {this.state.error.message}
+          </Text>
+          <div className={styles.retry}>
+            <Button onClick={() => this.setState({ error: null })}>Try this tile again</Button>
+          </div>
+        </Callout>
+      </div>
+    );
+  }
+}

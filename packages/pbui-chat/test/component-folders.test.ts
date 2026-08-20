@@ -16,6 +16,7 @@ const NOT_COMPONENTS = new Set([
   "widget/definitions.tsx",
   "tools/acceptTool.tsx",
   "tools/proposeTool.tsx",
+  "apps/createChatApps.tsx",
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {

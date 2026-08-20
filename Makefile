@@ -63,7 +63,7 @@ protocol-check:
 # Install JS deps once with: pnpm install --filter '!@hyperslop-systems/datalab-ui'
 
 chat-ui:
-	pnpm --filter @hyperslop-systems/pbui build
+	pnpm --include-workspace-root --filter @hyperslop-systems/pbui build
 	pnpm --filter @hyperslop-systems/pbui-chat-demo build
 
 chat-build: chat-ui
