@@ -69,7 +69,8 @@ export type WorkbenchVerb =
   | { kind: "workspace.rename"; workspaceId: string; name: string }
   | { kind: "workspace.delete"; workspaceId: string }
   | { kind: "workspace.clone"; workspaceId: string; name?: string; newWorkspaceId?: string; select?: boolean }
-  | { kind: "launcher.open" }
+  | { kind: "view.goTo"; viewId: string }
+  | { kind: "launcher.open"; placementId?: string }
   | { kind: "launcher.close" };
 
 export type WorkbenchVerbKind = WorkbenchVerb["kind"];
@@ -114,7 +115,11 @@ export const workbenchVerbs = {
     workspaceId: string,
     options: { name?: string; newWorkspaceId?: string; select?: boolean } = {},
   ): WorkbenchVerb => ({ kind: "workspace.clone", workspaceId, ...options }),
-  openLauncher: (): WorkbenchVerb => ({ kind: "launcher.open" }),
+  goTo: (viewId: string): WorkbenchVerb => ({ kind: "view.goTo", viewId }),
+  openLauncher: (placementId?: string): WorkbenchVerb => ({
+    kind: "launcher.open",
+    ...(placementId ? { placementId } : {}),
+  }),
   closeLauncher: (): WorkbenchVerb => ({ kind: "launcher.close" }),
 };
 
@@ -160,8 +165,10 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return "delete this workspace and its tiles";
     case "workspace.clone":
       return "duplicate this workspace";
+    case "view.goTo":
+      return "go to that tile";
     case "launcher.open":
-      return "open the launcher";
+      return verb.placementId ? "show something else in this tile" : "open the launcher";
     case "launcher.close":
       return "close the launcher";
   }
@@ -209,6 +216,12 @@ export interface WorkbenchVerbHandlers {
   rebind(viewId: string, documents: Record<string, string>): boolean;
   activate(placementId: string | null): void;
   /**
+   * Make the tile showing a view the active one, switching workspace when the
+   * view lives in another. Returns the placement, or null when nothing places
+   * the view. This is what the launcher's "on screen" rows do.
+   */
+  goToView(viewId: string): string | null;
+  /**
    * Render another workspace. Local state, not a mutation: which workspace
    * THIS browser is looking at is not part of the layout (DATADROP-18 §1.4).
    * Clears the active placement, because a placement of another workspace
@@ -236,7 +249,8 @@ export interface WorkbenchVerbHandlers {
    * original — the same rule `split` follows for one tile, applied to a tree.
    */
   cloneWorkspace(workspaceId: string, options?: { name?: string; newWorkspaceId?: string; select?: boolean }): string | null;
-  openLauncher(): void;
+  /** With a placement, the launcher opens in per-pane mode ("show something else HERE"). */
+  openLauncher(placementId?: string): void;
   closeLauncher(): void;
 }
 
@@ -630,6 +644,21 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     return store.mutate([bindings(viewId, { ...documents })]);
   };
 
+  const goToView: WorkbenchVerbHandlers["goToView"] = (viewId) => {
+    const current = doc();
+    const here = firstPlacementOfView(current, workspace(), viewId);
+    if (here) {
+      activate(here);
+      return here;
+    }
+    const elsewhere = workspaceOfView(current, viewId);
+    if (!elsewhere) return null;
+    selectWorkspace(elsewhere);
+    const there = firstPlacementOfView(doc(), elsewhere, viewId);
+    if (there) activate(there);
+    return there;
+  };
+
   const selectWorkspace: WorkbenchVerbHandlers["selectWorkspace"] = (workspaceId) => {
     const state = store.getState();
     if (!state.document.workspaces.some((item) => item.id === workspaceId)) return false;
@@ -742,8 +771,9 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     renameWorkspace,
     deleteWorkspace,
     cloneWorkspace,
-    openLauncher: () => store.setState({ launcherOpen: true }),
-    closeLauncher: () => store.setState({ launcherOpen: false }),
+    goToView,
+    openLauncher: (placementId) => store.setState({ launcherOpen: true, launcherFrom: placementId ?? null }),
+    closeLauncher: () => store.setState({ launcherOpen: false, launcherFrom: null }),
   };
 }
 
@@ -811,8 +841,11 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
         ...(verb.select !== undefined ? { select: verb.select } : {}),
       });
       return;
+    case "view.goTo":
+      handlers.goToView(verb.viewId);
+      return;
     case "launcher.open":
-      handlers.openLauncher();
+      handlers.openLauncher(verb.placementId);
       return;
     case "launcher.close":
       handlers.closeLauncher();

@@ -74,14 +74,26 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
   );
 
   // Keyboard-operable, because a layout you cannot adjust without a mouse is
-  // a layout half the users are stuck with.
+  // a layout half the users are stuck with. Home/End go to the extremes,
+  // which is the shape every other `role="separator"` on the web has.
   const onKeyDown = (event: React.KeyboardEvent) => {
     const step = event.shiftKey ? 0.01 : 0.05;
     const decrease = row ? "ArrowLeft" : "ArrowUp";
     const increase = row ? "ArrowRight" : "ArrowDown";
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      workbench.verbs.resize(node.id, event.key === "Home" ? 0.1 : 0.9, { snap: false });
+      return;
+    }
     if (event.key !== decrease && event.key !== increase) return;
     event.preventDefault();
     workbench.verbs.resize(node.id, committed + (event.key === increase ? step : -step), { snap: false });
+  };
+
+  // Double-click is the conventional "even it out" and costs one handler.
+  const onDoubleClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    workbench.verbs.resize(node.id, 0.5);
   };
 
   if (!split?.a || !split.b) return null;
@@ -105,10 +117,13 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
         aria-valuenow={Math.round(ratio * 100)}
         aria-valuemin={10}
         aria-valuemax={90}
+        // A screen reader announcing "60" says nothing; the unit is the point.
+        aria-valuetext={`${Math.round(ratio * 100)} percent`}
         data-part="split-divider"
         data-state={live ? (live.snapped ? "snapped" : "dragging") : undefined}
         className={styles.divider}
         onPointerDown={onPointerDown}
+        onDoubleClick={onDoubleClick}
         onKeyDown={onKeyDown}
       >
         <span className={styles.grip} />

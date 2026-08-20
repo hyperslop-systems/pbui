@@ -42,7 +42,22 @@ export function Tile({ node, renderTitle, swapLabel, dockLabel }: TileProps) {
     canClose,
     placementCount: view ? placementCount(document, view.id) : 0,
   };
-  const title = view && renderTitle ? renderTitle(view, info) : label;
+  // The linked badge is chrome, not a product decision: a view shown twice
+  // looks like two independent tiles until something says otherwise, and
+  // "why did editing this one change that one" is the confusion it prevents.
+  const title =
+    view && renderTitle ? (
+      renderTitle(view, info)
+    ) : (
+      <>
+        {label}
+        {info.placementCount > 1 ? (
+          <span data-part="tile-linked" title={`the same view is shown in ${info.placementCount} tiles`}>
+            {` ×${info.placementCount}`}
+          </span>
+        ) : null}
+      </>
+    );
   const activate = () => workbench.verbs.activate(node.id);
 
   return (
@@ -50,6 +65,10 @@ export function Tile({ node, renderTitle, swapLabel, dockLabel }: TileProps) {
       className={styles.cell}
       data-part="workbench-tile"
       data-active={active || undefined}
+      // Programmatically focusable only: `focusPlacement` puts the keyboard
+      // in a tile after a placement, and Tab then moves into the application.
+      // Tab-reachable would add a stop before every tile for no gain.
+      tabIndex={-1}
       // Capture, so the tile becomes the context BEFORE a button or the grip
       // handles the event; neither handler moves DOM focus.
       onPointerDownCapture={activate}

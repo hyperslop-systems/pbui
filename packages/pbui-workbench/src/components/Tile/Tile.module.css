@@ -8,6 +8,13 @@
   min-height: 0;
 }
 
+/* The cell takes focus programmatically (focusPlacement); a default outline
+ * around the whole tile is noise, and the active-tile cue already says
+ * where the keyboard is. */
+.cell:focus {
+  outline: none;
+}
+
 /* A one-cell grid again for the application: the frame's body is a flex
  * column, and a flex child with `height: 100%` resolves against nothing. */
 .body {

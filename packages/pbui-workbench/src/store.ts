@@ -15,6 +15,13 @@ export interface WorkbenchState {
   /** The tile a global operation (the launcher's "place") acts on. */
   activePlacementId: string | null;
   launcherOpen: boolean;
+  /**
+   * The tile the launcher was invoked FROM, when it was invoked per-pane
+   * ("show something else in THIS tile"). Null means the global invocation,
+   * whose rows place a new tile instead of replacing one. Two modes, one
+   * dialog: the rows model reads this and changes what choosing means.
+   */
+  launcherFrom: string | null;
 }
 
 /**
@@ -71,6 +78,7 @@ export function createWorkbenchStore(
     workspaceId: initial.workspaces[0]?.id ?? "",
     activePlacementId: null,
     launcherOpen: false,
+    launcherFrom: null,
   };
   const listeners = new Set<() => void>();
   const emit = () => {

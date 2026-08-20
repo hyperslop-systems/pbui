@@ -81,6 +81,25 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     setRoot: (element) => {
       rootElement = element;
     },
+    focusPlacement: (placementId) => {
+      // A frame later: the verb has committed the document but React has not
+      // rendered the new tile yet, so the element does not exist on this tick.
+      const focus = () => {
+        const escaped =
+          typeof CSS !== "undefined" && typeof CSS.escape === "function"
+            ? CSS.escape(placementId)
+            : placementId.replace(/"/g, '\\"');
+        const frame = (rootElement ?? globalThis.document)?.querySelector(`[data-placement-id="${escaped}"]`);
+        // The tile CELL, not the application inside it: focusing a button the
+        // product happens to render first would steal the caret and read as
+        // random. The cell is programmatically focusable only (tabIndex -1),
+        // so Tab then moves forward into the application.
+        const cell = frame?.closest<HTMLElement>('[data-part="workbench-tile"]');
+        cell?.focus?.();
+      };
+      if (typeof requestAnimationFrame === "function") requestAnimationFrame(focus);
+      else setTimeout(focus, 0);
+    },
     Surface: function Surface(props: SurfaceProps) {
       return (
         <WorkbenchContext.Provider value={workbench}>

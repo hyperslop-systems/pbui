@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 import type { ShortcutContext } from "@hyperslop-systems/pbui";
 import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop-systems/workbench-protocol";
 import type { AppDescriptor, AppRegistry } from "./apps";
+import type { LauncherRow, LauncherRowsContext } from "./launcherRows";
 import type { WorkbenchState, WorkbenchStore } from "./store";
 import type { WorkbenchVerb, WorkbenchVerbHandlers } from "./verbs";
 
@@ -60,6 +61,21 @@ export interface LauncherProps {
    * escape-surface stack.
    */
   shortcutContext?(): Partial<Pick<ShortcutContext, "objectMenuOpen" | "acceptingPresentation" | "renamingView">>;
+  /**
+   * The product's rows model, replacing the default one (what is on screen,
+   * then what could be). DR-U6: launcher POLICY stays with the product; the
+   * shell keeps the mechanics — Mod-K arbitration, the status line, the
+   * keyboard loop, the placement rule.
+   */
+  rows?(context: LauncherRowsContext): LauncherRow[];
+  /**
+   * Claim a row before the default meaning applies. Return true to say "I
+   * handled it"; false or nothing falls through, so a product may override
+   * one row without restating the rest.
+   */
+  choose?(row: LauncherRow, context: LauncherRowsContext): boolean;
+  /** Render a row's detail line; the default uses the row's own `detail`. */
+  renderDetail?(row: LauncherRow): ReactNode;
 }
 
 export interface Workbench {
@@ -82,6 +98,13 @@ export interface Workbench {
   root(): HTMLElement | null;
   /** @internal set by the Surface */
   setRoot(element: HTMLElement | null): void;
+  /**
+   * Move DOM focus into a tile. Called after a placement so the keyboard does
+   * not stay in the dialog that has closed; a product calls it after its own
+   * placements. Deferred a frame, because the tile does not exist yet when
+   * the verb returns.
+   */
+  focusPlacement(placementId: string): void;
   Surface: ComponentType<SurfaceProps>;
   Launcher: ComponentType<LauncherProps>;
   WorkspaceStrip: ComponentType<WorkspaceStripProps>;
