@@ -26,7 +26,7 @@ const (
 // WidgetToolInput is the argument schema of pbui_widget. The document is
 // validated against the vocabulary before it is published.
 type WidgetToolInput struct {
-	Document map[string]any `json:"document" jsonschema:"required,description=A pbui.widget document: {format:'pbui.widget', schema_version:1, title?, layout?: stack|row|grid, children:[{kind:text|refs|meter|sparkline|segmented|stat|callout|table|log|form|widget, ...}], verbs?:[{label, verb:{kind,...}}]}"`
+	Document map[string]any `json:"document" jsonschema:"required,description=A pbui.widget document. Shape: {format:'pbui.widget', schema_version:1, title:string, layout:'stack', children:[child...], verbs:[{label:string, verb:{kind:string, ...fields}}]}. Children by kind: {kind:'table', docId:string, columns:[{name:string, type:'q'|'n'}], rows:[[cell,...],...]} | {kind:'text', text:string, markdown:true} | {kind:'refs', label:string, refs:[{type:string, id:string, value:{name:string}}]} | {kind:'meter', label, value:number, max:number} | {kind:'sparkline', label, values:[number]} | {kind:'segmented', label, parts:[{label, value:number}]} | {kind:'stat', label, value, unit?, delta?} | {kind:'callout', tone:'warning'|'neutral'|'positive'|'danger', text} | {kind:'log', entries:[{level, text}]}. Example: {format:'pbui.widget', schema_version:1, title:'Low stock', layout:'stack', children:[{kind:'table', docId:'t1', columns:[{name:'sku', type:'n'},{name:'qty', type:'q'}], rows:[['2049', 3]]}], verbs:[{label:'Watch 2049', verb:{kind:'watch', ref:{type:'product', id:'2049'}}}]}"`
 }
 
 // WidgetToolOutput tells the model the id it can mention as [[widget:<id>]].

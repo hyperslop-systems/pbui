@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
+	gepevents "github.com/go-go-golems/geppetto/pkg/events"
 	"github.com/go-go-golems/geppetto/pkg/inference/engine"
 	"github.com/go-go-golems/geppetto/pkg/inference/middleware"
 	geptools "github.com/go-go-golems/geppetto/pkg/inference/tools"
@@ -102,6 +104,7 @@ func (f *realRuntimeFactory) promptRequest(ctx context.Context, sid sessionstrea
 		}
 	}
 	bridge := frontendtools.NewBridgeExecutor(f.frontendTools, nil)
+	run := &runBinding{plugin: f.plugin}
 	runtimeKey := f.profile
 	if resolved != nil && resolved.ProfileRuntime != nil {
 		if p := strings.TrimSpace(resolved.ProfileRuntime.ProfileSettings.Profile); p != "" {
@@ -116,8 +119,10 @@ func (f *realRuntimeFactory) promptRequest(ctx context.Context, sid sessionstrea
 			Registry:     registry,
 			ToolExecutor: bridge,
 			RuntimeKey:   runtimeKey,
+			WrapSink:     run.wrapSink,
 		},
 		RuntimeContext: func(ctx context.Context, sid sessionstream.SessionId, messageID string, pub sessionstream.EventPublisher) context.Context {
+			run.bind(sid, messageID, pub)
 			return frontendtools.WithBridgeContext(ctx, frontendtools.BridgeContext{SessionID: sid, MessageID: messageID, Publisher: pub})
 		},
 	}, nil
@@ -165,4 +170,53 @@ func withMiddlewares(base engine.Engine, mws ...middleware.Middleware) engine.En
 // RunInference implements engine.Engine.
 func (e *engineWithMiddlewares) RunInference(ctx context.Context, t *turns.Turn) (*turns.Turn, error) {
 	return e.handler(ctx, t)
+}
+
+// runBinding ties one run's session publisher to a sink wrapper. Pinocchio's
+// runtime sink consumes text-segment events itself and never forwards them to
+// plugins, so the only place the real runtime can see finished assistant text
+// is a wrapper around that sink — the same seam CoinVault uses for its
+// structured extractors. RuntimeContext fills in the session, message id and
+// publisher before the run starts; the wrapper reads them when text finishes.
+type runBinding struct {
+	plugin *pbuichat.Plugin
+
+	mu        sync.Mutex
+	sid       sessionstream.SessionId
+	messageID string
+	pub       sessionstream.EventPublisher
+}
+
+func (r *runBinding) bind(sid sessionstream.SessionId, messageID string, pub sessionstream.EventPublisher) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sid, r.messageID, r.pub = sid, messageID, pub
+}
+
+func (r *runBinding) wrapSink(next gepevents.EventSink) (gepevents.EventSink, error) {
+	return &refsSink{next: next, run: r}, nil
+}
+
+type refsSink struct {
+	next gepevents.EventSink
+	run  *runBinding
+}
+
+var _ gepevents.EventSink = (*refsSink)(nil)
+
+func (s *refsSink) PublishEvent(event gepevents.Event) error {
+	if ev, ok := event.(*gepevents.EventTextSegmentFinished); ok && ev != nil {
+		s.run.mu.Lock()
+		sid, messageID, pub := s.run.sid, s.run.messageID, s.run.pub
+		s.run.mu.Unlock()
+		if pub != nil && messageID != "" {
+			if _, err := s.run.plugin.EmitRefsForText(context.Background(), pbuichat.PublisherFor(sid, pub), messageID, ev.Text); err != nil {
+				log.Warn().Err(err).Str("message_id", messageID).Msg("pbui-chat: publish refs for finished text")
+			}
+		}
+	}
+	if s.next == nil {
+		return nil
+	}
+	return s.next.PublishEvent(event)
 }

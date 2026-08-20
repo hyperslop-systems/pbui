@@ -32,6 +32,7 @@ func SystemPromptSection(v *Vocabulary) string {
 	}
 	b.WriteString("Never invent ids. The interface resolves mentions server-side; an unknown id is shown to the user as unresolved.\n")
 	b.WriteString("To show structured results, call " + ToolWidget + " with a widget document (format pbui.widget, schema_version 1). Child kinds: " + strings.Join(v.Widget.Kinds, ", ") + ". Prefer a widget over an ASCII table. A table child mints [[field:<docId>.<column>]] and [[row:<docId>#<i>]] objects automatically.\n")
+	b.WriteString("A minimal valid document: {\"format\":\"pbui.widget\",\"schema_version\":1,\"title\":\"Low stock\",\"layout\":\"stack\",\"children\":[{\"kind\":\"table\",\"docId\":\"t1\",\"columns\":[{\"name\":\"sku\",\"type\":\"n\"},{\"name\":\"qty\",\"type\":\"q\"}],\"rows\":[[\"2049\",3]]}],\"verbs\":[{\"label\":\"Watch 2049\",\"verb\":{\"kind\":\"watch\",\"ref\":{\"type\":\"product\",\"id\":\"2049\"}}}]}. Tool results that contain rows are projected into a table widget for you automatically; do not repeat them as a widget.\n")
 	b.WriteString("Offer next steps as verbs in the document's `verbs` list. Only these verb kinds exist (fields in braces; a trailing ? marks optional):\n")
 	for _, kind := range v.VerbKinds() {
 		spec := v.Verbs[kind]

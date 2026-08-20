@@ -70,7 +70,10 @@ func NewServer(ctx context.Context, opts Options) (*Server, func() error, error)
 	widgetPlugin := widgets.NewWidgetPlugin()
 	frontendToolPlugin := frontendtools.NewPlugin()
 	frontendToolManager := frontendtools.NewManager()
-	chatPlugins := []chatapp.ChatPlugin{plugins.NewReasoningPlugin(), plugins.NewToolCallPlugin(), widgetPlugin, frontendToolPlugin, plugin}
+	// pbuichat goes FIRST: the engine stops at the first plugin that reports a
+	// runtime event as handled, and the tool-call plugin claims tool events.
+	// pbuichat never claims anything, so the others still run after it.
+	chatPlugins := []chatapp.ChatPlugin{plugin, plugins.NewReasoningPlugin(), plugins.NewToolCallPlugin(), widgetPlugin, frontendToolPlugin}
 
 	reg := sessionstream.NewSchemaRegistry()
 	if err := chatapp.RegisterSchemas(reg, chatPlugins...); err != nil {
