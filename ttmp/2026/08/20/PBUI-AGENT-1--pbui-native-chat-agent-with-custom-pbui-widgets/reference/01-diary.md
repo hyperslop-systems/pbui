@@ -422,3 +422,28 @@ The user asked whether this was a real backend. It is the real Go server (pinocc
 ### Technical details
 
 Hydrated snapshot of the real run (abridged): `ChatToolCall shop_products {"category":"7","low_stock":true,"metal":"gold"}` → `ChatWidgetInstance chat-msg-1-w1 pbui.widget [table]` → `ChatToolCall pbui_widget` (rejected: "verbs[0]: verb reorder is missing productId") → `ChatToolCall pbui_widget` → `ChatWidgetInstance chat-msg-1-w2 pbui.widget [table] verbs=2` → assistant text with `[[product:2049|…]]` → `ChatWidgetInstance chat-msg-1-refs pbui.refs refs=[product:2049, product:2051, product:2077]`.
+
+## Step 6: Vault report pushed; tiles work moved to its own ticket
+
+The project report for this ticket's work — the chat agent, its protocol, the Go and TypeScript packages, the scripted and real runtimes, devctl — is in the go-go-parc vault at `Projects/2026/08/20/PROJ - PBUI Chat Agent - Presentation-Native Chat with Custom PBUI Widgets.md` (commit `91faceb`, pushed). The user's request for proper PBUI workbench tiles (drag, dock, resize, launcher, reusable across PBUI apps) continues in `PBUI-WORKBENCH-1`, with its own diary and an intern guide, so this ticket stays about the agent.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see PBUI-WORKBENCH-1 diary, Step 1)
+
+**Assistant interpretation:** Finish the report on the first part before the tiles; keep the tiles separate.
+
+**Inferred user intent:** Two reviewable units of work and a durable write-up of the first.
+
+### What I did
+- Reconciled the report's TypeScript section with the implemented API; added the real-runtime findings (plugin order, `WrapSink`), the devctl `build.run` schema, the browser and real-model verification rows; committed and pushed the vault (note only).
+- Copied the browser screenshot to `various/01-browser-low-stock-prod-binary.png`.
+
+### Why / What worked / What didn't work / What I learned / What was tricky / Second pair of eyes
+- Documentation-only step; nothing failed. The remaining open items for this ticket are listed in the design doc §11 and the vault note's "Open questions".
+
+### What should be done in the future
+- Revisit once PBUI-WORKBENCH-1 lands: the `TilesPanel` fallback can go, and the `<tile>` presentation type joins the vocabulary.
+
+### Code review instructions
+- Read the vault note; compare §"The TypeScript package" against `packages/pbui-chat/src/createPbuiChat.tsx`.

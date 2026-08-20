@@ -24,3 +24,8 @@ Go implementation landed (commits 6b0a960..dfe42fa): chat proto, pkg/pbuichat pl
 
 TS package + demo committed (a7960e4); prod devctl profile verified in a browser; real runtime (gpt-5-nano-low) verified after plugin-order and WrapSink fixes (086c82c)
 
+
+## 2026-08-20
+
+Vault report pushed (go-go-parc 91faceb); tiles/workbench work continues in PBUI-WORKBENCH-1
+
