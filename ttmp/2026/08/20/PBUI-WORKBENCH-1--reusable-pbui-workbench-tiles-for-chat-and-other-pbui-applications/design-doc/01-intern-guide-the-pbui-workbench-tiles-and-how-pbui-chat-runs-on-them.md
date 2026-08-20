@@ -374,6 +374,103 @@ performWorkbenchVerb(wb, verb)   // → builders → wb.mutate(mutations)
 
 The descriptor for `tile` (its verbs and `disabledBecause` strings), the launcher's rows policy beyond the registry default, the document formats, and any server transport. This is DR-U3 and DR-U6 applied to the new package.
 
+## 7 · Implementation: what was built, and how it differs from §6
+
+### 7.1 Package layout (`pbui/packages/pbui-workbench`)
+
+```
+src/
+  index.ts               public surface
+  apps.ts                defineApp, createAppRegistry, AppDescriptor, AppProps
+  document.ts            tile()/split()/layout()/singleTile() builders; serializeDocument/parseDocument
+  store.ts               useSyncExternalStore store; mutate() applies batches with applyMutations
+  verbs.ts               WorkbenchVerb data, workbenchVerbs.*, createVerbHandlers, performWorkbenchVerb
+  createWorkbench.tsx    the entry point; binds store, registry, verbs, Surface, Launcher
+  context.tsx types.ts styles.css
+  components/Tile/       TileFrame + useTileDrag + app body in a one-cell grid + error boundary
+  components/SplitPane/  CSS-grid split with a role="separator" divider (pointer + keyboard)
+  components/Surface/    the tree walker
+  components/Launcher/   LauncherShell + Mod-K routing
+  stories/demoApps.tsx   two demo apps for the stories
+  workbench.test.ts      verbs against the protocol types (28 tests across the package)
+test/                    no-raw-controls, no-hex, component-folders
+```
+
+### 7.2 The public API as built
+
+```ts
+defineApp({ id, title, tone, singleton, duplicable?, docBound?, titleFor?(view), Component })
+createAppRegistry(apps) → { get(id), list() }
+
+tile(appId, { documents?, title? })          // a leaf spec
+split("row" | "col", ratio, a, b)            // a split spec
+layout(spec, { id?, name? })                 // → WorkbenchDocument, built through viewCreate/workspaceCreate
+singleTile(appId)                            //    mutations and the protocol's leafNode/splitNode/applyMutations
+serializeDocument(doc) / parseDocument(json) // protobuf JSON
+
+const wb = createWorkbench({ apps, initial });
+wb.store · wb.useDocument() · wb.useWorkbenchState(selector) · wb.mutate(mutations) · wb.perform(verb)
+wb.serialize() · wb.restore(json) · wb.reset() · wb.activePlacementId() · wb.root()
+wb.Surface · wb.Launcher
+wb.verbs.split(placementId, dir, appId?)     // no appId = duplicate; a singleton → a linked placement of its view
+wb.verbs.close(placementId)                  // no-op on the last tile
+wb.verbs.swap(a, b) · wb.verbs.dock(source, target, zone)
+wb.verbs.resize(splitId, ratio, { snap? })   // clamp 0.1–0.9, then snapRatio
+wb.verbs.place(appId, { from? })             // placed singleton → go to; else split along the longer rendered axis
+wb.verbs.setTitle(viewId, title) · wb.verbs.openView(appId, documents, { near?, title? })
+wb.verbs.activate(placementId) · wb.verbs.openLauncher() / closeLauncher()
+```
+
+The data door: `workbenchVerbs.*` produce `{kind: "tile.split" | "tile.close" | "tile.swap" | "tile.dock" | "tile.activate" | "split.resize" | "app.place" | "view.setTitle" | "view.open" | "launcher.open" | "launcher.close", …}`; `performWorkbenchVerb(handlers, verb)` executes one; `isWorkbenchVerb` and `describeWorkbenchVerb` let a product router and a trace treat them like any other verb.
+
+`<Surface renderTitle?(view, {placementId, app, label, canClose, placementCount}) />` renders splits as CSS grids with a keyboard-operable divider (live ratio while dragging, `resizeSplit` snapped on release), leaves as pbui `TileFrame` + `useTileDrag`, the app inside a one-cell grid, an error boundary per tile, and `EmptyState` for an unknown app id. `<Launcher title? shortcut? shortcutContext?() />` wraps `LauncherShell`, routes Mod-K through `routeWorkbenchKey`/`isEditableTarget`/`useAnyEscapeSurface`, and registers no escape surface.
+
+### 7.3 Differences from the design (§6)
+
+| §6 said | Built | Why |
+|---|---|---|
+| verb kinds `view.place`, `view.title` | `app.place`, `view.setTitle`, plus `tile.activate`, `launcher.open/close` | naming; the extra kinds make the launcher and the active tile addressable as data |
+| `openView(appId, documents, {near})` | same, plus `title?` and "identical bindings → go to" | a doc-bound view with the same bindings is the same view; opening it twice would be a duplicate |
+| launcher lists every app | doc-bound apps are hidden from *new tile* | they would open empty; covered by a test |
+| `restore()` only | `reset()` added | the demo's "reset layout" action |
+
+Everything else in §6 holds: one protocol document as state, builders for every gesture, no Redux, no server, `TileFrame`/`useTileDrag`/`LauncherShell` as the chrome, local-only fields never serialised.
+
+### 7.4 Verification
+
+- `pnpm --filter @hyperslop-systems/pbui-workbench typecheck && test && build && build-storybook` — 28 tests: split/close/swap/dock/resize through `verbs` produce the expected documents (asserted with the protocol types); resize clamps and snaps; `place` picks the longer rendered axis; `Surface` renders one `TileFrame` per leaf; the last tile cannot close; the launcher hides doc-bound apps.
+- `pnpm --filter @hyperslop-systems/pbui-chat typecheck && test && build` — 43 tests, including the router's `openTile` routing to the workbench when attached.
+- Demo typecheck and build into `pkg/chatui/embed` (with `.gitkeep` restored).
+- Browser (Playwright against the Go server): four `TileFrame` tiles (chat 60 % | inspector / watchlist / trace), no console errors; the split button on *watchlist* produced a linked fifth tile (four views, five placements); dragging the root divider committed 0.6 → 0.4 and survived a reload through `localStorage["pbui-chat-demo.workbench.v1"]`; Ctrl-K opened the launcher with the status "a new tile opens below “chat”", and placing *trace* created it there; "which gold eagles are low on stock?" worked inside the chat tile; *Open in tile* on the Low-stock widget opened a `widget` tile bound to `msg-1-w1` and recorded `openInTile ✓` in the trace. Screenshot: `various/01-browser-tiles-open-in-tile.png`.
+- One anomaly was observed once and not reproduced: after a stale-reference click error in the automation, one evaluation briefly listed an extra unbound `widget` tile that was gone by the next evaluation and never persisted. It is recorded here rather than hidden; no code path that creates an untraced tile was found.
+
+## 8 · pbui-chat on tiles
+
+`packages/pbui-chat/src/apps/createChatApps.tsx` turns the chat package's surfaces into apps:
+
+| App | singleton | docBound | Component |
+|---|---|---|---|
+| `chat` | no | no | `Messages` + `Composer` + `MouseDocLine` |
+| `inspector`, `watchlist`, `trace` | yes | no | the existing panels |
+| `widget` | no | yes (`documents.widget = <instanceId>`) | `WidgetOutlet` over the named widget instance |
+
+`createPbuiChat({ …, workbench? })` (or `chat.attachWorkbench(wb)`) binds the router's `openTile(widgetId)` to `wb.verbs.openView("widget", {widget: widgetId}, {near: wb.activePlacementId(), title})`; without a workbench the old `TilesPanel` remains as the fallback. The demo (`packages/pbui-chat/demo/src/{workbench.ts,App.tsx}`) builds `createWorkbench({ apps: createChatApps(chat), initial: layout(split("row", 0.6, tile("chat"), split("col", 1/3, tile("inspector"), split("col", 0.5, tile("watchlist"), tile("trace"))))) })`, persists the layout under `pbui-chat-demo.workbench.v1`, keeps the legend, the approver toggle, a *launcher* button and *reset layout* in the header, and mounts `ObjectMenu` and `AcceptBanner` once.
+
+Two follow-ups belong to this seam: a `tile` presentation type in the chat vocabulary (so the tile title becomes a `<Presentation>` with the tile descriptor's verbs, as in datalab-ui — `renderTitle` renders plain text today because `vocabulary.json` is embedded by the Go server and asserted equal by a test on each side), and the hosted mode of §6.5 once a workbench server sits next to the chat server.
+
+### 8.1 Sequence: "Open in tile"
+
+```
+user   R-click <widget Low stock> → ObjectMenu → "Open in tile"
+       → router.perform({kind:"openInTile", widgetId:"msg-1-w1"})          family: local
+       → ctx.openTile("msg-1-w1")
+       → wb.verbs.openView("widget", {widget:"msg-1-w1"}, {near: active, title:"Low stock"})
+         → builders: viewCreate{appId:"widget", documents:{widget:"msg-1-w1"}} + placementSplit(near, longer axis)
+         → store.mutate(mutations) → applyMutations → new document → Surface re-renders
+       → POST /api/chat/sessions/{id}/verbs {actor:"human", verb:{kind:"openInTile",…}, outcome:"performed"}
+         → trace entry #1 "openInTile ✓"
+```
+
 ## 9 · API reference
 
 ### 9.1 PBUI chrome (`@hyperslop-systems/pbui`)
@@ -406,7 +503,21 @@ The descriptor for `tile` (its verbs and `disabledBecause` strings), the launche
 
 Go mirror (`github.com/hyperslop-systems/pbui/pkg/workbench`): `ApplyMutations(ctx, doc, mutations, deps, limits)`, `Validate(ctx, doc, deps, limits)`, `Clone`, `Limits`/`DefaultLimits`, `ApplicationCatalog`, `DocumentValidator`, `ValidationError{Code, Path, Detail}`.
 
-### 9.3 Hosted workbench HTTP (datalab)
+### 9.3 `@hyperslop-systems/pbui-workbench` and pbui-chat apps
+
+| Export | Signature |
+|---|---|
+| `defineApp` | `({id, title, tone, singleton, duplicable?, docBound?, titleFor?, Component}) => AppDescriptor` |
+| `createAppRegistry` | `(apps) => {get, list}` |
+| `tile`, `split`, `layout`, `singleTile` | document builders (§7.2) |
+| `serializeDocument`, `parseDocument` | protobuf JSON |
+| `createWorkbench` | `({apps, initial}) => Workbench` (§7.2) |
+| `workbenchVerbs`, `performWorkbenchVerb`, `isWorkbenchVerb`, `describeWorkbenchVerb` | verbs as data |
+| `Surface`, `Launcher` | components bound to a workbench through context |
+| pbui-chat `createChatApps` | `(chat, {tones?, titles?}) => AppDescriptor[]` |
+| pbui-chat `createPbuiChat({ workbench? })`, `chat.attachWorkbench(wb)` | binds `openTile` |
+
+### 9.4 Hosted workbench HTTP (datalab)
 
 | Method · path | Headers | Success | Failure |
 |---|---|---|---|
@@ -417,7 +528,7 @@ Go mirror (`github.com/hyperslop-systems/pbui/pkg/workbench`): `ApplyMutations(c
 | `DELETE /v1/workbenches/{id}` | `If-Match` | 204 | 428 · 409 |
 | `GET /v1/workbenches/{id}/stream?after=N` | `Last-Event-ID` alternative | `event: workbench.updated` `id: rev` `data: {workbenchId, revision}`; `: keepalive` every 20 s | — |
 
-### 9.4 Agent CLI
+### 9.5 Agent CLI
 
 `hyperslop ui list | get | create | replace | mutate | delete | stream`; `mutate <workbench> --file batch.json --revision N [--request-id …]` sends a protobuf-JSON `MutationBatch` with the two headers.
 
