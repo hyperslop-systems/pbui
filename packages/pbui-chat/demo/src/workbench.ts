@@ -1,5 +1,6 @@
 import { createChatApps } from "@hyperslop-systems/pbui-chat";
 import { createWorkbench, layout, parseDocument, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createDemoApps } from "./apps";
 import { chat } from "./chat";
 
 /**
@@ -33,7 +34,12 @@ function storage(): Storage | null {
 }
 
 export const workbench = createWorkbench({
-  apps: createChatApps(chat),
+  // The chat's own applications (conversation, inspector, watchlist, trace,
+  // widget) plus the shop's four. Both lists in one array because the app
+  // registry refuses a duplicate id, so a name collision between the agent's
+  // machinery and the product's tiles fails at startup rather than showing
+  // whichever descriptor was registered last.
+  apps: [...createChatApps(chat), ...createDemoApps()],
   initial: parseDocument(storage()?.getItem(WORKBENCH_STORAGE_KEY)) ?? defaultLayout(),
   // The document is the only thing worth writing; onMutate fires once per
   // committed batch and never for activation or launcher state, so this is

@@ -1,0 +1,77 @@
+/*
+ * Flex, not grid, and every level carries `min-width: 0`.
+ *
+ * A tile body is a flex/grid child, whose default `min-width` is `auto` —
+ * "never shrink below my content". An eight-column table then pushes the tile
+ * past the splitter instead of scrolling inside it, and the neighbouring tile
+ * is squeezed off screen. The horizontal scroll belongs to `.scroll`, and to
+ * nothing above it.
+ */
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: var(--pbui-space-2);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.empty {
+  padding: var(--pbui-space-3);
+}
+
+.scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border: var(--pbui-border-hair);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--pbui-fs-small);
+}
+
+.table th,
+.table td {
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+  border-bottom: var(--pbui-border-hair);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--pbui-pane-alt);
+  font-weight: 600;
+  font-size: var(--pbui-fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table td[data-numeric="true"],
+.table th[data-numeric="true"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sku {
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* The one column allowed to be the wide one; it truncates rather than growing
+   the table, so the numeric columns stay visible without scrolling. */
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-2);
+  max-width: 32ch;
+}

@@ -1,0 +1,33 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pbui-space-3);
+}
+
+/*
+ * Three explicit tracks. Left implicit, the columns are `auto` and size to
+ * the widest row's content, so the meter — which has no intrinsic width —
+ * collapses to nothing while the name column grows. `minmax(0, 1fr)` is what
+ * lets the bar shrink with the tile instead of overflowing it.
+ */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 10ch) minmax(0, 9ch) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--pbui-space-3);
+  min-width: 0;
+}
+
+.metal {
+  font-size: var(--pbui-fs-small);
+  cursor: pointer;
+}
+
+.spot {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,38 @@
+.app {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pbui-space-3);
+}
+
+/*
+ * A two-track grid, stated explicitly: an implicit track is `auto`, which
+ * sizes to the widest child, so a long accessible label or a 160px sparkline
+ * would set the label column's width and shove the meter out of the tile.
+ * `minmax(0, 1fr)` on the value track is what lets the meter shrink.
+ */
+.row {
+  display: grid;
+  grid-template-columns: 7ch minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+}
+
+.rowLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+}
+
+.fact {
+  font-size: var(--pbui-fs-small);
+  cursor: pointer;
+}
