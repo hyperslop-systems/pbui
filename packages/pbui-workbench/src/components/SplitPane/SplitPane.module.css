@@ -1,5 +1,6 @@
 .split {
   display: grid;
+  /* grid-columns: inline — the ratio-dependent template is set by SplitPane.tsx */
   min-width: 0;
   min-height: 0;
 }

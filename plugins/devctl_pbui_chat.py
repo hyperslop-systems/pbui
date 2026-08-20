@@ -168,6 +168,9 @@ def build_steps(repo, cfg, dry_run, deadline_ms):
 
     if not step("pbui-lib", ["pnpm", "--include-workspace-root", "--filter", "@hyperslop-systems/pbui", "build"]):
         return steps, artifacts
+    for name, pkg in [("workbench-lib", "@hyperslop-systems/pbui-workbench"), ("chat-lib", "@hyperslop-systems/pbui-chat")]:
+        if not step(name, ["pnpm", "--filter", pkg, "build"]):
+            return steps, artifacts
     if not step("ui", ["pnpm", "--filter", "@hyperslop-systems/pbui-chat-demo", "build"]):
         return steps, artifacts
     env = dict(os.environ, GOWORK="off")

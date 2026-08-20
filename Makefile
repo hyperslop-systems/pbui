@@ -64,6 +64,8 @@ protocol-check:
 
 chat-ui:
 	pnpm --include-workspace-root --filter @hyperslop-systems/pbui build
+	pnpm --filter @hyperslop-systems/pbui-workbench build
+	pnpm --filter @hyperslop-systems/pbui-chat build
 	pnpm --filter @hyperslop-systems/pbui-chat-demo build
 
 chat-build: chat-ui
