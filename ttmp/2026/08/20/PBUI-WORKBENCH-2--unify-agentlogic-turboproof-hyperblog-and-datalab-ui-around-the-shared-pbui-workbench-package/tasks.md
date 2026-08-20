@@ -7,7 +7,7 @@
 - [x] Design the core additions (API sketches) and the per-product migration plan <!-- t:yyl8 -->
 - [x] Write the intern guide and upload to reMarkable <!-- t:959u -->
 - [x] Phase 1: 5.A store injection + hooks, 5.B workspaces + strip, 5.C replace/link/rebind + policy + binding <!-- t:cv5w -->
-- [ ] Phase 2: 5.D launcher rows slot + per-pane invocation; 5.G createTileDescriptor, linked badge, focusPlacement, divider a11y <!-- t:qg5w -->
+- [x] Phase 2: 5.D launcher rows slot + per-pane invocation; 5.G createTileDescriptor, linked badge, focusPlacement, divider a11y <!-- t:qg5w -->
 - [ ] Phase 3: agentlogic migration (6.1) <!-- t:ndab -->
 - [ ] Phase 4 core: 5.E placement mode + zone-aware open; 5.F local persistence + sync module <!-- t:022f -->
 - [ ] Phase 5: turboproof migration (6.2) <!-- t:zcmh -->

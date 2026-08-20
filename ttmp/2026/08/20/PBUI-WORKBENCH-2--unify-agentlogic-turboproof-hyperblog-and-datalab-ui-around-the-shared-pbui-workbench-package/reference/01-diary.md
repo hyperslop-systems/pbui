@@ -280,3 +280,125 @@ browser (embedded binary, :8090)                                  strip renders;
                                                                   reload keeps it; click returns to main (4 tiles);
                                                                   body does not scroll sideways
 ```
+
+## Step 4: Phase 2 built — the launcher becomes a slot, the tile becomes an object
+
+Phase 2 is §5.D and §5.G: the launcher's rows model moved out of the component into `launcherRows.ts` and behind a product slot, `launcher.open` gained a placement so the same dialog can mean "show something else in THIS tile", and `createTileDescriptor` turns the tile into a presentation with the same verbs the chrome buttons perform. 26 new tests, 93 in the package.
+
+One finding worth acting on: **per-pane invocation has no user-facing door yet.** The mode works, is tested, and has a story, but the only thing that opens it is the `<tile>` presentation's "Show something else here…" action — and a product only has that once it registers a `tile` type, which is `PBUI-AGENT-2`'s Tier B2. Phase 2 therefore delivers a capability the demo cannot yet reach, which is a sequencing gap in §7 rather than a defect in either piece.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Phase 2."
+
+**Assistant interpretation:** Implement §7 Phase 2 — §5.D (launcher rows slot, per-pane invocation, the new descriptor fields) and §5.G (tile descriptor helper, linked badge, focus restoration, divider accessibility) — with tests, and verify what can be verified.
+
+**Inferred user intent:** Finish the second core phase so the product migrations (C1) and the agent's Tier B2 both unblock.
+
+**Commit (code):** `0dfd1bb` — "PBUI-WORKBENCH-2 Phase 2: launcher rows slot, per-pane invocation, tile descriptor"
+
+### What I did
+- **5.D** — `apps.ts`: `group`, `blurb`, `available?(ctx)` on `AppDescriptor`, plus `isAppAvailable`. `store.ts`: `launcherFrom: string | null`. `verbs.ts`: `launcher.open{placementId?}`, `view.goTo{viewId}` and a `goToView` handler that switches workspace when the view lives in another. New `launcherRows.ts`: `LauncherRow` (a row with its meaning attached, not a parsed id string), `defaultLauncherRows`, `groupLauncherRows`, `rowOf`. `Launcher.tsx` rewritten around the model with `rows` / `choose` / `renderDetail` slots and the four-way meaning table.
+- **5.G** — new `tileDescriptor.ts`: `TileRef`, `createTileDescriptor(options?)`, `tileRefOf(wb, placementId)`. `Tile.tsx`: the `×N` linked badge in the default title, and `tabIndex={-1}` on the cell. `createWorkbench.tsx`: `focusPlacement`. `SplitPane.tsx`: `aria-valuetext`, Home/End, double-click to 0.5.
+- Three launcher stories (global, per-pane, a product rows model); 26 tests across `Launcher.test.tsx`, `tileDescriptor.test.ts` and `Surface.test.tsx`.
+- Verified: 93 package tests, typecheck, build, Storybook build, `pbui-chat` 45 tests, both downstream typechecks, and a browser pass on the embedded binary.
+
+### Why
+- DR-U6 says launcher POLICY stays with the product; before this the package hard-coded two groups over the registry, so turboproof and datalab-ui could not adopt it without losing their rows models. A slot with a good default is the shape that satisfies both.
+- The tile descriptor is the one piece every product minted by hand and three got a different subset of. Putting it in the package makes a tile the same object everywhere, with the same reasons when a verb is unavailable.
+
+### What worked
+- Making `LauncherRow` carry `kind`/`appId`/`viewId` rather than making `choose` re-parse `"goto:v-3"` paid for itself immediately: the four-way meaning table (view/app × global/per-pane) reads as a table in the code, and the product slot gets something typed.
+- `choose` returning `false` to fall through, rather than an all-or-nothing override, means a product can claim one row and inherit the rest. The test for it is two lines.
+- The browser pass matched the tests: `ON SCREEN` listed all four placed views with "on screen", `NEW TILE` offered only `chat` (the three panels are placed singletons, `widget` is doc-bound), the divider announced "60 percent", and Enter on a go-to row left focus on `data-part="workbench-tile"` for the inspector with the tile count unchanged.
+
+### What didn't work
+- `src/tileDescriptor.ts(45,3): error TS6133: 'workbench' is declared but its value is never read.` The design's signature is `createTileDescriptor(wb, {extra?})`, but a `TileRef` already carries everything the menu needs to decide, so the descriptor never touched the workbench. Dropped the parameter — an unused parameter is a lie about what a function depends on — and recorded the deviation.
+- Two existing launcher tests failed with the new rows model: `expected [ 'goto:notes', 'place:counter' ]` and `expected [ 'place:counter', 'place:notes' ]`. Both were asserting the OLD model, where the go-to group was keyed by *application* and only for placed singletons. §5.D changes it to every placed *view*, so the ids are view ids and there is a row per tile. Rewrote both to assert on row kinds and titles, since view ids are generated.
+- `expected [] to deeply equal [ 'ON SCREEN', 'TOOLS', 'NEW TILE' ]` — there is no `data-part="launcher-group-label"`; the shell renders a group's label as an unnamed `<Text>` first child of `[data-part="launcher-group"]`. Read the group's `firstElementChild` instead of adding a part name to pbui.
+- A heredoc written from the wrong directory silently produced `(eval):1: no such file or directory` because an earlier `cd` had moved the shell into `packages/pbui-workbench/src`. Same drift the PBUI-AGENT-1 diary records; absolute paths from the repo root are the only reliable answer.
+
+### What I learned
+- `TileFrame` has no focusable element and no `tile-frame` part: `data-placement-id` sits on `[data-part="tile"]`, and the frame's only focusable children are its buttons. Focusing "the tile" therefore needs a container the workbench owns — `[data-part="workbench-tile"]` with `tabIndex={-1}` — because focusing whatever button the frame happens to render first would steal the caret and read as random.
+- The tile cell's `onFocusCapture` already activates the placement, so `focusPlacement` sets the active tile as a side effect. That is the behaviour you want and it was free, but it means focus and activation are now coupled in one direction; worth knowing before anything tries to focus a tile without activating it.
+- `available` must gate the LAUNCHER only. A tile whose layout already names an excluded application still has to render, or a seeded layout silently loses a tile when scoping changes. There is a test for exactly this.
+
+### What was tricky to build
+- **The four meanings.** A row is a view or an application; the launcher is global or per-pane; that is four outcomes (go to / link / place / replace) over one dialog. Written as branches it was unreadable, and the first version put the per-pane check inside each row-kind branch, which made "per-pane never grows the layout" a property you had to verify twice. Restructuring it as mode-first, then kind, made the invariant local: everything under `if (perPane)` calls `link` or `replace`, neither of which adds a tile.
+- **`focusPlacement` timing.** The verb commits the document but the tile does not exist until React renders, so focusing on the same tick finds nothing. A `requestAnimationFrame` (with a `setTimeout` fallback for non-DOM environments) is the whole fix, but the failure mode without it is silent — focus simply stays in the dialog that has closed, which reads as "the launcher ate my keyboard".
+- **Ordering the groups.** A product's named groups must read before the catch-all, or twenty ungrouped applications bury them. `groupLauncherRows` pulls the fallback group out and appends it last rather than relying on `Map` insertion order.
+
+### What warrants a second pair of eyes
+- `createTileDescriptor` dropping its `workbench` parameter is a deviation from §5.G's stated signature. It makes the descriptor pure and testable without a store, which I think is strictly better, but a reviewer who wants the design honoured literally should say so now rather than after three products adopt it.
+- The `linked` action ("Shown in 3 tiles") is a description rendered as a disabled action with `disabledBecause: "this is a description, not an action"`. That reads oddly in a menu; a `renderMenuHeader`-style slot or a badge would be cleaner. It is the one place I used the action list for something that is not an action.
+- `defaultLauncherRows` lists views from EVERY workspace, marking foreign ones "in another workspace". For a product with six workspaces that is a long list. A `scope` option may be wanted; datalab-ui already scopes its own rows and would pass `rows`.
+- Focus and activation are now coupled through `onFocusCapture` (see above).
+
+### What should be done in the future
+- **Give per-pane invocation a door.** Either a product registers a `tile` presentation (PBUI-AGENT-2 B2, which makes `createTileDescriptor`'s "Show something else here…" reachable), or `TileFrame` grows an optional button. Until one of them lands, the mode is reachable only from code.
+- §5.G also lists an inline rename UI; the descriptor offers the verb with an empty title as the CLEAR, and a product supplies the real one. `InlineRename` exists in pbui and is not wired.
+- Phase 3 is next in §7 (the agentlogic migration), or Phase 4's core (§5.E placement mode, §5.F persistence and sync) if the agent track is running in parallel.
+
+### Code review instructions
+- Read `launcherRows.ts` first (the model and its two consumers), then `Launcher.tsx`'s `onChoose` — the four-way table is the design. Then `tileDescriptor.ts`: the action list and its `disabledBecause` strings are the contract three products will inherit.
+- Check by hand: nothing under `if (perPane)` in `onChoose` can add a tile; `groupLauncherRows` appends the fallback group last; `focusPlacement` defers a frame.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-workbench typecheck && test && build && build-storybook` (93 tests), `pnpm --filter @hyperslop-systems/pbui-chat test`, `pnpm --filter @hyperslop-systems/pbui-chat-demo typecheck`.
+- Run: `make chat-ui && GOWORK=off go run ./cmd/pbui-chat serve --port 8090`, Ctrl-K, ArrowDown, Enter — focus should land on a `[data-part="workbench-tile"]` and the tile count should not change.
+
+### Technical details
+
+```ts
+// 5.D
+AppDescriptor += { group?: string; blurb?: string; available?(ctx: { workspaceId }): boolean }
+{ kind: "launcher.open"; placementId?: string }     // placementId ⇒ per-pane mode
+{ kind: "view.goTo"; viewId: string }               // an ON SCREEN row; switches workspace if needed
+wb.verbs.goToView(viewId) → string | null
+wb.verbs.openLauncher(placementId?)
+
+type LauncherRow =
+  | { id; kind: "view"; viewId; appId; title; detail; placements; foreign }
+  | { id; kind: "app"; appId; title; detail }
+defaultLauncherRows({ document, apps, workspaceId, invocation, query }) → LauncherRow[]
+groupLauncherRows(rows, apps, perPane, detailOf?) → LauncherShellGroup[]
+<Launcher rows?(ctx) choose?(row, ctx): boolean renderDetail?(row) />
+
+// what choosing means
+//              global                 per-pane
+//   view        goToView              link(from, viewId)
+//   app         place(appId, {from})  replace(from, appId)
+
+// 5.G
+interface TileRef { placementId; viewId; appId; title; customTitle?; placementCount; canClose; duplicable }
+createTileDescriptor({ extra?(tile), launcher? }) → PresentationDescriptor<TileRef, unknown, WorkbenchVerb>
+tileRefOf(wb, placementId) → TileRef | null
+wb.focusPlacement(placementId)
+// default title badge: ` ×N` in [data-part="tile-linked"] when placementCount > 1
+// divider: aria-valuetext "60 percent", Home → 0.1, End → 0.9, double-click → 0.5
+```
+
+Deviations from the design (§5.D, §5.G):
+
+| Design | Built | Why |
+|---|---|---|
+| `createTileDescriptor(wb, {extra?})` | `createTileDescriptor({extra?, launcher?})` | a `TileRef` carries what the menu needs to decide, so the descriptor is pure; `tileRefOf` reads the workbench |
+| `choose?(rowId, ctx)` | `choose?(row: LauncherRow, ctx)` | a product should not re-parse `"goto:v-3"` to learn what it is being asked about |
+| default rows: "OPEN VIEWS" | label "ON SCREEN" (per-pane: "SHOW HERE") | consistency with the existing group label |
+| — | `launcher?: boolean` on the descriptor | a product with no per-pane launcher should not offer a dead action |
+| — | `view.goTo` verb | the ON SCREEN rows needed a verb rather than a component-local walk |
+
+Verification run:
+
+```
+pnpm --filter @hyperslop-systems/pbui-workbench typecheck        ok
+pnpm --filter @hyperslop-systems/pbui-workbench test             8 files, 93 tests (was 67)
+pnpm --filter @hyperslop-systems/pbui-workbench build            38.87 kB (was 31.70)
+pnpm --filter @hyperslop-systems/pbui-workbench build-storybook  ok
+pnpm --filter @hyperslop-systems/pbui-chat test / typecheck       45 tests, ok
+pnpm --filter @hyperslop-systems/pbui-chat-demo typecheck         ok
+browser (embedded binary, :8090)                                  ON SCREEN lists 4 placed views; NEW TILE offers only
+                                                                  `chat`; divider aria-valuetext "60 percent";
+                                                                  Ctrl-K → ArrowDown → Enter leaves focus on
+                                                                  [data-part="workbench-tile"] (inspector), 4 tiles
+```
+
+Phase 2's acceptance gesture, honestly scored: the launcher-focus third and the divider third are met and verified in a browser; the "right-click any tile title shows the helper's verbs" third is **not**, because it needs a product `<tile>` presentation (PBUI-AGENT-2 B2). The helper is built and unit-tested against every state; nothing renders it yet.
