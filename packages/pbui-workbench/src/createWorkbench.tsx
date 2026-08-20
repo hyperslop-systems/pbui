@@ -7,7 +7,7 @@ import { WorkbenchContext } from "./context";
 import { parseDocument, serializeDocument } from "./document";
 import { createWorkbenchStore, useWorkbenchStore, type WorkbenchStore, type WorkbenchStoreOptions } from "./store";
 import type { LauncherProps, SurfaceProps, Workbench, WorkspaceStripProps } from "./types";
-import { createVerbHandlers, performWorkbenchVerb } from "./verbs";
+import { createVerbHandlers, performWorkbenchVerb, type BindingConfig, type SplitPolicy } from "./verbs";
 
 export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
   /** The applications this workbench offers — a list, or a registry built with `createAppRegistry`. */
@@ -21,6 +21,18 @@ export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
    * that store's business and are ignored.
    */
   store?: WorkbenchStore;
+  /**
+   * What a bare split puts in the new pane: `"duplicate"` (the default),
+   * `"link"`, `{ app }` for an empty pane showing that application, or a
+   * function of the view being split. A singleton always links regardless.
+   */
+  splitPolicy?: SplitPolicy;
+  /**
+   * How a freshly placed tile finds a document to bind. Products whose
+   * applications are all views OF something need this, or newly placed tiles
+   * come up unbound and read as broken.
+   */
+  binding?: BindingConfig;
 }
 
 /**
@@ -40,7 +52,13 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     });
   let rootElement: HTMLElement | null = null;
   const root = () => rootElement;
-  const verbs = createVerbHandlers({ store, apps, root });
+  const verbs = createVerbHandlers({
+    store,
+    apps,
+    root,
+    ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
+    ...(options.binding ? { binding: options.binding } : {}),
+  });
 
   const workbench: Workbench = {
     apps,

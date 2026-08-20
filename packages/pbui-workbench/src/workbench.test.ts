@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, test, vi } from "vitest";
-import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
-import { leaves, SNAP_RATIOS, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
+import { create } from "@bufbuild/protobuf";
+import { Direction, DocumentPayloadSchema, MutationSchema, type Node } from "@hyperslop-systems/workbench-protocol";
+import { leaves, SNAP_RATIOS, viewsOfApp, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "./createWorkbench";
 import { layout, parseDocument, serializeDocument, singleTile, split, tile, workspaces } from "./document";
 import { createWorkbenchStore } from "./store";
@@ -443,5 +444,193 @@ describe("workspaces (5.B)", () => {
     wb.verbs.place("notes", { crossWorkspace: "link" });
     expect(wb.store.getState().workspaceId).toBe(here);
     expect(leaves(workspaceTree(wb.store.getState().document, here)).length).toBe(2);
+  });
+});
+
+describe("replace, link, rebind, split policy (5.C)", () => {
+  function twoTiles() {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("counter"))) });
+    const ids = leafIds(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    return { wb, first: ids[0]!, second: ids[1]! };
+  }
+
+  it("replace retargets the view in place when the pane owns it", () => {
+    const { wb, first } = twoTiles();
+    const before = viewOf(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId), first);
+    expect(wb.verbs.replace(first, "notes")).toBe(true);
+    const doc = wb.store.getState().document;
+    const after = viewOf(workspaceTree(doc, wb.store.getState().workspaceId), first);
+    expect(after).toBe(before); // same view id: the pane kept its identity
+    expect(doc.views[after]?.appId).toBe("notes");
+  });
+
+  it("replace on a linked twin mints a view and leaves the sibling alone", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("notes"), tile("counter"))) });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    // notes is a singleton: splitting it links a second placement of one view.
+    const linked = wb.verbs.split(notesPlacement!, "col")!;
+    const tree = () => workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(viewOf(tree(), linked)).toBe(viewOf(tree(), notesPlacement!));
+    const sharedView = viewOf(tree(), notesPlacement!);
+
+    expect(wb.verbs.replace(linked, "counter")).toBe(true);
+    expect(viewOf(tree(), notesPlacement!)).toBe(sharedView); // the twin is untouched
+    expect(viewOf(tree(), linked)).not.toBe(sharedView);
+    expect(wb.store.getState().document.views[viewOf(tree(), linked)]?.appId).toBe("counter");
+  });
+
+  it("replace links a placed singleton rather than minting a second view of it", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("notes"), tile("counter"))) });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement, counterPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const notesView = viewOf(workspaceTree(wb.store.getState().document, workspaceId), notesPlacement!);
+    expect(wb.verbs.replace(counterPlacement!, "notes")).toBe(true);
+    const doc = wb.store.getState().document;
+    expect(viewOf(workspaceTree(doc, workspaceId), counterPlacement!)).toBe(notesView);
+    expect(viewsOfApp(doc, "notes")).toHaveLength(1);
+  });
+
+  it("replace clears bindings unless it is given some", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter", { documents: { source: "d1" } }) });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [only] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const viewId = viewOf(workspaceTree(wb.store.getState().document, workspaceId), only!);
+    // A `source` binding on a view now showing a different application is
+    // state nothing reads and everything can misread.
+    wb.verbs.replace(only!, "notes", undefined);
+    expect(wb.store.getState().document.views[viewId]?.documents).toEqual({});
+    wb.verbs.replace(only!, "counter", { source: "d2" });
+    expect(wb.store.getState().document.views[viewId]?.documents).toEqual({ source: "d2" });
+  });
+
+  it("replace with the application already shown and no bindings is a no-op", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter", { documents: { source: "d1" } }) });
+    const before = wb.store.getState().document;
+    const [only] = leafIds(workspaceTree(before, wb.store.getState().workspaceId));
+    expect(wb.verbs.replace(only!, "counter")).toBe(true);
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  it("link points a pane at an existing view and deletes the view it orphaned", () => {
+    const { wb, first, second } = twoTiles();
+    const tree = () => workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    const firstView = viewOf(tree(), first);
+    const secondView = viewOf(tree(), second);
+    expect(Object.keys(wb.store.getState().document.views)).toHaveLength(2);
+    expect(wb.verbs.link(second, firstView)).toBe(true);
+    expect(viewOf(tree(), second)).toBe(firstView);
+    expect(wb.store.getState().document.views[secondView]).toBeUndefined();
+  });
+
+  it("link to the view already shown is a no-op that reports success", () => {
+    const { wb, first } = twoTiles();
+    const view = viewOf(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId), first);
+    const before = wb.store.getState().document;
+    expect(wb.verbs.link(first, view)).toBe(true);
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  it("rebind replaces the whole binding map, never merges", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter", { documents: { source: "d1", extra: "e1" } }) });
+    const workspaceId = wb.store.getState().workspaceId;
+    const viewId = viewOf(workspaceTree(wb.store.getState().document, workspaceId), leafIds(workspaceTree(wb.store.getState().document, workspaceId))[0]!);
+    expect(wb.verbs.rebind(viewId, { source: "d2" })).toBe(true);
+    expect(wb.store.getState().document.views[viewId]?.documents).toEqual({ source: "d2" });
+  });
+
+  it("rebind refuses an unknown view", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    expect(wb.verbs.rebind("v-nope", { source: "d1" })).toBe(false);
+  });
+
+  it("splitPolicy {app} opens an empty pane instead of duplicating", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("counter"))),
+      splitPolicy: { app: "notes" },
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [first] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(first!, "col")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, created)]?.appId).toBe("notes");
+  });
+
+  it("splitPolicy can be a function of the view", () => {
+    const seen: string[] = [];
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("counter"))),
+      splitPolicy: (view) => {
+        seen.push(view.appId);
+        return "duplicate";
+      },
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    wb.verbs.split(leafIds(workspaceTree(wb.store.getState().document, workspaceId))[0]!, "col");
+    expect(seen).toEqual(["counter"]);
+  });
+
+  it("a singleton links regardless of the policy", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("notes"), tile("counter"))),
+      splitPolicy: "duplicate",
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(notesPlacement!, "col")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    expect(viewOf(tree, created)).toBe(viewOf(tree, notesPlacement!));
+    expect(viewsOfApp(wb.store.getState().document, "notes")).toHaveLength(1);
+  });
+
+  /** A workbench holding one real document payload, bound by its only view. */
+  function boundWorkbench(extra: Partial<Parameters<typeof createWorkbench>[0]> = {}) {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter", { documents: { source: "d7" } }),
+      binding: { source: "source" },
+      ...extra,
+    });
+    wb.mutate([
+      create(MutationSchema, {
+        body: {
+          case: "documentPut",
+          value: {
+            document: create(DocumentPayloadSchema, { id: "d7", format: "test.doc", schemaVersion: 1 }),
+          },
+        },
+      }),
+    ]);
+    return wb;
+  }
+
+  it("binding gives a newly opened tile the document everything else shows", () => {
+    const wb = boundWorkbench();
+    const placement = wb.verbs.openView("counter", {})!;
+    const tree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, placement)]?.documents).toEqual({ source: "d7" });
+  });
+
+  it("binding does not follow a view that names a document the workbench does not hold", () => {
+    // The view binds "d7" but no payload exists: binding to a document that is
+    // not in the workbench is meaningless, so the new tile stays unbound.
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter", { documents: { source: "d7" } }),
+      binding: { source: "source" },
+    });
+    const placement = wb.verbs.openView("counter", {})!;
+    const tree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, placement)]?.documents).toEqual({});
+  });
+
+  it("binding leaves an unbound application alone", () => {
+    const wb = boundWorkbench({ binding: { source: "source", unbound: ["notes"] } });
+    const placement = wb.verbs.openView("notes", {})!;
+    const tree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, placement)]?.documents).toEqual({});
   });
 });

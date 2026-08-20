@@ -1,8 +1,11 @@
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import {
+  type AppView,
   AppViewSchema,
   Direction,
+  DocumentBindingsSchema,
+  type DocumentPayload,
   type Mutation,
   MutationSchema,
   type Node,
@@ -28,7 +31,7 @@ import {
   type DockZone,
 } from "@hyperslop-systems/workbench-protocol/client";
 import { splitDirectionFor } from "@hyperslop-systems/pbui";
-import type { AppRegistry } from "./apps";
+import type { AppDescriptor, AppRegistry } from "./apps";
 import { buildLayout, workspaceCreateMutation, type LayoutSpec } from "./document";
 import type { WorkbenchStore } from "./store";
 
@@ -58,6 +61,9 @@ export type WorkbenchVerb =
   | { kind: "app.place"; appId: string; from?: string }
   | { kind: "view.setTitle"; viewId: string; title: string }
   | { kind: "view.open"; appId: string; documents: Record<string, string>; near?: string; title?: string }
+  | { kind: "tile.replace"; placementId: string; appId: string; documents?: Record<string, string> }
+  | { kind: "tile.link"; placementId: string; viewId: string }
+  | { kind: "view.rebind"; viewId: string; documents: Record<string, string> }
   | { kind: "workspace.select"; workspaceId: string }
   | { kind: "workspace.create"; name: string; spec?: LayoutSpec; workspaceId?: string; select?: boolean }
   | { kind: "workspace.rename"; workspaceId: string; name: string }
@@ -88,6 +94,14 @@ export const workbenchVerbs = {
     documents,
     ...options,
   }),
+  replace: (placementId: string, appId: string, documents?: Record<string, string>): WorkbenchVerb => ({
+    kind: "tile.replace",
+    placementId,
+    appId,
+    ...(documents ? { documents } : {}),
+  }),
+  link: (placementId: string, viewId: string): WorkbenchVerb => ({ kind: "tile.link", placementId, viewId }),
+  rebind: (viewId: string, documents: Record<string, string>): WorkbenchVerb => ({ kind: "view.rebind", viewId, documents }),
   selectWorkspace: (workspaceId: string): WorkbenchVerb => ({ kind: "workspace.select", workspaceId }),
   createWorkspace: (
     name: string,
@@ -130,6 +144,12 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return verb.title ? `rename the tile to “${verb.title}”` : "clear the tile's name";
     case "view.open":
       return `open ${verb.appId} in a new tile`;
+    case "tile.replace":
+      return `show ${verb.appId} in this tile instead`;
+    case "tile.link":
+      return "show that view in this tile too";
+    case "view.rebind":
+      return "point this tile at a different document";
     case "workspace.select":
       return "go to that workspace";
     case "workspace.create":
@@ -175,6 +195,18 @@ export interface WorkbenchVerbHandlers {
    * rather than opened twice.
    */
   openView(appId: string, documents: Record<string, string>, options?: { near?: string; title?: string }): string | null;
+  /**
+   * Change what ONE pane shows, in place. When the pane's view has a single
+   * placement the view is retargeted (`viewConfigure`), so the pane keeps its
+   * identity; when the view is linked into other tiles a new view is minted
+   * and only this placement moves, because retargeting would silently change
+   * the twin as well.
+   */
+  replace(placementId: string, appId: string, documents?: Record<string, string>): boolean;
+  /** Point a pane at an EXISTING view — the second placement of one view. */
+  link(placementId: string, viewId: string): boolean;
+  /** Replace a view's document bindings wholesale. Never a merge: a stale key nothing reads is a bug that reads as data. */
+  rebind(viewId: string, documents: Record<string, string>): boolean;
   activate(placementId: string | null): void;
   /**
    * Render another workspace. Local state, not a mutation: which workspace
@@ -290,16 +322,80 @@ function firstPlacementOfView(doc: WorkbenchDocument, workspaceId: string, viewI
   return null;
 }
 
+/**
+ * What a bare split — the ⬌/⬍ chrome buttons, with no application named —
+ * puts in the new pane. The package's historical default is `"duplicate"`;
+ * three of the four family products open an empty pane showing their launcher
+ * application instead, which is a POLICY over the same mutation and so must
+ * not be hard-coded.
+ */
+export type SplitPolicy =
+  | "duplicate"
+  | "link"
+  | { app: string }
+  | ((view: AppView, app: AppDescriptor | null) => "duplicate" | "link" | { app: string });
+
+/**
+ * How a freshly placed tile finds a document to show. Without it a product
+ * whose applications are all views OF something opens unbound tiles, which
+ * read as broken. Mirrors `workbench-protocol`'s `ClientConfig`.
+ */
+export interface BindingConfig {
+  /** The binding key a placed tile fills in, e.g. `"source"` or `"primary"`. */
+  source: string;
+  /** Which document a new tile should bind; default: follow what other views bind, else the first bindable one. */
+  defaultDocumentId?(doc: WorkbenchDocument): string | null;
+  /** Which payloads may be bound by default. Omitted means any. */
+  isBindable?(payload: DocumentPayload): boolean;
+  /** Applications that are never auto-bound (a launcher pane, an empty state). */
+  unbound?: readonly string[];
+}
+
 export interface VerbEnvironment {
   store: WorkbenchStore;
   apps: AppRegistry;
   /** The Surface's root, so geometry lookups stay inside THIS workbench. */
   root(): HTMLElement | null;
+  splitPolicy?: SplitPolicy;
+  binding?: BindingConfig;
 }
 
-export function createVerbHandlers({ store, apps, root }: VerbEnvironment): WorkbenchVerbHandlers {
+export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: VerbEnvironment): WorkbenchVerbHandlers {
   const doc = () => store.getState().document;
   const workspace = () => store.getState().workspaceId;
+
+  /** The document a freshly placed view of `appId` should bind, if any. */
+  const defaultBindings = (current: WorkbenchDocument, appId: string): Record<string, string> => {
+    if (!binding || binding.unbound?.includes(appId)) return {};
+    const pick =
+      binding.defaultDocumentId ??
+      ((document: WorkbenchDocument): string | null => {
+        // Follow the crowd first: a tile that opens showing what everything
+        // else shows is almost always what the user meant.
+        for (const viewId of document.viewOrder) {
+          const bound = document.views[viewId]?.documents[binding.source];
+          if (bound && document.documents[bound]) return bound;
+        }
+        const bindable = binding.isBindable ?? (() => true);
+        for (const [documentId, payload] of Object.entries(document.documents)) {
+          if (bindable(payload)) return documentId;
+        }
+        return null;
+      });
+    const documentId = pick(current);
+    return documentId ? { [binding.source]: documentId } : {};
+  };
+
+  /** What a bare split puts in the new pane. */
+  const resolvePolicy = (view: AppView): "duplicate" | "link" | { app: string } => {
+    const app = apps.get(view.appId);
+    // A singleton or a non-duplicable application links whatever the policy
+    // says: a second VIEW of a singleton is what pkg/workbench rejects as
+    // duplicate_singleton, so the policy cannot override this.
+    if (app?.singleton || app?.duplicable === false) return "link";
+    if (!splitPolicy) return "duplicate";
+    return typeof splitPolicy === "function" ? splitPolicy(view, app) : splitPolicy;
+  };
 
   /** The tile a global operation targets: the named one, else the active one, else the first. */
   const targetPlacement = (preferred?: string): string | null => {
@@ -332,11 +428,11 @@ export function createVerbHandlers({ store, apps, root }: VerbEnvironment): Work
     } else if (!currentView) {
       return null;
     } else {
-      const app = apps.get(currentView.appId);
-      if (app?.singleton || app?.duplicable === false) {
+      const policy = resolvePolicy(currentView);
+      if (policy === "link") {
         // A linked placement: the same view, twice on screen.
         mutations = splitWithView(current, placementId, direction, currentView.id);
-      } else {
+      } else if (policy === "duplicate") {
         const view = create(AppViewSchema, {
           id: newId("v"),
           appId: currentView.appId,
@@ -344,6 +440,13 @@ export function createVerbHandlers({ store, apps, root }: VerbEnvironment): Work
           ...(currentView.title ? { title: currentView.title } : {}),
         });
         mutations = [mutation({ case: "viewCreate", value: { view } }), ...splitWithView(current, placementId, direction, view.id)];
+      } else {
+        // `{ app }`: an empty pane showing some application — a launcher, an
+        // empty state — which is what three of the four family shells do.
+        const existing = apps.get(policy.app)?.singleton ? viewsOfApp(current, policy.app)[0] : undefined;
+        mutations = existing
+          ? splitWithView(current, placementId, direction, existing.id)
+          : splitPlacement(current, placementId, direction, policy.app);
       }
     }
     const created = newPlacementIdOf(mutations);
@@ -420,7 +523,7 @@ export function createVerbHandlers({ store, apps, root }: VerbEnvironment): Work
     const view = create(AppViewSchema, {
       id: newId("v"),
       appId,
-      documents: { ...documents },
+      documents: Object.keys(documents).length > 0 ? { ...documents } : defaultBindings(current, appId),
       ...(options.title ? { title: options.title } : {}),
     });
     const mutations = [
@@ -446,6 +549,85 @@ export function createVerbHandlers({ store, apps, root }: VerbEnvironment): Work
         },
       }),
     ]);
+  };
+
+  const bindings = (viewId: string, values: Record<string, string>): Mutation =>
+    mutation({
+      case: "viewConfigure",
+      value: { viewId, replaceDocuments: create(DocumentBindingsSchema, { values }) },
+    });
+
+  const replace: WorkbenchVerbHandlers["replace"] = (placementId, appId, documents) => {
+    const current = doc();
+    const workspaceId = workspaceOfPlacement(current, placementId);
+    if (!workspaceId) return false;
+    const node = findNode(workspaceTree(current, workspaceId), placementId);
+    if (node?.body.case !== "leaf") return false;
+    const currentViewId = node.body.value.viewId;
+    const currentView = current.views[currentViewId];
+    if (currentView?.appId === appId && documents === undefined) return true;
+
+    const app = apps.get(appId);
+    // A placed singleton is LINKED rather than minted twice; the applier here
+    // would accept a second view, but pkg/workbench's Validate rejects the
+    // batch as duplicate_singleton, so the optimistic document would sit
+    // invalid until a conflict repair.
+    if (app?.singleton) {
+      const existing = viewsOfApp(current, appId)[0];
+      if (existing) return existing.id === currentViewId ? true : link(placementId, existing.id);
+    }
+
+    // Bindings are CLEARED by default: a `product` binding left on a view now
+    // showing a chart is state nothing reads and everything can misread.
+    const values = documents ?? defaultBindings(current, appId);
+
+    if (currentView && placementCount(current, currentViewId) === 1) {
+      // The pane owns its view: retarget in place so it keeps its identity
+      // (its placement id, its position, and any product state keyed by view).
+      return store.mutate([
+        mutation({
+          case: "viewConfigure",
+          value: {
+            viewId: currentViewId,
+            appId,
+            replaceDocuments: create(DocumentBindingsSchema, { values }),
+          },
+        }),
+      ]);
+    }
+
+    // The view is linked into other tiles: mint one and move only this
+    // placement, or the twin silently changes too.
+    const view = create(AppViewSchema, { id: newId("v"), appId, documents: values });
+    return store.mutate([
+      mutation({ case: "viewCreate", value: { view } }),
+      mutation({ case: "placementReplace", value: { workspaceId, placementId, viewId: view.id } }),
+    ]);
+  };
+
+  const link: WorkbenchVerbHandlers["link"] = (placementId, viewId) => {
+    const current = doc();
+    const workspaceId = workspaceOfPlacement(current, placementId);
+    if (!workspaceId || !current.views[viewId]) return false;
+    const node = findNode(workspaceTree(current, workspaceId), placementId);
+    if (node?.body.case !== "leaf") return false;
+    const currentViewId = node.body.value.viewId;
+    if (currentViewId === viewId) return true;
+    const mutations: Mutation[] = [
+      mutation({ case: "placementReplace", value: { workspaceId, placementId, viewId } }),
+    ];
+    // The view this pane held is now placed nowhere: it would linger in
+    // document.views forever. Same batch, after the replace, so viewDelete
+    // sees a placement count of zero rather than view_in_use.
+    if (placementCount(current, currentViewId) === 1) {
+      mutations.push(mutation({ case: "viewDelete", value: { viewId: currentViewId } }));
+    }
+    return store.mutate(mutations);
+  };
+
+  const rebind: WorkbenchVerbHandlers["rebind"] = (viewId, documents) => {
+    if (!doc().views[viewId]) return false;
+    return store.mutate([bindings(viewId, { ...documents })]);
   };
 
   const selectWorkspace: WorkbenchVerbHandlers["selectWorkspace"] = (workspaceId) => {
@@ -551,6 +733,9 @@ export function createVerbHandlers({ store, apps, root }: VerbEnvironment): Work
     place,
     setTitle,
     openView,
+    replace,
+    link,
+    rebind,
     activate,
     selectWorkspace,
     createWorkspace,
@@ -594,6 +779,15 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
         ...(verb.near ? { near: verb.near } : {}),
         ...(verb.title ? { title: verb.title } : {}),
       });
+      return;
+    case "tile.replace":
+      handlers.replace(verb.placementId, verb.appId, verb.documents);
+      return;
+    case "tile.link":
+      handlers.link(verb.placementId, verb.viewId);
+      return;
+    case "view.rebind":
+      handlers.rebind(verb.viewId, verb.documents);
       return;
     case "workspace.select":
       handlers.selectWorkspace(verb.workspaceId);

@@ -30,7 +30,9 @@ export {
   placementCount,
 } from "./verbs";
 export type {
+  BindingConfig,
   CrossWorkspace,
+  SplitPolicy,
   SplitDirection,
   WorkbenchVerb,
   WorkbenchVerbKind,
