@@ -80,3 +80,49 @@ Also before going on too far,  write a detailed project report for the obsidian 
 
 ### Technical details
 - Reference files the work starts from: `pbui/src/chrome/{TileFrame.tsx,useTileDrag.ts,LauncherShell.tsx,shortcutRouting.ts}`, `pbui/packages/workbench-protocol/src/client/{apply,builders,ratios}.ts`, `pbui/packages/datalab-ui/src/{store/layout.ts,components/organisms/Tile,components/pages/Workbench,apps/LauncherApp,appkit/registry.ts}`, `datalab/pkg/server/handlers_workbenches.go`, `datalab/pkg/workbenchapp/`.
+
+## Step 2: Analysis folded into the guide; design section written
+
+The read-only analysis agent returned a file-and-line map of the existing workbench across four repositories, and it settled two facts that shape the design: datalab-ui does not use the protocol document as runtime state (it keeps its own tree in `store/layoutTree.ts` and converts at the remote boundary), and PBUI's `TileFrame` and `LauncherShell` had no consumer in the repository at all — datalab-ui hand-rolls both. The reusable shell is therefore the first real caller of the chrome kit, and the first React consumer of the protocol applier as runtime state.
+
+I wrote §§0–6 of the intern guide: the presentation protocol the tiles sit on, the chrome kit (with the two `LauncherShell` invariants quoted), the document and its applier (all fifteen arms, the error vocabulary, the `placementSplit` id rule, the ten invariants), datalab-ui's Redux implementation and remote controller, the datalab server's route semantics (428/409/400, replay-before-apply, subscribe-before-snapshot), the decisions to carry forward, the responsibility table, and the design of `@hyperslop-systems/pbui-workbench` (state, verbs as data, rendering, persistence, what stays with the product).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Turn the analysis into the first half of the intern guide and fix the design before the implementation report arrives.
+
+**Inferred user intent:** A guide a newcomer can read top-down: foundations, what exists, what is being built, why.
+
+### What I did
+- Wrote `design-doc/01-intern-guide-…md` §§0–6 (≈360 lines).
+- Kept the implementation agent's brief as the design of record (§6) so §7 can report deviations against it.
+
+### Why
+- Writing the analysis before the implementation lands keeps the guide honest about what was reused versus rewritten.
+
+### What worked
+- The analysis agent's responsibility table (datalab-ui Redux → shell) mapped one-to-one onto the package design; no design change was needed.
+
+### What didn't work
+- N/A.
+
+### What I learned
+- `handleMutateWorkbench` replays the idempotency key *before* comparing revisions, so a replayed request never conflicts; `If-Match` missing is 428, not 412; validation errors are 400, not the 422 the TS applier's comment mentions.
+- The TS applier and the Go applier share one fixture directory; the Go side tests `applyMutation` only, not `Validate`.
+
+### What was tricky to build
+- Deciding how much of the hosted path to put in the guide. It is in §5 and §6.5 as "what changes later" so an intern does not build a server into the shell.
+
+### What warrants a second pair of eyes
+- The verb vocabulary in §6.3 (`tile.*`, `split.resize`, `view.*`) is mine; the implementation may name things differently — §7 will reconcile.
+
+### What should be done in the future
+- §7 (as built), §8 (pbui-chat on tiles), §9–10 (references) once the implementation agent reports.
+
+### Code review instructions
+- Read §3.2 against `pbui/packages/workbench-protocol/src/client/apply.ts` and §5 against `datalab/pkg/server/handlers_workbenches.go`.
+
+### Technical details
+- Guide file: `design-doc/01-intern-guide-the-pbui-workbench-tiles-and-how-pbui-chat-runs-on-them.md`.
