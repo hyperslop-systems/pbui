@@ -8,6 +8,14 @@ import { chat } from "./chat";
  * returns to this.
  */
 export const WORKBENCH_STORAGE_KEY = "pbui-chat-demo.workbench.v1";
+/**
+ * Which workspace THIS browser is looking at, kept out of the document on
+ * purpose: it is not part of the layout (DATADROP-18 §1.4), and writing it
+ * into the document would make two tabs fight over the selection. Without it
+ * a reload silently returns to workspaces[0], which quietly abandons a
+ * workspace the user — or the agent — just created and switched to.
+ */
+export const WORKSPACE_STORAGE_KEY = `${WORKBENCH_STORAGE_KEY}.workspace`;
 
 export function defaultLayout() {
   return layout(
@@ -27,21 +35,39 @@ function storage(): Storage | null {
 export const workbench = createWorkbench({
   apps: createChatApps(chat),
   initial: parseDocument(storage()?.getItem(WORKBENCH_STORAGE_KEY)) ?? defaultLayout(),
+  // The document is the only thing worth writing; onMutate fires once per
+  // committed batch and never for activation or launcher state, so this is
+  // one write per real change rather than one per store notification.
+  onMutate: () => persistDocument(),
+  onRejected: (_mutations, error) => {
+    console.warn(`layout change refused: ${error.code} at ${error.path} — ${error.detail}`);
+  },
 });
 
 // "Open in tile" now opens a widget tile beside the active one.
 chat.attachWorkbench(workbench);
 
-// Persist the DOCUMENT, not the transient state: one write per committed
-// batch, nothing on activation or launcher open/close.
-let persisted = workbench.store.getState().document;
-workbench.store.subscribe(() => {
-  const { document } = workbench.store.getState();
-  if (document === persisted) return;
-  persisted = document;
+function persistDocument() {
   storage()?.setItem(WORKBENCH_STORAGE_KEY, workbench.serialize());
+}
+
+// The selected workspace is separate state with its own write, so switching
+// tabs costs one small string rather than re-serialising the whole document.
+let selected = workbench.store.getState().workspaceId;
+workbench.store.subscribe(() => {
+  const next = workbench.store.getState().workspaceId;
+  if (next === selected) return;
+  selected = next;
+  storage()?.setItem(WORKSPACE_STORAGE_KEY, next);
 });
+
+// A workspace that is gone (a restored document from an older layout) makes
+// this a no-op and the first workspace stays selected.
+const restored = storage()?.getItem(WORKSPACE_STORAGE_KEY);
+if (restored) workbench.verbs.selectWorkspace(restored);
 
 export function resetLayout() {
   workbench.store.replaceDocument(defaultLayout());
+  persistDocument();
+  storage()?.removeItem(WORKSPACE_STORAGE_KEY);
 }

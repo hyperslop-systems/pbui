@@ -94,6 +94,9 @@ function Workbench() {
   );
   return (
     <>
+      {/* The human door to workspace.select. The agent can create a workspace
+          and switch to it; without this the user could not switch back. */}
+      <workbench.WorkspaceStrip addLabel="workspace" />
       <workbench.Surface
         renderTitle={(_view, placement) => (
           <Text size="tiny" strong title={placement.placementCount > 1 ? `shown in ${placement.placementCount} tiles` : undefined}>
