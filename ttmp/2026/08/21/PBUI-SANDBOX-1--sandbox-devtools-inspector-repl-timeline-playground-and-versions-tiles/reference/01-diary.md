@@ -11,22 +11,29 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - Path: repo://packages/pbui-sandbox/src/host/useProgramInstance.ts
-      Note: Read in full before the design; the log, effects and instance id rules shaped D1, D2 and D11
+    - Path: repo://packages/pbui-chat/demo/src/workbench.ts
+      Note: sandboxHost built once; createScriptApp(host) (commit 62bf01a)
+    - Path: repo://packages/pbui-chat/test/no-raw-controls.test.ts
+      Note: The structural rules every devtool must satisfy (TextArea, SelectInput, CheckboxRow from pbui)
     - Path: repo://packages/pbui-sandbox/src/engines/evalEngine.ts
       Note: The single-Function closure is why a direct eval in the bootstrap can reach the program (D3)
+    - Path: repo://packages/pbui-sandbox/src/host/hostOptions.ts
+      Note: SandboxHost — the one options object (commit 62bf01a)
+    - Path: repo://packages/pbui-sandbox/src/host/useProgramInstance.ts
+      Note: Read in full before the design; the log, effects and instance id rules shaped D1, D2 and D11
+    - Path: repo://packages/pbui-sandbox/src/instances.ts
+      Note: Registry, timeline ring, selection, formatEntry (commit 62bf01a)
     - Path: repo://packages/pbui-sandbox/src/quickjs/runtimeService.ts
       Note: evalCode strings per call; the same pattern carries `evaluate`
     - Path: repo://packages/pbui-workbench/src/apps.ts
       Note: docBound/singleton semantics decided which tiles are which (D12)
-    - Path: repo://packages/pbui-chat/test/no-raw-controls.test.ts
-      Note: The structural rules every devtool must satisfy (TextArea, SelectInput, CheckboxRow from pbui)
 ExternalSources: []
 Summary: Chronological record of PBUI-SANDBOX-1 — the suggestion that became the ticket, the evidence gathered from the sandbox package and the workbench, the design decisions, and (as they happen) each implementation phase with its failures verbatim.
 LastUpdated: 2026-08-21T16:10:00-04:00
 WhatFor: Continuation and review; read this to know what was tried, what broke, and why the design is shaped as it is.
 WhenToUse: When resuming a phase, reviewing a commit, or wondering why something is the way it is.
 ---
+
 
 # Diary
 
@@ -110,3 +117,80 @@ Once the design guide and the phases/tasks are written, print out an overview br
 
 - Ticket path: `ttmp/2026/08/21/PBUI-SANDBOX-1--sandbox-devtools-inspector-repl-timeline-playground-and-versions-tiles/`.
 - Base commit of the evidence: `d2c5b2c` (AGENT-3 close-out).
+
+## Step 2: Phase 0 — the registry, the host object, the hook that publishes
+
+Phase 0 is the machinery every tile stands on. `createInstanceRegistry` keeps one snapshot per view (placements, program, version, instance id, status, meta, trees, error, timings, a control handle, a highlight path), one global timeline ring of structured entries, and the selected sandbox. `useProgramInstance` now takes the registry, measures each engine call with `performance.now()`, records load/render/event/intent/error/note entries, publishes after every effect, and registers a handle (`fire`, `reset`, `rerender`) once per mount through refs. Its string log is gone (D2); the script tile's details disclosure filters the timeline by view id and formats it with the same `formatEntry` the Timeline tile will use.
+
+The script tile takes one `SandboxHost` object instead of eight options, selects its view on focus or click, and shows *inspect*/*source* buttons only when `host.devtools` is set (so they never dangle in a product without devtools). The renderer stamps `data-node-path` on every node wrapper and marks the `highlightPath` with `data-highlighted`, which the CSS module outlines through the focus-ring tokens. The demo builds `sandboxHost` once in `workbench.ts`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build the prerequisite from guide §5 Phase 0, verify it in the browser, commit.
+
+**Inferred user intent:** A foundation the five tiles can be built on without touching the hook again.
+
+**Commit (code):** 62bf01a — "PBUI-SANDBOX-1 Phase 0: instance registry (timeline ring, selection, handles), SandboxHost, hook timings, renderer node paths + highlight"
+
+### What I did
+
+- New `src/instances.ts` (registry, `useInstances`, `formatEntry`, `EMPTY_TIMINGS`) and `src/host/hostOptions.ts` (`SandboxHost`).
+- Rewrote `useProgramInstance.ts`: `instances` option, timings, structured records, `rerender()` via a tick the render effect depends on, a handle effect, `treesRef` so an unchanged tree keeps its identity in both the hook state and the registry.
+- Rewrote `ScriptTile.tsx` (host object, `ProgramLog` and `DevtoolButtons` as separate components, `askToFix` through `host.askAgent`) and `createScriptApp(host, options)`.
+- Renderer: `wrap()` puts every node — root included — in the path-carrying span; `highlightPath` prop; `walkNodes` in `validate/uiSchema.ts`.
+- Tests: `instances.test.ts` (4 registry tests + 8 `formatEntry` cases), hook tests updated to assert registry contents and a new handle/unmount test, renderer paths/highlight test. `pnpm test`: 67 in pbui-sandbox; pbui-chat 110 (structural scans included).
+- Demo: `instances` exported from `sandbox.ts` and on `window.__pbuiDemo`; `sandboxHost` in `workbench.ts`.
+- Browser: rebuilt `pbui-chat` and the demo, restarted `make chat-serve` (the old tmux session was gone; started a new `pbui-chat` session), opened *Minimal Counter* from the launcher, clicked `+`: the registry showed `{status: "ready", timings: {loadMs: 51.6, renders: 2, events: 1}}`, selection = that view, paths `root, root.0, root.1, root.1.0, root.1.1`, timeline `load → render → event → intent applied → render`. From the console: `handle.fire` incremented, `publish({highlight: "root.1.0"})` marked the `+` button, `handle.reset()` returned the state to 0. Screenshot `various/01-p0-registry-and-highlight.png`.
+
+### Why
+
+- Every devtool needs the same facts; one store with one subscription model (`useSyncExternalStore`, like the library) is the smallest thing that gives them to tiles that are not each other's ancestors.
+- A registry that re-notified on unchanged trees would make the inspector re-render on every program render; hence `publish` compares by identity and the hook only hands it a new `trees` object when the content changed.
+
+### What worked
+
+- The busy-loop regression test from AGENT-3 still passes with the registry in the loop: publishing from effects and callbacks only, never during render, kept the settle property.
+- `data-node-path` cost one wrapper function; the existing React keys were already the paths.
+
+### What didn't work
+
+- `type TimelineEntryInput = Omit<TimelineEntry, "seq" | "at">` collapsed the union: every `record({kind: "render", …})` failed with `'durationMs' does not exist in type 'TimelineEntryInput'`. Spelled it as `{head} & TimelineEntryBody` instead.
+- A test asserted the timeline's last entry after a click was the `intent`; it is the `render` the applied intent caused. The assertion now checks the last two kinds are `["intent", "render"]`.
+- `formatEntry` for `evaluate` JSON-quoted the code (`"1 + 1" → 2`); code is shown verbatim, whitespace collapsed, truncated at 60.
+- The first `pnpm typecheck` also flagged `Cannot redeclare block-scoped variable 'instances'` in the update test, which already used that name for `engine.health().instances` — renamed to `engineInstances`.
+- `tmux send-keys -t pbui-chat` reported `can't find pane` / `can't find session` even though `tmux ls` had listed it moments before; a fresh `tmux new-session -d -s pbui-chat "make chat-serve"` worked.
+
+### What I learned
+
+- Two linked placements of one view run two engine instances (each `ScriptTile` mounts its own hook), sharing state through the view-keyed store. The registry is keyed by view, so its `instanceId` and `handle` are whichever placement published last — equivalent instances, so any handle drives the view's state correctly, but the inspector's "instance id" is one of two. Recorded as a known property rather than changed: making one hook serve two placements would need the hook to move out of the tile.
+- React 18 batches `setState` from async callbacks, so the earlier idea of reading a functional updater's result synchronously after `setTrees` was unsafe; a `treesRef` mirror is the honest version.
+
+### What was tricky to build
+
+- **Handle identity.** The handle must be stable (one `publish`) but call the latest `onEvent`/`reset`, which change with `meta` and `globalState`. Refs updated every render plus one effect keyed on `[instances, viewId, rerender]` does it; the cleanup only nulls the handle if it is still ours, so a second placement's handle survives the first's unmount.
+- **Unchanged trees, twice.** The hook previously compared inside a functional `setTrees` updater. The registry needs the same decision outside React's batching, so the comparison moved to `treesRef` and both the state and the registry receive the same object.
+
+### What warrants a second pair of eyes
+
+- `publish` compares patch fields with `Object.is`; a caller passing a fresh `timings` object every time (as `bumpTimings` does) always notifies — intended, since timings changed, but worth knowing when reading subscriber counts.
+- The timeline ring's `keep` of 500 with `intents` arrays and `args` kept by reference: a program that emits large payloads holds them alive until they scroll out.
+
+### What should be done in the future
+
+- Phase 1: the Inspector tile and `createSandboxDevtools`, which sets `host.devtools`.
+
+### Code review instructions
+
+- Start at `src/instances.ts` (`publish`, `record`, `unmount`), then `useProgramInstance.ts` (`bumpTimings`, the handle effect, `treesRef`), then `ScriptTile.tsx` (`ProgramLog`, `DevtoolButtons`).
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; `pnpm --filter @hyperslop-systems/pbui-chat test`; in the demo, `__pbuiDemo.instances.all()` after opening a program tile.
+
+### Technical details
+
+```ts
+// the registry's door for devtools, as published by the hook
+instances.get(viewId)?.handle?.fire("main", { handler: "increment" });
+instances.publish(viewId, { highlight: "root.1.0" });   // the tile outlines that node
+instances.timeline().filter((e) => e.viewId === viewId).map(formatEntry);
+```
