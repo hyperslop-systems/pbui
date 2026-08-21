@@ -18,7 +18,9 @@ import type { VerbRouter } from "./router/createVerbRouter";
 import { createPbuiChatStore, usePbuiChatStore, type PbuiChatState, type PbuiChatStore } from "./store/chatStore";
 import { pbuiAcceptTool } from "./tools/acceptTool";
 import { pbuiProposeTool } from "./tools/proposeTool";
+import { createSandboxTools, type SandboxTools, type SandboxToolsOptions } from "./tools/sandboxTools";
 import { createWorkbenchTools, type WorkbenchTools, type WorkbenchToolsOptions } from "./tools/workbenchTools";
+import type { ProgramEngine, ProgramLibrary } from "@hyperslop-systems/pbui-sandbox";
 import type { ChatMessageBody, Reference, VerbLike } from "./types";
 import { fromPresentationReference, toPresentationReference } from "./types";
 import { exportVocabulary } from "./vocabulary/defineVocabulary";
@@ -51,6 +53,16 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
    * verb to be performable at all.
    */
   workbenchTools?: Omit<WorkbenchToolsOptions, "getWorkbench" | "perform">;
+  /**
+   * The sandbox tools: how bindings resolve for a dry render, limits, policy,
+   * `isApproved`. The library and engine usually arrive AFTER construction
+   * through `chat.attachSandbox(library, engine)`, for the same reason the
+   * workbench does; until then the tools are not offered to the model.
+   */
+  sandbox?: Omit<SandboxToolsOptions, "getLibrary" | "getEngine" | "getWorkbench" | "perform" | "vocabulary"> & {
+    library?: ProgramLibrary;
+    engine?: ProgramEngine;
+  };
 }
 
 export interface PbuiChatProviderProps<Environment> {
@@ -124,10 +136,28 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     ...(options.workbenchTools ?? {}),
   });
 
+  /*
+   * Same construction-order trick as the workbench tools: the library and the
+   * engine are read through closures and the tools are `available` only once
+   * both exist. A product without a sandbox never calls `attachSandbox`, and
+   * its model is never told these tools exist.
+   */
+  let library: ProgramLibrary | null = options.sandbox?.library ?? null;
+  let engine: ProgramEngine | null = options.sandbox?.engine ?? null;
+  const { library: _library, engine: _engine, ...sandboxOptions } = options.sandbox ?? { resolve: () => null };
+  const sandboxTools: SandboxTools = createSandboxTools({
+    getLibrary: () => library,
+    getEngine: () => engine,
+    getWorkbench: () => workbench,
+    perform: (verb) => router.perform(verb, undefined, { actor: "agent" }),
+    vocabulary,
+    ...sandboxOptions,
+  });
+
   const extension: ChatExtension = defineChatExtensions({
     name: "pbui-chat",
     widgets: pbuiWidgets,
-    tools: [pbuiAcceptTool, pbuiProposeTool, ...workbenchTools.tools],
+    tools: [pbuiAcceptTool, pbuiProposeTool, ...workbenchTools.tools, ...sandboxTools.tools],
     timelineAdapters: [traceAdapter],
   });
 
@@ -262,6 +292,18 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     },
     /** The attached workbench, if any. */
     workbench: () => workbench,
+    /** The agent's program tools and their shared dry-run path. */
+    sandboxTools,
+    /** Offer the sandbox tools from now on (null, null detaches). Re-advertises the manifest, as attachWorkbench does. */
+    attachSandbox(nextLibrary: ProgramLibrary | null, nextEngine: ProgramEngine | null) {
+      library = nextLibrary;
+      engine = nextEngine;
+      void chatClientRef?.tools.syncManifest();
+    },
+    /** The attached library, if any. */
+    library: () => library,
+    /** The attached engine, if any. */
+    engine: () => engine,
   };
 }
 

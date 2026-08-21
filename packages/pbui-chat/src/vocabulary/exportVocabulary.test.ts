@@ -18,7 +18,8 @@ describe("exportVocabulary", () => {
   test("the exported document parses as a vocabulary with Go's key order", () => {
     const exported = exportVocabulary(vocabulary);
     expect(VocabularySchema.safeParse(exported).success).toBe(true);
-    expect(Object.keys(exported)).toEqual(["schema_version", "product", "types", "verbs", "widget", "conversions"]);
+    expect(Object.keys(exported)).toEqual(["schema_version", "product", "types", "verbs", "widget", "conversions", "sandbox"]);
+    expect(Object.keys(exported.sandbox!)).toEqual(["schema_version", "kinds", "intents"]);
     expect(Object.keys(exported.types.product!)).toEqual(["doc", "idHint", "tone", "verbs", "example"]);
     expect(Object.keys(exported.widget)).toEqual(["schema_version", "kinds", "layouts"]);
   });
@@ -46,6 +47,9 @@ describe("exportVocabulary", () => {
     expect(() =>
       defineVocabulary({ product: "x", types: { a: { doc: "a" } }, verbs: {}, widgetKinds: ["text"], conversions: [{ from: "a", to: "b" }] }),
     ).toThrow('conversion to unknown type "b"');
+    expect(() =>
+      defineVocabulary({ product: "x", types: { a: { doc: "a" } }, verbs: {}, widgetKinds: ["text"], sandbox: { kinds: ["image"], intents: [] } }),
+    ).toThrow('sandbox kind "image" is not known');
   });
 });
 

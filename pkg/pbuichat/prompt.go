@@ -20,6 +20,44 @@ const (
 	ToolWorkbenchSwitchWorkspace = "workbench_switch_workspace"
 )
 
+// Sandbox tool names. Frontend tools too: the browser runs the programs, so
+// the browser advertises the tools; the prompt only has to name them
+// correctly.
+const (
+	ToolSandboxDescribe     = "sandbox_describe"
+	ToolSandboxTest         = "sandbox_test"
+	ToolSandboxCreateApp    = "sandbox_create_app"
+	ToolSandboxUpdateApp    = "sandbox_update_app"
+	ToolSandboxOpen         = "sandbox_open"
+	ToolSandboxDefineAction = "sandbox_define_action"
+	ToolSandboxRemove       = "sandbox_remove"
+)
+
+// sandboxExample is the worked program the prompt carries. PBUI-AGENT-1 and -2
+// both recorded the model guessing a nested shape until the instructions held
+// one complete, valid value; a program is the most nested thing yet.
+const sandboxExample = `definePlugin(({ ui }) => ({
+  id: "days-of-cover", title: "Days of cover", bindings: ["product"], initialState: { days: 30 },
+  widgets: { main: {
+    render({ pluginState, globalState }) {
+      const product = globalState.shared.documents?.product;
+      if (!product) return ui.callout({ variant: "warning", text: "bind this tile to a product" });
+      const stock = Number(product.value?.stock ?? 0), perDay = Number(product.value?.sold30d ?? 0) / 30;
+      const days = Number(pluginState?.days ?? 30), needed = Math.ceil(perDay * days);
+      return ui.column([
+        ui.row([ui.ref(product), ui.badge(stock >= needed ? "covered" : "short")]),
+        ui.input(String(days), { type: "number", placeholder: "days", onChange: { handler: "setDays" } }),
+        ui.meter({ fraction: needed === 0 ? 1 : Math.min(1, stock / needed), value: stock + " / " + needed, label: "stock vs need" }),
+        ui.button("Draft a reorder", { variant: "destructive", disabled: stock >= needed, onClick: { handler: "reorder" } }),
+      ]);
+    },
+    handlers: {
+      setDays({ dispatchPluginAction }, args) { dispatchPluginAction("state/merge", { days: Number(args?.value ?? 0) }); },
+      reorder({ dispatchVerb, globalState }) { const p = globalState.shared.documents?.product; if (p) dispatchVerb({ kind: "reorder", productId: p.id }); },
+    },
+  } },
+}))`
+
 // SystemPromptSection renders the model-facing description of the vocabulary.
 // It is generated so that adding a type to the registry changes the model's
 // instructions without anyone editing prose.
@@ -64,6 +102,29 @@ func SystemPromptSection(v *Vocabulary) string {
 	b.WriteString("To ask the user to choose an object, call " + ToolAccept + " with the types you accept; the user clicks any matching object on screen and you receive the reference. To ask for approval before a consequential action, call " + ToolPropose + ". To recall what the user did, call " + ToolTrace + ".\n")
 	b.WriteString("The user's message may end with a `pbui-refs` section listing objects they pointed at; treat those as authoritative and refer to them by their mentions.\n")
 	b.WriteString(workbenchSection(v))
+	b.WriteString(sandboxSection(v))
+	return b.String()
+}
+
+// sandboxSection teaches the model the program dialect, and is emitted only
+// for a product that declares a `program` type AND a sandbox block: the first
+// says programs are objects here, the second says what a program may draw.
+// Generated from the vocabulary so the list of kinds cannot drift from the
+// renderer (PBUI-AGENT-3 D12).
+func sandboxSection(v *Vocabulary) string {
+	if !v.KnowsType("program") || !v.HasSandbox() {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n## Programs\n")
+	b.WriteString("You can write small programs that run in the user's browser and show as tiles. A program is JavaScript in a fixed dialect: it calls definePlugin(({ ui }) => ({ id, title, bindings?, initialState?, widgets: { main: { render, handlers } } })) exactly once. ")
+	b.WriteString("render({ pluginState, globalState }) is a PURE function that returns a UI tree built only with these helpers: ui.text(content, {size?, tone?, strong?}), ui.badge(text), ui.button(label, {onClick?, variant?, disabled?}), ui.input(value, {placeholder?, type?, onChange?}), ui.select(value, {options, onChange?}), ui.row(children), ui.column(children), ui.panel(children, {title?}), ui.table(rows, {headers}), ui.meter({fraction, label?, value?}), ui.sparkline({points, label?}), ui.callout({variant?, title?, text}), ui.ref(reference, label?). ")
+	b.WriteString("Node kinds: " + strings.Join(v.Sandbox.Kinds, ", ") + ". ")
+	b.WriteString("onClick and onChange take { handler: \"name\", args? }; an input's handler receives { value }. handlers[name]({ pluginState, globalState, dispatchPluginAction, dispatchVerb }, args) must be synchronous and change nothing directly: it emits intents — dispatchPluginAction(\"state/merge\", {…}) or (\"state/replace\", {…}) for the program's own state, dispatchVerb({ kind, … }) for anything else, using only the verb kinds listed above. Intents: " + strings.Join(v.Sandbox.Intents, ", ") + ".\n")
+	b.WriteString("globalState.shared.documents holds the objects the tile is bound to, by binding key, as references { type, id, value }; globalState.shared.env holds the user's environment. Declare bindings: [\"product\"] and read globalState.shared.documents.product rather than copying an object's fields into the source. State is JSON: coerce what you read (Number(pluginState?.days ?? 0)). There is no DOM, fetch, timer, import or async in a program; reaching for one is an error.\n")
+	b.WriteString("Workflow: call " + ToolSandboxTest + " first with the source (and documents, and events to click through); create only a program whose test rendered, with " + ToolSandboxCreateApp + " (documents binds objects when it opens). Change a program with " + ToolSandboxUpdateApp + "; open a stored one with " + ToolSandboxOpen + "; list what exists with " + ToolSandboxDescribe + " — ids come from there. ")
+	b.WriteString("To add an entry to the menu of every object of some types, call " + ToolSandboxDefineAction + ": it opens a program bound to the clicked object, performs a declared verb on it (write \"$ref\" for the object), or asks you with a template ({0} is the object). Remove with " + ToolSandboxRemove + "; something pinned or human-made needs " + ToolPropose + " first. Mention what you made: [[program:<programId>|title]], [[action:<actionId>|label]].\n")
+	b.WriteString("A complete, valid program:\n```js\n" + sandboxExample + "\n```\n")
 	return b.String()
 }
 

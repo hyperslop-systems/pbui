@@ -53,7 +53,7 @@ export const scriptApp = createScriptApp({
   // A click inside a generated tile is a HUMAN act on agent-written UI: the
   // verb goes through the router as the human's, validated against the
   // vocabulary and recorded in the trace like any chip.
-  perform: (verb) => router.perform(verb as Verb, undefined, { actor: "human" }),
+  perform: (verb, { provenance }) => router.perform(verb as Verb, undefined, { actor: "human", provenance }),
   // A `ref` node is the product's own <Presentation>, menu and all.
   renderReference: (reference, label) =>
     createElement(RefPresentation, { reference: reference as Reference }, label || undefined),
@@ -85,6 +85,8 @@ export const workbench = createWorkbench({
 
 // "Open in tile" now opens a widget tile beside the active one.
 chat.attachWorkbench(workbench);
+// …and the sandbox_* tools are offered to the model from here on.
+chat.attachSandbox(library, engine);
 
 function persistDocument() {
   storage()?.setItem(WORKBENCH_STORAGE_KEY, workbench.serialize());

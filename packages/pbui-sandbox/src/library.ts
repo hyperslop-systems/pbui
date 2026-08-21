@@ -47,7 +47,9 @@ export interface ActionRecord {
 
 export interface LibrarySnapshot {
   schema_version: 1;
+  /** Counters for `prg-<n>` and `act-<n>`; separate so each list reads 1, 2, 3 to a model. */
   nextId: number;
+  nextActionId: number;
   seeded: boolean;
   programs: Record<string, ProgramRecord>;
   actions: Record<string, ActionRecord>;
@@ -97,7 +99,7 @@ export interface CreateProgramLibraryOptions {
 }
 
 export function emptyLibrary(): LibrarySnapshot {
-  return { schema_version: 1, nextId: 1, seeded: false, programs: {}, actions: {} };
+  return { schema_version: 1, nextId: 1, nextActionId: 1, seeded: false, programs: {}, actions: {} };
 }
 
 export function memoryStorage(): LibraryStorage {
@@ -193,8 +195,12 @@ export function createProgramLibrary(options: CreateProgramLibraryOptions): Prog
     emit();
   }
 
-  function mint(prefix: string): { id: string; nextId: number } {
-    return { id: `${prefix}-${state.nextId}`, nextId: state.nextId + 1 };
+  function mintProgram(): { id: string; nextId: number } {
+    return { id: `prg-${state.nextId}`, nextId: state.nextId + 1 };
+  }
+
+  function mintAction(): { id: string; nextActionId: number } {
+    return { id: `act-${state.nextActionId}`, nextActionId: state.nextActionId + 1 };
   }
 
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
@@ -229,7 +235,7 @@ export function createProgramLibrary(options: CreateProgramLibraryOptions): Prog
       if (!existing && Object.keys(state.programs).length >= limits.programs) {
         throw new Error(`the library already holds ${limits.programs} programs, the limit; remove one first`);
       }
-      const minted = existing ? { id: existing.id, nextId: state.nextId } : mint("prg");
+      const minted = existing ? { id: existing.id, nextId: state.nextId } : mintProgram();
       const record: ProgramRecord = {
         id: minted.id,
         title: input.title,
@@ -262,7 +268,7 @@ export function createProgramLibrary(options: CreateProgramLibraryOptions): Prog
       if (!existing && Object.keys(state.actions).length >= limits.actions) {
         throw new Error(`the library already holds ${limits.actions} actions, the limit; remove one first`);
       }
-      const minted = existing ? { id: existing.id, nextId: state.nextId } : mint("act");
+      const minted = existing ? { id: existing.id, nextActionId: state.nextActionId } : mintAction();
       const record: ActionRecord = {
         id: minted.id,
         label: input.label,
@@ -275,7 +281,7 @@ export function createProgramLibrary(options: CreateProgramLibraryOptions): Prog
         createdAt: existing?.createdAt ?? at,
         updatedAt: at,
       };
-      commit({ ...state, nextId: minted.nextId, actions: { ...state.actions, [record.id]: record } });
+      commit({ ...state, nextActionId: minted.nextActionId, actions: { ...state.actions, [record.id]: record } });
       return record;
     },
 
@@ -327,6 +333,7 @@ export function createProgramLibrary(options: CreateProgramLibraryOptions): Prog
       commit({
         ...state,
         nextId: Math.max(state.nextId, snapshot.nextId ?? 1),
+        nextActionId: Math.max(state.nextActionId, snapshot.nextActionId ?? 1),
         seeded: state.seeded || Boolean(snapshot.seeded),
         programs: { ...state.programs, ...snapshot.programs },
         actions: { ...state.actions, ...snapshot.actions },

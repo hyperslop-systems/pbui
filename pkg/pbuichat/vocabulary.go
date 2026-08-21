@@ -26,7 +26,31 @@ type Vocabulary struct {
 	Verbs         map[string]VerbSpec `json:"verbs"`
 	Widget        WidgetVocabulary    `json:"widget"`
 	Conversions   []Conversion        `json:"conversions,omitempty"`
+	// Sandbox is declared by a product whose browser runs agent-written
+	// programs; it is what the prompt's program section is generated from.
+	Sandbox *SandboxVocabulary `json:"sandbox,omitempty"`
 }
+
+// SandboxVocabulary describes the program dialect the client renders: the UI
+// node kinds a program's render may return and the intents a handler may
+// emit. The closed sets live beside widget kinds for the same reason — a
+// client advertises what it can do, the server validates it is something this
+// version knows, and the prompt is generated from the declaration.
+type SandboxVocabulary struct {
+	SchemaVersion int      `json:"schema_version"`
+	Kinds         []string `json:"kinds"`
+	Intents       []string `json:"intents"`
+}
+
+// SandboxSchemaVersion is the sandbox block format this package reads.
+const SandboxSchemaVersion = 1
+
+var knownSandboxKinds = map[string]struct{}{
+	"panel": {}, "row": {}, "column": {}, "text": {}, "badge": {}, "button": {}, "input": {},
+	"select": {}, "table": {}, "meter": {}, "sparkline": {}, "callout": {}, "ref": {},
+}
+
+var knownSandboxIntents = map[string]struct{}{"state/merge": {}, "state/replace": {}, "verb": {}}
 
 // TypeSpec describes one presentation type.
 type TypeSpec struct {
@@ -137,7 +161,27 @@ func (v *Vocabulary) Validate() error {
 			return errors.Errorf("conversion to unknown type %q", c.To)
 		}
 	}
+	if v.Sandbox != nil {
+		if v.Sandbox.SchemaVersion != SandboxSchemaVersion {
+			return errors.Errorf("sandbox schema_version %d is not %d", v.Sandbox.SchemaVersion, SandboxSchemaVersion)
+		}
+		for _, kind := range v.Sandbox.Kinds {
+			if _, ok := knownSandboxKinds[kind]; !ok {
+				return errors.Errorf("sandbox kind %q is not known to this server", kind)
+			}
+		}
+		for _, intent := range v.Sandbox.Intents {
+			if _, ok := knownSandboxIntents[intent]; !ok {
+				return errors.Errorf("sandbox intent %q is not known to this server", intent)
+			}
+		}
+	}
 	return nil
+}
+
+// HasSandbox reports whether the product declared a program dialect.
+func (v *Vocabulary) HasSandbox() bool {
+	return v.Sandbox != nil
 }
 
 // KnowsType reports whether the vocabulary declares the presentation type.

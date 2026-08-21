@@ -58,6 +58,13 @@ export interface VerbRouterOptions<Verb extends VerbLike> {
 
 export interface PerformOptions {
   actor?: Actor;
+  /**
+   * Where the verb came from when the actor alone does not say — a click
+   * inside a generated tile is a human's act through an agent's program
+   * (guide D10). Recorded on the trace entry's verb as `_provenance`; the
+   * handler never sees it.
+   */
+  provenance?: Record<string, unknown>;
 }
 
 export type RouterBinding = Omit<RouterContext, "perform">;
@@ -99,7 +106,14 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
     return options.families(verb);
   }
 
-  async function report(reportBinding: RouterBinding | null, actor: Actor, verb: Verb, target: Reference | undefined, outcome: Outcome) {
+  async function report(
+    reportBinding: RouterBinding | null,
+    actor: Actor,
+    verb: Verb,
+    target: Reference | undefined,
+    outcome: Outcome,
+    provenance?: Record<string, unknown>,
+  ) {
     if (options.report === false || !reportBinding) return;
     const sessionId = reportBinding.client.getStore().getState().overlay.sessionId;
     if (!sessionId) return;
@@ -107,7 +121,7 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
     const body = {
       clientSeq: `${Date.now()}-${clientSeq}`,
       actor,
-      verb,
+      verb: provenance ? { ...verb, _provenance: provenance } : verb,
       ...(target ? { target } : {}),
       outcome,
     };
@@ -162,7 +176,7 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
       }
 
       const reportBinding = binding;
-      const pendingReport = reportQueue.then(() => report(reportBinding, actor, verb, target, outcome));
+      const pendingReport = reportQueue.then(() => report(reportBinding, actor, verb, target, outcome, performOptions?.provenance));
       // Keep the queue usable even if report is later changed to propagate an
       // error; perform itself still waits for this report before returning.
       reportQueue = pendingReport.catch(() => undefined);

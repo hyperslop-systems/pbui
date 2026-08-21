@@ -386,3 +386,59 @@ func TestWorkbenchPromptOmitsMentionsWithoutTheWorkspaceType(t *testing.T) {
 		t.Error("a product without a workspace type must not be told to mention workspaces")
 	}
 }
+
+func TestSandboxPromptSectionIsGatedOnTheProgramType(t *testing.T) {
+	// A product without programs as objects, or without a sandbox block, has
+	// no sandbox tools in its manifest; teaching its model the dialect would
+	// invite calls that go nowhere.
+	plain := SystemPromptSection(withoutTypes(loadDemoVocabulary(t), "program", "action"))
+	if contains(plain, "## Programs") {
+		t.Error("a vocabulary without a program type must not get the programs section")
+	}
+	for _, name := range []string{ToolSandboxTest, ToolSandboxCreateApp, ToolSandboxDefineAction} {
+		if contains(plain, name) {
+			t.Errorf("prompt names %s without a program type", name)
+		}
+	}
+	noBlock := *loadDemoVocabulary(t)
+	noBlock.Sandbox = nil
+	if contains(SystemPromptSection(&noBlock), "## Programs") {
+		t.Error("a program type without a sandbox block must not get the programs section")
+	}
+
+	full := SystemPromptSection(loadDemoVocabulary(t))
+	for _, want := range []string{
+		"## Programs",
+		ToolSandboxDescribe, ToolSandboxTest, ToolSandboxCreateApp, ToolSandboxUpdateApp, ToolSandboxOpen, ToolSandboxDefineAction, ToolSandboxRemove,
+		"definePlugin(", "dispatchVerb", "state/merge", "globalState.shared.documents",
+		// The worked example, complete.
+		`bindings: ["product"]`, `dispatchVerb({ kind: "reorder"`,
+		"[[program:<programId>|title]]",
+		ToolPropose,
+	} {
+		if !contains(full, want) {
+			t.Errorf("programs section missing %q", want)
+		}
+	}
+	for _, kind := range loadDemoVocabulary(t).Sandbox.Kinds {
+		if !contains(full, kind) {
+			t.Errorf("programs section does not list kind %q", kind)
+		}
+	}
+}
+
+func TestVocabularySandboxBlockValidates(t *testing.T) {
+	v := loadDemoVocabulary(t)
+	if v.Sandbox == nil || len(v.Sandbox.Kinds) == 0 {
+		t.Fatal("the demo vocabulary should declare a sandbox block")
+	}
+	bad := *v
+	bad.Sandbox = &SandboxVocabulary{SchemaVersion: 1, Kinds: []string{"image"}, Intents: []string{"verb"}}
+	if err := bad.Validate(); err == nil || !contains(err.Error(), `sandbox kind "image"`) {
+		t.Errorf("expected an unknown-kind error, got %v", err)
+	}
+	bad.Sandbox = &SandboxVocabulary{SchemaVersion: 1, Kinds: []string{"text"}, Intents: []string{"shared"}}
+	if err := bad.Validate(); err == nil || !contains(err.Error(), `sandbox intent "shared"`) {
+		t.Errorf("expected an unknown-intent error, got %v", err)
+	}
+}

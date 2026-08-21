@@ -6,6 +6,8 @@ export { AcceptStatus } from "./AcceptStatus";
 export type { AcceptStatusProps } from "./AcceptStatus";
 export { ProposalCard } from "./ProposalCard";
 export type { ProposalCardProps, ProposalDecision } from "./ProposalCard";
+export { createSandboxTools, DEFAULT_SANDBOX_POLICY, SANDBOX_VERB_KINDS } from "./sandboxTools";
+export type { CheckResult, SandboxPolicy, SandboxPolicyKey, SandboxTools, SandboxToolsOptions } from "./sandboxTools";
 export {
   createWorkbenchTools,
   LayoutSpecSchema,

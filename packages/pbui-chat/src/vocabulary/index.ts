@@ -45,3 +45,5 @@ export {
   validateWidgetDocument,
 } from "./validate";
 export type { WidgetLimits, WidgetValidationOptions } from "./validate";
+export { SandboxVocabularySchema } from "./schemas";
+export type { SandboxVocabulary } from "./schemas";

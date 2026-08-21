@@ -45,6 +45,8 @@ export type { UINodeRendererProps } from "./render/UINodeRenderer";
 export { PROGRAM_BINDING, ScriptTile } from "./ScriptTile";
 export type { ScriptTileOptions, ScriptTileProps } from "./ScriptTile";
 export { GENERATED_GROUP, createScriptApp } from "./createScriptApp";
+export { substituteRef, substituteVerbRef, withGeneratedActions } from "./actions";
+export type { GeneratedActionsOptions } from "./actions";
 export type { ScriptAppOptions } from "./createScriptApp";
 export {
   BROKEN_RENDER_PROGRAM,

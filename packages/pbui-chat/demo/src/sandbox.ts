@@ -35,6 +35,13 @@ export const engine = createEvalEngine();
 
 export const programStates = createProgramStateStore();
 
+// A console door for the demo — `__pbuiDemo.library.getState()` — so a
+// reviewer can inspect the library and a browser test can seed it without
+// a model on the other end. Nothing in the product reads it.
+if (typeof window !== "undefined") {
+  (window as unknown as { __pbuiDemo?: unknown }).__pbuiDemo = { library, engine, programStates };
+}
+
 /**
  * How a program's bindings become the references in
  * `globalState.shared.documents`. A key the demo does not know resolves to

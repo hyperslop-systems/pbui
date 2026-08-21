@@ -1,4 +1,5 @@
 import { defineVocabulary, verbSpecsFromSchema, type TypeSpec } from "@hyperslop-systems/pbui-chat";
+import { SANDBOX_INTENTS, SANDBOX_UI_KINDS } from "@hyperslop-systems/pbui-sandbox";
 import { TONES, type PresentationType } from "./types";
 import { VERB_DOCS, VerbSchema } from "./verbs";
 
@@ -56,6 +57,20 @@ const types: Record<PresentationType, TypeSpec> = {
     tone: TONES.app,
     verbs: ["app.place", "askAgent"],
     example: "[[app:inventory|inventory]]",
+  },
+  program: {
+    doc: "a small program written in the sandbox dialect, running in a tile",
+    idHint: "programId, from sandbox_describe or the tool that created it",
+    tone: TONES.program,
+    verbs: ["program.open", "inspect", "program.pin", "program.remove", "askAgent"],
+    example: "[[program:prg-7|Days of cover]]",
+  },
+  action: {
+    doc: "a generated action in the menu of some presentation types",
+    idHint: "actionId, from sandbox_describe",
+    tone: TONES.action,
+    verbs: ["inspect", "action.remove", "askAgent"],
+    example: "[[action:act-3|Days of cover]]",
   },
   field: {
     doc: "a column of a table the agent produced",
@@ -116,4 +131,7 @@ export const vocabulary = defineVocabulary({
   widgetKinds: ["text", "refs", "meter", "sparkline", "segmented", "stat", "callout", "table", "log", "form", "widget"],
   layouts: ["stack", "row", "grid"],
   conversions: [{ from: "row", to: "product" }],
+  // The program dialect the model is taught; the same lists the renderer and
+  // the reducer are built against (PBUI-AGENT-3 D12).
+  sandbox: { kinds: SANDBOX_UI_KINDS, intents: SANDBOX_INTENTS },
 });

@@ -86,6 +86,30 @@
       ],
       "example": "[[app:inventory|inventory]]"
     },
+    "program": {
+      "doc": "a small program written in the sandbox dialect, running in a tile",
+      "idHint": "programId, from sandbox_describe or the tool that created it",
+      "tone": "var(--pbui-tone-widget)",
+      "verbs": [
+        "program.open",
+        "inspect",
+        "program.pin",
+        "program.remove",
+        "askAgent"
+      ],
+      "example": "[[program:prg-7|Days of cover]]"
+    },
+    "action": {
+      "doc": "a generated action in the menu of some presentation types",
+      "idHint": "actionId, from sandbox_describe",
+      "tone": "var(--pbui-tone-neutral)",
+      "verbs": [
+        "inspect",
+        "action.remove",
+        "askAgent"
+      ],
+      "example": "[[action:act-3|Days of cover]]"
+    },
     "field": {
       "doc": "a column of a table the agent produced",
       "idHint": "<tableId>.<column>",
@@ -380,6 +404,43 @@
     "launcher.close": {
       "doc": "close the launcher",
       "fields": {}
+    },
+    "program.open": {
+      "doc": "open a stored program in a tile, bound to the given documents",
+      "fields": {
+        "programId": "string",
+        "documents?": "object",
+        "near?": "string",
+        "title?": "string"
+      }
+    },
+    "program.remove": {
+      "doc": "remove a program from the library and close its tiles",
+      "fields": {
+        "programId": "string"
+      },
+      "danger": true
+    },
+    "program.pin": {
+      "doc": "pin a program so the agent cannot change or remove it unasked",
+      "fields": {
+        "programId": "string",
+        "pinned": "boolean"
+      }
+    },
+    "action.run": {
+      "doc": "perform a generated action on an object",
+      "fields": {
+        "actionId": "string",
+        "ref": "ref"
+      }
+    },
+    "action.remove": {
+      "doc": "remove a generated action from every menu",
+      "fields": {
+        "actionId": "string"
+      },
+      "danger": true
     }
   },
   "widget": {
@@ -408,5 +469,28 @@
       "from": "row",
       "to": "product"
     }
-  ]
+  ],
+  "sandbox": {
+    "schema_version": 1,
+    "kinds": [
+      "panel",
+      "row",
+      "column",
+      "text",
+      "badge",
+      "button",
+      "input",
+      "select",
+      "table",
+      "meter",
+      "sparkline",
+      "callout",
+      "ref"
+    ],
+    "intents": [
+      "state/merge",
+      "state/replace",
+      "verb"
+    ]
+  }
 }

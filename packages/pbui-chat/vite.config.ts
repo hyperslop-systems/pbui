@@ -14,6 +14,7 @@ const external = [
   "@hyperslop-systems/pbui",
   "@hyperslop-systems/pbui/presentation",
   "@hyperslop-systems/pbui-workbench",
+  "@hyperslop-systems/pbui-sandbox",
   "@hyperslop-systems/workbench-protocol",
   "@hyperslop-systems/workbench-protocol/client",
   "@go-go-golems/chat-provider",

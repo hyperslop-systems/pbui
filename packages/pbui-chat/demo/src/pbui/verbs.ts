@@ -48,6 +48,19 @@ export const VerbSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("workspace.clone"), workspaceId: z.string(), name: z.string().optional(), newWorkspaceId: z.string().optional(), select: z.boolean().optional() }),
   z.object({ kind: z.literal("launcher.open"), placementId: z.string().optional() }),
   z.object({ kind: z.literal("launcher.close") }),
+
+  /*
+   * The sandbox verbs (PBUI-AGENT-3 D4): the vocabulary stays closed, and a
+   * generated program or action is a PAYLOAD of one of these five kinds —
+   * never a kind of its own. The agent's sandbox_* tools emit them, the
+   * program/action descriptors offer them, and the local handler expands
+   * `action.run` into whatever the stored action says.
+   */
+  z.object({ kind: z.literal("program.open"), programId: z.string(), documents: z.record(z.string(), z.string()).optional(), near: z.string().optional(), title: z.string().optional() }),
+  z.object({ kind: z.literal("program.remove"), programId: z.string() }),
+  z.object({ kind: z.literal("program.pin"), programId: z.string(), pinned: z.boolean() }),
+  z.object({ kind: z.literal("action.run"), actionId: z.string(), ref: ReferenceSchema }),
+  z.object({ kind: z.literal("action.remove"), actionId: z.string() }),
 ]);
 
 export type Verb = z.infer<typeof VerbSchema>;
@@ -86,6 +99,12 @@ export const VERB_DOCS: VerbDocs = {
   "workspace.clone": { doc: "duplicate a workspace" },
   "launcher.open": { doc: "open the launcher" },
   "launcher.close": { doc: "close the launcher" },
+
+  "program.open": { doc: "open a stored program in a tile, bound to the given documents" },
+  "program.remove": { doc: "remove a program from the library and close its tiles", danger: true },
+  "program.pin": { doc: "pin a program so the agent cannot change or remove it unasked" },
+  "action.run": { doc: "perform a generated action on an object" },
+  "action.remove": { doc: "remove a generated action from every menu", danger: true },
 };
 
 export interface Action {
@@ -119,6 +138,16 @@ export function describeVerb(verb: Verb): string {
       return `${verb.decision} proposal ${verb.id}`;
     case "reorder":
       return `reorder product ${verb.productId}`;
+    case "program.open":
+      return `open program ${verb.programId}${verb.documents && Object.keys(verb.documents).length ? ` on ${JSON.stringify(verb.documents)}` : ""}`;
+    case "program.remove":
+      return `remove program ${verb.programId}`;
+    case "program.pin":
+      return `${verb.pinned ? "pin" : "unpin"} program ${verb.programId}`;
+    case "action.run":
+      return `run action ${verb.actionId} on <${verb.ref.type}> ${verb.ref.id}`;
+    case "action.remove":
+      return `remove action ${verb.actionId}`;
     default:
       // The workbench verbs describe themselves; pbui-workbench owns the
       // wording so the object menu, the chrome buttons and the trace agree.

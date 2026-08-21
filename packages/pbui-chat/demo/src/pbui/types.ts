@@ -81,6 +81,29 @@ export type AppValue = {
   blurb?: string;
 };
 
+/**
+ * A program the agent (or a human) wrote, as an object. `id` is the library
+ * id (`prg-7`); the source is not in the value — `describe()` reads it from
+ * the library, so a mention stays small and the inspector shows the code.
+ */
+export type ProgramValue = {
+  title: string;
+  version?: number;
+  bindings?: string[];
+  by?: "agent" | "human";
+  pinned?: boolean;
+  lastError?: string;
+};
+
+/** A generated action, as an object; `id` is the library id (`act-3`). */
+export type ActionValue = {
+  label: string;
+  types?: string[];
+  behaviour?: string;
+  by?: "agent" | "human";
+  pinned?: boolean;
+};
+
 export type FieldValue = {
   tableId: string;
   name: string;
@@ -101,6 +124,8 @@ export interface Values {
   tile: Reference<TileValue>;
   workspace: Reference<WorkspaceValue>;
   app: Reference<AppValue>;
+  program: Reference<ProgramValue>;
+  action: Reference<ActionValue>;
   field: Reference<FieldValue>;
   row: Reference<RowValue>;
   source: Reference<SourceValue>;
@@ -131,6 +156,8 @@ export const TONES: Record<PresentationType, string> = {
   tile: "var(--pbui-selected)",
   workspace: "var(--pbui-tone-neutral)",
   app: "var(--pbui-pane-alt)",
+  program: "var(--pbui-tone-widget)",
+  action: "var(--pbui-tone-neutral)",
   field: "var(--pbui-tone-field)",
   row: "var(--pbui-tone-row)",
   source: "var(--pbui-tone-source)",
