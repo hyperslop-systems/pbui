@@ -16,6 +16,7 @@ export function createQuickJsDirectEngine(limits: Partial<SandboxLimits> = {}): 
     render: async ({ instanceId, widgetId, pluginState, globalState }) => service.render(instanceId, widgetId, pluginState, globalState),
     event: async ({ instanceId, widgetId, handler, args, pluginState, globalState }) =>
       service.event(instanceId, widgetId, handler, args, pluginState, globalState),
+    evaluate: async ({ instanceId, code, pluginState, globalState }) => ({ value: service.evaluate(instanceId, code, pluginState, globalState) }),
     dispose: async (instanceId) => service.dispose(instanceId),
     health: async () => ({ ready: true as const, instances: service.instances() }),
     terminate() {

@@ -174,6 +174,16 @@ export class QuickJSRuntimeService {
     }
   }
 
+  evaluate(instanceId: string, code: string, pluginState: unknown, globalState: unknown): unknown {
+    const vm = this.getVmOrThrow(instanceId);
+    return evalToNative<unknown>(
+      vm,
+      `globalThis.__pluginHost.evaluate(${toJsLiteral(code)}, ${toJsLiteral(pluginState)}, ${toJsLiteral(globalState)})`,
+      `${instanceId}.repl.js`,
+      this.limits.evaluateMs,
+    );
+  }
+
   dispose(instanceId: string): boolean {
     const vm = this.vms.get(instanceId);
     if (!vm) return false;

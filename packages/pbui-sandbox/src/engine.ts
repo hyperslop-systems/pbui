@@ -24,6 +24,19 @@ export interface EventInput extends RenderInput {
   args: unknown;
 }
 
+/** A REPL line inside a live instance (guide §4.3). */
+export interface EvaluateInput {
+  instanceId: string;
+  code: string;
+  pluginState: unknown;
+  globalState: unknown;
+}
+
+export interface EvaluateResult {
+  /** Already described by the bootstrap: JSON, with `{ $type }` markers for what JSON cannot carry. */
+  value: unknown;
+}
+
 export interface EngineHealth {
   ready: true;
   instances: string[];
@@ -34,6 +47,8 @@ export interface ProgramEngine {
   load(input: LoadInput): Promise<LoadedProgram>;
   render(input: RenderInput): Promise<UINode>;
   event(input: EventInput): Promise<DispatchIntent[]>;
+  /** Evaluate code in the instance's scope; rejects with the error the code threw (its name preserved). */
+  evaluate(input: EvaluateInput): Promise<EvaluateResult>;
   dispose(instanceId: string): Promise<boolean>;
   health(): Promise<EngineHealth>;
   terminate?(): void;

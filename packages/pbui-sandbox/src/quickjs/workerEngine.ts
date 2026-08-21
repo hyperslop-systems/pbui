@@ -68,6 +68,10 @@ export function createQuickJsEngine(options: QuickJsEngineOptions): ProgramEngin
       const { intents } = await post<{ intents: DispatchIntent[] }>({ type: "event", instanceId, widgetId, handler, args, pluginState, globalState });
       return intents;
     },
+    async evaluate({ instanceId, code, pluginState, globalState }) {
+      const { value } = await post<{ value: unknown }>({ type: "evaluate", instanceId, code, pluginState, globalState });
+      return { value };
+    },
     async dispose(instanceId) {
       const { disposed } = await post<{ disposed: boolean }>({ type: "dispose", instanceId });
       return disposed;

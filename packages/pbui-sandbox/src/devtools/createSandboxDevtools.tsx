@@ -2,6 +2,7 @@ import { defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems
 import type { SandboxHost } from "../host/hostOptions";
 import { INSPECTOR_APP_ID, PROGRAM_BINDING } from "../ScriptTile";
 import { InspectorTile } from "./InspectorTile/InspectorTile";
+import { ReplTile } from "./ReplTile/ReplTile";
 
 export interface SandboxDevtoolsOptions {
   /** The launcher group; default "SANDBOX". */
@@ -10,6 +11,7 @@ export interface SandboxDevtoolsOptions {
 }
 
 export const SANDBOX_GROUP = "SANDBOX";
+export const REPL_APP_ID = "sandbox-repl";
 
 /**
  * The devtools as ordinary app descriptors (guide D8): register them beside
@@ -37,6 +39,15 @@ export function createSandboxDevtools(host: SandboxHost, options: SandboxDevtool
       blurb: "a running program's state, bindings, render tree and timings",
       titleFor: (view) => titleOf(view, "inspect"),
       Component: (props: AppProps) => <InspectorTile placementId={props.placementId} view={props.view} host={host} />,
+    }),
+    defineApp({
+      id: REPL_APP_ID,
+      title: "REPL",
+      tone,
+      singleton: true,
+      group,
+      blurb: "evaluate and inject code inside the selected program",
+      Component: (props: AppProps) => <ReplTile placementId={props.placementId} view={props.view} host={host} />,
     }),
   ];
 }

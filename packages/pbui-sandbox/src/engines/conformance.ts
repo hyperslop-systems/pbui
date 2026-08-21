@@ -178,5 +178,63 @@ export function describeEngineConformance(name: string, make: EngineFactory): vo
     expect(await e.dispose("z1")).toBe(false);
     await expect(e.render({ instanceId: "z1", widgetId: "main", pluginState: {}, globalState: globalState() })).rejects.toThrow("Program instance not found: z1");
   });
+
+  describe("evaluate — the REPL's door", () => {
+    test("sees the state, the global state and the helpers", async () => {
+      const e = engine();
+      await e.load({ instanceId: "r1", programId: "counter", source: COUNTER_PROGRAM });
+      const run = (code: string, state: unknown = { value: 3 }) => e.evaluate({ instanceId: "r1", code, pluginState: state, globalState: globalState() }).then((r) => r.value);
+      expect(await run("1 + 1")).toBe(2);
+      expect(await run("$state")).toEqual({ value: 3 });
+      expect(await run("$global.self.viewId")).toBe("v");
+      expect(await run("$widget")).toBe("main");
+      expect(await run("$plugin.title")).toBe("Minimal Counter");
+      expect(await run("Object.keys($ui).length")).toBeGreaterThan(10);
+    });
+
+    test("$render and $event run the program with a chosen state", async () => {
+      const e = engine();
+      await e.load({ instanceId: "r2", programId: "counter", source: COUNTER_PROGRAM });
+      const run = (code: string) => e.evaluate({ instanceId: "r2", code, pluginState: { value: 0 }, globalState: globalState() }).then((r) => r.value);
+      expect(((await run("$render({ value: 7 })")) as { children: { text: string }[] }).children[0]).toEqual({ kind: "text", text: "Count: 7" });
+      expect(await run('$event("increment")')).toEqual([{ scope: "plugin", actionType: "state/merge", payload: { value: 1 } }]);
+    });
+
+    test("an injection patches the live program", async () => {
+      const e = engine();
+      await e.load({ instanceId: "r3", programId: "counter", source: COUNTER_PROGRAM });
+      await e.evaluate({
+        instanceId: "r3",
+        code: '$plugin.widgets.main.handlers.increment = (ctx) => ctx.dispatchPluginAction("state/merge", { value: 100 })',
+        pluginState: {},
+        globalState: globalState(),
+      });
+      const intents = await e.event({ instanceId: "r3", widgetId: "main", handler: "increment", args: undefined, pluginState: { value: 0 }, globalState: globalState() });
+      expect(intents).toEqual([{ scope: "plugin", instanceId: "r3", actionType: "state/merge", payload: { value: 100 } }]);
+    });
+
+    test("describes what JSON cannot carry, and the result is a copy", async () => {
+      const e = engine();
+      await e.load({ instanceId: "r4", programId: "counter", source: COUNTER_PROGRAM });
+      const run = (code: string) => e.evaluate({ instanceId: "r4", code, pluginState: {}, globalState: globalState() }).then((r) => r.value);
+      expect(await run("undefined")).toEqual({ $type: "undefined" });
+      expect(await run("() => 1")).toMatchObject({ $type: "function" });
+      expect(await run("const o = {}; o.self = o; o")).toEqual({ self: { $type: "cyclic" } });
+      expect(await run("1 / 0")).toEqual({ $type: "number", $text: "Infinity" });
+      expect(await run("new TypeError('x')")).toEqual({ $type: "error", name: "TypeError", message: "x" });
+      // Mutating the state the REPL was handed does not reach the host's copy.
+      const state = { value: 1 };
+      await e.evaluate({ instanceId: "r4", code: "$state.value = 99", pluginState: state, globalState: globalState() });
+      expect(state).toEqual({ value: 1 });
+    });
+
+    test("a throwing line rejects with the error's own name", async () => {
+      const e = engine();
+      await e.load({ instanceId: "r5", programId: "counter", source: COUNTER_PROGRAM });
+      await expect(e.evaluate({ instanceId: "r5", code: "nope.x", pluginState: {}, globalState: globalState() })).rejects.toMatchObject({ name: "ReferenceError" });
+      await expect(e.evaluate({ instanceId: "r5", code: "fetch('/x')", pluginState: {}, globalState: globalState() })).rejects.toMatchObject({ name: "ReferenceError" });
+      await expect(e.evaluate({ instanceId: "r5", code: "(", pluginState: {}, globalState: globalState() })).rejects.toMatchObject({ name: "SyntaxError" });
+    });
+  });
   });
 }

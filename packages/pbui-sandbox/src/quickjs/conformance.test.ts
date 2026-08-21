@@ -21,6 +21,13 @@ describe("quickjs engine · what eval cannot do", () => {
     await e.dispose("loop");
   });
 
+  test("interrupts a runaway REPL line", async () => {
+    const e = createQuickJsDirectEngine({ evaluateMs: 50 });
+    await e.load({ instanceId: "rl", programId: "rl", source: `definePlugin(() => ({ widgets: { main: { render: () => ({ kind: "text", text: "x" }), handlers: {} } } }))` });
+    await expect(e.evaluate({ instanceId: "rl", code: "while (true) {}", pluginState: {}, globalState: {} })).rejects.toMatchObject({ name: "InternalError" });
+    await e.dispose("rl");
+  });
+
   test("a program cannot see the host's globals at all", async () => {
     const e = createQuickJsDirectEngine();
     const load = e.load({ instanceId: "g", programId: "g", source: `const x = globalThis.localStorage.getItem("k"); definePlugin(() => ({ widgets: {} }))` });

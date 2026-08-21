@@ -37,6 +37,8 @@ export function installQuickJsWorker(scope: WorkerScopeLike = self as unknown as
         return { tree: service.render(request.instanceId, request.widgetId, request.pluginState, request.globalState) };
       case "event":
         return { intents: service.event(request.instanceId, request.widgetId, request.handler, request.args, request.pluginState, request.globalState) };
+      case "evaluate":
+        return { value: service.evaluate(request.instanceId, request.code, request.pluginState, request.globalState) };
       case "dispose":
         return { disposed: service.dispose(request.instanceId) };
       case "health":

@@ -1,5 +1,6 @@
 import { BOOTSTRAP_SOURCE } from "../bootstrap";
 import type { DispatchIntent, LoadedProgram, UINode } from "../contracts";
+import type { EvaluateResult } from "../engine";
 import { ProgramValidationError, validateLoadedProgramMeta, type ProgramEngine } from "../engine";
 import { DEFAULT_LIMITS, byteLength, type SandboxLimits } from "../limits";
 import { validateDispatchIntents } from "../validate/intents";
@@ -75,6 +76,7 @@ interface PluginHost {
   getMeta(): unknown;
   render(widgetId: string, pluginState: unknown, globalState: unknown): unknown;
   event(widgetId: string, handler: string, args: unknown, pluginState: unknown, globalState: unknown): unknown;
+  evaluate(code: string, pluginState: unknown, globalState: unknown): unknown;
 }
 
 /**
@@ -141,6 +143,12 @@ export function createEvalEngine(limits: SandboxLimits = DEFAULT_LIMITS): Progra
       } catch (error) {
         throw new ProgramValidationError(error instanceof Error ? error.message : String(error));
       }
+    },
+
+    async evaluate({ instanceId, code, pluginState, globalState }): Promise<EvaluateResult> {
+      const host = get(instanceId);
+      // The bootstrap described the value; the clone is the JSON boundary.
+      return { value: clone(host.evaluate(code, clone(pluginState), clone(globalState))) };
     },
 
     async dispose(instanceId) {

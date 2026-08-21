@@ -11,6 +11,7 @@ export type WorkerRequest =
   | { id: number; type: "load"; programId: string; instanceId: string; source: string }
   | { id: number; type: "render"; instanceId: string; widgetId: string; pluginState: unknown; globalState: unknown }
   | { id: number; type: "event"; instanceId: string; widgetId: string; handler: string; args: unknown; pluginState: unknown; globalState: unknown }
+  | { id: number; type: "evaluate"; instanceId: string; code: string; pluginState: unknown; globalState: unknown }
   | { id: number; type: "dispose"; instanceId: string }
   | { id: number; type: "health" };
 
@@ -21,6 +22,7 @@ export type WorkerResult =
   | { program: LoadedProgram }
   | { tree: UINode }
   | { intents: DispatchIntent[] }
+  | { value: unknown }
   | { disposed: boolean }
   | { ready: true; instances: string[] }
   | { configured: true };

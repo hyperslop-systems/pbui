@@ -30,6 +30,8 @@ export interface SandboxLimits {
   loadMs: number;
   renderMs: number;
   eventMs: number;
+  /** One REPL line; generous, because a line may render several times. */
+  evaluateMs: number;
 }
 
 export const DEFAULT_LIMITS: SandboxLimits = {
@@ -48,6 +50,7 @@ export const DEFAULT_LIMITS: SandboxLimits = {
   loadMs: 1000,
   renderMs: 100,
   eventMs: 100,
+  evaluateMs: 1000,
 };
 
 export function withLimits(overrides: Partial<SandboxLimits> = {}): SandboxLimits {

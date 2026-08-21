@@ -11,7 +11,10 @@
  *   - `ui.select`, `ui.meter`, `ui.sparkline`, `ui.callout`, `ui.ref` are new;
  *   - `dispatchSharedAction` is gone and `dispatchVerb` is new — a program's
  *     only effect beyond its own state is a verb the product router performs;
- *   - `getMeta()` also reports `bindings`.
+ *   - `getMeta()` also reports `bindings`;
+ *   - `evaluate(code, state, global)` (version 2) runs a REPL line with a
+ *     DIRECT eval, so it sees this scope, the program's top-level
+ *     declarations and the `$…` helpers — identically under both engines.
  *
  * It is a string, not code, so both engines evaluate exactly the same text.
  * It declares `__pluginHost` as a `const` and does NOT touch `globalThis`:
@@ -19,7 +22,7 @@
  * `globalThis.__pluginHost = __pluginHost;` under QuickJS). That is what lets
  * the eval engine shadow `globalThis` to `undefined` without breaking the shim.
  */
-export const BOOTSTRAP_VERSION = 1;
+export const BOOTSTRAP_VERSION = 2;
 
 export const BOOTSTRAP_SOURCE = String.raw`
 const __ui = {
@@ -81,6 +84,37 @@ const __ui = {
 
 let __plugin = null;
 let __dispatchIntents = [];
+
+/**
+ * A value as something that survives the engine boundary: JSON passes
+ * through; what JSON cannot carry becomes a marker object the REPL can show.
+ */
+function __describe(value, depth, seen) {
+  depth = depth || 0;
+  seen = seen || [];
+  if (value === undefined) return { $type: "undefined" };
+  if (value === null) return null;
+  const type = typeof value;
+  if (type === "function") return { $type: "function", $text: String(value).slice(0, 200) };
+  if (type === "symbol") return { $type: "symbol", $text: String(value) };
+  if (type === "bigint") return { $type: "bigint", $text: value.toString() };
+  if (type === "number" && !Number.isFinite(value)) return { $type: "number", $text: String(value) };
+  if (type !== "object") return value;
+  if (value instanceof Error) return { $type: "error", name: value.name, message: value.message };
+  if (seen.indexOf(value) !== -1) return { $type: "cyclic" };
+  if (depth >= 8) return { $type: "deep" };
+  seen.push(value);
+  let out;
+  if (Array.isArray(value)) {
+    out = value.slice(0, 200).map((item) => __describe(item, depth + 1, seen));
+    if (value.length > 200) out.push({ $type: "more", count: value.length - 200 });
+  } else {
+    out = {};
+    for (const key of Object.keys(value)) out[key] = __describe(value[key], depth + 1, seen);
+  }
+  seen.pop();
+  return out;
+}
 
 function definePlugin(factory) {
   if (typeof factory !== "function") {
@@ -147,6 +181,21 @@ const __pluginHost = {
     handler({ pluginState, globalState, dispatchPluginAction, dispatchVerb }, args);
 
     return __dispatchIntents.slice();
+  },
+
+  evaluate(code, pluginState, globalState) {
+    // The REPL's helpers. Local names, so a direct eval sees them — and, being
+    // direct, it also sees __plugin, __ui and whatever the program
+    // declared at its top level. A thrown error propagates to the engine.
+    const $plugin = __plugin;
+    const $ui = __ui;
+    const $state = pluginState;
+    const $global = globalState;
+    const $widget = __plugin && __plugin.widgets ? Object.keys(__plugin.widgets)[0] : "main";
+    const $render = (s, g, w) => __pluginHost.render(w === undefined ? $widget : w, s === undefined ? $state : s, g === undefined ? $global : g);
+    const $event = (handler, args, s, g, w) => __pluginHost.event(w === undefined ? $widget : w, handler, args, s === undefined ? $state : s, g === undefined ? $global : g);
+    void $plugin; void $ui; void $render; void $event;
+    return __describe(eval(code));
   },
 };
 `;
