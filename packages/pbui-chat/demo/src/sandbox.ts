@@ -1,0 +1,85 @@
+import {
+  COUNTER_PROGRAM,
+  DAYS_OF_COVER_PROGRAM,
+  createEvalEngine,
+  createProgramLibrary,
+  createProgramStateStore,
+  type UIReference,
+} from "@hyperslop-systems/pbui-sandbox";
+import { categoryReference, metalReference, orderReference, productById, productReference } from "./world";
+
+/*
+ * The generative half of the demo: the library every program and generated
+ * action lives in, the engine that runs them, and the state their tiles keep.
+ *
+ * The library is deliberately NOT the workbench document (guide D5):
+ * `resetLayout()` replaces the whole document, and "reset layout" must never
+ * delete a program the user kept. Tiles reference programs by id through
+ * `view.documents.program`, exactly as a `sku` tile references a product.
+ */
+export const LIBRARY_STORAGE_KEY = "pbui-chat-demo.generated.v1";
+
+export const library = createProgramLibrary({
+  key: LIBRARY_STORAGE_KEY,
+  onRejected: (reason, error) => {
+    console.warn(`generated library ${reason} failed: ${error instanceof Error ? error.message : String(error)}`);
+  },
+});
+
+/**
+ * The eval engine: same contracts as QuickJS, no isolation, no timeouts. Right
+ * for a demo whose model talks to a fixture world; a product with data a user
+ * cares about swaps in `createQuickJsEngine()` here (guide §5.11).
+ */
+export const engine = createEvalEngine();
+
+export const programStates = createProgramStateStore();
+
+/**
+ * How a program's bindings become the references in
+ * `globalState.shared.documents`. A key the demo does not know resolves to
+ * null, which the program sees and can say something about.
+ */
+export function resolveDemoBinding(key: string, id: string): UIReference | null {
+  switch (key) {
+    case "product": {
+      const product = productById(id);
+      return product ? (productReference(product).value as UIReference) : null;
+    }
+    case "metal":
+      return metalReference(id).value as UIReference;
+    case "category":
+      return categoryReference(id).value as UIReference;
+    case "order":
+      return orderReference(id).value as UIReference;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Seed the library once with the two programs the guide uses as worked
+ * examples (§3.7, §5.2). Shipped programs are `by: "human"` and pinned, so
+ * the agent cannot remove them without the user's approval; a user who
+ * removes them is not re-seeded, because `seeded` is sticky.
+ */
+export function seedLibrary(): void {
+  if (library.getState().seeded) return;
+  library.putProgram({
+    title: "Minimal Counter",
+    source: COUNTER_PROGRAM,
+    bindings: [],
+    meta: { declaredId: "minimal-counter", widgets: ["main"] },
+    by: "human",
+    pinned: true,
+  });
+  library.putProgram({
+    title: "Days of cover",
+    source: DAYS_OF_COVER_PROGRAM,
+    bindings: ["product"],
+    meta: { declaredId: "days-of-cover", widgets: ["main"] },
+    by: "human",
+    pinned: true,
+  });
+  library.markSeeded();
+}

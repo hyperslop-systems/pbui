@@ -211,6 +211,9 @@ importers:
       '@hyperslop-systems/pbui-chat':
         specifier: workspace:^
         version: link:..
+      '@hyperslop-systems/pbui-sandbox':
+        specifier: workspace:^
+        version: link:../../pbui-sandbox
       '@hyperslop-systems/pbui-workbench':
         specifier: workspace:^
         version: link:../../pbui-workbench

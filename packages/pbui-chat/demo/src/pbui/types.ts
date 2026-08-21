@@ -26,6 +26,8 @@ export type ProductValue = {
   price?: number;
   stock?: number;
   reorderPoint?: number;
+  /** Units sold over the last 30 days; what a days-of-cover program divides by. */
+  sold30d?: number;
 };
 
 export type CategoryValue = {

@@ -16,6 +16,7 @@
     "@go-go-golems/chat-provider": "0.5.0",
     "@hyperslop-systems/pbui": "workspace:^",
     "@hyperslop-systems/pbui-chat": "workspace:^",
+    "@hyperslop-systems/pbui-sandbox": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
     "@hyperslop-systems/workbench-protocol": "workspace:^",
     "react": "^19.2.8",

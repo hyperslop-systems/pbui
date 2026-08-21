@@ -5,7 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./App.module.css";
 import { chat } from "./chat";
 import { TONES, type Environment, type PresentationType } from "./pbui/types";
-import { tileRefOf } from "@hyperslop-systems/pbui-workbench";
+import { defaultLauncherRows, tileRefOf, type LauncherRow, type LauncherRowsContext } from "@hyperslop-systems/pbui-workbench";
+import { PROGRAM_BINDING, useLibrary } from "@hyperslop-systems/pbui-sandbox";
+import { library } from "./sandbox";
 import { resetLayout, workbench } from "./workbench";
 
 /*
@@ -92,12 +94,40 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
  * pbui-workbench's `createTileDescriptor`, so every product in the family
  * words them identically.
  */
+const PROGRAM_ROW_PREFIX = "program:";
+
 function Workbench() {
   const pbui = chat.pbui.usePbui();
   const shortcutContext = useCallback(
     () => ({ objectMenuOpen: pbui.menu !== null, acceptingPresentation: pbui.accepting !== null }),
     [pbui.menu, pbui.accepting],
   );
+  // The launcher skips doc-bound applications on purpose (a program tile with
+  // no program would open empty), so programs get rows of their own: one per
+  // library entry, each opening the `script` app bound to it.
+  const programs = useLibrary(library, (state) => state.programs);
+  const rows = useCallback(
+    (context: LauncherRowsContext): LauncherRow[] => [
+      ...defaultLauncherRows(context),
+      ...Object.values(programs)
+        .filter((program) => context.query === "" || program.title.toLowerCase().includes(context.query))
+        .map((program) => ({
+          id: `${PROGRAM_ROW_PREFIX}${program.id}`,
+          kind: "app" as const,
+          appId: "script",
+          title: program.title,
+          detail: `program · v${program.version} · by ${program.by}${program.bindings.length ? ` · needs ${program.bindings.join(", ")}` : ""}`,
+        })),
+    ],
+    [programs],
+  );
+  const choose = useCallback((row: LauncherRow, context: LauncherRowsContext): boolean => {
+    if (!row.id.startsWith(PROGRAM_ROW_PREFIX)) return false;
+    const near = context.invocation.target;
+    workbench.verbs.openView("script", { [PROGRAM_BINDING]: row.id.slice(PROGRAM_ROW_PREFIX.length) }, near ? { near } : {});
+    workbench.verbs.closeLauncher();
+    return true;
+  }, []);
   return (
     <>
       {/* The human door to workspace.select. The agent can create a workspace
@@ -125,7 +155,7 @@ function Workbench() {
           );
         }}
       />
-      <workbench.Launcher title="Place an application" shortcutContext={shortcutContext} />
+      <workbench.Launcher title="Place an application" shortcutContext={shortcutContext} rows={rows} choose={choose} />
     </>
   );
 }

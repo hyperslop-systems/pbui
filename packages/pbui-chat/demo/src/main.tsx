@@ -8,6 +8,7 @@ import "./styles/tokens.css";
 import "@hyperslop-systems/pbui/styles.css";
 import "@hyperslop-systems/pbui-workbench/styles.css";
 import "@hyperslop-systems/pbui-chat/styles.css";
+import "@hyperslop-systems/pbui-sandbox/styles.css";
 import "./styles/app.css";
 import { App } from "./App";
 

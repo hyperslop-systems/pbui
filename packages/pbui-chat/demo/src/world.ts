@@ -144,6 +144,7 @@ export function productReference(product: WorldProduct): PresentationReference<V
     price: product.price,
     stock: product.qty,
     reorderPoint: product.reorderAt,
+    sold30d: product.sold30d.reduce((total, n) => total + n, 0),
     ...(CATEGORIES[product.categoryId] ? { category: CATEGORIES[product.categoryId]!.name } : {}),
   };
   return { type: "product", value: { type: "product", id: product.id, value } };

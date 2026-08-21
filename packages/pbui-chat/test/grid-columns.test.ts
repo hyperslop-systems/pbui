@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
  * the tile boundary and the tile body scrolls horizontally (found in the
  * browser on a narrowed chat tile; ChatApp.module.css was the culprit).
  */
-const roots = [resolve(__dirname, "../src"), resolve(__dirname, "../../pbui-workbench/src")];
+const roots = [resolve(__dirname, "../src"), resolve(__dirname, "../../pbui-workbench/src"), resolve(__dirname, "../../pbui-sandbox/src")];
 
 function cssFiles(dir: string): string[] {
   const out: string[] = [];

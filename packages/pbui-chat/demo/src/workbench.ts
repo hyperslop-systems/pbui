@@ -1,7 +1,11 @@
-import { createChatApps } from "@hyperslop-systems/pbui-chat";
+import { createChatApps, RefPresentation, type Reference } from "@hyperslop-systems/pbui-chat";
+import { createScriptApp } from "@hyperslop-systems/pbui-sandbox";
 import { createWorkbench, layout, parseDocument, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createElement } from "react";
 import { createDemoApps } from "./apps";
-import { chat } from "./chat";
+import { chat, router } from "./chat";
+import type { Verb } from "./pbui/verbs";
+import { engine, library, programStates, resolveDemoBinding, seedLibrary } from "./sandbox";
 
 /**
  * The demo's tiles: the chat on the left (60%), and a right-hand column of
@@ -33,13 +37,42 @@ function storage(): Storage | null {
   }
 }
 
+seedLibrary();
+
+/**
+ * The one application every agent-written program runs in. Programs are
+ * documents it is bound to, not applications of their own (guide D7).
+ */
+export const scriptApp = createScriptApp({
+  library,
+  engine,
+  states: programStates,
+  resolve: resolveDemoBinding,
+  // A hook: the descriptor environment, so a program sees `canApprove` flip.
+  useEnv: () => chat.pbui.usePbui().environment as unknown as Record<string, unknown>,
+  // A click inside a generated tile is a HUMAN act on agent-written UI: the
+  // verb goes through the router as the human's, validated against the
+  // vocabulary and recorded in the trace like any chip.
+  perform: (verb) => router.perform(verb as Verb, undefined, { actor: "human" }),
+  // A `ref` node is the product's own <Presentation>, menu and all.
+  renderReference: (reference, label) =>
+    createElement(RefPresentation, { reference: reference as Reference }, label || undefined),
+  askToFix: (program, error) => {
+    void router.perform({
+      kind: "askAgent",
+      template: `the program {0} failed (${error.phase ?? "run"}): ${error.message}. Please fix it with sandbox_update_app.`,
+      refs: [{ type: "program", id: program.id, value: { title: program.title } }],
+    });
+  },
+});
+
 export const workbench = createWorkbench({
   // The chat's own applications (conversation, inspector, watchlist, trace,
-  // widget) plus the shop's four. Both lists in one array because the app
-  // registry refuses a duplicate id, so a name collision between the agent's
-  // machinery and the product's tiles fails at startup rather than showing
-  // whichever descriptor was registered last.
-  apps: [...createChatApps(chat), ...createDemoApps()],
+  // widget) plus the shop's four, plus the sandbox's one. All in one array
+  // because the app registry refuses a duplicate id, so a name collision
+  // between the agent's machinery and the product's tiles fails at startup
+  // rather than showing whichever descriptor was registered last.
+  apps: [...createChatApps(chat), ...createDemoApps(), scriptApp],
   initial: parseDocument(storage()?.getItem(WORKBENCH_STORAGE_KEY)) ?? defaultLayout(),
   // The document is the only thing worth writing; onMutate fires once per
   // committed batch and never for activation or launcher state, so this is

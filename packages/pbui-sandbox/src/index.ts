@@ -24,6 +24,28 @@ export { validateDispatchIntent, validateDispatchIntents } from "./validate/inte
 export { ProgramValidationError, toProgramError, validateLoadedProgramMeta } from "./engine";
 export type { EngineHealth, EventInput, LoadInput, ProgramEngine, RenderInput } from "./engine";
 export { SHADOWED_GLOBALS, createEvalEngine } from "./engines/evalEngine";
+export { createProgramLibrary, emptyLibrary, memoryStorage, useLibrary } from "./library";
+export type {
+  ActionBehaviour,
+  ActionRecord,
+  CreateProgramLibraryOptions,
+  LibrarySnapshot,
+  LibraryStorage,
+  ProgramLibrary,
+  ProgramRecord,
+  PutActionInput,
+  PutProgramInput,
+} from "./library";
+export { createProgramStateStore, useProgramState } from "./state";
+export type { ProgramStateStore } from "./state";
+export { reducePluginIntent, useProgramInstance } from "./host/useProgramInstance";
+export type { InstanceLogEntry, ProgramInstance, UseProgramInstanceOptions } from "./host/useProgramInstance";
+export { UINodeRenderer } from "./render/UINodeRenderer";
+export type { UINodeRendererProps } from "./render/UINodeRenderer";
+export { PROGRAM_BINDING, ScriptTile } from "./ScriptTile";
+export type { ScriptTileOptions, ScriptTileProps } from "./ScriptTile";
+export { GENERATED_GROUP, createScriptApp } from "./createScriptApp";
+export type { ScriptAppOptions } from "./createScriptApp";
 export {
   BROKEN_RENDER_PROGRAM,
   COLUMN_PROGRAM,
