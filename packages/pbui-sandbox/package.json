@@ -18,6 +18,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./quickjs": {
+      "types": "./dist/quickjs.d.ts",
+      "import": "./dist/quickjs.js"
+    },
     "./styles.css": "./dist/pbui-sandbox.css"
   },
   "publishConfig": {
@@ -39,7 +43,8 @@
   "dependencies": {
     "@hyperslop-systems/pbui": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
-    "@hyperslop-systems/workbench-protocol": "workspace:^"
+    "@hyperslop-systems/workbench-protocol": "workspace:^",
+    "quickjs-emscripten": "0.23.0"
   },
   "peerDependencies": {
     "react": "^19.0.0",

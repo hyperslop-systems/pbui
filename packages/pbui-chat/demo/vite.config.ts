@@ -30,6 +30,9 @@ export default defineConfig({
   ...pbuiVite(),
   plugins: [react(), keepGitkeep()],
   base: "/static/",
+  // The sandbox's QuickJS worker is an ES module worker (it imports the
+  // library's worker body); the classic-script default cannot load it.
+  worker: { format: "es" },
   build: {
     outDir,
     emptyOutDir: true,

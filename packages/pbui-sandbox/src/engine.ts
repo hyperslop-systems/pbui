@@ -45,10 +45,14 @@ export function toProgramError(error: unknown, phase?: ProgramPhase): ProgramErr
     return { code: "VALIDATION_ERROR", message: error.message, ...(phase ? { phase } : {}) };
   }
   if (error instanceof Error) {
-    const interrupted = error.message.includes("interrupted");
+    const interrupted = error.name === "RuntimeTimeout" || error.message.includes("interrupted");
+    // An error that already crossed the worker boundary carries a formatted
+    // message under a marker name; prefixing it again reads as
+    // "RuntimeTimeout: Error: InternalError: interrupted".
+    const formatted = error.name === "RuntimeTimeout" || error.name === "RuntimeError" || error.name === "Error" && /^[A-Z][A-Za-z]*Error: /.test(error.message);
     return {
       code: interrupted ? "RUNTIME_TIMEOUT" : "RUNTIME_ERROR",
-      message: `${error.name}: ${error.message}`,
+      message: formatted ? error.message : `${error.name}: ${error.message}`,
       ...(phase ? { phase } : {}),
     };
   }

@@ -1114,9 +1114,9 @@ async function check(source: string, documents: Record<string, string>, state?: 
 
 ### Phase 5 — QuickJS
 
-**5.1** `src/engines/quickjs/{runtimeService,sandboxClient,runtime.worker}.ts` ported from vm-system with the shared bootstrap and `ProgramEngine` names; `quickjs-emscripten@0.23.0` as an **optional** dependency exported from `@hyperslop-systems/pbui-sandbox/quickjs` so eval-only consumers do not pull wasm. **5.2** Vite: `worker: { format: "es" }` in the demo and in consumers. **5.3** The engine conformance suite from Phase 0 runs on both. **5.4** Playwright (port of `tests/e2e/quickjs-runtime.spec.ts`): a `while(true){}` render shows `RUNTIME_TIMEOUT` in the tile and the page survives. **5.5** The demo switches to `createQuickJsEngine()` behind `?engine=quickjs` first, then by default once the suite is green.
+**5.1** `src/quickjs/{runtimeService,protocol,worker,workerEngine,directEngine}.ts` ported from vm-system with the shared bootstrap and `ProgramEngine` names, behind a second package entry `@hyperslop-systems/pbui-sandbox/quickjs` so eval-only consumers never import the wasm (`quickjs-emscripten` is externalised in the library build). **As built, the worker is created by the consumer**: the library ships the worker *body* (`installQuickJsWorker()`), the consumer ships a one-line worker *file* (`demo/src/sandbox.worker.ts`) and passes `new Worker(new URL("./sandbox.worker.ts", import.meta.url), { type: "module" })` to `createQuickJsEngine({ worker })` — only the consumer's bundler knows the final asset layout. **5.2** Vite: `worker: { format: "es" }` in the demo and in consumers. **5.3** The engine conformance suite is a shared `describeEngineConformance(name, make)`; `engines/conformance.test.ts` runs it on eval, `quickjs/conformance.test.ts` (`@vitest-environment node`, for the wasm) on `createQuickJsDirectEngine`, plus two QuickJS-only tests: a `while(true){}` render is interrupted with `RUNTIME_TIMEOUT`, and `globalThis.localStorage` is not there to read. **5.4** The runaway-render check ran in the browser against the worker engine (`various/07-…png`) rather than as a Playwright spec — the demo has no Playwright configuration, and adding one is its own change; the engine-level behaviour is pinned by the vitest test. **5.5** The demo runs QuickJS by default with `?engine=eval` (or `localStorage["pbui-chat-demo.generated.v1.engine"] = "eval"`) as the same-thread fallback for debugging with real stack traces.
 
-**Acceptance (Phase 5).** The runaway-render test passes; `sandbox_describe` reports `engine: "quickjs"`; every Phase 2–4 gesture still works.
+**Acceptance (Phase 5).** The QuickJS conformance run passes; `sandbox_describe` reports `engine: "quickjs"`; a runaway render shows `RUNTIME_TIMEOUT` in its tile while the page and the other tiles stay responsive; every Phase 2–4 gesture still works.
 
 ### Phase 6 (optional) — a server-side dry-run with goja
 
@@ -1288,7 +1288,10 @@ mount: ScriptTile(v-9) → library.programs["prg-7"] ✓ → engine.load("v-9:1"
 | `validateDispatchIntents` | `(value, instanceId, limits?) => DispatchIntent[]` | stamps `instanceId` |
 | `ProgramEngine` | `{kind, load, render, event, dispose, health, terminate?}` | §5.3 |
 | `createEvalEngine` | `(limits?) => ProgramEngine` | Phase 0 |
-| `createQuickJsEngine` | `(limits?) => ProgramEngine` from `…/quickjs` | Phase 5 |
+| `createQuickJsEngine` | `({ worker, limits? }) => ProgramEngine` from `…/quickjs` | Phase 5 — the consumer creates the worker from its own one-line entry (`installQuickJsWorker()`), because a `new Worker(new URL(…))` inside a published library does not survive a second bundling |
+| `createQuickJsDirectEngine` | `(limits?) => ProgramEngine` from `…/quickjs` | Phase 5 — QuickJS on the calling thread; the conformance suite runs it under vitest (`@vitest-environment node`) |
+| `installQuickJsWorker` | `(scope?) => void` from `…/quickjs` | Phase 5 — the worker body |
+| `QuickJSRuntimeService` | class from `…/quickjs` | the port of vm-system's service onto the shared bootstrap |
 | `toProgramError` | `(error, phase?) => ProgramErrorPayload` | |
 | `ProgramGlobalState` | `{self, shared:{documents, env}, system}` | §5.4 |
 | `createProgramLibrary` | `({key, storage?, limits?, onRejected?}) => ProgramLibrary` | §5.7 |

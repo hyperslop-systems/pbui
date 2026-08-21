@@ -4,8 +4,10 @@ import {
   createEvalEngine,
   createProgramLibrary,
   createProgramStateStore,
+  type ProgramEngine,
   type UIReference,
 } from "@hyperslop-systems/pbui-sandbox";
+import { createQuickJsEngine } from "@hyperslop-systems/pbui-sandbox/quickjs";
 import { categoryReference, metalReference, orderReference, productById, productReference } from "./world";
 
 /*
@@ -27,11 +29,28 @@ export const library = createProgramLibrary({
 });
 
 /**
- * The eval engine: same contracts as QuickJS, no isolation, no timeouts. Right
- * for a demo whose model talks to a fixture world; a product with data a user
- * cares about swaps in `createQuickJsEngine()` here (guide §5.11).
+ * Which engine runs programs. QuickJS in a Web Worker by default — real
+ * isolation, a 100 ms interrupt on a runaway render, the tab stays
+ * responsive — with `?engine=eval` (or `localStorage["pbui-chat-demo.engine"]
+ * = "eval"`) to fall back to the same-thread eval engine for debugging with
+ * real stack traces. Both honour the same contracts (guide D2).
  */
-export const engine = createEvalEngine();
+function chooseEngine(): ProgramEngine {
+  const wanted =
+    (typeof location !== "undefined" && new URLSearchParams(location.search).get("engine")) ||
+    (typeof localStorage !== "undefined" ? localStorage.getItem(`${LIBRARY_STORAGE_KEY}.engine`) : null);
+  if (wanted !== "eval" && typeof Worker !== "undefined") {
+    try {
+      const worker = new Worker(new URL("./sandbox.worker.ts", import.meta.url), { type: "module" });
+      return createQuickJsEngine({ worker });
+    } catch (error) {
+      console.warn(`QuickJS worker unavailable, falling back to eval: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return createEvalEngine();
+}
+
+export const engine: ProgramEngine = chooseEngine();
 
 export const programStates = createProgramStateStore();
 

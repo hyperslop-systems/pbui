@@ -10,6 +10,7 @@ const external = [
   "@hyperslop-systems/pbui-workbench",
   "@hyperslop-systems/workbench-protocol",
   "@hyperslop-systems/workbench-protocol/client",
+  "quickjs-emscripten",
 ];
 
 export default defineConfig({
@@ -17,7 +18,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     lib: {
-      entry: { index: "src/index.ts" },
+      entry: { index: "src/index.ts", quickjs: "src/quickjs.ts" },
       formats: ["es"],
       cssFileName: "pbui-sandbox",
     },
@@ -26,7 +27,9 @@ export default defineConfig({
         external.includes(id) ||
         id.startsWith("@hyperslop-systems/pbui/") ||
         id.startsWith("@hyperslop-systems/pbui-workbench/") ||
-        id.startsWith("@hyperslop-systems/workbench-protocol/"),
+        id.startsWith("@hyperslop-systems/workbench-protocol/") ||
+        id.startsWith("quickjs-emscripten") ||
+        id.startsWith("@jitl/quickjs"),
     },
     sourcemap: true,
   },

@@ -269,6 +269,9 @@ importers:
       '@hyperslop-systems/workbench-protocol':
         specifier: workspace:^
         version: link:../workbench-protocol
+      quickjs-emscripten:
+        specifier: 0.23.0
+        version: 0.23.0
     devDependencies:
       '@storybook/addon-a11y':
         specifier: ^10.5.4
@@ -2062,6 +2065,9 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  quickjs-emscripten@0.23.0:
+    resolution: {integrity: sha512-CIP+NDRYDDqbT3cTiN8Bon1wsZ7IgISVYCJHYsPc86oxszpepVMPXFfttyQgn1u1okg1HPnCnM7Xv1LrCO/VmQ==}
 
   react-docgen-typescript@2.4.0:
     resolution: {integrity: sha512-ZtAp5XTO5HRzQctjPU0ybY0RRCQO19X/8fxn3w7y2VVTUbGHDKULPTL4ky3vB05euSgG5NpALhEhDPvQ56wvXg==}
@@ -3916,6 +3922,8 @@ snapshots:
       react-is: 17.0.2
 
   punycode@2.3.1: {}
+
+  quickjs-emscripten@0.23.0: {}
 
   react-docgen-typescript@2.4.0(typescript@7.0.2):
     dependencies:
