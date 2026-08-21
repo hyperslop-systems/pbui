@@ -1,4 +1,6 @@
 import { defineApp, type AppDescriptor } from "@hyperslop-systems/pbui-workbench";
+import { CONVERSATION_BINDING } from "../conversations/bindings";
+import { ContextTile } from "../conversations/ContextTile";
 import { ConversationsTile } from "../conversations/ConversationsTile";
 import { EventsTile } from "../conversations/EventsTile";
 import { RunsTile } from "../conversations/RunsTile";
@@ -8,7 +10,7 @@ import { toneVar } from "../tone";
 import type { Vocabulary } from "../vocabulary/schemas";
 import { PanelApp } from "./PanelApp";
 
-export type ConversationAppId = "conversations" | "chat-events" | "chat-runs" | "chat-tools";
+export type ConversationAppId = "conversations" | "chat-events" | "chat-runs" | "chat-tools" | "conversation-context";
 
 export interface CreateConversationAppsOptions {
   tones?: Partial<Record<ConversationAppId, string>>;
@@ -84,6 +86,32 @@ export function createConversationApps(
       Component: () => (
         <PanelApp part="chat-tools-app">
           <ToolsTile />
+        </PanelApp>
+      ),
+    }),
+    /*
+     * Doc-bound, unlike the other four: what the model was told is a fact
+     * about ONE conversation, and two of these side by side comparing two
+     * agents is the point rather than a duplicate.
+     */
+    defineApp({
+      id: "conversation-context",
+      title: options.titles?.["conversation-context"] ?? "agent context",
+      tone: options.tones?.["conversation-context"] ?? toneVar(chat.vocabulary.types.conversation?.tone ?? "conversation", "var(--pbui-pane-alt)"),
+      group,
+      blurb: "what this agent was told: its tools, the last message it sent, its environment",
+      singleton: false,
+      docBound: true,
+      duplicable: true,
+      bindings: [CONVERSATION_BINDING],
+      titleFor: (view) => {
+        const id = view.documents[CONVERSATION_BINDING];
+        if (!id) return view.title || "agent context";
+        return view.title || `context · ${chat.conversations.get(id)?.title ?? id.slice(0, 8)}`;
+      },
+      Component: (props) => (
+        <PanelApp part="conversation-context-app">
+          <ContextTile {...props} />
         </PanelApp>
       ),
     }),

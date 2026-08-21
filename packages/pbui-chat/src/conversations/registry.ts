@@ -547,7 +547,15 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
 
     attachRuntime(id, captured) {
       unsubscribes.get(id)?.();
-      const runtime = chatRuntimeOf({ sessionId: id, store: captured.store, context: captured.context, now });
+      const runtime = chatRuntimeOf({
+        sessionId: id,
+        store: captured.store,
+        context: captured.context,
+        now,
+        // `lastManifest` and `lastSend` are not store state, so a tile reading
+        // them needs the registry to say when they moved.
+        onChange: () => invalidate(id),
+      });
       runtimes.set(id, runtime);
       unsubscribes.set(
         id,

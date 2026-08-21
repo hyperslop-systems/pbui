@@ -256,6 +256,11 @@ func (t *turn) streamingTable(title, docID string, columns []pbuichat.TableColum
 	return id, t.engine.plugin.EmitStreamingTable(t.ctx, t.publish, t.messageID, id, title, docID, columns, rows, 1, t.engine.chunkDelay*4)
 }
 
+// hasTool reports whether the browser advertised a tool of any mode.
+func (t *turn) hasTool(name string) bool {
+	return t.engine.frontendTools != nil && t.engine.frontendTools.HasAvailableTool(t.sid, name)
+}
+
 // hasHumanTool reports whether the browser advertised a human tool.
 func (t *turn) hasHumanTool(name string) bool {
 	return t.engine.frontendTools != nil && t.engine.frontendTools.HasAvailableTool(t.sid, name)

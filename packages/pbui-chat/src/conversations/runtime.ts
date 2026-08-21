@@ -43,6 +43,8 @@ export interface ChatRuntime {
   lastSend: SendRecord | null;
   /** Advertise the current manifest and remember it. */
   syncManifest(): Promise<void>;
+  /** Remember what went on the wire, for the agent-context tile. */
+  recordSend(prompt: string, body: Record<string, unknown>): void;
 }
 
 export interface ManifestRecord {
@@ -57,13 +59,34 @@ export interface SendRecord {
   body: Record<string, unknown>;
 }
 
-/** Build the runtime value around a captured chat-provider graph. */
+/**
+ * Build the runtime value around a captured chat-provider graph.
+ *
+ * `lastManifest` and `lastSend` are mutable fields rather than store state,
+ * because nothing else needs them to be reducible — but a tile showing them
+ * has to be told when they change, which is what `onChange` is for. Without
+ * it the agent-context tile shows "nothing advertised yet" forever while the
+ * manifest is being advertised every send.
+ */
 export function chatRuntimeOf(args: {
   sessionId: string;
   store: ChatStore;
   context: ChatRuntimeContextValue;
   now(): string;
+  onChange?(): void;
 }): ChatRuntime {
+  /*
+   * Record EVERY sync, not only the ones this code asks for.
+   *
+   * `connect()` and `send()` call `client.tools.syncManifest()` themselves,
+   * so a recorder that only wrapped our own calls left the agent-context tile
+   * saying "nothing advertised yet" while the manifest was being advertised
+   * on every message. Wrapping the client's own method is the only place all
+   * three paths meet.
+   */
+  const clientSync = args.context.client.tools.syncManifest;
+  let wrapped = false;
+
   const runtime: ChatRuntime = {
     sessionId: args.sessionId,
     store: args.store,
@@ -75,12 +98,24 @@ export function chatRuntimeOf(args: {
     lastSend: null,
     async syncManifest() {
       await args.context.client.tools.syncManifest();
+    },
+    recordSend(prompt, body) {
+      runtime.lastSend = { at: args.now(), prompt, body };
+      args.onChange?.();
+    },
+  };
+  if (!wrapped) {
+    wrapped = true;
+    args.context.client.tools.syncManifest = async () => {
+      await clientSync();
       runtime.lastManifest = {
         at: args.now(),
         revision: args.context.toolRegistry.revision(),
         tools: args.context.toolRegistry.manifest(),
       };
-    },
-  };
+      args.onChange?.();
+    };
+  }
+
   return runtime;
 }

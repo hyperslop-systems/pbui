@@ -93,6 +93,12 @@ export const conversationDescriptor: PresentationDescriptor<"conversation"> = {
         verb: { kind: "conversation.close", conversationId: ref.id },
         ...(missing ? { disabledBecause: missing } : snapshot?.open ? {} : { disabledBecause: "it is already disconnected" }),
       },
+      {
+        label: "Show what it was told",
+        description: "its tools, the last message it sent, its environment",
+        verb: { kind: "view.open", appId: "conversation-context", documents: { conversation: ref.id } },
+        ...(missing ? { disabledBecause: missing } : {}),
+      },
       { label: "Inspect", verb: { kind: "inspect", ref } },
       {
         label: "Hand something to this agent…",

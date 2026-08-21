@@ -22,6 +22,8 @@ func frontendAutoMode() toolv1.ToolExecutionMode {
 func (e *Engine) respond(t *turn) error {
 	p := strings.ToLower(t.prompt)
 	switch {
+	case has(p, "hand this", "hand it", "other agent", "another agent", "ask the other"):
+		return e.handoffScenario(t)
 	case has(p, "what did i", "trace", "summar", "undo"):
 		return e.traceScenario(t)
 	case has(p, "program", "counter", "make me a", "build me", "tile that", "tile for", "days of cover", "define an action", "add an action"):
@@ -452,4 +454,89 @@ func toAny(in []int) []any {
 		out[i] = v
 	}
 	return out
+}
+
+// handoffScenario is the agent-to-agent gesture end to end: find out who else
+// is on this workbench, ask the user to approve the exact message, then send
+// it. Every refusal along the way is said out loud rather than retried
+// silently, because the point of the scenario is to show what the gate does.
+func (e *Engine) handoffScenario(t *turn) error {
+	if !t.hasTool(pbuichat.ToolConversationList) {
+		return t.say("This client has only one conversation — it did not advertise " + pbuichat.ToolConversationList + " — so there is nobody to hand this to.")
+	}
+
+	listed, status, err := t.frontendTool(pbuichat.ToolConversationList, map[string]any{})
+	if err != nil {
+		return err
+	}
+	if status != "success" {
+		return t.say("I could not read the list of conversations.")
+	}
+
+	you, _ := listed["you"].(string)
+	rows, _ := listed["conversations"].([]any)
+	var target map[string]any
+	for _, row := range rows {
+		entry := asMap(row)
+		id, _ := entry["conversationId"].(string)
+		connected, _ := entry["connected"].(bool)
+		if id == you || !connected {
+			continue
+		}
+		target = entry
+		break
+	}
+	if target == nil {
+		return t.say("You only have this conversation open. Start another one — the launcher has a “new conversation” row — and ask me again.")
+	}
+
+	targetID, _ := target["conversationId"].(string)
+	targetTitle, _ := target["title"].(string)
+	message := t.prompt
+	if err := t.say(fmt.Sprintf("I can hand this to %s. Sending a message there starts a run, so I will ask you first.",
+		mention("conversation", targetID, targetTitle))); err != nil {
+		return err
+	}
+
+	if !t.hasHumanTool(pbuichat.ToolPropose) {
+		return t.say("This client cannot show proposals (" + pbuichat.ToolPropose + " not advertised), so I stop here.")
+	}
+	proposalID := "handoff-" + t.messageID
+	result, status, err := t.humanTool(pbuichat.ToolPropose, map[string]any{
+		"id":    proposalID,
+		"title": "Hand this to " + targetTitle,
+		"body":  "That agent will start a run and answer in its own conversation, not here.",
+		"fields": []any{
+			// The labels are not decoration: the browser's approval check
+			// compares these against what is actually sent, so an approval
+			// cannot be reused for a different message or a different agent.
+			map[string]any{"label": "to", "value": targetID},
+			map[string]any{"label": "message", "value": message},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	decision, _ := result["decision"].(string)
+	if status != "success" || decision != "approve" {
+		return t.say("Not approved — nothing was sent. The decision is in the trace.")
+	}
+
+	sent, status, err := t.frontendTool(pbuichat.ToolConversationSend, map[string]any{
+		"conversationId": targetID,
+		"prompt":         message,
+		"confirmationId": proposalID,
+	})
+	if err != nil {
+		return err
+	}
+	if ok, _ := sent["ok"].(bool); !ok || status != "success" {
+		reason, _ := sent["error"].(string)
+		if reason == "" {
+			reason = "the send was refused"
+		}
+		return t.say("I could not send it: " + reason)
+	}
+	return t.say(fmt.Sprintf("Sent to %s. Its answer lands in that conversation — open it to read the reply.",
+		mention("conversation", targetID, targetTitle)))
 }

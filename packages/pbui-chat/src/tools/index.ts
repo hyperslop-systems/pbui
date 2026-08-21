@@ -6,6 +6,13 @@ export { AcceptStatus } from "./AcceptStatus";
 export type { AcceptStatusProps } from "./AcceptStatus";
 export { ProposalCard } from "./ProposalCard";
 export type { ProposalCardProps, ProposalDecision } from "./ProposalCard";
+export { createConversationTools, DEFAULT_CONVERSATION_POLICY } from "./conversationTools";
+export type {
+  ConversationPolicyDecision,
+  ConversationTools,
+  ConversationToolsOptions,
+  ConversationToolsPolicy,
+} from "./conversationTools";
 export { createSandboxTools, DEFAULT_SANDBOX_POLICY, SANDBOX_VERB_KINDS } from "./sandboxTools";
 export type { CheckResult, SandboxPolicy, SandboxPolicyKey, SandboxTools, SandboxToolsOptions } from "./sandboxTools";
 export {

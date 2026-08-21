@@ -29,6 +29,7 @@ import type { VerbRouter } from "./router/createVerbRouter";
 import { createPbuiChatStore, usePbuiChatStore, type PbuiChatState, type PbuiChatStore } from "./store/chatStore";
 import { pbuiAcceptTool } from "./tools/acceptTool";
 import { pbuiProposeTool } from "./tools/proposeTool";
+import { createConversationTools, type ConversationTools, type ConversationToolsOptions } from "./tools/conversationTools";
 import { createSandboxTools, type SandboxTools, type SandboxToolsOptions } from "./tools/sandboxTools";
 import { createWorkbenchTools, type WorkbenchTools, type WorkbenchToolsOptions } from "./tools/workbenchTools";
 import type { InstanceRegistry, ProgramEngine, ProgramLibrary } from "@hyperslop-systems/pbui-sandbox";
@@ -84,6 +85,13 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
    */
   workbenchTools?: Omit<WorkbenchToolsOptions, "getWorkbench" | "perform">;
   /**
+   * The agent's conversation tools: whether it may message another agent
+   * unassisted (`confirm` by default), how long a handoff may be, and
+   * `isApproved` — which the product must supply for a `confirm` send to be
+   * performable at all.
+   */
+  conversationTools?: Omit<ConversationToolsOptions, "getConversations" | "conversationId" | "perform">;
+  /**
    * The sandbox tools: how bindings resolve for a dry render, limits, policy,
    * `isApproved`. The library and engine usually arrive AFTER construction
    * through `chat.attachSandbox(library, engine)`, for the same reason the
@@ -106,9 +114,10 @@ interface PendingSend {
 }
 
 /** One conversation's agent tools, and the extension that installs them. */
-export interface ConversationTools {
+export interface ConversationToolset {
   workbenchTools: WorkbenchTools;
   sandboxTools: SandboxTools;
+  conversationTools: ConversationTools;
   extension: ChatExtension;
 }
 
@@ -183,9 +192,9 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   let instances: InstanceRegistry | null = null;
   const { library: _library, engine: _engine, ...sandboxOptions } = options.sandbox ?? { resolve: () => null };
 
-  const toolsByConversation = new Map<string, ConversationTools>();
+  const toolsByConversation = new Map<string, ConversationToolset>();
 
-  function toolsFor(conversationId: string): ConversationTools {
+  function toolsFor(conversationId: string): ConversationToolset {
     let built = toolsByConversation.get(conversationId);
     if (built) return built;
     const perform = (verb: VerbLike) => router.perform(verb, undefined, { actor: "agent", conversationId });
@@ -203,13 +212,25 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       vocabulary,
       ...sandboxOptions,
     });
+    /*
+     * The conversation tools are the one set that MUST be per session: their
+     * whole job is to tell this model which conversation it is, and a shared
+     * descriptor could only guess.
+     */
+    const conversationTools = createConversationTools({
+      getConversations: () => conversations,
+      conversationId,
+      perform,
+      ...(options.conversationTools ?? {}),
+    });
     built = {
       workbenchTools,
       sandboxTools,
+      conversationTools,
       extension: defineChatExtensions({
         name: "pbui-chat",
         widgets: pbuiWidgets,
-        tools: [pbuiAcceptTool, pbuiProposeTool, ...workbenchTools.tools, ...sandboxTools.tools],
+        tools: [pbuiAcceptTool, pbuiProposeTool, ...workbenchTools.tools, ...sandboxTools.tools, ...conversationTools.tools],
         timelineAdapters: [traceAdapter],
       }),
     };
@@ -232,12 +253,16 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       pending.delete(conversationId);
       const focus =
         queued?.focus ?? (store.getState().focus ? { reference: store.getState().focus as Reference } : undefined);
-      return {
+      const body: ChatMessageBody = {
         prompt: request.prompt,
         ...(request.attachments && request.attachments.length > 0 ? { attachments: request.attachments } : {}),
         ...(queued && queued.refs.length > 0 ? { refs: queued.refs } : {}),
         ...(focus ? { focus } : {}),
       };
+      // What actually went on the wire, which is what the agent-context tile
+      // shows — not the prompt the composer had.
+      conversations.runtimeFor(conversationId)?.recordSend(request.prompt, body as unknown as Record<string, unknown>);
+      return body;
     };
   }
 

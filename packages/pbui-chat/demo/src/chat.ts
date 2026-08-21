@@ -16,6 +16,7 @@ import {
   type Workbench,
   type WorkbenchVerb,
 } from "@hyperslop-systems/pbui-workbench";
+import { selectTimelineEntities } from "@go-go-golems/chat-provider";
 import { pbui } from "./pbui/runtime";
 import { registry } from "./pbui/registry";
 import type { Environment, Values } from "./pbui/types";
@@ -93,6 +94,35 @@ const FAMILIES: Record<VerbKind, VerbFamily> = {
   "conversation.forget": "local",
   "conversation.send": "agent",
 };
+
+/**
+ * Was `confirmationId` approved by the user for exactly this handoff?
+ *
+ * Read from the timeline rather than from state of its own: the proposal is a
+ * `pbui_propose` tool call, its decision is that call's result, and both
+ * survive a reload because the session hydrates them. A separate record of
+ * "approved ids" would be a second copy of the truth, and the first thing to
+ * go stale.
+ */
+function approvedSend(confirmationId: string, target: string, prompt: string): boolean {
+  for (const snapshot of chat.conversations.all()) {
+    const runtime = snapshot.runtime;
+    if (!runtime) continue;
+    for (const entity of selectTimelineEntities(runtime.store.getState())) {
+      if (entity.kind !== "tool_call" || String(entity.props.toolName ?? "") !== "pbui_propose") continue;
+      const input = (entity.props.input ?? {}) as { id?: string; fields?: { label?: string; value?: string }[] };
+      if (String(input.id ?? "") !== confirmationId) continue;
+      const result = entity.props.result as { decision?: string } | undefined;
+      if (result?.decision !== "approve") return false;
+      const fields = Array.isArray(input.fields) ? input.fields : [];
+      const to = fields.find((field) => field.label === "to")?.value;
+      const message = fields.find((field) => field.label === "message")?.value;
+      // The id alone is not the approval; what the user read is.
+      return to === target && message === prompt;
+    }
+  }
+  return false;
+}
 
 /** Every tile showing a program, across workspaces, by placement id. */
 function tilesShowing(wb: Workbench, programId: string): string[] {
@@ -248,6 +278,9 @@ export const CONVERSATIONS_STORAGE_KEY = "pbui-chat-demo.conversations";
 /** What the one-session build persisted, and what a returning browser is migrated from. */
 export const LEGACY_SESSION_KEY = "pbui-chat-demo.session";
 
+/** The demo's handoff approval check, exposed so tests exercise the real rule. */
+export const conversationApproval = approvedSend;
+
 export const chat = createPbuiChat<Values, Environment, Verb>({
   pbui,
   registry,
@@ -255,6 +288,18 @@ export const chat = createPbuiChat<Values, Environment, Verb>({
   router,
   basePrefix: "",
   conversations: { key: CONVERSATIONS_STORAGE_KEY },
+  /*
+   * Handing work to another agent starts a run there, so it is `confirm`:
+   * the model must first put the exact message in front of the user with
+   * `pbui_propose`, and `approvedSend` checks that what was approved is what
+   * is being sent. An approval that named only an id would authorise every
+   * later send equally.
+   */
+  conversationTools: {
+    confirmationHint:
+      'The proposal must carry fields [{"label":"to","value":"<conversationId>"},{"label":"message","value":"<the exact message>"}], or the approval will not match.',
+    isApproved: approvedSend,
+  },
   // The library and the engine are attached by workbench.ts, which owns them;
   // the dry-run resolver is the same one the tiles use.
   sandbox: { resolve: resolveDemoBinding },

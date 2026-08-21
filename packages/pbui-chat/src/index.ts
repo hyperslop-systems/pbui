@@ -32,4 +32,4 @@ export type { ToolCardProps } from "./messages/ToolCard";
 export { Composer } from "./composer/Composer";
 export type { ComposerProps } from "./composer/Composer";
 export { createPbuiChat } from "./createPbuiChat";
-export type { ConversationTools, CreatePbuiChatOptions, PbuiChat, PbuiChatProviderProps } from "./createPbuiChat";
+export type { ConversationToolset, CreatePbuiChatOptions, PbuiChat, PbuiChatProviderProps } from "./createPbuiChat";

@@ -54,7 +54,7 @@ describe("one folder per component", () => {
   });
 
   test("every component story folder has a story or is listed as story-free", () => {
-    const STORY_FREE = new Set(["RefPresentation", "WidgetChild", "MessageRow", "ToolCard", "AcceptStatus", "StatChild", "LogChild", "TableChild", "FormChild", "VerbChips", "ChatInspectorPanel", "WatchlistPanel", "TilesPanel", "TracePanel", "Messages", "ConversationsTile", "EventsTile", "RunsTile", "ToolsTile"]);
+    const STORY_FREE = new Set(["RefPresentation", "WidgetChild", "MessageRow", "ToolCard", "AcceptStatus", "StatChild", "LogChild", "TableChild", "FormChild", "VerbChips", "ChatInspectorPanel", "WatchlistPanel", "TilesPanel", "TracePanel", "Messages", "ConversationsTile", "EventsTile", "RunsTile", "ToolsTile", "ContextTile"]);
     const missing: string[] = [];
     for (const file of TSX) {
       const rel = relative(SRC, file);

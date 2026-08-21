@@ -1,6 +1,7 @@
 export { ActiveConversationScope } from "./ActiveConversationScope";
 export { CONVERSATION_BINDING } from "./bindings";
 export { ChatRuntimeScope, ConversationHost } from "./ConversationHost";
+export { ContextTile } from "./ContextTile";
 export { ConversationScope } from "./ConversationScope";
 export { ConversationsTile, ageOf, conversationReference, statusOf } from "./ConversationsTile";
 export { EVENT_FAMILIES, EventsTile, FOLLOW_ACTIVE, chatEventReference, detailOf, formatEventTime } from "./EventsTile";
