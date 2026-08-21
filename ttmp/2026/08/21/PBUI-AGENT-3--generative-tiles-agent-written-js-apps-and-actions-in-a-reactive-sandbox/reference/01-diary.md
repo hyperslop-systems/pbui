@@ -638,3 +638,60 @@ pnpm --filter @hyperslop-systems/pbui-sandbox build       # dist/index.js and di
 pnpm --filter @hyperslop-systems/pbui-chat-demo build     # emits sandbox.worker-*.js
 make chat-serve   # __pbuiDemo.engine.kind → "quickjs"; put a while(true) program and open it: RUNTIME_TIMEOUT, page alive; ?engine=eval for the fallback
 ```
+
+## Step 8: Close-out
+
+Everything the guide's phases 0–5 specify is built, tested and checked in a browser; Phase 6 (a server-side goja dry-run) is optional by D13 and stays open. This step is the final verification, the index status, `docmgr doctor`, and a second reMarkable upload, because the guide (§6 Phase 5 as built, §9 R17/R18, §10.1) and this diary (steps 4–7) changed materially after the first one.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Finish the ticket: verify, bookkeep, deliver, report.
+
+**Inferred user intent:** A ticket someone else can pick up from the index, with the evidence on the device.
+
+**Commit (docs):** the hash is recorded in the changelog entry for this step.
+
+### What I did
+
+- Final verification from a clean state: `pbui-sandbox` 53/53 (8 files: validators, library, renderer, host loop, actions, eval and QuickJS conformance), `pbui-chat` 110/110 (12 files, structural tests over the sandbox package included), `pbui-workbench` 115/115, demo typecheck clean, `GOWORK=off go test ./...` ok for every package.
+- `index.md` status rewritten to the as-built state; `docmgr doctor --ticket PBUI-AGENT-3 --stale-after 30` → all checks passed.
+- `remarquee upload bundle` (dry-run, then real) of the guide and this diary as "PBUI-AGENT-3 Generative tiles — as built" into `/ai/2026/08/21/PBUI-AGENT-3`; `remarquee cloud ls` lists both bundles.
+- Work slips: the P1–P5 status slips printed during the session; the plan slip and the P0 slip failed on first attempts (`context deadline exceeded` from `almanach.crib.scapegoat.dev`) and were reprinted at the end.
+
+### Commits on `task/add-pbui-agent` for this ticket
+
+| Commit | What |
+|---|---|
+| `622c547` | open ticket, diary step 1 |
+| `65b7def`, `0f56615` | the intern guide, diary steps 2–3, index, first reMarkable upload |
+| `cc11ecf` | Phase 0 — `@hyperslop-systems/pbui-sandbox`: contracts, bootstrap, eval engine |
+| `d03fd7c`, `48442ff` | Phase 1 — renderer, library, host loop, script tile, demo wiring; the busy-loop fix |
+| `b6b17c4` | diary step 4 |
+| `1095567` | Phase 2 (+3) — `sandbox_*` tools, program/action types, prompt section, registry wrapper |
+| `4afe408` | diary step 5 |
+| `9f54d6e` | Phase 4 — scripted scenario, Go e2e, limits |
+| `68e6104` | diary step 6 |
+| `41bf901` | Phase 5 — the QuickJS engine |
+| `cbd2684` | diary step 7 |
+
+### What warrants a second pair of eyes, across the whole ticket
+
+1. **D10's `_provenance` inside the verb `Struct`** — pragmatic; a proto field would be cleaner.
+2. **`SHADOWED_GLOBALS` under the eval engine is a speed bump**, and the demo now defaults to QuickJS; any product that flips to `?engine=eval` with real data should read guide §5.11 first.
+3. **`program.run: confirm`** from the guide is not implemented (the tools' policy covers create/update/open/remove/define); a product wanting approval before agent code first executes needs it in the tile, not the tools.
+4. **One QuickJS runtime per program instance, all in one worker**; a cap or a pool is a product decision.
+5. **`sandbox_update_app` cannot report whether a tile kept its state** (decided per tile on reload); its result says where to look.
+6. **No Playwright spec** for the runaway render; the engine-level vitest test pins the behaviour and the browser check is in `various/07`.
+
+### What should be done in the future
+
+- Phase 6 (optional): `pbui_sandbox_check` in goja, or a vm-system daemon session as the linter — guide §6 Phase 6.
+- AGENT-2 Tier 4's `isApproved` wiring in the demo, which would make pinned removals performable by the agent with a proposal.
+- A `library` tile (export/import) — guide Q7.
+- Run the conformance suite on both engines in CI (it already does in one `vitest run`; make sure CI installs `quickjs-emscripten`).
+
+### Code review instructions
+
+- Start at the index, then the guide's §5.1 and D1–D14, then this diary's steps 4–7 for what deviated and why; then the code in the order the commits above land it.

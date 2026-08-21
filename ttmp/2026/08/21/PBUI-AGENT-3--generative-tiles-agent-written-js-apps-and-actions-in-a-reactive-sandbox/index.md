@@ -27,7 +27,7 @@ RelatedFiles:
 ExternalSources:
     - https://github.com/go-go-golems/vm-system/
 Summary: 'Ticket for letting the PBUI chat agent write small JavaScript programs in vm-system''s definePlugin dialect (pure render to a JSON UI tree, handlers that emit intents) that run in a browser sandbox and show as workbench tiles, and define new actions on presentation types persisted in localStorage. Contains the intern guide (analysis, design with fourteen decision records, six implementation phases) and the diary.'
-LastUpdated: 2026-08-21T12:30:00-04:00
+LastUpdated: 2026-08-21T15:10:00-04:00
 WhatFor: Landing page for PBUI-AGENT-3; start here to find the intern guide, the diary and the phase breakdown.
 WhenToUse: When picking up, implementing or reviewing the generative-tiles work.
 ---
@@ -67,7 +67,7 @@ Background, not repeated: `PBUI-AGENT-1` (the agent), `PBUI-WORKBENCH-1/2` (the 
 
 ## Status
 
-Design complete; implementation starts at Phase 0 (`packages/pbui-sandbox`). See [tasks.md](./tasks.md).
+Phases 0–5 built and verified in the browser (see the diary, steps 4–7, and `various/01`–`07`): `@hyperslop-systems/pbui-sandbox` (eval and QuickJS engines behind one `ProgramEngine`, PBUI renderer, localStorage library, host loop, `script` tile, generated-action registry wrapper), the seven `sandbox_*` tools in `pbui-chat`, the demo's `program`/`action` types and five verb kinds, Go's `## Programs` prompt section and `sandbox` vocabulary block, the scripted `programScenario` with Go e2e tests. Phase 6 (a server-side goja dry-run) is optional and open. See [tasks.md](./tasks.md).
 
 ## Topics
 

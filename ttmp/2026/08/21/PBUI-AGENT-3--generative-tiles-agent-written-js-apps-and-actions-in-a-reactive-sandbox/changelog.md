@@ -62,3 +62,8 @@ Phase 5 built (41bf901): @hyperslop-systems/pbui-sandbox/quickjs — QuickJSRunt
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/quickjs/runtimeService.ts — The QuickJS service; toHostError reads the error name off the handle
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/quickjs/workerEngine.ts — The worker-backed ProgramEngine
 
+
+## 2026-08-21
+
+Close-out: final verification (sandbox 53, chat 110, workbench 115, Go ok), index status as built, doctor clean, second reMarkable upload 'PBUI-AGENT-3 Generative tiles — as built' at /ai/2026/08/21/PBUI-AGENT-3 (after cbd2684)
+
