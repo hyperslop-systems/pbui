@@ -101,7 +101,25 @@ describe("EventsTile", () => {
     await waitFor(() => {
       expect(rows()).toHaveLength(1);
     });
-    expect(rows()[0]?.getAttribute("data-family")).toBe("timeline");
+    expect(rows()[0]?.getAttribute("data-family")).toBe("llm");
+  });
+
+  test("the family map files chatapp events, so the llm, tool and widget chips are not permanently empty", async () => {
+    ui(A, "ChatTextDelta");
+    ui(A, "ChatFrontendToolCallRequested");
+    ui(A, "ChatWidgetInstancePatched");
+    ui(A, "SomethingNobodyFiled");
+    renderTile();
+
+    await waitFor(() => {
+      expect(rows()).toHaveLength(4);
+    });
+    const families = rows().map((row) => row.getAttribute("data-family"));
+    expect(families).toContain("llm");
+    expect(families).toContain("tool");
+    expect(families).toContain("widget");
+    // An unfiled name still classifies, in the default family.
+    expect(families).toContain("timeline");
   });
 
   test("the text filter matches the type and the summary", async () => {

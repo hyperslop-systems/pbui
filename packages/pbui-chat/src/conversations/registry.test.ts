@@ -205,6 +205,87 @@ describe("createConversationRegistry", () => {
     expect(registry.all()).not.toBe(first);
   });
 
+  test("sync adopts what the server lists and never overwrites a human title", async () => {
+    const storage = memoryConversationStorage();
+    const listing = {
+      sessions: [
+        { id: "a", createdAt: "2026-08-21T00:00:00.000Z", lastActivityAt: "2026-08-21T10:00:00.000Z", messageCount: 9, title: "the server's name" },
+        { id: "new-to-us", createdAt: "2026-08-21T00:00:00.000Z", lastActivityAt: "2026-08-21T09:00:00.000Z", messageCount: 2, title: "another browser's" },
+      ],
+    };
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/api/chat/sessions") && !String(input).includes("messages")) {
+        return new Response(JSON.stringify(listing), { status: 200 });
+      }
+      return new Response(JSON.stringify({ sessionId: "a" }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const registry = createConversationRegistry({
+      key: KEY,
+      storage,
+      fetch: fetchImpl,
+      debounceMs: 0,
+      autoConnect: false,
+      configFor: () => ({}),
+    });
+    registry.adopt("a", { title: "mine", messageCount: 3 });
+    registry.rename("a", "mine", "human");
+    registry.adopt("only-here");
+
+    const result = await registry.sync();
+
+    // The user named "a" in this browser; the index only knows what some
+    // browser told it.
+    expect(registry.get("a")?.title).toBe("mine");
+    expect(registry.get("a")?.titledBy).toBe("human");
+    // A higher count IS worth taking: another browser has been talking.
+    expect(registry.get("a")?.messageCount).toBe(9);
+    expect(result.updated).toContain("a");
+
+    expect(result.adopted).toEqual(["new-to-us"]);
+    expect(registry.get("new-to-us")?.title).toBe("another browser's");
+
+    // A record the server has forgotten is KEPT: it still connects and
+    // hydrates. Reporting it is how a tile can say so.
+    expect(result.unknownToServer).toEqual(["only-here"]);
+    expect(registry.get("only-here")).not.toBeNull();
+  });
+
+  test("sync takes an auto title from the server but not a lower message count", async () => {
+    const listing = { sessions: [{ id: "a", lastActivityAt: "2026-08-21T10:00:00.000Z", messageCount: 1, title: "from the server" }] };
+    const registry = createConversationRegistry({
+      key: KEY,
+      storage: memoryConversationStorage(),
+      fetch: vi.fn(async () => new Response(JSON.stringify(listing), { status: 200 })) as unknown as typeof fetch,
+      debounceMs: 0,
+      autoConnect: false,
+      configFor: () => ({}),
+    });
+    registry.adopt("a", { messageCount: 5 });
+
+    await registry.sync();
+
+    expect(registry.get("a")?.title).toBe("from the server");
+    expect(registry.get("a")?.titledBy).toBe("agent");
+    // This browser has seen five messages in a hydrated timeline; the index
+    // counted one submission. Taking the lower number would lose four.
+    expect(registry.get("a")?.messageCount).toBe(5);
+  });
+
+  test("a server that cannot list is an error the caller sees, not a silently empty list", async () => {
+    const registry = createConversationRegistry({
+      key: KEY,
+      storage: memoryConversationStorage(),
+      fetch: vi.fn(async () => new Response("nope", { status: 500 })) as unknown as typeof fetch,
+      autoConnect: false,
+      configFor: () => ({}),
+    });
+    registry.adopt("a");
+
+    await expect(registry.sync()).rejects.toThrow(/could not list conversations: 500/);
+    expect(registry.get("a")).not.toBeNull();
+  });
+
   test("create refuses to invent an id when the server does not return one", async () => {
     const registry = registryWith(memoryConversationStorage(), vi.fn(async () => new Response("{}", { status: 200 })) as unknown as typeof fetch);
     await expect(registry.create()).rejects.toThrow(/without an id/);

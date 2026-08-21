@@ -318,11 +318,29 @@ A `conversation` presentation type and five generic verb kinds, the same closed-
 
 **D12 — Waiting-for-you is computed, not stored.** *Why:* parked human tools and undecided proposals are already in each runtime's tool runtime and timeline; a count derived on mirror updates is always right, a stored count can drift.
 
-## 5 · Implementation plan
+### 4.10 What changed between the design and the build
 
-Six phases; each ends with tests green in `pbui-chat` (and Go where touched), a browser check in the demo with two conversations, a commit and a diary step.
+The design above is left as written, because what was considered is worth reading beside what shipped. Seven things changed, each because the code refused the design rather than because the design was reconsidered. The diary records each one with the failure that produced it.
 
-### Phase 0 — The runtime factory, the registry, the scoped chat
+**A runtime is CAPTURED, not constructed (amends D1).** `createChatRuntime` cannot be written: `createChatClient` requires a `ToolRuntime`, and `createToolRuntime` is not reachable through any of chat-provider 0.5.0's export paths — nor are the `parseToolInput` / `parseToolResult` helpers it is built on, so vendoring it would mean vendoring the tool contract and letting two copies drift. `ConversationHost` renders one `<ChatProvider>` per open conversation at the product root, and a capture component reports the runtime graph to the registry. Every property D1 wanted survives — lifetime tied to the conversation rather than a tile, session id known before `connect()`, per-session extensions — and the only cost is that `open(id)` produces a runtime one effect later. Proposing the missing exports upstream is a follow-up; the registry API would not change.
+
+**Tool SETS are per conversation, not wrapped descriptors (D5, sharpened).** `perform` is called from a dozen places deep inside `createWorkbenchTools` and `createSandboxTools`, which never see a `ToolExecutionContext`; an ambient "current conversation" races across `await`s. `toolsFor(id)` builds a whole set whose `perform` closes over the id. A consequence the design did not state: each agent gets its own layout undo ring, which is what "undo what you just did" has to mean with two agents on one screen.
+
+**`RouterContext` carries the `actor`.** D7's rule — a human owns a title, an agent may only replace one nobody has claimed — cannot be enforced by a handler that does not know who is asking. The router already had the value for the trace and kept it to itself.
+
+**Four more verbs, and rename as a request.** The design left pin, archive, close and forget out of the vocabulary on the argument that they change only this browser's list. That does not survive the rule that everything nameable is an object: an entry in an object menu is a verb or it is nothing, and `tile.close` is a verb on exactly the same terms. `conversation.rename`'s `title` became optional, and its absence is the gesture — a menu cannot hold a text field, so the verb asks the interface for its editor through `registry.requestRename`, the same shape `compareWith` uses to enter accept mode.
+
+**Cross-conversation reads need three memos, not one rule (amends D9).** D9 said mirrors for everything and per-runtime subscriptions for tool traffic. Both are true and neither is sufficient. `useConversations` feeds `useSyncExternalStore`, which compares by identity, so a selector that derives must memoise on its inputs' identities or re-render forever; the registry does not notify on entity changes, so the tools tile subscribes to the open runtimes as well; and answering a parked tool changes no entity, so the per-runtime memo key includes which human tools are parked.
+
+**The agent-context tile reads the tool REGISTRY, not `lastManifest`.** `connect()` and `send()` call chat-provider's internal `syncToolManifest` closure rather than the exposed `client.tools.syncManifest`, so a tile watching only recorded syncs reports "nothing advertised yet" while the manifest goes out with every message. What the tile wants is "what can this model be offered", which is the registry read at render time; `lastManifest` supplies the timestamp and revision when known.
+
+**A family map for the events tile.** chat-provider's classifier files an unlisted `ui-event` under `timeline` and takes a `familyAliases` option no product supplied, so the `llm`, `tool` and `widget` chips could never match anything. `DEFAULT_EVENT_FAMILIES` files the chatapp event vocabulary; an unlisted name still classifies, in the default family.
+
+## 5 · Implementation, as built
+
+Six phases; each ended with tests green in `pbui-chat` (and Go where touched), a browser check in the demo against the running server, a commit and a diary step. 207 tests in `pbui-chat` at the end, plus the Go suite.
+
+### Phase 0 — The runtime, the registry, the scoped chat
 
 *Files:* `packages/pbui-chat/src/conversations/{runtime.ts, registry.ts, ConversationScope.tsx, index.ts}` (new), `src/createPbuiChat.tsx`, `src/router/createVerbRouter.ts`, `src/apps/createChatApps.tsx`, `src/apps/ChatApp/ChatApp.tsx`, `demo/src/{App.tsx, chat.ts, workbench.ts}`.
 
@@ -353,7 +371,11 @@ Tests: rows reflect records and mirrors; rename/pin/archive/forget through the t
 
 ### Phase 5 — Server index and close-out
 
-*Files:* `pkg/chatserver/{sessions.go, handlers.go, server.go}` (`SessionIndex`, memory + SQLite, the two routes), `src/conversations/registry.ts` (`sync()` merge), README, the guide as built, the diary close-out, the reMarkable re-upload.
+*Files:* `pkg/chatserver/{sessions.go, handlers.go, server.go, options.go}` (`SessionIndex`, memory + SQLite, `GET /api/chat/sessions`, `PATCH /api/chat/sessions/{id}`), `src/conversations/registry.ts` (`sync()`), the conversations tile's *sync* button, `packages/pbui-chat/README.md`, this section, the diary close-out.
+
+Two things folded in from the open questions rather than left as follow-ups: `DEFAULT_EVENT_FAMILIES`, so the events tile's `llm`, `tool` and `widget` chips are not permanently empty, and a *Show what is waiting* entry on a conversation's menu that opens the tools tile.
+
+`sync()` is the whole of D10 on the browser side and it is worth reading closely. It **merges**: a session the server lists and this browser does not know is adopted; a session this browser knows and the server has forgotten is kept and reported, because it still connects and hydrates. It never overwrites a human title, and it takes a message count only when the server's is HIGHER — this browser's count comes from a hydrated timeline it has actually seen, the index's from counting submissions, which may include another browser's.
 
 ## 6 · Sequences
 

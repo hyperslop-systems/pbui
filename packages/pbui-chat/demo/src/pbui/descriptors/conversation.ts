@@ -94,6 +94,12 @@ export const conversationDescriptor: PresentationDescriptor<"conversation"> = {
         ...(missing ? { disabledBecause: missing } : snapshot?.open ? {} : { disabledBecause: "it is already disconnected" }),
       },
       {
+        label: snapshot && snapshot.waiting > 0 ? `Show what is waiting · ${snapshot.waiting}` : "Show what is waiting",
+        description: "the tools tile, where a parked tool can be answered",
+        verb: { kind: "view.open", appId: "chat-tools", documents: {} as Record<string, string> },
+        ...(snapshot && snapshot.waiting > 0 ? {} : { disabledBecause: "nothing is waiting in this conversation" }),
+      },
+      {
         label: "Show what it was told",
         description: "its tools, the last message it sent, its environment",
         verb: { kind: "view.open", appId: "conversation-context", documents: { conversation: ref.id } },

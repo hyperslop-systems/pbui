@@ -415,3 +415,145 @@ func TestProgramScenarioStopsOnAFailedTest(t *testing.T) {
 	}
 	t.Error("the failure was not reported to the user")
 }
+
+func TestSessionIndexListsWhatItHasSeen(t *testing.T) {
+	_, ts := newTestServer(t)
+
+	first := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	second := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+
+	listed := listSessions(t, ts)
+	if len(listed) != 2 {
+		t.Fatalf("expected 2 sessions, got %d", len(listed))
+	}
+	// Most recently active first; the second was created last.
+	if listed[0].ID != second || listed[1].ID != first {
+		t.Errorf("expected %s before %s, got %v", second, first, []string{listed[0].ID, listed[1].ID})
+	}
+	if listed[0].MessageCount != 0 {
+		t.Errorf("a session with no messages should count 0, got %d", listed[0].MessageCount)
+	}
+}
+
+func TestSessionIndexCountsMessagesAndReordersByActivity(t *testing.T) {
+	_, ts := newTestServer(t)
+
+	first := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	second := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+first+"/messages", map[string]any{"prompt": "hello"})
+
+	listed := listSessions(t, ts)
+	// Sending moved `first` to the top and counted the message.
+	if listed[0].ID != first {
+		t.Fatalf("expected the session that just spoke first, got %s (second is %s)", listed[0].ID, second)
+	}
+	if listed[0].MessageCount != 1 {
+		t.Errorf("expected 1 message, got %d", listed[0].MessageCount)
+	}
+}
+
+func TestSessionTitleIsStoredAndRefusedForUnknownSessions(t *testing.T) {
+	_, ts := newTestServer(t)
+	id := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/"+id, map[string]any{"title": "  reorder desk  "}); status != http.StatusOK {
+		t.Fatalf("PATCH title: status %d", status)
+	}
+	listed := listSessions(t, ts)
+	if listed[0].Title != "reorder desk" {
+		t.Errorf("expected the trimmed title, got %q", listed[0].Title)
+	}
+
+	// A session this server never minted is not silently created by a rename.
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/ghost", map[string]any{"title": "nope"}); status != http.StatusNotFound {
+		t.Errorf("expected 404 for an unknown session, got %d", status)
+	}
+}
+
+func TestSubmittingToAnUnindexedSessionStillWorks(t *testing.T) {
+	// The index is a convenience, not a gate: a browser holding an id from
+	// before a restart must still be able to use it. Nothing here creates the
+	// session first.
+	_, ts := newTestServer(t)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+string(sessionstream.SessionId("recovered"))+"/messages", map[string]any{"prompt": "hello"})
+
+	listed := listSessions(t, ts)
+	if len(listed) != 1 || listed[0].ID != "recovered" {
+		t.Fatalf("expected the session to be indexed on first use, got %v", listed)
+	}
+	if listed[0].MessageCount != 1 {
+		t.Errorf("expected 1 message, got %d", listed[0].MessageCount)
+	}
+}
+
+func TestSQLiteSessionIndexSurvivesReopening(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sessions.sqlite")
+	ctx := context.Background()
+
+	index, err := NewSQLiteSessionIndex(ctx, path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	at := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	if err := index.Remember(ctx, "s1", at); err != nil {
+		t.Fatalf("remember: %v", err)
+	}
+	if err := index.Touch(ctx, "s1", at.Add(time.Minute), true); err != nil {
+		t.Fatalf("touch: %v", err)
+	}
+	if err := index.Retitle(ctx, "s1", "kept"); err != nil {
+		t.Fatalf("retitle: %v", err)
+	}
+	if err := index.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	reopened, err := NewSQLiteSessionIndex(ctx, path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	records, err := reopened.List(ctx)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(records) != 1 || records[0].Title != "kept" || records[0].MessageCount != 1 {
+		t.Fatalf("expected the record to survive, got %+v", records)
+	}
+	if !records[0].LastActivityAt.Equal(at.Add(time.Minute)) {
+		t.Errorf("expected the touched time, got %s", records[0].LastActivityAt)
+	}
+}
+
+func listSessions(t *testing.T, ts *httptest.Server) []SessionRecord {
+	t.Helper()
+	resp, err := http.Get(ts.URL + "/api/chat/sessions")
+	if err != nil {
+		t.Fatalf("GET sessions: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET sessions: status %d", resp.StatusCode)
+	}
+	var out listSessionsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode sessions: %v", err)
+	}
+	return out.Sessions
+}
+
+func patchJSON(t *testing.T, url string, body any) int {
+	t.Helper()
+	raw, _ := json.Marshal(body)
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("build PATCH: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH %s: %v", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	return resp.StatusCode
+}

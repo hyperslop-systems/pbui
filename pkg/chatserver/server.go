@@ -31,6 +31,7 @@ type Server struct {
 	scripted      *scripted.Engine
 	real          *realRuntimeFactory
 	turnStore     chatstore.TurnStore
+	sessions      SessionIndex
 	closeFn       func() error
 }
 
@@ -161,6 +162,27 @@ func NewServer(ctx context.Context, opts Options) (*Server, func() error, error)
 		return nil, nil, errors.Wrap(err, "create chat service")
 	}
 
+	sessions := SessionIndex(NewMemorySessionIndex())
+	if opts.SessionsDB != "" {
+		index, err := NewSQLiteSessionIndex(ctx, opts.SessionsDB)
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, errors.Wrap(err, "open session index")
+		}
+		sessions = index
+	}
+	// The index outlives nothing: it is closed with the stores, and a server
+	// whose index failed to open would be a server that cannot serve a list —
+	// which is worth failing loudly for, unlike an empty list.
+	baseCleanup := cleanup
+	cleanup = func() error {
+		indexErr := sessions.Close()
+		if err := baseCleanup(); err != nil {
+			return err
+		}
+		return indexErr
+	}
+
 	s := &Server{
 		opts:          opts,
 		hub:           hub,
@@ -170,6 +192,7 @@ func NewServer(ctx context.Context, opts Options) (*Server, func() error, error)
 		frontendTools: frontendToolManager,
 		scripted:      scriptedEngine,
 		turnStore:     turnStore,
+		sessions:      sessions,
 		closeFn:       cleanup,
 	}
 	if opts.RealRuntime {
@@ -201,7 +224,9 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/chat/health", s.HandleHealth)
 	mux.HandleFunc("GET /api/pbui/vocabulary", s.HandleVocabulary)
 	mux.HandleFunc("POST /api/chat/sessions", s.HandleCreateSession)
+	mux.HandleFunc("GET /api/chat/sessions", s.HandleListSessions)
 	mux.HandleFunc("GET /api/chat/sessions/{id}", s.HandleSessionSnapshot)
+	mux.HandleFunc("PATCH /api/chat/sessions/{id}", s.HandleRetitleSession)
 	mux.HandleFunc("POST /api/chat/sessions/{id}/messages", s.HandleSubmitMessage)
 	mux.HandleFunc("POST /api/chat/sessions/{id}/stop", s.HandleStopSession)
 	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/manifest", s.HandleToolManifest)

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	chatapp "github.com/go-go-golems/pinocchio/pkg/chatapp"
 	"github.com/go-go-golems/pinocchio/pkg/chatapp/frontendtools"
@@ -49,6 +50,14 @@ type toolResultRequest struct {
 	Result     map[string]any `json:"result,omitempty"`
 	Status     string         `json:"status,omitempty"`
 	Error      string         `json:"error,omitempty"`
+}
+
+type listSessionsResponse struct {
+	Sessions []SessionRecord `json:"sessions"`
+}
+
+type retitleSessionRequest struct {
+	Title string `json:"title"`
 }
 
 type acceptedResponse struct {
@@ -104,7 +113,47 @@ func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
-	writeJSON(w, http.StatusOK, serverkit.CreateSessionResponse{SessionID: uuid.NewString()})
+	id := uuid.NewString()
+	// The index is a convenience: a session works whether or not it is
+	// remembered, so a failure here is logged and the id still goes back.
+	if err := s.sessions.Remember(r.Context(), id, time.Now()); err != nil {
+		log.Warn().Err(err).Str("session_id", id).Msg("pbui-chat: could not index the new session")
+	}
+	writeJSON(w, http.StatusOK, serverkit.CreateSessionResponse{SessionID: id})
+}
+
+// HandleListSessions returns what this server has seen, most recently active
+// first. The browser MERGES this into its own records rather than replacing
+// them: the index may be empty after a restart while the browser still knows
+// session ids that hydrate perfectly.
+func (s *Server) HandleListSessions(w http.ResponseWriter, r *http.Request) {
+	records, err := s.sessions.List(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, listSessionsResponse{Sessions: records})
+}
+
+// HandleRetitleSession stores a title for a session. Titles live in the
+// browser first; this is what lets a SECOND browser show something better
+// than a uuid.
+func (s *Server) HandleRetitleSession(w http.ResponseWriter, r *http.Request) {
+	sid := sessionIDFrom(r)
+	if sid == "" {
+		writeError(w, http.StatusBadRequest, "missing session id")
+		return
+	}
+	var in retitleSessionRequest
+	if err := decodeJSON(r, &in); err != nil {
+		writeError(w, http.StatusBadRequest, "bad request")
+		return
+	}
+	if err := s.sessions.Retitle(r.Context(), string(sid), in.Title); err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"id": string(sid), "title": strings.TrimSpace(in.Title)})
 }
 
 // HandleSubmitMessage starts a run. With the scripted engine the refs travel
@@ -138,6 +187,9 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 	if err := s.plugin.HydrateTrace(r.Context(), sid); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if err := s.sessions.Touch(r.Context(), string(sid), time.Now(), true); err != nil {
+		log.Warn().Err(err).Str("session_id", string(sid)).Msg("pbui-chat: could not index the message")
 	}
 	if s.real != nil {
 		req, err := s.real.promptRequest(r.Context(), sid, prompt+pbuichat.RenderRefsSuffix(in.Refs, in.Focus))

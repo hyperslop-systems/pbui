@@ -23,6 +23,65 @@ import styles from "./EventsTile.module.css";
 
 export const EVENT_FAMILIES: ChatDebugFamily[] = ["llm", "tool", "widget", "timeline", "ws", "other"];
 
+/**
+ * Which UI-event name belongs to which family.
+ *
+ * chat-provider's classifier takes this as an option and files every
+ * unlisted `ui-event` under `timeline`. No product had ever supplied one, so
+ * the `llm`, `tool` and `widget` chips were permanently empty — three of six
+ * filters that could never match anything, which reads as a broken control
+ * rather than as an empty category.
+ *
+ * The names are the chatapp event vocabulary the Go side emits. A name this
+ * map does not know still classifies as `timeline`, so adding an event
+ * upstream does not break the tile; it lands in the default family until
+ * someone files it.
+ */
+export const DEFAULT_EVENT_FAMILIES: Partial<Record<string, ChatDebugFamily>> = {
+  // The model producing text, reasoning, or a provider call.
+  ChatRunStarted: "llm",
+  ChatRunFinished: "llm",
+  ChatRunFailed: "llm",
+  ChatRunStopped: "llm",
+  ChatProviderCallStarted: "llm",
+  ChatProviderCallFinished: "llm",
+  ChatProviderCallMetadataUpdated: "llm",
+  ChatTextSegmentStarted: "llm",
+  ChatTextDelta: "llm",
+  ChatTextPatch: "llm",
+  ChatTextSegmentFinished: "llm",
+  ChatReasoningSegmentStarted: "llm",
+  ChatReasoningDelta: "llm",
+  ChatReasoningPatch: "llm",
+  ChatReasoningSegmentFinished: "llm",
+  ChatMessage: "llm",
+  ChatUserMessageAccepted: "llm",
+  // Tools, whichever side runs them.
+  ChatToolCall: "tool",
+  ChatToolCallRequested: "tool",
+  ChatToolCallStarted: "tool",
+  ChatToolCallArgumentsDelta: "tool",
+  ChatToolArgumentsDelta: "tool",
+  ChatToolArgumentsPatch: "tool",
+  ChatToolExecutionStarted: "tool",
+  ChatToolCallFinished: "tool",
+  ChatToolResult: "tool",
+  ChatToolResultReady: "tool",
+  ChatFrontendToolCall: "tool",
+  ChatFrontendToolCallRequested: "tool",
+  ChatFrontendToolResult: "tool",
+  ChatFrontendToolResultReceived: "tool",
+  ChatFrontendToolManifest: "tool",
+  ChatFrontendToolManifestUpdated: "tool",
+  // Widgets the agent published.
+  ChatWidgetInstance: "widget",
+  ChatWidgetInstanceStarted: "widget",
+  ChatWidgetInstancePatched: "widget",
+  ChatWidgetInstanceCompleted: "widget",
+  ChatWidgetInstanceRemoved: "widget",
+  ChatWidgetAction: "widget",
+};
+
 /** Follow whichever conversation is active, rather than pinning one. */
 export const FOLLOW_ACTIVE = "@active";
 const SHOW_AT_MOST = 300;

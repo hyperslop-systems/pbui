@@ -19,6 +19,10 @@ type Options struct {
 	TimelineDB string
 	// TurnsDB is a SQLite path for final-turn history; empty = in-memory.
 	TurnsDB string
+	// SessionsDB is a SQLite path for the session index; empty = in-memory.
+	// The index is a convenience for drawing a list — see SessionIndex — so an
+	// empty one is a working server, not a broken one.
+	SessionsDB string
 	// ChunkDelay paces the scripted engine's text stream.
 	ChunkDelay time.Duration
 	// RealRuntime switches from the scripted engine to a pinocchio profile.

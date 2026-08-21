@@ -4,7 +4,7 @@ export { ChatRuntimeScope, ConversationHost } from "./ConversationHost";
 export { ContextTile } from "./ContextTile";
 export { ConversationScope } from "./ConversationScope";
 export { ConversationsTile, ageOf, conversationReference, statusOf } from "./ConversationsTile";
-export { EVENT_FAMILIES, EventsTile, FOLLOW_ACTIVE, chatEventReference, detailOf, formatEventTime } from "./EventsTile";
+export { DEFAULT_EVENT_FAMILIES, EVENT_FAMILIES, EventsTile, FOLLOW_ACTIVE, chatEventReference, detailOf, formatEventTime } from "./EventsTile";
 export { RunsTile, compact, formatDuration } from "./RunsTile";
 export { ToolsTile, toolReference } from "./ToolsTile";
 export { selectToolTraffic, selectWaiting, streamRate, toolCallsOf, useToolTraffic, useWaiting } from "./selectors";
@@ -24,6 +24,7 @@ export type {
   ConversationStorage,
   ConversationsSnapshotFile,
   CreateConversationRegistryOptions,
+  SyncResult,
   TitledBy,
 } from "./registry";
 export type { ChatRuntimeContextValue } from "./providerTypes";

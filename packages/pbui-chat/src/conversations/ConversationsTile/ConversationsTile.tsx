@@ -35,6 +35,7 @@ export function ConversationsTile() {
   const [filter, setFilter] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
 
   const needle = filter.trim().toLowerCase();
   const rows = conversations.filter(
@@ -43,6 +44,26 @@ export function ConversationsTile() {
       (needle === "" || snapshot.title.toLowerCase().includes(needle) || snapshot.id.includes(needle)),
   );
   const archived = conversations.filter((snapshot) => snapshot.archived).length;
+
+  const sync = async () => {
+    setBusy(true);
+    try {
+      const result = await registry.sync();
+      // Say what changed, including what did NOT: a record the server has
+      // forgotten is still usable, and a row silently vanishing would be the
+      // wrong lesson to teach.
+      const parts = [
+        result.adopted.length > 0 ? `${result.adopted.length} adopted` : "",
+        result.updated.length > 0 ? `${result.updated.length} updated` : "",
+        result.unknownToServer.length > 0 ? `${result.unknownToServer.length} the server does not list (kept)` : "",
+      ].filter(Boolean);
+      setSyncNote(parts.length > 0 ? parts.join(" · ") : "nothing changed");
+    } catch (error) {
+      setSyncNote(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const startNew = async () => {
     // `conversation.new` mints a session over the network, so the button says
@@ -60,6 +81,9 @@ export function ConversationsTile() {
       <Toolbar tight className={styles.header}>
         <Button size="tiny" variant="framed" onClick={() => void startNew()} disabled={busy} title="start another conversation and open it in a tile">
           {busy ? "starting…" : "new conversation"}
+        </Button>
+        <Button size="tiny" variant="bare" onClick={() => void sync()} disabled={busy} title="reconcile with the server's list; your names and counts are kept">
+          sync
         </Button>
         <span className={styles.spacer} />
         <TextInput size="tiny" width="compact" value={filter} onValueChange={setFilter} accessibleName="filter conversations by name" placeholder="filter" />
@@ -84,7 +108,7 @@ export function ConversationsTile() {
       )}
 
       <Text size="micro" tone="faint">
-        right-click a conversation for what you can do to it
+        {syncNote ? `${syncNote} · ` : ""}right-click a conversation for what you can do to it
       </Text>
     </div>
   );

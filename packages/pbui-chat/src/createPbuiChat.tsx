@@ -1,12 +1,14 @@
 import type { PbuiInstance, PresentationRegistry, PresentationValues } from "@hyperslop-systems/pbui";
 import {
   createChatDebugEventStore,
+  createDefaultChatDebugClassifier,
   defineChatExtensions,
   selectTimelineEntities,
   type ChatDebugEventStore,
   type ChatExtension,
   type ChatProviderConfig,
   type CreateChatDebugEventStoreOptions,
+  type ChatDebugFamily,
   type SendMessageRequest,
 } from "@go-go-golems/chat-provider";
 import type { Workbench } from "@hyperslop-systems/pbui-workbench";
@@ -15,6 +17,7 @@ import { traceAdapter } from "./adapters/traceAdapter";
 import { Composer } from "./composer/Composer";
 import { ConversationHost } from "./conversations/ConversationHost";
 import { ConversationScope } from "./conversations/ConversationScope";
+import { DEFAULT_EVENT_FAMILIES } from "./conversations/EventsTile";
 import {
   createConversationRegistry,
   type ConversationRegistry,
@@ -65,6 +68,8 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
     config?: Omit<ChatProviderConfig, "extensions" | "sessionPolicy" | "onDebugEvent" | "sendMessageBody" | "basePrefix">;
     debug?: ChatDebugEventStore;
     debugOptions?: CreateChatDebugEventStoreOptions;
+    /** Extra UI-event name → family entries, merged over `DEFAULT_EVENT_FAMILIES`. */
+    eventFamilies?: Partial<Record<string, ChatDebugFamily>>;
     fetch?: typeof fetch;
     onRejected?: CreateConversationRegistryOptions["onRejected"];
     now?(): string;
@@ -243,9 +248,21 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     return toolsFor(conversationId).extension;
   }
 
+  /*
+   * The classifier files an unlisted `ui-event` under `timeline`, so without
+   * a family map the events tile's `llm`, `tool` and `widget` chips can never
+   * match anything. The default map covers the chatapp event vocabulary; a
+   * product with its own events adds to it.
+   */
   const debug =
     conversationOptions.debug ??
-    createChatDebugEventStore(conversationOptions.debugOptions ?? { maxEntriesPerConversation: 1000 });
+    createChatDebugEventStore({
+      maxEntriesPerConversation: 1000,
+      classifier: createDefaultChatDebugClassifier({
+        familyAliases: { ...DEFAULT_EVENT_FAMILIES, ...(conversationOptions.eventFamilies ?? {}) },
+      }),
+      ...(conversationOptions.debugOptions ?? {}),
+    });
 
   function sendMessageBodyFor(conversationId: string) {
     return (request: SendMessageRequest): ChatMessageBody => {

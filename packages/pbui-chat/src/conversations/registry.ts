@@ -98,6 +98,17 @@ export interface ConversationRegistry {
   /** The `ChatProvider` config for one conversation; stable per id, as `ChatProvider` memoises on it. */
   configFor(id: string): ChatProviderConfig;
 
+  /**
+   * Reconcile with the server's session index (guide D10).
+   *
+   * MERGES, never replaces. The index is a convenience the server can rebuild
+   * or lose; this browser's records are the ones that have been used. A
+   * session the server lists and this browser does not know is adopted; a
+   * session this browser knows and the server has forgotten is left alone,
+   * because it still connects and hydrates perfectly.
+   */
+  sync(): Promise<SyncResult>;
+
   subscribe(listener: () => void): () => void;
   /** Write pending changes now (call on `beforeunload`). */
   flush(): void;
@@ -114,6 +125,16 @@ export interface ConversationStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
+}
+
+/** What one `sync()` changed, so a tile can say so rather than flicker. */
+export interface SyncResult {
+  /** Sessions the server listed that this browser had never seen. */
+  adopted: string[];
+  /** Records the server had something better for — a title, a higher count. */
+  updated: string[];
+  /** Records the server does not list. They are kept; the server may have forgotten them. */
+  unknownToServer: string[];
 }
 
 export interface ConversationsSnapshotFile {
@@ -170,6 +191,40 @@ export function memoryConversationStorage(): ConversationStorage {
       map.delete(key);
     },
   };
+}
+
+interface ServerSession {
+  id?: string;
+  createdAt?: string;
+  lastActivityAt?: string;
+  messageCount?: number;
+  title?: string;
+}
+
+/**
+ * What of a server row is worth taking.
+ *
+ * A HUMAN title is never overwritten (D7): the user named this conversation
+ * in this browser, and the index only ever knows what some browser told it.
+ * A count is taken only when it is HIGHER, because this browser's count comes
+ * from a hydrated timeline it has actually seen, and the index's comes from
+ * counting submissions — including ones from another browser, which is worth
+ * knowing, but never worth losing messages over.
+ */
+function serverPatch(session: ServerSession, record: ConversationRecord | null): Partial<ConversationRecord> {
+  const patch: Partial<ConversationRecord> = {};
+  const title = String(session.title ?? "").trim();
+  if (title && (!record || record.titledBy !== "human") && record?.title !== title) {
+    patch.title = title;
+    patch.titledBy = "agent";
+  }
+  const count = Number(session.messageCount ?? 0);
+  if (Number.isFinite(count) && count > (record?.messageCount ?? -1)) patch.messageCount = count;
+  const created = String(session.createdAt ?? "").trim();
+  if (created && !record) patch.createdAt = created;
+  const last = String(session.lastActivityAt ?? "").trim();
+  if (last && (!record || last > record.lastActivityAt)) patch.lastActivityAt = last;
+  return patch;
 }
 
 function isFile(value: unknown): value is ConversationsSnapshotFile {
@@ -531,6 +586,36 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
+      };
+    },
+
+    async sync() {
+      const response = await fetchImpl(`${basePrefix}/api/chat/sessions`, { credentials: "same-origin" });
+      if (!response.ok) throw new Error(`could not list conversations: ${response.status}`);
+      const data = (await response.json()) as { sessions?: ServerSession[] };
+      const listed = Array.isArray(data.sessions) ? data.sessions : [];
+      const seen = new Set<string>();
+      const adopted: string[] = [];
+      const updated: string[] = [];
+
+      for (const session of listed) {
+        const id = String(session?.id ?? "").trim();
+        if (!id) continue;
+        seen.add(id);
+        const record = records.get(id);
+        if (!record) {
+          registry.adopt(id, serverPatch(session, null));
+          adopted.push(id);
+          continue;
+        }
+        const patch = serverPatch(session, record);
+        if (Object.keys(patch).length > 0 && patchRecord(id, patch)) updated.push(id);
+      }
+
+      return {
+        adopted,
+        updated,
+        unknownToServer: [...records.keys()].filter((id) => !seen.has(id)),
       };
     },
 
