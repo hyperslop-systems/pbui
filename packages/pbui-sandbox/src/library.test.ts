@@ -108,4 +108,35 @@ describe("createProgramLibrary", () => {
     library.putProgram(program("b"));
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  test("keeps previous versions on the record, capped, and rolls back as an update", () => {
+    const now = vi.fn(() => "t1");
+    const library = createProgramLibrary({ key: "k", storage, now, limits: { historyDepth: 2 } });
+    const v1 = library.putProgram(program("Counter", "v1 source"));
+    expect(v1.history).toEqual([]);
+    now.mockReturnValue("t2");
+    library.putProgram({ ...program("Counter", "v2 source"), id: "prg-1" });
+    now.mockReturnValue("t3");
+    const v3 = library.putProgram({ ...program("Counter 3", "v3 source"), id: "prg-1", by: "human" });
+    expect(v3.history.map((v) => [v.version, v.source, v.at, v.by])).toEqual([
+      [2, "v2 source", "t2", "agent"],
+      [1, "v1 source", "t1", "agent"],
+    ]);
+    now.mockReturnValue("t4");
+    library.putProgram({ ...program("Counter 4", "v4 source"), id: "prg-1" });
+    expect(library.getState().programs["prg-1"]!.history.map((v) => v.version)).toEqual([3, 2]);
+
+    now.mockReturnValue("t5");
+    const rolled = library.rollback("prg-1", 2);
+    expect(rolled).toMatchObject({ version: 5, source: "v2 source", title: "Counter", by: "human" });
+    expect(rolled.history.map((v) => v.version)).toEqual([4, 3]);
+    expect(() => library.rollback("prg-1", 1)).toThrow("no version 1");
+    expect(() => library.rollback("prg-9", 1)).toThrow("no program prg-9");
+  });
+
+  test("a record persisted before history existed restores with an empty one", () => {
+    storage.setItem("k", JSON.stringify({ schema_version: 1, nextId: 2, nextActionId: 1, seeded: true, programs: { "prg-1": { id: "prg-1", title: "old", source: "s", version: 3, bindings: [], meta: META, by: "agent", pinned: false, createdAt: "t", updatedAt: "t" } }, actions: {} }));
+    const library = createProgramLibrary({ key: "k", storage });
+    expect(library.getState().programs["prg-1"]!.history).toEqual([]);
+  });
 });

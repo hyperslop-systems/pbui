@@ -1,10 +1,11 @@
 import { defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { SandboxHost } from "../host/hostOptions";
-import { INSPECTOR_APP_ID, PROGRAM_BINDING } from "../ScriptTile";
+import { INSPECTOR_APP_ID, PROGRAM_BINDING, SOURCE_APP_ID } from "../ScriptTile";
 import { InspectorTile } from "./InspectorTile/InspectorTile";
 import { ReplTile } from "./ReplTile/ReplTile";
 import { TimelineTile } from "./TimelineTile/TimelineTile";
 import { PlaygroundTile } from "./PlaygroundTile/PlaygroundTile";
+import { SourceTile } from "./SourceTile/SourceTile";
 import { createPlaygroundStore, type PlaygroundStore } from "./playgroundStore";
 
 export interface SandboxDevtoolsOptions {
@@ -76,6 +77,19 @@ export function createSandboxDevtools(host: SandboxHost, options: SandboxDevtool
       group,
       blurb: "write a program by hand, run it live, save it into the library",
       Component: (props: AppProps) => <PlaygroundTile placementId={props.placementId} view={props.view} host={host} store={playground} />,
+    }),
+    defineApp({
+      id: SOURCE_APP_ID,
+      title: "source",
+      tone,
+      singleton: false,
+      docBound: true,
+      duplicable: false,
+      bindings: [PROGRAM_BINDING],
+      group,
+      blurb: "a program's source, its previous versions, a diff, and rollback",
+      titleFor: (view) => titleOf(view, "source"),
+      Component: (props: AppProps) => <SourceTile placementId={props.placementId} view={props.view} host={host} playground={playground} />,
     }),
   ];
 }

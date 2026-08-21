@@ -9,6 +9,18 @@ import { DEFAULT_LIMITS, byteLength, type SandboxLimits } from "./limits";
  * appended to type menus by `withGeneratedActions`.
  */
 
+/** A previous version of a program, as it was before an update replaced it (guide D6). */
+export interface ProgramVersion {
+  version: number;
+  source: string;
+  title: string;
+  bindings: string[];
+  meta: { declaredId?: string; widgets: string[] };
+  by: "agent" | "human";
+  /** When that version was written. */
+  at: string;
+}
+
 export interface ProgramRecord {
   id: string;
   title: string;
@@ -21,6 +33,8 @@ export interface ProgramRecord {
   meta: { declaredId?: string; widgets: string[] };
   by: "agent" | "human";
   pinned: boolean;
+  /** Previous versions, newest first, at most `limits.historyDepth`; the current version is not in it. */
+  history: ProgramVersion[];
   lastError?: { phase: "load" | "render" | "event"; message: string; at: string };
   createdAt: string;
   updatedAt: string;
@@ -55,7 +69,7 @@ export interface LibrarySnapshot {
   actions: Record<string, ActionRecord>;
 }
 
-export type PutProgramInput = Omit<ProgramRecord, "id" | "version" | "createdAt" | "updatedAt" | "pinned" | "lastError"> & {
+export type PutProgramInput = Omit<ProgramRecord, "id" | "version" | "createdAt" | "updatedAt" | "pinned" | "lastError" | "history"> & {
   id?: string;
   pinned?: boolean;
 };
@@ -67,6 +81,8 @@ export interface ProgramLibrary {
   subscribe(listener: () => void): () => void;
   /** Create (no id) or update (id present; version bumps). Throws a message a tool can return verbatim. */
   putProgram(input: PutProgramInput): ProgramRecord;
+  /** An ordinary update whose source is an old version's: a new version, tiles reload, the history keeps both. */
+  rollback(id: string, version: number): ProgramRecord;
   removeProgram(id: string): boolean;
   putAction(input: PutActionInput): ActionRecord;
   removeAction(id: string): boolean;
@@ -148,7 +164,12 @@ export function createProgramLibrary(options: CreateProgramLibraryOptions): Prog
     try {
       const parsed: unknown = JSON.parse(raw);
       if (!isSnapshot(parsed)) throw new Error("not a library snapshot");
-      return { ...emptyLibrary(), ...parsed };
+      const snapshot = { ...emptyLibrary(), ...parsed };
+      // Records written before `history` existed read as having none.
+      for (const [id, record] of Object.entries(snapshot.programs)) {
+        if (!Array.isArray(record.history)) snapshot.programs[id] = { ...record, history: [] };
+      }
+      return snapshot;
     } catch (error) {
       // Never the `parseDocument → null → default` pattern that costs a user
       // their layout: keep the bytes under a sibling key and say so.
@@ -236,6 +257,13 @@ export function createProgramLibrary(options: CreateProgramLibraryOptions): Prog
         throw new Error(`the library already holds ${limits.programs} programs, the limit; remove one first`);
       }
       const minted = existing ? { id: existing.id, nextId: state.nextId } : mintProgram();
+      // The version being replaced goes to the front of the history.
+      const history: ProgramVersion[] = existing
+        ? [
+            { version: existing.version, source: existing.source, title: existing.title, bindings: existing.bindings, meta: existing.meta, by: existing.by, at: existing.updatedAt },
+            ...(existing.history ?? []),
+          ].slice(0, limits.historyDepth)
+        : [];
       const record: ProgramRecord = {
         id: minted.id,
         title: input.title,
@@ -245,11 +273,21 @@ export function createProgramLibrary(options: CreateProgramLibraryOptions): Prog
         meta: { ...input.meta, widgets: [...input.meta.widgets] },
         by: input.by,
         pinned: input.pinned ?? existing?.pinned ?? false,
+        history,
         createdAt: existing?.createdAt ?? at,
         updatedAt: at,
       };
       commit({ ...state, nextId: minted.nextId, programs: { ...state.programs, [record.id]: record } });
       return record;
+    },
+
+    rollback(id, version) {
+      const existing = state.programs[id];
+      if (!existing) throw new Error(`no program ${id}`);
+      const entry = existing.history.find((v) => v.version === version);
+      if (!entry) throw new Error(`program ${id} has no version ${version} in its history`);
+      // A human's decision, whoever wrote the old version.
+      return this.putProgram({ id, title: entry.title, source: entry.source, bindings: entry.bindings, meta: entry.meta, by: "human" });
     },
 
     removeProgram(id) {

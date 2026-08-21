@@ -211,6 +211,12 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
     if (!meta || !globalState || status === "loading" || status === "idle") return undefined;
     const instanceId = instanceRef.current;
     if (!instanceId || !programId) return undefined;
+    // On an update the load effect has already pointed `instanceRef` at the
+    // NEXT instance while `meta` (and `status`, in this closure) still belong
+    // to the previous one; rendering now would ask the engine for an
+    // instance that is not loaded yet. The timeline made this visible as a
+    // spurious "Program instance not found" error on every reload.
+    if (meta.instanceId !== instanceId) return undefined;
     let cancelled = false;
     void (async () => {
       const next: Record<string, UINode> = {};

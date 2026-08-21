@@ -62,6 +62,7 @@ export function PlaygroundTile({ placementId, host, store, reloadMs = 400 }: Pla
       meta: { widgets: ["main"] },
       by: "human",
       pinned: false,
+      history: [],
       createdAt: draft.updatedAt,
       updatedAt: draft.updatedAt,
     }),

@@ -12,3 +12,7 @@ export { DRAFT_PROGRAM_ID, PLAYGROUND_VIEW_ID, PlaygroundTile } from "./Playgrou
 export type { PlaygroundTileProps } from "./PlaygroundTile/PlaygroundTile";
 export { PLAYGROUND_TEMPLATE, createPlaygroundStore, usePlayground } from "./playgroundStore";
 export type { CreatePlaygroundStoreOptions, PlaygroundDraft, PlaygroundStore } from "./playgroundStore";
+export { SourceTile, seedPlaygroundFrom, versionsOf } from "./SourceTile/SourceTile";
+export type { SourceTileProps } from "./SourceTile/SourceTile";
+export { diffLines, trimContext } from "./diffLines";
+export type { DiffRow, Hunk } from "./diffLines";

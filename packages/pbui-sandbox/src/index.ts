@@ -33,6 +33,7 @@ export type {
   LibraryStorage,
   ProgramLibrary,
   ProgramRecord,
+  ProgramVersion,
   PutActionInput,
   PutProgramInput,
 } from "./library";

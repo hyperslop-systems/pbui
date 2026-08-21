@@ -8,7 +8,7 @@ import { createProgramStateStore } from "../state";
 import { useProgramInstance } from "./useProgramInstance";
 
 function record(source: string, version = 1, id = "prg-1"): ProgramRecord {
-  return { id, title: "t", source, version, bindings: [], meta: { widgets: ["main"] }, by: "agent", pinned: false, createdAt: "", updatedAt: "" };
+  return { id, title: "t", source, version, bindings: [], meta: { widgets: ["main"] }, by: "agent", pinned: false, history: [], createdAt: "", updatedAt: "" };
 }
 
 const NONE = {};
@@ -95,6 +95,10 @@ describe("useProgramInstance", () => {
     const engineInstances = (await engine.health()).instances;
     expect(engineInstances).toHaveLength(1);
     expect(engineInstances[0]).toContain(":v2#");
+    // The reload must not render the next instance before it is loaded.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(instances.timeline().filter((entry) => entry.kind === "error")).toEqual([]);
+    expect(instances.get("v-4")?.timings.errors).toBe(0);
   });
 
   test("settles with inline (unstable) callbacks and memoised inputs", async () => {

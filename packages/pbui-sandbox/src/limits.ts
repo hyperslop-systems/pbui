@@ -23,6 +23,8 @@ export interface SandboxLimits {
   tableRows: number;
   /** Intents one handler call may emit. */
   intentsPerEvent: number;
+  /** Previous versions kept on a program record (guide D6). */
+  historyDepth: number;
 
   /* QuickJS only. */
   memoryBytes: number;
@@ -44,6 +46,7 @@ export const DEFAULT_LIMITS: SandboxLimits = {
   textChars: 4096,
   tableRows: 500,
   intentsPerEvent: 16,
+  historyDepth: 10,
 
   memoryBytes: 32 * 1024 * 1024,
   stackBytes: 1024 * 1024,
