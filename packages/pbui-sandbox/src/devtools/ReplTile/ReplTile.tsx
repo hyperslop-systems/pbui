@@ -32,6 +32,7 @@ export const REPL_HELP = [
   "$render(state?, global?, widget?) — the tree the program would build",
   "$event(handler, args?, state?, global?, widget?) — the intents a handler would emit",
   "Enter runs · Shift+Enter newline · ↑/↓ history · let/const do not persist; use $plugin.scratch = …",
+  "an injected handler should read ctx.pluginState, not $state — $state is a copy from when the line ran",
 ];
 
 export function isUINode(value: unknown): value is UINode {

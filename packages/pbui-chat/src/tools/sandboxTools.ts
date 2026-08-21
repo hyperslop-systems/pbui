@@ -1,29 +1,6 @@
 import type { FrontendTool, ToolDefinition } from "@go-go-golems/chat-provider";
 import { describeWorkbench, type Workbench } from "@hyperslop-systems/pbui-workbench";
-import {
-  BOOTSTRAP_VERSION,
-  DEFAULT_LIMITS,
-  SANDBOX_INTENTS,
-  SANDBOX_UI_KINDS,
-  byteLength,
-  countNodes,
-  reducePluginIntent,
-  substituteVerbRef,
-  toProgramError,
-  validateUINode,
-  type ActionBehaviour,
-  type ActionRecord,
-  type DispatchIntent,
-  type LoadedProgram,
-  type ProgramEngine,
-  type ProgramErrorPayload,
-  type ProgramGlobalState,
-  type ProgramLibrary,
-  type ProgramRecord,
-  type SandboxLimits,
-  type UINode,
-  type UIReference,
-} from "@hyperslop-systems/pbui-sandbox";
+import { type ActionBehaviour, type ActionRecord, BOOTSTRAP_VERSION, DEFAULT_LIMITS, type DispatchIntent, type InstanceRegistry, type LoadedProgram, type ProgramEngine, type ProgramErrorPayload, type ProgramGlobalState, type ProgramLibrary, type ProgramRecord, SANDBOX_INTENTS, SANDBOX_UI_KINDS, type SandboxLimits, type UINode, type UIReference, byteLength, countNodes, reducePluginIntent, substituteVerbRef, toProgramError, validateUINode } from "@hyperslop-systems/pbui-sandbox";
 import { z } from "zod";
 import type { Outcome, VerbLike } from "../types";
 import type { Vocabulary } from "../vocabulary/schemas";
@@ -59,6 +36,8 @@ export interface SandboxToolsOptions {
   getEngine(): ProgramEngine | null;
   /** The workbench programs open in; null disables opening but not creating or testing. */
   getWorkbench(): Workbench | null;
+  /** The instance registry, when the product runs one: `sandbox_describe` then reports what is running and how it is doing. */
+  getInstances?(): InstanceRegistry | null;
   /** Perform a verb through the PRODUCT's router with `actor: "agent"`, so the trace records it. */
   perform(verb: VerbLike): Promise<Outcome>;
   /** Resolve a binding for a dry render, the same way the tile does. */
@@ -244,7 +223,28 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     return describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId }).workspaces[0]?.tiles ?? [];
   }
 
+  /** What the registry knows about a program's running instances — timings and errors a model can act on. */
+  function running(programId: string) {
+    const registry = options.getInstances?.() ?? null;
+    if (!registry) return undefined;
+    const snapshots = registry.all().filter((s) => s.programId === programId);
+    if (snapshots.length === 0) return [];
+    return snapshots.map((s) => ({
+      viewId: s.viewId,
+      version: s.version,
+      status: s.status,
+      tiles: s.placementIds.length,
+      ...(s.timings.lastRenderMs !== undefined ? { lastRenderMs: Math.round(s.timings.lastRenderMs * 10) / 10 } : {}),
+      renders: s.timings.renders,
+      events: s.timings.events,
+      errors: s.timings.errors,
+      timeouts: s.timings.timeouts,
+      ...(s.error ? { error: `${s.error.phase ?? "run"}: ${s.error.code}: ${s.error.message}` } : {}),
+    }));
+  }
+
   function summarise(program: ProgramRecord, wb: Workbench | null) {
+    const instances = running(program.id);
     return {
       id: program.id,
       title: program.title,
@@ -253,8 +253,10 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       widgets: program.meta.widgets,
       by: program.by,
       pinned: program.pinned,
+      history: program.history.length,
       ...(program.lastError ? { lastError: program.lastError } : {}),
       openIn: wb ? tilesShowing(wb, program.id) : [],
+      ...(instances ? { running: instances } : {}),
     };
   }
 

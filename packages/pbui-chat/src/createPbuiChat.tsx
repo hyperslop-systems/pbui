@@ -20,7 +20,7 @@ import { pbuiAcceptTool } from "./tools/acceptTool";
 import { pbuiProposeTool } from "./tools/proposeTool";
 import { createSandboxTools, type SandboxTools, type SandboxToolsOptions } from "./tools/sandboxTools";
 import { createWorkbenchTools, type WorkbenchTools, type WorkbenchToolsOptions } from "./tools/workbenchTools";
-import type { ProgramEngine, ProgramLibrary } from "@hyperslop-systems/pbui-sandbox";
+import type { InstanceRegistry, ProgramEngine, ProgramLibrary } from "@hyperslop-systems/pbui-sandbox";
 import type { ChatMessageBody, Reference, VerbLike } from "./types";
 import { fromPresentationReference, toPresentationReference } from "./types";
 import { exportVocabulary } from "./vocabulary/defineVocabulary";
@@ -144,11 +144,13 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
    */
   let library: ProgramLibrary | null = options.sandbox?.library ?? null;
   let engine: ProgramEngine | null = options.sandbox?.engine ?? null;
+  let instances: InstanceRegistry | null = null;
   const { library: _library, engine: _engine, ...sandboxOptions } = options.sandbox ?? { resolve: () => null };
   const sandboxTools: SandboxTools = createSandboxTools({
     getLibrary: () => library,
     getEngine: () => engine,
     getWorkbench: () => workbench,
+    getInstances: () => instances,
     perform: (verb) => router.perform(verb, undefined, { actor: "agent" }),
     vocabulary,
     ...sandboxOptions,
@@ -295,9 +297,10 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     /** The agent's program tools and their shared dry-run path. */
     sandboxTools,
     /** Offer the sandbox tools from now on (null, null detaches). Re-advertises the manifest, as attachWorkbench does. */
-    attachSandbox(nextLibrary: ProgramLibrary | null, nextEngine: ProgramEngine | null) {
+    attachSandbox(nextLibrary: ProgramLibrary | null, nextEngine: ProgramEngine | null, nextInstances: InstanceRegistry | null = null) {
       library = nextLibrary;
       engine = nextEngine;
+      instances = nextInstances;
       void chatClientRef?.tools.syncManifest();
     },
     /** The attached library, if any. */

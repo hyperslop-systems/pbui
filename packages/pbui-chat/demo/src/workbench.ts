@@ -94,7 +94,7 @@ export const workbench = createWorkbench({
 // "Open in tile" now opens a widget tile beside the active one.
 chat.attachWorkbench(workbench);
 // …and the sandbox_* tools are offered to the model from here on.
-chat.attachSandbox(library, engine);
+chat.attachSandbox(library, engine, instances);
 
 function persistDocument() {
   storage()?.setItem(WORKBENCH_STORAGE_KEY, workbench.serialize());

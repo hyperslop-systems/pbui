@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createAppRegistry, createWorkbench, defineApp, layout, split, tile } from "@hyperslop-systems/pbui-workbench";
 import {
+  createInstanceRegistry,
   BROKEN_RENDER_PROGRAM,
   COUNTER_PROGRAM,
   DAYS_OF_COVER_PROGRAM,
@@ -254,5 +255,24 @@ describe("sandbox_describe", () => {
     expect(described.dsl.kinds).toContain("ref");
     expect(described.programs).toEqual([expect.objectContaining({ id: "prg-1", title: "Counter", openIn: [created.placementId] })]);
     expect(described.actions).toEqual([expect.objectContaining({ id: "act-1", label: "Ask" })]);
+    // No registry attached: nothing claims to know what is running.
+    expect(described.programs[0].running).toBeUndefined();
+    expect(described.programs[0].history).toBe(0);
+  });
+
+  it("reports running instances from the registry — status, tiles, timings, the error", async () => {
+    const instances = createInstanceRegistry();
+    const { call } = harness({ getInstances: () => instances });
+    await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM });
+    instances.mount("v-1", "n-1");
+    instances.mount("v-1", "n-2");
+    instances.publish("v-1", { programId: "prg-1", version: 1, status: "error", instanceId: "v-1:prg-1:v1#1", timings: { renders: 3, events: 1, errors: 1, timeouts: 1, lastRenderMs: 101.26 }, error: { phase: "render", code: "RUNTIME_TIMEOUT", message: "interrupted" } });
+    const described = (await call("sandbox_describe", {})) as any;
+    expect(described.programs[0].running).toEqual([
+      { viewId: "v-1", version: 1, status: "error", tiles: 2, lastRenderMs: 101.3, renders: 3, events: 1, errors: 1, timeouts: 1, error: "render: RUNTIME_TIMEOUT: interrupted" },
+    ]);
+    instances.unmount("v-1", "n-1");
+    instances.unmount("v-1", "n-2");
+    expect(((await call("sandbox_describe", {})) as any).programs[0].running).toEqual([]);
   });
 });
