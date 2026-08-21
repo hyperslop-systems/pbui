@@ -30,3 +30,14 @@ Phases 0-1 built (cc11ecf, d03fd7c, 48442ff): @hyperslop-systems/pbui-sandbox �
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/engines/evalEngine.ts — The eval engine with throwing forbidden globals
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/host/useProgramInstance.ts — The host loop; callbacks through refs after the busy-loop defect
 
+
+## 2026-08-21
+
+Phases 2-3 built (1095567): seven sandbox_* frontend tools sharing one dry-run path behind a policy gate, attachSandbox, router provenance, the vocabulary's sandbox block and Go's generated '## Programs' prompt section, program/action types with descriptors, five verb kinds with local handlers, the registry wrapped with withGeneratedActions. Browser: a defined action appears in the product menu, opens the bound program tile, and the trace records program.open then action.run. Found: a server started before 'pnpm vocab' rejects the new kinds in the trace — restart it.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/sandboxTools.ts — The seven tools, the gate, the dry run
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/actions.ts — withGeneratedActions and substituteRef
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/pbuichat/prompt.go — sandboxSection and the worked example
+

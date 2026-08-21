@@ -405,3 +405,91 @@ make chat-serve   # then ⌘K → Minimal Counter; + twice; split the tile; relo
 ### Technical details
 
 The seeded library after first boot, as `localStorage["pbui-chat-demo.generated.v1"]` holds it: `{schema_version:1, nextId:3, seeded:true, programs:{"prg-1":{title:"Minimal Counter", version:1, bindings:[], by:"human", pinned:true, …}, "prg-2":{title:"Days of cover", bindings:["product"], …}}, actions:{}}`. A program tile's `view.documents` is `{program:"prg-1"}`; the days-of-cover tile opened from the launcher has no `product` binding and renders its own "bind this tile to a product" callout — correct, and the reason Phase 2's `sandbox_open` takes `documents`.
+
+## Step 5: Phase 2 and Phase 3 — the model is told, and actions reach the menus
+
+Phase 2 gave the agent its tools and taught the model the dialect; Phase 3 — designed as a separate phase — turned out to be mostly a consequence of Phase 2's closed-vocabulary decision (D4) and landed in the same commit: once `action.run` is one of the five declared verb kinds, the registry wrapper, the `action` descriptor and the local handler are the whole of it. The seven `sandbox_*` frontend tools share one dry-run path (`check`: load → render every widget with resolved bindings → replay events through the generic reducer → render again), so `sandbox_test` is exactly what `sandbox_create_app` and `sandbox_update_app` run before they store anything, and a program the model gets wrong never reaches a tile. The Go side gained a `sandbox` block in the vocabulary and a `## Programs` prompt section generated from it, with the days-of-cover program as the worked example.
+
+The browser check found the one thing unit tests could not: the running demo server had been started before `vocabulary.json` was regenerated, so the *browser* validated and performed `action.run` while the *server's* trace recorded `✗ unknown verb action.run`. A restart fixed it, and it is a useful demonstration of D4 — the same closed vocabulary is checked on both sides, and a stale embed is a visible rejection in the trace rather than a silent acceptance.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1; "continue")
+
+**Assistant interpretation:** Implement the guide's Phase 2 (tools, types, verbs, prompt) and Phase 3 (generated actions), verify the Phase 3 gesture in the browser, commit, print slips.
+
+**Inferred user intent:** Reach the point where a model can be handed the demo and asked for a tile, and where a user can define an action from chat and find it in a menu.
+
+**Commit (code):** `1095567` — "PBUI-AGENT-3 Phase 2: sandbox_* tools, program/action types, prompt section"
+
+### What I did
+
+- `packages/pbui-sandbox/src/actions.ts` (+ test): `withGeneratedActions(base, {getActions, toVerb, programExists?, group?})` and `substituteRef`/`substituteVerbRef` (`"$ref"`, `"$ref.id"`, `"$ref.type"`). Library: actions get their own counter (`nextActionId`), so a model sees `prg-1, prg-2` and `act-1, act-2`.
+- `packages/pbui-chat/src/tools/sandboxTools.ts` (+ 15 tests): `createSandboxTools` with `sandbox_describe`, `sandbox_test`, `sandbox_create_app`, `sandbox_update_app`, `sandbox_open`, `sandbox_define_action`, `sandbox_remove`; `DEFAULT_SANDBOX_POLICY`; a gate where pinned or human-made artifacts escalate `allow` → `confirm` for update/remove; `SANDBOX_VERB_KINDS`.
+- `createPbuiChat.tsx`: `sandbox` option, `attachSandbox(library, engine)` (re-syncs the manifest, as `attachWorkbench` does), `sandboxTools`, `library()`, `engine()`.
+- `router/createVerbRouter.ts`: `PerformOptions.provenance`, carried in the POST body as `verb._provenance` (D10) — the handler never sees it.
+- `vocabulary/{schemas,defineVocabulary,index}.ts`: the optional `sandbox` block (`kinds`, `intents`), validated against `SANDBOX_UI_KINDS`/`SANDBOX_INTENTS`, exported after `conversions`; `exportVocabulary.test.ts` updated for the new key order.
+- Demo: `ProgramValue`/`ActionValue` and tones; five verb kinds and their docs and descriptions; `descriptors/{program,action}.ts` (*View source* is `inspect`, whose `describe()` reads the source from the library); `registry.ts` wrapped with `withGeneratedActions`; `vocabulary.ts` with the two types and the `sandbox` block; `chat.ts` with the five `local` cases (`action.run` expands through `ctx.perform`, so the trace holds both entries); `workbench.ts` attaches the sandbox and passes provenance; `sandbox.ts` exposes `window.__pbuiDemo` for reviewers. `pnpm --filter @hyperslop-systems/pbui-chat-demo vocab` regenerated `pkg/chatserver/demo/vocabulary.json`.
+- Go: `Vocabulary.Sandbox *SandboxVocabulary` validated like `widget.kinds` (`knownSandboxKinds`, `knownSandboxIntents`), `HasSandbox()`; `prompt.go` constants for the seven tools, `sandboxExample`, `sandboxSection` gated on `KnowsType("program") && HasSandbox()`; `TestSandboxPromptSectionIsGatedOnTheProgramType`, `TestVocabularySandboxBlockValidates`.
+- Browser (Playwright MCP against `make chat-serve`): seeded an action through the console door, opened the inventory tile, right-clicked a product → *Days of cover* in the menu beside the product's own verbs (`various/03-…png`); clicked it → a days-of-cover tile bound to that SKU (`04-…png`); after restarting the server with the regenerated vocabulary, the trace shows `#1 program.open ✓`, `#2 action.run ✓` with the product as target (`05-…png`).
+
+### Why
+
+- **One `check()` for three tools.** The guide's §5.8 says `sandbox_test` is "the same code path `create` runs, minus the store"; making that literally one function is what guarantees the model's dry run and the real run cannot disagree.
+- **The policy gate escalates on the artifact, not only on the table.** A product can set `"program.remove": "allow"` and still not have the agent remove a pinned program unasked; the protection belongs to the thing, which is how the user will reason about it ("I pinned it").
+- **`action.run` through `ctx.perform`.** The audit question is "what did the generated action actually do"; two trace entries — the action and the verb it became — answer it, one would not.
+- **`nextActionId`.** Ids are read aloud to a model; `prg-1, act-2` invites the model to guess `act-3` for the second action.
+
+### What worked
+
+- The conformance and renderer suites needed no change for Phase 2; the new `sandbox_test` fixture reused `BROKEN_RENDER_PROGRAM` and the days-of-cover program unchanged.
+- Go's `Validate` rejected an unknown sandbox kind and intent on the first run of the new test; the gate on `HasSandbox()` kept the AGENT-2 prompt tests untouched.
+- The browser gesture: defining an action, finding it in the menu, clicking it, seeing the bound tile and the two trace entries — exactly the sequence in guide §8.2.
+
+### What didn't work
+
+- Typecheck, first run, three errors: `demo/src/pbui/descriptors/action.ts(14,42): 'id' is specified more than once` (the library record spread after `id:`; reordered so `id: ref.id` is last); `sandboxTools.ts: Type 'unknown' is not assignable to type '{}'` twice — `z.unknown().optional()` for `state` (now `z.record(z.string(), z.unknown())`) and `let pluginState = state ?? meta.initialState ?? {}` inferred as `{}` (now typed `unknown`); and the `behaviour` discriminated union's `verb: z.record(…)` not assignable to `ActionBehaviour.verb: VerbLike` (the tool's input type is now `z.infer<typeof BehaviourSchema>`, cast once at the store).
+- Two tests failed on the first run for the expected reasons: `exportVocabulary.test.ts` against the stale embedded JSON (regenerated), and `sandbox_describe` expecting `act-1` while the shared counter minted `act-2` (fixed by the separate counter, which was the better design anyway).
+- The trace rejection on the live server (above): `✗ unknown verb program.open`, `✗ unknown verb action.run`. Not a code defect — a stale process — but worth a line in the guide's failure modes (R17: restart the server after `pnpm vocab`).
+- The P1 and P2 work slips printed; the plan slip and the P0 slip did not (almanach timeouts earlier in the session). The plan slip should be reprinted.
+
+### What I learned
+
+- `z.toJSONSchema` on a `discriminatedUnion` emits `anyOf` without `$ref`; the "no `$ref`" test now runs over all seven tools' schemas and passes, so the flattening that `LayoutSpecSchema` needed is only needed for *recursive* schemas.
+- Go's `ValidateVerb` iterates the spec's fields, so `_provenance` inside a verb `Struct` is accepted and stored without a proto change — D10 as proposed works; a reviewer may still prefer a real field.
+- `pkg/chatui` serves the demo from disk, but the *vocabulary* is `go:embed`ed into the running Go process; a regenerated `vocabulary.json` needs a restart of `pbui-chat serve`.
+
+### What was tricky to build
+
+- **Reporting what `program.open` did when the verb returns nothing.** Same pattern as AGENT-2's `workbench_open_tile`: diff the current workspace's tiles before and after the perform; no new placement means the doc-bound de-dup rule fired and the result says `wentToExisting: true`. The test "stores a program with unmet bindings but does not open it" checks both halves through `sandbox_open`.
+- **Where binding requirements are enforced.** Not in the workbench (`AppDescriptor.bindings` is advisory there, by design); the tools refuse to *open* a program with an unmet binding (`sandbox_open` fails, `sandbox_create_app` stores but warns and does not open), while the program itself still renders its own "bind this tile to a product" callout if opened from the launcher — both doors behave honestly.
+- **Closing a program's tiles on removal without a `document_in_use` guard.** The library is not the document, so nothing refuses; the `program.remove` handler closes every tile showing the program first (`describeWorkbench` across workspaces) and the tool reports `closedTiles`. A tile that somehow survives shows "program … is not in the library".
+
+### What warrants a second pair of eyes
+
+- `sandbox_update_app` returns an always-empty `warnings` array — the "state reset" warning the guide promised is decided per tile by the hook (it logs it in the tile's details), and the tool cannot know it. Either the tool's description should stop promising it, or the hook should report back through the library (`recordError`-style). Small, but a model reads that field.
+- The console door `window.__pbuiDemo` is demo-only by comment, not by build flag.
+- `withGeneratedActions` returns the *same* `own` array when no action matches, so menus for types without actions are unaffected; but a product whose `actionsFor` is memoised by reference would see a new array every open for types *with* actions. Acceptable; noting it.
+
+### What should be done in the future
+
+- Phase 4: the scripted `programScenario` so `make chat-serve` demonstrates the whole thing without a model, the Go e2e over a bridged `sandbox_create_app`, limits tests, and the R17 note in the guide.
+- Reprint the plan and P0 slips.
+
+### Code review instructions
+
+- Start at `packages/pbui-chat/src/tools/sandboxTools.ts`: `gate`/`performGated` (the policy), `check` (the dry run), then `createTool.execute` for the store-then-open order and `removeTool` for `closedTiles`. Then `demo/src/chat.ts`'s five cases and `registry.ts`'s wrapper. Then `pkg/pbuichat/prompt.go:sandboxSection`.
+- Validate:
+
+```bash
+cd /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui
+pnpm --filter @hyperslop-systems/pbui-sandbox test     # 42
+pnpm --filter @hyperslop-systems/pbui-chat test        # 108, incl. sandboxTools.test.ts and the vocabulary round trip
+GOWORK=off go test ./pkg/pbuichat/... ./pkg/chatserver/...
+GOWORK=off go run ./cmd/pbui-chat prompt | sed -n '/## Programs/,$p'
+make chat-serve   # then: __pbuiDemo.library.putAction({label:"Days of cover", types:["product"], behaviour:{kind:"openProgram", programId:"prg-2"}, by:"agent"}); right-click a product
+```
+
+### Technical details
+
+The trace after the browser gesture, as the trace tile renders it: `#1 human program.open 1/2oz American Gold Eagle 2024 ✓`, `#2 human action.run 1/2oz American Gold Eagle 2024 ✓` — the expanded verb lands first because `action.run`'s handler awaits `ctx.perform` before its own report is queued. The tile opened by the action has `view.documents = { program: "prg-2", product: "2050" }`, which is why a second click on the same SKU goes to the existing tile and a click on a different SKU opens another.
