@@ -66,6 +66,8 @@ let mountCounter = 0;
  */
 export function useProgramInstance(options: UseProgramInstanceOptions): ProgramInstance {
   const { engine, program, viewId, placementId, states, documents, env, perform, onError } = options;
+  void perform;
+  void onError;
   const programId = program?.id ?? null;
   const version = program?.version ?? 0;
   const source = program?.source ?? null;
@@ -77,6 +79,14 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
   const [log, setLog] = useState<InstanceLogEntry[]>([]);
   const instanceRef = useRef<string | null>(null);
   const pluginState = useProgramState(states, viewId);
+  // Read through a ref so an inline `onError` arrow — the natural way to
+  // write it at a call site — does not make `fail`, and through it the render
+  // effect, a new dependency every render. That was a busy loop in the demo:
+  // render → setTrees → re-render → new onError → new fail → render …
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const performRef = useRef(perform);
+  performRef.current = perform;
 
   const note = useCallback((entry: Omit<InstanceLogEntry, "at">) => {
     setLog((current) => [...current, { at: new Date().toISOString(), ...entry }].slice(-LOG_KEEP));
@@ -88,9 +98,9 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
       setError(payload);
       setStatus("error");
       note({ kind: "error", text: `${phase}: ${payload.message}` });
-      onError?.(payload);
+      onErrorRef.current?.(payload);
     },
-    [note, onError],
+    [note],
   );
 
   const globalState = useMemo<ProgramGlobalState | null>(
@@ -180,7 +190,9 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
           next[widgetId] = await engine.render({ instanceId, widgetId, pluginState: pluginState ?? {}, globalState });
         }
         if (cancelled) return;
-        setTrees(next);
+        // Same tree, same object: a render that changed nothing must not
+        // re-render the tile, or any unstable dependency upstream loops.
+        setTrees((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
         setError(null);
         setStatus("ready");
       } catch (raw) {
@@ -224,7 +236,7 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
               outcome: applied ? "applied" : "ignored",
             });
           } else if (intent.scope === "verb") {
-            const outcome = await perform(intent.verb, { provenance: { programId } });
+            const outcome = await performRef.current(intent.verb, { provenance: { programId } });
             note({
               kind: "intent",
               text: `verb ${intent.verb.kind} → ${outcome}`,
@@ -234,7 +246,7 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
         }
       })();
     },
-    [engine, meta, globalState, programId, states, viewId, perform, fail, note],
+    [engine, meta, globalState, programId, states, viewId, fail, note],
   );
 
   const reset = useCallback(() => {

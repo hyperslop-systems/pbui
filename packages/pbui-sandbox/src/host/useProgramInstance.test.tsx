@@ -79,6 +79,36 @@ describe("useProgramInstance", () => {
     expect(instances[0]).toContain(":v2#");
   });
 
+  test("settles with inline (unstable) callbacks and memoised inputs", async () => {
+    const engine = createEvalEngine();
+    const renders: number[] = [];
+    const spy: typeof engine.render = async (input) => {
+      renders.push(1);
+      return engine.render(input);
+    };
+    const spied = { ...engine, render: spy };
+    const states = createProgramStateStore();
+    const { result } = renderHook(() =>
+      useProgramInstance({
+        engine: spied,
+        program: record(COUNTER_PROGRAM),
+        viewId: "v-6",
+        placementId: "n-6",
+        states,
+        documents: NONE,
+        env: NONE,
+        // New functions every render — the natural way to write a call site.
+        perform: async () => "performed",
+        onError: () => {},
+      }),
+    );
+    await waitFor(() => expect(result.current.trees.main).toBeTruthy());
+    const settled = renders.length;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(renders.length).toBe(settled);
+    expect(settled).toBeLessThanOrEqual(3);
+  });
+
   test("without a program the instance is idle", () => {
     const engine = createEvalEngine();
     // Hoisted: a store created inside the render callback is a new dependency
