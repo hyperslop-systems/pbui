@@ -110,6 +110,20 @@
       ],
       "example": "[[action:act-3|Days of cover]]"
     },
+    "conversation": {
+      "doc": "one conversation with an agent; the id is its chat session id",
+      "idHint": "conversationId, from conversation_list",
+      "tone": "var(--pbui-pane-alt)",
+      "verbs": [
+        "conversation.open",
+        "conversation.select",
+        "conversation.rename",
+        "conversation.send",
+        "inspect",
+        "askAgent"
+      ],
+      "example": "[[conversation:3f0a…|reorder desk]]"
+    },
     "field": {
       "doc": "a column of a table the agent produced",
       "idHint": "<tableId>.<column>",
@@ -441,6 +455,42 @@
         "actionId": "string"
       },
       "danger": true
+    },
+    "conversation.new": {
+      "doc": "start another conversation and open it in a tile",
+      "fields": {
+        "title?": "string",
+        "prompt?": "string",
+        "near?": "string"
+      }
+    },
+    "conversation.open": {
+      "doc": "open a conversation in a tile beside another",
+      "fields": {
+        "conversationId": "string",
+        "near?": "string"
+      }
+    },
+    "conversation.select": {
+      "doc": "make a conversation the active one",
+      "fields": {
+        "conversationId": "string"
+      }
+    },
+    "conversation.rename": {
+      "doc": "give a conversation a name",
+      "fields": {
+        "conversationId": "string",
+        "title": "string"
+      }
+    },
+    "conversation.send": {
+      "doc": "send a message to another conversation",
+      "fields": {
+        "conversationId": "string",
+        "template": "string",
+        "refs?": "refs"
+      }
     }
   },
   "widget": {

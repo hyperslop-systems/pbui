@@ -387,6 +387,37 @@ func TestWorkbenchPromptOmitsMentionsWithoutTheWorkspaceType(t *testing.T) {
 	}
 }
 
+func TestConversationsPromptSectionIsGatedOnTheConversationType(t *testing.T) {
+	// A product with one conversation has no conversation tools in its
+	// manifest; telling its model it can hand work to another agent would
+	// invite calls that go nowhere.
+	plain := SystemPromptSection(withoutTypes(loadDemoVocabulary(t), "conversation"))
+	if contains(plain, "## Conversations") {
+		t.Error("a vocabulary without a conversation type must not get the conversations section")
+	}
+	for _, name := range []string{ToolConversationList, ToolConversationSend} {
+		if contains(plain, name) {
+			t.Errorf("prompt names %s without a conversation type", name)
+		}
+	}
+
+	full := SystemPromptSection(loadDemoVocabulary(t))
+	for _, want := range []string{
+		"## Conversations",
+		ToolConversationList,
+		ToolConversationSend,
+		"[[conversation:<conversationId>|title]]",
+		// The two facts that keep several agents on one screen from fighting:
+		// the others' work is not yours to undo, and a message starts a run.
+		"Do not undo their work",
+		"starts a run there",
+	} {
+		if !contains(full, want) {
+			t.Errorf("conversations section missing %q", want)
+		}
+	}
+}
+
 func TestSandboxPromptSectionIsGatedOnTheProgramType(t *testing.T) {
 	// A product without programs as objects, or without a sandbox block, has
 	// no sandbox tools in its manifest; teaching its model the dialect would

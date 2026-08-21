@@ -15,6 +15,12 @@ export type VerbFamily = "local" | "agent" | "tool";
 export interface RouterContext {
   store: PbuiChatStore;
   /**
+   * Who is performing it. Most handlers do not care — the trace records the
+   * actor either way — but a few must: a human's rename of a conversation
+   * OWNS the title, an agent's may only replace one nobody has claimed.
+   */
+  actor: Actor;
+  /**
    * The conversation this verb belongs to: the tile it was performed in, the
    * session whose model called the tool, or the active one. Null when no
    * conversation is open at all.
@@ -91,7 +97,7 @@ export interface PerformOptions {
  * the active conversation, which is the whole of the multi-session change to
  * the router (guide D4).
  */
-export type RouterBinding = Omit<RouterContext, "perform" | "conversationId" | "client"> & {
+export type RouterBinding = Omit<RouterContext, "perform" | "conversationId" | "client" | "actor"> & {
   /** Resolve a conversation: the one named, else the active one, else null. */
   conversation(conversationId?: string): { id: string; client: ChatClient } | null;
 };
@@ -202,6 +208,7 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
               verb,
               {
                 ...bound,
+                actor,
                 conversationId: conversation?.id ?? null,
                 client: conversation?.client ?? null,
                 // A handler that names no target sends to the verb's OWN

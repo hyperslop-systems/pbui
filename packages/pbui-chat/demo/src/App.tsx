@@ -51,6 +51,14 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
             </Text>
             <span className={styles.spacer} />
             <CheckboxRow checked={canApprove} onCheckedChange={onCanApproveChange} label="approver role" size="tiny" />
+            <Button
+              size="tiny"
+              variant="framed"
+              onClick={() => void chat.router.perform({ kind: "conversation.new" })}
+              title="start another agent and open it in a tile"
+            >
+              + conversation
+            </Button>
             <Button size="tiny" variant="framed" onClick={() => workbench.verbs.openLauncher()} title="open the launcher to place an application">
               {isApple ? "⌘K" : "Ctrl+K"} · launcher
             </Button>
@@ -84,6 +92,8 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
  * words them identically.
  */
 const PROGRAM_ROW_PREFIX = "program:";
+const CONVERSATION_ROW_PREFIX = "conversation:";
+const NEW_CONVERSATION_ROW = "conversation:new";
 
 function Workbench() {
   const pbui = chat.pbui.usePbui();
@@ -95,9 +105,29 @@ function Workbench() {
   // no program would open empty), so programs get rows of their own: one per
   // library entry, each opening the `script` app bound to it.
   const programs = useLibrary(library, (state) => state.programs);
+  // Conversations get rows of their own for the same reason programs do: the
+  // `chat` app is doc-bound, so the launcher skips it, and a chat tile with
+  // no conversation would open empty.
+  const conversations = useConversations(chat.conversations, (registry) => registry.all());
   const rows = useCallback(
     (context: LauncherRowsContext): LauncherRow[] => [
       ...defaultLauncherRows(context),
+      {
+        id: NEW_CONVERSATION_ROW,
+        kind: "app" as const,
+        appId: "chat",
+        title: "new conversation",
+        detail: "start another agent and open it beside this tile",
+      },
+      ...conversations
+        .filter((snapshot) => !snapshot.archived && (context.query === "" || snapshot.title.toLowerCase().includes(context.query)))
+        .map((snapshot) => ({
+          id: `${CONVERSATION_ROW_PREFIX}${snapshot.id}`,
+          kind: "app" as const,
+          appId: "chat",
+          title: snapshot.title,
+          detail: `conversation · ${snapshot.messageCount} message${snapshot.messageCount === 1 ? "" : "s"}${snapshot.active ? " · active" : ""}${snapshot.open ? "" : " · closed"}`,
+        })),
       ...Object.values(programs)
         .filter((program) => context.query === "" || program.title.toLowerCase().includes(context.query))
         .map((program) => ({
@@ -108,11 +138,25 @@ function Workbench() {
           detail: `program · v${program.version} · by ${program.by}${program.bindings.length ? ` · needs ${program.bindings.join(", ")}` : ""}`,
         })),
     ],
-    [programs],
+    [programs, conversations],
   );
   const choose = useCallback((row: LauncherRow, context: LauncherRowsContext): boolean => {
-    if (!row.id.startsWith(PROGRAM_ROW_PREFIX)) return false;
     const near = context.invocation.target;
+    if (row.id === NEW_CONVERSATION_ROW) {
+      void chat.router.perform({ kind: "conversation.new", ...(near ? { near } : {}) });
+      workbench.verbs.closeLauncher();
+      return true;
+    }
+    if (row.id.startsWith(CONVERSATION_ROW_PREFIX)) {
+      void chat.router.perform({
+        kind: "conversation.open",
+        conversationId: row.id.slice(CONVERSATION_ROW_PREFIX.length),
+        ...(near ? { near } : {}),
+      });
+      workbench.verbs.closeLauncher();
+      return true;
+    }
+    if (!row.id.startsWith(PROGRAM_ROW_PREFIX)) return false;
     workbench.verbs.openView("script", { [PROGRAM_BINDING]: row.id.slice(PROGRAM_ROW_PREFIX.length) }, near ? { near } : {});
     workbench.verbs.closeLauncher();
     return true;

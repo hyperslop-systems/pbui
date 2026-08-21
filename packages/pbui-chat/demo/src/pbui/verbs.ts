@@ -1,4 +1,12 @@
-import { ReferenceSchema, type VerbDocs } from "@hyperslop-systems/pbui-chat";
+import {
+  CONVERSATION_VERB_DOCS,
+  ConversationVerbSchemas,
+  describeConversationVerb,
+  isConversationVerb,
+  ReferenceSchema,
+  type ConversationVerb,
+  type VerbDocs,
+} from "@hyperslop-systems/pbui-chat";
 import { describeWorkbenchVerb, type WorkbenchVerb } from "@hyperslop-systems/pbui-workbench";
 import { z } from "zod";
 
@@ -61,6 +69,14 @@ export const VerbSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("program.pin"), programId: z.string(), pinned: z.boolean() }),
   z.object({ kind: z.literal("action.run"), actionId: z.string(), ref: ReferenceSchema }),
   z.object({ kind: z.literal("action.remove"), actionId: z.string() }),
+
+  /*
+   * The conversation verbs, spelled exactly as pbui-chat spells them — the
+   * same argument as the workbench verbs above. The package owns the payload
+   * shapes and the refusal wording so a trace from one PBUI product reads in
+   * another; this union only declares that the shop offers them.
+   */
+  ...ConversationVerbSchemas,
 ]);
 
 export type Verb = z.infer<typeof VerbSchema>;
@@ -105,6 +121,8 @@ export const VERB_DOCS: VerbDocs = {
   "program.pin": { doc: "pin a program so the agent cannot change or remove it unasked" },
   "action.run": { doc: "perform a generated action on an object" },
   "action.remove": { doc: "remove a generated action from every menu", danger: true },
+
+  ...CONVERSATION_VERB_DOCS,
 };
 
 export interface Action {
@@ -149,8 +167,10 @@ export function describeVerb(verb: Verb): string {
     case "action.remove":
       return `remove action ${verb.actionId}`;
     default:
-      // The workbench verbs describe themselves; pbui-workbench owns the
-      // wording so the object menu, the chrome buttons and the trace agree.
+      // The workbench and conversation verbs describe themselves; their
+      // packages own the wording so the object menu, the chrome buttons and
+      // the trace agree.
+      if (isConversationVerb(verb)) return describeConversationVerb(verb as ConversationVerb);
       return describeWorkbenchVerb(verb as unknown as WorkbenchVerb);
   }
 }

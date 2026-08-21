@@ -104,6 +104,21 @@ export type ActionValue = {
   pinned?: boolean;
 };
 
+/**
+ * A conversation with an agent, as an object. The id IS the chat session id,
+ * so a mention of one is a mention of the session the server knows.
+ */
+export type ConversationValue = {
+  title: string;
+  messageCount?: number;
+  streaming?: boolean;
+  active?: boolean;
+  pinned?: boolean;
+  archived?: boolean;
+  open?: boolean;
+  model?: string | null;
+};
+
 export type FieldValue = {
   tableId: string;
   name: string;
@@ -126,6 +141,7 @@ export interface Values {
   app: Reference<AppValue>;
   program: Reference<ProgramValue>;
   action: Reference<ActionValue>;
+  conversation: Reference<ConversationValue>;
   field: Reference<FieldValue>;
   row: Reference<RowValue>;
   source: Reference<SourceValue>;
@@ -158,6 +174,7 @@ export const TONES: Record<PresentationType, string> = {
   app: "var(--pbui-pane-alt)",
   program: "var(--pbui-tone-widget)",
   action: "var(--pbui-tone-neutral)",
+  conversation: "var(--pbui-pane-alt)",
   field: "var(--pbui-tone-field)",
   row: "var(--pbui-tone-row)",
   source: "var(--pbui-tone-source)",

@@ -33,6 +33,14 @@ const (
 	ToolSandboxRemove       = "sandbox_remove"
 )
 
+// Conversation tool names. Frontend tools: the browser owns the list of
+// conversations (the server's session index, when it exists, is a
+// convenience), so the browser advertises them.
+const (
+	ToolConversationList = "conversation_list"
+	ToolConversationSend = "conversation_send"
+)
+
 // SandboxExampleProgram is the worked program the prompt carries. PBUI-AGENT-1 and -2
 // both recorded the model guessing a nested shape until the instructions held
 // one complete, valid value; a program is the most nested thing yet. Exported
@@ -104,6 +112,26 @@ func SystemPromptSection(v *Vocabulary) string {
 	b.WriteString("The user's message may end with a `pbui-refs` section listing objects they pointed at; treat those as authoritative and refer to them by their mentions.\n")
 	b.WriteString(workbenchSection(v))
 	b.WriteString(sandboxSection(v))
+	b.WriteString(conversationsSection(v))
+	return b.String()
+}
+
+// conversationsSection tells the model that it is not the only agent on this
+// screen, and is emitted only for a product that declares a `conversation`
+// type. A product with one conversation has no conversation tools in its
+// manifest, and telling its model about handing work to another agent would
+// invite calls that go nowhere.
+func conversationsSection(v *Vocabulary) string {
+	if !v.KnowsType("conversation") {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n## Conversations\n")
+	b.WriteString("The user may have several conversations open at once, each with its own agent — you are one of them. A conversation is an object: [[conversation:<conversationId>|title]]. ")
+	b.WriteString("Call " + ToolConversationList + " to see them, which one the user is currently working in, and which one is you; ids come from there and nowhere else.\n")
+	b.WriteString("You share the user's screen with the others: a tile another agent opened is still on the workbench, and a program another agent wrote is still in the library. Do not undo their work.\n")
+	b.WriteString("To hand something to another agent, call " + ToolConversationSend + " with that conversation's id and a message. Say what you are asking for and include the mentions it will need — the other agent cannot see this conversation. ")
+	b.WriteString("Use it when the user asks you to, or when work plainly belongs to an agent already doing it; a message to another agent starts a run there, so do not use it to think out loud.\n")
 	return b.String()
 }
 

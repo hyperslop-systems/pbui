@@ -1,4 +1,12 @@
-import { createPbuiChat, createVerbRouter, type Reference, type VerbFamily } from "@hyperslop-systems/pbui-chat";
+import {
+  createPbuiChat,
+  createVerbRouter,
+  isConversationVerb,
+  performConversationVerb,
+  type ConversationVerb,
+  type Reference,
+  type VerbFamily,
+} from "@hyperslop-systems/pbui-chat";
 import { substituteVerbRef, type UIReference } from "@hyperslop-systems/pbui-sandbox";
 import {
   describeWorkbench,
@@ -67,6 +75,19 @@ const FAMILIES: Record<VerbKind, VerbFamily> = {
   "program.pin": "local",
   "action.run": "local",
   "action.remove": "local",
+
+  /*
+   * Conversations: four are local — they change this browser's list and
+   * layout — and `conversation.send` is an AGENT verb whose target is a
+   * conversation other than the one performing it. That asymmetry is the
+   * handoff, and it is the only place `sendToAgent`'s target argument is
+   * used by the shop.
+   */
+  "conversation.new": "local",
+  "conversation.open": "local",
+  "conversation.select": "local",
+  "conversation.rename": "local",
+  "conversation.send": "agent",
 };
 
 /** Every tile showing a program, across workspaces, by placement id. */
@@ -80,6 +101,18 @@ export const router = createVerbRouter<Verb>({
   families: (verb) => FAMILIES[verb.kind],
 
   local: async (verb, ctx) => {
+    // pbui-chat owns the conversation verbs for the same reason the workbench
+    // owns its own: one dispatcher, one set of refusal strings, one wording
+    // across every product in the family.
+    if (isConversationVerb(verb)) {
+      await performConversationVerb(verb as ConversationVerb, {
+        actor: ctx.actor,
+        conversations: chat.conversations,
+        workbench: chat.workbench(),
+        send: (conversationId, template, refs) => ctx.sendToAgent(template, refs, { conversationId }),
+      });
+      return;
+    }
     // The workbench owns its own verbs; `performWorkbenchVerb` is the single
     // dispatcher, so a verb added to the package needs no case here.
     if (isWorkbenchVerb(verb)) {
@@ -169,6 +202,12 @@ export const router = createVerbRouter<Verb>({
   },
 
   agent: async (verb, ctx) => {
+    // The handoff: a message to a conversation OTHER than the one this verb
+    // came from. Everything below sends to the verb's own conversation.
+    if (verb.kind === "conversation.send") {
+      await ctx.sendToAgent(verb.template, verb.refs ?? [], { conversationId: verb.conversationId });
+      return;
+    }
     switch (verb.kind) {
       case "compareWith": {
         const right =

@@ -1,0 +1,69 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: var(--pbui-space-2);
+}
+
+.header {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  flex: 1 1 auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+ * Stacked rather than name-beside-actions. Seven actions are wider than a
+ * narrow tile, and a grid column sized to them squeezed the title down to a
+ * few characters — the one thing a row exists to show.
+ */
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--pbui-space-1);
+  border-bottom: var(--pbui-border-hair);
+}
+
+.row[data-active="true"] {
+  background: var(--pbui-pane-alt);
+}
+
+.name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  gap: var(--pbui-space-2);
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  gap: var(--pbui-space-1);
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+}

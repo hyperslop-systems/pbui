@@ -72,6 +72,13 @@ const types: Record<PresentationType, TypeSpec> = {
     verbs: ["inspect", "action.remove", "askAgent"],
     example: "[[action:act-3|Days of cover]]",
   },
+  conversation: {
+    doc: "one conversation with an agent; the id is its chat session id",
+    idHint: "conversationId, from conversation_list",
+    tone: TONES.conversation,
+    verbs: ["conversation.open", "conversation.select", "conversation.rename", "conversation.send", "inspect", "askAgent"],
+    example: "[[conversation:3f0a…|reorder desk]]",
+  },
   field: {
     doc: "a column of a table the agent produced",
     idHint: "<tableId>.<column>",
