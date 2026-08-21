@@ -23,6 +23,8 @@ RelatedFiles:
       Note: outlineRows/summariseNode, fire controls (commit 850089b)
     - Path: repo://packages/pbui-sandbox/src/devtools/ReplTile/ReplTile.tsx
       Note: The REPL tile (commit a57e818)
+    - Path: repo://packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx
+      Note: Timeline tile, eventsForReplay, overLimit (commit c6b4529)
     - Path: repo://packages/pbui-sandbox/src/devtools/createSandboxDevtools.tsx
       Note: The devtools factory; sets host.devtools (commit 850089b)
     - Path: repo://packages/pbui-sandbox/src/engines/conformance.ts
@@ -45,6 +47,7 @@ LastUpdated: 2026-08-21T16:10:00-04:00
 WhatFor: Continuation and review; read this to know what was tried, what broke, and why the design is shaped as it is.
 WhenToUse: When resuming a phase, reviewing a commit, or wondering why something is the way it is.
 ---
+
 
 
 
@@ -346,3 +349,62 @@ engine.evaluate({ instanceId, code: "$render({ value: 7 })", pluginState, global
 // → { value: { kind: "column", children: [ { kind: "text", text: "Count: 7" }, … ] } }
 engine.evaluate({ instanceId, code: "() => 1", … })   // → { value: { $type: "function", $text: "() => 1" } }
 ```
+
+## Step 5: Phase 3 — the Dispatch Timeline
+
+The timeline tile is a view over the registry's ring: every entry newest first with its time to the millisecond, the program and version as a chip, the kind, and the `formatEntry` line the script tile's details also use. Event rows list the intents they produced under them. A row is marked when something went wrong or slow — an error, a rejected or ignored intent, a failed evaluation, or a duration past the engine's default limit for its phase (`overLimit`). Filters are an instance select (*all*, *selected sandbox*, or any instance that has entries) and per-kind toggle buttons. *pause* freezes the rendered list while the ring keeps filling; *clear* empties the ring. *copy as events* turns one instance's event entries, oldest first, into `[{handler, args?}]` — exactly the `events` argument of `sandbox_test` — and, when the clipboard is unavailable, shows the JSON in a read-only text area instead (guide R14). Event rows offer *fire again* while the same instance is still live; error rows offer *inspect* (devtools only) and *ask the agent*.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 3.
+
+**Inferred user intent:** Scene 3 — see what happened across instances, in order, with durations, and hand a reproduction to the agent.
+
+**Commit (code):** c6b4529 — "PBUI-SANDBOX-1 Phase 3: Dispatch Timeline tile (instance/kind filters, pause, clear, copy as sandbox_test events, fire again, inspect, ask the agent)"
+
+### What I did
+
+- `devtools/TimelineTile/{TimelineTile.tsx, TimelineTile.module.css, TimelineTile.test.tsx}`; registered as `sandbox-timeline` (singleton); exports `TIMELINE_KINDS`, `eventsForReplay`, `overLimit`.
+- Tests: order and content of rows after a click; kind filter down to `intent`; pause/resume; *fire again* increments through the live handle; *clear*; *copy as events* with a mocked clipboard (shape checked) and with a rejecting clipboard (text area appears); an error row from `BROKEN_RENDER_PROGRAM` is marked and *ask the agent* receives the template and the program reference; the helpers. 90 tests in the package; chat 110; builds.
+- Browser: launcher → timeline; clicked `+` and ran `$state` in the REPL; rows read `evaluate · render · intent · event · render · load` newest first with durations (`loaded in 86.0 ms` under the QuickJS worker); *fire again* on the event row set the counter to 2. Screenshot `various/04-p3-timeline.png`.
+
+### Why
+
+- One ring, one order: the tile is a filter over the same data the script tile's details show, so the two never disagree.
+- *copy as events* is the bridge to the agent's own test loop: a human reproduces what they saw by pasting the events into the chat.
+
+### What worked
+
+- `formatEntry` from Phase 0 carried the rows without changes.
+- `live` detection (the row's `instanceId` equals the snapshot's current `instanceId`) keeps *fire again* off rows from an instance that has since been reloaded.
+
+### What didn't work
+
+- `container.querySelector('[aria-label="kinds"]')` was null: pbui's `Toolbar` takes `children, bordered, tight, as, className` only and drops other props. Wrapped the toolbar in a `role="group" aria-label="kinds"` div.
+- A `vi.fn(async () => undefined)` clipboard mock typed `mock.calls[0][0]` as `undefined` (`Tuple type '[]' has no element at index '0'`); giving the mock a `(_text: string)` parameter fixed the inference.
+- First version read the library through `useInstances(host.library as unknown as InstanceRegistry, …)` — wrong store; `useLibrary(host.library, s => s.programs)` is the honest subscription.
+
+### What I learned
+
+- Timing from the worker engine includes the message round trip: the first render under QuickJS read 12.7 ms and a load 86 ms, where the eval engine shows ~1 ms and ~50 ms. The timeline is the place a product would notice that.
+
+### What was tricky to build
+
+- **Scope semantics.** *selected sandbox* with nothing selected must show nothing (and say "nothing matches"), not fall back to everything; the filter is `scope === ALL || entry.viewId === scopeViewId`, where `scopeViewId` is null in that case.
+- **Pause without losing data.** `paused` stores the array the ring held at the moment of pausing; the ring itself keeps recording, and `resume` simply drops the frozen copy.
+
+### What warrants a second pair of eyes
+
+- `overLimit` compares against `DEFAULT_LIMITS`, not the engine's configured limits (the engine does not expose them). A product with custom limits sees the defaults as thresholds; the doc comment says so.
+- Rendering caps at 300 rows of the 500-entry ring; the footer says `n of m entries` so the cap is visible.
+
+### What should be done in the future
+
+- Phase 4: the Playground with its persisted draft and live instance.
+
+### Code review instructions
+
+- `TimelineTile.tsx` (`rows`, `copyEvents`, `Row`), then the test's first case.
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, launcher → timeline, then click around a program tile.

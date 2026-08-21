@@ -40,3 +40,12 @@ Phase 2 (commit a57e818): ProgramEngine.evaluate implemented once in the bootstr
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/bootstrap.ts — evaluate + __describe, BOOTSTRAP_VERSION 2 (commit a57e818)
 
+
+## 2026-08-21
+
+Phase 3 (commit c6b4529): Dispatch Timeline tile — newest first, instance/kind filters, pause, clear, copy as sandbox_test events (clipboard or textarea fallback), fire again, inspect, ask the agent; 90 sandbox tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx — The timeline tile (commit c6b4529)
+
