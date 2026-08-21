@@ -288,6 +288,30 @@ describe("store hooks (5.A)", () => {
     expect(seen[0]?.names).toContain("second");
   });
 
+  it("keeps a committed mutation successful when onMutate throws", () => {
+    const rejected = vi.fn();
+    const postCommit = vi.fn();
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter"),
+      onMutate: () => {
+        throw new Error("localStorage quota exceeded");
+      },
+      onRejected: rejected,
+      onPostCommitError: postCommit,
+    });
+
+    const created = wb.verbs.createWorkspace("landed", tile("counter"));
+    expect(created).toBeTruthy();
+    expect(wb.store.getState().document.workspaces.some((workspace) => workspace.name === "landed")).toBe(true);
+    expect(rejected).not.toHaveBeenCalled();
+    expect(postCommit).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "localStorage quota exceeded" }),
+      expect.any(Array),
+      wb.store.getState().document,
+    );
+  });
+
   it("does not call onMutate for activation or launcher state", () => {
     let calls = 0;
     const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter"), onMutate: () => (calls += 1) });

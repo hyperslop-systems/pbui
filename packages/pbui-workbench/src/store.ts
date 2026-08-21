@@ -40,6 +40,12 @@ export interface WorkbenchState {
 export interface WorkbenchStoreOptions {
   onMutate?(mutations: Mutation[], next: WorkbenchDocument): void;
   onRejected?(mutations: Mutation[], error: MutationError): void;
+  /**
+   * A post-commit hook failed after the document was already installed.
+   * This is deliberately separate from `onRejected`: retrying this batch
+   * would duplicate a change that did commit.
+   */
+  onPostCommitError?(error: unknown, mutations: Mutation[], next: WorkbenchDocument): void;
 }
 
 /**
@@ -102,13 +108,9 @@ export function createWorkbenchStore(
     setState,
     mutate(mutations) {
       if (mutations.length === 0) return false;
+      let document: WorkbenchDocument;
       try {
-        const document = applyMutations(state.document, mutations);
-        setState({ document });
-        // After the commit, so a handler that reads the store sees the new
-        // document rather than the one it is being told about.
-        options.onMutate?.(mutations, document);
-        return true;
+        document = applyMutations(state.document, mutations);
       } catch (error) {
         if (error instanceof MutationError) {
           if (options.onRejected) options.onRejected(mutations, error);
@@ -117,6 +119,22 @@ export function createWorkbenchStore(
         }
         throw error;
       }
+
+      setState({ document });
+      // A persistence/outbox hook runs after commit. Its failure must never
+      // turn a committed batch into `false` or throw through the caller: an
+      // agent would retry and duplicate work that is already visible.
+      try {
+        options.onMutate?.(mutations, document);
+      } catch (error) {
+        try {
+          if (options.onPostCommitError) options.onPostCommitError(error, mutations, document);
+          else console.error("pbui-workbench: post-commit hook failed", error);
+        } catch (reportingError) {
+          console.error("pbui-workbench: post-commit error handler failed", reportingError);
+        }
+      }
+      return true;
     },
     replaceDocument(document) {
       setState((current) => ({
