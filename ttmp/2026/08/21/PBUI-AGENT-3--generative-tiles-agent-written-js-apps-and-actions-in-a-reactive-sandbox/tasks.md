@@ -9,6 +9,6 @@
 - [x] Phase 1 (impl): UINode→PBUI renderer, ProgramLibrary (localStorage), host loop hook, the script app; demo registration <!-- t:lycp -->
 - [x] Phase 2 (impl): sandbox_* frontend tools, program/action types + 4 verb kinds in the demo vocabulary, router handlers, prompt.go section, regenerated vocabulary.json <!-- t:z8a7 -->
 - [x] Phase 3 (impl): generated actions — library.actions, registry composition, action.run, sandbox_define_action <!-- t:y1bk -->
-- [ ] Phase 4 (impl): scripted scenario, Go e2e over a bridged sandbox tool, sandbox_test, limits and error tiles <!-- t:j0xt -->
+- [x] Phase 4 (impl): scripted scenario, Go e2e over a bridged sandbox tool, sandbox_test, limits and error tiles <!-- t:j0xt -->
 - [ ] Phase 5 (impl): QuickJS worker engine behind ProgramEngine; Playwright runaway-loop test <!-- t:jjo9 -->
 - [ ] Phase 6 (optional): server-side dry-run of a program with goja (vm-system daemon or in-process) <!-- t:hp27 -->

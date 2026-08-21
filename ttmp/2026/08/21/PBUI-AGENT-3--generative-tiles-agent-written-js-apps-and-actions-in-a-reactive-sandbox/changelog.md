@@ -41,3 +41,13 @@ Phases 2-3 built (1095567): seven sandbox_* frontend tools sharing one dry-run p
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/actions.ts — withGeneratedActions and substituteRef
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/pbuichat/prompt.go — sandboxSection and the worked example
 
+
+## 2026-08-21
+
+Phase 4 built (9f54d6e): scripted programScenario over a frontendTool helper (test → create → define action) using the prompt's exported worked example; two Go e2e tests with a fake browser; tool-level limits enforced in the dry run; honest sandbox_update_app result; guide R17/R18. Browser: the scripted gesture stores prg-3, opens it bound to 2049, defines act-2, traces program.open as agent.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/scripted/programs.go — The scripted program scenario
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/server_test.go — answerFrontendTool and the two scenario e2e tests
+

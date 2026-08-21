@@ -493,3 +493,70 @@ make chat-serve   # then: __pbuiDemo.library.putAction({label:"Days of cover", t
 ### Technical details
 
 The trace after the browser gesture, as the trace tile renders it: `#1 human program.open 1/2oz American Gold Eagle 2024 ✓`, `#2 human action.run 1/2oz American Gold Eagle 2024 ✓` — the expanded verb lands first because `action.run`'s handler awaits `ctx.perform` before its own report is queued. The tile opened by the action has `view.documents = { program: "prg-2", product: "2050" }`, which is why a second click on the same SKU goes to the existing tile and a click on a different SKU opens another.
+
+## Step 6: Phase 4 — the gesture without a model
+
+Phase 4 makes `make chat-serve` demonstrate the whole thing with no credentials: the scripted engine gained a `frontendTool` helper (the bridge's `FRONTEND_AUTO` mode beside `humanTool`'s `FRONTEND_HUMAN`) and a `programScenario` that does exactly what the prompt tells a real model to do — `sandbox_test` first, `sandbox_create_app` only on a clean run, `sandbox_define_action` when asked — using the prompt's own worked program (now `pbuichat.SandboxExampleProgram`, one source for both) bound to the product the user pointed at. In the browser, typing *"make me a days of cover tile and add an action for it"* produced four agent messages, a stored `prg-3` by agent, a tile bound to product 2049, an action `act-2` on every product, and `#1 agent program.open ✓` in the trace — the browser executing agent-written code through the real bridge, with the scripted engine standing in for the model.
+
+Two Go e2e tests pin it: the happy path checks every bridged input (the worked program with `bindings: ["product"]`, `documents: {product: "2051"}` from the message's refs, the title, `open: true`, the action's `openProgram` behaviour) and the two mentions in the final messages; the failure path asserts a failed `sandbox_test` is *not* followed by a create and is reported with its phase. On the TypeScript side the dry run now enforces the tools' own `sourceBytes` and tree limits so a product can cap what the agent writes without rebuilding the engine, and `sandbox_update_app` stopped promising a warning it could not compute.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Implement the guide's Phase 4: scripted scenario, Go e2e, limits and error handling; verify in the browser.
+
+**Inferred user intent:** A demo anyone can run, and a CI fixture that fails if the bridge or the scenario regresses.
+
+**Commit (code):** `9f54d6e` — "PBUI-AGENT-3 Phase 4: scripted program scenario, Go e2e, limits, honest update result"
+
+### What I did
+
+- `pkg/chatserver/scripted/engine.go`: `requestTool(name, mode, input)`, with `humanTool` and the new `frontendTool` as two-line wrappers. `scenarios.go`: `frontendAutoMode()`, and the dispatch line for "program / counter / make me a / build me / tile that / tile for / days of cover / define an action / add an action", placed second so it wins over the low-stock keywords. `programs.go` (new): `counterProgram`, `programScenario`, `productFromContext`.
+- `pkg/pbuichat/prompt.go`: `sandboxExample` → exported `SandboxExampleProgram`.
+- `pkg/chatserver/server_test.go`: `answerFrontendTool` (the fake browser, returning the call's input), `TestProgramScenarioBridgesTheSandboxTools`, `TestProgramScenarioStopsOnAFailedTest`.
+- `packages/pbui-chat/src/tools/sandboxTools.ts`: `check()` enforces `limits.sourceBytes` before load and re-validates every rendered tree with the tools' limits; a validator failure at render is `VALIDATION_ERROR`; `sandbox_update_app` returns `openIn` and a `note` instead of `warnings`. Two limits tests.
+- Guide §9: R17 (stale embedded vocabulary) and R18 (the busy loop).
+- Browser: `various/06-browser-scripted-program-scenario.png`.
+
+### Why
+
+- The scenario must use the same program the prompt teaches, or the demo proves a different thing than the model will do; exporting the constant is the cheapest guarantee.
+- The fake browser returns the tool's *input* so the test asserts what the scenario sent, not only that it sent something — the inputs are the contract the browser tools parse with zod.
+- Enforcing limits in the dry run rather than only in the engine: the engine is shared with every tile, but the agent's output is the untrusted thing, and a product may want the agent capped tighter than its own seeds.
+
+### What worked
+
+- Both e2e tests passed on the first run once the build was fixed, and the browser run matched the test's sequence message for message.
+- `hasHumanTool` already answered "did the browser advertise this tool" regardless of mode, so `programScenario` needed no new availability check.
+
+### What didn't work
+
+- `pkg/pbuichat/prompt.go:128:56: undefined: sandboxExample` — my rename patch missed the usage line (the string-literal search did not match the file's quoting); one `sed` fixed it. The lesson is mechanical: rename with a word-boundary regex, not a literal.
+- The first limits test could not have passed as written: the harness's engine is created with `DEFAULT_LIMITS`, so a tools-level `sourceBytes: 40` reached neither `engine.load` nor `library.putProgram`. That is a real gap, not a test bug — fixed by enforcing the tools' limits in `check()` (above), which is what the guide's §5.11 describes anyway.
+- The scripted reply read "Done — Days of cover · 2049 is in Days of cover · 2049" because the tile mention reused the program title; now "in [[tile:n-9|its tile]]".
+
+### What I learned
+
+- A scripted engine that calls *frontend* tools is the same machinery as one that calls *human* tools; the only difference is the mode enum, and pinocchio's `Manager.Request` blocks identically. The guide's §3.2 claim holds in code.
+- The trace shows `actor: agent` for the scripted `program.open` because the tool performed it through the router with `actor: "agent"` — the same path a real model's call takes, so the audit is right even in the demo.
+
+### What was tricky to build
+
+- **Choosing the product without a model.** The scenario reads the message's typed refs, then the focus, then defaults to `Products[0]` when the prompt mentions cover/stock/reorder — the same precedence `reorderScenario` uses, so a user who mentions `[[product:2051]]` gets 2051 and the e2e test asserts it.
+- **Tool-level versus engine-level limits.** Two places can refuse a program: the engine (its own construction-time limits) and the tools (per product policy over the agent). They are different questions; the dry run now answers the second before it asks the first.
+
+### What warrants a second pair of eyes
+
+- `programScenario`'s keyword list is broad ("make me a", "tile for"); a prompt like "make me a workspace" would be caught here before AGENT-2's (not yet scripted) workspace scenario. Fine today, worth re-ordering when that scenario lands.
+- The dry run validates each tree twice under the eval engine (engine limits, then tool limits). Cheap; a `limits` argument on `engine.render` would remove it.
+
+### What should be done in the future
+
+- Phase 5: the QuickJS worker engine behind `ProgramEngine`, the conformance suite on both engines, a Playwright runaway-render test.
+- Reprint the plan and P0 slips (almanach was down earlier).
+
+### Code review instructions
+
+- `pkg/chatserver/scripted/programs.go` end to end (it is the demo's script for a model), then `server_test.go`'s two new tests, then `sandboxTools.ts:check` for the limit checks.
+- Validate: `GOWORK=off go test ./pkg/chatserver/...`; `pnpm --filter @hyperslop-systems/pbui-chat test` (110); `make chat-serve`, then type "make me a days of cover tile and add an action for it".
