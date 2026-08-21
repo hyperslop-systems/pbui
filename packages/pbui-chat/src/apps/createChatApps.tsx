@@ -1,4 +1,7 @@
 import { defineApp, type AppDescriptor } from "@hyperslop-systems/pbui-workbench";
+import { ActiveConversationScope } from "../conversations/ActiveConversationScope";
+import { CONVERSATION_BINDING } from "../conversations/bindings";
+import type { ConversationRegistry } from "../conversations/registry";
 import { ChatInspectorPanel, TracePanel, WatchlistPanel } from "../panels";
 import { toneVar } from "../tone";
 import type { Vocabulary } from "../vocabulary/schemas";
@@ -25,17 +28,35 @@ export interface CreateChatAppsOptions {
  * from there, and everything else the components need they read from the
  * chat's Provider at render time.
  */
-export function createChatApps(chat: { vocabulary: Vocabulary }, options: CreateChatAppsOptions = {}): AppDescriptor[] {
+export function createChatApps(
+  chat: { vocabulary: Vocabulary; conversations: ConversationRegistry },
+  options: CreateChatAppsOptions = {},
+): AppDescriptor[] {
   const tone = (id: ChatAppId, type: string, fallback: string) =>
     options.tones?.[id] ?? toneVar(chat.vocabulary.types[type]?.tone ?? type, fallback);
   const title = (id: ChatAppId, fallback: string) => options.titles?.[id] ?? fallback;
 
   return [
+    /*
+     * The conversation is a DOCUMENT the chat application is bound to, not
+     * the application itself (guide D3). Two tiles with two bindings are two
+     * agents; two placements of one view are one agent seen twice, which is
+     * what splitting a tile has always meant. The workbench's doc-binding
+     * rule gives de-duplication, titles and linked splits for free.
+     */
     defineApp({
       id: "chat",
       title: title("chat", "chat"),
       tone: tone("chat", "message", "var(--pbui-pane-alt)"),
       singleton: false,
+      docBound: true,
+      duplicable: true,
+      bindings: [CONVERSATION_BINDING],
+      titleFor: (view) => {
+        const id = view.documents[CONVERSATION_BINDING];
+        if (!id) return view.title || "chat";
+        return view.title || chat.conversations.get(id)?.title || `conversation ${id.slice(0, 8)}`;
+      },
       Component: ChatApp,
     }),
     defineApp({
@@ -65,9 +86,13 @@ export function createChatApps(chat: { vocabulary: Vocabulary }, options: Create
       title: title("trace", "trace"),
       tone: tone("trace", "traceEntry", "var(--pbui-tone-neutral)"),
       singleton: true,
+      // The trace lives in a conversation's timeline, so the tile follows the
+      // active one rather than showing an arbitrary session's entries.
       Component: () => (
         <PanelApp part="trace-app">
-          <TracePanel />
+          <ActiveConversationScope>
+            <TracePanel />
+          </ActiveConversationScope>
         </PanelApp>
       ),
     }),

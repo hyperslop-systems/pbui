@@ -1,4 +1,4 @@
-import { ChatProvider, timelineSlice, useChatStore, type ChatProviderConfig, type TimelineEntity } from "@go-go-golems/chat-provider";
+import { timelineSlice, useChatStore, type TimelineEntity } from "@go-go-golems/chat-provider";
 import { useEffect, type ReactNode } from "react";
 import { chat } from "../../demo/src/chat";
 import type { Environment } from "../../demo/src/pbui/types";
@@ -7,19 +7,18 @@ import type { WidgetDocument } from "../vocabulary/schemas";
 
 /*
  * The stories borrow the demo product (its registry, vocabulary and router)
- * and a real chat-provider store that is seeded rather than connected: no
+ * and one conversation whose runtime is seeded rather than connected: no
  * backend, but the same reference index, outlets and adapters the app uses.
- * Verbs fire for real; with no session id the router skips the trace POST.
+ * Verbs fire for real; auto-connect is off, so nothing reaches for a socket.
  */
 
-const storyConfig: ChatProviderConfig = {
-  basePrefix: "",
-  extensions: [chat.extension],
-  sendMessageBody: chat.sendMessageBody,
-  sessionPolicy: { restore: "never" },
-};
+const STORY_CONVERSATION = "story";
+const STORY_ENVIRONMENT: Environment = { canApprove: true, sessionId: STORY_CONVERSATION };
 
-const STORY_ENVIRONMENT: Environment = { canApprove: true, sessionId: "story" };
+chat.conversations.setAutoConnect(false);
+chat.conversations.adopt(STORY_CONVERSATION, { title: "storybook" });
+chat.conversations.open(STORY_CONVERSATION);
+chat.conversations.activate(STORY_CONVERSATION);
 
 function Seed({ entities }: { entities: TimelineEntity[] }) {
   const store = useChatStore();
@@ -40,15 +39,15 @@ export function DemoChat({
   environment?: Environment;
 }) {
   return (
-    <ChatProvider config={storyConfig}>
-      <chat.Provider environment={environment}>
+    <chat.Provider environment={environment}>
+      <chat.ConversationScope conversationId={STORY_CONVERSATION}>
         <Seed entities={entities} />
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--pbui-space-4)", maxWidth: 720 }}>{children}</div>
         <chat.MouseDocLine ambient="storybook" />
         <chat.ObjectMenu />
         <chat.AcceptBanner />
-      </chat.Provider>
-    </ChatProvider>
+      </chat.ConversationScope>
+    </chat.Provider>
   );
 }
 

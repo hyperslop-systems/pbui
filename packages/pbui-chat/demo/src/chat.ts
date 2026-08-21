@@ -200,12 +200,18 @@ export const router = createVerbRouter<Verb>({
   tool: () => {},
 });
 
+/** Where the demo keeps the conversation records; the layout is a separate key. */
+export const CONVERSATIONS_STORAGE_KEY = "pbui-chat-demo.conversations";
+/** What the one-session build persisted, and what a returning browser is migrated from. */
+export const LEGACY_SESSION_KEY = "pbui-chat-demo.session";
+
 export const chat = createPbuiChat<Values, Environment, Verb>({
   pbui,
   registry,
   vocabulary,
   router,
   basePrefix: "",
+  conversations: { key: CONVERSATIONS_STORAGE_KEY },
   // The library and the engine are attached by workbench.ts, which owns them;
   // the dry-run resolver is the same one the tiles use.
   sandbox: { resolve: resolveDemoBinding },

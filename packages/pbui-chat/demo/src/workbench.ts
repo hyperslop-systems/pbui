@@ -1,9 +1,9 @@
-import { createChatApps, RefPresentation, type Reference } from "@hyperslop-systems/pbui-chat";
+import { CONVERSATION_BINDING, createChatApps, RefPresentation, type Reference } from "@hyperslop-systems/pbui-chat";
 import { createSandboxDevtools, createScriptApp, type SandboxHost } from "@hyperslop-systems/pbui-sandbox";
-import { createWorkbench, layout, parseDocument, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench, describeWorkbench, layout, parseDocument, split, tile } from "@hyperslop-systems/pbui-workbench";
 import { createElement } from "react";
 import { createDemoApps } from "./apps";
-import { chat, router } from "./chat";
+import { chat, LEGACY_SESSION_KEY, router } from "./chat";
 import type { Verb } from "./pbui/verbs";
 import { demoBindingChoices, engine, instances, library, programStates, resolveDemoBinding, seedLibrary, LIBRARY_STORAGE_KEY } from "./sandbox";
 
@@ -96,6 +96,71 @@ chat.attachWorkbench(workbench);
 // …and the sandbox_* tools are offered to the model from here on.
 chat.attachSandbox(library, engine, instances);
 
+/**
+ * Make sure there is a conversation to show, and that every `chat` tile is
+ * bound to one.
+ *
+ * Three cases. A browser that has run this build has records in storage and
+ * a layout whose chat tiles already carry a `conversation` binding. A browser
+ * returning from the one-session build has neither: it has the session id the
+ * old `sessionPolicy` persisted, which becomes the first record and the
+ * binding for its unbound chat tile — the transcript it left is the
+ * transcript it comes back to. A fresh browser has nothing, so a session is
+ * minted before anything renders a chat tile.
+ *
+ * Awaited by `main.tsx` before the first render, so no tile ever paints the
+ * "not bound to a conversation" state on a normal boot.
+ */
+export const conversationsReady = bootstrapConversations();
+
+async function bootstrapConversations(): Promise<string | null> {
+  const conversations = chat.conversations;
+  const legacy = storage()?.getItem(LEGACY_SESSION_KEY)?.trim();
+  if (legacy) {
+    conversations.adopt(legacy);
+    // Migrated once. Leaving it would resurrect the same conversation as a
+    // duplicate record the next time storage is cleared by hand.
+    storage()?.removeItem(LEGACY_SESSION_KEY);
+  }
+
+  let id = conversations.activeId() ?? conversations.all().find((snapshot) => !snapshot.archived)?.id ?? null;
+  if (!id) {
+    try {
+      id = (await conversations.create({ open: false, activate: false })).id;
+    } catch (error) {
+      console.warn("pbui-chat-demo: could not start a conversation", error);
+      return null;
+    }
+  }
+  conversations.open(id);
+  conversations.activate(id);
+  bindLooseChatTiles(id);
+  return id;
+}
+
+/** Bind every `chat` tile a saved layout left without a conversation. */
+function bindLooseChatTiles(conversationId: string) {
+  for (const workspace of describeWorkbench(workbench).workspaces) {
+    for (const chatTile of workspace.tiles) {
+      if (chatTile.appId !== "chat") continue;
+      if (chatTile.documents[CONVERSATION_BINDING]) continue;
+      workbench.verbs.rebind(chatTile.viewId, { [CONVERSATION_BINDING]: conversationId });
+    }
+  }
+}
+
+/*
+ * The conversation half of the demo's console door
+ * (`__pbuiDemo.conversations.create()`), so a reviewer — or a browser test —
+ * can open a second agent without a launcher row. Phase 1 gives it a button.
+ */
+if (typeof window !== "undefined") {
+  const demo = (window as unknown as { __pbuiDemo?: Record<string, unknown> }).__pbuiDemo ?? {};
+  demo.conversations = chat.conversations;
+  demo.workbench = workbench;
+  (window as unknown as { __pbuiDemo?: Record<string, unknown> }).__pbuiDemo = demo;
+}
+
 function persistDocument() {
   storage()?.setItem(WORKBENCH_STORAGE_KEY, workbench.serialize());
 }
@@ -117,6 +182,10 @@ if (restored) workbench.verbs.selectWorkspace(restored);
 
 export function resetLayout() {
   workbench.store.replaceDocument(defaultLayout());
+  // The default layout's chat tile carries no binding; without this, "reset
+  // layout" would leave the user looking at an unbound tile.
+  const active = chat.conversations.activeId();
+  if (active) bindLooseChatTiles(active);
   persistDocument();
   storage()?.removeItem(WORKSPACE_STORAGE_KEY);
 }

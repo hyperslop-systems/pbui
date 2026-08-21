@@ -1,6 +1,6 @@
 import { Button, CheckboxRow, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
-import { ChatProvider, selectOverlay, useChatClient, useChatSelector, type ChatProviderConfig } from "@go-go-golems/chat-provider";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConversations } from "@hyperslop-systems/pbui-chat";
+import { useCallback, useMemo, useState } from "react";
 import styles from "./App.module.css";
 import { chat } from "./chat";
 import { type Environment } from "./pbui/types";
@@ -9,45 +9,37 @@ import { PROGRAM_BINDING, useLibrary } from "@hyperslop-systems/pbui-sandbox";
 import { library } from "./sandbox";
 import { resetLayout, workbench } from "./workbench";
 
-/*
- * Module-level so `ChatProvider`'s `useMemo` keyed on it runs once; a config
- * object built in render would recreate the client on every render.
- */
-const chatConfig: ChatProviderConfig = {
-  basePrefix: "",
-  extensions: [chat.extension],
-  sendMessageBody: chat.sendMessageBody,
-  sessionPolicy: { restore: "url", parameter: "session", fallback: { restore: "local-storage", storageKey: "pbui-chat-demo.session" } },
-};
-
-
 const isApple = typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform);
 
+/*
+ * No `<ChatProvider>` here any more. `chat.Provider` hosts one per OPEN
+ * conversation, so the shop can have several agents on screen at once; a chat
+ * tile is a view of one of them (guide §4.5).
+ */
 export function App() {
   const [canApprove, setCanApprove] = useState(false);
+  // The environment's `sessionId` is the ACTIVE conversation now: a descriptor
+  // that shows "who is asking" follows the tile the user last clicked into,
+  // the same way the sandbox devtools follow the selected sandbox.
+  const activeId = useConversations(chat.conversations, (registry) => registry.activeId());
+  const environment = useMemo<Environment>(() => ({ canApprove, sessionId: activeId }), [canApprove, activeId]);
   return (
-    <ChatProvider config={chatConfig}>
+    <chat.Provider environment={environment}>
       <Shell canApprove={canApprove} onCanApproveChange={setCanApprove} />
-    </ChatProvider>
+    </chat.Provider>
   );
 }
 
 function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanApproveChange(next: boolean): void }) {
-  const client = useChatClient();
-  const overlay = useChatSelector(selectOverlay);
-  const environment = useMemo<Environment>(
-    () => ({ canApprove, sessionId: overlay.sessionId || null }),
-    [canApprove, overlay.sessionId],
-  );
-
-  // Connect on load: restores the session named in the URL (or local
-  // storage), hydrates the timeline, and re-parks pending human tools.
-  useEffect(() => {
-    void client.connect().catch(() => undefined);
-  }, [client]);
+  // Nothing connects here any more: `chat.Provider` hosts a runtime per open
+  // conversation and each one connects itself as it attaches.
+  const active = useConversations(chat.conversations, (registry) => {
+    const id = registry.activeId();
+    return id ? registry.get(id) : null;
+  });
 
   return (
-    <chat.Provider environment={environment}>
+    <>
       <div className={styles.shell}>
         <Surface as="section" tone="inverted" border="none" className={styles.masthead}>
           <Toolbar as="header" tight>
@@ -66,7 +58,7 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
               reset layout
             </Button>
             <Text size="tiny" tone="faint">
-              {overlay.wsStatus}
+              {active ? active.wsStatus : "no conversation"}
             </Text>
           </Toolbar>
         </Surface>
@@ -77,7 +69,7 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
       </div>
       <chat.ObjectMenu />
       <chat.AcceptBanner />
-    </chat.Provider>
+    </>
   );
 }
 

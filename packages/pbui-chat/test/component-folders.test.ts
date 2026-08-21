@@ -17,6 +17,10 @@ const NOT_COMPONENTS = new Set([
   "tools/acceptTool.tsx",
   "tools/proposeTool.tsx",
   "apps/createChatApps.tsx",
+  // Providers and hosts, not components: they render contexts, not pixels.
+  "conversations/ActiveConversationScope.tsx",
+  "conversations/ConversationHost.tsx",
+  "conversations/ConversationScope.tsx",
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {

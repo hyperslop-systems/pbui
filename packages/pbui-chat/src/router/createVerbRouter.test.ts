@@ -9,7 +9,8 @@ const product: Reference = { type: "product", id: "2049", value: { name: "Eagle"
 function binding(fetchImpl: typeof fetch, sessionId = "s1"): RouterBinding {
   return {
     store: createPbuiChatStore(),
-    client: { getStore: () => ({ getState: () => ({ overlay: { sessionId } }) }) } as never,
+    conversation: () => (sessionId ? { id: sessionId, client: {} as never } : null),
+    runtimeFor: () => null,
     vocabulary,
     basePrefix: "/app",
     accept: async () => null,
