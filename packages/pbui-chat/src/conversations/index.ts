@@ -4,6 +4,10 @@ export { ChatRuntimeScope, ConversationHost } from "./ConversationHost";
 export { ConversationScope } from "./ConversationScope";
 export { ConversationsTile, ageOf, conversationReference, statusOf } from "./ConversationsTile";
 export { EVENT_FAMILIES, EventsTile, FOLLOW_ACTIVE, chatEventReference, detailOf, formatEventTime } from "./EventsTile";
+export { RunsTile, compact, formatDuration } from "./RunsTile";
+export { ToolsTile, toolReference } from "./ToolsTile";
+export { selectToolTraffic, selectWaiting, streamRate, toolCallsOf, useToolTraffic, useWaiting } from "./selectors";
+export type { ToolCall } from "./selectors";
 export {
   countWaiting,
   createConversationRegistry,
