@@ -15,6 +15,12 @@ RelatedFiles:
       Note: sandboxHost built once; createScriptApp(host) (commit 62bf01a)
     - Path: repo://packages/pbui-chat/test/no-raw-controls.test.ts
       Note: The structural rules every devtool must satisfy (TextArea, SelectInput, CheckboxRow from pbui)
+    - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.tsx
+      Note: Inspector tile, chooseInstance (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/TreeOutline.tsx
+      Note: outlineRows/summariseNode, fire controls (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/createSandboxDevtools.tsx
+      Note: The devtools factory; sets host.devtools (commit 850089b)
     - Path: repo://packages/pbui-sandbox/src/engines/evalEngine.ts
       Note: The single-Function closure is why a direct eval in the bootstrap can reach the program (D3)
     - Path: repo://packages/pbui-sandbox/src/host/hostOptions.ts
@@ -33,6 +39,7 @@ LastUpdated: 2026-08-21T16:10:00-04:00
 WhatFor: Continuation and review; read this to know what was tried, what broke, and why the design is shaped as it is.
 WhenToUse: When resuming a phase, reviewing a commit, or wondering why something is the way it is.
 ---
+
 
 
 # Diary
@@ -194,3 +201,69 @@ instances.get(viewId)?.handle?.fire("main", { handler: "increment" });
 instances.publish(viewId, { highlight: "root.1.0" });   // the tile outlines that node
 instances.timeline().filter((e) => e.viewId === viewId).map(formatEntry);
 ```
+
+## Step 3: Phase 1 — the Program Inspector
+
+The inspector is the first tile on the registry. It is doc-bound to `program` with an optional `view` binding, chooses which instance to show by `chosen → wanted view → selected sandbox → latest` (`chooseInstance`, a pure function with its own test), and has four panes behind pressed buttons: *state* (a `JsonBlock` over a `TextArea code` editor with apply/discard/reset), *bindings* (every declared or bound key with the product's own `<Presentation>` for a resolved reference, `unresolved` in the danger tone otherwise, plus `env`), *tree* (one outline per widget from `walkNodes`, each row kind + summary + a *fire* control that sends what the renderer would — `{ value }` for a change — and hover publishing `highlight`), and *meta* (instance id, engine, placements, timings, the error, the loaded meta).
+
+The snapshot gained `globalState` (published by the render effect) because the bindings pane needs the resolved documents the program saw, and the REPL will need the same object for `$global`. `createSandboxDevtools(host)` registers the inspector (more tiles join it in later phases) and sets `host.devtools = true`, which is what makes the script tile's *inspect*/*source* buttons appear — the same host object must be passed to both factories, stated in the doc comment.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 1.
+
+**Inferred user intent:** Scene 1 — see and change a running program's state, see what it rendered, fire a handler, know what it was bound to.
+
+**Commit (code):** 850089b — "PBUI-SANDBOX-1 Phase 1: Program Inspector tile (state editor, bindings, tree outline with highlight and fire, meta/timings), createSandboxDevtools"
+
+### What I did
+
+- `src/devtools/InspectorTile/{InspectorTile,TreeOutline,StatePane}.tsx` + CSS module; `src/devtools/createSandboxDevtools.tsx`; `src/devtools/index.ts` re-exported from the package index.
+- `InstanceSnapshot.globalState`; the hook publishes it with the trees.
+- Tests: `InspectorTile.test.tsx` mounts a real `ScriptTile` and the inspector on one host — outline paths, fire, hover → highlight in the program tile, apply/invalid/reset state, bindings with a resolved `product`, meta facts, the not-running state, `chooseInstance` order. 71 tests in the package; chat 110; all builds.
+- Demo: `devtoolApps = createSandboxDevtools(sandboxHost)` registered after `scriptApp`.
+- Browser: from the counter tile's *inspect* button, an inspector opened beside it; the tree pane listed `root column · root.0 text "Count: 0" · root.1 row · root.1.0 button "-" onClick→decrement · root.1.1 button "+"`, hovering `root.1.0` outlined the `-` button in the program tile, *fire increment* set the state to 1. Screenshot `various/02-p1-inspector.png`.
+
+### Why
+
+- Panes rather than a stacked page: the inspector is opened *beside* a program tile, in a third of a column; four stacked sections would not fit.
+- `chooseInstance` as a pure function: the precedence is the one piece of policy in the tile and deserves a table test.
+
+### What worked
+
+- Everything the panes show was already in the registry after Phase 0 except `globalState`; the tile is mostly presentation.
+- The hover highlight crossed from the inspector to the program tile with no DOM queries: publish a path, the tile's renderer marks it.
+
+### What didn't work
+
+- The second test failed only when run after the first: `vitest` without `globals: true` does not auto-cleanup `@testing-library/react`, so the first test's tiles were still mounted and `getByRole("button", {name: "bindings"})` matched two. Fixed with `afterEach(cleanup)` and a comment; the other test files in the package query within their own `container`, which is why they never hit it.
+
+### What I learned
+
+- `Button` has a `selected` prop, which is what a pane switch needs; no segmented atom required.
+- `JSON.stringify(node.text)` as the summary makes whitespace and quotes visible in the outline — worth keeping over raw text.
+
+### What was tricky to build
+
+- **Editor that follows the live state until touched.** The state pane must show changes the program makes (a click in the tile) but must not overwrite what the user is typing. A `dirty` flag set when the draft differs from the live JSON, cleared on apply/discard, and an effect that copies the live JSON in only while not dirty.
+- **What "fire" sends.** The renderer sends `{ value }` for inputs and selects and `ref.args` for buttons; the outline's fire control mirrors that so a fired event is indistinguishable from a real one in the timeline.
+
+### What warrants a second pair of eyes
+
+- `host.devtools = true` mutates the caller's object inside a factory. It is documented, and the alternative (a second host object) would split what the script tile and the devtools see.
+- The bindings pane renders `reference.value` as JSON beside the presentation — a large value (an order with lines) is a long block; `maxHeight` caps it.
+
+### What should be done in the future
+
+- Phase 2: `evaluate` in the bootstrap, both engines, the worker protocol, conformance cases, and the REPL tile.
+
+### Code review instructions
+
+- `InspectorTile.tsx` top to bottom, then `TreeOutline.tsx` (`outlineRows`, `FireControl`), then the test.
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, open a program tile and press *inspect*.
+
+### Technical details
+
+- App id `program-inspector`, bindings `["program"]`, optional `view`; opened by the script tile with `openView(INSPECTOR_APP_ID, { program, view }, { near: placementId })`.

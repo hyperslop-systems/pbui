@@ -22,3 +22,12 @@ Phase 0 (commit 62bf01a): createInstanceRegistry (snapshots by view, timeline ri
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/instances.ts — The registry (commit 62bf01a)
 
+
+## 2026-08-21
+
+Phase 1 (commit 850089b): Program Inspector tile (state/bindings/tree/meta panes, hover highlight, fire handlers, apply/reset state), createSandboxDevtools, snapshot.globalState; 71 sandbox tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.tsx — The inspector (commit 850089b)
+
