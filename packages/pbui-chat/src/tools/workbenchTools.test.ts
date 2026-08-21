@@ -203,6 +203,35 @@ describe("workbench_open_tile", () => {
       error: 'app "sku" needs a "product" binding; got {}',
     });
   });
+
+  it("cannot bypass a deny policy through the specialized tool", async () => {
+    const { call, performed, tools } = harness({ policy: { "view.open": "deny" } });
+    const result = await call("workbench_open_tile", { appId: "sku", documents: { product: "2049" } });
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining("not something the assistant may do") });
+    expect(performed).toHaveLength(0);
+    expect(tools.history()).toHaveLength(0);
+  });
+
+  it("accepts a matching one-shot approval when view.open requires confirmation", async () => {
+    const seen: WorkbenchVerb[] = [];
+    const h = harness({
+      policy: { "view.open": "confirm" },
+      isApproved: (id, verb) => {
+        seen.push(verb);
+        return id === "p-open" && verb.kind === "view.open";
+      },
+    });
+    expect(await h.call("workbench_open_tile", { appId: "sku", documents: { product: "2049" } })).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("pbui_propose"),
+    });
+    expect(await h.call("workbench_open_tile", {
+      appId: "sku",
+      documents: { product: "2049" },
+      confirmationId: "p-open",
+    })).toMatchObject({ ok: true });
+    expect(seen).toHaveLength(1);
+  });
 });
 
 describe("workbench_perform · policy", () => {
@@ -289,6 +318,18 @@ describe("workbench_switch_workspace", () => {
   it("refuses an unknown workspace", async () => {
     const { call } = harness();
     expect(await call("workbench_switch_workspace", { workspaceId: "nope" })).toMatchObject({ ok: false });
+  });
+
+  it("honours a policy override in the specialized switch tool", async () => {
+    const h = harness({ policy: { "workspace.select": "deny" } });
+    const created = (await h.call("workbench_create_workspace", { name: "second", layout: { kind: "tile", appId: "chat" } })) as any;
+    const first = h.wb.store.getState().document.workspaces[0]!.id;
+    expect(created.workspaceId).not.toBe(first);
+    expect(await h.call("workbench_switch_workspace", { workspaceId: first })).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("not something the assistant may do"),
+    });
+    expect(h.wb.store.getState().workspaceId).toBe(created.workspaceId);
   });
 });
 
@@ -511,12 +552,42 @@ describe("workbench_apply", () => {
     expect(wb.store.getState().document.workspaces).toHaveLength(2);
   });
 
-  it("deletes once the product says the removal was approved", async () => {
-    const { run, wb } = rawHarness({ isApproved: (confirmationId) => confirmationId === "p-9" });
+  it("deletes once the product approves that exact raw batch", async () => {
+    const seen: (readonly unknown[])[] = [];
+    const { run, wb } = rawHarness({
+      isRawApproved: (confirmationId, mutations) => {
+        seen.push(mutations);
+        return confirmationId === "p-9" && mutations[0]?.body.case === "workspaceDelete";
+      },
+    });
     const id = wb.verbs.createWorkspace("second", { kind: "tile", appId: "chat" })!;
     const result = (await run({ mutations: [{ workspaceDelete: { workspaceId: id } }], confirmationId: "p-9" })) as any;
     expect(result.ok).toBe(true);
     expect(wb.store.getState().document.workspaces).toHaveLength(1);
+    expect(seen).toHaveLength(1);
+  });
+
+  it("requires approval for raw placement and app replacement", async () => {
+    const { run, wb, call } = rawHarness();
+    const description = (await call("workbench_describe", {})) as any;
+    const [first, second] = description.workspaces[0].tiles;
+    const denied = (await run({
+      mutations: [
+        { placementReplace: { workspaceId: wb.store.getState().workspaceId, placementId: first.placementId, viewId: second.viewId } },
+        { viewConfigure: { viewId: first.viewId, appId: "chat" } },
+      ],
+    })) as any;
+    expect(denied.ok).toBe(false);
+    expect(denied.error).toContain("placementReplace, viewConfigure");
+    expect(denied.error).toContain("pbui_propose");
+  });
+
+  it("does not gate a raw title-only viewConfigure as replacement", async () => {
+    const { run, call } = rawHarness();
+    const description = (await call("workbench_describe", {})) as any;
+    const first = description.workspaces[0].tiles[0];
+    const result = (await run({ mutations: [{ viewConfigure: { viewId: first.viewId, setTitle: "renamed" } }] })) as any;
+    expect(result.ok).toBe(true);
   });
 
   it("refuses more mutations than the limit", async () => {

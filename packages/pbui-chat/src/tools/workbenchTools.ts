@@ -102,6 +102,8 @@ export const DEFAULT_POLICY: WorkbenchPolicy = {
   "tile.close": "confirm",
   "tile.replace": "confirm",
   "workspace.delete": "confirm",
+  // Raw-only today; deleting payload can discard unsaved user work.
+  "document.delete": "confirm",
   // The launcher is a human's dialog; an agent opening it steals the keyboard.
   "launcher.open": "deny",
   "launcher.close": "deny",
@@ -159,6 +161,12 @@ export interface WorkbenchToolsOptions {
    * check whose whole job is to not be skippable.
    */
   isApproved?(confirmationId: string, verb: WorkbenchVerb): boolean;
+  /**
+   * Was this proposal approved for this exact raw mutation batch?
+   * Kept separate from `isApproved`: fabricating a stand-in verb loses what
+   * the user actually approved and lets close/replace policy drift.
+   */
+  isRawApproved?(confirmationId: string, mutations: readonly Mutation[]): boolean;
 }
 
 export interface UndoEntry {
@@ -222,6 +230,20 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
 
   async function performVerb(verb: WorkbenchVerb): Promise<Outcome> {
     return options.perform(mapVerb(verb));
+  }
+
+  /** The one door every high-level mutating tool uses. */
+  async function performWithPolicy(
+    verb: WorkbenchVerb,
+    confirmationId: string | undefined,
+    beforePerform?: () => void,
+  ): Promise<Outcome> {
+    const denied = checkPolicy(verb, confirmationId);
+    if (denied) return `rejected:${denied}`;
+    beforePerform?.();
+    const outcome = await performVerb(verb);
+    if (outcome === "performed" && decisionFor(verb.kind) === "confirm") spend(confirmationId);
+    return outcome;
   }
 
   function decisionFor(kind: string): PolicyDecision {
@@ -411,7 +433,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   };
 
   const createWorkspaceTool: FrontendTool<
-    { name: string; layout: LayoutSpec; select?: boolean },
+    { name: string; layout: LayoutSpec; select?: boolean; confirmationId?: string },
     Record<string, unknown>
   > = {
     name: "workbench_create_workspace",
@@ -424,13 +446,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       name: z.string().min(1).describe("what to call it, e.g. 'Gold desk'"),
       layout: LayoutSpecSchema as unknown as z.ZodType<LayoutSpec>,
       select: z.boolean().optional().describe("switch to it; default true"),
+      confirmationId: z.string().optional().describe("an approved pbui_propose id, if workspace.create requires confirmation"),
     }),
     available,
     async execute(input) {
       const wb = options.getWorkbench();
       if (!wb) return fail("no workbench is attached to this chat") as unknown as Record<string, unknown>;
-      const denied = checkPolicy({ kind: "workspace.create", name: input.name, spec: input.layout }, undefined);
-      if (denied) return fail(denied) as unknown as Record<string, unknown>;
       if (wb.store.getState().document.workspaces.length >= limits.workspaces) {
         return fail(`the workbench already has ${limits.workspaces} workspaces, the limit`) as unknown as Record<string, unknown>;
       }
@@ -438,12 +459,15 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       if (problem) return fail(problem) as unknown as Record<string, unknown>;
 
       const before = new Set(wb.store.getState().document.workspaces.map((w) => w.id));
-      const undoToken = snapshot(wb, `create workspace ${input.name}`);
-      const outcome = await performVerb({
+      const verb: WorkbenchVerb = {
         kind: "workspace.create",
         name: input.name,
         spec: input.layout,
         ...(input.select === false ? { select: false } : {}),
+      };
+      let undoToken: string | undefined;
+      const outcome = await performWithPolicy(verb, input.confirmationId, () => {
+        undoToken = snapshot(wb, `create workspace ${input.name}`);
       });
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
 
@@ -463,7 +487,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   };
 
   const openTileTool: FrontendTool<
-    { appId: string; documents?: Record<string, string>; near?: string; title?: string },
+    { appId: string; documents?: Record<string, string>; near?: string; title?: string; confirmationId?: string },
     Record<string, unknown>
   > = {
     name: "workbench_open_tile",
@@ -476,6 +500,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       documents: z.record(z.string(), z.string()).optional(),
       near: z.string().optional().describe("a placementId to open beside; omitted means the active tile"),
       title: z.string().optional(),
+      confirmationId: z.string().optional().describe("an approved pbui_propose id, if view.open requires confirmation"),
     }),
     available,
     async execute(input) {
@@ -489,13 +514,16 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
 
       const workspaceId = wb.store.getState().workspaceId;
       const before = describeWorkbench(wb, { workspaceId }).workspaces[0]?.tiles ?? [];
-      const undoToken = snapshot(wb, `open ${input.appId}`);
-      const outcome = await performVerb({
+      const verb: WorkbenchVerb = {
         kind: "view.open",
         appId: input.appId,
         documents: input.documents ?? {},
         ...(input.near ? { near: input.near } : {}),
         ...(input.title ? { title: input.title } : {}),
+      };
+      let undoToken: string | undefined;
+      const outcome = await performWithPolicy(verb, input.confirmationId, () => {
+        undoToken = snapshot(wb, `open ${input.appId}`);
       });
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
 
@@ -517,11 +545,14 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     },
   };
 
-  const switchWorkspaceTool: FrontendTool<{ workspaceId: string }, Record<string, unknown>> = {
+  const switchWorkspaceTool: FrontendTool<{ workspaceId: string; confirmationId?: string }, Record<string, unknown>> = {
     name: "workbench_switch_workspace",
     mode: "frontend",
     description: "Show a different workspace. Its id comes from workbench_describe.",
-    parameters: z.object({ workspaceId: z.string() }),
+    parameters: z.object({
+      workspaceId: z.string(),
+      confirmationId: z.string().optional().describe("an approved pbui_propose id, if workspace.select requires confirmation"),
+    }),
     available,
     async execute(input) {
       const wb = options.getWorkbench();
@@ -529,7 +560,10 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       if (!wb.store.getState().document.workspaces.some((w) => w.id === input.workspaceId)) {
         return fail(`unknown workspace "${input.workspaceId}"`) as unknown as Record<string, unknown>;
       }
-      const outcome = await performVerb({ kind: "workspace.select", workspaceId: input.workspaceId });
+      const outcome = await performWithPolicy(
+        { kind: "workspace.select", workspaceId: input.workspaceId },
+        input.confirmationId,
+      );
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
       const description = describeWorkbench(wb, { workspaceId: input.workspaceId });
       return {
@@ -570,11 +604,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
           continue;
         }
         const verb = candidate as WorkbenchVerb;
-        const denied = checkPolicy(verb, input.confirmationId);
-        if (denied) {
-          results.push({ verb, ok: false, error: denied });
-          continue;
-        }
         // #2: `isWorkbenchVerb` is a prefix test on `kind`, nothing more. The
         // protocol accepts any string as an app id, so a misspelled one commits
         // a tile that renders an empty state while the tool reports success.
@@ -583,8 +612,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
           results.push({ verb, ok: false, error: unusable });
           continue;
         }
-        if (decisionFor(verb.kind) === "confirm") spend(input.confirmationId);
-        const outcome = await performVerb(verb);
+        const outcome = await performWithPolicy(verb, input.confirmationId);
         if (outcome === "performed") {
           applied += 1;
           results.push({ verb, ok: true });
@@ -604,12 +632,30 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   };
 
   /**
-   * Mutation cases that destroy something a person may be looking at. A raw
-   * batch is not expressed in verbs, so the per-verb policy cannot see into
-   * it; without this the escape hatch would also be a way around the confirm
-   * gate, which is worse than not having the hatch.
+   * Map raw mutations back to the high-level policy whose effect they mirror.
+   * This is intentionally an allowlist: a newly generated mutation case gets
+   * no implicit destructive classification and must be considered here.
    */
-  const DESTRUCTIVE_CASES = new Set(["workspaceDelete", "viewDelete", "viewClose", "placementClose", "documentDelete"]);
+  function rawPolicyKind(mutation: Mutation): string | null {
+    switch (mutation.body.case) {
+      case "workspaceDelete":
+        return "workspace.delete";
+      case "viewDelete":
+      case "viewClose":
+      case "placementClose":
+        return "tile.close";
+      case "placementReplace":
+        return "tile.replace";
+      case "viewConfigure":
+        // Title and binding changes have their own allow-by-default verbs;
+        // changing appId is the raw equivalent of replacing a tile.
+        return mutation.body.value.appId !== undefined ? "tile.replace" : null;
+      case "documentDelete":
+        return "document.delete";
+      default:
+        return null;
+    }
+  }
 
   const applyTool: FrontendTool<{ mutations: unknown[]; confirmationId?: string }, Record<string, unknown>> = {
     name: "workbench_apply",
@@ -620,7 +666,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       "mutation lands or none does.",
     parameters: z.object({
       mutations: z.array(z.record(z.string(), z.unknown())).min(1),
-      confirmationId: z.string().optional().describe("required when the batch removes a workspace, view, tile or document"),
+      confirmationId: z.string().optional().describe("required when the batch performs a confirmation-gated operation"),
     }),
     // Not merely hidden: `RegisterManifestTools` skips an unavailable
     // descriptor, so with the option off the model is never told this exists.
@@ -641,21 +687,26 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         return fail(`not a mutation: ${error instanceof Error ? error.message : String(error)}`) as unknown as Record<string, unknown>;
       }
 
-      const destructive = batch.filter((item) => DESTRUCTIVE_CASES.has(item.body.case ?? ""));
-      if (destructive.length > 0) {
+      const classified = batch
+        .map((mutation) => ({ mutation, policyKind: rawPolicyKind(mutation) }))
+        .filter((item): item is { mutation: Mutation; policyKind: string } => item.policyKind !== null);
+      const forbidden = classified.find((item) => decisionFor(item.policyKind) === "deny");
+      if (forbidden) {
+        return fail(`${forbidden.mutation.body.case} is not something the assistant may do; ask the user to do it`) as unknown as Record<string, unknown>;
+      }
+      const confirmationGated = classified.filter((item) => decisionFor(item.policyKind) === "confirm");
+      if (confirmationGated.length > 0) {
         if (!input.confirmationId) {
           return fail(
-            `this batch removes ${destructive.map((item) => item.body.case).join(", ")}; call pbui_propose first ` +
+            `this batch changes ${confirmationGated.map((item) => item.mutation.body.case).join(", ")}; call pbui_propose first ` +
               "describing exactly that, and pass the id you used as confirmationId",
           ) as unknown as Record<string, unknown>;
         }
         if (spent.has(input.confirmationId)) {
           return fail(`the approval "${input.confirmationId}" has already been used`) as unknown as Record<string, unknown>;
         }
-        // The product's predicate takes a verb; a raw batch has none, so it is
-        // asked about the closest verb this batch amounts to.
-        if (!isApproved(input.confirmationId, { kind: "workspace.delete", workspaceId: "" })) {
-          return fail(`no approved proposal with id "${input.confirmationId}"`) as unknown as Record<string, unknown>;
+        if (!options.isRawApproved?.(input.confirmationId, batch)) {
+          return fail(`no approved raw mutation proposal with id "${input.confirmationId}"`) as unknown as Record<string, unknown>;
         }
       }
 
@@ -673,7 +724,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
 
       const undoToken = snapshot(wb, `apply ${batch.length} mutation(s)`);
       if (!wb.mutate(batch)) return fail("the workbench refused the batch") as unknown as Record<string, unknown>;
-      if (destructive.length > 0) spend(input.confirmationId);
+      if (confirmationGated.length > 0) spend(input.confirmationId);
 
       const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
       return {
