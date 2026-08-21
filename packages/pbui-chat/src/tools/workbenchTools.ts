@@ -2,13 +2,16 @@ import type { FrontendTool, ToolDefinition } from "@go-go-golems/chat-provider";
 import {
   describeWorkbench,
   describeWorkbenchVerb,
+  isAppAvailable,
   isWorkbenchVerb,
   type LayoutSpec,
   type Workbench,
   type WorkbenchVerb,
   type WorkbenchVerbKind,
 } from "@hyperslop-systems/pbui-workbench";
-import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import { type JsonValue, fromJson } from "@bufbuild/protobuf";
+import { type Mutation, MutationSchema, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 import { z } from "zod";
 import type { Outcome, VerbLike } from "../types";
 
@@ -55,6 +58,8 @@ export interface WorkbenchToolLimits {
   workspaces: number;
   verbsPerCall: number;
   layoutDepth: number;
+  /** Raw `workbench_apply` batches only. */
+  mutationsPerCall: number;
 }
 
 export const DEFAULT_LIMITS: WorkbenchToolLimits = {
@@ -62,6 +67,7 @@ export const DEFAULT_LIMITS: WorkbenchToolLimits = {
   workspaces: 6,
   verbsPerCall: 8,
   layoutDepth: 4,
+  mutationsPerCall: 32,
 };
 
 export type PolicyDecision = "allow" | "confirm" | "deny";
@@ -139,15 +145,20 @@ export interface WorkbenchToolsOptions {
   /** How many document snapshots to keep for undo. Default 20. */
   history?: number;
   /**
-   * Was this `pbui_propose` id actually approved by a human?
+   * Was this `pbui_propose` id approved by a human, FOR THIS VERB?
    *
-   * The product owns the answer, because the product owns the proposal state:
-   * the card performs `resolveProposal` through the router, and whatever
-   * records that is what this reads. There is no default that says yes —
-   * without a wiring, a `confirm`-policy verb is refused, which is the right
-   * way round for a check whose whole job is to not be skippable.
+   * The verb is passed because an approval that names only an id authorises
+   * every `confirm`-policy verb equally: approve one tile's closure and the
+   * same id closes a different tile, or deletes a workspace. A product
+   * compares the verb against what it actually put in front of the user.
+   *
+   * The product owns the answer because it owns the proposal state: the card
+   * performs `resolveProposal` through the router, and whatever records that
+   * is what this reads. There is no default that says yes — without a wiring
+   * a `confirm`-policy verb is refused, which is the right way round for a
+   * check whose whole job is to not be skippable.
    */
-  isApproved?(confirmationId: string): boolean;
+  isApproved?(confirmationId: string, verb: WorkbenchVerb): boolean;
 }
 
 export interface UndoEntry {
@@ -218,25 +229,122 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   }
 
   const isApproved = options.isApproved ?? (() => false);
+  /**
+   * Approvals already spent. Even a product whose `isApproved` is a plain
+   * id lookup gets one-shot semantics from here: an approval is permission to
+   * do a thing once, and a model that reuses the id for a second destructive
+   * verb is doing something nobody agreed to.
+   */
+  const spent = new Set<string>();
 
-  function checkPolicy(kind: string, confirmationId: string | undefined): string | null {
-    const decision = decisionFor(kind);
-    if (decision === "deny") return `${kind} is not something the assistant may do; ask the user to do it`;
+  function checkPolicy(verb: WorkbenchVerb, confirmationId: string | undefined): string | null {
+    const decision = decisionFor(verb.kind);
+    if (decision === "deny") return `${verb.kind} is not something the assistant may do; ask the user to do it`;
     if (decision === "allow") return null;
     if (!confirmationId) {
-      return `${kind} needs the user's approval: call pbui_propose first and pass the id you used as confirmationId`;
+      return `${verb.kind} needs the user's approval: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`;
     }
-    if (!isApproved(confirmationId)) {
-      return `no approved proposal with id "${confirmationId}"`;
+    if (spent.has(confirmationId)) {
+      return `the approval "${confirmationId}" has already been used; ask again for this change`;
+    }
+    if (!isApproved(confirmationId, verb)) {
+      return `no approved proposal with id "${confirmationId}" for ${describeWorkbenchVerb(verb)}`;
     }
     return null;
+  }
+
+  /** Called only after the verb was actually attempted, so a refusal does not burn the approval. */
+  function spend(confirmationId: string | undefined): void {
+    if (confirmationId) spent.add(confirmationId);
+  }
+
+  /* ---- id and availability checks, with messages a model can act on ------ */
+
+  /** Is this application placeable HERE, and does it exist at all? */
+  function appProblem(appId: string, wb: Workbench): string | null {
+    const app = wb.apps.get(appId);
+    if (!app) {
+      return `unknown app "${appId}"; available: ${placeableIds(wb).join(", ")}`;
+    }
+    // A product hides an application from a workspace on purpose. The launcher
+    // honours it; an agent that could place it anyway would be a way around
+    // the policy rather than a second door to it.
+    if (!isAppAvailable(app, { workspaceId: wb.store.getState().workspaceId })) {
+      return `app "${appId}" is not offered in this workspace`;
+    }
+    return null;
+  }
+
+  function placeableIds(wb: Workbench): string[] {
+    const workspaceId = wb.store.getState().workspaceId;
+    return wb.apps
+      .list()
+      .filter((app) => isAppAvailable(app, { workspaceId }))
+      .map((app) => app.id);
+  }
+
+  /**
+   * What is wrong with a verb before it is dispatched, if anything.
+   *
+   * The handlers refuse a bad id by returning false, which now surfaces — but
+   * "the workbench refused" is a worse message than "you misspelled
+   * inventory", and an app id is the one field the protocol will happily
+   * accept as anything at all.
+   */
+  function verbProblem(verb: WorkbenchVerb, wb: Workbench): string | null {
+    const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
+    const tiles = description.workspaces[0]?.tiles ?? [];
+    const knownPlacement = (id: string) => tiles.some((tile) => tile.placementId === id);
+    const knownView = (id: string) => Boolean(wb.store.getState().document.views[id]);
+
+    switch (verb.kind) {
+      case "tile.split":
+        if (!knownPlacement(verb.placementId)) return unknownPlacement(verb.placementId, tiles);
+        return verb.appId ? appProblem(verb.appId, wb) : null;
+      case "tile.replace":
+        if (!knownPlacement(verb.placementId)) return unknownPlacement(verb.placementId, tiles);
+        return appProblem(verb.appId, wb);
+      case "app.place":
+        return appProblem(verb.appId, wb);
+      case "tile.close":
+      case "tile.activate":
+        return knownPlacement(verb.placementId) ? null : unknownPlacement(verb.placementId, tiles);
+      case "tile.link":
+        if (!knownPlacement(verb.placementId)) return unknownPlacement(verb.placementId, tiles);
+        return knownView(verb.viewId) ? null : `unknown view "${verb.viewId}"`;
+      case "tile.swap":
+        if (!knownPlacement(verb.a)) return unknownPlacement(verb.a, tiles);
+        return knownPlacement(verb.b) ? null : unknownPlacement(verb.b, tiles);
+      case "tile.dock":
+        if (!knownPlacement(verb.source)) return unknownPlacement(verb.source, tiles);
+        return knownPlacement(verb.target) ? null : unknownPlacement(verb.target, tiles);
+      case "view.setTitle":
+      case "view.rebind":
+      case "view.goTo":
+        return knownView(verb.viewId) ? null : `unknown view "${verb.viewId}"`;
+      case "split.resize":
+        return description.workspaces[0]?.splits.some((split) => split.splitId === verb.splitId)
+          ? null
+          : `unknown split "${verb.splitId}"`;
+      case "workspace.select":
+      case "workspace.rename":
+      case "workspace.delete":
+      case "workspace.clone":
+        return wb.store.getState().document.workspaces.some((workspace) => workspace.id === verb.workspaceId)
+          ? null
+          : `unknown workspace "${verb.workspaceId}"`;
+      default:
+        return null;
+    }
+  }
+
+  function unknownPlacement(id: string, tiles: { placementId: string }[]): string {
+    return `unknown tile "${id}"; on screen: ${tiles.map((tile) => tile.placementId).join(", ") || "none"}`;
   }
 
   /* ---- layout validation, with messages written for a model to act on ---- */
 
   function validateLayout(spec: LayoutSpec, wb: Workbench): string | null {
-    const known = wb.apps.list();
-    const ids = known.map((app) => app.id);
     let tiles = 0;
 
     const walk = (node: LayoutSpec, depth: number): string | null => {
@@ -248,8 +356,9 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         return walk(node.a, depth + 1) ?? walk(node.b, depth + 1);
       }
       tiles += 1;
-      const app = wb.apps.get(node.appId);
-      if (!app) return `unknown app "${node.appId}"; available: ${ids.join(", ")}`;
+      const problem = appProblem(node.appId, wb);
+      if (problem) return problem;
+      const app = wb.apps.get(node.appId)!;
       // A doc-bound application placed with nothing bound opens empty, which
       // reads as a broken tile rather than as a mistake in the request.
       for (const key of app.bindings ?? []) {
@@ -289,7 +398,15 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       if (input.workspaceId && description.workspaces.length === 0) {
         return fail(`unknown workspace "${input.workspaceId}"`) as unknown as Record<string, unknown>;
       }
-      return { ok: true, ...description } as unknown as Record<string, unknown>;
+      // A product may hide an application from a workspace. Marking rather
+      // than omitting: the agent can then say "the ledger isn't available
+      // here" instead of insisting the application does not exist.
+      const workspaceId = input.workspaceId ?? wb.store.getState().workspaceId;
+      const apps = description.apps.map((app) => {
+        const descriptor = wb.apps.get(app.id);
+        return { ...app, available: descriptor ? isAppAvailable(descriptor, { workspaceId }) : false };
+      });
+      return { ok: true, ...description, apps } as unknown as Record<string, unknown>;
     },
   };
 
@@ -312,7 +429,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     async execute(input) {
       const wb = options.getWorkbench();
       if (!wb) return fail("no workbench is attached to this chat") as unknown as Record<string, unknown>;
-      const denied = checkPolicy("workspace.create", undefined);
+      const denied = checkPolicy({ kind: "workspace.create", name: input.name, spec: input.layout }, undefined);
       if (denied) return fail(denied) as unknown as Record<string, unknown>;
       if (wb.store.getState().document.workspaces.length >= limits.workspaces) {
         return fail(`the workbench already has ${limits.workspaces} workspaces, the limit`) as unknown as Record<string, unknown>;
@@ -453,11 +570,20 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
           continue;
         }
         const verb = candidate as WorkbenchVerb;
-        const denied = checkPolicy(verb.kind, input.confirmationId);
+        const denied = checkPolicy(verb, input.confirmationId);
         if (denied) {
           results.push({ verb, ok: false, error: denied });
           continue;
         }
+        // #2: `isWorkbenchVerb` is a prefix test on `kind`, nothing more. The
+        // protocol accepts any string as an app id, so a misspelled one commits
+        // a tile that renders an empty state while the tool reports success.
+        const unusable = verbProblem(verb, wb);
+        if (unusable) {
+          results.push({ verb, ok: false, error: unusable });
+          continue;
+        }
+        if (decisionFor(verb.kind) === "confirm") spend(input.confirmationId);
         const outcome = await performVerb(verb);
         if (outcome === "performed") {
           applied += 1;
@@ -477,18 +603,85 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     },
   };
 
-  const applyTool: FrontendTool<{ mutations: unknown[] }, Record<string, unknown>> = {
+  /**
+   * Mutation cases that destroy something a person may be looking at. A raw
+   * batch is not expressed in verbs, so the per-verb policy cannot see into
+   * it; without this the escape hatch would also be a way around the confirm
+   * gate, which is worse than not having the hatch.
+   */
+  const DESTRUCTIVE_CASES = new Set(["workspaceDelete", "viewDelete", "viewClose", "placementClose", "documentDelete"]);
+
+  const applyTool: FrontendTool<{ mutations: unknown[]; confirmationId?: string }, Record<string, unknown>> = {
     name: "workbench_apply",
     mode: "frontend",
     description:
-      "Apply a raw protobuf-JSON workbench MutationBatch. Prefer the higher-level tools; this one exists for " +
-      "operations they do not express.",
-    parameters: z.object({ mutations: z.array(z.record(z.string(), z.unknown())).min(1) }),
+      "Apply a raw protobuf-JSON workbench MutationBatch — the same shape `hyperslop ui mutate` takes. Prefer the " +
+      "higher-level tools; this exists for operations they do not express. The batch is atomic: either every " +
+      "mutation lands or none does.",
+    parameters: z.object({
+      mutations: z.array(z.record(z.string(), z.unknown())).min(1),
+      confirmationId: z.string().optional().describe("required when the batch removes a workspace, view, tile or document"),
+    }),
     // Not merely hidden: `RegisterManifestTools` skips an unavailable
-    // descriptor, so the model is never told this tool exists.
+    // descriptor, so with the option off the model is never told this exists.
     available: () => Boolean(options.allowRawMutations) && available(),
-    execute() {
-      return fail("workbench_apply is not implemented; use the higher-level tools") as unknown as Record<string, unknown>;
+    execute(input) {
+      const wb = options.getWorkbench();
+      if (!wb) return fail("no workbench is attached to this chat") as unknown as Record<string, unknown>;
+      if (input.mutations.length > limits.mutationsPerCall) {
+        return fail(`${input.mutations.length} mutations in one call, the limit is ${limits.mutationsPerCall}`) as unknown as Record<string, unknown>;
+      }
+
+      let batch: Mutation[];
+      try {
+        batch = input.mutations.map((raw) => fromJson(MutationSchema, raw as JsonValue));
+      } catch (error) {
+        // A shape the generated codec refuses never reaches the applier, and
+        // its message names the field, which is what the model needs.
+        return fail(`not a mutation: ${error instanceof Error ? error.message : String(error)}`) as unknown as Record<string, unknown>;
+      }
+
+      const destructive = batch.filter((item) => DESTRUCTIVE_CASES.has(item.body.case ?? ""));
+      if (destructive.length > 0) {
+        if (!input.confirmationId) {
+          return fail(
+            `this batch removes ${destructive.map((item) => item.body.case).join(", ")}; call pbui_propose first ` +
+              "describing exactly that, and pass the id you used as confirmationId",
+          ) as unknown as Record<string, unknown>;
+        }
+        if (spent.has(input.confirmationId)) {
+          return fail(`the approval "${input.confirmationId}" has already been used`) as unknown as Record<string, unknown>;
+        }
+        // The product's predicate takes a verb; a raw batch has none, so it is
+        // asked about the closest verb this batch amounts to.
+        if (!isApproved(input.confirmationId, { kind: "workspace.delete", workspaceId: "" })) {
+          return fail(`no approved proposal with id "${input.confirmationId}"`) as unknown as Record<string, unknown>;
+        }
+      }
+
+      // Applied twice on purpose: once against a copy to learn WHY the applier
+      // refuses, since `store.mutate` only answers true or false, and once for
+      // real. The document is immutable, so the dry run cannot affect it.
+      try {
+        applyMutations(wb.store.getState().document, batch);
+      } catch (error) {
+        if (error instanceof MutationError) {
+          return { ok: false, error: error.detail, code: error.code, path: error.path } as unknown as Record<string, unknown>;
+        }
+        throw error;
+      }
+
+      const undoToken = snapshot(wb, `apply ${batch.length} mutation(s)`);
+      if (!wb.mutate(batch)) return fail("the workbench refused the batch") as unknown as Record<string, unknown>;
+      if (destructive.length > 0) spend(input.confirmationId);
+
+      const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
+      return {
+        ok: true,
+        applied: batch.length,
+        undoToken,
+        tiles: description.workspaces[0]?.tiles ?? [],
+      } as unknown as Record<string, unknown>;
     },
   };
 

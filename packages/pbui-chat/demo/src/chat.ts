@@ -1,5 +1,5 @@
 import { createPbuiChat, createVerbRouter, type VerbFamily } from "@hyperslop-systems/pbui-chat";
-import { isWorkbenchVerb, performWorkbenchVerb, type WorkbenchVerb } from "@hyperslop-systems/pbui-workbench";
+import { describeWorkbenchVerb, isWorkbenchVerb, performWorkbenchVerb, type WorkbenchVerb } from "@hyperslop-systems/pbui-workbench";
 import { pbui } from "./pbui/runtime";
 import { registry } from "./pbui/registry";
 import type { Environment, Values } from "./pbui/types";
@@ -60,7 +60,13 @@ export const router = createVerbRouter<Verb>({
     if (isWorkbenchVerb(verb)) {
       const wb = chat.workbench();
       if (!wb) throw new Error("no workbench is attached");
-      performWorkbenchVerb(wb.verbs, verb as unknown as WorkbenchVerb);
+      const workbenchVerb = verb as unknown as WorkbenchVerb;
+      // Throwing on a refusal is what turns it into `rejected:…` in the trace
+      // and in the tool result. Swallowing it told the agent that a close of a
+      // stale placement, or of the last tile, had landed.
+      if (!performWorkbenchVerb(wb.verbs, workbenchVerb)) {
+        throw new Error(`the workbench refused to ${describeWorkbenchVerb(workbenchVerb)}`);
+      }
       return;
     }
     switch (verb.kind) {

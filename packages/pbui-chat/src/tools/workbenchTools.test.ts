@@ -234,7 +234,9 @@ describe("workbench_perform · policy", () => {
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
-    expect(result.results[0].error).toBe('no approved proposal with id "p-1"');
+    // The message names the operation, so a model that reused an id for a
+    // different change can see which change was refused.
+    expect(result.results[0].error).toBe('no approved proposal with id "p-1" for close this tile');
   });
 
   it("applies a confirm-policy verb once the product says it was approved", async () => {
@@ -312,5 +314,220 @@ describe("undo", () => {
   it("is false for a token that aged out", () => {
     const { tools } = harness();
     expect(tools.undo("undo-99")).toBe(false);
+  });
+});
+
+/* ---- PR #11 code review (Codex) ---------------------------------------- */
+
+describe("a refused verb is reported as refused, not as applied", () => {
+  it("reports ok:false when the workbench refuses, and does not count it", async () => {
+    // The router's local handler throws on a refusal; before the fix
+    // performWorkbenchVerb swallowed the handler's `false` and the model was
+    // told a close of the last tile had landed.
+    const wb = createWorkbench({ apps, initial: layout(tile("chat")) });
+    const tools = createWorkbenchTools({
+      getWorkbench: () => wb,
+      perform: async (verb) => {
+        const ok = performWorkbenchVerb(wb.verbs, verb as unknown as WorkbenchVerb);
+        return (ok ? "performed" : "rejected:the workbench refused") as Outcome;
+      },
+      policy: { "tile.close": "allow" },
+    });
+    const perform = tools.tools.find((t) => t.name === "workbench_perform") as FrontendTool<any, any>;
+    const describe_ = tools.tools.find((t) => t.name === "workbench_describe") as FrontendTool<any, any>;
+    const ctx = { signal: new AbortController().signal, toolCallId: "t" };
+    const only = ((await describe_.execute({} as never, ctx)) as any).workspaces[0].tiles[0].placementId;
+
+    const result = (await perform.execute({ verbs: [{ kind: "tile.close", placementId: only }] } as never, ctx)) as any;
+    expect(result.applied).toBe(0);
+    expect(result.results[0].ok).toBe(false);
+    expect(wb.store.getState().document.workspaces[0]!.tree).toBeTruthy();
+  });
+
+  it("performWorkbenchVerb returns false for every handler that refuses", () => {
+    const wb = createWorkbench({ apps, initial: layout(tile("chat")) });
+    expect(performWorkbenchVerb(wb.verbs, { kind: "tile.close", placementId: "n-nope" })).toBe(false);
+    expect(performWorkbenchVerb(wb.verbs, { kind: "workspace.select", workspaceId: "ws-nope" })).toBe(false);
+    expect(performWorkbenchVerb(wb.verbs, { kind: "view.goTo", viewId: "v-nope" })).toBe(false);
+    expect(performWorkbenchVerb(wb.verbs, { kind: "workspace.create", name: "ok" })).toBe(true);
+  });
+});
+
+describe("an approval names the operation it approved", () => {
+  async function closeAttempt(over: Partial<Parameters<typeof createWorkbenchTools>[0]>, confirmationId?: string) {
+    const h = harness(over);
+    const tiles = (await h.call("workbench_describe", {})) as any;
+    const first = tiles.workspaces[0].tiles[0].placementId;
+    const result = (await h.call("workbench_perform", {
+      verbs: [{ kind: "tile.close", placementId: first }],
+      ...(confirmationId ? { confirmationId } : {}),
+    })) as any;
+    return { h, result, first };
+  }
+
+  it("passes the verb to isApproved, so a product can compare it with what it proposed", async () => {
+    const seen: unknown[] = [];
+    const { result } = await closeAttempt(
+      {
+        isApproved: (id, verb) => {
+          seen.push({ id, verb });
+          return false;
+        },
+      },
+      "p-1",
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({ id: "p-1", verb: { kind: "tile.close" } });
+    expect(result.results[0].error).toContain("no approved proposal");
+  });
+
+  it("refuses an approval granted for a different operation", async () => {
+    // The product approved a close of n-other; the agent tries n-first.
+    const { result } = await closeAttempt(
+      { isApproved: (id, verb) => id === "p-1" && verb.kind === "tile.close" && (verb as { placementId: string }).placementId === "n-other" },
+      "p-1",
+    );
+    expect(result.applied).toBe(0);
+  });
+
+  it("spends an approval, so the same id cannot authorise a second destructive verb", async () => {
+    const h = harness({ isApproved: (id) => id === "p-1" });
+    const tiles = (await h.call("workbench_describe", {})) as any;
+    const [first, second] = tiles.workspaces[0].tiles.map((t: any) => t.placementId);
+    const one = (await h.call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
+    expect(one.applied).toBe(1);
+    const two = (await h.call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: second }], confirmationId: "p-1" })) as any;
+    expect(two.applied).toBe(0);
+    expect(two.results[0].error).toContain("already been used");
+  });
+});
+
+describe("the perform tool validates ids and availability", () => {
+  it("rejects a misspelled app rather than committing an empty tile", async () => {
+    const { call, wb } = harness();
+    const tiles = (await call("workbench_describe", {})) as any;
+    const first = tiles.workspaces[0].tiles[0].placementId;
+    const before = wb.store.getState().document;
+    const result = (await call("workbench_perform", {
+      verbs: [{ kind: "tile.split", placementId: first, direction: "col", appId: "invnetory" }],
+    })) as any;
+    expect(result.results[0].error).toContain('unknown app "invnetory"');
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  it("rejects a stale placement with the ids that are actually on screen", async () => {
+    const { call } = harness();
+    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.activate", placementId: "n-gone" }] })) as any;
+    expect(result.results[0].error).toContain('unknown tile "n-gone"');
+  });
+
+  it("rejects unknown views, splits and workspaces", async () => {
+    const { call } = harness();
+    const result = (await call("workbench_perform", {
+      verbs: [
+        { kind: "view.setTitle", viewId: "v-gone", title: "x" },
+        { kind: "split.resize", splitId: "n-gone", ratio: 0.5 },
+        { kind: "workspace.rename", workspaceId: "ws-gone", name: "x" },
+      ],
+    })) as any;
+    expect(result.results.map((r: any) => r.ok)).toEqual([false, false, false]);
+    expect(result.results[0].error).toContain('unknown view "v-gone"');
+    expect(result.results[1].error).toContain('unknown split "n-gone"');
+    expect(result.results[2].error).toContain('unknown workspace "ws-gone"');
+  });
+
+  it("refuses an application the product hid from this workspace", async () => {
+    const scoped = defineApp({
+      id: "ledger",
+      title: "ledger",
+      tone: "var(--pbui-pane-alt)",
+      singleton: false,
+      available: () => false,
+      Component: Blank,
+    });
+    const wb = createWorkbench({ apps: createAppRegistry([...apps.list(), scoped]), initial: layout(tile("chat")) });
+    const tools = createWorkbenchTools({ getWorkbench: () => wb, perform: async () => "performed" as Outcome });
+    const ctx = { signal: new AbortController().signal, toolCallId: "t" };
+    const create_ = tools.tools.find((t) => t.name === "workbench_create_workspace") as FrontendTool<any, any>;
+    const result = (await create_.execute({ name: "x", layout: { kind: "tile", appId: "ledger" } } as never, ctx)) as any;
+    expect(result.error).toBe('app "ledger" is not offered in this workspace');
+
+    // describe MARKS it rather than hiding it, so the agent can say why.
+    const describe_ = tools.tools.find((t) => t.name === "workbench_describe") as FrontendTool<any, any>;
+    const seen = ((await describe_.execute({} as never, ctx)) as any).apps.find((a: any) => a.id === "ledger");
+    expect(seen.available).toBe(false);
+  });
+});
+
+describe("workbench_apply", () => {
+  function rawHarness(over: Partial<Parameters<typeof createWorkbenchTools>[0]> = {}) {
+    const h = harness({ allowRawMutations: true, ...over });
+    const apply = h.tools.tools.find((t) => t.name === "workbench_apply") as FrontendTool<any, any>;
+    const run = (input: unknown) =>
+      Promise.resolve(apply.execute(input as never, { signal: new AbortController().signal, toolCallId: "t" }));
+    return { ...h, apply, run };
+  }
+
+  it("is offered only when the product opts in", () => {
+    const off = harness();
+    const on = rawHarness();
+    expect(((off.byName("workbench_apply").available as () => boolean))()).toBe(false);
+    expect((on.apply.available as () => boolean)()).toBe(true);
+  });
+
+  it("applies a valid batch atomically", async () => {
+    const { run, wb } = rawHarness();
+    const result = (await run({
+      mutations: [{ workspaceRename: { workspaceId: wb.store.getState().workspaceId, name: "renamed" } }],
+    })) as any;
+    expect(result.ok).toBe(true);
+    expect(wb.store.getState().document.workspaces[0]!.name).toBe("renamed");
+    expect(result.undoToken).toMatch(/^undo-\d+$/);
+  });
+
+  it("returns the applier's code and path for a batch it refuses", async () => {
+    const { run, wb } = rawHarness();
+    const before = wb.store.getState().document;
+    const result = (await run({ mutations: [{ workspaceRename: { workspaceId: "ws-nope", name: "x" } }] })) as any;
+    expect(result.ok).toBe(false);
+    expect(result.code).toBe("unknown_workspace");
+    expect(result.path).toContain("workspaceRename");
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  it("rejects something that is not a mutation at all", async () => {
+    const { run } = rawHarness();
+    const result = (await run({ mutations: [{ notAMutation: {} }] })) as any;
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("not a mutation");
+  });
+
+  it("will not delete without an approval, so the escape hatch is not a way around the gate", async () => {
+    const { run, wb } = rawHarness();
+    const id = wb.verbs.createWorkspace("second", { kind: "tile", appId: "chat" })!;
+    const denied = (await run({ mutations: [{ workspaceDelete: { workspaceId: id } }] })) as any;
+    expect(denied.ok).toBe(false);
+    expect(denied.error).toContain("call pbui_propose first");
+    expect(wb.store.getState().document.workspaces).toHaveLength(2);
+  });
+
+  it("deletes once the product says the removal was approved", async () => {
+    const { run, wb } = rawHarness({ isApproved: (confirmationId) => confirmationId === "p-9" });
+    const id = wb.verbs.createWorkspace("second", { kind: "tile", appId: "chat" })!;
+    const result = (await run({ mutations: [{ workspaceDelete: { workspaceId: id } }], confirmationId: "p-9" })) as any;
+    expect(result.ok).toBe(true);
+    expect(wb.store.getState().document.workspaces).toHaveLength(1);
+  });
+
+  it("refuses more mutations than the limit", async () => {
+    const { run, wb } = rawHarness({ limits: { mutationsPerCall: 1 } });
+    const workspaceId = wb.store.getState().workspaceId;
+    const result = (await run({
+      mutations: [
+        { workspaceRename: { workspaceId, name: "a" } },
+        { workspaceRename: { workspaceId, name: "b" } },
+      ],
+    })) as any;
+    expect(result.error).toContain("the limit is 1");
   });
 });

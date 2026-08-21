@@ -558,7 +558,12 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     if (app?.docBound) {
       const existing = viewsOfApp(current, appId).find((view) => sameBindings(view.documents, documents));
       if (existing) {
-        const placement = goTo(current, existing.id);
+        // `viewsOfApp` searches the whole document, so the match may live in
+        // another workspace — where a workspace-local go-to fails and the
+        // fall-through mints a SECOND view with identical bindings, breaking
+        // the de-dup contract and lying to any caller told `wentToExisting`.
+        // `goToView` switches workspace for exactly this case.
+        const placement = goToView(existing.id);
         if (placement) return placement;
       }
     }
@@ -807,79 +812,80 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
   };
 }
 
-/** One verb object in, the matching handler out — the router's side of the two doors. */
-export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: WorkbenchVerb): void {
+/**
+ * One verb object in, the matching handler out — the router's side of the two
+ * doors. Returns whether the verb CHANGED anything.
+ *
+ * The boolean is not decoration. Every handler already refuses what it cannot
+ * do — `close` on the last tile, `selectWorkspace` on an id nothing has,
+ * `replace` on a stale placement — and it says so by returning `false` or
+ * `null`. Dropping that on the floor here made a product's router report
+ * `performed` for a verb that touched nothing, which an agent then reads as
+ * "the change landed" and builds its next call on. A caller that routes verbs
+ * for a model MUST propagate this; a caller wiring a button may ignore it,
+ * because the button is attached to the thing it operates on.
+ */
+export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: WorkbenchVerb): boolean {
   switch (verb.kind) {
     case "tile.split":
-      handlers.split(verb.placementId, verb.direction, verb.appId);
-      return;
+      return handlers.split(verb.placementId, verb.direction, verb.appId) !== null;
     case "tile.close":
-      handlers.close(verb.placementId);
-      return;
+      return handlers.close(verb.placementId);
     case "tile.swap":
-      handlers.swap(verb.a, verb.b);
-      return;
+      return handlers.swap(verb.a, verb.b);
     case "tile.dock":
-      handlers.dock(verb.source, verb.target, verb.zone);
-      return;
+      return handlers.dock(verb.source, verb.target, verb.zone);
     case "tile.activate":
       handlers.activate(verb.placementId);
-      return;
-    case "split.resize":
-      handlers.resize(verb.splitId, verb.ratio);
-      return;
-    case "app.place":
-      handlers.place(verb.appId, verb.from ? { from: verb.from } : {});
-      return;
-    case "view.setTitle":
-      handlers.setTitle(verb.viewId, verb.title);
-      return;
-    case "view.open":
-      handlers.openView(verb.appId, verb.documents, {
-        ...(verb.near ? { near: verb.near } : {}),
-        ...(verb.title ? { title: verb.title } : {}),
-      });
-      return;
+      return true;
     case "tile.replace":
-      handlers.replace(verb.placementId, verb.appId, verb.documents);
-      return;
+      return handlers.replace(verb.placementId, verb.appId, verb.documents);
     case "tile.link":
-      handlers.link(verb.placementId, verb.viewId);
-      return;
+      return handlers.link(verb.placementId, verb.viewId);
     case "view.rebind":
-      handlers.rebind(verb.viewId, verb.documents);
-      return;
-    case "workspace.select":
-      handlers.selectWorkspace(verb.workspaceId);
-      return;
-    case "workspace.create":
-      handlers.createWorkspace(verb.name, verb.spec, {
-        ...(verb.workspaceId ? { workspaceId: verb.workspaceId } : {}),
-        ...(verb.select !== undefined ? { select: verb.select } : {}),
-      });
-      return;
-    case "workspace.rename":
-      handlers.renameWorkspace(verb.workspaceId, verb.name);
-      return;
-    case "workspace.delete":
-      handlers.deleteWorkspace(verb.workspaceId);
-      return;
-    case "workspace.clone":
-      handlers.cloneWorkspace(verb.workspaceId, {
-        ...(verb.name ? { name: verb.name } : {}),
-        ...(verb.newWorkspaceId ? { newWorkspaceId: verb.newWorkspaceId } : {}),
-        ...(verb.select !== undefined ? { select: verb.select } : {}),
-      });
-      return;
+      return handlers.rebind(verb.viewId, verb.documents);
+    case "split.resize":
+      return handlers.resize(verb.splitId, verb.ratio) !== null;
+    case "app.place":
+      return handlers.place(verb.appId, verb.from ? { from: verb.from } : {}) !== null;
+    case "view.setTitle":
+      return handlers.setTitle(verb.viewId, verb.title);
+    case "view.open":
+      return (
+        handlers.openView(verb.appId, verb.documents, {
+          ...(verb.near ? { near: verb.near } : {}),
+          ...(verb.title ? { title: verb.title } : {}),
+        }) !== null
+      );
     case "view.goTo":
-      handlers.goToView(verb.viewId);
-      return;
+      return handlers.goToView(verb.viewId) !== null;
+    case "workspace.select":
+      return handlers.selectWorkspace(verb.workspaceId);
+    case "workspace.create":
+      return (
+        handlers.createWorkspace(verb.name, verb.spec, {
+          ...(verb.workspaceId ? { workspaceId: verb.workspaceId } : {}),
+          ...(verb.select !== undefined ? { select: verb.select } : {}),
+        }) !== null
+      );
+    case "workspace.rename":
+      return handlers.renameWorkspace(verb.workspaceId, verb.name);
+    case "workspace.delete":
+      return handlers.deleteWorkspace(verb.workspaceId);
+    case "workspace.clone":
+      return (
+        handlers.cloneWorkspace(verb.workspaceId, {
+          ...(verb.name ? { name: verb.name } : {}),
+          ...(verb.newWorkspaceId ? { newWorkspaceId: verb.newWorkspaceId } : {}),
+          ...(verb.select !== undefined ? { select: verb.select } : {}),
+        }) !== null
+      );
     case "launcher.open":
       handlers.openLauncher(verb.placementId);
-      return;
+      return true;
     case "launcher.close":
       handlers.closeLauncher();
-      return;
+      return true;
   }
 }
 
