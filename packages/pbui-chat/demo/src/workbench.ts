@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { createDemoApps } from "./apps";
 import { chat, router } from "./chat";
 import type { Verb } from "./pbui/verbs";
-import { engine, instances, library, programStates, resolveDemoBinding, seedLibrary } from "./sandbox";
+import { demoBindingChoices, engine, instances, library, programStates, resolveDemoBinding, seedLibrary, LIBRARY_STORAGE_KEY } from "./sandbox";
 
 /**
  * The demo's tiles: the chat on the left (60%), and a right-hand column of
@@ -61,6 +61,8 @@ export const sandboxHost: SandboxHost = {
   askAgent: (template, refs) => {
     void router.perform({ kind: "askAgent", template, refs: refs as Reference[] });
   },
+  // The playground's binding picker: which products, metals, … exist.
+  bindingChoices: demoBindingChoices,
 };
 
 /**
@@ -70,7 +72,7 @@ export const sandboxHost: SandboxHost = {
 export const scriptApp = createScriptApp(sandboxHost);
 
 /** The inspector, REPL, timeline, playground and source tiles — the same host object, so the script tile knows they exist. */
-export const devtoolApps = createSandboxDevtools(sandboxHost);
+export const devtoolApps = createSandboxDevtools(sandboxHost, { playgroundKey: `${LIBRARY_STORAGE_KEY}.playground` });
 
 export const workbench = createWorkbench({
   // The chat's own applications (conversation, inspector, watchlist, trace,

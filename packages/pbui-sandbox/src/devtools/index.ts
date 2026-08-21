@@ -1,4 +1,4 @@
-export { REPL_APP_ID, SANDBOX_GROUP, TIMELINE_APP_ID, createSandboxDevtools } from "./createSandboxDevtools";
+export { PLAYGROUND_APP_ID, REPL_APP_ID, SANDBOX_GROUP, TIMELINE_APP_ID, createSandboxDevtools } from "./createSandboxDevtools";
 export type { SandboxDevtoolsOptions } from "./createSandboxDevtools";
 export { InspectorTile, VIEW_BINDING, chooseInstance } from "./InspectorTile/InspectorTile";
 export type { InspectorTileProps } from "./InspectorTile/InspectorTile";
@@ -8,3 +8,7 @@ export { REPL_HELP, ReplTile, isIntentList, isUINode, summariseValue } from "./R
 export type { ReplLine, ReplTileProps } from "./ReplTile/ReplTile";
 export { TIMELINE_KINDS, TimelineTile, eventsForReplay, overLimit } from "./TimelineTile/TimelineTile";
 export type { TimelineTileProps } from "./TimelineTile/TimelineTile";
+export { DRAFT_PROGRAM_ID, PLAYGROUND_VIEW_ID, PlaygroundTile } from "./PlaygroundTile/PlaygroundTile";
+export type { PlaygroundTileProps } from "./PlaygroundTile/PlaygroundTile";
+export { PLAYGROUND_TEMPLATE, createPlaygroundStore, usePlayground } from "./playgroundStore";
+export type { CreatePlaygroundStoreOptions, PlaygroundDraft, PlaygroundStore } from "./playgroundStore";

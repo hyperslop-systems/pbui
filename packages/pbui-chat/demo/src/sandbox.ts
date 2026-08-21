@@ -9,7 +9,7 @@ import {
   type UIReference,
 } from "@hyperslop-systems/pbui-sandbox";
 import { createQuickJsEngine } from "@hyperslop-systems/pbui-sandbox/quickjs";
-import { categoryReference, metalReference, orderReference, productById, productReference } from "./world";
+import { CATEGORIES, METALS, ORDERS, PRODUCTS, categoryReference, metalReference, orderReference, productById, productReference } from "./world";
 
 /*
  * The generative half of the demo: the library every program and generated
@@ -112,4 +112,20 @@ export function seedLibrary(): void {
     pinned: true,
   });
   library.markSeeded();
+}
+
+/** What the playground's binding picker offers for each key the demo can resolve. */
+export function demoBindingChoices(key: string): { id: string; label: string }[] {
+  switch (key) {
+    case "product":
+      return PRODUCTS.map((product) => ({ id: product.id, label: `${product.name} (${product.id})` }));
+    case "metal":
+      return Object.keys(METALS).map((id) => ({ id, label: id }));
+    case "category":
+      return Object.keys(CATEGORIES).map((id) => ({ id, label: id }));
+    case "order":
+      return Object.keys(ORDERS).map((id) => ({ id, label: id }));
+    default:
+      return [];
+  }
 }
