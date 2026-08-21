@@ -16,6 +16,12 @@ RelatedFiles:
       Note: Read in Step 1 to establish what the reactive sandbox pattern concretely is
     - Path: repo://packages/pbui-chat/src/tools/workbenchTools.ts
       Note: Read in Step 1 to establish the as-built tool conventions
+    - Path: repo://packages/pbui-sandbox/src/engines/conformance.test.ts
+      Note: 'Step 4: the engine conformance suite, parameterised for Phase 5'
+    - Path: repo://packages/pbui-sandbox/src/engines/evalEngine.ts
+      Note: 'Step 4: forbidden() proxies replace undefined shadows for a model-readable error'
+    - Path: repo://packages/pbui-sandbox/src/host/useProgramInstance.ts
+      Note: 'Step 4: the busy-loop defect and its fix (callbacks through refs, identity-preserving setTrees)'
     - Path: repo://ttmp/2026/08/20/PBUI-AGENT-2--agent-tools-to-reconfigure-the-pbui-workbench-from-chat/reference/01-diary.md
       Note: The predecessor diary whose lessons (dist-not-source, syncManifest on attach, localStorage hazards, getByText) this ticket inherits
 ExternalSources:
@@ -25,6 +31,7 @@ LastUpdated: 2026-08-21T11:40:00-04:00
 WhatFor: Let a second engineer resume this ticket without re-deriving which files were read and why, and give a reviewer the failure record that the finished guide hides.
 WhenToUse: Read before continuing PBUI-AGENT-3 or before reviewing the guide; each step names where to start and how to validate.
 ---
+
 
 
 # Diary
@@ -313,3 +320,88 @@ remarquee cloud ls /ai/2026/08/21/PBUI-AGENT-3 --long --non-interactive
 
 - Ticket path: `pbui/ttmp/2026/08/21/PBUI-AGENT-3--generative-tiles-agent-written-js-apps-and-actions-in-a-reactive-sandbox/`
 - reMarkable: `/ai/2026/08/21/PBUI-AGENT-3/PBUI-AGENT-3 Generative tiles intern guide` (guide + diary, ToC depth 2).
+
+## Step 4: Phase 0 and Phase 1 — the package, the eval engine, the renderer, the library, the tile
+
+Phase 0 built `@hyperslop-systems/pbui-sandbox` as the guide specifies: the contracts (§6 Phase 0.2), vm-system's bootstrap with the PBUI additions, the two validators with limits, the `ProgramEngine` interface and `createEvalEngine`, with a conformance suite written against the interface so the QuickJS engine can join the `describe.each` table. Phase 1 built the rest of the browser half: the `UINodeRenderer` over pbui atoms, `createProgramLibrary` (localStorage, debounced, corrupt entries preserved), the view-keyed state store, `useProgramInstance` (the host loop), `ScriptTile`/`createScriptApp`, and the demo wiring with two seeded programs and launcher rows. The acceptance gesture was then run in a real browser against `make chat-serve`: ⌘K → *Minimal Counter* → a tile; *+* twice → Count: 2; split → two linked placements sharing one count ("Minimal Counter ×2"); reload → tiles restored, count back to 0, library intact.
+
+The step also produced the ticket's first real defect, and it is the kind a unit test cannot see: the demo tab froze the moment the first program tile mounted. The hook had passed its tests because the tests passed stable callbacks; the tile passed an inline `onError` arrow, which made `fail` — and the render effect that depends on it — new on every render, and `setTrees(next)` always allocated a fresh object, so render → setTrees → re-render → new callback → render never settled. The fix is the usual one (callbacks through refs; an unchanged tree keeps its object) and the regression test now counts engine renders under unstable callbacks.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1; workslip instruction in Step 2; "continue" and "connect / continue" as nudges)
+
+**Assistant interpretation:** Implement Phases 0 and 1 of the guide, verify Phase 1's acceptance in the browser, commit at the phase boundaries, print the work slips.
+
+**Inferred user intent:** Reach the point where a program renders as a tile and survives a reload before teaching the model to write one.
+
+**Commits (code):** `cc11ecf` — "PBUI-AGENT-3 Phase 0: @hyperslop-systems/pbui-sandbox — contracts, bootstrap, eval engine"; `d03fd7c` — "PBUI-AGENT-3 Phase 1: renderer, library, host loop, script tile; demo wiring"; `48442ff` — "PBUI-AGENT-3 Phase 1: stable host loop under inline callbacks; browser evidence"
+
+### What I did
+
+- Phase 0: `packages/pbui-sandbox/{package.json,tsconfig*.json,vite.config.ts,README.md}`, `src/{contracts,limits,bootstrap,engine,index}.ts`, `src/validate/{uiSchema,intents}.ts`, `src/engines/evalEngine.ts`, `src/fixtures/programs.ts`, tests (19). Added the package to `make chat-ui` before `pbui-chat`.
+- Phase 1: `src/render/UINodeRenderer/`, `src/library.ts`, `src/state.ts`, `src/host/useProgramInstance.ts`, `src/ScriptTile/`, `src/createScriptApp.tsx`, tests (now 39). Demo: `demo/src/sandbox.ts` (library, eval engine, state store, `resolveDemoBinding`, `seedLibrary`), `workbench.ts` (the `script` app), `App.tsx` (launcher `rows`/`choose` for programs), `main.tsx` (styles), `pbui/types.ts` + `world.ts` (`sold30d` on product references), `demo/package.json` (the dependency). The three structural tests scan `pbui-sandbox/src`.
+- Ran: `pnpm install --no-frozen-lockfile --filter '!@hyperslop-systems/datalab-ui'`; per package `typecheck`, `test`, `build`; `pnpm --filter @hyperslop-systems/pbui-chat-demo build`; `pnpm --filter @hyperslop-systems/pbui-chat test` (93).
+- Started `GOWORK=off go run ./cmd/pbui-chat serve --port 8090` in tmux session `pbui-chat` and drove the acceptance with the Playwright MCP; screenshots in `various/01-browser-counter-program-tile.png` and `various/02-browser-counter-linked-placements.png`.
+
+### Why
+
+- The conformance suite is parameterised over engines from day one because D2's whole promise is that Phase 5 is a new file, not a rewrite; a suite written against `createEvalEngine` alone would have let the QuickJS port drift.
+- Shadowed globals are proxies that throw, not `undefined`: the first version returned "Cannot read properties of undefined (reading 'title')" for `document.title`, which hides the rule a model broke. `ReferenceError: document is not available inside a program: programs are pure functions …` names it.
+- The demo's seeds are `by: "human"` and pinned so the agent cannot remove them without the user's approval — the first concrete use of the policy the guide's §5.11 describes.
+
+### What worked
+
+- Both phases typechecked and built on the first run after the fixes below; the demo build picked up the new package through the workspace link with no Vite change.
+- `defaultLauncherRows` + a product `rows`/`choose` pair was enough for programs to appear in ⌘K under their own GENERATED group — the guide's §6 Phase 1.6 pseudocode was buildable as written.
+- The linked-placement rule came free: `duplicable: false` on the script app plus state keyed by view id, and the split showed one count in two tiles without a line of code about it.
+
+### What didn't work
+
+- `toMatchObject` with an array expects the same length — my first conformance assertion `expect(again).toMatchObject({ children: [{ kind: "text", text: "Count: 1" }] })` failed against a two-child column. Asserted on `children[0]` instead.
+- The DOM fixture's first assertion `rejects.toThrow(/document/)` failed with `"Cannot read properties of undefined (reading 'title')"` — the message-quality defect above, fixed in the engine rather than the test.
+- The first full Phase 1 run: `Test Files 1 failed | 4 passed (6)`, `Tests 1 failed | 36 passed (38)`, plus `Error: [vitest-pool]: Worker forks emitted error … Worker exited unexpectedly` and a V8 `FATAL ERROR: Reached heap limit`. Two causes: `getByRole("combobox")` matched twice (fixed with `getByLabelText("program root.1")`), and the "idle" test created `createProgramStateStore()` inside the render callback — a new dependency every render, so the load effect re-ran and `setTrees({})` allocated forever. Hoisted the store, and made the idle branch keep an empty map's identity.
+- The shell's cwd persisted in `packages/pbui-sandbox` between tool calls after a `cd`, so a later `cd packages/pbui-sandbox && …` failed with `(eval):cd:1: no such file or directory` and a batch of relative `sed`s read nothing. Absolute paths from then on — the same lesson AGENT-2's diary records.
+- **The browser froze** on the first program tile: `browser_click` timed out mid-click, `browser_snapshot` timed out at 30 s, and `browser_console_messages` had to be stopped as a background task. Cause and fix in the prose above; confirmed by the new test `settles with inline (unstable) callbacks and memoised inputs`, and by the tile rendering after the rebuild.
+- The plan work slip and the Phase 0 status slip both failed to print: `Error: post remote almanach layout: Post "https://almanach.crib.scapegoat.dev/api/render-and-print": context deadline exceeded` (three attempts, the layouts kept at `/tmp/work-slip-*.yaml`). The remote renderer is down or unreachable; retried at each boundary.
+
+### What I learned
+
+- A React hook whose effects depend on caller-supplied callbacks is only as stable as its least careful caller. Refs for callbacks and identity-preserving `setState` for structurally-equal values are the two habits that make a hook safe to hand to a product.
+- `pkg/chatui` serves the demo from disk without the `embed` tag (`embed_none.go`), so a `pnpm … pbui-chat-demo build` is live on :8090 without restarting the Go server.
+- `lefthook`'s pre-commit commands are `glob: "*.go"`; TypeScript-only commits run no gate at all, which is why Phase 0/1 commits were instant.
+
+### What was tricky to build
+
+- **The JSON boundary on a shared heap.** Under `eval` the program and the host share one heap, so purity is not enforced by the engine; `structuredClone` on every argument and result is what stops a program mutating the host's state object in place. The conformance test "does not let a program mutate the host's state object" pins it.
+- **State across an update.** A version bump is a fresh instance, but the user's state should survive when it can. The load effect probes a render with the previous state; if that throws, it resets to `initialState` and logs why. The test "an update keeps compatible state and is a fresh instance" checks both halves and that the old instance was disposed (`health().instances` has one entry containing `:v2#`).
+- **Where the linked-placement invariant lives.** Not in the tile: in the state store's key (view id) and in `duplicable: false` on the descriptor. A tile that kept its own `useState` would have shown two counts.
+
+### What warrants a second pair of eyes
+
+- `SHADOWED_GLOBALS` is a list; anything not on it (`eval`, `Function`, `Reflect`, `Proxy`, `Atomics`) is reachable. That is by design under the eval engine and the guide says so, but a reviewer should agree the list is the *useful* speed bump and not mistake it for a boundary.
+- `setTrees` compares trees with `JSON.stringify` on every render. Bounded by `treeNodes` (2000), so it is cheap, but it is O(tree) work per render that a structural-equality helper could halve.
+- The launcher `choose` calls `workbench.verbs.openView` directly rather than the router, matching what the launcher's own rows do; AGENT-2's D14 (human tile gestures in the trace) is still open and this inherits it.
+
+### What should be done in the future
+
+- Phase 2: the `sandbox_*` tools, `program`/`action` types and five verb kinds in the demo vocabulary, the Go prompt section with the `sandbox` block.
+- Retry the work-slip prints when almanach is back; the YAML layouts are kept.
+
+### Code review instructions
+
+- Start at `packages/pbui-sandbox/src/bootstrap.ts` (diff it against vm-system's `runtimeService.ts:13-127`), then `engines/evalEngine.ts` (`forbidden`, `clone`, the epilogue), then `host/useProgramInstance.ts` (the three effects and `reducePluginIntent`), then `ScriptTile/ScriptTile.tsx` and `demo/src/sandbox.ts`.
+- Validate:
+
+```bash
+cd /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui
+pnpm --filter @hyperslop-systems/pbui-sandbox test        # 39
+pnpm --filter @hyperslop-systems/pbui-sandbox typecheck
+pnpm --filter @hyperslop-systems/pbui-chat test           # 93, structural tests over pbui-sandbox
+pnpm --filter @hyperslop-systems/pbui-chat-demo typecheck && pnpm --filter @hyperslop-systems/pbui-chat-demo build
+make chat-serve   # then ⌘K → Minimal Counter; + twice; split the tile; reload
+```
+
+### Technical details
+
+The seeded library after first boot, as `localStorage["pbui-chat-demo.generated.v1"]` holds it: `{schema_version:1, nextId:3, seeded:true, programs:{"prg-1":{title:"Minimal Counter", version:1, bindings:[], by:"human", pinned:true, …}, "prg-2":{title:"Days of cover", bindings:["product"], …}}, actions:{}}`. A program tile's `view.documents` is `{program:"prg-1"}`; the days-of-cover tile opened from the launcher has no `product` binding and renders its own "bind this tile to a product" callout — correct, and the reason Phase 2's `sandbox_open` takes `documents`.

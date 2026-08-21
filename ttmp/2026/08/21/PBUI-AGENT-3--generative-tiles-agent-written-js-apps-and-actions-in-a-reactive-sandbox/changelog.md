@@ -19,3 +19,14 @@ Step 2: wrote design-doc/01, a ~1390-line intern guide: nine gestures, five syst
 
 Step 3: related 23 files, rewrote index.md, docmgr doctor clean, uploaded the guide+diary bundle to reMarkable at /ai/2026/08/21/PBUI-AGENT-3 (commit 65b7def)
 
+
+## 2026-08-21
+
+Phases 0-1 built (cc11ecf, d03fd7c, 48442ff): @hyperslop-systems/pbui-sandbox — bootstrap, validators, ProgramEngine, eval engine with throwing forbidden globals, conformance suite; PBUI-atoms renderer, localStorage library, view-keyed state, useProgramInstance host loop, ScriptTile/createScriptApp; demo seeded with two programs and launcher rows. Browser acceptance: counter tile renders, increments, linked placements share state, reload restores tiles with state reset. Defect found and fixed: inline callbacks made the host loop a busy loop.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/demo/src/sandbox.ts — Library, engine, state store, binding resolver, seeds
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/engines/evalEngine.ts — The eval engine with throwing forbidden globals
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/host/useProgramInstance.ts — The host loop; callbacks through refs after the busy-loop defect
+
