@@ -97,7 +97,7 @@ packages/pbui-sandbox/src
 
 `useProgramInstance(options): ProgramInstance` (`host/useProgramInstance.ts:60-310`) is the whole runtime for one tile. Read it once, slowly. It owns:
 
-- **Identity.** `instanceId = \`${viewId}:${programId}:v${version}#${mountCounter}\`` (line 131). The version is in the id, so an update is a fresh `load`, never a re-evaluation in a dirty context.
+- **Identity.** `instanceId` is `<viewId>:<programId>:v<version>#<mountCounter>` (line 131). The version is in the id, so an update is a fresh `load`, never a re-evaluation in a dirty context.
 - **Three effects.** *load* on `(programId, source, version, viewId)`: dispose the previous instance, `engine.load`, seed state from `initialState` or probe-render the previous state (lines 123-183). *render* on `(meta, globalState, pluginState)`: one `engine.render` per widget; a changed tree replaces `trees`, an equal tree keeps its object identity (lines 186-212). *event* on demand: `engine.event` → intents → `reducePluginIntent` for plugin scope, `perform(verb, {provenance})` for verb scope (lines 215-258).
 - **A log.** `InstanceLogEntry {at, kind: "intent"|"error"|"note", text, outcome?}`, kept to 50, as pre-formatted strings (lines 7-13, 97-99).
 - **The state.** Not here: `ProgramStateStore` (`state.ts`) keyed by view id, so linked placements share one state.
