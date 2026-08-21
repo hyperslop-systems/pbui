@@ -58,3 +58,12 @@ Step 6 / Phase 3: the runs and tools tiles, and the memos that make cross-conver
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/selectors.ts — toolCallsOf, selectToolTraffic, selectWaiting, useToolTraffic
 
+
+## 2026-08-21
+
+Step 7 / Phase 4: conversation_list and conversation_send behind an approval checked against the message, the doc-bound agent-context tile, and a scripted handoff verified end to end in the browser. 203 tests. (commit 4855631)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/demo/src/chat.ts — approvedSend — an approval that names only an id authorises everything
+

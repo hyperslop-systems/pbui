@@ -12,6 +12,8 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/pbui-chat/src/conversations/ContextTile/ContextTile.tsx
+      Note: What the model was told; why the tools list reads the registry (commit 4855631)
     - Path: repo://packages/pbui-chat/src/conversations/ConversationHost.tsx
       Note: One ChatProvider per open conversation; why a runtime is captured, not constructed (commit a5d6d79)
     - Path: repo://packages/pbui-chat/src/conversations/ConversationsTile/ConversationsTile.tsx
@@ -30,8 +32,12 @@ RelatedFiles:
         Per-conversation pending, tools and extensions; one router binding (commit a5d6d79)
     - Path: repo://packages/pbui-chat/src/router/createVerbRouter.ts
       Note: PerformOptions.conversationId and the session-aware binding (commit a5d6d79)
+    - Path: repo://packages/pbui-chat/src/tools/conversationTools.ts
+      Note: conversation_list and the confirm-gated conversation_send (commit 4855631)
     - Path: repo://pkg/chatserver/handlers.go
       Note: HandleCreateSession mints a uuid; no list endpoint
+    - Path: repo://pkg/chatserver/scripted/scenarios.go
+      Note: 'The scripted handoff: list, propose the exact message, send (commit 4855631)'
     - Path: repo://pkg/pbuichat/prompt.go
       Note: 'The ## Conversations section, gated on the conversation type (commit 324d335)'
     - Path: repo://pkg/pbuichat/trace.go
@@ -42,6 +48,7 @@ LastUpdated: 2026-08-21T16:01:43.842023888-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -585,3 +592,78 @@ The two cross-conversation views: what every agent has cost, and what is waiting
 - Then `useToolTraffic`'s subscribe callback, which is the only place in this ticket that subscribes to more than one store.
 - Then the two tiles, which are presentation over those.
 - Validate: `pnpm --filter @hyperslop-systems/pbui-chat test` (182), then `make chat-ui`, place `runs` and `tools` from the launcher, and send "draft a reorder" to park a human tool.
+
+
+## Step 7: Phase 4 — the agent context tile and the handoff
+
+Two things a person needs when several agents share a screen: a way to see what one of them was actually told, and a way for one to hand work to another that does not turn into a loop. This phase built both, and the browser check ran the whole handoff end to end — list, propose, approve, send, answered over there.
+
+### Prompt Context
+
+**User prompt (verbatim):** "phase 4"
+
+**Assistant interpretation:** Build the agent-context tile, `conversation_list` and the `confirm`-gated `conversation_send`, and a scripted scenario that exercises the handoff.
+
+**Inferred user intent:** Finish the model-facing half of the ticket.
+
+**Commit (code):** `4855631` — "PBUI-AGENT-4 Phase 4: the agent-context tile and the handoff"
+
+### What I did
+
+- `packages/pbui-chat/src/tools/conversationTools.ts` — `conversation_list` and `conversation_send`, their policy (`conversation_send: "confirm"` by default), a `confirmationHint` the product fills in, and `isApproved`.
+- `createPbuiChat` — the conversation tools join the per-session toolset; `ConversationTools` (the old name for the toolset) became `ConversationToolset` so the tools bundle could take the name.
+- `packages/pbui-chat/src/conversations/ContextTile/` — the tile, its CSS, its barrel and its test; `createConversationApps` registers `conversation-context` as the only DOC-BOUND helper tile.
+- `conversations/runtime.ts` — `recordSend`, an `onChange` hook, and a wrapper around the client's exposed `syncManifest`.
+- `packages/pbui-chat/demo/src/chat.ts` — `approvedSend`, the exact approval check, and the `conversationTools` wiring; `descriptors/conversation.ts` gains *Show what it was told*.
+- `pkg/chatserver/scripted/scenarios.go` — `handoffScenario`, and `turn.hasTool` beside the existing `hasHumanTool`.
+
+### Why
+
+`conversation_send` is `confirm` because a model that can start a run in another conversation unasked is a loop waiting to happen, and the loop is expensive in a way the user does not see until the bill. The browser check demonstrated the gate doing exactly that job: the receiving agent, handed a message that happened to match the handoff scenario's own keywords, immediately went to hand it BACK — and stopped at the proposal, waiting for a human. Without the gate that is an infinite exchange between two agents; with it, it is one card the user can reject.
+
+The approval had to be checked against the message rather than the id. An `isApproved(id)` that only asks "was this proposal approved" authorises every later send equally: approve one handoff and the same id sends anything, anywhere. The demo's check reads the `pbui_propose` tool call out of the timeline, requires `result.decision === "approve"`, and compares its `to` and `message` fields against the send. Reading the timeline rather than keeping a set of approved ids also means the check survives a reload, because the session hydrates the calls.
+
+The context tile is doc-bound while the other four helpers are singletons, because "what this agent was told" is a fact about ONE conversation and two of them side by side comparing two agents is the point.
+
+### What didn't work
+
+**The tile said "nothing advertised yet" while the manifest went out with every message.** `runtime.lastManifest` was set only by `runtime.syncManifest()`, so the tile showed the state of this code's own calls rather than the state of the world. Wrapping the client's exposed `client.tools.syncManifest` did not fix it either: `createChatClient`'s `connect()` and `send()` call their own internal `syncToolManifest()` closure, not the exposed alias, so the wrapper never fires on the two paths that matter.
+
+What the tile actually wants is not "what was last sent" but "what can this model be offered", and that is the tool registry, read now. It lists `runtime.toolRegistry.manifest()` and uses `lastManifest` only for the "last advertised … · revision n" stamp when one exists. The result is the screenshot in `various/09`: seventeen tools with their modes and descriptions, and `workbench_apply` marked unavailable — which is the tile's whole reason to exist, since "the tool is missing" and "the tool is there but turned off" look identical in a transcript.
+
+**`lastSend` was never set at all.** Phase 0's runtime factory recorded it; the capture-based replacement did not, and nothing noticed until a tile tried to read it. `sendMessageBodyFor` now calls `runtime.recordSend(prompt, body)` with the body it just built — which is the right place anyway, since that function IS the last thing to touch the message before it goes on the wire.
+
+**Mutable runtime fields do not re-render anything.** `lastManifest` and `lastSend` are plain fields, not store state, so setting them changed nothing on screen. `chatRuntimeOf` takes an `onChange` that the registry wires to `invalidate(id)`; the snapshot's identity changes and the tile re-reads. Store state would have been the other answer, but nothing else needs these to be reducible.
+
+**A hand-built layout blanked the page (again).** Same mistake as Phase 3, same recovery: clear the two layout keys. Recorded twice now because it is clearly a trap worth a lint.
+
+### What worked
+
+- The handoff, end to end, in the browser. The sender called `conversation_list` twice (once when it was alone and said so, once after a second conversation existed), mentioned the target as `[[conversation:…|pricing desk]]`, parked a proposal whose fields carried the exact target and message, and on **Approve** performed `conversation_send`. The message arrived in the other conversation and was answered there. The Tools tile showed the parked proposal under *waiting for you* with its *go to* the whole time.
+- Every refusal in `conversation_send` is a sentence the model can act on, and the tests assert the wording: `conversation_list` for unknown ids, "answer the user directly instead" for talking to itself, "ask the user to open it first" for a disconnected target, and the `confirmationHint` appended to the approval refusal so a model asked for "a proposal" learns what shape the check wants.
+- The scripted scenario reads as the interface's own documentation: it says out loud that sending starts a run, and it stops with a sentence rather than a retry whenever a tool it needs is not advertised.
+
+### What was tricky to build
+
+**Telling the model what the approval check wants.** `isApproved` belongs to the product, so the package cannot know what shape a proposal must take — but the model is the one that has to produce it, and a refusal that says only "not approved" teaches it nothing. `confirmationHint` is the seam: the package writes the general refusal, the product appends the specific requirement, and the demo's says exactly which fields the check compares. Without it the loop is: propose, refused, propose again, refused, with no information gained.
+
+**A tool that must know which conversation it is.** `conversation_list` marks one row `isYou`, and `conversation_send` refuses to talk to itself — both need the calling session id, which a `ToolExecutionContext` does not carry. It works because Phase 0 already made the toolset per session; the conversation tools are the clearest case for that decision, and the doc comment now says so.
+
+### What warrants a second pair of eyes
+
+- `chatRuntimeOf` mutates `context.client.tools.syncManifest` in place. It is guarded against double-wrapping within one call, but a second `chatRuntimeOf` over the same captured context would wrap twice. Only `attachRuntime` calls it, and only once per attach, so today it cannot happen.
+- `approvedSend` scans every open conversation's entities to find the proposal. The proposal is always in the SENDING conversation, so it could take the conversation id and look only there; the scan is defensive and O(entities × conversations).
+- The demo's handoff scenario matches on "hand this", "other agent" and friends, which is why the receiving agent tried to hand the message back. That is a scripted-engine artifact, not a product behaviour, but it makes a good demonstration of the gate.
+
+### What should be done in the future
+
+- The prompt section written in Phase 1 names both tools; they exist now, so that gap is closed.
+- `conversation_send` carries `refs`, but the scripted scenario does not pass any. A real handoff should forward the objects it names, and the tests cover the path — nothing exercises it end to end.
+
+### Code review instructions
+
+- `packages/pbui-chat/src/tools/conversationTools.ts` — the refusal ladder in `conversation_send`, in order.
+- `packages/pbui-chat/demo/src/chat.ts` — `approvedSend`, and what it compares.
+- `packages/pbui-chat/src/conversations/ContextTile/ContextTile.tsx` — why the tools list reads the registry.
+- `pkg/chatserver/scripted/scenarios.go` — `handoffScenario`.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-chat test` (203), `GOWORK=off go test ./pkg/...`, then `make chat-ui`, restart the server, open two conversations and send "hand this to the other agent: …".
