@@ -22,3 +22,12 @@ Step 2 / Phase 0: chat runtimes as values held by a conversation registry; chat 
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/registry.ts — The registry every helper tile will read
 
+
+## 2026-08-21
+
+Step 3 / Phase 1: conversations tile, new-conversation gesture from three doors, five conversation verbs in the package, RouterContext.actor so D7's title ownership can be enforced, gated Go prompt section. 156 tests. (commit 324d335)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/verbs.ts — What a product splices into its vocabulary
+

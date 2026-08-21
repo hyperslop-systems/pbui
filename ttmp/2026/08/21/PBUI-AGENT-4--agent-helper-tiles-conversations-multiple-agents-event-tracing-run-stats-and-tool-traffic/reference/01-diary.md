@@ -14,8 +14,12 @@ Owners: []
 RelatedFiles:
     - Path: repo://packages/pbui-chat/src/conversations/ConversationHost.tsx
       Note: One ChatProvider per open conversation; why a runtime is captured, not constructed (commit a5d6d79)
+    - Path: repo://packages/pbui-chat/src/conversations/ConversationsTile/ConversationsTile.tsx
+      Note: The list of every agent, and which gestures are verbs (commit 324d335)
     - Path: repo://packages/pbui-chat/src/conversations/registry.ts
       Note: The conversation registry — records, lazy runtimes, mirrors, the active conversation (commit a5d6d79)
+    - Path: repo://packages/pbui-chat/src/conversations/verbs.ts
+      Note: The five conversation verbs and their one dispatcher (commit 324d335)
     - Path: repo://packages/pbui-chat/src/createPbuiChat.tsx
       Note: |-
         pending, chatClientRef, Binder — one client per product today
@@ -24,12 +28,15 @@ RelatedFiles:
       Note: PerformOptions.conversationId and the session-aware binding (commit a5d6d79)
     - Path: repo://pkg/chatserver/handlers.go
       Note: HandleCreateSession mints a uuid; no list endpoint
+    - Path: repo://pkg/pbuichat/prompt.go
+      Note: 'The ## Conversations section, gated on the conversation type (commit 324d335)'
 ExternalSources: []
 Summary: ""
 LastUpdated: 2026-08-21T16:01:43.842023888-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -255,4 +262,127 @@ The router's resolution, per call:
 const conversation = binding?.conversation(performOptions?.conversationId) ?? null;
 // …handler receives { ...bound, conversationId, client, sendToAgent: defaults to this conversation }
 report(reportBinding, conversation?.id ?? null, actor, verb, target, outcome, provenance);
+```
+
+
+## Step 3: Phase 1 — the conversations tile, the gesture, the verbs
+
+Phase 0 made several agents possible; Phase 1 makes them reachable. A person opens a `conversations` tile and sees every agent on the workbench — what each is doing, how long since it said anything, what is waiting for them — and starts another one with a button rather than a console call. The five conversation verbs land at the same time, so the same list of actions is available to a menu, to a chip and (from Phase 4) to a model.
+
+The step also produced the first genuine design correction of this ticket: the router did not tell a handler who was asking, and D7's rule about who owns a conversation's title cannot be enforced without that.
+
+### Prompt Context
+
+**User prompt (verbatim):** "phase 1"
+
+**Assistant interpretation:** Build Phase 1 as listed: the Conversations tile with its row actions, the *new conversation* gesture in the masthead and the launcher, the `conversation` type and five verb kinds with their descriptors, and the gated Go prompt section.
+
+**Inferred user intent:** Continue the ticket phase by phase without re-negotiating the plan.
+
+**Commit (code):** `324d335` — "PBUI-AGENT-4 Phase 1: the conversations tile, the gesture, the verbs"
+
+### What I did
+
+- `packages/pbui-chat/src/conversations/verbs.ts` — `ConversationVerbSchemas` (five zod objects a product splices into its union), `ConversationVerb`, `CONVERSATION_VERB_KINDS`, `CONVERSATION_VERB_DOCS`, `isConversationVerb`, `describeConversationVerb`, and `performConversationVerb(verb, ctx)` — one dispatcher for the four local kinds, throwing on every refusal.
+- `packages/pbui-chat/src/conversations/ConversationsTile/` — the tile, its CSS module, its barrel and its test. Rows carry the title (renameable in place), a status chip, the connection when it is not `ready`, the message count, the age of the last activity, the token total and a pinned marker; the header carries *new conversation*, a filter and an archived toggle.
+- `packages/pbui-chat/src/apps/createConversationApps.tsx` — the `conversations` singleton, in an `agent` launcher group, with a blurb.
+- `packages/pbui-chat/src/router/createVerbRouter.ts` — `RouterContext.actor`.
+- Demo — `ConversationValue` and `Values.conversation`; `TONES.conversation`; the five kinds spliced into `VerbSchema` and `VERB_DOCS`; `describeVerb` delegating to `describeConversationVerb`; `descriptors/conversation.ts` (label, describe, and a menu whose fourth entry is the handoff); the descriptor registered; `FAMILIES` entries (four `local`, `conversation.send` `agent`); the local handler delegating to `performConversationVerb` and the agent handler routing `conversation.send` to `sendToAgent` with a target; a `+ conversation` masthead button; launcher rows for *new conversation* and for every open conversation; `__pbuiDemo.router` and `.vocabulary` on the console door.
+- Go — `ToolConversationList` / `ToolConversationSend`, `conversationsSection(v)` gated on `KnowsType("conversation")`, and `TestConversationsPromptSectionIsGatedOnTheConversationType`.
+- Regenerated `pkg/chatserver/demo/vocabulary.json` with `pnpm --filter @hyperslop-systems/pbui-chat-demo vocab`.
+
+Commands: `pnpm --filter @hyperslop-systems/pbui-chat test` (156), `… typecheck`, `… build`, `pnpm --filter @hyperslop-systems/pbui-chat-demo typecheck`, `GOWORK=off go test ./pkg/...`, `make chat-ui`, Playwright against `http://localhost:8090/`.
+
+### Why
+
+The verbs live in pbui-chat rather than in each product for the same reason the workbench's live in pbui-workbench: the payload shapes, the kind names and — most of all — the refusal strings should be identical everywhere, so a trace from one product reads in another and a model taught one is taught all. A product declares that it offers them (`...ConversationVerbSchemas` in its union, `...CONVERSATION_VERB_DOCS` in its docs) and its `local` handler is two lines.
+
+Pin, archive, close and forget deliberately have no verb. They are facts about THIS browser's list — which conversations it shows, which it keeps a socket for — not about the conversation, which is a session on a server that several browsers could hold. Giving them verbs would put "the user hid a row" in a trace the agent reads.
+
+The helper tiles are a separate factory from `createChatApps` because they are a separate decision. `createChatApps` is the conversation and the three panels every PBUI product has wanted since PBUI-AGENT-1; `createConversationApps` is what starts earning its space at the second agent. A product with one conversation leaves it out and loses nothing.
+
+### What didn't work
+
+**The router did not say who was asking, so every rename was the agent's.** The tile's rename test failed on its first run:
+
+```
+AssertionError: expected 'agent' to be 'human'
+ ❯ src/conversations/ConversationsTile/ConversationsTile.test.tsx:106:49
+```
+
+`performConversationVerb` had `ctx.conversations.rename(id, title, "agent")` hard-coded, because a handler has no way to tell a human's verb from a model's: `RouterContext` carries the store, the vocabulary, the client and the callbacks, and the actor is known only to `perform`, which uses it for the trace and throws it away. So a person renaming a conversation in the tile recorded the title as the agent's — and D7's rule, that a human title is owned and an agent may only replace one nobody has claimed, had nothing to stand on.
+
+The fix is one field: `RouterContext.actor`, filled from the same `performOptions.actor ?? "human"` the trace already uses. `performConversationVerb` now takes the actor too and enforces the rule in both directions — an agent may name a conversation still titled `auto` or `agent`, and is refused with *"the user named this conversation; ask them before renaming it"* once a human has. Both directions are tested.
+
+**A `rejected:unknown verb conversation.new` in the trace that was not real.** Reading a conversation's timeline in the browser after clicking *new conversation* showed the verb rejected — while the conversation had plainly been created. It was a stale bundle: the page had been loaded before the rebuild that added the kinds to the vocabulary, so the running `validateVerb` had never heard of them, and the entry in the session's timeline was left over from that load. Re-probing on a fresh load returned `performed`, four conversations, and the new one active. The lesson is about the check, not the code: a browser check after `make chat-ui` has to start with a navigation, and a timeline read after a reload can still be showing what an older bundle posted.
+
+**The row layout collapsed in a narrow tile.** The first version put the name and the seven action buttons in a two-column grid. In a tile a third of the screen wide the action column took nearly all of it, the title was squeezed to a few characters and the status chip rendered as an empty box. Rows are now stacked — name, meta, actions wrapping — which reads at any width and is what the screenshot in `various/02` shows.
+
+### What worked
+
+- The tile against the real registry and the real router: rename validates against the demo's vocabulary on the way through and lands as `titledBy: "human"`; pin re-sorts the list; archive hides the row behind a toggle that counts what it is hiding; forget drops it.
+- *New conversation* from three doors — the masthead button, the tile's header, the launcher row — is the same `conversation.new` verb each time, so all three are one implementation and one trace entry.
+- The launcher lists open conversations by name, which is how a person re-opens a tile they closed; the `chat` app itself stays out of the launcher, as every doc-bound app does.
+- The Go prompt section is gated exactly like the workspace and programs sections, and the test proves both directions: a vocabulary without the type gets neither the heading nor the tool names.
+
+### What I learned
+
+- A verb's *actor* is not only trace metadata. Ownership rules — who may rename, who may delete, who may overrule whom — are exactly the rules that need it, and a router that keeps the actor to itself forces every such rule into the product's own code where it will be written differently each time.
+- Splitting "the conversation and its panels" from "the tiles for working with many conversations" at the factory boundary makes the product's `apps:` array read as a series of decisions rather than a list of components.
+- The launcher's skip-doc-bound-apps rule (PBUI-SANDBOX-1 met it with programs) applies verbatim to conversations, and the same shape of fix works: rows of your own, `choose` handling their prefix.
+
+### What was tricky to build
+
+**Which gestures deserve a verb.** The first draft routed all seven row actions through the router, which produced trace entries like "the user pinned a conversation" — noise in a log the agent reads to find out what the user did to the *product*. The split that survives is: a verb when the gesture changes what a conversation IS or where the work goes (new, open, select, rename, send), and a direct registry call when it changes what this browser shows (pin, archive, close, forget). The tile's comment says so, because the next person to add a row action will have to make the same call.
+
+**`conversation.new` and the trace tile.** The new conversation becomes active immediately, and the verb that created it belongs to the conversation that performed it — so right after clicking *new conversation*, the trace tile (which follows the active conversation) is empty, and the entry is in the conversation you just left. That is correct: recording the creation in the new conversation would attribute it to an agent that did not do it, and the conversation had no session id when the verb started. It reads as a gap for a second, and the Conversations tile is where the change is actually visible. Left as it is, noted here because it looks like a bug.
+
+**The descriptor as the handoff door.** The menu entry that matters — *Hand something to this agent…* — is a verb whose target is a conversation other than the one performing it, and it is the only such verb in the shop. Getting `disabledBecause` right for it took three cases rather than one: unknown to this browser, known but closed, open. All three are tested, because a menu that silently drops entries teaches the user that the menu is unreliable.
+
+### What warrants a second pair of eyes
+
+- `ConversationsTile.startNew` sets a `busy` flag around the network round trip, but nothing stops a second click landing after the flag clears and before the list re-renders. Two rapid clicks mint two sessions. That may be acceptable — the user asked twice — but it is untested either way.
+- The tile subscribes to `registry.all()`, which changes identity whenever any mirrored field of any open conversation changes, including the token counter during streaming. With several conversations streaming at once the list re-renders on every frame. `all()` is memoised, so the cost is React's diff over a handful of rows; worth measuring before it becomes ten conversations.
+- `CONVERSATION_VERB_DOCS` is spread into the demo's `VERB_DOCS` after the product's own entries. A product that spelled a verb `conversation.new` itself would be silently overridden rather than told.
+
+### What should be done in the future
+
+- Phase 4 adds `conversation_list` and `conversation_send`; the prompt section already names both tools, so the section is written against tools that do not exist yet. That is deliberate — the prompt is generated from the vocabulary, and the vocabulary declares the type now — but the gap should not outlive Phase 4.
+- The tile shows `waiting` as part of the status chip. Once the Tools tile exists (Phase 3), the count should be a link into it rather than a number.
+
+### Code review instructions
+
+- Start at `packages/pbui-chat/src/conversations/verbs.ts` — the five kinds, the dispatcher, and the ownership rule in `conversation.rename`.
+- Then `ConversationsTile.tsx`, particularly which actions call `chat.router.perform` and which call `registry.*`.
+- Then `packages/pbui-chat/demo/src/chat.ts` — the two delegations, one per family — and `descriptors/conversation.ts`.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-chat test` (156), `GOWORK=off go test ./pkg/pbuichat/...`, then `make chat-ui`, reload `http://localhost:8090/`, place the `conversations` tile from the launcher (group "agent") and use every row action.
+
+### Technical details
+
+The ownership rule, which is the whole of D7 on the write side:
+
+```ts
+case "conversation.rename": {
+  const snapshot = requireKnown(ctx, verb.conversationId);
+  if (!verb.title.trim()) throw new Error("a conversation needs a name");
+  if (ctx.actor === "agent" && snapshot.titledBy === "human") {
+    throw new Error("the user named this conversation; ask them before renaming it");
+  }
+  ctx.conversations.rename(verb.conversationId, verb.title, ctx.actor === "agent" ? "agent" : "human");
+  return;
+}
+```
+
+The product's whole conversation integration, in the `local` handler:
+
+```ts
+if (isConversationVerb(verb)) {
+  await performConversationVerb(verb as ConversationVerb, {
+    actor: ctx.actor,
+    conversations: chat.conversations,
+    workbench: chat.workbench(),
+    send: (conversationId, template, refs) => ctx.sendToAgent(template, refs, { conversationId }),
+  });
+  return;
+}
 ```
