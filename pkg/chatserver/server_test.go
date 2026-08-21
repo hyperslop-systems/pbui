@@ -311,3 +311,107 @@ func TestVocabularyEndpoint(t *testing.T) {
 		t.Errorf("vocabulary incomplete: %+v", v)
 	}
 }
+
+// answerFrontendTool waits for a bridged call to the named tool and answers
+// it as the browser would — the fake-browser half of a sandbox round trip.
+func answerFrontendTool(t *testing.T, ts *httptest.Server, sid, toolName string, result map[string]any) map[string]any {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		snap := snapshot(t, ts, sid)
+		for _, e := range snap.Entities {
+			if e.Kind != "ChatFrontendToolCall" || !strings.Contains(string(e.Payload), `"toolName":"`+toolName+`"`) || !strings.Contains(string(e.Payload), `"status":"requested"`) {
+				continue
+			}
+			var p struct {
+				ToolCallID string         `json:"toolCallId"`
+				Input      map[string]any `json:"input"`
+			}
+			_ = json.Unmarshal(e.Payload, &p)
+			postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/results", map[string]any{"toolCallId": p.ToolCallID, "toolName": toolName, "result": result, "status": "success"})
+			return p.Input
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("no %s request appeared", toolName)
+	return nil
+}
+
+func TestProgramScenarioBridgesTheSandboxTools(t *testing.T) {
+	server, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
+		"revision": 1,
+		"tools": []any{
+			map[string]any{"name": pbuichat.ToolSandboxTest, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+			map[string]any{"name": pbuichat.ToolSandboxCreateApp, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+			map[string]any{"name": pbuichat.ToolSandboxDefineAction, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+		},
+	})
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/messages", map[string]any{
+		"prompt": "make me a days of cover tile and add an action for it",
+		"refs":   []any{map[string]any{"type": "product", "id": "2051"}},
+	})
+
+	// The scenario tests first, then creates, then defines — and each input is
+	// what a real tool would receive: the prompt's own worked program, bound to
+	// the product the user pointed at.
+	tested := answerFrontendTool(t, ts, sid, pbuichat.ToolSandboxTest, map[string]any{"ok": true, "nodeCount": 7, "meta": map[string]any{"widgets": []any{"main"}}})
+	if src, _ := tested["source"].(string); !strings.Contains(src, `definePlugin(`) || !strings.Contains(src, `bindings: ["product"]`) {
+		t.Errorf("sandbox_test did not receive the worked program: %.80s", src)
+	}
+	if docs, _ := tested["documents"].(map[string]any); docs["product"] != "2051" {
+		t.Errorf("sandbox_test documents = %v", tested["documents"])
+	}
+	created := answerFrontendTool(t, ts, sid, pbuichat.ToolSandboxCreateApp, map[string]any{"ok": true, "programId": "prg-3", "version": 1, "placementId": "n-9", "warnings": []any{}})
+	if created["title"] != "Days of cover · 2051" || created["open"] != true {
+		t.Errorf("sandbox_create_app input = %v", created)
+	}
+	defined := answerFrontendTool(t, ts, sid, pbuichat.ToolSandboxDefineAction, map[string]any{"ok": true, "actionId": "act-1"})
+	if b, _ := defined["behaviour"].(map[string]any); b["kind"] != "openProgram" || b["programId"] != "prg-3" {
+		t.Errorf("sandbox_define_action behaviour = %v", defined["behaviour"])
+	}
+	waitIdle(t, server, sid)
+
+	snap := snapshot(t, ts, sid)
+	var programMention, actionMention bool
+	for _, e := range snap.Entities {
+		if e.Kind != "ChatMessage" {
+			continue
+		}
+		if strings.Contains(string(e.Payload), "[[program:prg-3|Days of cover · 2051]]") && strings.Contains(string(e.Payload), "[[tile:n-9|") {
+			programMention = true
+		}
+		if strings.Contains(string(e.Payload), "[[action:act-1|Days of cover]]") {
+			actionMention = true
+		}
+	}
+	if !programMention || !actionMention {
+		t.Errorf("programMention=%v actionMention=%v", programMention, actionMention)
+	}
+}
+
+func TestProgramScenarioStopsOnAFailedTest(t *testing.T) {
+	server, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
+		"revision": 1,
+		"tools": []any{
+			map[string]any{"name": pbuichat.ToolSandboxTest, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+			map[string]any{"name": pbuichat.ToolSandboxCreateApp, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+		},
+	})
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/messages", map[string]any{"prompt": "make me a counter tile"})
+	answerFrontendTool(t, ts, sid, pbuichat.ToolSandboxTest, map[string]any{"ok": false, "phase": "render", "error": "TypeError: boom"})
+	waitIdle(t, server, sid)
+	snap := snapshot(t, ts, sid)
+	for _, e := range snap.Entities {
+		if e.Kind == "ChatFrontendToolCall" && strings.Contains(string(e.Payload), pbuichat.ToolSandboxCreateApp) {
+			t.Fatal("a failed test must not be followed by sandbox_create_app")
+		}
+		if e.Kind == "ChatMessage" && strings.Contains(string(e.Payload), "TypeError: boom") && strings.Contains(string(e.Payload), "phase render") {
+			return
+		}
+	}
+	t.Error("the failure was not reported to the user")
+}

@@ -33,10 +33,11 @@ const (
 	ToolSandboxRemove       = "sandbox_remove"
 )
 
-// sandboxExample is the worked program the prompt carries. PBUI-AGENT-1 and -2
+// SandboxExampleProgram is the worked program the prompt carries. PBUI-AGENT-1 and -2
 // both recorded the model guessing a nested shape until the instructions held
-// one complete, valid value; a program is the most nested thing yet.
-const sandboxExample = `definePlugin(({ ui }) => ({
+// one complete, valid value; a program is the most nested thing yet. Exported
+// so the scripted engine ships the same program the prompt teaches.
+const SandboxExampleProgram = `definePlugin(({ ui }) => ({
   id: "days-of-cover", title: "Days of cover", bindings: ["product"], initialState: { days: 30 },
   widgets: { main: {
     render({ pluginState, globalState }) {
@@ -124,7 +125,7 @@ func sandboxSection(v *Vocabulary) string {
 	b.WriteString("globalState.shared.documents holds the objects the tile is bound to, by binding key, as references { type, id, value }; globalState.shared.env holds the user's environment. Declare bindings: [\"product\"] and read globalState.shared.documents.product rather than copying an object's fields into the source. State is JSON: coerce what you read (Number(pluginState?.days ?? 0)). There is no DOM, fetch, timer, import or async in a program; reaching for one is an error.\n")
 	b.WriteString("Workflow: call " + ToolSandboxTest + " first with the source (and documents, and events to click through); create only a program whose test rendered, with " + ToolSandboxCreateApp + " (documents binds objects when it opens). Change a program with " + ToolSandboxUpdateApp + "; open a stored one with " + ToolSandboxOpen + "; list what exists with " + ToolSandboxDescribe + " — ids come from there. ")
 	b.WriteString("To add an entry to the menu of every object of some types, call " + ToolSandboxDefineAction + ": it opens a program bound to the clicked object, performs a declared verb on it (write \"$ref\" for the object), or asks you with a template ({0} is the object). Remove with " + ToolSandboxRemove + "; something pinned or human-made needs " + ToolPropose + " first. Mention what you made: [[program:<programId>|title]], [[action:<actionId>|label]].\n")
-	b.WriteString("A complete, valid program:\n```js\n" + sandboxExample + "\n```\n")
+	b.WriteString("A complete, valid program:\n```js\n" + SandboxExampleProgram + "\n```\n")
 	return b.String()
 }
 

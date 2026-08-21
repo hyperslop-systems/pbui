@@ -188,6 +188,23 @@ describe("sandbox_update_app", () => {
   });
 });
 
+describe("limits", () => {
+  it("refuses a source over the byte limit at the load phase, storing nothing", async () => {
+    const { call, library } = harness({ limits: { sourceBytes: 40 } });
+    const result = (await call("sandbox_create_app", { title: "big", source: COUNTER_PROGRAM })) as any;
+    expect(result).toMatchObject({ ok: false, phase: "load" });
+    expect(result.error).toMatch(/limit is 40/);
+    expect(library.getState().programs).toEqual({});
+  });
+
+  it("refuses a tree over the node limit with a path-free message", async () => {
+    const { call } = harness({ limits: { treeNodes: 3 } });
+    const result = (await call("sandbox_test", { source: COUNTER_PROGRAM })) as any;
+    expect(result).toMatchObject({ ok: false, phase: "render", code: "VALIDATION_ERROR" });
+    expect(result.error).toMatch(/more than 3 nodes/);
+  });
+});
+
 describe("sandbox_define_action and sandbox_remove", () => {
   it("validates types, programs, verbs and templates", async () => {
     const { call, library } = harness();

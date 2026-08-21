@@ -14,6 +14,7 @@ import (
 
 	chatapp "github.com/go-go-golems/pinocchio/pkg/chatapp"
 	"github.com/go-go-golems/pinocchio/pkg/chatapp/frontendtools"
+	toolv1 "github.com/go-go-golems/pinocchio/pkg/chatapp/pb/proto/pinocchio/chatapp/frontendtools/v1"
 	chatappv1 "github.com/go-go-golems/pinocchio/pkg/chatapp/pb/proto/pinocchio/chatapp/v1"
 	sessionstream "github.com/go-go-golems/sessionstream/pkg/sessionstream"
 	"github.com/hyperslop-systems/pbui/pkg/pbuichat"
@@ -262,6 +263,17 @@ func (t *turn) hasHumanTool(name string) bool {
 
 // humanTool runs a browser-side human tool and returns its result map.
 func (t *turn) humanTool(name string, input map[string]any) (map[string]any, string, error) {
+	return t.requestTool(name, frontendHumanMode(), input)
+}
+
+// frontendTool runs a browser-side automatic tool — the sandbox_* and
+// workbench_* tools — and returns its result map. Same bridge as a human
+// tool; the mode tells the browser to execute rather than park.
+func (t *turn) frontendTool(name string, input map[string]any) (map[string]any, string, error) {
+	return t.requestTool(name, frontendAutoMode(), input)
+}
+
+func (t *turn) requestTool(name string, mode toolv1.ToolExecutionMode, input map[string]any) (map[string]any, string, error) {
 	if t.engine.frontendTools == nil {
 		return nil, "", errors.New("frontend tools are not installed")
 	}
@@ -270,7 +282,7 @@ func (t *turn) humanTool(name string, input map[string]any) (map[string]any, str
 		MessageID:  t.messageID,
 		ToolCallID: fmt.Sprintf("%s:tool:%s:%d", t.messageID, name, t.widgets),
 		ToolName:   name,
-		Mode:       frontendHumanMode(),
+		Mode:       mode,
 		Input:      input,
 	})
 	if err != nil {

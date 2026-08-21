@@ -5,10 +5,12 @@ import {
   DEFAULT_LIMITS,
   SANDBOX_INTENTS,
   SANDBOX_UI_KINDS,
+  byteLength,
   countNodes,
   reducePluginIntent,
   substituteVerbRef,
   toProgramError,
+  validateUINode,
   type ActionBehaviour,
   type ActionRecord,
   type DispatchIntent,
@@ -174,6 +176,12 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
   async function check(source: string, documents: Record<string, string> = {}, state?: unknown, events: { handler: string; args?: unknown }[] = []): Promise<CheckResult> {
     const engine = options.getEngine();
     if (!engine) return { ok: false, phase: "load", code: "UNKNOWN_ERROR", error: "no sandbox engine is attached to this chat" };
+    // The tools' limits may be tighter than the engine's; enforce them here
+    // so a product can cap what the AGENT writes without re-creating the engine.
+    const size = byteLength(source);
+    if (size > limits.sourceBytes) {
+      return { ok: false, phase: "load", code: "VALIDATION_ERROR", error: `source is ${size} bytes, the limit is ${limits.sourceBytes}` };
+    }
     scratch += 1;
     const instanceId = `check#${scratch}`;
     let phase: ProgramErrorPayload["phase"] = "load";
@@ -187,7 +195,7 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       let pluginState: unknown = state ?? meta.initialState ?? {};
       phase = "render";
       const trees: Record<string, UINode> = {};
-      for (const widgetId of meta.widgets) trees[widgetId] = await engine.render({ instanceId, widgetId, pluginState, globalState });
+      for (const widgetId of meta.widgets) trees[widgetId] = validateUINode(await engine.render({ instanceId, widgetId, pluginState, globalState }), limits);
       const intents: DispatchIntent[] = [];
       phase = "event";
       for (const event of events) {
@@ -197,14 +205,15 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       }
       if (events.length > 0) {
         phase = "render";
-        for (const widgetId of meta.widgets) trees[widgetId] = await engine.render({ instanceId, widgetId, pluginState, globalState });
+        for (const widgetId of meta.widgets) trees[widgetId] = validateUINode(await engine.render({ instanceId, widgetId, pluginState, globalState }), limits);
       }
       const nodeCount = Object.values(trees).reduce((total, tree) => total + countNodes(tree), 0);
       const { instanceId: _i, programId: _p, ...rest } = meta;
       return { ok: true, meta: rest, trees: pruneTrees(trees), nodeCount, intents, state: pluginState };
     } catch (error) {
       const payload = toProgramError(error, phase);
-      return { ok: false, phase, code: payload.code, error: payload.message };
+      const code = phase === "render" && error instanceof Error && /the tree has more than|nests deeper than|is not supported/.test(error.message) ? "VALIDATION_ERROR" : payload.code;
+      return { ok: false, phase, code, error: payload.message };
     } finally {
       await engine.dispose(instanceId);
     }
@@ -411,7 +420,7 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     mode: "frontend",
     description:
       "Replace a program's source. It is run first and the old version keeps running if the new one fails. Every tile showing the program " +
-      "reloads it; their state is kept when the new version can render it, else reset to initialState. A pinned program needs the user's approval.",
+      "reloads it; a tile keeps its state when the new version can render it, else resets to initialState. A pinned program needs the user's approval.",
     parameters: z.object({
       programId: z.string().describe("from sandbox_describe or the result that created it"),
       source: z.string(),
@@ -440,12 +449,16 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
         });
         if (input.confirmationId && decisionFor("program.update", protectedProgram(existing)) === "confirm") spent.add(input.confirmationId);
         const wb = options.getWorkbench();
+        const openIn = wb ? tilesShowing(wb, program.id) : [];
         return asResult({
           ok: true,
           programId: program.id,
           version: program.version,
-          openIn: wb ? tilesShowing(wb, program.id) : [],
-          warnings: JSON.stringify(result.meta.initialState) !== JSON.stringify(existing.meta) ? [] : [],
+          openIn,
+          // Whether a tile kept its state is decided per tile when it reloads
+          // (guide D11) and shown in that tile's details log; the tool cannot
+          // know it, so it says where to look rather than guessing.
+          note: openIn.length > 0 ? `${openIn.length} tile(s) reload the new version now; each tile's details log says whether its state was kept` : "no tile shows it; open it with sandbox_open",
         });
       } catch (error) {
         return asResult(fail(error instanceof Error ? error.message : String(error)));

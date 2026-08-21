@@ -13,6 +13,10 @@ func frontendHumanMode() toolv1.ToolExecutionMode {
 	return toolv1.ToolExecutionMode_TOOL_EXECUTION_MODE_FRONTEND_HUMAN
 }
 
+func frontendAutoMode() toolv1.ToolExecutionMode {
+	return toolv1.ToolExecutionMode_TOOL_EXECUTION_MODE_FRONTEND_AUTO
+}
+
 // respond picks a scenario by keyword. The order matters: more specific
 // intents first.
 func (e *Engine) respond(t *turn) error {
@@ -20,6 +24,8 @@ func (e *Engine) respond(t *turn) error {
 	switch {
 	case has(p, "what did i", "trace", "summar", "undo"):
 		return e.traceScenario(t)
+	case has(p, "program", "counter", "make me a", "build me", "tile that", "tile for", "days of cover", "define an action", "add an action"):
+		return e.programScenario(t)
 	case has(p, "reorder", "draft"):
 		return e.reorderScenario(t)
 	case has(p, "compare"):
