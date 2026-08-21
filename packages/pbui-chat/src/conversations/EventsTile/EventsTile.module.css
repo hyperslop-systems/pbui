@@ -1,0 +1,67 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: var(--pbui-space-2);
+}
+
+.header,
+.families {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  flex: 1 1 auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+ * Two lines: what and when on the first, what it says on the second. One
+ * line of five columns needed more width than a third of a screen, and the
+ * summary — the part worth reading — was the column that lost.
+ */
+.row {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  align-items: baseline;
+  column-gap: var(--pbui-space-2);
+  min-width: 0;
+  padding: 2px var(--pbui-space-1);
+  border-bottom: var(--pbui-border-hair);
+}
+
+.summary {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row[data-danger="true"] {
+  background: var(--pbui-pane-alt);
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.id {
+  white-space: nowrap;
+}

@@ -119,6 +119,22 @@ export type ConversationValue = {
   model?: string | null;
 };
 
+/**
+ * One entry of chat-provider's classified debug stream: a frame, a lifecycle
+ * change, a projected UI event. The id is `<conversationId>:<entryId>`, so a
+ * mention of one names the conversation it belongs to as well.
+ */
+export type ChatEventValue = {
+  conversationId: string;
+  seq: number;
+  at: number;
+  family: string;
+  eventType: string;
+  eventId: string;
+  summary: string;
+  event: Record<string, unknown>;
+};
+
 export type FieldValue = {
   tableId: string;
   name: string;
@@ -142,6 +158,7 @@ export interface Values {
   program: Reference<ProgramValue>;
   action: Reference<ActionValue>;
   conversation: Reference<ConversationValue>;
+  chatEvent: Reference<ChatEventValue>;
   field: Reference<FieldValue>;
   row: Reference<RowValue>;
   source: Reference<SourceValue>;
@@ -175,6 +192,7 @@ export const TONES: Record<PresentationType, string> = {
   program: "var(--pbui-tone-widget)",
   action: "var(--pbui-tone-neutral)",
   conversation: "var(--pbui-pane-alt)",
+  chatEvent: "var(--pbui-tone-trace)",
   field: "var(--pbui-tone-field)",
   row: "var(--pbui-tone-row)",
   source: "var(--pbui-tone-source)",

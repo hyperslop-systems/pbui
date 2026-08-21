@@ -9,6 +9,7 @@ import { actionDescriptor } from "./descriptors/action";
 import { appDescriptor } from "./descriptors/app";
 import { programDescriptor } from "./descriptors/program";
 import { categoryDescriptor } from "./descriptors/category";
+import { chatEventDescriptor } from "./descriptors/chatEvent";
 import { conversationDescriptor } from "./descriptors/conversation";
 import { fieldDescriptor } from "./descriptors/field";
 import { metalDescriptor } from "./descriptors/metal";
@@ -65,6 +66,7 @@ const base = createPresentationRegistry<Values, Environment, Verb>({
   program: bind(programDescriptor),
   action: bind(actionDescriptor),
   conversation: bind(conversationDescriptor),
+  chatEvent: bind(chatEventDescriptor),
   field: bind(fieldDescriptor),
   row: bind(rowDescriptor),
   source: bind(sourceDescriptor),

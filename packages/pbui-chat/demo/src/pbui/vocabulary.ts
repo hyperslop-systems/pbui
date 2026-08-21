@@ -90,6 +90,12 @@ const types: Record<PresentationType, TypeSpec> = {
     ],
     example: "[[conversation:3f0a…|reorder desk]]",
   },
+  chatEvent: {
+    doc: "one entry of a conversation's wire log: a frame, a connection change, a projected UI event",
+    idHint: "<conversationId>:<entryId>, from the events tile",
+    tone: TONES.chatEvent,
+    verbs: ["inspect", "conversation.select", "askAgent"],
+  },
   field: {
     doc: "a column of a table the agent produced",
     idHint: "<tableId>.<column>",

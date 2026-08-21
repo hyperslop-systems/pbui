@@ -306,6 +306,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
         router,
         basePrefix,
         conversations,
+        debug,
         // Outside any conversation tile: the inspector, the watchlist, an
         // object menu on a product tile. Their sends go to the active one.
         conversationId: null,

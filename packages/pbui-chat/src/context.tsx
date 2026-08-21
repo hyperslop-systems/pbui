@@ -1,5 +1,6 @@
 import type { PbuiInstance, PresentationRegistry } from "@hyperslop-systems/pbui";
 import { createContext, useContext } from "react";
+import type { ChatDebugEventStore } from "@go-go-golems/chat-provider";
 import type { ConversationRegistry } from "./conversations/registry";
 import type { ChatRuntime } from "./conversations/runtime";
 import type { VerbRouter } from "./router/createVerbRouter";
@@ -26,6 +27,8 @@ export interface PbuiChatContextValue {
   basePrefix: string;
   /** Every conversation this product knows about, and which one is active. */
   conversations: ConversationRegistry;
+  /** The classified debug stream of every conversation, keyed by session id. */
+  debug: ChatDebugEventStore;
   /**
    * The conversation this subtree belongs to, or null outside one — the
    * inspector and the watchlist are product-wide, a chat tile is not.

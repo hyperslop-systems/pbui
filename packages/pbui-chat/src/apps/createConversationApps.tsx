@@ -1,11 +1,12 @@
 import { defineApp, type AppDescriptor } from "@hyperslop-systems/pbui-workbench";
 import { ConversationsTile } from "../conversations/ConversationsTile";
+import { EventsTile } from "../conversations/EventsTile";
 import type { ConversationRegistry } from "../conversations/registry";
 import { toneVar } from "../tone";
 import type { Vocabulary } from "../vocabulary/schemas";
 import { PanelApp } from "./PanelApp";
 
-export type ConversationAppId = "conversations";
+export type ConversationAppId = "conversations" | "chat-events";
 
 export interface CreateConversationAppsOptions {
   tones?: Partial<Record<ConversationAppId, string>>;
@@ -42,6 +43,19 @@ export function createConversationApps(
       Component: () => (
         <PanelApp part="conversations-app">
           <ConversationsTile />
+        </PanelApp>
+      ),
+    }),
+    defineApp({
+      id: "chat-events",
+      title: options.titles?.["chat-events"] ?? "events",
+      tone: options.tones?.["chat-events"] ?? toneVar(chat.vocabulary.types.chatEvent?.tone ?? "chatEvent", "var(--pbui-tone-neutral)"),
+      group,
+      blurb: "what happens on the wire: frames, tool calls, widgets, reconnects",
+      singleton: true,
+      Component: () => (
+        <PanelApp part="chat-events-app">
+          <EventsTile />
         </PanelApp>
       ),
     }),
