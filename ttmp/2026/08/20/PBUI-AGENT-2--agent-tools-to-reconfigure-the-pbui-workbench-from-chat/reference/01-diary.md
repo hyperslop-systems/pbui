@@ -480,3 +480,57 @@ The demo declares `tile`, `workspace` and `app` as presentation types and the tw
 - Read `demo/src/pbui/verbs.ts`'s workbench block and `demo/src/chat.ts`'s `isWorkbenchVerb` branch together — they are the two halves of one decision.
 - `demo/src/pbui/descriptors/tile.ts` for the `TileRef` ↔ `Reference` bridge; `pkg/pbuichat/prompt.go`'s `workbenchSection` for the gating.
 - Validate: `GOWORK=off go run ./cmd/pbui-chat prompt` (the section appears), `pnpm --filter @hyperslop-systems/pbui-chat-demo vocab` (regenerates clean), `make ci-check`.
+
+## Step 4: PR #11 review — six findings, all real
+
+Codex reviewed the branch and raised six issues. I checked each against the source before touching anything; all six held, and two of them were the kind that only matter once a model is on the other end of the API. The worst is that a *refused* verb was reported to the agent as *applied* — the handlers all refused correctly, and `performWorkbenchVerb` threw the answer away.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Address code review issues: https://github.com/hyperslop-systems/pbui/pull/11"
+
+**Assistant interpretation:** Fetch the review on PR #11, evaluate each finding on its merits, and fix what is real.
+
+**Inferred user intent:** Get the branch to a mergeable state, since the publish that unblocks every remaining migration is waiting behind it.
+
+**Commit (code):** `84f175e` — "Address PR #11 review: six findings, all real"
+
+### What I did
+- `gh api /repos/hyperslop-systems/pbui/pulls/11/{reviews,comments}` — one review body with two findings, four inline comments. Read each, then read the code it pointed at before accepting it.
+- Fixed all six; added 25 tests, one group per finding.
+
+### Why
+- Every finding was a real defect, and four of the six are only reachable through the agent surface, which no existing test exercised end to end.
+
+### What worked
+- The review was accurate about code it had not run. The two P1s in particular describe failure modes that are invisible in a unit test of the handler and obvious in a tool result.
+- Fixing the P1 (`performWorkbenchVerb` returning `boolean`) needed no changes to any caller that ignores the result — the chrome buttons, the launcher and the drag hook all call the handlers directly and never went through the dispatcher.
+
+### What didn't work
+- `demo/src/chat.ts(67,12): error TS1345: An expression of type 'void' cannot be tested for truthiness.` The demo compiles against `pbui-workbench`'s **`dist`**, not its source, so the new signature was invisible until the package was rebuilt. Same trap PBUI-WORKBENCH-1 §7.5 records; it will keep biting until the demo consumes source.
+- One existing test failed after the fix: `expected 'no approved proposal with id "p-1" fo…' to be 'no approved proposal with id "p-1"'`. The assertion pinned the message the fix deliberately improved — the refusal now names the operation. Updated rather than reverted.
+- A `python3` heredoc failed with `FileNotFoundError` because an earlier `cd packages/pbui-chat` had moved the shell. Third time this session; absolute paths are the only reliable answer.
+
+### What I learned
+- **A boolean return is API surface, not a detail.** `performWorkbenchVerb` was declared `void` because nothing needed the answer when a human clicked a button — the button is attached to the thing it operates on, so a refusal is self-evident. The moment a model is the caller, "did that work?" is the only question, and the answer had been discarded at the one place both doors meet.
+- **An approval that names only itself authorises everything.** `isApproved(id)` reads like a credential check and is really a coin: one approval, any destructive verb. Passing the verb makes it a check on the actual operation, and spending the id makes it one use. Neither costs anything; both were missing because I wrote the mechanism thinking about *whether* a human agreed rather than *what* they agreed to.
+- **`isWorkbenchVerb` is a shape test, not a validity test.** It matches on the `kind` prefix and nothing else, which is right for a router deciding a family and wrong for a gate deciding whether to dispatch. The protocol will happily store any string as an `app_id`, so the layer that accepts model output is the layer that has to check.
+
+### What was tricky to build
+- **Where the raw-mutation gate goes.** `workbench_apply` bypasses the per-verb policy by construction: a `MutationBatch` is not verbs, so `checkPolicy` has nothing to look at. Leaving it unimplemented was one answer and deleting it another, but the option is documented public API and a published package with a documented-but-broken option is worse than either. It now inspects the batch for the five mutation cases that destroy something a person may be reading (`workspaceDelete`, `viewDelete`, `viewClose`, `placementClose`, `documentDelete`) and requires an approval for those, so the escape hatch is not also a way around the gate.
+- **Getting a real error out of `store.mutate`.** It answers `true`/`false`; the `MutationError`'s code, path and detail go to the workbench's `onRejected`, which the tools do not own. The apply tool therefore dry-runs `applyMutations` against the current document to catch the error, then commits for real. The document is immutable and replaced wholesale, so the dry run cannot affect anything — but it is two applications of the same batch, and worth knowing before anyone puts an expensive validator behind it.
+
+### What warrants a second pair of eyes
+- The destructive-case list in `workbench_apply` is a denylist. A mutation case added to the protocol tomorrow is permitted by default. An allowlist would be safer and would need touching every time the protocol grows, which is the trade; I chose the denylist because the tool is off by default and its consumer opts in deliberately.
+- `verbProblem` calls `describeWorkbench` once per verb in a batch. Correct, and O(verbs × tiles); the batch limit is 8, so it does not matter yet.
+- The raw tool asks `isApproved(id, { kind: "workspace.delete", workspaceId: "" })` for any destructive batch — a stand-in verb, since a batch has none. A product comparing the verb closely will not recognise it. Either the signature should admit "a raw batch", or the tool should stay off.
+
+### What should be done in the future
+- B4 still owns wiring the demo's `isApproved` to its proposal state. It is now a two-argument predicate, so the demo must record what each proposal was FOR, not just that it was approved.
+- Consider having the demo consume the workspace packages from source rather than `dist`, which would have caught the `void`→`boolean` change at edit time.
+
+### Code review instructions
+- `packages/pbui-workbench/src/verbs.ts`: `performWorkbenchVerb` (every case now returns), and `openView`'s de-dup branch.
+- `packages/pbui-chat/src/tools/workbenchTools.ts`: `checkPolicy`/`spend`, `verbProblem`/`appProblem`, and `applyTool` end to end.
+- `packages/pbui-chat/demo/src/chat.ts`: the `isWorkbenchVerb` branch now throws on a refusal — that throw is what becomes `rejected:…` in the trace.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-workbench test` (114), `pnpm --filter @hyperslop-systems/pbui-chat test` (88), `make ci-check`.

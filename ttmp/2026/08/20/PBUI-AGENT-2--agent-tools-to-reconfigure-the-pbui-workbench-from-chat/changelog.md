@@ -36,3 +36,8 @@ B3: four demo tile types (inventory, sku, metals, notes) plus demo/src/world.ts,
 
 B0-B3 landed (13734a1, 1c65426, 531df03, 455c756, 668759d, dfbab54). B0: specOf and describeWorkbench. B1: six browser-side workbench tools, all going through the product router so an agent's rearrangement lands in the trace beside a human's. B2: tile/workspace/app presentation types, twenty workbench verb kinds spelled as pbui-workbench spells them, the tile descriptor from createTileDescriptor, and a prompt section gated on the vocabulary. B3 (subagent): four demo tile types and a TS mirror of the Go demo world. Right-clicking a tile bar now offers the same verbs the chrome buttons perform, which completes PBUI-WORKBENCH-2 Phase 2's acceptance gesture.
 
+
+## 2026-08-20
+
+Addressed the PR #11 review (84f175e): six findings, all real. Two P1s — performWorkbenchVerb discarded every handler refusal so the agent was told refused changes had applied, and isApproved never saw the operation so one approval authorised every confirm-policy verb. Plus openView de-duplicating globally while going to a view locally, the generic perform tool validating no ids at all, application availability being honoured by the launcher and not by the agent, and workbench_apply being advertised while unimplemented. 25 new tests.
+
