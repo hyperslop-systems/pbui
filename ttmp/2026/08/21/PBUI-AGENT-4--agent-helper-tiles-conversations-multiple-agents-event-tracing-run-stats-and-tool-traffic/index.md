@@ -21,7 +21,7 @@ RelatedFiles:
 ExternalSources:
     - https://github.com/go-go-golems/sessionstream/
     - https://github.com/go-go-golems/pinocchio/
-Summary: 'Design ticket: run several agent conversations on one PBUI workbench (a conversation registry with one chat runtime per open conversation, the chat app rebound as a view of a conversation, a "new conversation" gesture, a session-aware verb router and per-session tools, a server session index) and five helper tiles — Conversations, Events (the chat-provider debug stream), Runs (token and duration statistics), Tools (traffic and waiting-for-you), Agent context (the advertised manifest, last refs, environment, vocabulary). Contains the intern guide, tasks for six phases, and the diary. Design only so far.'
+Summary: 'Built: run several agent conversations on one PBUI workbench (a conversation registry with one chat runtime per open conversation, the chat app rebound as a view of a conversation, a "new conversation" gesture, a session-aware verb router and per-session tools, a server session index) and five helper tiles — Conversations, Events (the chat-provider debug stream), Runs (token and duration statistics), Tools (traffic and waiting-for-you), Agent context (the advertised manifest, last refs, environment, vocabulary). Contains the intern guide (with §4.10, what changed between the design and the build), tasks for six phases, and an eight-step diary.'
 LastUpdated: 2026-08-21T18:40:00-04:00
 WhatFor: Landing page for PBUI-AGENT-4; start here to find the guide, the phase tasks and the diary.
 WhenToUse: Before implementing multi-conversation support or any agent helper tile; when a product needs more than one agent on screen.
@@ -49,7 +49,9 @@ Background: `PBUI-AGENT-1` (the chat), `PBUI-AGENT-2` (workbench tools and polic
 
 ## Status
 
-Design written and delivered; not implemented (by the user's instruction). Phases 0–5 in [tasks.md](./tasks.md).
+All six phases built and verified in the browser against the running Go server (diary steps 2–8, screenshots `various/01`–`10`): the conversation registry and one provider per open conversation (Phase 0), the Conversations tile and the conversation verbs (1), the Events tile (2), the Runs and Tools tiles (3), the agent-context tile with `conversation_list` and a `confirm`-gated `conversation_send` (4), and the Go session index with a `sync()` that merges (5). 207 tests in `pbui-chat`, plus the Go suite.
+
+Mid-ticket the user gave a standing rule — everything that can be an object should be an object, and its actions belong in the right-click menu — which turned four gestures into verbs and rewrote the Conversations tile (diary step 4). The guide's §4.10 lists the seven places the build refused the design, the largest being that `createChatRuntime` cannot be written because `createToolRuntime` is unexported. See [tasks.md](./tasks.md).
 
 ## Topics
 

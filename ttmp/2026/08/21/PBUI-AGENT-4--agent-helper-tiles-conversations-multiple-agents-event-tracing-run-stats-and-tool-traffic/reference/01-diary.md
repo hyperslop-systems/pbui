@@ -12,6 +12,8 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/pbui-chat/README.md
+      Note: The package's own docs, written at the close-out (commit ad6c6cc)
     - Path: repo://packages/pbui-chat/src/conversations/ContextTile/ContextTile.tsx
       Note: What the model was told; why the tools list reads the registry (commit 4855631)
     - Path: repo://packages/pbui-chat/src/conversations/ConversationHost.tsx
@@ -38,6 +40,8 @@ RelatedFiles:
       Note: HandleCreateSession mints a uuid; no list endpoint
     - Path: repo://pkg/chatserver/scripted/scenarios.go
       Note: 'The scripted handoff: list, propose the exact message, send (commit 4855631)'
+    - Path: repo://pkg/chatserver/sessions.go
+      Note: The session index — a list the server can rebuild or lose (commit ad6c6cc)
     - Path: repo://pkg/pbuichat/prompt.go
       Note: 'The ## Conversations section, gated on the conversation type (commit 324d335)'
     - Path: repo://pkg/pbuichat/trace.go
@@ -48,6 +52,7 @@ LastUpdated: 2026-08-21T16:01:43.842023888-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -667,3 +672,81 @@ What the tile actually wants is not "what was last sent" but "what can this mode
 - `packages/pbui-chat/src/conversations/ContextTile/ContextTile.tsx` — why the tools list reads the registry.
 - `pkg/chatserver/scripted/scenarios.go` — `handoffScenario`.
 - Validate: `pnpm --filter @hyperslop-systems/pbui-chat test` (203), `GOWORK=off go test ./pkg/...`, then `make chat-ui`, restart the server, open two conversations and send "hand this to the other agent: …".
+
+
+## Step 8: Phase 5 — the session index, the merge, and the close-out
+
+The last phase gives the server a list it can rebuild or lose, and the browser a way to reconcile with it that never costs the user anything. Two open questions from earlier phases were folded in rather than deferred, and the documentation was brought level with what shipped.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Phase 5"
+
+**Assistant interpretation:** Build the Go `SessionIndex` and its two routes, `registry.sync()` as a merge, and finish the documentation; fold in the two small open questions I had offered.
+
+**Inferred user intent:** Close the ticket.
+
+**Commit (code):** `ad6c6cc` — "PBUI-AGENT-4 Phase 5: the session index, the merge, and the docs"
+
+### What I did
+
+- `pkg/chatserver/sessions.go` — `SessionIndex`, `NewMemorySessionIndex`, `NewSQLiteSessionIndex`, and a total sort (most recently active, then by id, so two sessions created in the same millisecond cannot swap places between requests).
+- `pkg/chatserver/{server.go, options.go, handlers.go}` — `Options.SessionsDB`, the index wired into `NewServer` and its cleanup, `HandleListSessions`, `HandleRetitleSession`, and `Remember` / `Touch` calls in the create and submit handlers.
+- `pkg/chatserver/server_test.go` — five cases: listing, ordering by activity, counting messages, the title round trip with a 404 for an unknown session, submitting to a session the index never saw, and SQLite surviving a reopen.
+- `packages/pbui-chat/src/conversations/registry.ts` — `sync()`, `SyncResult`, and `serverPatch`, which is where the merge rules live.
+- `ConversationsTile` — a *sync* button whose note says what changed, including what did not.
+- `EventsTile` — `DEFAULT_EVENT_FAMILIES`; `createPbuiChat` passes it to the classifier and takes an `eventFamilies` override.
+- `demo/src/pbui/descriptors/conversation.ts` — *Show what is waiting*, which opens the tools tile.
+- `packages/pbui-chat/README.md` (new) and the guide's §4.10.
+
+### Why
+
+The index is a convenience, not a source of truth, and every design decision in it follows from that. `Touch` inserts a session it has never seen rather than failing, because a browser holding an id from before a restart must keep working. `Remember` failing is logged and the id still goes back, because a session works whether or not it is remembered. The table is rebuildable in principle — every field except the title is derivable from the event stream — so losing the file costs a list, not a transcript.
+
+`sync()` merges for the same reason, and two of its rules deserve stating. A **human title is never overwritten**: the user named this conversation in this browser, and the index only ever knows what some browser told it. A **message count is taken only when the server's is higher**: this browser's count comes from a hydrated timeline it has actually seen, the index's from counting submissions — which may include another browser's, and is worth knowing, but taking a lower number would silently lose messages.
+
+### What worked
+
+The browser check was the exact scenario D10 exists for, and it was arranged by accident: the server had just been restarted with an empty index while the browser still held six records from earlier sessions. `sync()` adopted nothing, updated nothing, reported six the server does not list, and kept them all. The tile's footer read `6 the server does not list (kept)`, which is the whole point said in six words. A conversation created afterwards appeared in the index with its message counted, and its human title survived the sync untouched.
+
+The SQLite implementation uses one upsert for both the insert and the update path, so a session the index never saw created is inserted with the count it is being touched for:
+
+```sql
+INSERT INTO sessions (id, created_at, last_activity_at, message_count) VALUES (?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET last_activity_at = excluded.last_activity_at,
+                              message_count = sessions.message_count + ?
+```
+
+### What didn't work
+
+**A test that asserted the old, wrong behaviour.** Adding `DEFAULT_EVENT_FAMILIES` broke `a family chip narrows the list and says so`, which had asserted that a `ChatMessage` event classifies as `timeline`. It did, and that was the bug: without a family map the classifier files every unlisted `ui-event` under `timeline`, so the `llm`, `tool` and `widget` chips were three of six filters that could never match anything. The test now asserts `llm`, and a second case pins the mapping in all three directions plus the unlisted default.
+
+**A `Record<string, string>` inferred as `{}`.** The demo's `view.open` verb takes `documents: Record<string, string>`, and a literal `{}` in a descriptor action infers as the empty object type, which is not assignable. One annotation.
+
+### What I learned
+
+- An index that is allowed to be wrong is much easier to write than one that is not, and the difference shows up in every method: `Touch` inserts, `Remember` is idempotent, a failure to index is a log line. The design decision that bought all of that was made in the guide (D10) and cost nothing to honour.
+- Folding the two open questions in took under an hour between them, and both were things a reader of the tiles would have noticed before a reader of the notes did. Deferring them would have been the more expensive choice.
+
+### What was tricky to build
+
+**Which direction each merge rule points.** There are four fields the server can offer and the browser can hold, and each has a different rule: the title defers to the human and otherwise takes the server's; the count takes the maximum; `createdAt` is taken only for a record being adopted, because an existing record's own is older or equal; `lastActivityAt` takes the later. Writing them as one "prefer the server" or one "prefer the browser" rule would have been wrong in at least two of the four cases, which is why `serverPatch` is a function with a comment rather than a spread.
+
+### What warrants a second pair of eyes
+
+- The index is written on create and on submit, but nothing removes a session. A long-lived server accumulates rows forever. Deleting is not obviously right — the hub may still hold the session — but a retention rule is missing.
+- `Touch` is called after `HydrateTrace` and before the run starts. A submission that then fails to start is still counted. The count is a convenience, so this is defensible; it is not stated anywhere.
+- `sync()` has no caller other than the tile's button. Nothing syncs on load, which is deliberate for now — a merge on every boot would adopt every session the server remembers into every browser — but the rule that should govern it has not been written.
+
+### What should be done in the future
+
+- A retention rule for the index, and a `DELETE` for a session a user is sure about.
+- `conversation_list` could take the server's list into account for sessions this browser has never opened, which is the case a second browser hits.
+- The follow-up that outlives this ticket: propose `createToolRuntime` and the tool input/result helpers as exports upstream in chat-provider, then replace `ConversationHost`'s provider-per-conversation with the factory §4.1 describes. The registry API does not change.
+
+### Code review instructions
+
+- `pkg/chatserver/sessions.go` — the interface's doc comment says what the index is for; the rest follows from it.
+- `packages/pbui-chat/src/conversations/registry.ts` — `sync()` and `serverPatch`, four fields and four rules.
+- `packages/pbui-chat/src/conversations/EventsTile/EventsTile.tsx` — `DEFAULT_EVENT_FAMILIES`.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-chat test` (207), `GOWORK=off go test ./pkg/...`, then `make chat-ui`, restart the server, and press *sync* in the conversations tile with records the fresh index has never seen.

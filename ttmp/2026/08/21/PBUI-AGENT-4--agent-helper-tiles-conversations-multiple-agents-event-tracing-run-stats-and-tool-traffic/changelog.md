@@ -67,3 +67,12 @@ Step 7 / Phase 4: conversation_list and conversation_send behind an approval che
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/demo/src/chat.ts — approvedSend — an approval that names only an id authorises everything
 
+
+## 2026-08-21
+
+Step 8 / Phase 5: Go SessionIndex (memory + SQLite) behind GET /api/chat/sessions and PATCH; registry.sync() merges and never overwrites a human title; DEFAULT_EVENT_FAMILIES; the pbui-chat README; the guide's 4.10 as built. 207 tests. Ticket complete. (commit ad6c6cc)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/registry.ts — sync() and serverPatch — four fields, four rules
+

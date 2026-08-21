@@ -7,5 +7,5 @@
 - [x] Phase 2: Events tile over chat-provider's debug store (families, filters, pause, clear, copy, follow-active/pin) <!-- t:tezq -->
 - [x] Phase 3: Runs tile (cross-conversation run stats, live token rate) and Tools tile (waiting-for-you, tool traffic with inputs/results, go to) <!-- t:4ol1 -->
 - [x] Phase 4: Agent context tile (last manifest, last send refs/focus, environment, vocabulary, engine/model); conversation_list + conversation_send (confirm) tools; Go prompt section; scripted handoff scenario + e2e <!-- t:eghr -->
-- [ ] Phase 5: Go SessionIndex (memory + SQLite), GET /api/chat/sessions, PATCH title; registry.sync() merge; README; guide as built; diary close-out; reMarkable re-upload <!-- t:6bpm -->
-- [ ] Work slips: overview plan, then start/end per phase <!-- t:7geq -->
+- [x] Phase 5: Go SessionIndex (memory + SQLite), GET /api/chat/sessions, PATCH title; registry.sync() merge; README; guide as built; diary close-out; reMarkable re-upload <!-- t:6bpm -->
+- [x] Work slips: overview plan, then start/end per phase <!-- t:7geq -->
