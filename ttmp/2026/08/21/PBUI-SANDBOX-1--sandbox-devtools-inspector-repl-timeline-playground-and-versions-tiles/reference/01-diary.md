@@ -21,12 +21,16 @@ RelatedFiles:
       Note: Inspector tile, chooseInstance (commit 850089b)
     - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/TreeOutline.tsx
       Note: outlineRows/summariseNode, fire controls (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.tsx
+      Note: Playground tile, BindingsPicker (commit c2ad3cc)
     - Path: repo://packages/pbui-sandbox/src/devtools/ReplTile/ReplTile.tsx
       Note: The REPL tile (commit a57e818)
     - Path: repo://packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx
       Note: Timeline tile, eventsForReplay, overLimit (commit c6b4529)
     - Path: repo://packages/pbui-sandbox/src/devtools/createSandboxDevtools.tsx
       Note: The devtools factory; sets host.devtools (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/playgroundStore.ts
+      Note: The persisted draft (commit c2ad3cc)
     - Path: repo://packages/pbui-sandbox/src/engines/conformance.ts
       Note: evaluate cases both engines must pass (commit a57e818)
     - Path: repo://packages/pbui-sandbox/src/engines/evalEngine.ts
@@ -47,6 +51,7 @@ LastUpdated: 2026-08-21T16:10:00-04:00
 WhatFor: Continuation and review; read this to know what was tried, what broke, and why the design is shaped as it is.
 WhenToUse: When resuming a phase, reviewing a commit, or wondering why something is the way it is.
 ---
+
 
 
 
@@ -408,3 +413,65 @@ The timeline tile is a view over the registry's ring: every entry newest first w
 
 - `TimelineTile.tsx` (`rows`, `copyEvents`, `Row`), then the test's first case.
 - `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, launcher → timeline, then click around a program tile.
+
+## Step 6: Phase 4 — the Playground
+
+The playground runs a draft as a live instance (D4) rather than calling the tools' dry run. `createPlaygroundStore({ key })` keeps `{ source, bindings, fromProgramId, updatedAt }` under its own `localStorage` key, debounced, with a template program as the empty state. The tile mirrors the store into the editor on every keystroke and, after a pause (`reloadMs`, 400 ms by default, 10 ms in tests), copies the source into a synthetic `ProgramRecord` (`id: "draft"`, version bumped) that `useProgramInstance` loads under `viewId: "playground"` — so the draft appears in the registry like any instance, the REPL can target it and the timeline records it. The right-hand side is the bindings picker (one row per declared or added key; a `SelectInput` when `host.bindingChoices(key)` returns choices, else a `TextInput`; the resolved reference rendered through the product) and the live preview with real events. The status line says `ok · main · 7 nodes · 1520 bytes` or the `{phase, code, message}` a failing draft produced, or the size-limit message.
+
+*save as new* stores the draft as a human's program with the loaded meta's title, bindings and `declaredId`, then performs `program.open` through the product so the new tile appears and the trace records it; *update prg-N* is a version bump of the program the draft came from; *load from…* seeds the draft with a library program and its declared binding keys, asking first (a pbui `Dialog`) when the editor holds something other than the untouched template; *ask the agent* sends the source with the failure, if any; *clear* goes back to the template.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 4.
+
+**Inferred user intent:** Scene 4 — write a tile by hand, see it run as you type, save it beside the agent's programs.
+
+**Commit (code):** c2ad3cc — "PBUI-SANDBOX-1 Phase 4: Playground tile (persisted draft store, live draft instance, bindings picker, save-as-new / update / load-from / ask the agent); demo bindingChoices"
+
+### What I did
+
+- `devtools/playgroundStore.ts` (`createPlaygroundStore`, `usePlayground`, `PLAYGROUND_TEMPLATE`); `devtools/PlaygroundTile/{PlaygroundTile.tsx, PlaygroundTile.module.css, PlaygroundTile.test.tsx}`; registered as `sandbox-playground` (singleton) with `playgroundKey`/`playground` options on `createSandboxDevtools`; exports.
+- Demo: `demoBindingChoices` (products, metals, categories, orders) in `sandbox.ts`, passed as `host.bindingChoices`; the devtools get `playgroundKey: "<library key>.playground"`.
+- Tests: the store persists/restores/resets and survives a corrupt entry; the tile runs the template, reloads after typing (version 2 in the registry), reports a render error and disables save, asks the agent with the failure; save-as-new stores `{by: "human", declaredId: "my-draft"}` and performs `program.open`, update bumps to v2; load-from seeds source and bindings, the picker resolves `2049` and the preview shows *Draft a reorder*, a second load over an edited draft asks first; an oversize source disables save with the limit message. 95 tests; chat 110; builds.
+- Browser: launcher → playground; the template ran (`n = 0`, `+1` → `n = 1`); *load from* Days of cover; the product select offered the 9 demo products; binding 2049 rendered the real days-of-cover UI; *save as new* produced `prg-3 Days of cover v1 human` and a second script tile. Screenshot `various/05-p4-playground.png`. Then removed `prg-3` and reset the draft so the demo's seed stays as shipped.
+
+### Why
+
+- Live instance over dry run: a human wants to click; the registry, REPL and timeline come free; the model keeps its own `check()`.
+- A separate store: the library is "programs that exist"; a draft is minutes of typing that a tile remount must not lose.
+
+### What worked
+
+- The synthetic record + `useProgramInstance` needed no special case in the hook: a version bump is a reload, as for a library update.
+- `host.bindingChoices` kept the picker product-agnostic; the demo's list is eight lines.
+
+### What didn't work
+
+- I first gave the synthetic record a `history: []` field from Phase 5's design; `ProgramRecord` does not have it yet — removed.
+- `container.querySelector('[data-part="playground-status"]')` was null: pbui's `Text` drops unknown props, as `Toolbar` did in Phase 3. Wrapped it in a `div`. Lesson written down once: pbui atoms take a fixed prop list; test hooks go on a wrapper element.
+
+### What I learned
+
+- `SelectInput` with `value=""` and a `placeholder` works as a "choose one" menu that resets itself, which is what *load from…* wants.
+- The registry's `select` does not follow the playground (the tile has no focus→select), so the REPL's "follow selection" never jumps to the draft by itself; the picker reaches it. Worth a line in the README.
+
+### What was tricky to build
+
+- **Two debounces.** The store debounces the *write* (300 ms) and the tile debounces the *reload* (400 ms); both read the same `draft.source`. The first-render guard (`firstRef`) stops the reload effect from bumping the version on mount, which would have loaded every draft twice.
+- **When save is allowed.** Only when the loaded source equals the editor's (`pending` false), the instance is `ready`, and the size is under the limit — otherwise the saved meta (title, bindings, widgets) would describe a different source than the one stored (guide R11).
+
+### What warrants a second pair of eyes
+
+- `save as new` performs `program.open`, a product verb the sandbox package assumes exists (the AGENT-3 vocabulary's five generic kinds). A product without it gets `rejected:unknown verb` in the trace and a stored program nonetheless.
+- The `untouched` heuristic (template id present, no `fromProgramId`) decides whether *load from* asks; an edited template that keeps `id: "my-draft"` is replaced without asking.
+
+### What should be done in the future
+
+- Phase 5: `history` on the record, `rollback`, `diffLines`, the Source & Versions tile; then the script tile's *edit in playground* can seed the store.
+
+### Code review instructions
+
+- `playgroundStore.ts`, then `PlaygroundTile.tsx` (`loaded`/`draftVersion`, `canSave`, `saveAsNew`, `loadFrom`, `BindingsPicker`), then the test file.
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, launcher → playground.

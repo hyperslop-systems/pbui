@@ -49,3 +49,12 @@ Phase 3 (commit c6b4529): Dispatch Timeline tile — newest first, instance/kind
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx — The timeline tile (commit c6b4529)
 
+
+## 2026-08-21
+
+Phase 4 (commit c2ad3cc): Playground tile — persisted draft store (own localStorage key), the draft run as a live instance (viewId playground, programId draft, reload after a typing pause), bindings picker from host.bindingChoices, save-as-new (by human, then program.open), update, load-from with a confirm dialog, ask the agent, size-limit guard; demo bindingChoices; 95 sandbox tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.tsx — The playground (commit c2ad3cc)
+
