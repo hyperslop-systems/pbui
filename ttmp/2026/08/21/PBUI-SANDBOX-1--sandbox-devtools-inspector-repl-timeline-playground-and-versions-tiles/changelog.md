@@ -58,3 +58,12 @@ Phase 4 (commit c2ad3cc): Playground tile — persisted draft store (own localSt
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.tsx — The playground (commit c2ad3cc)
 
+
+## 2026-08-21
+
+Phase 5 (commit 2bbd806): ProgramRecord.history (capped by limits.historyDepth), library.rollback as an update, diffLines/trimContext, Source & Versions tile (source with line numbers, versions with rollback and a confirm on pinned, diff between any two versions, edit in playground); fixed the hook's reload race the timeline exposed; 103 sandbox tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx — The source & versions tile (commit 2bbd806)
+

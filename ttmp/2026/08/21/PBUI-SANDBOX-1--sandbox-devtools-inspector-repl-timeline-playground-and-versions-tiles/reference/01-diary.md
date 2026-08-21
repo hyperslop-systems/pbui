@@ -25,10 +25,14 @@ RelatedFiles:
       Note: Playground tile, BindingsPicker (commit c2ad3cc)
     - Path: repo://packages/pbui-sandbox/src/devtools/ReplTile/ReplTile.tsx
       Note: The REPL tile (commit a57e818)
+    - Path: repo://packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx
+      Note: Source & Versions tile, versionsOf, seedPlaygroundFrom (commit 2bbd806)
     - Path: repo://packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx
       Note: Timeline tile, eventsForReplay, overLimit (commit c6b4529)
     - Path: repo://packages/pbui-sandbox/src/devtools/createSandboxDevtools.tsx
       Note: The devtools factory; sets host.devtools (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/diffLines.ts
+      Note: LCS line diff shaped for DiffHunk (commit 2bbd806)
     - Path: repo://packages/pbui-sandbox/src/devtools/playgroundStore.ts
       Note: The persisted draft (commit c2ad3cc)
     - Path: repo://packages/pbui-sandbox/src/engines/conformance.ts
@@ -41,6 +45,8 @@ RelatedFiles:
       Note: Read in full before the design; the log, effects and instance id rules shaped D1, D2 and D11
     - Path: repo://packages/pbui-sandbox/src/instances.ts
       Note: Registry, timeline ring, selection, formatEntry (commit 62bf01a)
+    - Path: repo://packages/pbui-sandbox/src/library.ts
+      Note: history and rollback (commit 2bbd806)
     - Path: repo://packages/pbui-sandbox/src/quickjs/runtimeService.ts
       Note: evalCode strings per call; the same pattern carries `evaluate`
     - Path: repo://packages/pbui-workbench/src/apps.ts
@@ -51,6 +57,7 @@ LastUpdated: 2026-08-21T16:10:00-04:00
 WhatFor: Continuation and review; read this to know what was tried, what broke, and why the design is shaped as it is.
 WhenToUse: When resuming a phase, reviewing a commit, or wondering why something is the way it is.
 ---
+
 
 
 
@@ -475,3 +482,67 @@ The playground runs a draft as a live instance (D4) rather than calling the tool
 
 - `playgroundStore.ts`, then `PlaygroundTile.tsx` (`loaded`/`draftVersion`, `canSave`, `saveAsNew`, `loadFrom`, `BindingsPicker`), then the test file.
 - `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, launcher → playground.
+
+## Step 7: Phase 5 — Source & Versions, and the bug the timeline found
+
+The library now keeps a program's past: `putProgram` on an existing record pushes the replaced version (`{version, source, title, bindings, meta, by, at}`) to the front of `history`, capped at `limits.historyDepth` (10); `rollback(id, version)` is `putProgram` with that entry's fields and `by: "human"`, so it is an ordinary update — a version bump, tiles reload, the history keeps the version that was rolled back from (D6). Records persisted before `history` existed restore with an empty one. `diffLines` is an LCS over lines that produces pbui's `Hunk`/`DiffRow` shape, with `trimContext` keeping only changes and three lines around them. The Source & Versions tile (doc-bound to `program`) has three panes: *source* (a `<pre>` listing with CSS-counter line numbers, copy, *edit in playground*, *ask the agent to improve it*), *versions* (current first, with *roll back to vN* and *edit vN in playground*; a pinned program asks through a `Dialog`), and *diff* (base and target selects, `+a −r`, changes-only or whole file).
+
+The more important outcome of this phase was a bug. The Phase 4 screenshot's timeline showed `draft v2 · error · render · RUNTIME_ERROR · Error: Program instance not found` on every reload of the draft. The cause is in the hook and predates this ticket: when `version` changes, the load effect's cleanup disposes the old instance and the new load effect points `instanceRef` at the next id, and in the same commit the render effect runs — its `meta` and the `status` in its closure still belong to the previous instance — and asks the engine to render an id that is not loaded yet. AGENT-3 never saw it because the error state was overwritten when the load finished; with a registry the error was recorded, counted, and written to the program's `lastError` through `onError`. The fix is one guard: the render effect returns unless `meta.instanceId === instanceRef.current`. A regression test updates a program and asserts no `error` entry and `timings.errors === 0`; in the browser three successive updates of the counter produced zero errors in the timeline.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 5, plus the race the timeline exposed.
+
+**Inferred user intent:** Scene 5 — see what the agent changed between versions and undo a bad update without losing either version.
+
+**Commit (code):** 2bbd806 — "PBUI-SANDBOX-1 Phase 5: Source & Versions tile (ProgramRecord.history, library.rollback, diffLines/trimContext, DiffHunk, confirm on pinned); fix the hook's reload race that rendered the next instance before its load"
+
+### What I did
+
+- `library.ts`: `ProgramVersion`, `history` on `ProgramRecord`, the push in `putProgram`, `rollback`, the restore fill-in; `limits.ts`: `historyDepth`. Tests: history push and cap (depth 2), rollback creates v5 from v2's source by a human, errors for unknown version/program, restore without history.
+- `devtools/diffLines.ts` + test (identical/empty/insert/delete/replace, line numbers, `trimContext`).
+- `devtools/SourceTile/{SourceTile.tsx, SourceTile.module.css, SourceTile.test.tsx}`; registered as `program-source` (doc-bound, with the playground store for *edit in playground*); `versionsOf` and `seedPlaygroundFrom` exported and tested. The script tile's *source* button from Phase 0 now opens it.
+- `useProgramInstance.ts`: the `meta.instanceId !== instanceId` guard and a regression test. The playground's synthetic record and the hook test's record literal gained `history: []`.
+- 103 tests; chat 110; builds.
+- Browser: two `putProgram` updates of the seeded counter (→ v3, "Sum:"), *source* from the tile: 29 numbered lines, versions `v3 current · v2 · v1`, diff `+1 −1` showing `"Total: "` → `"Sum: "`, *roll back to v1* → the dialog "Roll back Minimal Counter to v1?" (the seed is pinned) → confirmed → `v4 · by human`, history `[3, 2, 1]`, the tile back to `Count: 0`, the note `rolled back to v1 (now v4)` on the timeline, and `errorsInTimeline: 0` across all the reloads. Screenshot `various/06-p5-versions-rollback.png`.
+
+### Why
+
+- History on the record (not a side table) keeps export/import and the 1 MiB limit honest: what the library persists is what it counts.
+- Rollback as an update keeps every invariant the tools and tiles already rely on; nothing special-cases "old source".
+
+### What worked
+
+- `DiffHunk` took the `Hunk` from `diffLines` without adaptation; the `trimContext` pass makes a one-line change in a 300-line program readable.
+
+### What didn't work
+
+- `diffLines` emitted `add` before `remove` on a replaced line (`["context", "add", "remove", "context"]`); the tie-break now prefers the removal so a replacement reads `- old / + new`.
+- `data-part="diff-summary"` on a `Text` vanished — the third time a pbui atom dropped a test hook; wrapped in a `span`.
+- The first browser rollback "did nothing": the seeded program is pinned, so the dialog appeared and my script had not clicked through it. Correct behaviour, wrong script.
+
+### What I learned
+
+- The registry turned a silent race into a recorded error; the timeline is a test instrument for the hook, not only a user tool.
+- Timestamps in the versions pane come from `updatedAt` at write time; the seed's `v1` shows its seed time (15:21) and the agent's versions their own — a history is readable without a separate log.
+
+### What was tricky to build
+
+- **Which `at` goes with a history entry.** The entry is the *replaced* version, so its time is that version's `updatedAt`, not the time of the update that replaced it; `rollback` then gives the rolled-back version a new `at` because it is a new write.
+- **The render guard.** The obvious guards (`status === "loading"`) do not work because `status` in the effect's closure is the previous render's; the instance id carried by `meta` is the only value that names which instance the effect's inputs belong to.
+
+### What warrants a second pair of eyes
+
+- `history` stores `meta` and `bindings` by reference from the replaced record; records are treated as immutable everywhere (`commit` replaces objects), so sharing is safe, but a future in-place edit would alias.
+- `rollback` ignores `pinned` at the library level; the tile asks. The agent's `sandbox_update_app` goes through the policy gate, so a model cannot roll back a pinned program without a proposal either way.
+
+### What should be done in the future
+
+- Phase 6: `attachSandbox(…, instances)` and `running` in `sandbox_describe`, the README, stories, a Playwright pass over the five scenes, the guide as built, close-out.
+
+### Code review instructions
+
+- `library.ts` (`putProgram`'s history block, `rollback`, `restore`), `useProgramInstance.ts` (the guard), `diffLines.ts`, then `SourceTile.tsx` (`DiffPane`, the confirm path).
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, update a program twice from the console (`__pbuiDemo.library.putProgram({ id: "prg-1", … })`) and press *source*.
