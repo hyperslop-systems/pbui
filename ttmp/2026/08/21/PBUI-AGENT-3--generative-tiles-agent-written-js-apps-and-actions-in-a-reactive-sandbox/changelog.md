@@ -51,3 +51,14 @@ Phase 4 built (9f54d6e): scripted programScenario over a frontendTool helper (te
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/scripted/programs.go — The scripted program scenario
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/server_test.go — answerFrontendTool and the two scenario e2e tests
 
+
+## 2026-08-21
+
+Phase 5 built (41bf901): @hyperslop-systems/pbui-sandbox/quickjs — QuickJSRuntimeService on the shared bootstrap, createQuickJsDirectEngine (conformance suite under node), installQuickJsWorker + createQuickJsEngine({worker}) with the consumer owning the worker file; error names read off the VM handle; shared describeEngineConformance run on both engines plus RUNTIME_TIMEOUT and no-host-globals tests (53). Demo defaults to QuickJS in a worker with ?engine=eval fallback. Browser: a runaway render shows RUNTIME_TIMEOUT in its tile, page alive.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/demo/src/sandbox.worker.ts — The consumer-owned one-line worker entry
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/quickjs/runtimeService.ts — The QuickJS service; toHostError reads the error name off the handle
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/quickjs/workerEngine.ts — The worker-backed ProgramEngine
+

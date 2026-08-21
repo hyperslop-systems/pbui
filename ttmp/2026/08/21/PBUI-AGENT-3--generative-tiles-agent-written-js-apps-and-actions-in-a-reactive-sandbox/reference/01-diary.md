@@ -560,3 +560,81 @@ Two Go e2e tests pin it: the happy path checks every bridged input (the worked p
 
 - `pkg/chatserver/scripted/programs.go` end to end (it is the demo's script for a model), then `server_test.go`'s two new tests, then `sandboxTools.ts:check` for the limit checks.
 - Validate: `GOWORK=off go test ./pkg/chatserver/...`; `pnpm --filter @hyperslop-systems/pbui-chat test` (110); `make chat-serve`, then type "make me a days of cover tile and add an action for it".
+
+## Step 7: Phase 5 — QuickJS, and the trust boundary the guide promised
+
+Phase 5 is the payoff of D2: the QuickJS engine arrived as a new entry of the same package, behind the same `ProgramEngine`, and nothing in the host loop, the tile, the tools or the demo's product code changed to adopt it — the demo switched its default engine in one function. The conformance suite that had only ever run on `eval` was split into a shared `describeEngineConformance(name, make)` and run on `createQuickJsDirectEngine` under a Node vitest environment (the wasm does not load under jsdom); it passed on the first run apart from two assertions that had silently depended on V8's error messages, which is exactly the drift the suite exists to catch. Two QuickJS-only tests pin what eval cannot do — a `while (true) {}` render is interrupted with `RUNTIME_TIMEOUT`, and `globalThis.localStorage` is simply not there — and the browser check showed the runaway program's tile reporting the timeout while the counter beside it kept counting.
+
+The design question Phase 5 actually settled was **who creates the worker**. vm-system's `sandboxClient.ts` does `new Worker(new URL("./runtime.worker.ts", import.meta.url))` inside the library, which works in an application but not in a *published* library: the consumer's bundler sees a URL into `node_modules/…/dist` and does not emit a worker for it. So the library ships the worker's body (`installQuickJsWorker()`), the consumer ships a one-line worker file, and `createQuickJsEngine({ worker })` takes the instance. The demo's `sandbox.worker.ts` is that line; Vite emitted `sandbox.worker-….js` beside the app.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Implement the guide's Phase 5: the QuickJS engine behind `ProgramEngine`, the conformance suite on both engines, the runaway-render check.
+
+**Inferred user intent:** Make the sandbox something that can be left running with a real model and real data — the isolation the eval engine explicitly lacks.
+
+**Commit (code):** `41bf901` — "PBUI-AGENT-3 Phase 5: the QuickJS engine — isolation and interrupts behind ProgramEngine"
+
+### What I did
+
+- `pnpm --filter @hyperslop-systems/pbui-sandbox add quickjs-emscripten@0.23.0` (vm-system's pin). `package.json` `exports["./quickjs"]`; `vite.config.ts` lib entries `{ index, quickjs }` with `quickjs-emscripten` and `@jitl/quickjs*` externalised.
+- `src/quickjs/runtimeService.ts` (port of vm-system's service: per-instance runtime+context, `setMemoryLimit`/`setMaxStackSize`/`setInterruptHandler`, the shared bootstrap plus the `globalThis.__pluginHost = __pluginHost` epilogue, the validators); `protocol.ts` (requests/responses, a distributive `WorkerRequestBody`); `worker.ts` (`installQuickJsWorker(scope?)` over a structural `WorkerScopeLike`); `workerEngine.ts` (`createQuickJsEngine({ worker, limits? })`: ids, pending map, `configure` on first use, `terminate()`); `directEngine.ts`; `src/quickjs.ts` (the entry).
+- `src/engines/conformance.ts` (shared), `engines/conformance.test.ts` (eval), `quickjs/conformance.test.ts` (`// @vitest-environment node`; QuickJS + the two extra tests).
+- Demo: `sandbox.worker.ts`; `sandbox.ts` `chooseEngine()` — QuickJS by default, `?engine=eval` or `localStorage["pbui-chat-demo.generated.v1.engine"]="eval"` to fall back; `vite.config.ts` `worker: { format: "es" }`.
+- Guide: §6 Phase 5 rewritten to what was built; §10.1 rows for the four new exports.
+- Browser: `__pbuiDemo.engine.kind === "quickjs"`, six instances in `health()`; a `Runaway loop` program put through the console door and opened from the launcher → "⚠ program error (render, RUNTIME_TIMEOUT)", page alive, counter still at its count (`various/07-…png`); zero console warnings.
+
+### Why
+
+- The direct engine exists so the conformance suite can run QuickJS in CI without a browser; the worker engine exists so a slow render cannot hold the UI thread for its whole timeout. Same service underneath.
+- `quickjs-emscripten` as a regular dependency behind a separate entry, not an optional dependency: `optionalDependencies` would make a failed install silent, and tree-shaking already keeps the wasm out of an eval-only consumer that never imports `…/quickjs`.
+- Default to QuickJS in the demo now that the suite is green — the guide's own rule (5.5) — with eval one query parameter away for stack traces.
+
+### What worked
+
+- The QuickJS conformance run passed every case the eval engine passes, plus its own two, with no change to the bootstrap: the engine-neutral epilogue design from Phase 0 (`const __pluginHost` + per-engine publication) did its job.
+- Vite emitted the worker as a separate asset from the demo's one-line entry with only `worker.format = "es"` added.
+- `toProgramError` already mapped any message containing "interrupted" to `RUNTIME_TIMEOUT`, so the timeout surfaced in the tile with no tile change.
+
+### What didn't work
+
+- Typecheck: `src/quickjs/worker.ts(17,126): Cannot find name 'DedicatedWorkerGlobalScope'` (no WebWorker lib in the tsconfig; replaced by a structural `WorkerScopeLike`), and five `Object literal may only specify known properties … 'Omit<WorkerRequest, "id">'` — `Omit` over a union keeps only the members' common keys; a distributive conditional type (`WorkerRequestBody`) fixed it.
+- The shared suite, first QuickJS run: `expected … to throw error matching /SyntaxError/ but got 'unexpected token in expression: '<''` and, for the eval engine after my first "fix", `… but got 'Unexpected token '<''` — V8 and QuickJS word syntax errors differently, and neither message carries the name. Then the same two tests again after propagating the name: `context.dump(error)` omits `name` because it lives on `Error.prototype`; `context.getProp(handle, "name")` before the dump fixed the engine, and the assertions now check `name` (`rejects.toMatchObject({ name: "SyntaxError" })`) and the formatted payload (`^TypeError: cannot read`) rather than a message substring — vitest's `toThrow(/re/)` only ever looked at the message.
+- The first browser run's tile read "RuntimeTimeout: Error: InternalError: interrupted": the error was prefixed on the worker side (`toProgramError`), rewrapped on the main thread under a marker name, and prefixed again. `toProgramError` now recognises an already-formatted message; the tile reads "RuntimeTimeout: InternalError: interrupted".
+
+### What I learned
+
+- A published library cannot own its worker URL; the consumer must. One line in the consumer is the whole cost, and it is the same rule that makes Storybook/Vite workers portable.
+- `QuickJSContext.dump` is a structural copy of own enumerable properties; anything from a prototype — an Error's `name`, a class's methods — is gone. Read it off the handle.
+- The engine conformance suite found two assertion bugs and one engine bug on its first run against a second engine. That is the suite's entire purpose, and it argues for running it on both engines in CI from now on (both test files run in one `vitest run`).
+
+### What was tricky to build
+
+- **The worker boundary and error identity.** An `Error` cannot cross `postMessage` with its class; the worker sends `{code, message}`, the main thread rebuilds an `Error` with a marker name so `toProgramError` can tell a timeout from a runtime error without re-parsing the message, and the validation case becomes a real `ProgramValidationError` again so the hook's `VALIDATION_ERROR` path is the same on both engines.
+- **Configure-before-load.** A worker starts with default limits; `createQuickJsEngine({ limits })` sends a `configure` request and every `load` awaits it, so a product's tighter limits apply to the first program too. Reconfiguring disposes existing instances — acceptable because it only happens at construction.
+
+### What warrants a second pair of eyes
+
+- `installQuickJsWorker` creates one `QuickJSRuntimeService` per worker, one runtime per instance. Memory is per runtime (32 MiB each); twenty open program tiles are twenty runtimes in one worker. Fine for a demo; a product may want a cap on instances or a runtime pool.
+- `toProgramError`'s "already formatted" heuristic includes `name === "Error" && /^[A-Z][A-Za-z]*Error: /` for messages that were prefixed once. It is a heuristic; a dedicated wrapper class would be cleaner.
+- No Playwright spec for the runaway render (the demo has no Playwright setup); the behaviour is pinned at the engine level by the vitest test and was checked by hand in the browser. The guide says so.
+
+### What should be done in the future
+
+- Phase 6 (optional, D13): a server-side goja dry-run. Not started; the task stays open with the guide's note that `sandbox_test` already gives the model a full run.
+- Re-upload the guide and this diary to reMarkable (both changed materially since the first upload), run `docmgr doctor`, close out.
+
+### Code review instructions
+
+- `packages/pbui-sandbox/src/quickjs/runtimeService.ts` against vm-system's `runtimeService.ts:129-376` (the diff is the bootstrap epilogue, the limits object, `toHostError` and the validators); then `worker.ts`/`workerEngine.ts` as a pair; then `engine.ts:toProgramError`.
+- Validate:
+
+```bash
+cd /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui
+pnpm --filter @hyperslop-systems/pbui-sandbox test        # 53: eval + quickjs conformance, timeout, no-globals
+pnpm --filter @hyperslop-systems/pbui-sandbox build       # dist/index.js and dist/quickjs.js
+pnpm --filter @hyperslop-systems/pbui-chat-demo build     # emits sandbox.worker-*.js
+make chat-serve   # __pbuiDemo.engine.kind → "quickjs"; put a while(true) program and open it: RUNTIME_TIMEOUT, page alive; ?engine=eval for the fallback
+```
