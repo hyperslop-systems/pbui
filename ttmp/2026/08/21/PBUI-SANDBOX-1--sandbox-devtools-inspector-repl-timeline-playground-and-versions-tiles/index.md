@@ -22,7 +22,7 @@ RelatedFiles:
 ExternalSources:
     - https://github.com/go-go-golems/vm-system/
 Summary: 'Follow-up to PBUI-AGENT-3. Makes every running agent-written program observable and addressable through an instance registry (the "selected sandbox"), adds an `evaluate` door to the engines, and builds five workbench tiles on pbui atoms: Program Inspector (state, bindings, render tree, fire handlers), REPL (evaluate and inject into the selected sandbox), Dispatch Timeline (every load/render/event/intent/error across instances), Playground (a persisted draft run live, saved into the library) and Source & Versions (history, diff, rollback). Contains the intern guide and the diary.'
-LastUpdated: 2026-08-21T16:05:00-04:00
+LastUpdated: 2026-08-21T16:55:00-04:00
 WhatFor: Landing page for PBUI-SANDBOX-1; start here to find the guide, the diary and the phase breakdown.
 WhenToUse: When picking up, implementing or reviewing the sandbox devtools work.
 ---
@@ -51,7 +51,7 @@ Background: `PBUI-AGENT-3` (the sandbox itself and its guide), `PBUI-AGENT-2` (w
 
 ## Status
 
-Design written and delivered; implementation in phases 0–6 per [tasks.md](./tasks.md).
+All six phases built and verified in the browser (diary steps 2–8, screenshots `various/01`–`07`): the instance registry and `SandboxHost` (Phase 0), the Program Inspector (1), `ProgramEngine.evaluate` and the REPL (2), the Dispatch Timeline (3), the Playground (4), Source & Versions with `history`/`rollback` (5), and `running[]` in `sandbox_describe` plus docs (6). 103 tests in `pbui-sandbox`, 111 in `pbui-chat`. Along the way the timeline exposed and the ticket fixed a reload race in the host hook (guide R15). Storybook stories were not written (the package has no storybook config). See [tasks.md](./tasks.md).
 
 ## Topics
 

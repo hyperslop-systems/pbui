@@ -67,3 +67,12 @@ Phase 5 (commit 2bbd806): ProgramRecord.history (capped by limits.historyDepth),
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx — The source & versions tile (commit 2bbd806)
 
+
+## 2026-08-21
+
+Phase 6 (commit 793f299): attachSandbox(library, engine, instances), getInstances on the tools, running[] and history count in sandbox_describe (+1 chat test → 111), README devtools section, REPL help on closure capture, guide §5 rewritten as built (+R15, §9 additions), demo masthead legend removed at the user's request (b8f69b5); final browser pass: six tile kinds mounted, zero timeline errors
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/sandboxTools.ts — running[] in sandbox_describe (commit 793f299)
+

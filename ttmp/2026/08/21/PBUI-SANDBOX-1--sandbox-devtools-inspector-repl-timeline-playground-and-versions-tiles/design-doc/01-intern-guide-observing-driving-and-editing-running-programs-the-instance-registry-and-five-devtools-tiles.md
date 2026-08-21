@@ -411,80 +411,45 @@ Trust: `evaluate` has the same reach as the program itself and no more. Under Qu
 
 **D12 — The inspector is doc-bound to `program`, the REPL and timeline are singletons.** *Why:* "inspect prg-3" is a sentence with an object; "the REPL" and "the timeline" are not. De-dup then comes from the workbench: two *inspect* clicks on one program's tiles go to one inspector.
 
-## 5 · Implementation plan
+## 5 · Implementation plan — as built
 
-Six phases. Each ends with tests green in `pbui-sandbox`, `pbui-chat` and `pbui-workbench`, a browser check in the demo, a commit, and a diary step. Every phase wires the demo as it goes, so nothing waits for the end to be seen.
+Six phases, each ending with tests green in `pbui-sandbox` and `pbui-chat`, a browser check in the demo, a commit and a diary step. What follows is the plan as it was carried out; where the build departed from the design above, the departure is stated. The diary (`reference/01-diary.md`, steps 2–8) has every failure verbatim.
 
-### Phase 0 — The registry, the host options, the hook refactor
+### Phase 0 — The registry, the host options, the hook refactor (commit `62bf01a`)
 
-*Files:* `src/instances.ts` (new), `src/host/hostOptions.ts` (new), `src/host/useProgramInstance.ts`, `src/ScriptTile/ScriptTile.tsx`, `src/createScriptApp.tsx`, `src/index.ts`, `src/render/UINodeRenderer/UINodeRenderer.tsx` (paths), `demo/src/{sandbox,workbench}.ts`.
+*Built:* `src/instances.ts` (`createInstanceRegistry`, `useInstances`, `formatEntry`, `EMPTY_TIMINGS`), `src/host/hostOptions.ts` (`SandboxHost`), the hook publishing status/meta/trees/error/timings/handle and recording structured entries, `createScriptApp(host, options)`, the script tile's *inspect*/*source* buttons (only when `host.devtools`) and focus→select, `data-node-path` + `highlightPath` in the renderer, `walkNodes`.
 
-1. Write `createInstanceRegistry` with `publish/record/unmount/select/timeline` and `useInstances`. Tests: publish merges; unmount of the last placement drops the snapshot and nulls the handle; the ring keeps `keep`; `seq` is monotonic; `select` notifies.
-2. In the hook: accept `instances`; wrap each engine call in `performance.now()`; replace `note(...)` with `instances.record(...)`; publish `status/meta/trees/error/timings/instanceId` after each effect; register the handle on load and null it on cleanup; remove `log`. `rerender` is a counter in state that the render effect depends on.
-3. `SandboxHost`; `createScriptApp(host)`; the script tile reads its log from the registry, selects on focus/click, and shows *inspect*/*source* only when `host.devtools`.
-4. Renderer: `data-node-path`, `highlightPath` prop.
-5. Demo: `export const instances = createInstanceRegistry()` in `sandbox.ts`; `host` in `workbench.ts`; `window.__pbuiDemo.instances`.
+*Departures:* the timeline entry input type is spelled `{head} & TimelineEntryBody` because `Omit` over a union collapses it; `mount`/`unmount` are explicit calls (the guide had only `unmount`); `InstanceSnapshot.globalState` was added in Phase 1 for the bindings pane and the REPL. Two linked placements run two engine instances (each tile mounts its own hook); the snapshot records whichever published last — equivalent instances, documented in diary step 2.
 
-*Pseudocode — the hook's render effect after the change:*
+### Phase 1 — Program Inspector (commit `850089b`)
 
-```ts
-const started = performance.now();
-for (const widgetId of meta.widgets) {
-  next[widgetId] = await engine.render({ instanceId, widgetId, pluginState, globalState });
-  instances.record({ kind: "render", viewId, programId, version, instanceId, widgetId,
-                     durationMs: performance.now() - started, nodeCount: countNodes(next[widgetId]) });
-}
-setTrees((current) => equal(current, next) ? current : next);
-instances.publish(viewId, { status: "ready", trees: next, error: null, timings: bump(t => ({ ...t, renders: t.renders + 1, lastRenderMs })) });
-```
+*Built:* `devtools/InspectorTile/{InspectorTile,TreeOutline,StatePane}.tsx`, `createSandboxDevtools(host)` (sets `host.devtools = true`), app `program-inspector` with bindings `["program"]` and an optional `view`; `chooseInstance` precedence chosen → wanted → selected → latest. Hover in the outline publishes `highlight`; the tile's renderer marks the node. *fire* sends `{ value }` for inputs/selects, as the renderer does.
 
-*Acceptance:* the demo runs as before; `__pbuiDemo.instances.all()` lists the open program tiles; clicking a tile changes `selectedViewId()`; the details disclosure shows the same lines as before.
+### Phase 2 — `evaluate` and the REPL (commit `a57e818`)
 
-### Phase 1 — Program Inspector
+*Built:* `__pluginHost.evaluate(code, state, global)` with a direct `eval` and `__describe` in the bootstrap (`BOOTSTRAP_VERSION = 2`); `ProgramEngine.evaluate`; `limits.evaluateMs = 1000`; both engines, the worker request; five conformance cases on both engines plus a QuickJS interrupt case; `devtools/ReplTile`, app `sandbox-repl` (singleton). Results render as JSON or, for a `UINode`, with *render here*; *set as state*, *apply intents* (through the host's reducer and `perform`), *re-render*.
 
-*Files:* `src/devtools/InspectorTile/{InspectorTile.tsx, TreeOutline.tsx, StatePane.tsx, BindingsPane.tsx, InspectorTile.module.css}`, `src/devtools/createSandboxDevtools.tsx` (new; registers the inspector first), `src/validate/uiSchema.ts` (`walkNodes`), `src/devtools/format.ts` (`summariseNode`, `formatEntry`).
+*Departures:* none of substance. One lesson: an injected closure captures the REPL-time `$state`; the help text says to read `ctx.pluginState` in handlers.
 
-Tests: the outline lists `kind` and path for the days-of-cover tree; *fire* on the `reorder` button row calls the handle with `{handler: "reorder"}`; *apply* with invalid JSON shows the error and does not call `states.set`; hover publishes `highlight`; with no running instance the tile shows the empty state with *open it* (which performs `program.open`).
+### Phase 3 — Dispatch Timeline (commit `c6b4529`)
 
-*Acceptance in the browser:* Scene 1 end to end, screenshot `various/01-inspector.png`.
+*Built:* `devtools/TimelineTile`, app `sandbox-timeline` (singleton): instance and kind filters, pause/resume, clear, *copy as events* (clipboard, or a read-only text area when the clipboard is unavailable — R14), *fire again* while the same instance is live, *inspect* and *ask the agent* on error rows; `overLimit` against `DEFAULT_LIMITS`.
 
-### Phase 2 — `evaluate` and the REPL
+### Phase 4 — Playground (commit `c2ad3cc`)
 
-*Files:* `src/bootstrap.ts` (`evaluate`, `__describe`, `BOOTSTRAP_VERSION = 2`), `src/engine.ts`, `src/engines/evalEngine.ts`, `src/quickjs/{protocol,worker,workerEngine,directEngine,runtimeService}.ts`, `src/limits.ts` (`evaluateMs`), `src/engines/conformance.ts` (evaluate cases), `src/devtools/ReplTile/{ReplTile.tsx, ReplTile.module.css}`.
+*Built:* `devtools/playgroundStore.ts` (`createPlaygroundStore({ key })`, `PLAYGROUND_TEMPLATE`), `devtools/PlaygroundTile` with `BindingsPicker`, app `sandbox-playground` (singleton); `createSandboxDevtools` takes `playgroundKey` or a prepared `playground` store. The draft runs under `viewId: "playground"` as program `draft`; the editor reloads it after `reloadMs` (400). *save as new* stores `by: "human"` and performs `program.open`; *update prg-N*; *load from…* with a `Dialog` when the editor is not the untouched template; *ask the agent*; the demo supplies `bindingChoices`.
 
-Conformance cases (run on both engines): `1 + 1` → 2; `$state` equals the passed state; `$render({count: 3})` returns a valid tree; `$plugin.widgets.main.handlers.inc = …` then `$event("inc")` returns the patched intents; `undefined` → `{$type: "undefined"}`; `() => 1` → `{$type: "function"}`; `throw new TypeError("x")` rejects with name `TypeError`; `while(true){}` under QuickJS → `RuntimeTimeout` (eval engine: skipped, documented); a `fetch(…)` reference → `ReferenceError` under eval, `ReferenceError` under QuickJS (no host).
+### Phase 5 — Source & Versions (commit `2bbd806`)
 
-Tile tests: Enter runs and appends a line; ↑ recalls; *set as state* calls `states.set`; a `UINode` result shows *render here*; the target follows the selection until unpinned.
+*Built:* `ProgramRecord.history: ProgramVersion[]` (capped by `limits.historyDepth = 10`), `library.rollback(id, version)` as a human's update, `devtools/diffLines.ts` (`diffLines`, `trimContext`), `devtools/SourceTile`, app `program-source` (doc-bound). *edit in playground* seeds the draft (`seedPlaygroundFrom`) and opens the playground.
 
-*Acceptance:* Scene 2; `various/02-repl.png`.
+*Found and fixed:* the timeline exposed a reload race in the hook that predates this ticket — the render effect ran for the next instance id before its load finished, recording `Program instance not found` and, through `onError`, writing `lastError` on the program. The render effect now returns unless `meta.instanceId === instanceRef.current`; a regression test asserts no error entries across an update.
 
-### Phase 3 — Dispatch Timeline
+### Phase 6 — Integration and close-out (commit `793f299`)
 
-*Files:* `src/devtools/TimelineTile/{TimelineTile.tsx, TimelineTile.module.css}`, `src/devtools/format.ts` (`formatEntry` shared with the script tile's log).
+*Built:* `attachSandbox(library, engine, instances)` and `getInstances` on the tools; `sandbox_describe` reports per program `history` (count) and `running: [{ viewId, version, status, tiles, lastRenderMs?, renders, events, errors, timeouts, error? }]` when a registry is attached; the README's devtools section; this section; the diary close-out; the reMarkable re-upload. The demo's masthead legend was removed at the user's request (unrelated to the devtools; it grew the header).
 
-Tests: rows newest first; filter by program and by kind; pause freezes the list while `timeline()` grows; *copy as events* produces `[{handler, args}]` oldest first for one instance (clipboard mocked); an error row offers *inspect* which opens the inspector bound to that program and view.
-
-*Acceptance:* Scene 3; `various/03-timeline.png`.
-
-### Phase 4 — Playground
-
-*Files:* `src/devtools/playgroundStore.ts`, `src/devtools/PlaygroundTile/{PlaygroundTile.tsx, BindingsPicker.tsx, PlaygroundTile.module.css}`, `demo/src/sandbox.ts` (`bindingChoices` for `product`, `metal`, `category`, `order`).
-
-Tests: the store persists and restores a draft, debounced; typing bumps `draftVersion` after the debounce and the registry shows `programId: "draft"`; a load error shows phase and code; *save as new* calls `putProgram` with `by: "human"` and performs `program.open` with the bindings; *update* bumps the version of `fromProgramId`; a draft over `sourceBytes` disables save; *load from* replaces the draft.
-
-*Acceptance:* Scene 4; `various/04-playground.png`.
-
-### Phase 5 — Source & Versions
-
-*Files:* `src/library.ts` (`history`, `rollback`, `historyDepth`), `src/limits.ts`, `src/devtools/diffLines.ts`, `src/devtools/SourceTile/{SourceTile.tsx, VersionsPane.tsx, SourceTile.module.css}`.
-
-Tests: `putProgram` on an existing record pushes the previous version and caps at `historyDepth`; `rollback` creates a new version with the old source and `by: "human"`; a restored snapshot without `history` reads `[]`; `diffLines` on known pairs (insert, delete, replace, identical, empty); the tile lists versions and renders a hunk; *roll back* on a pinned program asks first.
-
-*Acceptance:* Scene 5; `various/05-versions.png`.
-
-### Phase 6 — Integration and close-out
-
-`attachSandbox(library, engine, instances)` and `running` in `sandbox_describe` (tests in `sandboxTools.test.ts`); `pbui-sandbox/README.md` gains a devtools section; storybook stories for the five tiles with a fake registry (`src/devtools/stories/`); a Playwright pass over the five scenes; the guide's §5 rewritten as built; the diary close-out; reMarkable re-upload.
+*Not built:* storybook stories for the tiles — the package has the storybook scripts but no `.storybook` configuration, so stories would not run; left for the package's storybook setup. A Playwright test file over the five scenes — each scene was verified by hand through Playwright MCP with a screenshot under `various/`, not as a checked-in test.
 
 ## 6 · Sequences
 
@@ -571,6 +536,7 @@ SourceTile: click "roll back to v2"
 - **R11 Playground `program.open` before the debounce flushed.** *save* reads the store's current `source` (the editor's value), not the last-loaded draft; if the current draft has not loaded yet (`status: "loading"`), save is disabled until it does, because `meta.widgets` and `bindings` come from the loaded meta.
 - **R12 Highlight outlives the inspector.** The inspector clears `highlight` on unmount and on mouse leave.
 - **R13 `toJsLiteral(code)` for QuickJS.** The REPL code is a JS string embedded in a JS string; `JSON.stringify` escapes it correctly, including `</script>` and U+2028.
+- **R15 (found in Phase 5) The render effect runs for the next instance before its load.** On an update the load effect repoints `instanceRef` and the render effect's closure still holds the previous `meta`/`status`; without the `meta.instanceId === instanceRef.current` guard the hook asks the engine for an unloaded id and records a spurious error. The registry made it visible; AGENT-3's hook had it silently.
 - **R14 Timeline `copy as events` under no clipboard permission.** `navigator.clipboard.writeText` rejects; fall back to showing the JSON in a `TextArea` the user can select.
 
 ## 8 · Testing strategy
@@ -590,7 +556,9 @@ SourceTile: click "roll back to v2"
 
 Test doubles: `createInstanceRegistry()` is cheap and real — use it rather than a fake; `createEvalEngine()` for tile tests; `createQuickJsDirectEngine()` only in the conformance file (node environment).
 
-## 9 · API reference (as designed)
+## 9 · API reference (as designed; as built differs only by additions)
+
+Additions made while building: `InstanceRegistry.mount(viewId, placementId)`; `InstanceSnapshot.globalState`; `TimelineEntryInput` spelled as head ∧ body; `SandboxToolsOptions.getInstances?()`; `createSandboxDevtools(host, { group?, tone?, playgroundKey?, playground? })`; `PlaygroundTileProps.reloadMs`; `SourceTile` takes the playground store for *edit in playground*; `seedPlaygroundFrom`, `versionsOf`, `eventsForReplay`, `overLimit`, `summariseValue`, `isUINode`, `isIntentList`, `outlineRows`, `summariseNode`, `chooseInstance` are exported helpers with their own tests.
 
 ```ts
 // instances.ts

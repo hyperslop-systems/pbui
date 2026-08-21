@@ -13,8 +13,12 @@ Owners: []
 RelatedFiles:
     - Path: repo://packages/pbui-chat/demo/src/workbench.ts
       Note: sandboxHost built once; createScriptApp(host) (commit 62bf01a)
+    - Path: repo://packages/pbui-chat/src/tools/sandboxTools.ts
+      Note: getInstances, running(), history count (commit 793f299)
     - Path: repo://packages/pbui-chat/test/no-raw-controls.test.ts
       Note: The structural rules every devtool must satisfy (TextArea, SelectInput, CheckboxRow from pbui)
+    - Path: repo://packages/pbui-sandbox/README.md
+      Note: Devtools section (commit 793f299)
     - Path: repo://packages/pbui-sandbox/src/bootstrap.ts
       Note: evaluate via direct eval; __describe (commit a57e818)
     - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.tsx
@@ -57,6 +61,7 @@ LastUpdated: 2026-08-21T16:10:00-04:00
 WhatFor: Continuation and review; read this to know what was tried, what broke, and why the design is shaped as it is.
 WhenToUse: When resuming a phase, reviewing a commit, or wondering why something is the way it is.
 ---
+
 
 
 
@@ -546,3 +551,67 @@ The more important outcome of this phase was a bug. The Phase 4 screenshot's tim
 
 - `library.ts` (`putProgram`'s history block, `rollback`, `restore`), `useProgramInstance.ts` (the guard), `diffLines.ts`, then `SourceTile.tsx` (`DiffPane`, the confirm path).
 - `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, update a program twice from the console (`__pbuiDemo.library.putProgram({ id: "prg-1", … })`) and press *source*.
+
+## Step 8: Phase 6 — the agent learns what is running; close-out
+
+The last phase connects the registry to the agent and closes the books. `attachSandbox(library, engine, instances)` now takes the registry; the tools get `getInstances()`; `sandbox_describe` reports, per program, `history` (how many versions are kept) and, when a registry is attached, `running: [{ viewId, version, status, tiles, lastRenderMs?, renders, events, errors, timeouts, error? }]` — so a model asked "why is my tile slow" or "is it erroring" can read the answer rather than guess, and a program with no registry attached simply has no `running` key. The README gained an engines section (the old text still called QuickJS "planned") and a devtools table; the REPL help gained the closure-capture line from step 4; the guide's §5 was rewritten as built, with R15 for the race and a list of the API additions.
+
+Two things in the plan were not done, and the guide says so: storybook stories (the package has storybook scripts but no `.storybook` configuration, so stories would not run) and a checked-in Playwright test over the five scenes (each scene was verified by hand through Playwright MCP with a screenshot). At the user's request, mid-phase, the demo's masthead legend of presentation-type counts was removed — it made the header grow vertically; the masthead is now one 30 px row.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1); and mid-turn: "also btw remove the "product / category / metal ..." legend from the header, it just makes it grow vertically"
+
+**Assistant interpretation:** Finish Phase 6 — agent-side integration, docs, verification — and remove the demo header's legend.
+
+**Inferred user intent:** A complete, documented feature with the agent aware of it, and a demo header that stays one line.
+
+**Commit (code):** 793f299 — "PBUI-SANDBOX-1 Phase 6: attachSandbox(…, instances) and running[]/history in sandbox_describe; README devtools section; REPL help on closure capture"; b8f69b5 — "demo: drop the presentation-type legend from the masthead (it grew the header vertically)"
+
+### What I did
+
+- `sandboxTools.ts`: `getInstances?()`, `running(programId)`, `history` in `summarise`; `createPbuiChat.tsx`: `instances` state, `getInstances`, `attachSandbox(…, nextInstances)`; demo: `chat.attachSandbox(library, engine, instances)`. Test: a registry with a mounted, erroring snapshot is reported as `{ viewId, version: 1, status: "error", tiles: 2, lastRenderMs: 101.3, renders: 3, events: 1, errors: 1, timeouts: 1, error: "render: RUNTIME_TIMEOUT: interrupted" }`, `[]` after unmount, and `undefined` without a registry. pbui-chat: 111 tests.
+- `App.tsx`/`App.module.css` in the demo: `Legend` component, its imports, `LEGEND_TYPES` and the `.legend` rule removed.
+- README rewritten; REPL help line; guide §5 as built, R15, §9 note; index status; tasks all checked; this step.
+- Browser: rebuilt and restarted; `legendPresent: false`, masthead 29.5 px; `sandbox-repl, sandbox-timeline, sandbox-playground, script-app, program-source, program-inspector` all mounted; instances `draft:ready, prg-1:ready`; `errors: 0`. Screenshot `various/07-p6-all-tiles.png`.
+
+### Why
+
+- `running` is the one thing the agent could not learn before: the tools knew the library and the layout, not the runtime.
+- Saying what was not built is part of closing out; an intern reading the plan must not go looking for stories that do not exist.
+
+### What worked
+
+- The registry's `publish` made the tools test trivial: no tile, no hook, just a snapshot written by hand.
+
+### What didn't work
+
+- N/A in this step.
+
+### What I learned
+
+- pbui atoms (`Text`, `Toolbar`) take a fixed prop list and drop the rest; `data-*` test hooks belong on a wrapper element. It cost three small fixes across the phases; it is now a rule in my head and in this diary.
+
+### What was tricky to build
+
+- Nothing in this step was tricky; the phase was integration and writing.
+
+### What warrants a second pair of eyes
+
+- `running` includes the playground's `draft` instance when the agent describes — no program record has id `draft`, so it never appears under a program's `running`; but if a product ever stores a program with that id, the two would merge. Reserving the id in `putProgram` would close that.
+- `sandbox_describe`'s output grew (`history`, `running`); the prompt's size is the model's context. Twenty programs with two instances each is still small.
+
+### What should be done in the future
+
+- Storybook stories once the package has a `.storybook` config; a Playwright test file over the five scenes (the MCP steps in steps 2–7 are the script).
+- Reserve `draft` as a program id in the library.
+- Guide Q3: a `program.rollback` verb if a product wants rollbacks in the trace.
+
+### Code review instructions
+
+- `packages/pbui-chat/src/tools/sandboxTools.ts` (`running`, `summarise`), `createPbuiChat.tsx` (`attachSandbox`), the new test in `sandboxTools.test.ts`; `packages/pbui-sandbox/README.md`.
+- `pnpm --filter @hyperslop-systems/pbui-chat test`; `pnpm --filter @hyperslop-systems/pbui-sandbox test`; `make chat-serve` and open the launcher's SANDBOX group.
+
+### Technical details
+
+- Commits, in order: `2c031a6` ticket + guide, `19ec9ad` guide fix, `62bf01a` P0, `b8d26a1` diary 2, `850089b` P1, `05bd651` diary 3, `a57e818` P2, `6056afa` diary 4, `c6b4529` P3, `80a4bcf` diary 5, `c2ad3cc` P4, `cc316a7` diary 6, `2bbd806` P5, `8afe1ea` diary 7, `b8f69b5` legend, `793f299` P6.
