@@ -69,3 +69,4 @@ export {
   PRODUCT_2049,
   UNKNOWN_KIND_PROGRAM,
 } from "./fixtures/programs";
+export * from "./devtools";

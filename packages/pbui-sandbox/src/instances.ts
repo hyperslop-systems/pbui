@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { DispatchIntent, LoadedProgram, ProgramErrorCode, ProgramErrorPayload, ProgramPhase, UIEventRef, UINode } from "./contracts";
+import type { DispatchIntent, LoadedProgram, ProgramErrorCode, ProgramErrorPayload, ProgramGlobalState, ProgramPhase, UIEventRef, UINode } from "./contracts";
 
 /**
  * The instance registry: what is running, what happened to it, and which
@@ -45,6 +45,8 @@ export interface InstanceSnapshot {
   status: "idle" | "loading" | "ready" | "error";
   meta: LoadedProgram | null;
   trees: Record<string, UINode>;
+  /** What the last render saw: resolved bindings and env under `shared`. Null until the first render. */
+  globalState: ProgramGlobalState | null;
   error: ProgramErrorPayload | null;
   timings: InstanceTimings;
   handle: InstanceHandle | null;
@@ -113,6 +115,7 @@ function emptySnapshot(viewId: string): InstanceSnapshot {
     status: "idle",
     meta: null,
     trees: {},
+    globalState: null,
     error: null,
     timings: EMPTY_TIMINGS,
     handle: null,

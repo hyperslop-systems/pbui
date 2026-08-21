@@ -231,7 +231,7 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
         setError(null);
         setStatus("ready");
         bumpTimings({ renders: timingsRef.current.renders + 1, lastRenderMs: clock() - started });
-        instances.publish(viewId, { status: "ready", error: null, trees: published });
+        instances.publish(viewId, { status: "ready", error: null, trees: published, globalState });
       } catch (raw) {
         if (!cancelled) fail(raw, "render");
       }
