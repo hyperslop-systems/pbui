@@ -201,16 +201,20 @@ Four properties decide its shape.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> known: record restored / GET /sessions
-  [*] --> open: create()
-  known --> open: open(id) — first tile mounts
-  open --> open: tiles come and go
-  open --> known: close(id) / idle grace
-  known --> archived: archive(id)
-  archived --> known: archive(id, false)
-  known --> [*]: forget(id)
-  note right of open: runtime exists — store, socket, tools
-  note right of known: record only — id, title, pins, counts
+  [*] --> known : record restored or listed by the server
+  [*] --> open : create
+  known --> open : first tile mounts
+  open --> open : tiles come and go
+  open --> known : close, or idle grace
+  known --> archived : archive
+  archived --> known : unarchive
+  known --> [*] : forget
+  note right of open
+    runtime exists: store, socket, tools
+  end note
+  note right of known
+    record only: id, title, pins, counts
+  end note
 ```
 
 ### 4.3 One router, many sessions
@@ -378,17 +382,18 @@ sequenceDiagram
   participant TA as chat tile A (scope A)
   participant R as VerbRouter (product)
   participant G as ConversationRegistry
-  participant SA as server: session A
-  U->>TA: clicks "reorder" chip in A's transcript
-  TA->>R: perform(verb, target, { conversationId: "A" })   — from A's PbuiChatContext
-  R->>R: validate; family "agent"
-  R->>G: runtimeFor("A") → runtime A
-  R->>SA: POST /api/chat/sessions/A/messages (the typed prompt)   — not B, though B is active
-  R->>SA: POST /api/chat/sessions/A/verbs { actor: "human", verb, outcome }
-  Note over G: activeId stays "B"; A's tile did not receive focus from a click on a chip? — it did: onClickCapture activates A
+  participant SA as server session A
+  U->>TA: clicks the reorder chip in A's transcript
+  TA->>G: activate(A) — the click captured by the tile
+  TA->>R: perform(verb, target, conversationId A) from A's PbuiChatContext
+  R->>R: validate, family agent
+  R->>G: runtimeFor(A)
+  G-->>R: runtime A
+  R->>SA: POST /api/chat/sessions/A/messages (the typed prompt)
+  R->>SA: POST /api/chat/sessions/A/verbs (actor human, verb, outcome)
 ```
 
-The last line is a design fact worth stating: clicking anywhere inside a conversation tile activates it, so in practice the active conversation and the origin of a verb agree; `conversationId` on `perform` is what keeps them aligned when they do not (a program tile's intent, a launcher row).
+Clicking anywhere inside a conversation tile activates it, so in practice the active conversation and the origin of a verb agree; `conversationId` on `perform` is what keeps them aligned when they do not (a program tile's intent, a launcher row, a tool executed for a model while the user has focused another tile).
 
 ### 6.3 Reconnect, as the Events tile shows it
 
