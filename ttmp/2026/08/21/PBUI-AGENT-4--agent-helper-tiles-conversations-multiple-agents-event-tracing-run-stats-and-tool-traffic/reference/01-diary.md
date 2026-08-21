@@ -16,8 +16,12 @@ RelatedFiles:
       Note: One ChatProvider per open conversation; why a runtime is captured, not constructed (commit a5d6d79)
     - Path: repo://packages/pbui-chat/src/conversations/ConversationsTile/ConversationsTile.tsx
       Note: The list of every agent, and which gestures are verbs (commit 324d335)
+    - Path: repo://packages/pbui-chat/src/conversations/EventsTile/EventsTile.tsx
+      Note: The wire log as a list; rows are chatEvent objects (commit 4a83e0e)
     - Path: repo://packages/pbui-chat/src/conversations/registry.ts
       Note: The conversation registry — records, lazy runtimes, mirrors, the active conversation (commit a5d6d79)
+    - Path: repo://packages/pbui-chat/src/conversations/selectors.ts
+      Note: The three memos that make cross-conversation joins cheap and correct (commit ba6613d)
     - Path: repo://packages/pbui-chat/src/conversations/verbs.ts
       Note: The five conversation verbs and their one dispatcher (commit 324d335)
     - Path: repo://packages/pbui-chat/src/createPbuiChat.tsx
@@ -30,12 +34,15 @@ RelatedFiles:
       Note: HandleCreateSession mints a uuid; no list endpoint
     - Path: repo://pkg/pbuichat/prompt.go
       Note: 'The ## Conversations section, gated on the conversation type (commit 324d335)'
+    - Path: repo://pkg/pbuichat/trace.go
+      Note: The server re-validates a verb against its EMBEDDED vocabulary; a stale binary rejects a verb the browser performed
 ExternalSources: []
 Summary: ""
 LastUpdated: 2026-08-21T16:01:43.842023888-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -386,3 +393,195 @@ if (isConversationVerb(verb)) {
   return;
 }
 ```
+
+
+## Step 4: Everything is an object
+
+Mid-Phase-2 the user stopped the work with a correction that applies backwards and forwards: conversations should be OBJECTS, their actions should be right-click actions, and in general everything that can be made into an object should be. The conversations tile was rewritten around that, workspaces joined it, and the mouse-doc line moved out of the chat tile to the bottom of the page.
+
+The correction is not cosmetic. An entry in an object menu is a verb or it is nothing, so four gestures Phase 1 had deliberately left OUT of the vocabulary had to go in.
+
+### Prompt Context
+
+**User prompt (verbatim):** "actully, before we move on. I want conversations to be bjects in the PBUI concept, and the actions olike open / activate / rename / pin etc... to be right click action. In general, everything that can be made into an object, should be made into an object. SO update the conversations view to show objects instead of writing out the actions as buttons. Keep that in mind in the future too."
+
+**Second user prompt (verbatim):** "also make workspaces an object. Remove the status bar at the bottom on the chat window and put it at the bottom of tne entire page."
+
+**Assistant interpretation:** Rows in list tiles are presentations, not labels with button rows; the descriptor's menu is the single door to what can be done to a thing; apply it to conversations and workspaces now and to every future tile; and the mouse-doc line is the page's, not a per-tile strip.
+
+**Inferred user intent:** Keep the interface's one rule — objects carry their own verbs — from being eroded tile by tile, and stop the same information being drawn three times.
+
+**Commit (code):** `ed84f22` — "PBUI-AGENT-4: conversations and workspaces are objects; one status bar"
+
+### What I did
+
+- Saved the rule as a durable memory (`pbui-everything-is-an-object`), because it is a standing instruction rather than a fix to this ticket.
+- `conversations/verbs.ts` — added `conversation.pin`, `.archive`, `.close`, `.forget`; made `conversation.rename`'s `title` optional, where its absence means "open the editor".
+- `conversations/registry.ts` — `renaming()` / `requestRename(id)`: which conversation the interface should be offering a name field for.
+- `ConversationsTile` — each row is now a `RefPresentation` of a `<conversation>`; the seven per-row buttons are gone; the inline rename opens when the registry asks for it. The header keeps *new conversation* and the filter, which have no object to hang off.
+- Demo — the descriptor carries all ten menu entries with their `disabledBecause` reasons; the vocabulary's `conversation` type lists the new kinds; `FAMILIES` gains four `local` entries.
+- Demo `App.tsx` — `WorkspaceStrip`'s `renderWorkspace` renders each workspace as a `<workspace>` presentation with `activate` bound to `workspace.select`; the masthead's connection text is gone; a single `chat.MouseDocLine` sits in a third shell row.
+- `ChatApp` — no mouse-doc line, two grid rows instead of three.
+
+### Why
+
+The object menu is the single door to what can be done to a thing. Two doors — a button row beside the name and a menu behind it — drift the moment one gains an action the other lacks, and a seven-button row also crowds out the name it sits beside (which is exactly what it did, see Step 3). Making the row a presentation also gets the rest for free: the mouse-doc line describes it, the focus capture makes it the session's focus so a message about it carries the reference, and the same menu appears when the agent mentions the conversation in a transcript.
+
+Phase 1's split — "a verb when it changes what a conversation IS, a direct registry call when it changes what this browser shows" — was defensible on its own terms and wrong under this rule. `tile.close` and `workspace.delete` are verbs, and they change only this browser's layout; there was never a principle keeping `conversation.close` out, only a worry about trace noise.
+
+### What didn't work
+
+**The menu cannot hold a text field.** `conversation.rename` needs a name, and an object menu has nowhere to type one. pbui-workbench's precedent (`Rename…` performs `setTitle(viewId, currentTitle)` and a product's inline rename supplies the real one) leaves the connection between the menu entry and the editor unwritten.
+
+The shape that works is the one `compareWith` already uses: a verb with a field missing is a REQUEST. `conversation.rename` without a title calls `conversations.requestRename(id)`, the registry notifies, and whatever is showing that conversation opens its editor; committing performs the same verb again, this time with the title. One verb, two meanings, both in the vocabulary — and an agent can now also ask the user to name a conversation rather than naming it itself.
+
+**A trace that said `rejected:unknown verb conversation.pin` while the pin plainly worked.** Twice, over two builds, and only the second time was it real. `pkg/pbuichat/trace.go:134` re-validates the verb against the vocabulary the SERVER embeds and overwrites `performed` with `rejected:` when it does not recognise the kind:
+
+```go
+if err := p.vocab.ValidateVerb(payload.GetVerb().AsMap()); err != nil && outcome == traceOutcomePerformed {
+    outcome = "rejected:" + err.Error()
+}
+```
+
+`pkg/chatserver/demo/vocabulary.json` is embedded at compile time, and the server had been running since before `pnpm vocab` regenerated it. Worse, the `tmux kill-session` that was supposed to restart it did nothing — the process had been started from a session that no longer existed, so the ten-minute-old binary kept serving. Adding a verb kind takes three steps, not two: change the schema, `pnpm --filter @hyperslop-systems/pbui-chat-demo vocab`, and restart the server. Skip the third and the browser and the trace disagree about what happened, which is the most confusing failure this system can produce.
+
+**A disabled menu entry has a different accessible name.** The tile test looked for `"Make it the active one"` after activating and found nothing: pbui appends the reason to a disabled entry's label (`Make it the active one — it is already the active conversation`). The test matches a regex now and asserts the reason as well, which is the better assertion anyway.
+
+### What worked
+
+- The rewrite deleted more than it added: the tile lost a `Row` full of button props, an `onPerform` prop drilled through it, and its `.actions` CSS.
+- `WorkspaceStrip` needed no change at all. `renderWorkspace` was added for exactly this — its doc comment says "a product that wants its `<workspace>` Presentation puts it there too, so the object menu and this strip are the same verbs" — so the demo just started using it.
+- One mouse-doc line instead of one per chat tile is strictly less UI and strictly more information: it now carries the active conversation and its connection status, which the masthead used to duplicate.
+
+### What was tricky to build
+
+**Which gestures stay buttons.** Not everything can be an object action. *New conversation* has nothing to right-click — the object does not exist yet. A filter field is not an action on anything. The Tools tile's *go to* moves the user rather than changing the tool. The rule that came out of it: a button is for a gesture with no object, or one that needs input a menu cannot collect; everything else is a verb in a menu.
+
+**Rename ownership, again.** With `title` optional, `validateVerb` no longer rejects a rename with no title — which is correct, and it broke the test that asserted it did. The replacement asserts the two things that actually matter: a rename with no `conversationId` is refused, and `conversation.pin` without `pinned` is refused.
+
+### What warrants a second pair of eyes
+
+- `requestRename` is registry state, so two tiles showing the same conversation would both open an editor. Today only the conversations tile renders one; a second place (a chat tile bar) would need a rule about which one wins.
+- The demo's workspace `activate` performs `workspace.select` directly rather than going through the strip's own `placement.select`, so a product that wrapped the strip differently could end up with two paths to the same verb. The strip's default button is now unreachable in the demo, which is the intent.
+
+### What should be done in the future
+
+- The remaining list tiles built in this ticket (events, runs, tools) were built to this rule from the start. Any future tile should be checked against it before it is written, not after.
+- `createTileDescriptor`'s `Rename…` could adopt the same request shape (`view.setTitle` with no title = "ask me"), which would remove the last place where a menu entry performs a verb that changes nothing.
+
+### Code review instructions
+
+- `packages/pbui-chat/src/conversations/verbs.ts` — the four new kinds and the optional-title branch.
+- `packages/pbui-chat/src/conversations/ConversationsTile/ConversationsTile.tsx` — what is left of the row.
+- `packages/pbui-chat/demo/src/pbui/descriptors/conversation.ts` — the ten entries and their reasons.
+- `packages/pbui-chat/demo/src/App.tsx` — `renderWorkspace` and the third shell row.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-chat test`, then `make chat-ui`, **restart the server**, and right-click a conversation row and a workspace tab.
+
+## Step 5: Phase 2 — the events tile
+
+Everything this tile shows was already being recorded and thrown away. chat-provider's WebSocket manager emits a debug event for every frame, every lifecycle transition, every projected UI event; `createChatDebugEventStore` classifies each one into six families, summarises it at ingest and keeps a capped ring per conversation id. No product had ever rendered it.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Phase 2, Phase 3"
+
+**Assistant interpretation:** Build the events tile, then the runs and tools tiles.
+
+**Inferred user intent:** Keep moving through the plan; the helper tiles are the point of the ticket.
+
+**Commit (code):** `4a83e0e` — "PBUI-AGENT-4 Phase 2: the events tile"
+
+### What I did
+
+- `conversations/EventsTile/` — the tile, its CSS module, its barrel, its test. Target selector (follow the active conversation or pin one), family chips, a text filter over type and summary, pause, clear, copy the raw frames as JSON with a textarea fallback when the clipboard is unavailable.
+- `detailOf(entry)` — the second line for the frames whose detail is the point: a lifecycle transition (`hydrating → ready`), a reconnect's attempt and delay, a ui-event's tool and status, a snapshot's dropped count.
+- `chatEventReference(entry, conversationId)` and the demo's `chatEvent` type, descriptor and vocabulary entry, so a row is an object with *inspect the raw frame*, *go to its conversation*, *ask the agent what it means*.
+- `PbuiChatContextValue.debug`, so a tile reaches the store the way it reaches the registry.
+
+### Why
+
+The classifier already does the expensive part — deciding what family a frame belongs to and writing a one-line summary — at ingest, once, rather than per render. A tile over it adds no state to the runtime and cannot fall behind it. And the raw frame is one right-click away, which is the whole justification for summarising in the first place: the list shows one line, the object carries what the line left out.
+
+### What worked
+
+- Against a live send, the tile showed the real sequence — `ws.connecting`, `ws.subscribing`, `subscribed #0 67B`, `snapshot.applied` with `entities=4 dropped=0`, `ws.hydrating`, `ws.ready`, then the `→ ChatMessage` and `→ ChatWidgetInstance` projections — 34 events for one message.
+- Pause holds a snapshot of the array rather than unsubscribing, so resuming shows everything that arrived in between rather than a gap.
+- `clear` is per conversation, which the test checks by asserting the other conversation's stream is untouched.
+
+### What didn't work
+
+**Five columns in a narrow tile.** The first row layout was `time | family | type | summary | id` on one line. In a tile a third of a screen wide the summary — the part worth reading — was the column that collapsed. Rows are two lines now: what and when on the first, what it says on the second. The same fix the conversations rows needed in Step 3, for the same reason; it is now the default assumption for any row in this ticket.
+
+### What I learned
+
+- The demo's families are mostly `ws`, `timeline` and `other`, because `llm`, `tool` and `widget` come from `familyAliases` — a map from ui-event NAME to family that the classifier takes as an option and nobody passes. The chips for those three are therefore always empty in this product. Worth wiring in a later phase; noted rather than fixed, because the mapping is a product fact and this ticket has not established what it should be.
+
+### What warrants a second pair of eyes
+
+- `useChatDebugEntries(store, conversationId)` is called with `""` when no conversation is active. It returns an empty array, which is what the empty state renders, but the store is being subscribed to under a key that can never receive anything.
+- The tile caps at 300 rendered rows out of a 1000-entry ring and says `n of m`, so the truncation is visible. The ring size is a `createPbuiChat` option nobody has tuned.
+
+### Code review instructions
+
+- `EventsTile.tsx` — `detailOf` and the two-line row.
+- `demo/src/pbui/descriptors/chatEvent.ts` — the three menu entries.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-chat test`, then place the `events` tile from the launcher's "agent" group and send a message.
+
+## Step 6: Phase 3 — the runs and tools tiles
+
+The two cross-conversation views: what every agent has cost, and what is waiting for the user. Both are joins over several runtimes, and the phase was almost entirely about making those joins cheap and correct rather than about the tiles.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 5)
+
+**Commit (code):** `ba6613d` — "PBUI-AGENT-4 Phase 3: the runs and tools tiles"
+
+### What I did
+
+- `conversations/selectors.ts` — `toolCallsOf(runtime, title)` memoised per runtime; `selectToolTraffic(registry)` joining every open conversation, newest first; `selectWaiting`; `streamRate(stats, now)`; and the `useToolTraffic` / `useWaiting` hooks that subscribe to the registry AND to each open runtime's store.
+- `RunsTile` — a row per conversation with the model, the run count, token totals, the last run's duration and stop reason, and a live output-token rate while it streams; a footer that sums across conversations; `compact()` and `formatDuration()` for numbers read at a glance.
+- `ToolsTile` — *waiting for you* above the traffic, then every tool call with status, origin, duration, error and an input/result disclosure; filters by conversation and status.
+- Both tiles' rows are objects (`<conversation>`, `<tool>`), per Step 4.
+
+### What didn't work
+
+**`Maximum update depth exceeded`.** `useConversations(registry, r => selectToolTraffic(r))` re-rendered forever. `useConversations` is `useSyncExternalStore`, which compares snapshots by IDENTITY, and the selector built a fresh array on every call — the contract its own doc comment states ("the selector must return a stable reference for an unchanged slice"), broken the first time a selector computed rather than read. The joins now memoise on the identities of their inputs: `all()` plus each runtime's `toolCallsOf` result.
+
+**The registry does not notify on entities.** With the loop fixed, the tools tile showed nothing: a tool call arriving changes no mirrored field — the message count is the same, the run stats are the same — so the registry never notified and the tile never re-rendered. This is exactly the exception D9 named and Phase 0 had not needed yet. `useToolTraffic` subscribes to each open runtime's store as well, re-attaching only when the set of open runtimes actually changes.
+
+**A memo that kept saying "waiting" after the user decided.** Answering a parked human tool changes nothing about the timeline entities — the result arrives later, in its own frame — so an entity-identity memo returned the stale `waiting: true`. The memo key now includes a signature of which human tools are parked, built by asking `isPendingHumanTool` about each human tool call with no result. It allocates nothing and only walks the calls that could be parked.
+
+**A hand-built workbench document blanked the page.** While arranging four tiles for a screenshot I called `store.replaceDocument` with a document I wrote by hand; it was invalid, React threw, and the demo persisted the broken document to local storage, so reloading did not help. Clearing the two layout keys recovered it. The lesson is the one the workbench's own API already encodes: build layouts with `verbs.*` or `parseDocument`, never by hand.
+
+**Two `chat.Provider`s in one test.** The first version of the Phase 3 test rendered the provider twice — once to get the runtimes, once with the tile — which mounted two `ConversationHost`s, re-attached both runtimes and threw away the stores the test had just dispatched into. One tree per test now, with the tile inside it.
+
+### What worked
+
+- The live rate is visible in the browser: the streaming conversation's row reads `1.3 tok/s` and is highlighted while it streams, and falls back to the last run's duration and stop reason when it stops.
+- A parked `pbui_accept` appeared under *waiting for you* with its conversation and a *go to*, and the traffic below showed both the requested and the succeeded call.
+- `formatDuration(null)` is `—` rather than `0 ms`: `updatedAt` is only set once an entity has changed, so a call that arrived and never moved has no duration rather than a duration of zero. The test pins that distinction.
+
+### What was tricky to build
+
+**Cheap correctness across N stores.** Three of the four failures above are the same problem seen from different sides: a cross-conversation view needs a value derived from several stores, and React needs that value to be identical when nothing changed. Every fix was a memo whose key is exactly what the value depends on — entities, title, parked set, the set of open runtimes — and the discipline that made them work was writing the key down explicitly rather than relying on a dependency array.
+
+**Tables in a third of a screen.** The runs tile started as a seven-column grid with a header row. In a narrow tile the name — the only part that identifies the row — was crushed. It is two lines now with the units inline (`3 runs · 1.2k in · 900 out`), which reads at any width and needs no header three rows above.
+
+### What warrants a second pair of eyes
+
+- `useToolTraffic` re-attaches its per-runtime subscriptions inside the registry's notification, which fires often. The comparison is cheap (array identity per runtime) but it runs on every mirror change of every conversation.
+- `parkedSignature` walks the entities on every `toolCallsOf` call, including the memo-hit path — it has to, since it is part of the key. For a long transcript with many tool calls this is the one unavoidable pass.
+- The demo's scripted engine reports no usage, so every token column is zero. The tiles are therefore verified for layout and liveness but not against real numbers.
+
+### What should be done in the future
+
+- The conversations tile's `waiting` count should link into the tools tile now that it exists.
+- `streamRate` uses `estimateOutputTokens(streamChars)` upstream when a provider reports no usage; the rate is honest about being an estimate only in chat-provider's code, not in the tile.
+
+### Code review instructions
+
+- Start at `conversations/selectors.ts` — the three memos and what each key contains.
+- Then `useToolTraffic`'s subscribe callback, which is the only place in this ticket that subscribes to more than one store.
+- Then the two tiles, which are presentation over those.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-chat test` (182), then `make chat-ui`, place `runs` and `tools` from the launcher, and send "draft a reorder" to park a human tool.

@@ -31,3 +31,30 @@ Step 3 / Phase 1: conversations tile, new-conversation gesture from three doors,
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/verbs.ts — What a product splices into its vocabulary
 
+
+## 2026-08-21
+
+Step 4: conversations and workspaces became objects with right-click menus; four new conversation verbs; rename-without-a-title as a request; one page-level status bar. (commit ed84f22)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/ConversationsTile/ConversationsTile.tsx — A row IS the conversation
+
+
+## 2026-08-21
+
+Step 5 / Phase 2: the events tile over chat-provider's classified debug store (families, filters, pause, clear, copy), rows as chatEvent objects. 171 tests. (commit 4a83e0e)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/EventsTile/EventsTile.tsx — Presentation over a store the runtime already fills
+
+
+## 2026-08-21
+
+Step 6 / Phase 3: the runs and tools tiles, and the memos that make cross-conversation joins stable under useSyncExternalStore. 182 tests. (commit ba6613d)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/selectors.ts — toolCallsOf, selectToolTraffic, selectWaiting, useToolTraffic
+
