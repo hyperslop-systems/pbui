@@ -17,11 +17,6 @@
   flex: 1;
 }
 
-.legend {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
 
 /* Two explicit rows: the workspace strip takes what it needs, the workbench
  * surface takes the rest and so gets a committed height for its tiles (pbui

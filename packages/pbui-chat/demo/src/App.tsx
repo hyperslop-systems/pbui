@@ -1,10 +1,9 @@
-import { Button, CheckboxRow, KindLegend, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, CheckboxRow, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
 import { ChatProvider, selectOverlay, useChatClient, useChatSelector, type ChatProviderConfig } from "@go-go-golems/chat-provider";
-import { useReferenceIndex } from "@hyperslop-systems/pbui-chat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./App.module.css";
 import { chat } from "./chat";
-import { TONES, type Environment, type PresentationType } from "./pbui/types";
+import { type Environment } from "./pbui/types";
 import { defaultLauncherRows, tileRefOf, type LauncherRow, type LauncherRowsContext } from "@hyperslop-systems/pbui-workbench";
 import { PROGRAM_BINDING, useLibrary } from "@hyperslop-systems/pbui-sandbox";
 import { library } from "./sandbox";
@@ -21,7 +20,6 @@ const chatConfig: ChatProviderConfig = {
   sessionPolicy: { restore: "url", parameter: "session", fallback: { restore: "local-storage", storageKey: "pbui-chat-demo.session" } },
 };
 
-const LEGEND_TYPES: PresentationType[] = ["product", "category", "metal", "order", "field", "row", "source", "widget", "tool", "proposal"];
 
 const isApple = typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform);
 
@@ -60,7 +58,6 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
               · agent
             </Text>
             <span className={styles.spacer} />
-            <Legend />
             <CheckboxRow checked={canApprove} onCheckedChange={onCanApproveChange} label="approver role" size="tiny" />
             <Button size="tiny" variant="framed" onClick={() => workbench.verbs.openLauncher()} title="open the launcher to place an application">
               {isApple ? "⌘K" : "Ctrl+K"} · launcher
@@ -160,18 +157,3 @@ function Workbench() {
   );
 }
 
-/** The tones in play, counted from the objects the agent has resolved so far. */
-function Legend() {
-  const index = useReferenceIndex();
-  const counts = new Map<string, number>();
-  for (const reference of index.values()) counts.set(reference.type, (counts.get(reference.type) ?? 0) + 1);
-  return (
-    <div className={styles.legend}>
-      <KindLegend
-        accessibleName="presentation types"
-        kinds={LEGEND_TYPES.map((kind) => ({ kind, tone: TONES[kind], total: counts.get(kind) ?? 0, count: counts.get(kind) ?? 0 }))}
-        format={(n) => String(n)}
-      />
-    </div>
-  );
-}
