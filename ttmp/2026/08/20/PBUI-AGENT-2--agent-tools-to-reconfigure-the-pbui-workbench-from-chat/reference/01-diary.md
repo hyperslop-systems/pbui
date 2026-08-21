@@ -32,10 +32,18 @@ RelatedFiles:
       Note: Registers the four beside createChatApps(chat); also the onMutate that persists the WHOLE document to localStorage, which is why NotesApp is debounced and capped (commit 531df03)
     - Path: repo://packages/pbui-chat/demo/src/world.ts
       Note: TS mirror of pkg/chatserver/demo/data.go plus the four presentation-reference builders; the drift risk this step introduced (commit 531df03)
+    - Path: repo://packages/pbui-chat/src/tools/workbenchTools.test.ts
+      Note: Step 5 policy bypass and raw replacement regressions (commit af8262e)
     - Path: repo://packages/pbui-chat/src/tools/workbenchTools.ts
-      Note: 'B1: the six tools, the policy envelope and the undo ring (1c65426)'
+      Note: |-
+        B1: the six tools, the policy envelope and the undo ring (1c65426)
+        Step 5 central policy door and exact raw-batch approval (commit af8262e)
     - Path: repo://packages/pbui-workbench/src/describe.ts
       Note: 'B0: the read side an agent addresses verbs from (13734a1)'
+    - Path: repo://packages/pbui-workbench/src/store.ts
+      Note: Step 5 separates commit from post-commit hook failure (commit 1be63cf)
+    - Path: repo://packages/pbui-workbench/src/workbench.test.ts
+      Note: Step 5 post-commit failure regression (commit 1be63cf)
     - Path: repo://pkg/pbuichat/prompt.go
       Note: 'B2: the workspace prompt section, gated on the tile type (668759d)'
 ExternalSources: []
@@ -44,6 +52,7 @@ LastUpdated: 2026-08-20T19:32:39.215373256-04:00
 WhatFor: Let a second engineer resume this ticket without re-deriving the reasoning, and give a reviewer the failure record that a green working tree hides.
 WhenToUse: Read before continuing any tier of PBUI-AGENT-2, and before reviewing a commit on this ticket — each step names where to start and how to validate.
 ---
+
 
 
 
@@ -534,3 +543,93 @@ Codex reviewed the branch and raised six issues. I checked each against the sour
 - `packages/pbui-chat/src/tools/workbenchTools.ts`: `checkPolicy`/`spend`, `verbProblem`/`appProblem`, and `applyTool` end to end.
 - `packages/pbui-chat/demo/src/chat.ts`: the `isWorkbenchVerb` branch now throws on a refusal — that throw is what becomes `rejected:…` in the trace.
 - Validate: `pnpm --filter @hyperslop-systems/pbui-workbench test` (114), `pnpm --filter @hyperslop-systems/pbui-chat test` (88), `make ci-check`.
+
+## Step 5: PR #11 follow-up — one policy door and honest commit semantics
+
+The second review found three more defects. All were real, but treating them as three local patches would have preserved the underlying problem: policy enforcement lived inside individual tool implementations. The generic tool checked policy, `workbench_create_workspace` partially checked it, `workbench_open_tile` and `workbench_switch_workspace` did not, and raw mutations used a separate destructive-case list plus a fabricated `workspace.delete` verb for approval. I replaced those paths with one high-level policy door and an explicit raw-batch approval contract.
+
+The store finding exposed a different boundary error. `onMutate` runs after the document is committed, but its exception was caught by the same `try` as `applyMutations`; this made a persistence failure look like a rejected mutation. The store now separates apply, commit, and post-commit notification, reports hook failures through `onPostCommitError`, and always returns success for a document already installed.
+
+### Prompt Context
+
+**User prompt (verbatim):** "It's been a minute, but here's a new PR to review: https://github.com/hyperslop-systems/pbui/pull/11
+
+Check all that happened in the meantime and all.
+
+Take a step back if necessary to consider things and see if there's maybe a design problem at play here.
+
+commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)
+
+ticket is PBUI-AGENT-2"
+
+**Assistant interpretation:** Re-read the current branch and ticket history, evaluate the new PR #11 comments in context rather than patching only the cited lines, fix the underlying design issue, test it, commit at coherent boundaries, and record the work in this diary.
+
+**Inferred user intent:** Make PR #11 safe to merge after substantial intervening work, while leaving an evidence-backed continuation record and avoiding another round of one-off policy bypass fixes.
+
+**Commits (code):** `1be63cf` — "Fix post-commit hook failure semantics"; `af8262e` — "Centralize workbench tool policy enforcement"
+
+### What I did
+- Read the complete PR commit list, both Codex reviews, all inline comments, the current ticket/task state, and this diary before changing code.
+- Split `createWorkbenchStore.mutate` into three phases: apply (may reject), commit, post-commit hook (may fail but cannot uncommit). Added `onPostCommitError` and threaded it through `createWorkbench`; an injected store plus any hook remains a construction error.
+- Added a regression where `onMutate` throws `Error("localStorage quota exceeded")`; the workspace still exists, the verb returns success, `onRejected` is untouched, and `onPostCommitError` receives the failure and committed document.
+- Added `performWithPolicy`, the only high-level mutation dispatch path in `createWorkbenchTools`. `create_workspace`, `open_tile`, `switch_workspace`, and generic `perform` all use it; specialized schemas now accept `confirmationId` when a product overrides their normally-allow policy to `confirm`.
+- Changed approval spending to happen only after an outcome is actually `performed`. A refused handler no longer burns a valid one-shot approval.
+- Replaced the raw destructive denylist and fake `{kind:"workspace.delete", workspaceId:""}` approval with `rawPolicyKind` plus `isRawApproved(id, exactBatch)`. `placementReplace` and app-changing `viewConfigure` map to the default-confirm `tile.replace`; title/binding-only `viewConfigure` does not. Raw deletes map to their high-level policy, and `documentDelete` gets an explicit `document.delete: confirm` default.
+- Added tests for deny and confirm overrides on specialized tools, switch-policy enforcement, exact raw-batch approval, placement/app replacement gating, and title-only configuration remaining allowed.
+
+### Why
+- A security/policy rule copied into six executors is six rules. The new comments were evidence of drift, not isolated omissions. One function must own authorization, dispatch, successful approval spending, and outcome propagation for every high-level tool.
+- A post-commit callback is observation, not transaction. Once subscribers can read the new document, no exception can truthfully turn that commit into a rejection; retrying is actively dangerous because creates and splits are not idempotent.
+- A raw mutation batch is not a verb. Passing a made-up verb to `isApproved` destroys the operation identity the previous review correctly required. Raw mode therefore needs a raw approval predicate over the exact decoded batch.
+
+### What worked
+- The focused store suite passed after threading the new callback through `createWorkbench`: 9 files, 115 tests.
+- The focused chat suite passed with the centralized policy path and raw classification: 11 files, 93 tests.
+- `make ci-check` passed after both code commits: Go formatting/lint, logcopter, glazed-lint, all Go tests, generation, and build.
+- The raw classifier can distinguish `viewConfigure.appId` (replacement, confirmation required) from title-only or binding-only configuration (their corresponding high-level verbs are allow by default).
+- Two code commits kept the store transaction-boundary fix separate from the agent-policy redesign.
+
+### What didn't work
+- The first store test run failed because `CreateWorkbenchOptions` extended `WorkbenchStoreOptions`, but `createWorkbench` manually forwarded only the two old callbacks. Exact failure:
+
+  `AssertionError: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…}, …(2) ]`
+
+  The test also printed the fallback diagnostic:
+
+  `pbui-workbench: post-commit hook failed Error: localStorage quota exceeded`
+
+  Fix: forward `onPostCommitError` into `createWorkbenchStore` and include it in the injected-store hook guard. The rerun passed 115/115.
+- No TypeScript compile or chat test failures occurred after the policy refactor.
+
+### What I learned
+- **Policy must wrap capabilities, not tool names.** `workbench_open_tile` and `workbench_perform({view.open})` are two UX affordances for one capability. If each checks independently, one eventually becomes the bypass.
+- **Commit and persistence are separate outcomes.** A localStorage/outbox failure can mean “the UI changed, durability did not.” Collapsing both into one boolean makes a retry unsafe and gives the agent a false model of the screen.
+- **Raw APIs need raw authorization subjects.** Translating a batch to a convenient stand-in verb repeats the exact approval bug fixed in Step 4: the predicate cannot compare what was proposed with what will execute.
+- **Generated union cases still need semantic classification at the model boundary.** `viewConfigure` is not uniformly destructive; the presence of `appId` changes its policy meaning.
+
+### What was tricky to build
+- **Keeping approval one-shot without burning it on refusal.** The old generic path called `spend` before the router, despite its comment saying “only after actually attempted”; a stale id or last-tile refusal consumed permission without performing the approved operation. `performWithPolicy` checks first, calls the router, and spends only on `outcome === "performed"`. This ordering is now shared by every high-level tool.
+- **Classifying raw replacement without over-gating harmless configuration.** `placementReplace` always changes which view occupies a tile, so it maps to `tile.replace`. `viewConfigure` can replace the app, rename the view, or replace bindings. Only an explicit `appId` maps to `tile.replace`; otherwise the existing `view.setTitle`/`view.rebind` defaults remain effective. Tests pin both sides.
+- **Handling an error reporter that itself throws.** `onPostCommitError` is also product code. It is invoked inside its own guard; if it throws, the store logs that reporting failure and still returns true. Nothing after commit is allowed to masquerade as rollback.
+
+### What warrants a second pair of eyes
+- `rawPolicyKind` is now an explicit semantic allowlist, which is safer than the former destructive denylist, but every new mutation case still needs a conscious policy review. The default for an unclassified raw case remains allowed because raw mode itself is opt-in.
+- `document.delete` is a policy key without a corresponding `WorkbenchVerbKind`. That is intentional for a raw-only capability, but products typing their policy around only exported verb kinds should know this extra key exists.
+- `workbench_apply` still commits through `wb.mutate` rather than the router, so raw operations do not produce the same verb trace as high-level tools. This pre-existing design tension is not solved by authorization and should be decided before raw mode is enabled in a product.
+- Undo uses `replaceDocument`, which bypasses mutation hooks and trace reporting. In a persisted/server-backed product an undo can therefore change the local document without entering the outbox. Tier 4 should not expose Undo until that contract is resolved.
+
+### What should be done in the future
+- Resolve the raw apply/undo trace and persistence contracts before enabling `allowRawMutations` or shipping the Undo widget.
+- B4 must implement `isApproved(id, verb)` and `isRawApproved(id, batch)` from proposal state by comparing the exact proposed operation, not merely checking an approved id.
+- Consider replacing `WorkbenchPolicy = Record<string, …>` with a typed union of high-level and raw-only capability keys once the raw API settles.
+
+### Code review instructions
+- Start at `packages/pbui-workbench/src/store.ts:createWorkbenchStore().mutate`: verify apply errors are the only path to `false`, then follow `onPostCommitError` through `createWorkbench.tsx` and the regression in `workbench.test.ts`.
+- Then read `packages/pbui-chat/src/tools/workbenchTools.ts:performWithPolicy`, all four callers, and `rawPolicyKind` through `applyTool`.
+- In `workbenchTools.test.ts`, review “cannot bypass a deny policy through the specialized tool”, “accepts a matching one-shot approval”, and the raw replacement/title-only pair.
+- Validate with:
+  - `pnpm --filter @hyperslop-systems/pbui-workbench test`
+  - `pnpm --filter @hyperslop-systems/pbui-workbench typecheck`
+  - `pnpm --filter @hyperslop-systems/pbui-chat test`
+  - `pnpm --filter @hyperslop-systems/pbui-chat typecheck`
+  - `make ci-check`

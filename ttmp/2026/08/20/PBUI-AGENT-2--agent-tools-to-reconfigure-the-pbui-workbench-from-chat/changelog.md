@@ -41,3 +41,13 @@ B0-B3 landed (13734a1, 1c65426, 531df03, 455c756, 668759d, dfbab54). B0: specOf 
 
 Addressed the PR #11 review (84f175e): six findings, all real. Two P1s — performWorkbenchVerb discarded every handler refusal so the agent was told refused changes had applied, and isApproved never saw the operation so one approval authorised every confirm-policy verb. Plus openView de-duplicating globally while going to a view locally, the generic perform tool validating no ids at all, application availability being honoured by the launcher and not by the agent, and workbench_apply being advertised while unimplemented. 25 new tests.
 
+
+## 2026-08-20
+
+Step 5: addressed PR #11 follow-up review by centralizing high-level policy enforcement, requiring exact raw-batch approval, and separating committed mutations from post-commit hook failures (commits 1be63cf, af8262e)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/workbenchTools.ts — Policy and raw approval redesign
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-workbench/src/store.ts — Honest post-commit failure semantics
+
