@@ -3,6 +3,7 @@ import type { SandboxHost } from "../host/hostOptions";
 import { INSPECTOR_APP_ID, PROGRAM_BINDING } from "../ScriptTile";
 import { InspectorTile } from "./InspectorTile/InspectorTile";
 import { ReplTile } from "./ReplTile/ReplTile";
+import { TimelineTile } from "./TimelineTile/TimelineTile";
 
 export interface SandboxDevtoolsOptions {
   /** The launcher group; default "SANDBOX". */
@@ -12,6 +13,7 @@ export interface SandboxDevtoolsOptions {
 
 export const SANDBOX_GROUP = "SANDBOX";
 export const REPL_APP_ID = "sandbox-repl";
+export const TIMELINE_APP_ID = "sandbox-timeline";
 
 /**
  * The devtools as ordinary app descriptors (guide D8): register them beside
@@ -48,6 +50,15 @@ export function createSandboxDevtools(host: SandboxHost, options: SandboxDevtool
       group,
       blurb: "evaluate and inject code inside the selected program",
       Component: (props: AppProps) => <ReplTile placementId={props.placementId} view={props.view} host={host} />,
+    }),
+    defineApp({
+      id: TIMELINE_APP_ID,
+      title: "timeline",
+      tone,
+      singleton: true,
+      group,
+      blurb: "every load, render, event, intent and error across running programs",
+      Component: (props: AppProps) => <TimelineTile placementId={props.placementId} view={props.view} host={host} />,
     }),
   ];
 }

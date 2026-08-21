@@ -1,4 +1,4 @@
-export { REPL_APP_ID, SANDBOX_GROUP, createSandboxDevtools } from "./createSandboxDevtools";
+export { REPL_APP_ID, SANDBOX_GROUP, TIMELINE_APP_ID, createSandboxDevtools } from "./createSandboxDevtools";
 export type { SandboxDevtoolsOptions } from "./createSandboxDevtools";
 export { InspectorTile, VIEW_BINDING, chooseInstance } from "./InspectorTile/InspectorTile";
 export type { InspectorTileProps } from "./InspectorTile/InspectorTile";
@@ -6,3 +6,5 @@ export { TreeOutline, outlineRows, summariseNode, treeDepth } from "./InspectorT
 export type { OutlineRow, TreeOutlineProps } from "./InspectorTile/TreeOutline";
 export { REPL_HELP, ReplTile, isIntentList, isUINode, summariseValue } from "./ReplTile/ReplTile";
 export type { ReplLine, ReplTileProps } from "./ReplTile/ReplTile";
+export { TIMELINE_KINDS, TimelineTile, eventsForReplay, overLimit } from "./TimelineTile/TimelineTile";
+export type { TimelineTileProps } from "./TimelineTile/TimelineTile";
