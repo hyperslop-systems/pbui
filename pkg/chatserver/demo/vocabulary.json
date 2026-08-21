@@ -118,6 +118,10 @@
         "conversation.open",
         "conversation.select",
         "conversation.rename",
+        "conversation.pin",
+        "conversation.archive",
+        "conversation.close",
+        "conversation.forget",
         "conversation.send",
         "inspect",
         "askAgent"
@@ -478,11 +482,39 @@
       }
     },
     "conversation.rename": {
-      "doc": "give a conversation a name",
+      "doc": "give a conversation a name; without a title, ask the user for one",
       "fields": {
         "conversationId": "string",
-        "title": "string"
+        "title?": "string"
       }
+    },
+    "conversation.pin": {
+      "doc": "keep a conversation at the top of the list",
+      "fields": {
+        "conversationId": "string",
+        "pinned": "boolean"
+      }
+    },
+    "conversation.archive": {
+      "doc": "put a conversation out of the way; it keeps its transcript",
+      "fields": {
+        "conversationId": "string",
+        "archived": "boolean"
+      }
+    },
+    "conversation.close": {
+      "doc": "disconnect a conversation; the record and the server's session stay",
+      "fields": {
+        "conversationId": "string"
+      },
+      "danger": true
+    },
+    "conversation.forget": {
+      "doc": "drop a conversation from this browser's list; the server keeps the session",
+      "fields": {
+        "conversationId": "string"
+      },
+      "danger": true
     },
     "conversation.send": {
       "doc": "send a message to another conversation",

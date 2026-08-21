@@ -30,9 +30,9 @@
 }
 
 /*
- * Stacked rather than name-beside-actions. Seven actions are wider than a
- * narrow tile, and a grid column sized to them squeezed the title down to a
- * few characters — the one thing a row exists to show.
+ * Stacked: the conversation itself, then what is true about it. There is no
+ * actions column — a row IS the conversation, and what can be done to it is
+ * in its object menu.
  */
 .row {
   display: flex;
@@ -60,10 +60,3 @@
   min-width: 0;
 }
 
-.actions {
-  display: flex;
-  gap: var(--pbui-space-1);
-  flex-wrap: wrap;
-  align-items: center;
-  min-width: 0;
-}

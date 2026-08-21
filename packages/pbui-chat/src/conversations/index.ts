@@ -2,7 +2,7 @@ export { ActiveConversationScope } from "./ActiveConversationScope";
 export { CONVERSATION_BINDING } from "./bindings";
 export { ChatRuntimeScope, ConversationHost } from "./ConversationHost";
 export { ConversationScope } from "./ConversationScope";
-export { ConversationsTile, ageOf, statusOf } from "./ConversationsTile";
+export { ConversationsTile, ageOf, conversationReference, statusOf } from "./ConversationsTile";
 export {
   countWaiting,
   createConversationRegistry,

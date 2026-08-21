@@ -1,45 +1,48 @@
 import { Button, Chip, EmptyState, InlineRename, Text, TextInput, Toolbar } from "@hyperslop-systems/pbui";
 import { useState } from "react";
+import { RefPresentation } from "../../components/RefPresentation";
 import { usePbuiChat } from "../../context";
+import type { Reference } from "../../types";
 import type { ConversationSnapshot } from "../registry";
 import { useConversations } from "../registry";
 import styles from "./ConversationsTile.module.css";
 
 /**
- * Every conversation this browser knows about, and everything a person can
- * do to one (guide §4.6).
+ * Every conversation this browser knows about (guide §4.6).
  *
- * The rows are the registry's snapshots: the record (title, pins, counts) and
- * the mirror of an open runtime (status, tokens, what is waiting for you).
- * Pinned first, then by last activity, so the conversation you were just in
- * is near the top without the list reordering under the cursor while you read
- * it.
+ * **A row IS the conversation**, not a label with buttons after it: each one
+ * renders as a `<conversation>` presentation, so left-click is its default
+ * verb and right-click opens the one menu that says what can be done to it —
+ * open, activate, rename, keep at the top, archive, disconnect, inspect, hand
+ * something to it, ask about it, drop it. That menu is the product's
+ * descriptor, shared with every other place a conversation appears: a mention
+ * in a transcript, a chip in a widget, a tile title. Laying the same actions
+ * out as a row of buttons would be a second door that drifts from the first.
  *
- * Every action here goes through the router as a verb rather than calling the
- * registry directly, so a person renaming a conversation and an agent
- * renaming one land in the same trace with the same wording. The exceptions
- * are the three that have no verb because they are about THIS browser rather
- * than about the conversation — pin, archive, close, forget.
+ * The two controls that remain are the ones with no object to hang off: *new
+ * conversation* (there is nothing to right-click until it exists) and the
+ * filter.
+ *
+ * Rows are pinned first, then by last activity, so the conversation you were
+ * just in is near the top without the list reordering under the cursor while
+ * you read it.
  */
 export function ConversationsTile() {
   const chat = usePbuiChat();
   const registry = chat.conversations;
   const conversations = useConversations(registry, (r) => r.all());
+  const renaming = useConversations(registry, (r) => r.renaming());
   const [filter, setFilter] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [renaming, setRenaming] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const needle = filter.trim().toLowerCase();
   const rows = conversations.filter(
     (snapshot) =>
-      (showArchived || !snapshot.archived) && (needle === "" || snapshot.title.toLowerCase().includes(needle) || snapshot.id.includes(needle)),
+      (showArchived || !snapshot.archived) &&
+      (needle === "" || snapshot.title.toLowerCase().includes(needle) || snapshot.id.includes(needle)),
   );
   const archived = conversations.filter((snapshot) => snapshot.archived).length;
-
-  const perform = (verb: Record<string, unknown>) => {
-    void chat.router.perform(verb as never);
-  };
 
   const startNew = async () => {
     // `conversation.new` mints a session over the network, so the button says
@@ -75,22 +78,14 @@ export function ConversationsTile() {
       ) : (
         <ol aria-label="conversations" className={styles.list}>
           {rows.map((snapshot) => (
-            <Row
-              key={snapshot.id}
-              snapshot={snapshot}
-              renaming={renaming === snapshot.id}
-              onRename={(next) => {
-                setRenaming(null);
-                if (next !== snapshot.title) perform({ kind: "conversation.rename", conversationId: snapshot.id, title: next });
-              }}
-              onStartRename={() => setRenaming(snapshot.id)}
-              onCancelRename={() => setRenaming(null)}
-              onPerform={perform}
-              registry={registry}
-            />
+            <Row key={snapshot.id} snapshot={snapshot} renaming={renaming === snapshot.id} />
           ))}
         </ol>
       )}
+
+      <Text size="micro" tone="faint">
+        right-click a conversation for what you can do to it
+      </Text>
     </div>
   );
 }
@@ -115,25 +110,37 @@ export function ageOf(at: string, now = Date.now()): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-function Row({
-  snapshot,
-  renaming,
-  registry,
-  onRename,
-  onStartRename,
-  onCancelRename,
-  onPerform,
-}: {
-  snapshot: ConversationSnapshot;
-  renaming: boolean;
-  registry: ReturnType<typeof usePbuiChat>["conversations"];
-  onRename(next: string): void;
-  onStartRename(): void;
-  onCancelRename(): void;
-  onPerform(verb: Record<string, unknown>): void;
-}) {
+/** The wire reference for a conversation, as every other place builds it. */
+export function conversationReference(snapshot: ConversationSnapshot): Reference {
+  return {
+    type: "conversation",
+    id: snapshot.id,
+    value: {
+      title: snapshot.title,
+      messageCount: snapshot.messageCount,
+      streaming: snapshot.streaming,
+      active: snapshot.active,
+      pinned: snapshot.pinned,
+      archived: snapshot.archived,
+      open: snapshot.open,
+      ...(snapshot.model ? { model: snapshot.model } : {}),
+    },
+  };
+}
+
+function Row({ snapshot, renaming }: { snapshot: ConversationSnapshot; renaming: boolean }) {
+  const chat = usePbuiChat();
   const status = statusOf(snapshot);
   const tokens = snapshot.stats?.totals;
+  const reference = conversationReference(snapshot);
+
+  const commit = (title: string) => {
+    chat.conversations.requestRename(null);
+    if (title !== snapshot.title) {
+      void chat.router.perform({ kind: "conversation.rename", conversationId: snapshot.id, title } as never);
+    }
+  };
+
   return (
     <li
       data-part="conversation-row"
@@ -141,62 +148,42 @@ function Row({
       data-active={snapshot.active ? "true" : undefined}
       className={styles.row}
     >
-      <div className={styles.name}>
-        {renaming ? (
-          <InlineRename initial={snapshot.title} accessibleName="conversation name" fallback={snapshot.title} onCommit={onRename} onCancel={onCancelRename} />
-        ) : (
+      {renaming ? (
+        <InlineRename
+          initial={snapshot.title}
+          accessibleName="conversation name"
+          fallback={snapshot.title}
+          onCommit={commit}
+          onCancel={() => chat.conversations.requestRename(null)}
+        />
+      ) : (
+        <RefPresentation
+          reference={reference}
+          doc={`conversation · ${status.label} · right-click for what you can do to it`}
+          testId={`conversation-${snapshot.id}`}
+        >
           <Text size="tiny" strong>
             {snapshot.active ? "▸ " : ""}
             {snapshot.title}
           </Text>
-        )}
-        <div className={styles.meta}>
-          <Chip label={status.label} tone={status.tone === "danger" ? "var(--pbui-tone-proposal)" : "var(--pbui-tone-neutral)"} />
-          {/* Only when it is worth saying: `ready` is the normal case. */}
-          {snapshot.open && snapshot.wsStatus !== "ready" ? (
-            <Text size="micro" tone="faint">
-              {snapshot.wsStatus}
-            </Text>
-          ) : null}
-          <Text size="micro" tone="faint">
-            {snapshot.messageCount} message{snapshot.messageCount === 1 ? "" : "s"} · {ageOf(snapshot.lastActivityAt)}
-            {tokens && tokens.inputTokens + tokens.outputTokens > 0 ? ` · ${tokens.inputTokens + tokens.outputTokens} tokens` : ""}
-            {snapshot.pinned ? " · pinned" : ""}
-          </Text>
-        </div>
-      </div>
+        </RefPresentation>
+      )}
 
-      <span className={styles.actions}>
-        <Button size="tiny" variant="bare" onClick={() => onPerform({ kind: "conversation.open", conversationId: snapshot.id })} title="open it in a tile, or go to the tile that has it">
-          open
-        </Button>
-        <Button
-          size="tiny"
-          variant="bare"
-          disabled={snapshot.active}
-          onClick={() => onPerform({ kind: "conversation.select", conversationId: snapshot.id })}
-          title="follow this conversation in the singleton tiles"
-        >
-          activate
-        </Button>
-        <Button size="tiny" variant="bare" onClick={onStartRename}>
-          rename
-        </Button>
-        {/* Pin, archive, close and forget are about this browser's list, not
-            about the conversation, so they have no verb and no trace entry. */}
-        <Button size="tiny" variant="bare" selected={snapshot.pinned} aria-pressed={snapshot.pinned} onClick={() => registry.pin(snapshot.id, !snapshot.pinned)}>
-          {snapshot.pinned ? "unpin" : "pin"}
-        </Button>
-        <Button size="tiny" variant="bare" onClick={() => registry.archive(snapshot.id, !snapshot.archived)}>
-          {snapshot.archived ? "unarchive" : "archive"}
-        </Button>
-        <Button size="tiny" variant="bare" disabled={!snapshot.open} onClick={() => registry.close(snapshot.id)} title="disconnect it; the record and the server's session stay">
-          close
-        </Button>
-        <Button size="tiny" variant="bare" onClick={() => registry.forget(snapshot.id)} title="drop it from this browser's list; the server keeps the session">
-          forget
-        </Button>
-      </span>
+      <div className={styles.meta}>
+        <Chip label={status.label} tone={status.tone === "danger" ? "var(--pbui-tone-proposal)" : "var(--pbui-tone-neutral)"} />
+        {/* Only when it is worth saying: `ready` is the normal case. */}
+        {snapshot.open && snapshot.wsStatus !== "ready" ? (
+          <Text size="micro" tone="faint">
+            {snapshot.wsStatus}
+          </Text>
+        ) : null}
+        <Text size="micro" tone="faint">
+          {snapshot.messageCount} message{snapshot.messageCount === 1 ? "" : "s"} · {ageOf(snapshot.lastActivityAt)}
+          {tokens && tokens.inputTokens + tokens.outputTokens > 0 ? ` · ${tokens.inputTokens + tokens.outputTokens} tokens` : ""}
+          {snapshot.pinned ? " · pinned" : ""}
+          {snapshot.archived ? " · archived" : ""}
+        </Text>
+      </div>
     </li>
   );
 }

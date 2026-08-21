@@ -1,5 +1,5 @@
 import { Button, CheckboxRow, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
-import { useConversations } from "@hyperslop-systems/pbui-chat";
+import { RefPresentation, useConversations } from "@hyperslop-systems/pbui-chat";
 import { useCallback, useMemo, useState } from "react";
 import styles from "./App.module.css";
 import { chat } from "./chat";
@@ -65,15 +65,20 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
             <Button size="tiny" onClick={resetLayout} title="back to the default tiles">
               reset layout
             </Button>
-            <Text size="tiny" tone="faint">
-              {active ? active.wsStatus : "no conversation"}
-            </Text>
           </Toolbar>
         </Surface>
 
         <main className={styles.canvas}>
           <Workbench />
         </main>
+
+        {/* One status bar for the whole page: what the pointer is over, what
+            L and R will do to it, and which conversation is active. */}
+        <div className={styles.status}>
+          <chat.MouseDocLine
+            ambient={active ? `${active.title} · ${active.id.slice(0, 8)} · ${active.wsStatus}` : "no conversation"}
+          />
+        </div>
       </div>
       <chat.ObjectMenu />
       <chat.AcceptBanner />
@@ -165,7 +170,29 @@ function Workbench() {
     <>
       {/* The human door to workspace.select. The agent can create a workspace
           and switch to it; without this the user could not switch back. */}
-      <workbench.WorkspaceStrip addLabel="workspace" />
+      {/* Each workspace IS a `<workspace>` object: left-click goes to it,
+          right-click offers go-to / duplicate / rename / delete / ask — the
+          same menu a mention of it in the transcript offers. The strip's own
+          default button would be a second door to the same verbs. */}
+      <workbench.WorkspaceStrip
+        addLabel="workspace"
+        renderWorkspace={(workspace, placement) => (
+          <RefPresentation
+            reference={{
+              type: "workspace",
+              id: workspace.id,
+              value: { name: workspace.name || workspace.id, tileCount: placement.tileCount, active: placement.active },
+            }}
+            doc={`workspace · ${placement.tileCount} tile${placement.tileCount === 1 ? "" : "s"}${placement.active ? " · you are here" : ""}`}
+            activate={{ run: () => void chat.router.perform({ kind: "workspace.select", workspaceId: workspace.id }), doc: "go to this workspace" }}
+          >
+            <Text size="tiny" strong={placement.active}>
+              {placement.active ? "▸ " : ""}
+              {workspace.name || workspace.id}
+            </Text>
+          </RefPresentation>
+        )}
+      />
       <workbench.Surface
         renderTitle={(_view, placement) => {
           const tile = tileRefOf(workbench, placement.placementId);

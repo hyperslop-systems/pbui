@@ -68,6 +68,14 @@ export interface ConversationRegistry {
   openIds(): readonly string[];
   activeId(): string | null;
   activate(id: string | null): void;
+  /**
+   * Which conversation the interface should be offering a name field for,
+   * if any. `conversation.rename` without a title sets it — the object menu
+   * cannot hold a text field, so the verb asks for the editor instead and
+   * whatever is showing the conversation opens one.
+   */
+  renaming(): string | null;
+  requestRename(id: string | null): void;
 
   /** `POST /api/chat/sessions`, record it, and (by default) open and activate it. */
   create(options?: { title?: string; open?: boolean; activate?: boolean }): Promise<ConversationSnapshot>;
@@ -225,6 +233,7 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
   let openIdsCache: string[] | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let autoConnect = options.autoConnect !== false;
+  let renaming: string | null = null;
 
   function emit() {
     for (const listener of listeners) listener();
@@ -409,6 +418,15 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
 
     activeId: () => activeId,
 
+    renaming: () => renaming,
+
+    requestRename(id) {
+      const next = id && records.has(id) ? id : null;
+      if (next === renaming) return;
+      renaming = next;
+      emit();
+    },
+
     activate(id) {
       const next = id && records.has(id) ? id : null;
       if (next === activeId) return;
@@ -482,6 +500,7 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
 
     forget(id) {
       if (!records.delete(id)) return;
+      if (renaming === id) renaming = null;
       registry.close(id);
       mirrors.delete(id);
       configs.delete(id);

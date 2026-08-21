@@ -87,6 +87,10 @@ const FAMILIES: Record<VerbKind, VerbFamily> = {
   "conversation.open": "local",
   "conversation.select": "local",
   "conversation.rename": "local",
+  "conversation.pin": "local",
+  "conversation.archive": "local",
+  "conversation.close": "local",
+  "conversation.forget": "local",
   "conversation.send": "agent",
 };
 

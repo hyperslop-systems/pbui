@@ -33,7 +33,18 @@ export const ConversationVerbSchemas = [
   }),
   z.object({ kind: z.literal("conversation.open"), conversationId: z.string(), near: z.string().optional() }),
   z.object({ kind: z.literal("conversation.select"), conversationId: z.string() }),
-  z.object({ kind: z.literal("conversation.rename"), conversationId: z.string(), title: z.string() }),
+  /*
+   * `title` is OPTIONAL, and its absence is a gesture rather than an
+   * omission: "rename this" with no name asks the interface to open its
+   * editor, the way `compareWith` without a `right` opens accept mode. It is
+   * what lets the object menu — which cannot hold a text field — offer a
+   * rename at all.
+   */
+  z.object({ kind: z.literal("conversation.rename"), conversationId: z.string(), title: z.string().optional() }),
+  z.object({ kind: z.literal("conversation.pin"), conversationId: z.string(), pinned: z.boolean() }),
+  z.object({ kind: z.literal("conversation.archive"), conversationId: z.string(), archived: z.boolean() }),
+  z.object({ kind: z.literal("conversation.close"), conversationId: z.string() }),
+  z.object({ kind: z.literal("conversation.forget"), conversationId: z.string() }),
   z.object({
     kind: z.literal("conversation.send"),
     conversationId: z.string(),
@@ -52,6 +63,10 @@ export const CONVERSATION_VERB_KINDS: readonly ConversationVerbKind[] = [
   "conversation.open",
   "conversation.select",
   "conversation.rename",
+  "conversation.pin",
+  "conversation.archive",
+  "conversation.close",
+  "conversation.forget",
   "conversation.send",
 ];
 
@@ -59,7 +74,11 @@ export const CONVERSATION_VERB_DOCS: VerbDocs = {
   "conversation.new": { doc: "start another conversation and open it in a tile" },
   "conversation.open": { doc: "open a conversation in a tile beside another" },
   "conversation.select": { doc: "make a conversation the active one" },
-  "conversation.rename": { doc: "give a conversation a name" },
+  "conversation.rename": { doc: "give a conversation a name; without a title, ask the user for one" },
+  "conversation.pin": { doc: "keep a conversation at the top of the list" },
+  "conversation.archive": { doc: "put a conversation out of the way; it keeps its transcript" },
+  "conversation.close": { doc: "disconnect a conversation; the record and the server's session stay", danger: true },
+  "conversation.forget": { doc: "drop a conversation from this browser's list; the server keeps the session", danger: true },
   "conversation.send": { doc: "send a message to another conversation" },
 };
 
@@ -77,7 +96,15 @@ export function describeConversationVerb(verb: ConversationVerb): string {
     case "conversation.select":
       return `make conversation ${verb.conversationId} the active one`;
     case "conversation.rename":
-      return `rename the conversation to “${verb.title}”`;
+      return verb.title ? `rename the conversation to “${verb.title}”` : "rename this conversation";
+    case "conversation.pin":
+      return verb.pinned ? "keep this conversation at the top" : "stop keeping this conversation at the top";
+    case "conversation.archive":
+      return verb.archived ? "archive this conversation" : "bring this conversation back";
+    case "conversation.close":
+      return "disconnect this conversation";
+    case "conversation.forget":
+      return "drop this conversation from the list";
     case "conversation.send":
       return `send a message to conversation ${verb.conversationId}`;
   }
@@ -124,15 +151,36 @@ export async function performConversationVerb(verb: ConversationVerb, ctx: Conve
     }
     case "conversation.rename": {
       const snapshot = requireKnown(ctx, verb.conversationId);
-      if (!verb.title.trim()) throw new Error("a conversation needs a name");
       if (ctx.actor === "agent" && snapshot.titledBy === "human") {
         // The user named this one. An agent renaming it would be the interface
         // quietly disagreeing with them about what they are looking at.
         throw new Error("the user named this conversation; ask them before renaming it");
       }
+      if (verb.title === undefined) {
+        // No name given: open the editor wherever the conversation is shown.
+        ctx.conversations.requestRename(verb.conversationId);
+        return;
+      }
+      if (!verb.title.trim()) throw new Error("a conversation needs a name");
       ctx.conversations.rename(verb.conversationId, verb.title, ctx.actor === "agent" ? "agent" : "human");
       return;
     }
+    case "conversation.pin":
+      requireKnown(ctx, verb.conversationId);
+      ctx.conversations.pin(verb.conversationId, verb.pinned);
+      return;
+    case "conversation.archive":
+      requireKnown(ctx, verb.conversationId);
+      ctx.conversations.archive(verb.conversationId, verb.archived);
+      return;
+    case "conversation.close":
+      requireKnown(ctx, verb.conversationId);
+      ctx.conversations.close(verb.conversationId);
+      return;
+    case "conversation.forget":
+      requireKnown(ctx, verb.conversationId);
+      ctx.conversations.forget(verb.conversationId);
+      return;
     case "conversation.send":
       throw new Error("conversation.send is an agent verb; route it to sendToAgent with the target conversation");
   }

@@ -4,12 +4,15 @@ import { TONES } from "../types";
 
 /**
  * A conversation, as an object: what the agent mentions as
- * `[[conversation:…|reorder desk]]` and what a chat tile's title is.
+ * `[[conversation:…|reorder desk]]`, what a chat tile's title is, and what a
+ * row of the conversations list IS.
  *
- * The menu is where the handoff lives. *Send this to that agent* is
- * `conversation.send`, whose target is a conversation OTHER than the one the
- * verb was performed in — the only verb in the shop with that shape, and the
- * reason the router's `sendToAgent` takes a target.
+ * Every action lives here, which is the point. The conversations tile does
+ * not lay its actions out as buttons beside each row — it renders the
+ * conversation and lets this menu be the one door to what can be done to it.
+ * That is why `conversation.pin`, `.archive`, `.close` and `.forget` are
+ * verbs even though they only change this browser's list: an entry in an
+ * object menu is a verb or it is nothing.
  *
  * The registry is read at describe/actions time rather than carried in the
  * value, so a mention the agent made ten messages ago still shows what is
@@ -50,6 +53,9 @@ export const conversationDescriptor: PresentationDescriptor<"conversation"> = {
 
   actions: (ref) => {
     const snapshot = chat.conversations.get(ref.id);
+    // Every entry stays in the menu when it cannot be performed, with the
+    // reason. A menu that silently drops entries teaches the user that the
+    // menu is unreliable.
     const missing = snapshot ? undefined : "this conversation is not in this browser's list";
     return [
       {
@@ -59,8 +65,33 @@ export const conversationDescriptor: PresentationDescriptor<"conversation"> = {
       },
       {
         label: "Make it the active one",
+        description: "the trace, the events and the other singleton tiles follow it",
         verb: { kind: "conversation.select", conversationId: ref.id },
         ...(missing ? { disabledBecause: missing } : snapshot?.active ? { disabledBecause: "it is already the active conversation" } : {}),
+      },
+      {
+        // No title: the verb asks for the editor rather than carrying a name
+        // the menu has no way to collect.
+        label: "Rename…",
+        verb: { kind: "conversation.rename", conversationId: ref.id },
+        ...(missing ? { disabledBecause: missing } : {}),
+      },
+      {
+        label: snapshot?.pinned ? "Stop keeping it at the top" : "Keep it at the top",
+        verb: { kind: "conversation.pin", conversationId: ref.id, pinned: !snapshot?.pinned },
+        ...(missing ? { disabledBecause: missing } : {}),
+      },
+      {
+        label: snapshot?.archived ? "Bring it back" : "Archive it",
+        description: "out of the way; the transcript stays",
+        verb: { kind: "conversation.archive", conversationId: ref.id, archived: !snapshot?.archived },
+        ...(missing ? { disabledBecause: missing } : {}),
+      },
+      {
+        label: "Disconnect it",
+        description: "closes the socket; the record and the server's session stay",
+        verb: { kind: "conversation.close", conversationId: ref.id },
+        ...(missing ? { disabledBecause: missing } : snapshot?.open ? {} : { disabledBecause: "it is already disconnected" }),
       },
       { label: "Inspect", verb: { kind: "inspect", ref } },
       {
@@ -72,6 +103,13 @@ export const conversationDescriptor: PresentationDescriptor<"conversation"> = {
       {
         label: "Ask about it",
         verb: { kind: "askAgent", template: "what is the conversation {0} about?", refs: [ref] },
+      },
+      {
+        label: "Drop it from the list",
+        description: "this browser forgets it; the server keeps the session",
+        danger: true,
+        verb: { kind: "conversation.forget", conversationId: ref.id },
+        ...(missing ? { disabledBecause: missing } : {}),
       },
     ];
   },

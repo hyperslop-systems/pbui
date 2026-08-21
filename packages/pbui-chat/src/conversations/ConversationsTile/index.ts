@@ -1,1 +1,1 @@
-export { ConversationsTile, ageOf, statusOf } from "./ConversationsTile";
+export { ConversationsTile, ageOf, conversationReference, statusOf } from "./ConversationsTile";

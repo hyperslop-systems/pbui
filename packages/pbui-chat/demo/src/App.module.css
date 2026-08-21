@@ -1,8 +1,25 @@
+/*
+ * Masthead, canvas, status bar. The mouse-doc line is the page's — it
+ * documents whatever the pointer is over, wherever that is — so it is one
+ * row of the shell rather than a strip inside whichever tile happens to be
+ * a conversation.
+ */
 .shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100vh;
   background: var(--pbui-wash);
+}
+
+.status {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.status [data-part="mouse-doc-ambient"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .masthead {

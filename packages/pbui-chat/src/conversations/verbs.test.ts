@@ -58,9 +58,40 @@ describe("the conversation verbs", () => {
 
   test("a well-formed verb validates and a malformed one is refused with a reason", () => {
     expect(validateVerb(vocabulary, { kind: "conversation.select", conversationId: "a" })).toBeNull();
-    // A rename with no title is not a rename; the vocabulary says so before
-    // the handler ever runs.
-    expect(validateVerb(vocabulary, { kind: "conversation.rename", conversationId: "a" })).toMatch(/title/);
+    // A rename with no title is well-formed on purpose: it asks the interface
+    // for its editor, which is how an object menu offers a rename at all.
+    expect(validateVerb(vocabulary, { kind: "conversation.rename", conversationId: "a" })).toBeNull();
+    expect(validateVerb(vocabulary, { kind: "conversation.rename" })).toMatch(/conversationId/);
+    expect(validateVerb(vocabulary, { kind: "conversation.pin", conversationId: "a" })).toMatch(/pinned/);
+  });
+
+  test("rename without a title asks for the editor instead of renaming", async () => {
+    const conversations = registryWith("a");
+    await conversations.create();
+    const { ctx } = contextFor(conversations);
+
+    await performConversationVerb({ kind: "conversation.rename", conversationId: "a" }, ctx);
+
+    expect(conversations.renaming()).toBe("a");
+    expect(conversations.get("a")?.titledBy).toBe("auto");
+  });
+
+  test("pin, archive, close and forget are verbs, so the object menu can offer them", async () => {
+    const conversations = registryWith("a");
+    await conversations.create();
+    const { ctx } = contextFor(conversations);
+
+    await performConversationVerb({ kind: "conversation.pin", conversationId: "a", pinned: true }, ctx);
+    expect(conversations.get("a")?.pinned).toBe(true);
+
+    await performConversationVerb({ kind: "conversation.close", conversationId: "a" }, ctx);
+    expect(conversations.get("a")?.open).toBe(false);
+
+    await performConversationVerb({ kind: "conversation.archive", conversationId: "a", archived: true }, ctx);
+    expect(conversations.get("a")?.archived).toBe(true);
+
+    await performConversationVerb({ kind: "conversation.forget", conversationId: "a" }, ctx);
+    expect(conversations.get("a")).toBeNull();
   });
 
   test("conversation.new mints a session, opens a tile beside the active one, and activates it", async () => {
