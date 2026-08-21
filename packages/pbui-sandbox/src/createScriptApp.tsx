@@ -1,11 +1,12 @@
 import { defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems/pbui-workbench";
-import { PROGRAM_BINDING, ScriptTile, type ScriptTileOptions } from "./ScriptTile";
+import type { SandboxHost } from "./host/hostOptions";
+import { PROGRAM_BINDING, ScriptTile } from "./ScriptTile";
 
-export type ScriptAppOptions = ScriptTileOptions & {
+export interface ScriptAppOptions {
   /** The launcher group; default "GENERATED". */
   group?: string;
   tone?: string;
-};
+}
 
 /** The launcher group generated programs sit in, apart from the product's own applications. */
 export const GENERATED_GROUP = "GENERATED";
@@ -17,8 +18,8 @@ export const GENERATED_GROUP = "GENERATED";
  * existing tile, `titleFor` reads the program's title, and nothing in
  * `pbui-workbench` changes.
  */
-export function createScriptApp(options: ScriptAppOptions): AppDescriptor {
-  const { group = GENERATED_GROUP, tone = "var(--pbui-tone-widget)", ...tile } = options;
+export function createScriptApp(host: SandboxHost, options: ScriptAppOptions = {}): AppDescriptor {
+  const { group = GENERATED_GROUP, tone = "var(--pbui-tone-widget)" } = options;
   return defineApp({
     id: "script",
     title: "program",
@@ -32,8 +33,8 @@ export function createScriptApp(options: ScriptAppOptions): AppDescriptor {
     titleFor: (view) => {
       if (view.title) return view.title;
       const id = view.documents[PROGRAM_BINDING] ?? "";
-      return tile.library.getState().programs[id]?.title ?? (id ? `program ${id}` : "program");
+      return host.library.getState().programs[id]?.title ?? (id ? `program ${id}` : "program");
     },
-    Component: (props: AppProps) => <ScriptTile placementId={props.placementId} view={props.view} options={tile} />,
+    Component: (props: AppProps) => <ScriptTile placementId={props.placementId} view={props.view} host={host} />,
   });
 }

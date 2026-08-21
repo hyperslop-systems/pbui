@@ -135,3 +135,15 @@ export function countNodes(node: UINode): number {
   }
   return 1;
 }
+
+/**
+ * Visit every node with its path — `root`, `root.0`, `root.0.2` by child
+ * index. The renderer stamps the same paths on the DOM (`data-node-path`),
+ * which is what lets an inspector's outline and a tile agree on a node.
+ */
+export function walkNodes(node: UINode, visit: (node: UINode, path: string, depth: number) => void, path = "root", depth = 1): void {
+  visit(node, path, depth);
+  if ("children" in node && Array.isArray(node.children)) {
+    node.children.forEach((child, index) => walkNodes(child, visit, `${path}.${index}`, depth + 1));
+  }
+}

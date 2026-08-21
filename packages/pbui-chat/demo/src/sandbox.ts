@@ -2,6 +2,7 @@ import {
   COUNTER_PROGRAM,
   DAYS_OF_COVER_PROGRAM,
   createEvalEngine,
+  createInstanceRegistry,
   createProgramLibrary,
   createProgramStateStore,
   type ProgramEngine,
@@ -54,11 +55,14 @@ export const engine: ProgramEngine = chooseEngine();
 
 export const programStates = createProgramStateStore();
 
+/** What is running, the timeline, and the selected sandbox — what the devtools read. */
+export const instances = createInstanceRegistry();
+
 // A console door for the demo — `__pbuiDemo.library.getState()` — so a
 // reviewer can inspect the library and a browser test can seed it without
 // a model on the other end. Nothing in the product reads it.
 if (typeof window !== "undefined") {
-  (window as unknown as { __pbuiDemo?: unknown }).__pbuiDemo = { library, engine, programStates };
+  (window as unknown as { __pbuiDemo?: unknown }).__pbuiDemo = { library, engine, programStates, instances };
 }
 
 /**

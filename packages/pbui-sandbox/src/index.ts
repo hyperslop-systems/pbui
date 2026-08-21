@@ -19,7 +19,7 @@ export type {
 } from "./contracts";
 export { DEFAULT_LIMITS, byteLength, withLimits } from "./limits";
 export type { SandboxLimits } from "./limits";
-export { assertUINode, countNodes, validateUINode } from "./validate/uiSchema";
+export { assertUINode, countNodes, validateUINode, walkNodes } from "./validate/uiSchema";
 export { validateDispatchIntent, validateDispatchIntents } from "./validate/intents";
 export { ProgramValidationError, toProgramError, validateLoadedProgramMeta } from "./engine";
 export type { EngineHealth, EventInput, LoadInput, ProgramEngine, RenderInput } from "./engine";
@@ -39,11 +39,23 @@ export type {
 export { createProgramStateStore, useProgramState } from "./state";
 export type { ProgramStateStore } from "./state";
 export { reducePluginIntent, useProgramInstance } from "./host/useProgramInstance";
-export type { InstanceLogEntry, ProgramInstance, UseProgramInstanceOptions } from "./host/useProgramInstance";
+export type { ProgramInstance, UseProgramInstanceOptions } from "./host/useProgramInstance";
+export type { SandboxHost } from "./host/hostOptions";
+export { EMPTY_TIMINGS, createInstanceRegistry, formatEntry, useInstances } from "./instances";
+export type {
+  CreateInstanceRegistryOptions,
+  InstanceHandle,
+  InstanceRegistry,
+  InstanceSnapshot,
+  InstanceTimings,
+  TimelineEntry,
+  TimelineEntryBody,
+  TimelineEntryInput,
+} from "./instances";
 export { UINodeRenderer } from "./render/UINodeRenderer";
 export type { UINodeRendererProps } from "./render/UINodeRenderer";
-export { PROGRAM_BINDING, ScriptTile } from "./ScriptTile";
-export type { ScriptTileOptions, ScriptTileProps } from "./ScriptTile";
+export { INSPECTOR_APP_ID, PROGRAM_BINDING, SOURCE_APP_ID, ScriptTile } from "./ScriptTile";
+export type { ScriptTileProps } from "./ScriptTile";
 export { GENERATED_GROUP, createScriptApp } from "./createScriptApp";
 export { substituteRef, substituteVerbRef, withGeneratedActions } from "./actions";
 export type { GeneratedActionsOptions } from "./actions";

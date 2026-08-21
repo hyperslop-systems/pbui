@@ -67,4 +67,17 @@ describe("UINodeRenderer", () => {
     const { container } = render(<UINodeRenderer tree={null} onEvent={vi.fn()} renderReference={() => null} />);
     expect(container.innerHTML).toBe("");
   });
+
+  test("every node carries its path, and highlightPath marks exactly one", () => {
+    const tree: UINode = { kind: "column", children: [{ kind: "text", text: "a" }, { kind: "row", children: [{ kind: "badge", text: "b" }] }] };
+    const onEvent = vi.fn();
+    const renderReference = vi.fn(() => null);
+    const { container, rerender } = render(<UINodeRenderer tree={tree} onEvent={onEvent} renderReference={renderReference} highlightPath="root.1.0" />);
+    const paths = [...container.querySelectorAll("[data-node-path]")].map((el) => el.getAttribute("data-node-path"));
+    expect(paths).toEqual(["root", "root.0", "root.1", "root.1.0"]);
+    const marked = [...container.querySelectorAll('[data-highlighted="true"]')].map((el) => el.getAttribute("data-node-path"));
+    expect(marked).toEqual(["root.1.0"]);
+    rerender(<UINodeRenderer tree={tree} onEvent={onEvent} renderReference={renderReference} />);
+    expect(container.querySelector('[data-highlighted="true"]')).toBeNull();
+  });
 });

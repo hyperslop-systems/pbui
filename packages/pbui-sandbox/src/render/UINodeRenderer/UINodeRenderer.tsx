@@ -16,6 +16,8 @@ export interface UINodeRendererProps {
   renderReference(reference: UIReference, label: string): ReactNode;
   /** Prefix for the accessible names of inputs without a label of their own. */
   accessiblePrefix?: string;
+  /** A node path (`root.0.2`) to mark with `data-highlighted` — the inspector's hover (guide §4.10). */
+  highlightPath?: string | null;
 }
 
 /**
@@ -25,22 +27,41 @@ export interface UINodeRendererProps {
  * behaviour from a shipped one (guide D3). Every kind maps to one atom; an
  * unknown kind cannot reach here because the engine validated the tree.
  */
-export function UINodeRenderer({ tree, onEvent, renderReference, accessiblePrefix = "program" }: UINodeRendererProps) {
+export function UINodeRenderer({ tree, onEvent, renderReference, accessiblePrefix = "program", highlightPath = null }: UINodeRendererProps) {
   if (!tree) return null;
-  return <>{renderNode(tree, { onEvent, renderReference, accessiblePrefix }, "root")}</>;
+  const context = { onEvent, renderReference, accessiblePrefix, highlightPath };
+  return wrap(tree, context, "root");
 }
 
 interface Context {
   onEvent: UINodeRendererProps["onEvent"];
   renderReference: UINodeRendererProps["renderReference"];
   accessiblePrefix: string;
+  highlightPath: string | null;
+}
+
+/**
+ * Every node sits in a `display: contents` span that carries its kind and
+ * its PATH — `root`, `root.0`, `root.0.2` by child index, the same rule
+ * `walkNodes` uses — so an inspector can name a node and the tile can mark it.
+ */
+function wrap(node: UINode, context: Context, path: string): ReactNode {
+  return (
+    <span
+      key={path}
+      className={styles.child}
+      data-part="program-node"
+      data-kind={node.kind}
+      data-node-path={path}
+      data-highlighted={context.highlightPath === path ? "true" : undefined}
+    >
+      {renderNode(node, context, path)}
+    </span>
+  );
 }
 
 function children(nodes: UINode[] | undefined, context: Context, path: string): ReactNode[] {
-  return (nodes ?? []).map((child, index) => {
-    const key = `${path}.${index}`;
-    return <span key={key} className={styles.child} data-part="program-node" data-kind={child.kind}>{renderNode(child, context, key)}</span>;
-  });
+  return (nodes ?? []).map((child, index) => wrap(child, context, `${path}.${index}`));
 }
 
 function renderNode(node: UINode, context: Context, path: string): ReactNode {
