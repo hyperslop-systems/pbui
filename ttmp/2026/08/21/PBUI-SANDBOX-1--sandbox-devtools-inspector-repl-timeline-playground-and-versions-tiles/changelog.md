@@ -31,3 +31,12 @@ Phase 1 (commit 850089b): Program Inspector tile (state/bindings/tree/meta panes
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.tsx — The inspector (commit 850089b)
 
+
+## 2026-08-21
+
+Phase 2 (commit a57e818): ProgramEngine.evaluate implemented once in the bootstrap (direct eval, $-helpers, __describe markers), eval + QuickJS + worker protocol, evaluateMs limit, 5 conformance cases on both engines + a QuickJS REPL-timeout case; REPL tile (target follows the selection, history, render-here, set as state, apply intents, re-render); 86 sandbox tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/bootstrap.ts — evaluate + __describe, BOOTSTRAP_VERSION 2 (commit a57e818)
+

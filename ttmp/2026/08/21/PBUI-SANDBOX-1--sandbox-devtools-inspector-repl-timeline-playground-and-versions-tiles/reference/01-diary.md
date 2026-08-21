@@ -15,12 +15,18 @@ RelatedFiles:
       Note: sandboxHost built once; createScriptApp(host) (commit 62bf01a)
     - Path: repo://packages/pbui-chat/test/no-raw-controls.test.ts
       Note: The structural rules every devtool must satisfy (TextArea, SelectInput, CheckboxRow from pbui)
+    - Path: repo://packages/pbui-sandbox/src/bootstrap.ts
+      Note: evaluate via direct eval; __describe (commit a57e818)
     - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.tsx
       Note: Inspector tile, chooseInstance (commit 850089b)
     - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/TreeOutline.tsx
       Note: outlineRows/summariseNode, fire controls (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/ReplTile/ReplTile.tsx
+      Note: The REPL tile (commit a57e818)
     - Path: repo://packages/pbui-sandbox/src/devtools/createSandboxDevtools.tsx
       Note: The devtools factory; sets host.devtools (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/engines/conformance.ts
+      Note: evaluate cases both engines must pass (commit a57e818)
     - Path: repo://packages/pbui-sandbox/src/engines/evalEngine.ts
       Note: The single-Function closure is why a direct eval in the bootstrap can reach the program (D3)
     - Path: repo://packages/pbui-sandbox/src/host/hostOptions.ts
@@ -39,6 +45,7 @@ LastUpdated: 2026-08-21T16:10:00-04:00
 WhatFor: Continuation and review; read this to know what was tried, what broke, and why the design is shaped as it is.
 WhenToUse: When resuming a phase, reviewing a commit, or wondering why something is the way it is.
 ---
+
 
 
 
@@ -267,3 +274,75 @@ The snapshot gained `globalState` (published by the render effect) because the b
 ### Technical details
 
 - App id `program-inspector`, bindings `["program"]`, optional `view`; opened by the script tile with `openView(INSPECTOR_APP_ID, { program, view }, { near: placementId })`.
+
+## Step 4: Phase 2 — `evaluate`, and the REPL into the selected sandbox
+
+The REPL needed one new door through the engine boundary, and the guide's D3 put it in the bootstrap rather than in either engine: `__pluginHost.evaluate(code, pluginState, globalState)` binds `$plugin`, `$ui`, `$state`, `$global`, `$widget`, `$render`, `$event` as locals and runs a *direct* `eval(code)`, so the line sees those, the bootstrap's `__plugin`/`__ui`, and the program's own top-level declarations — under `new Function` (one closure) and under QuickJS (one global lexical scope) alike. The result goes through `__describe`, which passes JSON and replaces what JSON cannot carry with `{ $type }` markers (`undefined`, `function` with its text, `cyclic`, `deep`, non-finite numbers, `error` with name and message). Each engine's `evaluate` is a few lines: the eval engine clones in and out; QuickJS builds an `evalCode` string under a new `evaluateMs` limit (1 s), so the interrupt handler applies; the worker protocol gained one request.
+
+The REPL tile is a singleton that follows the selected sandbox (a checkbox unpins it, a select picks any running instance), runs a line on Enter, walks history with the arrow keys, and shows each result as `JsonBlock` — or, for a `UINode`, with a *render here* toggle that draws it with the real renderer. A plain-object result offers *set as state*; an intents array (from `$event`) offers *apply intents*, which runs the host's reducer and `perform` exactly as a real event would and records `intent` entries tagged "from the REPL". *re-render* calls the handle after an injection. Every line is an `evaluate` timeline entry with a one-line summary.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 2; "a REPL tile to inject into a selected sandbox".
+
+**Inferred user intent:** Poke at a running program's objects and patch them live, with the same reach under both engines and nothing new exposed to the model.
+
+**Commit (code):** a57e818 — "PBUI-SANDBOX-1 Phase 2: ProgramEngine.evaluate via the bootstrap (direct eval, $plugin/$ui/$state/$global/$render/$event, __describe), both engines + worker protocol, conformance cases; REPL tile"
+
+### What I did
+
+- `bootstrap.ts`: `__describe`, `evaluate`, `BOOTSTRAP_VERSION = 2`. `engine.ts`: `EvaluateInput`/`EvaluateResult`, `evaluate` on `ProgramEngine`. `limits.ts`: `evaluateMs`. `evalEngine.ts`, `quickjs/{runtimeService,protocol,worker,workerEngine,directEngine}.ts`: the method and the request.
+- `engines/conformance.ts`: five `evaluate` cases (helpers and state; `$render`/`$event`; an injection that changes a later `event`; the markers and copy semantics; thrown errors keep their names incl. `SyntaxError` and a `ReferenceError` for `fetch`). `quickjs/conformance.test.ts`: `while (true) {}` at the REPL rejects with `InternalError` under `evaluateMs: 50`.
+- `devtools/ReplTile/{ReplTile.tsx, ReplTile.module.css, ReplTile.test.tsx}`; registered as `sandbox-repl` (singleton) in `createSandboxDevtools`; exports.
+- 86 tests in the package (eval and QuickJS conformance both run the new cases); chat 110; all builds.
+- Browser, QuickJS worker: opened the REPL from the launcher, clicked the counter tile (selection), ran `$state` → `{value: 0}`, `$global.system` → `{engine: "quickjs", version: 1}`, injected `$plugin.widgets.main.handlers.increment = (c) => c.dispatchPluginAction("state/merge", { value: $state.value + 10 })`, clicked the tile's real `+` → state `10`; `$render({ value: 7 })` → `UINode column (5 nodes)`, *render here* drew it. Screenshot `various/03-p2-repl-quickjs.png`.
+
+### Why
+
+- One bootstrap function instead of two engine-specific scopes is what makes "the same REPL under both engines" a fact rather than a goal; the conformance suite is the proof, and it runs the cases against QuickJS in Node.
+- `__describe` inside the sandbox, not in the host: the host cannot inspect a QuickJS function handle cheaply, and doing it in the runtime means the eval engine gets the same markers for free.
+
+### What worked
+
+- The injection test passed first time on both engines: the handler table is a live object in both, and a direct eval reaches it.
+- The QuickJS interrupt covered `evaluate` with no extra code beyond passing `evaluateMs` to `withDeadline`.
+
+### What didn't work
+
+- `src/bootstrap.ts(188,30): error TS1005: ',' expected.` — my doc comment inside the `String.raw` template used backticks around `__plugin` and `__ui`, which ended the template literal. Backticks are forbidden anywhere in `BOOTSTRAP_SOURCE`, comments included; removed.
+- The patch script's `assert tail.endswith("});")` on `conformance.ts` failed: the file ends with `  });\n}` (the describe closes, then the exported function). Inserted before that pair instead.
+- `expect(el).toBeDisabled()` — `Property 'toBeDisabled' does not exist`: the package has no jest-dom matchers. Assert `el.disabled` directly.
+
+### What I learned
+
+- A closure injected from the REPL captures the REPL-time `$state` (the `+ 10` above read `{value: 0}` at injection time and always adds to 0 + 10 = 10). That is JavaScript, not a bug, and the helper text should say "read `ctx.pluginState` inside handlers, not `$state`". Added to the REPL help in Phase 6's pass.
+- Under `"use strict"` a direct eval's `let`/`const` stay in the eval; the help line says to use `$plugin.scratch = …` for anything that should persist.
+
+### What was tricky to build
+
+- **Enter versus history.** The textarea must run on Enter, insert a newline on Shift+Enter, and walk history on ↑/↓ only when the input is empty or already showing a history entry (so arrows inside a multi-line edit still move the caret). A `cursorRef` of `-1` means "not in history"; typing anything resets it.
+- **What counts as a tree or as intents.** `isUINode` checks `kind ∈ SANDBOX_UI_KINDS`; `isIntentList` requires a non-empty array whose items have a plugin/verb scope. `$event` returns intents without `instanceId` (the bootstrap adds none; the validator would), which the REPL's *apply intents* does not need.
+
+### What warrants a second pair of eyes
+
+- `evaluate` is the same trust as the program (guide §4.3): under eval it is a `new Function` closure with shadowed globals, nothing more. It is not offered as a tool (D7).
+- `__describe` caps depth at 8 and arrays at 200; a REPL user inspecting a deep object sees `{$type: "deep"}` and has to drill with a narrower expression.
+
+### What should be done in the future
+
+- Phase 3: the Dispatch Timeline tile over `instances.timeline()`.
+
+### Code review instructions
+
+- `bootstrap.ts` (`__describe`, `evaluate`), `engines/conformance.ts` ("evaluate — the REPL's door"), then `ReplTile.tsx` (`run`, `onKeyDown`, `applyIntents`, `ResultLine`).
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, launcher → REPL, click a program tile, type `$state`.
+
+### Technical details
+
+```ts
+engine.evaluate({ instanceId, code: "$render({ value: 7 })", pluginState, globalState })
+// → { value: { kind: "column", children: [ { kind: "text", text: "Count: 7" }, … ] } }
+engine.evaluate({ instanceId, code: "() => 1", … })   // → { value: { $type: "function", $text: "() => 1" } }
+```
