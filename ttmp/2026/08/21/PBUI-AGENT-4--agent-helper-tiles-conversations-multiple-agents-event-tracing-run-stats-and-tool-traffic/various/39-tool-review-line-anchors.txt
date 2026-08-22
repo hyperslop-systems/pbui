@@ -1,0 +1,252 @@
+=== createPbuiChat tool ownership and manifest wiring ===
+202:  function toolsFor(conversationId: string): ConversationToolset {
+205:    const perform = (verb: VerbLike) => router.perform(verb, undefined, { actor: "agent", conversationId });
+238:        tools: [pbuiAcceptTool, pbuiProposeTool, ...workbenchTools.tools, ...sandboxTools.tools, ...conversationTools.tools],
+248:    return toolsFor(conversationId).extension;
+267:  function sendMessageBodyFor(conversationId: string) {
+298:      sendMessageBody: sendMessageBodyFor(conversationId),
+310:    pending.set(target, { refs: body.refs ?? [], ...(body.focus ? { focus: body.focus } : {}) });
+315:  function syncAllManifests() {
+462:      syncAllManifests();
+476:      syncAllManifests();
+
+=== browser runtime and registry ===
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRegistry.js:14:    register(tool) {
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRegistry.js:30:    manifest() {
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/core/createChatClient.js:105:    async function syncToolManifest() {
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/core/createChatClient.js:112:            body: JSON.stringify({ revision: args.toolRegistry.revision(), tools: args.toolRegistry.manifest() }),
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/core/createChatClient.js:115:    async function submitToolResult(result) {
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/core/createChatClient.js:130:        syncManifest: syncToolManifest,
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/core/createChatClient.js:131:        submitResult: submitToolResult,
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/core/createChatClient.js:167:                await syncToolManifest();
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/core/createChatClient.js:179:                await syncToolManifest();
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:3:    const activeControllers = new Map();
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:4:    const pendingHumanTools = new Set();
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:6:        for (const controller of activeControllers.values()) {
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:9:        activeControllers.clear();
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:10:        pendingHumanTools.clear();
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:17:        void executeFrontendTool(payload);
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:21:            void executeFrontendTool(request);
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:24:    async function executeFrontendTool(payload) {
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:29:        if (activeControllers.has(toolCallId) || pendingHumanTools.has(toolCallId))
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:33:            await args.submitToolResult({ toolCallId, toolName, status: 'failed', error: `frontend tool ${toolName} is not registered` });
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:38:            await args.submitToolResult({ toolCallId, toolName, status: 'failed', error: `frontend tool ${toolName} is not available` });
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:46:            await args.submitToolResult({
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:55:            pendingHumanTools.add(toolCallId);
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:59:            await args.submitToolResult({
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:68:        activeControllers.set(toolCallId, controller);
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:72:            await args.submitToolResult({ toolCallId, toolName, status: 'success', result: normalizeRecord(parsedResult) });
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:75:            await args.submitToolResult({
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:83:            activeControllers.delete(toolCallId);
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:87:        return pendingHumanTools.has(toolCallId);
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:89:    async function respondToHumanTool(call) {
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:90:        pendingHumanTools.delete(call.toolCallId);
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:91:        await args.submitToolResult({
+packages/pbui-chat/node_modules/@go-go-golems/chat-provider/tools/toolRuntime.js:104:        respondToHumanTool,
+
+=== gates and tool factories ===
+packages/pbui-chat/src/tools/conversationTools.ts:47:   * What the product's `isApproved` actually wants in the proposal, appended
+packages/pbui-chat/src/tools/conversationTools.ts:58:  isApproved?(confirmationId: string, target: string, prompt: string): boolean;
+packages/pbui-chat/src/tools/conversationTools.ts:75:    name: "conversation_list",
+packages/pbui-chat/src/tools/conversationTools.ts:118:    name: "conversation_send",
+packages/pbui-chat/src/tools/conversationTools.ts:157:        if (!options.isApproved?.(input.confirmationId, input.conversationId, input.prompt)) {
+packages/pbui-chat/src/tools/workbenchTools.ts:163:  isApproved?(confirmationId: string, verb: WorkbenchVerb): boolean;
+packages/pbui-chat/src/tools/workbenchTools.ts:166:   * Kept separate from `isApproved`: fabricating a stand-in verb loses what
+packages/pbui-chat/src/tools/workbenchTools.ts:236:  async function performWithPolicy(
+packages/pbui-chat/src/tools/workbenchTools.ts:253:  const isApproved = options.isApproved ?? (() => false);
+packages/pbui-chat/src/tools/workbenchTools.ts:255:   * Approvals already spent. Even a product whose `isApproved` is a plain
+packages/pbui-chat/src/tools/workbenchTools.ts:260:  const spent = new Set<string>();
+packages/pbui-chat/src/tools/workbenchTools.ts:262:  function checkPolicy(verb: WorkbenchVerb, confirmationId: string | undefined): string | null {
+packages/pbui-chat/src/tools/workbenchTools.ts:272:    if (!isApproved(confirmationId, verb)) {
+packages/pbui-chat/src/tools/workbenchTools.ts:279:  function spend(confirmationId: string | undefined): void {
+packages/pbui-chat/src/tools/workbenchTools.ts:280:    if (confirmationId) spent.add(confirmationId);
+packages/pbui-chat/src/tools/workbenchTools.ts:403:    name: "workbench_describe",
+packages/pbui-chat/src/tools/workbenchTools.ts:439:    name: "workbench_create_workspace",
+packages/pbui-chat/src/tools/workbenchTools.ts:469:      const outcome = await performWithPolicy(verb, input.confirmationId, () => {
+packages/pbui-chat/src/tools/workbenchTools.ts:493:    name: "workbench_open_tile",
+packages/pbui-chat/src/tools/workbenchTools.ts:525:      const outcome = await performWithPolicy(verb, input.confirmationId, () => {
+packages/pbui-chat/src/tools/workbenchTools.ts:549:    name: "workbench_switch_workspace",
+packages/pbui-chat/src/tools/workbenchTools.ts:563:      const outcome = await performWithPolicy(
+packages/pbui-chat/src/tools/workbenchTools.ts:578:    name: "workbench_perform",
+packages/pbui-chat/src/tools/workbenchTools.ts:615:        const outcome = await performWithPolicy(verb, input.confirmationId);
+packages/pbui-chat/src/tools/workbenchTools.ts:661:    name: "workbench_apply",
+packages/pbui-chat/src/tools/sandboxTools.ts:18: * `isApproved(id, verb)` recognises, spent once, only after the change
+packages/pbui-chat/src/tools/sandboxTools.ts:51:  isApproved?(confirmationId: string, verb: VerbLike): boolean;
+packages/pbui-chat/src/tools/sandboxTools.ts:111:  const isApproved = options.isApproved ?? (() => false);
+packages/pbui-chat/src/tools/sandboxTools.ts:112:  const spent = new Set<string>();
+packages/pbui-chat/src/tools/sandboxTools.ts:127:  function gate(key: SandboxPolicyKey, verb: VerbLike, confirmationId: string | undefined, protectedArtifact = false): string | null {
+packages/pbui-chat/src/tools/sandboxTools.ts:135:    if (!isApproved(confirmationId, verb)) return `no approved proposal with id "${confirmationId}" for ${verb.kind}`;
+packages/pbui-chat/src/tools/sandboxTools.ts:140:    const denied = gate(key, verb, confirmationId, protectedArtifact);
+packages/pbui-chat/src/tools/sandboxTools.ts:143:    if (outcome === "performed" && decisionFor(key, protectedArtifact) === "confirm" && confirmationId) spent.add(confirmationId);
+packages/pbui-chat/src/tools/sandboxTools.ts:295:    name: "sandbox_describe",
+packages/pbui-chat/src/tools/sandboxTools.ts:333:    name: "sandbox_test",
+packages/pbui-chat/src/tools/sandboxTools.ts:355:    name: "sandbox_create_app",
+packages/pbui-chat/src/tools/sandboxTools.ts:374:      const denied = gate("program.create", { kind: "program.create", title: input.title }, input.confirmationId);
+packages/pbui-chat/src/tools/sandboxTools.ts:421:    name: "sandbox_update_app",
+packages/pbui-chat/src/tools/sandboxTools.ts:439:      const denied = gate("program.update", { kind: "program.update", programId: input.programId }, input.confirmationId, protectedProgram(existing));
+packages/pbui-chat/src/tools/sandboxTools.ts:452:        if (input.confirmationId && decisionFor("program.update", protectedProgram(existing)) === "confirm") spent.add(input.confirmationId);
+packages/pbui-chat/src/tools/sandboxTools.ts:472:    name: "sandbox_open",
+packages/pbui-chat/src/tools/sandboxTools.ts:506:    name: "sandbox_define_action",
+packages/pbui-chat/src/tools/sandboxTools.ts:525:      const denied = gate("action.define", { kind: "action.define", label: input.label }, input.confirmationId);
+packages/pbui-chat/src/tools/sandboxTools.ts:566:    name: "sandbox_remove",
+
+=== human tool cards ===
+packages/pbui-chat/src/tools/acceptTool.tsx:24:function AcceptToolCard({ input, respond }: { input: AcceptInput; respond(result: AcceptResult): void }) {
+packages/pbui-chat/src/tools/acceptTool.tsx:54:  name: ACCEPT_TOOL_NAME,
+packages/pbui-chat/src/tools/ProposalCard/ProposalCard.tsx:18:  onDecide?(decision: ProposalDecision): void;
+packages/pbui-chat/src/tools/ProposalCard/ProposalCard.tsx:27:export function ProposalCard({ id, toolCallId, title, body, danger = false, fields, decision, onDecide }: ProposalCardProps) {
+packages/pbui-chat/src/tools/ProposalCard/ProposalCard.tsx:93:            onClick={() => onDecide?.("approve")}
+packages/pbui-chat/src/tools/ProposalCard/ProposalCard.tsx:103:            onClick={() => onDecide?.("reject")}
+packages/pbui-chat/src/tools/proposeTool.tsx:30:  respond(result: ProposeResult): void;
+packages/pbui-chat/src/tools/proposeTool.tsx:36:    // no-op for it, the answer to the parked tool is the respond() below.
+packages/pbui-chat/src/tools/proposeTool.tsx:37:    void chat.router.perform({ kind: "resolveProposal", id: input.id, decision });
+packages/pbui-chat/src/tools/proposeTool.tsx:38:    respond({ decision, id: input.id });
+packages/pbui-chat/src/tools/proposeTool.tsx:48:      onDecide={decide}
+packages/pbui-chat/src/tools/proposeTool.tsx:58:  name: PROPOSE_TOOL_NAME,
+
+=== router and HTTP endpoints ===
+packages/pbui-chat/src/router/createVerbRouter.ts:19:   * actor either way — but a few must: a human's rename of a conversation
+packages/pbui-chat/src/router/createVerbRouter.ts:22:  actor: Actor;
+packages/pbui-chat/src/router/createVerbRouter.ts:76:  actor?: Actor;
+packages/pbui-chat/src/router/createVerbRouter.ts:78:   * Where the verb came from when the actor alone does not say — a click
+packages/pbui-chat/src/router/createVerbRouter.ts:100:export type RouterBinding = Omit<RouterContext, "perform" | "conversationId" | "client" | "actor"> & {
+packages/pbui-chat/src/router/createVerbRouter.ts:135:  let reportQueue = Promise.resolve();
+packages/pbui-chat/src/router/createVerbRouter.ts:136:  const fetchImpl = options.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
+packages/pbui-chat/src/router/createVerbRouter.ts:145:    actor: Actor,
+packages/pbui-chat/src/router/createVerbRouter.ts:158:      actor,
+packages/pbui-chat/src/router/createVerbRouter.ts:165:      const response = await fetchImpl(`${prefix}/api/chat/sessions/${encodeURIComponent(sessionId)}/verbs`, {
+packages/pbui-chat/src/router/createVerbRouter.ts:188:    async perform(verb, explicitTarget, performOptions) {
+packages/pbui-chat/src/router/createVerbRouter.ts:189:      const actor = performOptions?.actor ?? "human";
+packages/pbui-chat/src/router/createVerbRouter.ts:211:                actor,
+packages/pbui-chat/src/router/createVerbRouter.ts:232:      const pendingReport = reportQueue.then(() =>
+packages/pbui-chat/src/router/createVerbRouter.ts:233:        report(reportBinding, conversation?.id ?? null, actor, verb, target, outcome, performOptions?.provenance),
+packages/pbui-chat/src/router/createVerbRouter.ts:237:      reportQueue = pendingReport.catch(() => undefined);
+pkg/chatserver/handlers.go:254:// HandleToolManifest replaces the browser-side tool manifest for a session.
+pkg/chatserver/handlers.go:255:func (s *Server) HandleToolManifest(w http.ResponseWriter, r *http.Request) {
+pkg/chatserver/handlers.go:279:	if err := s.hub.Submit(r.Context(), sid, frontendtools.CommandManifest, &toolv1.FrontendToolManifestCommand{Tools: tools, Revision: in.Revision}); err != nil {
+pkg/chatserver/handlers.go:286:// HandleToolResult delivers a browser tool result (accept, proposal, …).
+pkg/chatserver/handlers.go:287:func (s *Server) HandleToolResult(w http.ResponseWriter, r *http.Request) {
+pkg/chatserver/handlers.go:311:	if err := s.hub.Submit(r.Context(), sid, frontendtools.CommandResult, &toolv1.FrontendToolResultCommand{ToolCallId: strings.TrimSpace(in.ToolCallID), ToolName: strings.TrimSpace(in.ToolName), Result: result, Status: status, Error: in.Error}); err != nil {
+pkg/chatserver/server.go:32:	real          *realRuntimeFactory
+pkg/chatserver/server.go:199:		realRuntime, err := newRealRuntimeFactory(opts, plugin, frontendToolManager, turnStore)
+pkg/chatserver/server.go:202:			return nil, nil, errors.Wrap(err, "create real runtime factory")
+pkg/chatserver/server.go:220:// RegisterRoutes mounts the API on mux. The SPA is mounted separately (and
+pkg/chatserver/server.go:222:func (s *Server) RegisterRoutes(mux *http.ServeMux) {
+pkg/chatserver/server.go:232:	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/manifest", s.HandleToolManifest)
+pkg/chatserver/server.go:233:	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/results", s.HandleToolResult)
+
+=== pinocchio frontend bridge ===
+../pinocchio/pkg/chatapp/frontendtools/manager.go:66:	if err := hub.RegisterCommand(CommandManifest, m.HandleManifest); err != nil {
+../pinocchio/pkg/chatapp/frontendtools/manager.go:69:	if err := hub.RegisterCommand(CommandResult, m.HandleResult); err != nil {
+../pinocchio/pkg/chatapp/frontendtools/manager.go:75:func (m *Manager) HandleManifest(ctx context.Context, cmd sessionstream.Command, _ *sessionstream.Session, pub sessionstream.EventPublisher) error {
+../pinocchio/pkg/chatapp/frontendtools/manager.go:92:func (m *Manager) HandleResult(ctx context.Context, cmd sessionstream.Command, _ *sessionstream.Session, pub sessionstream.EventPublisher) error {
+../pinocchio/pkg/chatapp/frontendtools/manager.go:102:	pending := m.pending[payload.ToolCallId]
+../pinocchio/pkg/chatapp/frontendtools/manager.go:143:func (m *Manager) Request(ctx context.Context, sid sessionstream.SessionId, pub sessionstream.EventPublisher, req Request) (*toolv1.FrontendToolResultCommand, error) {
+../pinocchio/pkg/chatapp/frontendtools/manager.go:160:	m.pending[req.ToolCallID] = &pendingCall{messageID: req.MessageID, toolName: req.ToolName, ch: ch}
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:76:func (e *BridgeExecutor) ExecuteToolCall(ctx context.Context, call geptools.ToolCall, registry geptools.ToolRegistry) (*geptools.ToolResult, error) {
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:81:		frontendToolName = e.Manager.ResolveProviderToolName(bridge.SessionID, call.Name)
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:85:		return e.fallback().ExecuteToolCall(ctx, call, registry)
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:102:	result, err := e.Manager.Request(ctx, bridge.SessionID, bridge.Publisher, Request{
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:133:func (e *BridgeExecutor) ExecuteToolCalls(ctx context.Context, calls []geptools.ToolCall, registry geptools.ToolRegistry) ([]*geptools.ToolResult, error) {
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:136:		result, err := e.ExecuteToolCall(ctx, call, registry)
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:152:// RegisterManifestTools adds the browser manifest for sid to a Geppetto tool
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:155:func (m *Manager) RegisterManifestTools(sid sessionstream.SessionId, registry geptools.ToolRegistry) error {
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:223:// ResolveProviderToolName returns the browser-facing frontend tool name for a
+../pinocchio/pkg/chatapp/frontendtools/bridge.go:226:func (m *Manager) ResolveProviderToolName(sid sessionstream.SessionId, providerName string) string {
+
+=== tests ===
+packages/pbui-chat/src/tools/conversationTools.test.ts:47:  return { performed, list: byName("conversation_list"), send: byName("conversation_send") };
+packages/pbui-chat/src/tools/conversationTools.test.ts:79:describe("conversation_send", () => {
+packages/pbui-chat/src/tools/conversationTools.test.ts:80:  test("without an approval it refuses and says exactly how to get one", async () => {
+packages/pbui-chat/src/tools/conversationTools.test.ts:93:  test("an approval that does not match the message is refused", async () => {
+packages/pbui-chat/src/tools/conversationTools.test.ts:106:  test("with a matching approval it performs conversation.send through the router", async () => {
+packages/pbui-chat/src/tools/conversationTools.test.ts:163:    const { send } = toolsFor(registry, { policy: { conversation_send: "deny" } });
+packages/pbui-chat/src/tools/conversationTools.test.ts:168:  test("with the policy relaxed to allow, no approval is asked for", async () => {
+packages/pbui-chat/src/tools/conversationTools.test.ts:170:    const { send, performed } = toolsFor(registry, { policy: { conversation_send: "allow" } });
+packages/pbui-chat/src/tools/conversationTools.test.ts:184:    const send = tools.tools.find((tool) => tool.name === "conversation_send") as never as { execute(input: unknown): Promise<Record<string, unknown>> };
+packages/pbui-chat/src/tools/workbenchTools.test.ts:62:      "workbench_perform",
+packages/pbui-chat/src/tools/workbenchTools.test.ts:215:  it("accepts a matching one-shot approval when view.open requires confirmation", async () => {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:237:describe("workbench_perform · policy", () => {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:244:    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.split", placementId: first, direction: "col" }] })) as any;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:255:    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }] })) as any;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:265:    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:275:    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:282:    const result = (await call("workbench_perform", { verbs: [{ kind: "launcher.open" }] })) as any;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:290:    const result = (await call("workbench_perform", {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:300:    const result = (await call("workbench_perform", {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:377:    const perform = tools.tools.find((t) => t.name === "workbench_perform") as FrontendTool<any, any>;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:397:describe("an approval names the operation it approved", () => {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:402:    const result = (await h.call("workbench_perform", {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:425:  it("refuses an approval granted for a different operation", async () => {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:434:  it("spends an approval, so the same id cannot authorise a second destructive verb", async () => {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:438:    const one = (await h.call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:440:    const two = (await h.call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: second }], confirmationId: "p-1" })) as any;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:452:    const result = (await call("workbench_perform", {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:461:    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.activate", placementId: "n-gone" }] })) as any;
+packages/pbui-chat/src/tools/workbenchTools.test.ts:467:    const result = (await call("workbench_perform", {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:546:  it("will not delete without an approval, so the escape hatch is not a way around the gate", async () => {
+packages/pbui-chat/src/tools/workbenchTools.test.ts:570:  it("requires approval for raw placement and app replacement", async () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:77:      "sandbox_describe",
+packages/pbui-chat/src/tools/sandboxTools.test.ts:78:      "sandbox_test",
+packages/pbui-chat/src/tools/sandboxTools.test.ts:79:      "sandbox_create_app",
+packages/pbui-chat/src/tools/sandboxTools.test.ts:80:      "sandbox_update_app",
+packages/pbui-chat/src/tools/sandboxTools.test.ts:81:      "sandbox_open",
+packages/pbui-chat/src/tools/sandboxTools.test.ts:82:      "sandbox_define_action",
+packages/pbui-chat/src/tools/sandboxTools.test.ts:83:      "sandbox_remove",
+packages/pbui-chat/src/tools/sandboxTools.test.ts:86:    expect((byName("sandbox_test").available as () => boolean)()).toBe(true);
+packages/pbui-chat/src/tools/sandboxTools.test.ts:97:describe("sandbox_test", () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:98:  it("renders, replays events and stores nothing", async () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:100:    const result = (await call("sandbox_test", { source: COUNTER_PROGRAM, events: [{ handler: "increment" }, { handler: "increment" }] })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:111:    const result = (await call("sandbox_test", { source: BROKEN_RENDER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:114:    const syntax = (await call("sandbox_test", { source: "definePlugin(({ui}) => ({ title: 'x', widgets: { main: { render() { return ui.text(<b/>) } } } }))" })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:121:    const result = (await call("sandbox_test", { source: DAYS_OF_COVER_PROGRAM, documents: { product: "2049" } })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:127:describe("sandbox_create_app", () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:130:    const result = (await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:140:    const result = (await call("sandbox_create_app", { title: "Broken", source: BROKEN_RENDER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:148:    const result = (await call("sandbox_create_app", { title: "Days", source: DAYS_OF_COVER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:151:    expect(result.warnings[0]).toMatch(/needs a "product" binding; call sandbox_open/);
+packages/pbui-chat/src/tools/sandboxTools.test.ts:153:    const opened = (await call("sandbox_open", { programId: result.programId, documents: { product: "2049" } })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:155:    const again = (await call("sandbox_open", { programId: result.programId, documents: { product: "2049" } })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:161:    const result = (await call("sandbox_create_app", { title: "x", source: COUNTER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:166:describe("sandbox_update_app", () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:169:    const created = (await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM, open: false })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:170:    const broken = (await call("sandbox_update_app", { programId: created.programId, source: BROKEN_RENDER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:173:    const good = (await call("sandbox_update_app", { programId: created.programId, source: COUNTER_PROGRAM.replace("Count: ", "Total: ") })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:178:  it("needs an approval for a pinned program, spent once", async () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:179:    const approvals = new Set(["p-1"]);
+packages/pbui-chat/src/tools/sandboxTools.test.ts:180:    const { call, library } = harness({ isApproved: (id) => approvals.has(id) });
+packages/pbui-chat/src/tools/sandboxTools.test.ts:181:    const created = (await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM, open: false })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:183:    const refused = (await call("sandbox_update_app", { programId: created.programId, source: COUNTER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:184:    expect(refused.error).toMatch(/needs the user's approval \(it is pinned or human-made\)/);
+packages/pbui-chat/src/tools/sandboxTools.test.ts:185:    const ok = (await call("sandbox_update_app", { programId: created.programId, source: COUNTER_PROGRAM, confirmationId: "p-1" })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:187:    const reused = (await call("sandbox_update_app", { programId: created.programId, source: COUNTER_PROGRAM, confirmationId: "p-1" })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:195:    const result = (await call("sandbox_create_app", { title: "big", source: COUNTER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:203:    const result = (await call("sandbox_test", { source: COUNTER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:209:describe("sandbox_define_action and sandbox_remove", () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:212:    expect((await call("sandbox_define_action", { label: "x", types: ["widget"], behaviour: { kind: "askAgent", template: "{0}" } })) as any).toMatchObject({
+packages/pbui-chat/src/tools/sandboxTools.test.ts:215:    expect((await call("sandbox_define_action", { label: "x", types: ["product"], behaviour: { kind: "openProgram", programId: "prg-9" } })) as any).toMatchObject({
+packages/pbui-chat/src/tools/sandboxTools.test.ts:218:    expect((await call("sandbox_define_action", { label: "x", types: ["product"], behaviour: { kind: "verb", verb: { kind: "frobnicate", ref: "$ref" } } })) as any).toMatchObject({
+packages/pbui-chat/src/tools/sandboxTools.test.ts:221:    expect((await call("sandbox_define_action", { label: "x", types: ["product"], behaviour: { kind: "askAgent", template: "why?" } })) as any).toMatchObject({
+packages/pbui-chat/src/tools/sandboxTools.test.ts:224:    const ok = (await call("sandbox_define_action", { label: "Watch it", types: ["product"], behaviour: { kind: "verb", verb: { kind: "watch", ref: "$ref" } } })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:231:    const created = (await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:232:    const removed = (await call("sandbox_remove", { programId: created.programId })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:236:    expect((await call("sandbox_remove", {})) as any).toMatchObject({ error: "pass exactly one of programId or actionId" });
+packages/pbui-chat/src/tools/sandboxTools.test.ts:239:  it("refuses to remove a human-made program without approval", async () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:242:    const refused = (await call("sandbox_remove", { programId: "prg-1" })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:243:    expect(refused.error).toMatch(/needs the user's approval/);
+packages/pbui-chat/src/tools/sandboxTools.test.ts:248:describe("sandbox_describe", () => {
+packages/pbui-chat/src/tools/sandboxTools.test.ts:251:    const created = (await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM })) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:252:    await call("sandbox_define_action", { label: "Ask", types: ["product"], behaviour: { kind: "askAgent", template: "tell me about {0}" } });
+packages/pbui-chat/src/tools/sandboxTools.test.ts:253:    const described = (await call("sandbox_describe", {})) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:266:    await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM });
+packages/pbui-chat/src/tools/sandboxTools.test.ts:270:    const described = (await call("sandbox_describe", {})) as any;
+packages/pbui-chat/src/tools/sandboxTools.test.ts:276:    expect(((await call("sandbox_describe", {})) as any).programs[0].running).toEqual([]);
+pkg/chatserver/server_test.go:237:	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
+pkg/chatserver/server_test.go:343:	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
+pkg/chatserver/server_test.go:361:		t.Errorf("sandbox_test did not receive the worked program: %.80s", src)
+pkg/chatserver/server_test.go:364:		t.Errorf("sandbox_test documents = %v", tested["documents"])
+pkg/chatserver/server_test.go:368:		t.Errorf("sandbox_create_app input = %v", created)
+pkg/chatserver/server_test.go:372:		t.Errorf("sandbox_define_action behaviour = %v", defined["behaviour"])
+pkg/chatserver/server_test.go:397:	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
+pkg/chatserver/server_test.go:410:			t.Fatal("a failed test must not be followed by sandbox_create_app")
+../pinocchio/pkg/chatapp/frontendtools/manager_test.go:17:	sid := sessionstream.SessionId("manifest-session")

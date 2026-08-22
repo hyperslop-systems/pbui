@@ -129,3 +129,14 @@ Step 12: dry-ran and rendered the three-review reMarkable bundle, repaired a Mer
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/scripts/03-check-mermaid.mjs — Renderer-level Mermaid validation
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/various/32-remarkable-delivery.md — Final upload and remote-listing evidence
 
+
+## 2026-08-22
+
+Step 13: traced the full agent-to-UI tool pipeline and reproduced automatic-call replay, duplicate human responses, approval reuse, and cross-session frontend result acceptance
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/reference/01-diary.md — Investigation narrative, commands, failures, and next steps
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/various/33-tool-runtime-probes.md — Four executable browser-side hazard reproductions
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/various/35-cross-session-tool-result-probe.md — Cross-session pending-call result evidence
+

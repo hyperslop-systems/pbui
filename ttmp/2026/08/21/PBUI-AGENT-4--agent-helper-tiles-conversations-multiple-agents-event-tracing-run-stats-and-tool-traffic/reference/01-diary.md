@@ -46,12 +46,19 @@ RelatedFiles:
       Note: 'The ## Conversations section, gated on the conversation type (commit 324d335)'
     - Path: repo://pkg/pbuichat/trace.go
       Note: The server re-validates a verb against its EMBEDDED vocabulary; a stale binary rejects a verb the browser performed
+    - Path: repo://ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/scripts/04-tool-runtime-probes.mjs
+      Note: Executable browser runtime and approval replay probes
+    - Path: repo://ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/scripts/05-cross-session-tool-result-probe.go
+      Note: Executable cross-session frontend result binding probe
+    - Path: ws://pinocchio/pkg/chatapp/frontendtools/manager.go
+      Note: Pending frontend tool call identity and result delivery
 ExternalSources: []
 Summary: ""
 LastUpdated: 2026-08-21T16:01:43.842023888-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -1221,3 +1228,137 @@ design-doc/03-pbui-itself-…code-review.md
 design-doc/04-pbui-javascript-api-and-interaction-…code-review.md
 design-doc/05-agent-framework-and-tiles-…code-review.md
 ```
+
+
+## Step 13: Trace the complete agent-to-UI tool pipeline and reproduce boundary failures
+
+This step began a dedicated fourth review rather than expanding the broader agent-framework report. The investigation followed a call from model-visible schema generation through Pinocchio's frontend bridge, sessionstream events, the browser tool runtime, policy wrappers, the product verb router, local UI mutation, result POST and model continuation.
+
+Static inspection revealed a more serious boundary defect than the earlier handoff replay finding: Pinocchio's frontend-tool manager keys pending calls globally by tool-call id and does not compare the result command's session or tool name. A purpose-built Go probe demonstrated that an `attacker-session` result named `different_name_is_accepted` resolves a pending `victim-session` call. Browser-runtime probes separately reproduced automatic-call replay, duplicate human responses, handoff approval reuse and sandbox action-approval reuse.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Do a full code review document about the tool calls / how the agent interacts with the UI system.\n\n[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Add a standalone, intern-oriented code review that explains and critiques all tool-call paths by which an agent discovers, requests, waits on and mutates PBUI UI state.
+
+**Inferred user intent:** Understand whether agent control of the UI is coherent, observable, correctly scoped and safe enough to evolve, with concrete findings and a remediation design rather than another feature summary.
+
+### What I did
+
+- Added ticket task `h09b` and created design document 06.
+- Read PBUI tool factories, human-tool cards, per-conversation assembly, router, Go handlers/plugin/prompt/runtime, chat-provider tool registry/runtime/transport and the sibling Pinocchio frontend-tool manager/bridge.
+- Enumerated the live 17-descriptor browser manifest from `various/28-agent-context-live-snapshot.md` and mapped backend versus frontend versus human execution.
+- Added `scripts/04-tool-runtime-probes.mjs` and generated `various/33-tool-runtime-probes.md`.
+- Added `scripts/05-cross-session-tool-result-probe.go` and generated `various/35-cross-session-tool-result-probe.md`.
+- Saved the build, PBUI test, Go test, Pinocchio test and source-anchor evidence as `various/34` through `39`.
+- Reran 208 pbui-chat tests, focused Go tests for `pkg/chatserver` and `pkg/pbuichat`, and Pinocchio frontendtools tests.
+
+### Why
+
+- Existing unit tests prove intended paths but do not establish idempotency, cross-session binding or one-shot approval behavior across package boundaries.
+- The user asked specifically how tools interact with UI, so the review must distinguish model tool calls from presentation verbs, human tool cards, backend result projection and local browser actions.
+
+### What worked
+
+The executable browser/tool probes reproduced four current hazards:
+
+```text
+completed frontend request replay: executions=2; submittedResults=2
+duplicate human-tool response: submittedResults=2
+conversation approval replay: performedHandoffs=2
+sandbox action approval replay: createdActions=2
+```
+
+The cross-session Go probe reproduced:
+
+```text
+pending request session: victim-session
+result command session: attacker-session
+pending tool name: dangerous_browser_tool
+submitted tool name: different_name_is_accepted
+value returned to victim request: source=attacker
+```
+
+Focused tests passed:
+
+```text
+pbui-chat: 21 files, 208 tests passed
+pkg/chatserver: ok
+pkg/pbuichat: ok
+pinocchio/pkg/chatapp/frontendtools: ok
+```
+
+### What didn't work
+
+The first Pinocchio test command used the wrong directory relative to the workspace root:
+
+```text
+/bin/bash: line 35: cd: ../pinocchio: No such file or directory
+```
+
+The corrected command was:
+
+```text
+cd pinocchio && go test ./pkg/chatapp/frontendtools -count=1
+```
+
+It passed. This was a path error, not a code/test failure.
+
+The first investigation commit was also stopped by the repository's Glazed policy because the standalone Go probe used the standard `flag` package:
+
+```text
+scripts/05-cross-session-tool-result-probe.go:33:12: define CLI flags with cmds.WithFlags(fields.New(...)) instead of raw Cobra/pflag/flag APIs
+scripts/05-cross-session-tool-result-probe.go:34:2: define CLI flags with cmds.WithFlags(fields.New(...)) instead of raw Cobra/pflag/flag APIs
+make: *** [Makefile:49: glazed-lint] Error 3
+```
+
+A ticket evidence probe does not need a CLI framework. I removed the flag entirely; the program writes Markdown to stdout and callers redirect it. This kept the script small while satisfying repository-wide lint.
+
+### What I learned
+
+- Tool execution has two trust transitions, not one: provider/backend to browser request, then browser result back to a parked backend call. Both require the tuple `(sessionId, run/messageId, toolCallId, toolName)` to remain bound.
+- chat-provider deduplicates only while a call is active or human-pending. Completed ids are forgotten, so snapshot reconciliation can execute the same automatic mutation again.
+- Approval consumption is implemented independently in each factory. Workbench tools consume successful confirm-gated verbs; conversation sends do not; sandbox update/remove do, while create and action.define only check and never spend.
+- The demo does not supply `workbenchTools.isApproved` or `sandbox.isApproved`, so those confirm paths fail closed even after a proposal. The prompt promises a workflow that the product wiring cannot complete.
+
+### What was tricky to build
+
+- A normal test run cannot expose the cross-session flaw because existing tests use one session. The probe had to park `Manager.Request` for one session, wait for its published request, submit `HandleResult` under a second session, and prove the first goroutine received the forged payload.
+- Runtime replay is asynchronous and transient. The Node probe waits for the first result before reconciling the same call id again; this isolates the missing completed-call ledger rather than racing the active-call guard.
+- “Approval is checked” and “approval is one-shot” are separate properties. Probes had to make the product callback return true and then repeat the exact operation with the exact id.
+
+### What warrants a second pair of eyes
+
+- Treat the cross-session pending-map defect as Critical only for deployments where session/tool endpoints are reachable by another principal. In this demo they are unauthenticated and session listing/snapshots expose ids, making that condition true on any shared host.
+- Confirm whether provider tool-call ids are guaranteed globally random. Even if they are, session binding remains required; predictability changes exploitability, not correctness.
+- Review the intended semantics for parallel tool calls: Pinocchio's bridge executes a batch serially, which is safe for UI ordering but can unnecessarily stall unrelated read tools behind a human approval.
+
+### What should be done in the future
+
+- Write document 06 with architecture diagrams, complete tool catalog, lifecycle/state-machine explanation, ranked findings, API contracts, remediation pseudocode and tests.
+- Extend document-quality/Mermaid checks to include document 06.
+- Relate focused files, update index/changelog, check task `h09b`, run doctor, commit and deliver the new review.
+
+### Code review instructions
+
+- Start with `various/35-cross-session-tool-result-probe.md`, then read Pinocchio `frontendtools/manager.go:25-183` and `bridge.go:76-187`.
+- Run `node ttmp/.../scripts/04-tool-runtime-probes.mjs --output /tmp/tool-probes.md` after `pnpm --filter @hyperslop-systems/pbui-chat build`.
+- Run `go run ttmp/.../scripts/05-cross-session-tool-result-probe.go` from the PBUI root.
+- Use `various/39-tool-review-line-anchors.txt` to jump to every major browser/server boundary.
+
+### Technical details
+
+The required call identity should be represented explicitly:
+
+```text
+ToolInvocationKey = {
+  sessionId,
+  runId or messageId,
+  toolCallId,
+  toolName,
+  manifestRevision
+}
+```
+
+A result must match the full server-issued key and the authenticated session principal before it can resolve the parked call.

@@ -14,3 +14,4 @@
 - [x] Write and review the agent framework and helper tiles document <!-- t:7w8d -->
 - [x] Complete final validation, diary/changelog/index bookkeeping and docmgr doctor <!-- t:esy7 -->
 - [x] Dry-run, upload and verify the three-document review bundle on reMarkable <!-- t:5gr7 -->
+- [ ] Write, validate and deliver a full code review of agent tool calls and UI interaction <!-- t:h09b -->

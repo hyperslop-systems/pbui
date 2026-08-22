@@ -1,0 +1,13 @@
+
+> @hyperslop-systems/pbui-chat@0.1.0 test /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat
+> vitest run
+
+
+ RUN  v4.1.10 /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat
+
+
+ Test Files  21 passed (21)
+      Tests  208 passed (208)
+   Start at  18:40:30
+   Duration  14.86s (transform 20.56s, setup 0ms, import 42.55s, tests 9.85s, environment 31.73s)
+
