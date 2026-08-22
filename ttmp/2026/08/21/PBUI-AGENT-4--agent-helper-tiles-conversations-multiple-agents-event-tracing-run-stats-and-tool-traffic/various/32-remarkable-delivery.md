@@ -1,5 +1,5 @@
 ---
-Title: 'reMarkable delivery record for the three-part PBUI review'
+Title: 'reMarkable delivery record for the PBUI review bundle'
 Ticket: PBUI-AGENT-4
 Status: active
 Topics: [pbui, chat, frontend, backend, onboarding]
@@ -8,7 +8,7 @@ Intent: long-term
 Owners: []
 RelatedFiles: []
 ExternalSources: []
-Summary: 'Dry-run, Mermaid rendering repair, successful forced replacement and remote listing evidence for the PBUI-AGENT-4 three-document review bundle.'
+Summary: 'Dry-run, Mermaid rendering repair, successful forced replacement and remote listing evidence for the PBUI-AGENT-4 four-document review bundle.'
 WhatFor: Evidence that the final review bundle rendered and reached the requested reMarkable destination.
 WhenToUse: Auditing delivery or locating the PDF on reMarkable.
 ---
@@ -17,10 +17,10 @@ WhenToUse: Auditing delivery or locating the PDF on reMarkable.
 
 ## Bundle
 
-- Name: `PBUI-AGENT-4 Three Part Architecture Review`
+- Name: `PBUI-AGENT-4 Architecture Review`
 - Destination: `/ai/2026/08/22/PBUI-AGENT-4`
 - ToC depth: 2
-- Included: design docs 03, 04 and 05.
+- Included: design docs 03, 04, 05 and 06.
 
 ## Dry run
 
@@ -50,17 +50,20 @@ Mermaid blocks: 7; failures: 0
 
 Because the first upload had just been created by this review and had no annotations, it was safely replaced with `--force`.
 
-## Final upload
+## Final upload (four-document bundle)
 
 ```text
-OK: uploaded PBUI-AGENT-4 Three Part Architecture Review.pdf -> /ai/2026/08/22/PBUI-AGENT-4
+OK: uploaded PBUI-AGENT-4 Architecture Review.pdf -> /ai/2026/08/22/PBUI-AGENT-4
 ```
+
+All ten Mermaid diagrams across the four documents rendered successfully (`various/31-mermaid-render-audit.txt`); the four-doc bundle replaced the prior three-doc upload with `--force` because the earlier PDF was session-created and unannotated.
 
 ## Remote listing
 
 ```text
+[f] PBUI-AGENT-4 Architecture Review
 [f] PBUI-AGENT-4 Three Part Architecture Review
 [f] PBUI-AGENT-4 — code review guide
 ```
 
-The first row is the final three-document bundle. The second is the older author self-review already present in the ticket directory.
+The first row is the final four-document bundle. The second row is the superseded three-document bundle. The third is the older author self-review already present in the ticket directory.
