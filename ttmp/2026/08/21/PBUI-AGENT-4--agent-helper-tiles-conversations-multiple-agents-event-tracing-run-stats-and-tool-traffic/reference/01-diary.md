@@ -750,3 +750,138 @@ ON CONFLICT(id) DO UPDATE SET last_activity_at = excluded.last_activity_at,
 - `packages/pbui-chat/src/conversations/registry.ts` — `sync()` and `serverPatch`, four fields and four rules.
 - `packages/pbui-chat/src/conversations/EventsTile/EventsTile.tsx` — `DEFAULT_EVENT_FAMILIES`.
 - Validate: `pnpm --filter @hyperslop-systems/pbui-chat test` (207), `GOWORK=off go test ./pkg/...`, then `make chat-ui`, restart the server, and press *sync* in the conversations tile with records the fresh index has never seen.
+
+
+## Step 9: Re-open the ticket for a three-part architecture and code review
+
+This step began a fresh, evidence-first review rather than accepting the ticket's existing design and self-review as the conclusion. The requested deliverable was refined into three intern-facing documents — PBUI core, the JavaScript API and interaction model, and the agent framework plus tiles — so the investigation mapped those three boundaries separately before drafting.
+
+The first browser pass found two multi-conversation defects that the previous 208-test close-out did not catch. Two simultaneously mounted composers share one product-wide draft, so typing in one immediately changes the other; explicitly closing the active conversation leaves both its chat tile and the active trace tile saying `opening conversation…` indefinitely. These are observed current behavior, not inferred risks, and screenshots/snapshots were saved with the ticket.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Read @pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/design-doc/02-code-review-guide-what-to-audit-in-the-multi-agent-workbench-and-what-i-already-know-is-wrong.md  and Create  a detailed analysis / design / code review report that is for a new intern, explaining all the parts of the system needed to understand what it is, with prose paragraphs and bullet point sand pseudocode and diagrams and api references and file references. It should be very clear and technical. Store in the ticket and the nupload to remarkable.
+
+Be sure to test things extensively, you can run the system and interact with it, save any scripts you write in the scripts/ folder of the ticket."
+
+**Scope refinement (verbatim):** "actually structure this into three full review docs:
+
+- PBUI itself
+- PBUI JS API and interaction
+- Agent framework + tiles"
+
+**Process instruction (verbatim):** "commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)"
+
+**Frequency instruction (verbatim):** "especially the diary, keep it frequently as you move along so we can retrace your steps."
+
+**Assistant interpretation:** Audit the implementation deeply, structure the result as three full design/code-review documents for a new intern, prove findings with automated and live-browser evidence, maintain this diary continuously, commit coherent review stages, and deliver the validated bundle to reMarkable.
+
+**Inferred user intent:** Produce a trustworthy onboarding and review package that explains the whole stack while separating foundational PBUI concerns from the interaction API and from multi-agent runtime risks, so a new engineer can understand and safely improve the system.
+
+**Commit (code):** none — investigation and evidence capture only at this point.
+
+### What I did
+
+- Read the existing intern guide, reviewer guide, package README, all eight prior diary steps, ticket metadata, and the review/delivery skill references.
+- Mapped the three review scopes and read their load-bearing code:
+  - PBUI core: `src/presentation/{types,registry,createPbui}.tsx`, surfaces, chrome, controls, Dialog, FileBrowser, token/style wiring, Vite dedupe preset.
+  - JS API/interaction: workbench store/document/app descriptors/verbs/components and the protobuf protocol's TypeScript applier/builders.
+  - Agent framework: runtime capture, conversation registry/scopes/selectors/tools/router, `createPbuiChat`, helper app descriptors, demo integration, chat-provider 0.5.0 internals, and Go session routes/index.
+- Added `scripts/01-review-inventory.mjs` and generated `various/11-review-inventory.md`. It records source/test/story counts, largest files, and story coverage for each of the three scopes.
+- Ran fresh automated validation:
+  - PBUI: 12 test files, 96 tests passed.
+  - workbench-protocol: 3 files, 44 tests passed.
+  - pbui-workbench: 9 files, 115 tests passed.
+  - pbui-chat: 21 files, 208 tests passed.
+  - `GOWORK=off go test ./pkg/... -count=1`: all packages passed.
+  - Typechecks passed for PBUI, protocol, workbench, sandbox, pbui-chat, and the demo.
+  - `make chat-ui`, `make ci-check`, and `make protocol-check` passed.
+  - PBUI, workbench, and pbui-chat Storybook production builds passed.
+- Restarted the Go demo server from the current checkout, opened the app in a real browser, sent a message, created a second conversation, and inspected the rendered accessibility tree and runtime through `window.__pbuiDemo`.
+- Saved the initial browser snapshot, shared-draft screenshot and JSON probe, and closed-conversation screenshot/snapshot as `various/13`–`17`.
+
+### Why
+
+- Existing tests proved many local contracts but not that two live composers are isolated or that closing a runtime leaves an intelligible mounted tile. The user's request explicitly allowed running and interacting with the system, so browser evidence was required rather than optional.
+- The inventory makes review claims reproducible. In particular, PBUI core has stories for all 41 TSX implementations, while the agent scope has 38 of 45 TSX implementations without stories; the five new helper tiles are in that uncovered set.
+
+### What worked
+
+- Every checked automated suite, typecheck, package build, Go CI target, protocol regeneration check, and Storybook build completed successfully.
+- The running demo created and connected two independent server sessions. Each transcript runtime remained separate, and the first scripted reply rendered messages, references, widgets, and verb chips correctly.
+- The browser probes produced deterministic evidence for both newly found defects:
+  - after filling only `getByRole('textbox', {name: 'message to the agent'}).nth(1)`, both textareas held `SECOND-ONLY-DRAFT-PROBE`;
+  - after `window.__pbuiDemo.conversations.close(activeId)`, the closed chat tile and the singleton trace tile both rendered `opening conversation…` after cleanup.
+
+### What didn't work
+
+- Two initial dependency reads used the wrong path and failed exactly as follows; pnpm's package-local symlink was the correct path:
+
+```text
+ENOENT: no such file or directory, access '/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/@go-go-golems/chat-provider/core/createChatClient.js'
+ENOENT: no such file or directory, access '/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/@go-go-golems/chat-provider/react/ChatProvider.js'
+```
+
+- The first browser server on port 8090 was a stale `go run` process started the previous day. `/proc/<pid>/cwd` proved it was this checkout; it was stopped and replaced with a fresh process before browser validation.
+- `make chat-ui` and pbui-chat's Storybook build passed but emitted repeated Vite warnings that QuickJS's generated Emscripten modules import browser-externalized `fs`, `path`, and `crypto`; the demo bundle also crossed Vite's 500 kB chunk warning (`745.18 kB`, gzip `222.38 kB`), and the chat Storybook emitted a `2,081.06 kB` sandbox worker.
+
+### What I learned
+
+- The first unlisted multi-agent defect is simpler than the known runtime problems: `Composer` reads `chat.store.draft`, and `createPbuiChat` constructs exactly one `PbuiChatStore` per product. Pending refs were made per conversation, but editable draft text was not.
+- `ConversationScope` uses the same `!runtime` presentation for two different states: the one-frame attach transition and an explicitly closed runtime. Its `useEffect([registry, conversationId])` does not run again when `open` flips false, so the latter state cannot progress and should not be labeled "opening".
+- The server exposes `PATCH /api/chat/sessions/{id}` and the docs say a second browser can receive titles, but `registry.rename()` performs only a local record patch; no frontend PATCH caller exists. The route is currently orphaned from the user gesture it was designed for.
+- chat-provider's `connect()` and `send()` call the lexical `syncToolManifest()` closure, not the exposed `client.tools.syncManifest`; runtime monkey-patching therefore cannot observe automatic syncs. The current Context tile works around this by reading the registry live, but runtime comments still overstate what the wrapper captures.
+
+### What was tricky to build
+
+- Distinguishing defects from intentional layering required tracing state ownership end to end. The PBUI chat store is deliberately product-wide for inspector/watchlist/focus, while chat-provider's Redux store is deliberately per conversation; the draft was accidentally placed on the former side of that boundary. The symptom only appears when two composers are mounted at once, which is why local component tests stayed green.
+- Closing a conversation is an orthogonal lifecycle gesture to closing a tile. The code intentionally keeps them separate, so the correct review finding is not "close the tile too" by assumption; it is that a mounted tile needs an explicit closed state and reopen gesture, and active-following singletons need a policy for a closed active record.
+
+### What warrants a second pair of eyes
+
+- Severity and remediation for shared drafts: the likely fix is per-conversation draft state, but moving all of `PbuiChatStore` per runtime would wrongly split product-wide inspector/watchlist state. The draft slice needs a keyed design or a scoped draft store, not a broad store duplication.
+- Conversation title synchronization: adding PATCH to `rename()` raises failure and ownership questions (optimistic local update, retry, and agent-versus-human provenance) that need an explicit API decision.
+- `close()` semantics with mounted chat/context/trace tiles: decide whether scopes auto-open, show closed with a reconnect action, or whether the close verb also closes placements. The current mix does none consistently.
+- Core accessibility findings under review: Dialog and ObjectMenu do not restore focus when they unmount, and several polymorphic/structural components (`Text`, `Toolbar`) intentionally enumerate props and therefore drop `aria-*`/`data-*` attributes.
+
+### What should be done in the future
+
+- Draft the three review documents from this evidence, with separate severity tables and shared cross-document terminology.
+- Add focused reproducible probes/tests for the highest-severity findings where a static file reference is not enough.
+- Update this diary after each document/review stage and commit coherent documentation/evidence intervals.
+
+### Code review instructions
+
+- For the shared draft, start at `packages/pbui-chat/src/composer/Composer/Composer.tsx` (`usePbuiChatStore(chat.store, s => s.draft)`) and `createPbuiChat.tsx` (one `store` and per-conversation `pending`). Reproduce with two chat tiles and type in only one composer.
+- For the closed state, read `ConversationScope.tsx` and `registry.ts` `open`/`close`; reproduce with `window.__pbuiDemo.conversations.close(window.__pbuiDemo.conversations.activeId())` while the tile remains mounted.
+- For title sync, search the frontend for `PATCH`; there is no match. Compare `registry.rename` with `pkg/chatserver/handlers.go:HandleRetitleSession`.
+- Validation baseline is recorded above; repeat the focused browser probes after any lifecycle or draft fix.
+
+### Technical details
+
+Observed shared state, using a direct nth-element fill rather than the accessibility snapshot's generated locator:
+
+```js
+const boxes = page.getByRole("textbox", { name: "message to the agent" });
+await boxes.nth(1).fill("SECOND-ONLY-DRAFT-PROBE");
+await boxes.evaluateAll((elements) => elements.map((element) => element.value));
+// => ["SECOND-ONLY-DRAFT-PROBE", "SECOND-ONLY-DRAFT-PROBE"]
+```
+
+The ownership path responsible:
+
+```text
+createPbuiChat()
+  └─ one createPbuiChatStore()
+       └─ draft
+            ├─ Composer in ConversationScope(A)
+            └─ Composer in ConversationScope(B)
+```
+
+The desired boundary is narrower:
+
+```text
+product-wide PbuiChatStore: inspector · watchlist · focus
+conversation-keyed draft state: draft[A] · draft[B]
+chat-provider runtime per conversation: timeline · overlay · runStats · socket · tools
+```

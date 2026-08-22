@@ -1,0 +1,39 @@
+- generic [ref=e3] [box=0,0,1143,800]:
+  - generic [ref=e5] [box=10,4,1123,22]:
+    - generic [ref=e6] [box=16,6,110,18]: GOLD COIN SHOP
+    - generic [ref=e7] [box=132,8,40,13]: · agent
+    - generic [ref=e8] [cursor=pointer] [box=744,8,91,13]:
+      - checkbox "approver role" [ref=e9] [box=744,8,13,13]
+      - generic [ref=e10] [box=761,8,74,13]: approver role
+    - button "+ conversation" [ref=e11] [cursor=pointer] [box=841,7,94,15]
+    - button "Ctrl+K · launcher" [ref=e12] [cursor=pointer] [box=941,7,111,15]
+    - button "reset layout" [ref=e13] [cursor=pointer] [box=1058,8,69,13]
+  - main [ref=e14] [box=0,30,1143,752]:
+    - generic [ref=e15] [box=10,40,1123,23]:
+      - button "workspace · 4 tiles · you are here" [ref=e18] [box=14,42,48,19]:
+        - generic [ref=e19] [box=21,45,34,13]: ▸ main
+      - button "+" [ref=e20] [cursor=pointer] [box=66,45,6,13]
+    - generic [ref=e22] [box=10,66,1123,705]:
+      - generic [ref=e25] [box=10,66,668,705]:
+        - generic [ref=e26] [box=12,68,664,25]:
+          - generic [ref=e27] [box=18,72,8,16]: ⠿
+          - generic "tile showing new conversation" [ref=e29] [cursor=pointer] [box=32,70,118,19]
+          - generic [ref=e31] [box=607,72,63,15]
+        - generic [ref=e37] [box=12,93,664,677]:
+          - generic [ref=e40] [box=24,105,640,30]
+          - generic [ref=e43] [box=12,682,664,88]
+      - separator "resize horizontally" [ref=e48] [box=678,66,10,705]
+      - generic [ref=e51] [box=688,66,445,705]:
+        - generic [ref=e54] [box=688,66,445,236]:
+          - generic [ref=e55] [box=690,68,441,25]
+          - generic [ref=e69] [box=712,115,397,16]: nothing inspected — choose Inspect from any object's menu
+        - separator "resize vertically" [ref=e70] [box=688,303,445,10]
+        - generic [ref=e73] [box=688,313,445,459]:
+          - generic [ref=e76] [box=688,313,445,225]
+          - separator "resize vertically" [ref=e92] [box=688,537,445,10]
+          - generic [ref=e96] [box=688,547,445,225]
+  - generic [ref=e113] [box=0,782,1143,18]:
+    - generic [ref=e114] [box=10,784,32,14]: READY
+    - generic [ref=e115] [box=58,784,838,14]: hover anything · L is the default verb · R opens its menu
+    - generic [ref=e116] [box=9,790,1,1]: hover anything · L is the default verb · R opens its menu
+    - generic [ref=e117] [box=912,784,221,14]: new conversation · 99e6c8a0 · ready

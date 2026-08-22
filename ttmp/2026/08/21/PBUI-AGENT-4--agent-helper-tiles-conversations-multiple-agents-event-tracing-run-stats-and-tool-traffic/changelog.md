@@ -85,3 +85,14 @@ Code review guide for an external auditor: the four load-bearing pieces, the API
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/ContextTile/ContextTile.tsx — A hook below an early return, reachable from 'Drop it from the list'
 
+
+## 2026-08-22
+
+Step 9: began the three-part architecture review; recorded full automated validation and browser evidence for shared multi-conversation drafts and closed tiles stuck in an opening state
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/composer/Composer/Composer.tsx — Browser probe proved both mounted composers read and mutate the same product-wide draft
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/ConversationScope.tsx — Browser probe proved an explicitly closed mounted scope renders opening indefinitely
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/scripts/01-review-inventory.mjs — Reproducible inventory for the three review scopes
+
