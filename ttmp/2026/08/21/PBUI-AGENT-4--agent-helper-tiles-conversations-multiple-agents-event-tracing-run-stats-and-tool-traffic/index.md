@@ -43,7 +43,8 @@ Every PBUI product so far has one agent: one `<ChatProvider>` builds one store, 
 **Read in this order**
 
 1. [design-doc/01 — Intern guide](./design-doc/01-intern-guide-many-conversations-on-one-workbench-the-session-registry-and-the-agent-helper-tiles.md): scenes (§1), the system as it stands — a session end to end, what pbui-chat assumes, what the runtime records and nobody shows (§2), the gap table (§3), the design with D1–D12 (§4), six phases (§5), sequences (§6), failure modes R1–R14 (§7), testing (§8), API and file references (§9–§10), open questions (§11).
-2. [reference/01 — Diary](./reference/01-diary.md): the evidence pass and the reasoning.
+2. [design-doc/02 — Code review guide](./design-doc/02-code-review-guide-what-to-audit-in-the-multi-agent-workbench-and-what-i-already-know-is-wrong.md): for an auditor — the four load-bearing pieces, the reasoning behind each API shape, and §8, the inventory of shortcuts taken and defects worked around.
+3. [reference/01 — Diary](./reference/01-diary.md): the evidence pass and the reasoning, eight steps with every failure verbatim.
 
 Background: `PBUI-AGENT-1` (the chat), `PBUI-AGENT-2` (workbench tools and policy), `PBUI-WORKBENCH-1/2` (the app model), `PBUI-SANDBOX-1` (the registry pattern reused here).
 

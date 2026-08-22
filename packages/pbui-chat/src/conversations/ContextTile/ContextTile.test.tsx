@@ -97,6 +97,19 @@ describe("ContextTile", () => {
     expect(document.body.textContent).toMatch(/vocabulary · \d+ types · \d+ verbs/);
   });
 
+  test("forgetting the conversation while the tile is open shows the empty state rather than crashing", async () => {
+    await mount();
+    expect(document.body.textContent).toContain("reorder desk");
+
+    // Every hook must run before the early return, or this render drops the
+    // hook count and React throws.
+    chat.conversations.forget(A);
+
+    await waitFor(() => {
+      expect(screen.getByText("that conversation is not in this browser's list")).toBeTruthy();
+    });
+  });
+
   test("the session facts name the conversation and its connection", async () => {
     await mount();
     expect(document.body.textContent).toContain(A);

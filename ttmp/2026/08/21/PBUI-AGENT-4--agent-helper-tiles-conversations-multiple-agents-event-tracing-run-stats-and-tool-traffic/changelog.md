@@ -76,3 +76,12 @@ Step 8 / Phase 5: Go SessionIndex (memory + SQLite) behind GET /api/chat/session
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/registry.ts — sync() and serverPatch — four fields, four rules
 
+
+## 2026-08-22
+
+Code review guide for an external auditor: the four load-bearing pieces, the API reasoning, 14 shortcuts I took and 8 defects in dependencies this change works around, a review order and eight things to try to break. Found and fixed a Rules-of-Hooks violation in ContextTile while writing it.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/ContextTile/ContextTile.tsx — A hook below an early return, reachable from 'Drop it from the list'
+

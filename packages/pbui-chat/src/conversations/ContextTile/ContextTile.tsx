@@ -33,6 +33,14 @@ function Context({ conversationId }: { conversationId: string }) {
   const chat = usePbuiChat();
   const snapshot = useConversations(chat.conversations, (r) => r.get(conversationId));
   const [syncing, setSyncing] = useState(false);
+  /*
+   * ABOVE the early return, and it has to be: `usePbui` is a hook, and a
+   * conversation being forgotten while this tile is open flips `snapshot` to
+   * null. Calling it below would mean one render with a smaller hook count
+   * than the last — the Rules-of-Hooks violation, reachable from "Drop it
+   * from the list". (It did not crash in a test; treat that as luck.)
+   */
+  const environment = chat.pbui.usePbui().environment as Record<string, unknown> | undefined;
 
   if (!snapshot) {
     return <EmptyState message="that conversation is not in this browser's list" hint="the record may have been dropped" />;
@@ -50,7 +58,6 @@ function Context({ conversationId }: { conversationId: string }) {
   const tools = runtime ? runtime.toolRegistry.manifest() : [];
   const manifest = runtime?.lastManifest ?? null;
   const send = runtime?.lastSend ?? null;
-  const environment = chat.pbui.usePbui().environment as Record<string, unknown> | undefined;
   const vocabulary = chat.vocabulary;
 
   const resync = async () => {
