@@ -9,8 +9,8 @@
 - [x] Phase 4: Agent context tile (last manifest, last send refs/focus, environment, vocabulary, engine/model); conversation_list + conversation_send (confirm) tools; Go prompt section; scripted handoff scenario + e2e <!-- t:eghr -->
 - [x] Phase 5: Go SessionIndex (memory + SQLite), GET /api/chat/sessions, PATCH title; registry.sync() merge; README; guide as built; diary close-out; reMarkable re-upload <!-- t:6bpm -->
 - [x] Work slips: overview plan, then start/end per phase <!-- t:7geq -->
-- [ ] Write and review the PBUI core architecture/code-review document <!-- t:yed4 -->
-- [ ] Write and review the PBUI JavaScript API and interaction document <!-- t:0skg -->
-- [ ] Write and review the agent framework and helper tiles document <!-- t:7w8d -->
+- [x] Write and review the PBUI core architecture/code-review document <!-- t:yed4 -->
+- [x] Write and review the PBUI JavaScript API and interaction document <!-- t:0skg -->
+- [x] Write and review the agent framework and helper tiles document <!-- t:7w8d -->
 - [ ] Complete final validation, diary/changelog/index bookkeeping and docmgr doctor <!-- t:esy7 -->
 - [ ] Dry-run, upload and verify the three-document review bundle on reMarkable <!-- t:5gr7 -->

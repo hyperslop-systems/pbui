@@ -13,17 +13,31 @@ Intent: long-term
 Owners: []
 RelatedFiles:
     - Path: repo://packages/pbui-workbench/src/createWorkbench.tsx
-      Note: Public workbench composition API
-    - Path: repo://packages/pbui-workbench/src/verbs.ts
-      Note: Product-level intent API and mutation orchestration
-    - Path: repo://packages/pbui-workbench/src/store.ts
-      Note: External-store state and mutation hooks
+      Note: |-
+        Public workbench composition API
+        Public workbench composition
     - Path: repo://packages/pbui-workbench/src/document.ts
-      Note: Layout construction, serialization and restore validation
+      Note: |-
+        Layout construction, serialization and restore validation
+        Layout, serialization and restore validation
+    - Path: repo://packages/pbui-workbench/src/store.ts
+      Note: |-
+        External-store state and mutation hooks
+        External-store commit and replacement boundary
+    - Path: repo://packages/pbui-workbench/src/types.ts
+      Note: Public API including perform return mismatch
+    - Path: repo://packages/pbui-workbench/src/verbs.ts
+      Note: |-
+        Product-level intent API and mutation orchestration
+        High-level intent and mutation orchestration
     - Path: repo://packages/workbench-protocol/src/client/apply.ts
-      Note: Pure TypeScript structural mutation applier mirroring Go
+      Note: |-
+        Pure TypeScript structural mutation applier mirroring Go
+        Pure structural applier
     - Path: repo://packages/workbench-protocol/src/client/builders.ts
-      Note: Protocol mutation builders and older configured client API
+      Note: |-
+        Protocol mutation builders and older configured client API
+        Protocol builders and overlapping configured client
     - Path: repo://proto/hyperslop/pbui/workbench/v1/workbench.proto
       Note: Shared wire schema for documents and mutations
 ExternalSources: []
@@ -32,6 +46,7 @@ LastUpdated: 2026-08-22T18:28:00-04:00
 WhatFor: Learn how JavaScript code constructs, reads and mutates a PBUI workbench, and review the contracts between protocol data, high-level intent, product routing and React rendering.
 WhenToUse: Onboarding; adding a workbench verb or app; integrating persistence/server sync; debugging layout behavior; reviewing API or protocol compatibility.
 ---
+
 
 # PBUI JavaScript API and interaction: workbench, protocol, verbs, state and integration code review
 

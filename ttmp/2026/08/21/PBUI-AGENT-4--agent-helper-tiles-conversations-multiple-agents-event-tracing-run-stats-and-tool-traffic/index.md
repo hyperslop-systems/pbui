@@ -21,10 +21,10 @@ RelatedFiles:
 ExternalSources:
     - https://github.com/go-go-golems/sessionstream/
     - https://github.com/go-go-golems/pinocchio/
-Summary: 'Built: run several agent conversations on one PBUI workbench (a conversation registry with one chat runtime per open conversation, the chat app rebound as a view of a conversation, a "new conversation" gesture, a session-aware verb router and per-session tools, a server session index) and five helper tiles — Conversations, Events (the chat-provider debug stream), Runs (token and duration statistics), Tools (traffic and waiting-for-you), Agent context (the advertised manifest, last refs, environment, vocabulary). Contains the intern guide (with §4.10, what changed between the design and the build), tasks for six phases, and an eight-step diary.'
-LastUpdated: 2026-08-21T18:40:00-04:00
-WhatFor: Landing page for PBUI-AGENT-4; start here to find the guide, the phase tasks and the diary.
-WhenToUse: Before implementing multi-conversation support or any agent helper tile; when a product needs more than one agent on screen.
+Summary: 'Built and reviewed: several agent conversations on one PBUI workbench, a session-aware router and per-session tools, a weak server session index, and five helper tiles. The ticket now contains three full intern-oriented architecture/code reviews — PBUI core, the JavaScript workbench/protocol interaction API, and the agent framework plus tiles — backed by automated tests, release builds and live browser evidence. The review found a critical shared-draft defect plus lifecycle, title-sync, approval, accessibility and API-contract gaps.'
+LastUpdated: 2026-08-22T18:45:00-04:00
+WhatFor: Landing page for PBUI-AGENT-4; start here for the three-part review, original design/self-review, evidence, tasks and diary.
+WhenToUse: Before reviewing or changing PBUI core, the workbench JavaScript API, multi-conversation support or any agent helper tile.
 ---
 
 # Agent helper tiles: conversations, multiple agents, event tracing, run stats and tool traffic
@@ -33,7 +33,7 @@ WhenToUse: Before implementing multi-conversation support or any agent helper ti
 
 Every PBUI product so far has one agent: one `<ChatProvider>` builds one store, one WebSocket and one session, and `createPbuiChat` binds one router to one client. This ticket designs the step to many conversations and the tiles that help a person work with them:
 
-1. **A chat runtime as a value** — `createChatRuntime(config)` assembles what `ChatProvider` assembles, for a known session id, from chat-provider's exported pieces; `ChatRuntimeScope` provides its contexts so every existing pbui-chat component works unchanged inside a conversation.
+1. **A chat runtime as a captured value** — chat-provider 0.5.0 does not export the tool-runtime factory needed for direct construction, so `ConversationHost` renders one `ChatProvider` per open conversation and captures its runtime; `ChatRuntimeScope` re-provides that graph inside a conversation tile.
 2. **A conversation registry** — records (title, pins, counts) persisted; runtimes built lazily while a conversation is open; mirrors of status and run stats; *the active conversation*, set by focus, followed by singleton tiles and used by untargeted verbs.
 3. **The `chat` app doc-bound to a conversation** — two chat tiles with two bindings are two agents; *new conversation* creates a session and opens a tile; a session-aware router and per-session tool descriptors keep verbs and tool calls attributed to the right session.
 4. **Five helper tiles** — *Conversations* (list, new, rename, pin, archive, open, activate), *Events* (chat-provider's classified debug stream: WebSocket lifecycle, frames, tool and UI events), *Runs* (model, tokens, durations, live rate, across conversations), *Tools* (waiting-for-you and tool traffic with inputs and results), *Agent context* (the manifest last advertised, the refs and focus last sent, environment, vocabulary, engine/model).
@@ -42,17 +42,22 @@ Every PBUI product so far has one agent: one `<ChatProvider>` builds one store, 
 
 **Read in this order**
 
-1. [design-doc/01 — Intern guide](./design-doc/01-intern-guide-many-conversations-on-one-workbench-the-session-registry-and-the-agent-helper-tiles.md): scenes (§1), the system as it stands — a session end to end, what pbui-chat assumes, what the runtime records and nobody shows (§2), the gap table (§3), the design with D1–D12 (§4), six phases (§5), sequences (§6), failure modes R1–R14 (§7), testing (§8), API and file references (§9–§10), open questions (§11).
-2. [design-doc/02 — Code review guide](./design-doc/02-code-review-guide-what-to-audit-in-the-multi-agent-workbench-and-what-i-already-know-is-wrong.md): for an auditor — the four load-bearing pieces, the reasoning behind each API shape, and §8, the inventory of shortcuts taken and defects worked around.
-3. [reference/01 — Diary](./reference/01-diary.md): the evidence pass and the reasoning, eight steps with every failure verbatim.
+1. [design-doc/03 — PBUI itself](./design-doc/03-pbui-itself-core-presentation-system-components-chrome-accessibility-and-design-system-code-review.md): typed presentations, descriptors, object menus, accept mode, components/chrome, tokens and accessibility review (C1–C8).
+2. [design-doc/04 — PBUI JavaScript API and interaction](./design-doc/04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md): protobuf document model, pure applier, external store, apps, high-level verbs, rendering and integration review (J1–J11).
+3. [design-doc/05 — Agent framework and tiles](./design-doc/05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md): runtimes, registry/scopes, router, tools/handoff, server and all five helper tiles (A1–A16).
+4. [design-doc/01 — Original intern guide](./design-doc/01-intern-guide-many-conversations-on-one-workbench-the-session-registry-and-the-agent-helper-tiles.md): the original design, phases, sequences and failure modes, including §4.10 on design-versus-build changes.
+5. [design-doc/02 — Original author self-review](./design-doc/02-code-review-guide-what-to-audit-in-the-multi-agent-workbench-and-what-i-already-know-is-wrong.md): known shortcuts and dependency defects that seeded the fresh audit.
+6. [reference/01 — Diary](./reference/01-diary.md): chronological evidence, exact commands/failures, browser probes, drafting and delivery.
 
 Background: `PBUI-AGENT-1` (the chat), `PBUI-AGENT-2` (workbench tools and policy), `PBUI-WORKBENCH-1/2` (the app model), `PBUI-SANDBOX-1` (the registry pattern reused here).
 
 ## Status
 
-All six phases built and verified in the browser against the running Go server (diary steps 2–8, screenshots `various/01`–`10`): the conversation registry and one provider per open conversation (Phase 0), the Conversations tile and the conversation verbs (1), the Events tile (2), the Runs and Tools tiles (3), the agent-context tile with `conversation_list` and a `confirm`-gated `conversation_send` (4), and the Go session index with a `sync()` that merges (5). 207 tests in `pbui-chat`, plus the Go suite.
+All six implementation phases remain built. The fresh review reran 96 PBUI tests, 44 protocol tests, 115 workbench tests, 103 sandbox tests, 208 pbui-chat tests, Go package tests, all relevant typechecks, `make chat-ui`, `make ci-check`, `make protocol-check`, three Storybook production builds, package packing and a clean-consumer smoke.
 
-Mid-ticket the user gave a standing rule — everything that can be an object should be an object, and its actions belong in the right-click menu — which turned four gestures into verbs and rewrote the Conversations tile (diary step 4). The guide's §4.10 lists the seven places the build refused the design, the largest being that `createChatRuntime` cannot be written because `createToolRuntime` is unexported. See [tasks.md](./tasks.md).
+Live browser review found behavior not covered by those green suites: two conversation composers share one draft (A1, Critical); explicitly closing an active mounted conversation leaves chat and trace tiles stuck on `opening conversation…` (A2); and a human rename never calls the server PATCH, so a second browser cannot receive it (A3). Core review also proved Dialog and ObjectMenu lose invocation focus on Escape (C1). Evidence is stored in `various/11`–`30`; see the three review documents for remediation designs.
+
+Mid-ticket the user gave a standing rule — everything that can be an object should be an object, and its actions belong in the right-click menu — which turned four gestures into verbs and rewrote the Conversations tile (diary step 4). The original guide's §4.10 lists seven places the build refused the design; the fresh review extends that inventory with source- and browser-backed findings. See [tasks.md](./tasks.md).
 
 ## Topics
 
@@ -72,9 +77,9 @@ See [changelog.md](./changelog.md) for recent changes and decisions.
 
 ## Structure
 
-- design-doc/ - The intern guide
-- reference/ - The diary
+- design-doc/ - Original design/self-review plus the three full review documents
+- reference/ - The frequently updated investigation diary
 - playbooks/ - Command sequences and test procedures
-- scripts/ - Temporary code and tooling
-- various/ - Working notes and research
+- scripts/ - Reproducible inventory and document-quality audit scripts
+- various/ - Screenshots, accessibility snapshots, network/runtime probes and audit outputs
 - archive/ - Deprecated or reference-only artifacts

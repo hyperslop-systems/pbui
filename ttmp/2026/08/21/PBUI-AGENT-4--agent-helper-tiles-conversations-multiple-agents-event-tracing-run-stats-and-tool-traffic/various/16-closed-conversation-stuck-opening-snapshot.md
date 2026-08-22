@@ -1,3 +1,18 @@
+---
+Title: 'Closed conversation stuck in opening state accessibility snapshot'
+Ticket: PBUI-AGENT-4
+Status: active
+Topics: [pbui, chat, frontend, onboarding]
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: 'Playwright accessibility-tree evidence that explicit runtime close leaves mounted chat and trace scopes displaying opening conversation indefinitely.'
+WhatFor: Reproduce agent review finding A2.
+WhenToUse: Reviewing or testing conversation lifecycle fixes.
+---
+
 - generic [ref=e22] [box=10,66,1411,1084]:
   - generic [ref=e273] [box=10,66,841,1084]:
     - generic [ref=e276] [box=10,66,841,537]:

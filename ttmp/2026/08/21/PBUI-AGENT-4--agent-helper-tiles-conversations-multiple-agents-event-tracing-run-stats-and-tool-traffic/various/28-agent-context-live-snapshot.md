@@ -1,3 +1,18 @@
+---
+Title: 'Live Agent Context tile accessibility snapshot'
+Ticket: PBUI-AGENT-4
+Status: active
+Topics: [pbui, chat, frontend, onboarding]
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: 'Playwright accessibility-tree snapshot of the Agent Context tile and its current tool manifest, session facts, environment and vocabulary.'
+WhatFor: Live evidence for Agent Context tile behavior and review findings.
+WhenToUse: Reviewing manifest observability or helper-tile presentation.
+---
+
 - generic [ref=e594]:
   - generic [ref=e595]:
     - button "the conversation this describes" [ref=e597]:

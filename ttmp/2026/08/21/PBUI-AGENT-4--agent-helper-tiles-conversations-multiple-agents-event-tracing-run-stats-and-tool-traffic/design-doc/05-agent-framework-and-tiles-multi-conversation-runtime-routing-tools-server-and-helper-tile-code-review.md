@@ -12,24 +12,38 @@ DocType: design-doc
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - Path: repo://packages/pbui-chat/src/createPbuiChat.tsx
-      Note: Product-wide chat assembly, per-conversation tools, message sending and router binding
-    - Path: repo://packages/pbui-chat/src/conversations/registry.ts
-      Note: Persistent records, open runtime lifecycle, mirrors, activation and server merge
+    - Path: repo://packages/pbui-chat/src/composer/Composer/Composer.tsx
+      Note: Critical shared-draft finding
     - Path: repo://packages/pbui-chat/src/conversations/ConversationHost.tsx
       Note: Provider-per-open-conversation runtime capture workaround
     - Path: repo://packages/pbui-chat/src/conversations/ConversationScope.tsx
-      Note: Runtime/PBUI context scoping and the closed-state defect
+      Note: |-
+        Runtime/PBUI context scoping and the closed-state defect
+        Closed runtime rendered as opening
+    - Path: repo://packages/pbui-chat/src/conversations/registry.ts
+      Note: |-
+        Persistent records, open runtime lifecycle, mirrors, activation and server merge
+        Conversation persistence, lifecycle, mirrors and sync
     - Path: repo://packages/pbui-chat/src/conversations/selectors.ts
       Note: Cross-runtime memoization and tool traffic subscriptions
-    - Path: repo://packages/pbui-chat/src/tools/conversationTools.ts
-      Note: conversation_list and confirm-gated conversation_send
+    - Path: repo://packages/pbui-chat/src/createPbuiChat.tsx
+      Note: |-
+        Product-wide chat assembly, per-conversation tools, message sending and router binding
+        Agent framework assembly and state ownership
     - Path: repo://packages/pbui-chat/src/router/createVerbRouter.ts
-      Note: Session-aware validation, dispatch and trace reporting
+      Note: |-
+        Session-aware validation, dispatch and trace reporting
+        Session-aware dispatch and trace reporting
+    - Path: repo://packages/pbui-chat/src/tools/conversationTools.ts
+      Note: |-
+        conversation_list and confirm-gated conversation_send
+        Handoff policy and approval contract
+    - Path: repo://pkg/chatserver/handlers.go
+      Note: |-
+        Session, message, tool, verb and snapshot HTTP boundaries
+        Session HTTP API and orphaned title endpoint
     - Path: repo://pkg/chatserver/sessions.go
       Note: Memory/SQLite convenience session index
-    - Path: repo://pkg/chatserver/handlers.go
-      Note: Session, message, tool, verb and snapshot HTTP boundaries
 ExternalSources:
     - https://github.com/go-go-golems/react-chat/
 Summary: 'An intern-oriented architecture and code review of the PBUI agent framework: chat-provider runtimes, conversation registry/scopes, session-aware verb routing, per-agent tools, handoff approval, Go session APIs and the Conversations, Events, Runs, Tools and Agent Context tiles. Includes live-browser defects, security and lifecycle findings, API/flow diagrams, pseudocode and a phased remediation plan.'
@@ -37,6 +51,7 @@ LastUpdated: 2026-08-22T18:38:00-04:00
 WhatFor: Understand and safely review or extend the multi-agent PBUI workbench, including the browser/server session boundary, tool policy and helper tiles.
 WhenToUse: Onboarding; debugging multi-conversation behavior; adding a helper tile or agent tool; reviewing lifecycle, security, trace attribution, performance or server synchronization.
 ---
+
 
 # Agent framework and tiles: multi-conversation runtime, routing, tools, server and helper-tile code review
 

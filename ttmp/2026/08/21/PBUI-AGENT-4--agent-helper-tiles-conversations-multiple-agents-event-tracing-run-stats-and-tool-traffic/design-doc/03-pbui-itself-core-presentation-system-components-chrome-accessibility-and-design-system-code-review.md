@@ -12,26 +12,39 @@ DocType: design-doc
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://src/components/Dialog/Dialog.tsx
+      Note: |-
+        Modal focus trap and the missing focus-return behavior found in the browser review
+        Modal focus trap and missing focus return
+    - Path: repo://src/index.ts
+      Note: |-
+        Public API and deliberate stylesheet cascade assembly
+        Public API and stylesheet cascade
     - Path: repo://src/presentation/createPbui.tsx
-      Note: The typed object interaction runtime: provider, presentation, object menu, accept mode and mouse documentation
-    - Path: repo://src/presentation/types.ts
-      Note: Presentation references, descriptors and action contracts
+      Note: |-
+        The typed object interaction runtime: provider, presentation, object menu, accept mode and mouse documentation
+        Typed object interaction runtime and focus/menu findings
     - Path: repo://src/presentation/registry.ts
       Note: Descriptor lookup and fallback behavior
+    - Path: repo://src/presentation/types.ts
+      Note: |-
+        Presentation references, descriptors and action contracts
+        Presentation reference, descriptor and action contracts
     - Path: repo://src/surfaces.ts
-      Note: Page-global Escape ownership for transient surfaces
-    - Path: repo://src/components/Dialog/Dialog.tsx
-      Note: Modal focus trap and the missing focus-return behavior found in the browser review
-    - Path: repo://src/index.ts
-      Note: Public API and deliberate stylesheet cascade assembly
+      Note: |-
+        Page-global Escape ownership for transient surfaces
+        Global Escape ownership model
     - Path: repo://src/tokens.css
-      Note: Default design-token contract
+      Note: |-
+        Default design-token contract
+        Default token contract
 ExternalSources: []
 Summary: 'An intern-oriented architecture and code review of PBUI core: typed presentations, descriptor-defined actions, accept mode, object menus, mouse documentation, transient surfaces, components, chrome, tokens, packaging and accessibility. Records strengths, browser-proven focus defects, API consistency gaps, design decisions, pseudocode and a phased remediation plan.'
 LastUpdated: 2026-08-22T18:20:00-04:00
 WhatFor: Understand and review the domain-neutral PBUI foundation before changing its object model, interaction semantics, components, accessibility behavior, CSS contract or packaging.
 WhenToUse: Onboarding to PBUI; reviewing a presentation or component change; designing a new product integration; planning accessibility and API hardening.
 ---
+
 
 # PBUI itself: core presentation system, components, chrome, accessibility and design-system code review
 

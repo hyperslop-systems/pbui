@@ -998,3 +998,111 @@ Document size at first complete draft:
 05 agent framework:     1,057 lines · 6,395 words · 49,295 bytes
 Total:                  2,279 lines · 14,588 words · 111,742 bytes
 ```
+
+
+## Step 11: Audit document quality and repair ticket hygiene
+
+This step treated the documents as artifacts that must pass reproducible checks, not as prose that merely looks complete. A second ticket script audits minimum depth, diagrams, findings, decisions, source references, required sections, balanced fences, placeholders and frontmatter-related file paths; all three reviews passed.
+
+The first `docmgr doctor` correctly failed because raw Playwright accessibility snapshots and generated Markdown evidence lived under the ticket with no frontmatter. The fix was not to ignore or move the evidence: generated audit scripts now emit valid reference frontmatter, and four snapshot files received reference metadata. The second doctor run passed cleanly.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same review/delivery request as Step 9)
+
+**Assistant interpretation:** Complete the review package with machine-checkable quality, correct docmgr metadata, navigable ticket entry points and no hidden validation exceptions.
+
+**Inferred user intent:** Be able to retrace and trust the report later, including its supporting evidence, rather than receiving three isolated Markdown files.
+
+**Commit (docs):** `cde02a047a4f0fc76a86711902f2eda22395fc9b` — "PBUI-AGENT-4: draft three-part architecture review"
+
+### What I did
+
+- Added `scripts/02-review-doc-quality.mjs` and generated `various/30-review-doc-quality-audit.md`.
+- Audit result: PASS. It checked all three docs for 3,000+ words, 2+ Mermaid diagrams, 6+ ranked findings, 3+ decision records, 8+ concrete source references, required sections, balanced fences, no template markers and existing `repo://` RelatedFiles.
+- Related focused source files to all three docs through `docmgr doc relate` with absolute file notes.
+- Checked the three writing tasks (`yed4`, `0skg`, `7w8d`).
+- Rewrote the ticket index read order to put review docs 03/04/05 first, updated the runtime description from constructed to captured, corrected the test count to 208 and summarized the live findings/evidence.
+- Ran `docmgr doctor --ticket PBUI-AGENT-4 --stale-after 30`, repaired all six frontmatter errors, and reran it cleanly.
+
+### Why
+
+- Markdown under a docmgr ticket is part of the managed knowledge base even when generated as evidence. Letting raw snapshots fail doctor would make the final “doctor passed” claim conditional and weaken future searches.
+- A quality audit script makes the requested structure durable: future edits cannot accidentally delete diagrams, findings, decisions or reference density without a visible failure.
+
+### What worked
+
+- The quality audit reported:
+
+```text
+03 PBUI core:          4,074 words · 2 Mermaid · 7 detailed findings · 4 decisions · 15 file refs
+04 JS interaction:     4,119 words · 2 Mermaid · 11 detailed findings · 4 decisions · 14 file refs
+05 agent framework:    6,395 words · 3 Mermaid · 13 detailed finding sections · 6 decisions · 23 file refs
+Result: PASS
+```
+
+- Final doctor output:
+
+```text
+## Doctor Report (1 findings)
+
+### PBUI-AGENT-4
+
+- ✅ All checks passed
+```
+
+- RelatedFiles remained tight and focused rather than attaching every touched evidence file to every doc.
+
+### What didn't work
+
+The first doctor run failed with six exact instances of the same problem:
+
+```text
+[error] YAML/frontmatter syntax error
+Problem: frontmatter delimiters '---' not found
+```
+
+Affected files were `various/11-review-inventory.md`, `13-browser-initial-snapshot.md`, `16-closed-conversation-stuck-opening-snapshot.md`, `27-all-helper-tiles-live-snapshot.md`, `28-agent-context-live-snapshot.md` and `30-review-doc-quality-audit.md`. Scripts 01/02 were changed so reruns preserve the fix rather than reintroducing it.
+
+### What I learned
+
+- `docmgr doctor` validates Markdown evidence anywhere under the ticket, not only documents created by `docmgr doc add`. This is useful: evidence should be searchable and self-describing too.
+- The docmgr relate command normalized/updated existing frontmatter relations and kept the focused code-review files without requiring manual YAML edits.
+
+### What was tricky to build
+
+- The automated quality thresholds had to measure structure without pretending to judge technical truth. The script checks objective properties and file existence; source claims still required manual/code/browser review.
+- Generated evidence needs stable metadata without making every rerun noisy. The scripts emit fixed long-term reference metadata and keep commit provenance in the body.
+
+### What warrants a second pair of eyes
+
+- The quality script counts detailed finding headings, so A14–A16 share one final section even though the summary table lists them separately. The document still explains all three; reviewers may prefer splitting them into three headings for symmetry.
+- Frontmatter `LastUpdated` is managed inconsistently between docmgr-generated docs and generated references; doctor accepts it absent on references.
+
+### What should be done in the future
+
+- Run the reMarkable dry-run and real bundle upload.
+- Verify remote listing because the active goal explicitly requires evidence beyond the CLI success line.
+- Record delivery in the diary/changelog, check the last two tasks, rerun doctor, and commit final bookkeeping.
+
+### Code review instructions
+
+- Run `node ttmp/.../scripts/02-review-doc-quality.mjs --output ttmp/.../various/30-review-doc-quality-audit.md` from the repo root.
+- Run `docmgr doctor --ticket PBUI-AGENT-4 --stale-after 30`.
+- Start from the updated `index.md`; every linked local document should resolve.
+
+### Technical details
+
+The audit intentionally fails on:
+
+```text
+unbalanced code fences
+fewer than 3,000 words
+fewer than two Mermaid diagrams
+fewer than six ranked finding sections
+fewer than three decision records
+fewer than eight concrete source references
+missing architecture/findings/testing/roadmap/reference sections
+TODO/TBD/FIXME/template comments
+missing frontmatter RelatedFiles targets
+```

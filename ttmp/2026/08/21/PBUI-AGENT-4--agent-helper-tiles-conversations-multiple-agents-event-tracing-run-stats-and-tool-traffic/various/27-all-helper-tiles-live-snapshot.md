@@ -1,3 +1,18 @@
+---
+Title: 'All multi-agent helper tiles live accessibility snapshot'
+Ticket: PBUI-AGENT-4
+Status: active
+Topics: [pbui, chat, frontend, onboarding]
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: 'Playwright accessibility-tree snapshot after placing Conversations, Events, Runs and Tools beside live conversations.'
+WhatFor: Rendered helper-tile and narrow-layout evidence.
+WhenToUse: Reviewing helper tile semantics, coverage or responsive layout.
+---
+
 - generic [ref=e22]:
   - generic [ref=e24]:
     - generic [ref=e148]:

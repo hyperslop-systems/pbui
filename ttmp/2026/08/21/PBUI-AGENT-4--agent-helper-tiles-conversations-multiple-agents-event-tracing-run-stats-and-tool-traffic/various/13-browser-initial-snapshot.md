@@ -1,3 +1,18 @@
+---
+Title: 'Initial live multi-agent demo accessibility snapshot'
+Ticket: PBUI-AGENT-4
+Status: active
+Topics: [pbui, chat, frontend, onboarding]
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: 'Playwright accessibility-tree snapshot of the freshly loaded Gold Coin Shop multi-agent workbench.'
+WhatFor: Baseline rendered-UI evidence for the three-part review.
+WhenToUse: Comparing later browser probes to a healthy initial state.
+---
+
 - generic [ref=e3] [box=0,0,1143,800]:
   - generic [ref=e5] [box=10,4,1123,22]:
     - generic [ref=e6] [box=16,6,110,18]: GOLD COIN SHOP
