@@ -885,3 +885,116 @@ product-wide PbuiChatStore: inspector · watchlist · focus
 conversation-keyed draft state: draft[A] · draft[B]
 chat-provider runtime per conversation: timeline · overlay · runStats · socket · tools
 ```
+
+
+## Step 10: Draft the three full review documents
+
+This step converted the evidence map into the three requested long-form reviews. Each document starts from first principles for an intern, then separates observed architecture from ranked findings and proposed changes. Together they are 2,279 lines and roughly 14,600 words, with API tables, Mermaid diagrams, pseudocode, decision records, validation plans and file/artifact references.
+
+The user's note about rearranging the live tiles arrived while the helper-tile layout was intentionally dense from repeated placement probes. I did not overwrite their in-progress arrangement with a raw document replacement — that operation is itself a known unsafe API — and kept the review focused on source/docs. The live screenshot remains useful evidence that repeated 50/50 placement has no minimum useful pane size.
+
+### Prompt Context
+
+**User prompt (verbatim):** "i'm rearranging the tiles so it's a bit more readable, but you could do that too I think."
+
+**Assistant interpretation:** It is acceptable for the reviewer to arrange the running workbench for inspection, but the user is already improving it; avoid fighting their live state and use safe workbench verbs if another arrangement is needed.
+
+**Inferred user intent:** Make the live multi-tile system readable enough to inspect its helper views, not merely exercise it through hidden console state.
+
+**Commit (evidence/docs):** `328d4c233851441517cf4ef7c1cc187a7385f775` — "PBUI-AGENT-4: begin three-part review with live evidence"
+
+### What I did
+
+- Created three docmgr design-docs:
+  - `design-doc/03-pbui-itself-…md` — PBUI typed object grammar, components, chrome, CSS/tokens, packaging and accessibility.
+  - `design-doc/04-pbui-javascript-api-and-interaction-…md` — protobuf document, pure applier/builders, external store, high-level verbs, rendering and product integration.
+  - `design-doc/05-agent-framework-and-tiles-…md` — runtime capture, registry/scopes, router, tools/handoff, Go server and all five helper tiles.
+- Added five ticket tasks for the three documents, final validation/bookkeeping and reMarkable delivery.
+- Expanded live evidence after the first commit:
+  - `various/18` and `19`: launcher/Dialog and ObjectMenu both leave focus on `<body>` after Escape.
+  - `various/20`: zero browser errors/warnings in the exercised flow.
+  - `various/21`: real session/manifest/message/verb request list.
+  - `various/22`–`24`: a local human rename emits no PATCH and the server list has no title.
+  - `various/25`–`28`: all helper apps placed and rendered; Agent Context inspected live.
+  - `various/29`: reproducible source line anchors.
+- Ran additional release/integration gates:
+  - `pnpm consumer:smoke` passed with packed PBUI and one React 19.2.8.
+  - `pnpm pack:check` passed and listed the publishable surface.
+  - `pnpm --filter @hyperslop-systems/pbui-sandbox test` passed: 15 files, 103 tests.
+- Drafted ranked finding tables: C1–C8, J1–J11 and A1–A16.
+- Validated frontmatter for all three documents; all passed.
+
+### Why
+
+- Splitting the report prevents the multi-agent defects from burying foundational API/accessibility findings, and prevents core PBUI concerns from overwhelming the runtime/security review.
+- A new intern needs the vocabulary and flows before a defect list. Each report therefore explains data ownership and execution sequences before proposing changes.
+- The proposals deliberately preserve strong current boundaries: typed presentation verbs, protocol/intent/rendering separation, one product router and a weak-but-mergeable session index.
+
+### What worked
+
+- All three documents passed `docmgr validate frontmatter --suggest-fixes` with no suggestions.
+- The same evidence supported cross-layer findings without conflating them: focus return belongs in core PBUI; mutation outcome/replacement belongs in the JS interaction API; shared draft/close/title/approval belongs in agent framework.
+- The live title probe made an otherwise easy-to-miss API gap conclusive: no PATCH appeared in network traffic and GET sessions omitted the renamed title.
+
+### What didn't work
+
+- The demo package declares a test script but has no tests. The exact failure was:
+
+```text
+No test files found, exiting with code 1
+
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/node_modules/**, **/.git/**
+
+ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL @hyperslop-systems/pbui-chat-demo@0.1.0 test: `vitest run`
+Exit status 1
+```
+
+This is recorded as finding A12, not hidden by omitting the command. The package/unit suites and browser smoke passed; the demo's declared test gate itself is incomplete.
+
+- Repeatedly placing four singleton helper apps through safe verbs produced extremely narrow nested panes. Nothing crashed, but some columns were one or two characters wide. The source (`minmax(0, …fr)`) and `various/26-all-helper-tiles-live.png` support finding J6.
+
+### What I learned
+
+- The handoff approval is more replayable than the original author review says. Matching target and prompt is good, but no code consumes the approval; the exact approved send can repeat indefinitely. The check also omits sender and refs.
+- `Workbench.perform` returns a boolean at runtime but the public interface declares `void`, hiding the exact outcome agent callers need.
+- Closed run statistics are not retained: detaching deletes the mirror and the persistent record has no token totals, despite the original design claiming closed rows show last-known totals.
+- Package documentation is uneven: core PBUI has a README and rich comments, while published workbench/protocol surfaces have no package README.
+
+### What was tricky to build
+
+- Severity had to reflect both deployment context and actual behavior. Open unauthenticated routes are acceptable for a localhost scripted demo and still a high-severity deployment blocker; the report states both instead of pretending one cancels the other.
+- Proposals had to choose the narrow state boundary. The draft fix keys only drafts; cloning the entire product chat store per runtime would incorrectly split inspector/watchlist/focus.
+- Avoiding recommendation drift required preserving the reason behind weak server indexing. Adding authentication does not require making the index authoritative; reliability and authorization are separate axes.
+
+### What warrants a second pair of eyes
+
+- C2's polymorphic prop proposal: ensure typed native forwarding does not turn visual primitives into unrestricted styling APIs.
+- J3's consolidation choice: inventory real consumers of `createWorkbenchClient` before deprecation.
+- A4's approval ledger: consumption must be atomic with send initiation and include refs as well as prompt.
+- A5's security boundary: session list, WebSocket subscription and tool-result submission need a coherent principal/membership model.
+- A1 is marked Critical because it crosses human text between visible conversations and loses drafts; reviewers should confirm severity conventions.
+
+### What should be done in the future
+
+- Review the three drafts for cross-reference accuracy, duplicate/repeated material and Mermaid/PDF rendering.
+- Relate focused source/evidence files to each doc, update index and changelog, and check the three writing tasks.
+- Run final docmgr doctor and full validation after bookkeeping.
+- Bundle dry-run, upload and verify on reMarkable.
+
+### Code review instructions
+
+- Read document 03 §1 and §5 for core findings, 04 §2–§6 for the workbench model/findings, and 05 §1 plus §7 for agent severity.
+- Compare each finding's source range to `various/29-review-line-anchors.txt`.
+- Validate Markdown/frontmatter, then render the bundle; diagrams are intentionally simple flow/state/class diagrams to survive PDF conversion.
+
+### Technical details
+
+Document size at first complete draft:
+
+```text
+03 PBUI core:             527 lines · 4,074 words · 30,510 bytes
+04 JS API/interaction:    695 lines · 4,119 words · 31,937 bytes
+05 agent framework:     1,057 lines · 6,395 words · 49,295 bytes
+Total:                  2,279 lines · 14,588 words · 111,742 bytes
+```

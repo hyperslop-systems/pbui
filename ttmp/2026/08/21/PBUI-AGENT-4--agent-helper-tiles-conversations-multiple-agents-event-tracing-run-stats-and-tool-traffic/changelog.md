@@ -96,3 +96,14 @@ Step 9: began the three-part architecture review; recorded full automated valida
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/ConversationScope.tsx — Browser probe proved an explicitly closed mounted scope renders opening indefinitely
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/scripts/01-review-inventory.mjs — Reproducible inventory for the three review scopes
 
+
+## 2026-08-22
+
+Step 10: drafted the three full intern-oriented architecture/code-review documents (PBUI core, JS API/interaction, agent framework/tiles) and added live focus/title/helper-tile evidence
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/design-doc/03-pbui-itself-core-presentation-system-components-chrome-accessibility-and-design-system-code-review.md — PBUI core review
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/design-doc/04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md — Workbench/protocol JavaScript API review
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/design-doc/05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md — Agent runtime, server and tiles review
+

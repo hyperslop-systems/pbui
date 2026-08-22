@@ -1,0 +1,123 @@
+# Review line anchors
+
+## PBUI core
+src/presentation/registry.ts:30:export function createPresentationRegistry<
+src/presentation/types.ts:24:export interface PresentationAction<Verb> {
+src/presentation/types.ts:113:export interface PresentationDescriptor<Value, Environment, Verb> {
+src/presentation/createPbui.tsx:178:export function createPbui<Values extends PresentationValues, Environment, Verb>({
+src/presentation/createPbui.tsx:203:  function Provider({
+src/presentation/createPbui.tsx:293:  function Presentation({
+src/presentation/createPbui.tsx:468:  function ObjectMenu() {
+src/presentation/createPbui.tsx:586:  function MouseDocLine({ ambient }: { ambient?: string }) {
+src/presentation/createPbui.tsx:618:  function AcceptBanner() {
+src/surfaces.ts:106:export function useEscapeSurface(open: boolean, id?: string): boolean {
+src/surfaces.ts:123:export function useAnyEscapeSurface(): boolean {
+src/components/Dialog/Dialog.tsx:20:export function Dialog({
+src/components/foundation/Text/Text.tsx:31:export function Text({
+src/components/layout/Toolbar/Toolbar.tsx:11:export function Toolbar({
+src/components/atoms/Button/Button.tsx:56:export function Button({
+src/components/atoms/TextInput/TextInput.tsx:56:export function TextInput({
+src/components/atoms/SelectInput/SelectInput.tsx:108:export function SelectInput({
+src/chrome/LauncherShell.tsx:58:export function splitDirectionFor(placementId: string, root?: HTMLElement | null): "row" | "col" {
+src/chrome/LauncherShell.tsx:69:export function LauncherShell({
+src/chrome/TileFrame.tsx:69:export function TileFrame({
+src/chrome/useTileDrag.ts:92:export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
+
+## JS API and interaction
+packages/pbui-workbench/src/createWorkbench.tsx:45:export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
+packages/pbui-workbench/src/createWorkbench.tsx:86:      store.replaceDocument(doc);
+packages/pbui-workbench/src/createWorkbench.tsx:89:    reset: () => store.replaceDocument(initial),
+packages/pbui-workbench/src/types.ts:81:export interface Workbench {
+packages/pbui-workbench/src/types.ts:90:  perform(verb: WorkbenchVerb): void;
+packages/pbui-workbench/src/store.ts:11:export interface WorkbenchState {
+packages/pbui-workbench/src/store.ts:40:export interface WorkbenchStoreOptions {
+packages/pbui-workbench/src/store.ts:63:export interface WorkbenchStore {
+packages/pbui-workbench/src/store.ts:75:  replaceDocument(document: WorkbenchDocument): void;
+packages/pbui-workbench/src/store.ts:78:export function createWorkbenchStore(
+packages/pbui-workbench/src/store.ts:139:    replaceDocument(document) {
+packages/pbui-workbench/src/store.ts:151:export function useWorkbenchStore<T>(store: WorkbenchStore, selector: (state: WorkbenchState) => T): T {
+packages/pbui-workbench/src/verbs.ts:125:export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
+packages/pbui-workbench/src/verbs.ts:376:export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: VerbEnvironment): WorkbenchVerbHandlers {
+packages/pbui-workbench/src/verbs.ts:828:export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: WorkbenchVerb): boolean {
+packages/pbui-workbench/src/document.ts:102:export function layout(spec: LayoutSpec, options: LayoutOptions = {}): WorkbenchDocument {
+packages/pbui-workbench/src/document.ts:153:export function parseDocument(json: string | null | undefined): WorkbenchDocument | null {
+packages/pbui-workbench/src/document.ts:209:export function specOf(doc: WorkbenchDocument, node: Node): LayoutSpec {
+packages/pbui-workbench/src/tileDescriptor.ts:50:export function createTileDescriptor(
+packages/workbench-protocol/src/client/apply.ts:65:export function applyMutation(doc: WorkbenchDocument, mutation: Mutation): WorkbenchDocument {
+packages/workbench-protocol/src/client/apply.ts:347:export function applyMutations(doc: WorkbenchDocument, mutations: Mutation[]): WorkbenchDocument {
+packages/workbench-protocol/src/client/builders.ts:156:export function closePlacement(doc: WorkbenchDocument, placementId: string): Mutation[] {
+packages/workbench-protocol/src/client/builders.ts:205:export function dockPlacement(
+packages/workbench-protocol/src/client/builders.ts:300:export function createWorkbenchClient(config: ClientConfig): WorkbenchClient {
+
+## Agent framework and tiles
+146:  const store = options.store ?? createPbuiChatStore();
+156:  const pending = new Map<string, PendingSend>();
+202:  function toolsFor(conversationId: string): ConversationToolset {
+267:  function sendMessageBodyFor(conversationId: string) {
+286:  const conversations: ConversationRegistry = createConversationRegistry({
+305:  async function sendTo(conversationId: string | null, body: Omit<ChatMessageBody, "attachments">) {
+336:  function Binder({ children }: { children: ReactNode }) {
+410:  function Provider({ children, environment }: PbuiChatProviderProps<Environment>) {
+19: * conversation is OPEN, from `open()` until `close()`, independent of whether
+58:  /** True between `open()` and `close()`, even before the runtime attaches. */
+87:  close(id: string): void;
+88:  rename(id: string, title: string, by?: TitledBy): void;
+113:  /** Write pending changes now (call on `beforeunload`). */
+120:  attachRuntime(id: string, captured: { store: ChatStore; context: ChatRuntimeContextValue }): ChatRuntime;
+269:export function createConversationRegistry(options: CreateConversationRegistryOptions): ConversationRegistry {
+382:  function mirrorOf(runtime: ChatRuntime): ConversationMirror {
+395:  function sync(id: string, runtime: ChatRuntime) {
+496:    async create(createOptions = {}) {
+532:    close(id) {
+541:    rename(id, title, by = "human") {
+553:      if (archived) registry.close(id);
+559:      registry.close(id);
+592:    async sync() {
+633:    attachRuntime(id, captured) {
+664:    window.addEventListener("beforeunload", () => registry.flush());
+packages/pbui-chat/src/conversations/ConversationScope.tsx:19:export function ConversationScope({ conversationId, children }: { conversationId: string; children: ReactNode }) {
+packages/pbui-chat/src/conversations/ConversationScope.tsx:50:        opening conversation…
+packages/pbui-chat/src/conversations/ConversationHost.tsx:25:export function ConversationHost({ registry }: { registry: ConversationRegistry }) {
+packages/pbui-chat/src/conversations/ConversationHost.tsx:38:function Capture({ registry, conversationId }: { registry: ConversationRegistry; conversationId: string }) {
+packages/pbui-chat/src/conversations/ActiveConversationScope.tsx:17:export function ActiveConversationScope({ children, empty }: { children: ReactNode; empty?: ReactNode }) {
+63:export function toolCallsOf(runtime: ChatRuntime, conversationTitle: string): ToolCall[] {
+119:export function selectToolTraffic(registry: ConversationRegistry): ToolCall[] {
+162:export function useToolTraffic(registry: ConversationRegistry): ToolCall[] {
+211:export function streamRate(stats: { isStreaming: boolean; streamStartTime: number | null; streamOutputTokens: number } | null, now: number): number | null {
+12: * itself from its neighbours will hand work to itself. `conversation_send`
+25:  conversation_send: ConversationPolicyDecision;
+29:  conversation_send: "confirm",
+47:   * What the product's `isApproved` actually wants in the proposal, appended
+58:  isApproved?(confirmationId: string, target: string, prompt: string): boolean;
+69:export function createConversationTools(options: ConversationToolsOptions): ConversationTools {
+118:    name: "conversation_send",
+131:    async execute(input) {
+135:      const decision = policy.conversation_send;
+157:        if (!options.isApproved?.(input.confirmationId, input.conversationId, input.prompt)) {
+28:  conversationId: string | null;
+32:  runtimeFor(conversationId: string): ChatRuntime | null;
+43:  sendToAgent(template: string, refs: readonly Reference[], target?: { conversationId: string }): Promise<void>;
+90:  conversationId?: string;
+95: * `RouterContext` minus `perform` any more: the context's `conversationId`
+100:export type RouterBinding = Omit<RouterContext, "perform" | "conversationId" | "client" | "actor"> & {
+102:  conversation(conversationId?: string): { id: string; client: ChatClient } | null;
+132:export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptions<Verb>): VerbRouter<Verb> {
+142:  async function report(
+188:    async perform(verb, explicitTarget, performOptions) {
+191:      const conversation = binding?.conversation(performOptions?.conversationId) ?? null;
+212:                conversationId: conversation?.id ?? null,
+219:                  bound.sendToAgent(template, refs, explicit ?? (conversation ? { conversationId: conversation.id } : undefined)),
+pkg/chatserver/sessions.go:40:type SessionIndex interface {
+pkg/chatserver/sessions.go:98:func (m *memorySessionIndex) Retitle(_ context.Context, id string, title string) error {
+pkg/chatserver/sessions.go:184:func (s *sqliteSessionIndex) Retitle(ctx context.Context, id string, title string) error {
+pkg/chatserver/handlers.go:125:// HandleListSessions returns what this server has seen, most recently active
+pkg/chatserver/handlers.go:129:func (s *Server) HandleListSessions(w http.ResponseWriter, r *http.Request) {
+pkg/chatserver/handlers.go:138:// HandleRetitleSession stores a title for a session. Titles live in the
+pkg/chatserver/handlers.go:141:func (s *Server) HandleRetitleSession(w http.ResponseWriter, r *http.Request) {
+pkg/chatserver/handlers.go:159:// HandleSubmitMessage starts a run. With the scripted engine the refs travel
+pkg/chatserver/handlers.go:162:func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
+pkg/chatserver/server.go:220:// RegisterRoutes mounts the API on mux. The SPA is mounted separately (and
+pkg/chatserver/server.go:222:func (s *Server) RegisterRoutes(mux *http.ServeMux) {
+pkg/chatserver/server.go:227:	mux.HandleFunc("GET /api/chat/sessions", s.HandleListSessions)
+pkg/chatserver/server.go:229:	mux.HandleFunc("PATCH /api/chat/sessions/{id}", s.HandleRetitleSession)
+pkg/chatserver/server.go:230:	mux.HandleFunc("POST /api/chat/sessions/{id}/messages", s.HandleSubmitMessage)
