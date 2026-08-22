@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/** Extract and render every Mermaid block in the three review docs. */
+/** Extract and render every Mermaid block in the PBUI-AGENT-4 review docs. */
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -12,6 +12,7 @@ const docs = [
   `${ticket}/design-doc/03-pbui-itself-core-presentation-system-components-chrome-accessibility-and-design-system-code-review.md`,
   `${ticket}/design-doc/04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md`,
   `${ticket}/design-doc/05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md`,
+  `${ticket}/design-doc/06-tool-calls-and-agent-ui-interaction-frontend-tools-approval-gates-verb-routing-observability-and-code-review.md`,
 ];
 const dir = mkdtempSync(join(tmpdir(), "pbui-mermaid-"));
 const puppeteerConfig = join(dir, "puppeteer.json");

@@ -5,4 +5,7 @@ PASS: 04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-
 PASS: 05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md block 1
 PASS: 05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md block 2
 PASS: 05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md block 3
-Mermaid blocks: 7; failures: 0
+PASS: 06-tool-calls-and-agent-ui-interaction-frontend-tools-approval-gates-verb-routing-observability-and-code-review.md block 1
+PASS: 06-tool-calls-and-agent-ui-interaction-frontend-tools-approval-gates-verb-routing-observability-and-code-review.md block 2
+PASS: 06-tool-calls-and-agent-ui-interaction-frontend-tools-approval-gates-verb-routing-observability-and-code-review.md block 3
+Mermaid blocks: 10; failures: 0

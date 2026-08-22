@@ -21,9 +21,9 @@ RelatedFiles:
 ExternalSources:
     - https://github.com/go-go-golems/sessionstream/
     - https://github.com/go-go-golems/pinocchio/
-Summary: 'Built and reviewed: several agent conversations on one PBUI workbench, a session-aware router and per-session tools, a weak server session index, and five helper tiles. The ticket now contains three full intern-oriented architecture/code reviews — PBUI core, the JavaScript workbench/protocol interaction API, and the agent framework plus tiles — backed by automated tests, release builds and live browser evidence. The review found a critical shared-draft defect plus lifecycle, title-sync, approval, accessibility and API-contract gaps.'
+Summary: 'Built and reviewed: several agent conversations on one PBUI workbench, a session-aware router and per-session tools, a weak server session index, and five helper tiles. The ticket now contains four full intern-oriented architecture/code reviews — PBUI core, the JavaScript workbench/protocol interaction API, the agent framework plus tiles, and the complete agent tool-call / UI interaction control plane — backed by automated tests, release builds and live browser evidence. The review found a critical shared-draft defect, a critical cross-session frontend-result acceptance defect, plus lifecycle, title-sync, approval, accessibility and API-contract gaps.'
 LastUpdated: 2026-08-22T18:45:00-04:00
-WhatFor: Landing page for PBUI-AGENT-4; start here for the three-part review, original design/self-review, evidence, tasks and diary.
+WhatFor: Landing page for PBUI-AGENT-4; start here for the four-part review, original design/self-review, evidence, tasks and diary.
 WhenToUse: Before reviewing or changing PBUI core, the workbench JavaScript API, multi-conversation support or any agent helper tile.
 ---
 
@@ -45,9 +45,10 @@ Every PBUI product so far has one agent: one `<ChatProvider>` builds one store, 
 1. [design-doc/03 — PBUI itself](./design-doc/03-pbui-itself-core-presentation-system-components-chrome-accessibility-and-design-system-code-review.md): typed presentations, descriptors, object menus, accept mode, components/chrome, tokens and accessibility review (C1–C8).
 2. [design-doc/04 — PBUI JavaScript API and interaction](./design-doc/04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md): protobuf document model, pure applier, external store, apps, high-level verbs, rendering and integration review (J1–J11).
 3. [design-doc/05 — Agent framework and tiles](./design-doc/05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md): runtimes, registry/scopes, router, tools/handoff, server and all five helper tiles (A1–A16).
-4. [design-doc/01 — Original intern guide](./design-doc/01-intern-guide-many-conversations-on-one-workbench-the-session-registry-and-the-agent-helper-tiles.md): the original design, phases, sequences and failure modes, including §4.10 on design-versus-build changes.
-5. [design-doc/02 — Original author self-review](./design-doc/02-code-review-guide-what-to-audit-in-the-multi-agent-workbench-and-what-i-already-know-is-wrong.md): known shortcuts and dependency defects that seeded the fresh audit.
-6. [reference/01 — Diary](./reference/01-diary.md): chronological evidence, exact commands/failures, browser probes, drafting and delivery.
+4. [design-doc/06 — Tool calls and agent UI interaction](./design-doc/06-tool-calls-and-agent-ui-interaction-frontend-tools-approval-gates-verb-routing-observability-and-code-review.md): the full agent-to-UI control plane — backend/browser/human tools, manifest lifecycle, verb routing, approval gates, invocation identity, idempotency, observability, and a Critical cross-session frontend-result acceptance finding (T1–T16).
+5. [design-doc/01 — Original intern guide](./design-doc/01-intern-guide-many-conversations-on-one-workbench-the-session-registry-and-the-agent-helper-tiles.md): the original design, phases, sequences and failure modes, including §4.10 on design-versus-build changes.
+6. [design-doc/02 — Original author self-review](./design-doc/02-code-review-guide-what-to-audit-in-the-multi-agent-workbench-and-what-i-already-know-is-wrong.md): known shortcuts and dependency defects that seeded the fresh audit.
+7. [reference/01 — Diary](./reference/01-diary.md): chronological evidence, exact commands/failures, browser probes, drafting and delivery.
 
 Background: `PBUI-AGENT-1` (the chat), `PBUI-AGENT-2` (workbench tools and policy), `PBUI-WORKBENCH-1/2` (the app model), `PBUI-SANDBOX-1` (the registry pattern reused here).
 
@@ -57,7 +58,7 @@ All six implementation phases remain built. The fresh review reran 96 PBUI tests
 
 Live browser review found behavior not covered by those green suites: two conversation composers share one draft (A1, Critical); explicitly closing an active mounted conversation leaves chat and trace tiles stuck on `opening conversation…` (A2); and a human rename never calls the server PATCH, so a second browser cannot receive it (A3). Core review also proved Dialog and ObjectMenu lose invocation focus on Escape (C1). Evidence is stored in `various/11`–`32`; see the three review documents for remediation designs.
 
-The corrected three-document bundle (all seven Mermaid diagrams renderer-checked) is uploaded as **PBUI-AGENT-4 Three Part Architecture Review** under `/ai/2026/08/22/PBUI-AGENT-4` on reMarkable. Delivery evidence is `various/32-remarkable-delivery.md`.
+The corrected four-document bundle (all ten Mermaid diagrams renderer-checked) is uploaded as **PBUI-AGENT-4 Architecture Review** under `/ai/2026/08/22/PBUI-AGENT-4` on reMarkable. Delivery evidence is `various/32-remarkable-delivery.md`.
 
 Mid-ticket the user gave a standing rule — everything that can be an object should be an object, and its actions belong in the right-click menu — which turned four gestures into verbs and rewrote the Conversations tile (diary step 4). The original guide's §4.10 lists seven places the build refused the design; the fresh review extends that inventory with source- and browser-backed findings. See [tasks.md](./tasks.md).
 
@@ -79,9 +80,9 @@ See [changelog.md](./changelog.md) for recent changes and decisions.
 
 ## Structure
 
-- design-doc/ - Original design/self-review plus the three full review documents
+- design-doc/ - Original design/self-review plus the four full review documents
 - reference/ - The frequently updated investigation diary
 - playbooks/ - Command sequences and test procedures
-- scripts/ - Reproducible inventory and document-quality audit scripts
+- scripts/ - Reproducible inventory, document-quality and Mermaid audit, and tool-runtime/cross-session probes
 - various/ - Screenshots, accessibility snapshots, network/runtime probes and audit outputs
 - archive/ - Deprecated or reference-only artifacts

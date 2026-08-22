@@ -1,5 +1,5 @@
 ---
-Title: 'Three-review document quality audit'
+Title: 'PBUI review document quality audit'
 Ticket: PBUI-AGENT-4
 Status: active
 Topics: [pbui, chat, frontend, backend, onboarding]
@@ -8,12 +8,12 @@ Intent: long-term
 Owners: []
 RelatedFiles: []
 ExternalSources: []
-Summary: 'Automated structural and content-quality audit for the three full PBUI-AGENT-4 review documents.'
-WhatFor: Prove the three review documents meet their required structure and evidence density.
+Summary: 'Automated structural and content-quality audit for the full PBUI-AGENT-4 review document set.'
+WhatFor: Prove each review document meets its required structure and evidence density.
 WhenToUse: Before committing or uploading the review bundle.
 ---
 
-# Three-review document quality audit
+# PBUI review document quality audit
 
 Result: **PASS**
 
@@ -22,6 +22,7 @@ Result: **PASS**
 | `03-pbui-itself-core-presentation-system-components-chrome-accessibility-and-design-system-code-review.md` | 541 | 4112 | 2 | 7 | 4 | 15 |
 | `04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md` | 711 | 4172 | 2 | 11 | 4 | 14 |
 | `05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md` | 1073 | 6442 | 3 | 13 | 6 | 23 |
+| `06-tool-calls-and-agent-ui-interaction-frontend-tools-approval-gates-verb-routing-observability-and-code-review.md` | 1027 | 7166 | 3 | 16 | 6 | 18 |
 
 ## Issues
 

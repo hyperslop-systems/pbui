@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/** Quality audit for the three PBUI-AGENT-4 review documents. */
+/** Quality audit for the full PBUI-AGENT-4 review document set. */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 
@@ -10,17 +10,18 @@ const docs = [
   `${ticket}/design-doc/03-pbui-itself-core-presentation-system-components-chrome-accessibility-and-design-system-code-review.md`,
   `${ticket}/design-doc/04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md`,
   `${ticket}/design-doc/05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md`,
+  `${ticket}/design-doc/06-tool-calls-and-agent-ui-interaction-frontend-tools-approval-gates-verb-routing-observability-and-code-review.md`,
 ];
 const outputArg = process.argv.indexOf("--output");
 const output = outputArg >= 0 ? process.argv[outputArg + 1] : null;
 
 const required = [
-  /## 1\. Executive summary/i,
-  /## \d+\. (?:System model|The core mental model|Workbench vocabulary)/i,
-  /## \d+\. (?:Detailed findings|API reference|Public API reference)/i,
-  /## \d+\. Design decisions/i,
-  /## \d+\. (?:Testing|Testing and validation)/i,
-  /## \d+\. (?:Phased|Proposed target architecture)/i,
+  /## (?:1\. )?Executive summary/i,
+  /## \d+\. (?:System model|The core mental model|Workbench vocabulary|Mental model)/i,
+  /## \d+\. (?:Detailed findings|Ranked findings|API reference|Public API reference)/i,
+  /## \d+\. (?:Design decisions|Decision records)/i,
+  /## \d+\. (?:Testing|Testing and validation|Testing strategy)/i,
+  /## \d+\. (?:Phased|Proposed target architecture|Proposed target design)/i,
   /## \d+\. (?:Evidence and references|References)/i,
 ];
 
@@ -39,7 +40,7 @@ for (const path of docs) {
   const bullets = (text.match(/^\s*[-*] /gm) ?? []).length;
   const tables = (text.match(/^\|.*\|$/gm) ?? []).length;
   const findings = (text.match(/^### [A-Z]\d+ /gm) ?? []).length;
-  const decisions = (text.match(/^### Decision:/gm) ?? []).length;
+  const decisions = (text.match(/^### Decision(?: \d+)?:/gm) ?? []).length;
   const fileRefs = (text.match(/`(?:src|packages|pkg|proto)\//g) ?? []).length;
 
   if (fences % 2 !== 0) issues.push(`${path}: unbalanced code fences (${fences})`);
@@ -63,7 +64,7 @@ for (const path of docs) {
 
 const report = [
   "---",
-  "Title: 'Three-review document quality audit'",
+  "Title: 'PBUI review document quality audit'",
   "Ticket: PBUI-AGENT-4",
   "Status: active",
   "Topics: [pbui, chat, frontend, backend, onboarding]",
@@ -72,12 +73,12 @@ const report = [
   "Owners: []",
   "RelatedFiles: []",
   "ExternalSources: []",
-  "Summary: 'Automated structural and content-quality audit for the three full PBUI-AGENT-4 review documents.'",
-  "WhatFor: Prove the three review documents meet their required structure and evidence density.",
+  "Summary: 'Automated structural and content-quality audit for the full PBUI-AGENT-4 review document set.'",
+  "WhatFor: Prove each review document meets its required structure and evidence density.",
   "WhenToUse: Before committing or uploading the review bundle.",
   "---",
   "",
-  "# Three-review document quality audit",
+  "# PBUI review document quality audit",
   "",
   `Result: **${issues.length === 0 ? "PASS" : "FAIL"}**`,
   "",

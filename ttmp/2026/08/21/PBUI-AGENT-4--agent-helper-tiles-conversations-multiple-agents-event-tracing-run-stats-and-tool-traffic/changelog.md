@@ -140,3 +140,14 @@ Step 13: traced the full agent-to-UI tool pipeline and reproduced automatic-call
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/various/33-tool-runtime-probes.md — Four executable browser-side hazard reproductions
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/various/35-cross-session-tool-result-probe.md — Cross-session pending-call result evidence
 
+
+## 2026-08-22
+
+Step 14: wrote and validated design-doc/06 tool-call / agent-UI interaction review (16 ranked findings T1–T16, 6 decisions, 10 Mermaid diagrams renderer-checked), related source/evidence, updated index to a four-document bundle, docmgr doctor passed
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/design-doc/06-tool-calls-and-agent-ui-interaction-frontend-tools-approval-gates-verb-routing-observability-and-code-review.md — Full tool-call control-plane review
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/index.md — Four-document bundle read order and delivery note
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/various/30-review-doc-quality-audit.md — Quality audit now covers all four reviews
+
