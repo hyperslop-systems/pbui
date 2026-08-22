@@ -12,5 +12,5 @@
 - [x] Write and review the PBUI core architecture/code-review document <!-- t:yed4 -->
 - [x] Write and review the PBUI JavaScript API and interaction document <!-- t:0skg -->
 - [x] Write and review the agent framework and helper tiles document <!-- t:7w8d -->
-- [ ] Complete final validation, diary/changelog/index bookkeeping and docmgr doctor <!-- t:esy7 -->
-- [ ] Dry-run, upload and verify the three-document review bundle on reMarkable <!-- t:5gr7 -->
+- [x] Complete final validation, diary/changelog/index bookkeeping and docmgr doctor <!-- t:esy7 -->
+- [x] Dry-run, upload and verify the three-document review bundle on reMarkable <!-- t:5gr7 -->

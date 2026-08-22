@@ -118,3 +118,14 @@ Step 11: quality-audited all three reviews, related focused source files, refres
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/reference/01-diary.md — Frequent investigation and validation history
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/scripts/02-review-doc-quality.mjs — Reproducible structural/content audit for the three reviews
 
+
+## 2026-08-22
+
+Step 12: dry-ran and rendered the three-review reMarkable bundle, repaired a Mermaid class-diagram parse failure, renderer-checked all seven diagrams, uploaded the corrected PDF and verified the remote listing
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/design-doc/04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md — Corrected parser-safe Mermaid class diagram
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/scripts/03-check-mermaid.mjs — Renderer-level Mermaid validation
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/21/PBUI-AGENT-4--agent-helper-tiles-conversations-multiple-agents-event-tracing-run-stats-and-tool-traffic/various/32-remarkable-delivery.md — Final upload and remote-listing evidence
+

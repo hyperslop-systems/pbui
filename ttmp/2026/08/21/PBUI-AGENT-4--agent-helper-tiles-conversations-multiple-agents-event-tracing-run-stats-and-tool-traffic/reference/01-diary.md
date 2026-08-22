@@ -1106,3 +1106,118 @@ missing architecture/findings/testing/roadmap/reference sections
 TODO/TBD/FIXME/template comments
 missing frontmatter RelatedFiles targets
 ```
+
+
+## Step 12: Render, repair and deliver the reMarkable bundle
+
+The final delivery exposed one diagram parser defect that the structural Markdown audit could not see. The first real bundle upload succeeded but logged a Mermaid parse warning for document 04's class members; that rendered PDF was treated as defective, the diagram was corrected, and a new renderer-level audit was added before replacing the upload.
+
+All seven Mermaid diagrams then rendered successfully. The corrected three-document PDF was uploaded to the ticket's dated reMarkable directory and the required remote listing confirmed it beside the older code-review guide.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same review/delivery request as Step 9)
+
+**Assistant interpretation:** Deliver a PDF whose diagrams actually render, not merely a command that returns success; preserve exact repair and remote verification evidence.
+
+**Inferred user intent:** Receive a readable offline review bundle on reMarkable, with enough traceability to trust that the uploaded version is the corrected final document.
+
+**Commit (quality/bookkeeping):** `6863661599ffec77bf81759c450baaf72b347d56` — "PBUI-AGENT-4: audit review docs and ticket hygiene"
+
+### What I did
+
+- Ran the required `remarquee upload bundle --dry-run` for docs 03/04/05, name `PBUI-AGENT-4 Three Part Architecture Review`, destination `/ai/2026/08/22/PBUI-AGENT-4`, ToC depth 2.
+- Ran the first real upload and inspected warnings rather than accepting the success line alone.
+- Rewrote document 04's Mermaid class members to parser-safe names (`ViewMap viewsById`, `DocumentMap documentPayloads`, etc.).
+- Added `scripts/03-check-mermaid.mjs`, which extracts and renders every Mermaid block with `mmdc`; saved output as `various/31-mermaid-render-audit.txt`.
+- Replaced the just-created, unannotated flawed PDF with `--force` after all seven diagrams passed.
+- Verified the remote directory with `remarquee cloud ls` and wrote `various/32-remarkable-delivery.md`.
+
+### Why
+
+- The dry run intentionally does not run Pandoc/Mermaid, so it cannot prove diagram syntax. The real renderer warning had to become a failed validation attempt even though upload returned OK.
+- `--force` normally risks deleting annotations. Here it was appropriate because the PDF had just been uploaded by this session, was known defective and had no opportunity to accumulate user annotations.
+
+### What worked
+
+Final Mermaid audit:
+
+```text
+PASS: 03 … block 1
+PASS: 03 … block 2
+PASS: 04 … block 1
+PASS: 04 … block 2
+PASS: 05 … block 1
+PASS: 05 … block 2
+PASS: 05 … block 3
+Mermaid blocks: 7; failures: 0
+```
+
+Final upload:
+
+```text
+OK: uploaded PBUI-AGENT-4 Three Part Architecture Review.pdf -> /ai/2026/08/22/PBUI-AGENT-4
+```
+
+Remote listing:
+
+```text
+[f] PBUI-AGENT-4 Three Part Architecture Review
+[f] PBUI-AGENT-4 — code review guide
+```
+
+### What didn't work
+
+The first real upload warned twice (once per render pass) about document 04's first Mermaid block:
+
+```text
+Error: Parse error on line 6:
+...rkspaces[]    views{}    viewOrder[]
+----------------------^
+Expecting 'STRUCT_STOP', 'MEMBER', got 'OPEN_IN_STRUCT'
+```
+
+The first direct `mmdc` audit also failed all seven diagrams before parsing because Chromium could not start in this environment:
+
+```text
+FATAL:content/browser/zygote_host/zygote_host_impl_linux.cc:128] No usable sandbox!
+```
+
+The audit script now creates a temporary Puppeteer configuration with `args: ["--no-sandbox"]`, matching the constrained renderer environment, and then all blocks passed.
+
+### What I learned
+
+- Balanced code fences and Mermaid block counts are necessary but not sufficient; docs with diagrams need a real render gate.
+- A CLI can return upload success while warning that part of the content degraded. Completion evidence has to inspect stderr/content warnings, not only exit status.
+- Simple Mermaid member syntax is more portable across CLI versions than punctuation-heavy pseudo-TypeScript.
+
+### What was tricky to build
+
+- Testing Mermaid independently had an environment failure before a syntax result. The test needed a no-sandbox Puppeteer config without weakening the actual diagram parser; once Chromium launched, it caught/confirmed syntax normally.
+- Replacing a remote document is normally destructive. Establishing that the first copy was seconds old, session-created and known bad was the exact condition that made force safe.
+
+### What warrants a second pair of eyes
+
+- Review the rendered class diagram on the device for legibility, not only parser success.
+- Confirm ToC depth 2 is the desired navigation granularity for a 14,000-word three-document bundle.
+
+### What should be done in the future
+
+- Keep `scripts/03-check-mermaid.mjs` in the pre-upload validation sequence for future long-form ticket bundles.
+- N/A for this delivery after final doctor/tasks/commit are complete.
+
+### Code review instructions
+
+- Run `node ttmp/.../scripts/03-check-mermaid.mjs` from the PBUI root.
+- Read `various/32-remarkable-delivery.md` for destination and exact evidence.
+- On device, open `/ai/2026/08/22/PBUI-AGENT-4/PBUI-AGENT-4 Three Part Architecture Review` and inspect the ToC and diagrams.
+
+### Technical details
+
+Final bundle inputs:
+
+```text
+design-doc/03-pbui-itself-…code-review.md
+design-doc/04-pbui-javascript-api-and-interaction-…code-review.md
+design-doc/05-agent-framework-and-tiles-…code-review.md
+```

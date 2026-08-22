@@ -20,7 +20,7 @@ Result: **PASS**
 | Document | Lines | Words | Mermaid | Findings | Decisions | File refs |
 |---|---:|---:|---:|---:|---:|---:|
 | `03-pbui-itself-core-presentation-system-components-chrome-accessibility-and-design-system-code-review.md` | 541 | 4112 | 2 | 7 | 4 | 15 |
-| `04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md` | 711 | 4162 | 2 | 11 | 4 | 14 |
+| `04-pbui-javascript-api-and-interaction-workbench-protocol-verbs-state-and-integration-code-review.md` | 711 | 4172 | 2 | 11 | 4 | 14 |
 | `05-agent-framework-and-tiles-multi-conversation-runtime-routing-tools-server-and-helper-tile-code-review.md` | 1073 | 6442 | 3 | 13 | 6 | 23 |
 
 ## Issues

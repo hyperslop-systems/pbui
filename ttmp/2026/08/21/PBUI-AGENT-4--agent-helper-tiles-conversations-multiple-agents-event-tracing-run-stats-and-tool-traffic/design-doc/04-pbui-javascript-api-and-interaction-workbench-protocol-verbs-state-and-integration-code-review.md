@@ -96,12 +96,12 @@ These words are not interchangeable:
 ```mermaid
 classDiagram
   class WorkbenchDocument {
-    format
-    schemaVersion
-    workspaces[]
-    views{}
-    viewOrder[]
-    documents{}
+    string format
+    number schemaVersion
+    WorkspaceArray workspaces
+    ViewMap viewsById
+    StringArray viewOrder
+    DocumentMap documentPayloads
   }
   class Workspace {
     id
@@ -109,14 +109,14 @@ classDiagram
     tree
   }
   class Node {
-    id
-    leaf(viewId) OR split
+    string id
+    oneof body
   }
   class AppView {
-    id
-    appId
-    documents{}
-    title?
+    string id
+    string appId
+    BindingMap documents
+    optionalTitle title
   }
   class AppDescriptor {
     id

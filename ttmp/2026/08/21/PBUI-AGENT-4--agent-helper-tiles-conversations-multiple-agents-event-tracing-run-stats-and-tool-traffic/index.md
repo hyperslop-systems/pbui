@@ -55,7 +55,9 @@ Background: `PBUI-AGENT-1` (the chat), `PBUI-AGENT-2` (workbench tools and polic
 
 All six implementation phases remain built. The fresh review reran 96 PBUI tests, 44 protocol tests, 115 workbench tests, 103 sandbox tests, 208 pbui-chat tests, Go package tests, all relevant typechecks, `make chat-ui`, `make ci-check`, `make protocol-check`, three Storybook production builds, package packing and a clean-consumer smoke.
 
-Live browser review found behavior not covered by those green suites: two conversation composers share one draft (A1, Critical); explicitly closing an active mounted conversation leaves chat and trace tiles stuck on `opening conversation…` (A2); and a human rename never calls the server PATCH, so a second browser cannot receive it (A3). Core review also proved Dialog and ObjectMenu lose invocation focus on Escape (C1). Evidence is stored in `various/11`–`30`; see the three review documents for remediation designs.
+Live browser review found behavior not covered by those green suites: two conversation composers share one draft (A1, Critical); explicitly closing an active mounted conversation leaves chat and trace tiles stuck on `opening conversation…` (A2); and a human rename never calls the server PATCH, so a second browser cannot receive it (A3). Core review also proved Dialog and ObjectMenu lose invocation focus on Escape (C1). Evidence is stored in `various/11`–`32`; see the three review documents for remediation designs.
+
+The corrected three-document bundle (all seven Mermaid diagrams renderer-checked) is uploaded as **PBUI-AGENT-4 Three Part Architecture Review** under `/ai/2026/08/22/PBUI-AGENT-4` on reMarkable. Delivery evidence is `various/32-remarkable-delivery.md`.
 
 Mid-ticket the user gave a standing rule — everything that can be an object should be an object, and its actions belong in the right-click menu — which turned four gestures into verbs and rewrote the Conversations tile (diary step 4). The original guide's §4.10 lists seven places the build refused the design; the fresh review extends that inventory with source- and browser-backed findings. See [tasks.md](./tasks.md).
 
