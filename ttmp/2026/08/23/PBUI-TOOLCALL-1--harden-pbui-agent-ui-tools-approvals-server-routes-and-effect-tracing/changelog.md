@@ -14,3 +14,13 @@ Wrote and validated the PBUI agent-to-UI architecture/design/implementation guid
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/design-doc/01-pbui-agent-to-ui-hardening-architecture-security-approvals-implementation-guide.md — Primary intern implementation guide
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/reference/01-diary.md — Investigation and validation record
 
+
+## 2026-08-23
+
+Dry-ran, uploaded, and verified the PBUI guide at /ai/2026/08/23-deliveries/PBUI-TOOLCALL-1; recorded rmapi duplicate-parent recovery
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/reference/01-diary.md — Delivery failure/recovery record
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/02-remarkable-delivery.md — Canonical upload and listing evidence
+

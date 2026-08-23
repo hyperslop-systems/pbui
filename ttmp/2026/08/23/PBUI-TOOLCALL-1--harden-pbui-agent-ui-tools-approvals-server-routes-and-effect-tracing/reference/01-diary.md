@@ -167,3 +167,69 @@ The guide deliberately validates only affected package baselines now; broader CI
 ### Technical details
 
 Renderer evidence is `various/01-mermaid-render.txt`; focused validation commands and outcomes are recorded above.
+
+## Step 3: Deliver the guide to a canonical reMarkable path
+
+After a successful dry run, the guide uploaded and was verified under the unique `23-deliveries` root. The first parallel upload attempt exposed an rmapi directory-creation race, so canonical delivery was repeated sequentially rather than trusting success output alone.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 1)
+
+**Assistant interpretation:** Upload the validated PBUI guide and preserve verifiable delivery evidence.
+
+**Inferred user intent:** Make the design available for offline reading on reMarkable at a dependable path.
+
+### What I did
+
+- Dry-ran the exact final bundle destination.
+- Uploaded one design-document PDF with ToC depth 2.
+- Verified the exact remote listing.
+- Added `various/02-remarkable-delivery.md`.
+
+### Why
+
+- CLI success alone was insufficient after duplicate remote directory names appeared.
+- A unique parent avoids ambiguous rmapi path resolution without destructive remote cleanup.
+
+### What worked
+
+```text
+OK: uploaded PBUI-TOOLCALL-1 Agent UI Hardening Guide.pdf -> /ai/2026/08/23-deliveries/PBUI-TOOLCALL-1
+[f] PBUI-TOOLCALL-1 Agent UI Hardening Guide
+```
+
+### What didn't work
+
+Parallel uploads reported repeated warnings:
+
+```text
+remote tree has changed, refresh the file tree
+```
+
+and created three collections named `23`. Pinocchio/react-chat exact-path listings initially failed. No remote deletion was attempted because duplicate-name cleanup by path is unsafe.
+
+### What I learned
+
+- reMarkable directory creation must be serialized when several uploads share a missing parent.
+- Verification must use an unambiguous exact path.
+
+### What was tricky to build
+
+The first PBUI file itself was visible, but the shared parent was ambiguous. A new unique `23-deliveries` root allowed sequential, verifiable delivery while preserving unknown remote content.
+
+### What warrants a second pair of eyes
+
+- Optional manual cleanup of duplicate `23` collections should use remote object IDs, not names.
+
+### What should be done in the future
+
+- Use the canonical delivery path recorded in `various/02-remarkable-delivery.md`.
+
+### Code review instructions
+
+- Open the PDF and inspect both Mermaid diagrams and the ToC.
+
+### Technical details
+
+Canonical path: `/ai/2026/08/23-deliveries/PBUI-TOOLCALL-1`.
