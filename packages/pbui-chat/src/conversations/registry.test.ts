@@ -47,6 +47,7 @@ describe("createConversationRegistry", () => {
 
     expect(snapshot.id).toBe("a");
     expect(snapshot.open).toBe(true);
+    expect(snapshot.lifecycle).toEqual({ phase: "opening", attempt: 1 });
     expect(snapshot.active).toBe(true);
     expect(snapshot.title).toBe("new conversation");
     expect(registry.activeId()).toBe("a");
@@ -79,6 +80,19 @@ describe("createConversationRegistry", () => {
     registry.open(a);
     registry.open(a);
     expect(registry.openIds().filter((id) => id === a)).toHaveLength(1);
+  });
+
+  test("close exposes closing before settling closed, and reopen starts a new attempt", async () => {
+    const registry = registryWith();
+    const { a } = await twoConversations(registry);
+
+    registry.close(a);
+    expect(registry.get(a)?.lifecycle).toEqual({ phase: "closing", attempt: 1 });
+    await Promise.resolve();
+    expect(registry.get(a)?.lifecycle).toEqual({ phase: "closed" });
+
+    registry.open(a);
+    expect(registry.get(a)?.lifecycle).toEqual({ phase: "opening", attempt: 2 });
   });
 
   test("rename, pin and archive; archiving closes the runtime", async () => {

@@ -1,4 +1,4 @@
-import { Text } from "@hyperslop-systems/pbui";
+import { Button, Text } from "@hyperslop-systems/pbui";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { PbuiChatContext, usePbuiChat, type PbuiChatContextValue } from "../context";
 import type { ChatMessageBody } from "../types";
@@ -29,6 +29,7 @@ export function ConversationScope({ conversationId, children }: { conversationId
   }, [registry, conversationId]);
 
   const runtime = snapshot?.runtime ?? null;
+  const lifecycle = snapshot?.lifecycle ?? { phase: "closed" as const };
 
   const value = useMemo<PbuiChatContextValue>(
     () => ({
@@ -42,13 +43,29 @@ export function ConversationScope({ conversationId, children }: { conversationId
     [base, conversationId, runtime],
   );
 
-  if (!runtime) {
-    // One frame, between `open()` and the host's provider attaching. Saying
-    // so beats rendering an empty transcript that looks like a lost session.
+  if (lifecycle.phase !== "open" || !runtime) {
+    if (lifecycle.phase === "failed") {
+      return (
+        <div data-part="conversation-lifecycle" data-phase="failed" role="alert">
+          <Text size="tiny" tone="danger">could not open conversation: {lifecycle.error}</Text>{" "}
+          {lifecycle.retryable ? <Button size="tiny" variant="framed" onClick={() => void registry.retry(conversationId)}>retry</Button> : null}
+          <Button size="tiny" variant="bare" onClick={() => registry.close(conversationId)}>close</Button>
+        </div>
+      );
+    }
+    if (lifecycle.phase === "closed") {
+      return (
+        <div data-part="conversation-lifecycle" data-phase="closed">
+          <Text size="tiny" tone="faint">conversation is closed</Text>{" "}
+          <Button size="tiny" variant="framed" onClick={() => registry.open(conversationId)}>open</Button>
+        </div>
+      );
+    }
     return (
-      <Text size="tiny" tone="faint">
-        opening conversation…
-      </Text>
+      <div data-part="conversation-lifecycle" data-phase={lifecycle.phase}>
+        <Text size="tiny" tone="faint">{lifecycle.phase === "closing" ? "closing conversation…" : "opening conversation…"}</Text>{" "}
+        {lifecycle.phase === "opening" ? <Button size="tiny" variant="bare" onClick={() => registry.close(conversationId)}>cancel</Button> : null}
+      </div>
     );
   }
 

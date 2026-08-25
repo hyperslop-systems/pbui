@@ -1,5 +1,5 @@
 import { timelineSlice, type TimelineEntity } from "@go-go-golems/chat-provider";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { chat } from "../../demo/src/chat";
 import { usePbuiChat, type PbuiChatContextValue } from "../context";
@@ -101,6 +101,32 @@ describe("two conversations on one workbench", () => {
     // `ensureSession` from minting a session of its own.
     expect(a.store.getState().overlay.sessionId).toBe(A);
     expect(b.store.getState().overlay.sessionId).toBe(B);
+  });
+
+  test("connection failure is explicit and retry returns the existing runtime to open", async () => {
+    await renderTwo();
+    const runtime = chat.conversations.runtimeFor(A)!;
+    const connect = vi.spyOn(runtime.context.client, "connect").mockRejectedValueOnce(new Error("socket refused")).mockResolvedValue(undefined);
+
+    await expect(chat.conversations.connectRuntime(A)).rejects.toThrow("socket refused");
+    await waitFor(() => expect(screen.getByTestId("tile-a").textContent).toContain("could not open conversation: socket refused"));
+    expect(chat.conversations.get(A)?.lifecycle).toMatchObject({ phase: "failed", retryable: true });
+
+    fireEvent.click(screen.getByTestId("tile-a").querySelector("button") as HTMLButtonElement);
+    await waitFor(() => expect(chat.conversations.get(A)?.lifecycle.phase).toBe("open"));
+    expect(connect).toHaveBeenCalledTimes(2);
+    expect(chat.conversations.runtimeFor(A)).toBe(runtime);
+  });
+
+  test("a closed conversation is not mislabeled opening and can be reopened", async () => {
+    await renderTwo();
+
+    chat.conversations.close(A);
+    await waitFor(() => expect(screen.getByTestId("tile-a").textContent).toContain("conversation is closed"));
+    expect(screen.getByTestId("tile-a").textContent).not.toContain("opening conversation");
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+    await waitFor(() => expect(chat.conversations.get(A)?.lifecycle.phase).toBe("open"));
   });
 
   test("the two transcripts are independent", async () => {

@@ -197,6 +197,7 @@ function snapshot(patch: Partial<ConversationSnapshot>): ConversationSnapshot {
     open: true,
     active: false,
     ...patch,
+    lifecycle: patch.lifecycle ?? { phase: "open", attempt: 1 },
   };
 }
 
@@ -205,7 +206,7 @@ describe("what a row says", () => {
     expect(statusOf(snapshot({ streaming: true, error: "boom", waiting: 2 })).label).toBe("streaming");
     expect(statusOf(snapshot({ error: "boom", waiting: 2 })).label).toBe("error");
     expect(statusOf(snapshot({ waiting: 2 })).label).toBe("waiting · 2");
-    expect(statusOf(snapshot({ open: false, streaming: true })).label).toBe("closed");
+    expect(statusOf(snapshot({ open: false, lifecycle: { phase: "closed" }, streaming: true })).label).toBe("closed");
   });
 
   test("a timestamp nobody reads is said as an age", () => {

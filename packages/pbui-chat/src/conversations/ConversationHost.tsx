@@ -46,7 +46,7 @@ function Capture({ registry, conversationId }: { registry: ConversationRegistry;
     // `sessionPolicy` is `never` for the same reason.
     store.dispatch(overlaySlice.actions.setSessionId(conversationId));
     registry.attachRuntime(conversationId, { store, context });
-    if (registry.autoConnect()) void context.client.connect().catch(() => undefined);
+    if (registry.autoConnect()) void registry.connectRuntime(conversationId).catch(() => undefined);
     return () => {
       registry.detachRuntime(conversationId);
       // `ChatProvider` has no cleanup of its own: without this the socket of

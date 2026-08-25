@@ -116,7 +116,10 @@ export function ConversationsTile() {
 
 /** `streaming` beats `error` beats `waiting`: what is happening now, then what is wrong, then what is asked of you. */
 export function statusOf(snapshot: ConversationSnapshot): { label: string; tone: "default" | "danger" | "faint" } {
-  if (!snapshot.open) return { label: "closed", tone: "faint" };
+  if (snapshot.lifecycle.phase === "closed") return { label: "closed", tone: "faint" };
+  if (snapshot.lifecycle.phase === "opening") return { label: "opening", tone: "faint" };
+  if (snapshot.lifecycle.phase === "closing") return { label: "closing", tone: "faint" };
+  if (snapshot.lifecycle.phase === "failed") return { label: "open failed", tone: "danger" };
   if (snapshot.streaming) return { label: "streaming", tone: "default" };
   if (snapshot.error) return { label: "error", tone: "danger" };
   if (snapshot.waiting > 0) return { label: `waiting · ${snapshot.waiting}`, tone: "danger" };
@@ -147,6 +150,7 @@ export function conversationReference(snapshot: ConversationSnapshot): Reference
       pinned: snapshot.pinned,
       archived: snapshot.archived,
       open: snapshot.open,
+      lifecycle: snapshot.lifecycle.phase,
       ...(snapshot.model ? { model: snapshot.model } : {}),
     },
   };

@@ -53,8 +53,17 @@ export interface ConversationMirror {
   waiting: number;
 }
 
+export type ConversationRuntimeLifecycle =
+  | { phase: "closed" }
+  | { phase: "opening"; attempt: number }
+  | { phase: "open"; attempt: number }
+  | { phase: "failed"; attempt: number; error: string; retryable: boolean }
+  | { phase: "closing"; attempt: number };
+
 export interface ConversationSnapshot extends ConversationRecord, ConversationMirror {
   runtime: ChatRuntime | null;
+  /** Explicit provider/connection lifecycle; never infer `opening` from a missing runtime. */
+  lifecycle: ConversationRuntimeLifecycle;
   /** True between `open()` and `close()`, even before the runtime attaches. */
   open: boolean;
   active: boolean;
@@ -81,9 +90,11 @@ export interface ConversationRegistry {
   create(options?: { title?: string; open?: boolean; activate?: boolean }): Promise<ConversationSnapshot>;
   /** Adopt a session id that already exists (a migrated layout, the server's list). */
   adopt(id: string, record?: Partial<ConversationRecord>): ConversationSnapshot;
-  /** Mark open so a runtime is built. Idempotent. */
+  /** Mark open so a runtime is built. Idempotent unless retrying a failed lifecycle. */
   open(id: string): void;
-  /** Dispose the runtime, keep the record. */
+  /** Retry a failed provider connection without creating a second runtime. */
+  retry(id: string): Promise<void>;
+  /** Cancel an opening attempt or dispose an open runtime while keeping the record. */
   close(id: string): void;
   rename(id: string, title: string, by?: TitledBy): void;
   pin(id: string, pinned: boolean): void;
@@ -118,6 +129,7 @@ export interface ConversationRegistry {
 
   /* ---- written by ConversationHost ------------------------------------- */
   attachRuntime(id: string, captured: { store: ChatStore; context: ChatRuntimeContextValue }): ChatRuntime;
+  connectRuntime(id: string): Promise<void>;
   detachRuntime(id: string): void;
 }
 
@@ -277,6 +289,9 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
   const records = new Map<string, ConversationRecord>();
   const mirrors = new Map<string, ConversationMirror>();
   const runtimes = new Map<string, ChatRuntime>();
+  const lifecycles = new Map<string, ConversationRuntimeLifecycle>();
+  const lifecycleAttempts = new Map<string, number>();
+  const connectPromises = new Map<string, Promise<void>>();
   const unsubscribes = new Map<string, () => void>();
   const configs = new Map<string, ChatProviderConfig>();
   const openSet = new Set<string>();
@@ -359,6 +374,30 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
     return true;
   }
 
+  function lifecycleOf(id: string): ConversationRuntimeLifecycle {
+    return lifecycles.get(id) ?? { phase: "closed" };
+  }
+
+  function setLifecycle(id: string, lifecycle: ConversationRuntimeLifecycle): void {
+    const current = lifecycleOf(id);
+    if (
+      current.phase === lifecycle.phase &&
+      ("attempt" in current ? current.attempt : 0) === ("attempt" in lifecycle ? lifecycle.attempt : 0) &&
+      (current.phase !== "failed" ||
+        (lifecycle.phase === "failed" && current.error === lifecycle.error && current.retryable === lifecycle.retryable))
+    ) {
+      return;
+    }
+    lifecycles.set(id, lifecycle);
+    invalidate(id);
+  }
+
+  function nextAttempt(id: string): number {
+    const attempt = (lifecycleAttempts.get(id) ?? 0) + 1;
+    lifecycleAttempts.set(id, attempt);
+    return attempt;
+  }
+
   function patchMirror(id: string, next: ConversationMirror) {
     const current = mirrors.get(id) ?? EMPTY_MIRROR;
     let changed = false;
@@ -438,6 +477,7 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       ...record,
       ...(mirrors.get(id) ?? EMPTY_MIRROR),
       runtime: runtimes.get(id) ?? null,
+      lifecycle: lifecycleOf(id),
       open: openSet.has(id),
       active: activeId === id,
     };
@@ -513,6 +553,7 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
     adopt(id, patch = {}) {
       if (!records.has(id)) {
         records.set(id, newRecord(id, patch));
+        lifecycles.set(id, { phase: "closed" });
         schedule();
         invalidate();
       } else if (Object.keys(patch).length > 0) {
@@ -523,19 +564,39 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
 
     open(id) {
       if (!records.has(id)) registry.adopt(id);
-      if (openSet.has(id)) return;
-      openSet.add(id);
-      openIdsCache = null;
-      invalidate(id);
+      const current = lifecycleOf(id);
+      if (openSet.has(id) && current.phase !== "failed") return;
+      if (!openSet.has(id)) {
+        openSet.add(id);
+        openIdsCache = null;
+      }
+      setLifecycle(id, { phase: "opening", attempt: nextAttempt(id) });
+    },
+
+    async retry(id) {
+      if (!records.has(id)) throw new Error(`unknown conversation ${id}`);
+      registry.open(id);
+      if (runtimes.has(id)) await registry.connectRuntime(id);
     },
 
     close(id) {
-      if (!openSet.delete(id)) return;
+      if (!openSet.has(id)) return;
+      const current = lifecycleOf(id);
+      const attempt = "attempt" in current ? current.attempt : 0;
+      setLifecycle(id, { phase: "closing", attempt });
+      openSet.delete(id);
       openIdsCache = null;
-      // The host stops rendering this conversation's provider, whose cleanup
-      // resets the client (cancelling tools and disconnecting) and calls
-      // `detachRuntime`. Nothing to dispose here.
       invalidate(id);
+      // If React has not attached the provider yet there will be no cleanup
+      // callback to finish the transition. Finish it after subscribers have
+      // had one observable `closing` snapshot.
+      if (!runtimes.has(id)) {
+        queueMicrotask(() => {
+          if (!openSet.has(id) && !runtimes.has(id) && lifecycleOf(id).phase === "closing") {
+            setLifecycle(id, { phase: "closed" });
+          }
+        });
+      }
     },
 
     rename(id, title, by = "human") {
@@ -558,6 +619,9 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       if (renaming === id) renaming = null;
       registry.close(id);
       mirrors.delete(id);
+      lifecycles.delete(id);
+      lifecycleAttempts.delete(id);
+      connectPromises.delete(id);
       configs.delete(id);
       // A selection pointing at a conversation that is gone would leave every
       // singleton that follows it showing a stale target.
@@ -642,6 +706,10 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
         onChange: () => invalidate(id),
       });
       runtimes.set(id, runtime);
+      if (!autoConnect) {
+        const current = lifecycleOf(id);
+        setLifecycle(id, { phase: "open", attempt: "attempt" in current ? current.attempt : 1 });
+      }
       unsubscribes.set(
         id,
         captured.store.subscribe(() => sync(id, runtime)),
@@ -651,11 +719,52 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       return runtime;
     },
 
+    async connectRuntime(id) {
+      const existing = connectPromises.get(id);
+      if (existing) return existing;
+      const runtime = runtimes.get(id);
+      if (!runtime) throw new Error(`conversation ${id} has no runtime to connect`);
+      const current = lifecycleOf(id);
+      const attempt = current.phase === "opening" ? current.attempt : nextAttempt(id);
+      if (current.phase !== "opening") setLifecycle(id, { phase: "opening", attempt });
+      const promise = runtime.context.client
+        .connect()
+        .then(() => {
+          const lifecycle = lifecycleOf(id);
+          if (openSet.has(id) && lifecycle.phase === "opening" && lifecycle.attempt === attempt) {
+            setLifecycle(id, { phase: "open", attempt });
+          }
+        })
+        .catch((error: unknown) => {
+          const lifecycle = lifecycleOf(id);
+          if (openSet.has(id) && lifecycle.phase === "opening" && lifecycle.attempt === attempt) {
+            setLifecycle(id, {
+              phase: "failed",
+              attempt,
+              error: error instanceof Error ? error.message : String(error),
+              retryable: true,
+            });
+          }
+          throw error;
+        })
+        .finally(() => {
+          if (connectPromises.get(id) === promise) connectPromises.delete(id);
+        });
+      connectPromises.set(id, promise);
+      return promise;
+    },
+
     detachRuntime(id) {
       unsubscribes.get(id)?.();
       unsubscribes.delete(id);
+      connectPromises.delete(id);
       if (!runtimes.delete(id)) return;
       mirrors.delete(id);
+      if (openSet.has(id)) {
+        setLifecycle(id, { phase: "opening", attempt: nextAttempt(id) });
+      } else {
+        setLifecycle(id, { phase: "closed" });
+      }
       invalidate(id);
     },
   };
