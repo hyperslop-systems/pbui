@@ -25,9 +25,9 @@ export const Empty: Story = {};
 
 function SeedDraft() {
   useEffect(() => {
-    chat.store.clearDraft();
-    chat.store.setDraftText("why is stock low for ");
-    chat.store.insertReference(eagle, "the Eagle");
+    chat.store.clearDraft("story");
+    chat.store.setDraftText("story", "why is stock low for ");
+    chat.store.insertReference("story", eagle, "the Eagle");
   }, []);
   return null;
 }

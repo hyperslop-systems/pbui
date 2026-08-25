@@ -147,24 +147,44 @@ describe("two conversations on one workbench", () => {
   test("a mention queued in A does not ride on B's next message", async () => {
     await renderTwo();
     const eagle = { type: "product", id: "2049", value: { name: "Eagle" } };
+    const runtimeA = chat.conversations.runtimeFor(A)!;
+    let captured: Parameters<typeof runtimeA.client.send>[0] | null = null;
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(runtimeA.client, "send").mockImplementation(async (request) => {
+      captured = request;
+      await blocked;
+    });
 
-    /*
-     * `send` queues the refs for its own conversation and then hands the
-     * prompt to that runtime's client; the client would open a socket, which
-     * this test has no server for, so the send is not awaited. What is under
-     * test is the queue, and the queue is read by the conversation's own
-     * `sendMessageBody` — the very function the client calls next.
-     */
-    void scoped
-      .get(A)!
-      .send({ prompt: "how is {0}?", refs: [eagle] })
-      .catch(() => undefined);
-
-    const bodyA = (await chat.conversations.configFor(A).sendMessageBody!({ prompt: "how is it?" })) as { refs?: unknown[] };
+    const sending = scoped.get(A)!.send({ prompt: "how is {0}?", refs: [eagle] });
+    await waitFor(() => expect(captured).not.toBeNull());
+    const bodyA = (await chat.conversations.configFor(A).sendMessageBody!(captured!)) as { refs?: unknown[] };
     const bodyB = (await chat.conversations.configFor(B).sendMessageBody!({ prompt: "unrelated" })) as { refs?: unknown[] };
+    release();
+    await sending;
 
     expect(bodyA.refs).toHaveLength(1);
     expect(bodyB.refs).toBeUndefined();
+  });
+
+  test("failed send preflight cannot leak refs into a later body", async () => {
+    await renderTwo();
+    const eagle = { type: "product", id: "2049", value: { name: "Eagle" } };
+    const runtimeA = chat.conversations.runtimeFor(A)!;
+    let failedRequest: Parameters<typeof runtimeA.client.send>[0] | null = null;
+    vi.spyOn(runtimeA.client, "send").mockImplementation(async (request) => {
+      failedRequest = request;
+      throw new Error("manifest unavailable");
+    });
+
+    await expect(scoped.get(A)!.send({ prompt: "price it", refs: [eagle] })).rejects.toThrow("manifest unavailable");
+    const failedBody = (await chat.conversations.configFor(A).sendMessageBody!(failedRequest!)) as { refs?: unknown[] };
+    const nextBody = (await chat.conversations.configFor(A).sendMessageBody!({ prompt: "plain" })) as { refs?: unknown[] };
+
+    expect(failedBody.refs).toBeUndefined();
+    expect(nextBody.refs).toBeUndefined();
   });
 
   test("closing a conversation takes its runtime down and leaves the other alone", async () => {

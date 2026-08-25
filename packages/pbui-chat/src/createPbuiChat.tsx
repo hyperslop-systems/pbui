@@ -153,7 +153,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
    * next — the refs would arrive attached to a message the user never
    * associated with them.
    */
-  const pending = new Map<string, PendingSend>();
+  const pending = new WeakMap<SendMessageRequest, PendingSend>();
 
   /**
    * Where "Open in tile" goes. With a workbench: a `widget` tile bound to
@@ -266,8 +266,8 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
 
   function sendMessageBodyFor(conversationId: string) {
     return (request: SendMessageRequest): ChatMessageBody => {
-      const queued = pending.get(conversationId) ?? null;
-      pending.delete(conversationId);
+      const queued = pending.get(request) ?? null;
+      pending.delete(request);
       const focus =
         queued?.focus ?? (store.getState().focus ? { reference: store.getState().focus as Reference } : undefined);
       const body: ChatMessageBody = {
@@ -307,8 +307,13 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     if (!target) throw new Error("there is no conversation to send to");
     const runtime = conversations.runtimeFor(target);
     if (!runtime) throw new Error(`conversation ${target} is not open`);
-    pending.set(target, { refs: body.refs ?? [], ...(body.focus ? { focus: body.focus } : {}) });
-    await runtime.client.send({ prompt: body.prompt });
+    const request: SendMessageRequest = { prompt: body.prompt };
+    pending.set(request, { refs: body.refs ?? [], ...(body.focus ? { focus: body.focus } : {}) });
+    try {
+      await runtime.client.send(request);
+    } finally {
+      pending.delete(request);
+    }
   }
 
   /** Re-advertise every open conversation's manifest — an `attach…` changed what is available. */
