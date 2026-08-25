@@ -14,6 +14,8 @@ Owners:
 RelatedFiles:
     - Path: repo://cmd/pbui-chat/cmds/serve.go
       Note: Loopback-only development authorization (commit a982f98)
+    - Path: repo://packages/pbui-chat/src/adapters/traceAdapter.ts
+      Note: Live/hydrated effect envelope decoding (commit 56a01b6)
     - Path: repo://packages/pbui-chat/src/composer/Composer/Composer.tsx
       Note: Exact conversation draft selection (commit 7b3ccd1)
     - Path: repo://packages/pbui-chat/src/conversations/conversations.test.tsx
@@ -30,7 +32,9 @@ RelatedFiles:
     - Path: repo://packages/pbui-chat/src/tools/agentEffectGateway.test.ts
       Note: Race, retry, conflict, release and envelope regressions (commit 1d05677)
     - Path: repo://packages/pbui-chat/src/tools/agentEffectGateway.ts
-      Note: Unified effect identity, approval lifecycle, execution and report outbox (commit 1d05677)
+      Note: |-
+        Unified effect identity, approval lifecycle, execution and report outbox (commit 1d05677)
+        Persistent retry outbox (commit 56a01b6)
     - Path: repo://packages/pbui-chat/src/tools/approvalLedger.ts
       Note: |-
         Canonical shared approval authority (commit 69678a3)
@@ -52,15 +56,24 @@ RelatedFiles:
     - Path: repo://pkg/chatserver/authorization_test.go
       Note: Cross-principal HTTP and WebSocket regressions (commit a982f98)
     - Path: repo://pkg/chatserver/handlers.go
-      Note: Ownership claim and list filtering (commit a982f98)
+      Note: |-
+        Ownership claim and list filtering (commit a982f98)
+        Authenticated effect submission handler (commit 56a01b6)
     - Path: repo://pkg/chatserver/server.go
       Note: Authorized route and subscribe boundaries (commit a982f98)
+    - Path: repo://pkg/pbuichat/plugin.go
+      Note: Strict browser effect decoding and digest validation (commit 56a01b6)
+    - Path: repo://pkg/pbuichat/trace.go
+      Note: Idempotent effect recording and durable projection (commit 56a01b6)
+    - Path: repo://proto/hyperslop/pbui/chat/v1/chat.proto
+      Note: Durable effect envelope and command schema (commit 56a01b6)
 ExternalSources: []
 Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
 LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -684,3 +697,83 @@ The gateway must distinguish four timing zones: validation before reservation, a
 ### Technical details
 
 Terminal effect retention defaults to 1,000 entries for 30 minutes. Approval retention remains 1,000 entries for five minutes. Effect fingerprints cover conversation, kind, scope, canonical input, policy, confirmation id, and before-revision so key reuse cannot silently return an unrelated cached result.
+
+## Step 9: Persist and hydrate causal effect outcomes
+
+I added the server half of the gateway contract: an authenticated `effect-write` route, generated protobuf envelope/command fields, strict digest and session validation, idempotent server recording, and reuse of the existing durable trace projection. Effect rows now hydrate and stream with the complete canonical envelope rather than hiding correlation in a free-form verb field.
+
+I also made the browser report outbox durable across reloads through product-keyed storage. A failed effect POST survives gateway recreation and retries against the idempotent server endpoint; an outbox at its configured bound fails closed before another untraceable side effect begins.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 8)
+
+**Assistant interpretation:** Continue Phase 2 through a durable server and hydration boundary, keeping the change independently committed and fully tested.
+
+**Inferred user intent:** Ensure effect tracing is actual persisted evidence, not a best-effort browser diagnostic that disappears offline or after reload.
+
+**Commit (code):** `56a01b61108f5761f0e8442c9ebf8aab2076a62b` — "feat(chatserver): persist causal effect traces"
+
+### What I did
+
+- Added generated `EffectEnvelope` and `EffectPerformedCommand` protobuf contracts and attached envelopes to durable `TraceEntry` records.
+- Added authenticated `POST /api/chat/sessions/{id}/effects` with its own action policy.
+- Validated actor, scope, outcome, RFC3339 timestamp, session binding, SHA-256 shape, and recomputed canonical-input digest.
+- Added idempotent effect-id recording and exact-envelope conflict rejection in the trace store.
+- Reused existing UI-event and timeline projections so effect rows are live and hydrated under one ordered trace sequence.
+- Extended the TypeScript adapter and public trace types to retain every effect correlation field.
+- Added persistent browser outbox restore/flush behavior and fail-closed capacity handling.
+- Added Go parser, conflict, digest, session, persistence, authorization, route, and duplicate-delivery tests plus frontend hydration/outbox tests.
+
+### Why
+
+A performed local effect cannot be undone merely because its trace POST failed. The report therefore needs durable retry on the browser and idempotent acceptance on the server, while the server must independently reject forged digests and cross-session envelopes.
+
+### What worked
+
+```text
+go test ./pkg/pbuichat ./pkg/chatserver -count=1       PASS
+pnpm pbui-chat typecheck                                PASS
+pnpm pbui-chat tests                                    24 files, 225 PASS
+pnpm pbui-chat production build                         PASS
+buf lint                                                PASS
+pre-commit GOWORK=off go test ./...                     PASS
+pre-commit golangci-lint + logcopter + glazed-lint      PASS, 0 issues
+```
+
+### What didn't work
+
+N/A
+
+### What I learned
+
+- The existing trace command/event/UI/timeline projection is the correct durable ordering substrate; a distinct effect timeline would duplicate retention and hydration logic.
+- Server idempotency must compare the complete protobuf envelope, not only input digest and outcome, because a reused id could otherwise alter kind, approval, revision, or correlation fields silently.
+- Trace entry time should remain server receipt time for trustworthy ordering; the client occurrence time belongs inside the envelope.
+
+### What was tricky to build
+
+Browser canonical JSON and Go `encoding/json` must hash the same bytes. Both recursively order object/map keys and preserve array order, allowing the server to recompute SHA-256 over `canonicalInput` rather than trusting the browser. Duplicate retries must publish no second event, while a same-id envelope difference must fail rather than overwrite or acknowledge ambiguous history. Hydration rebuilds the bounded effect-id index from persisted trace entries so idempotency survives process restart.
+
+### What warrants a second pair of eyes
+
+- Confirm cross-language canonical number formatting for any future non-integer numeric effect arguments; current workbench ratios and finite JSON numbers are covered by standard JSON behavior but deserve explicit vectors.
+- Browser storage quota failure remains observable through `outboxError()` and retains the in-memory envelope, but cannot manufacture persistence when the platform storage itself is unavailable.
+- The shared trace retention limit bounds the in-memory/persisted replay window; effect ids older than retention may be accepted again, while browser terminal retention is also bounded by design.
+
+### What should be done in the future
+
+- Add explicit router effect/invocation correlation to high-level verb trace rows rather than relying only on adjacent effect envelopes.
+- Exercise the complete browser → authenticated route → snapshot hydration path in a rendered smoke scenario.
+- Complete Phase 2 final validation and print its completion slip only after those checks.
+
+### Code review instructions
+
+- Review the proto contract, then `EffectCommandFromJSON`, `HandleEffectPerformed`, and `traceStore.addEffect`.
+- Review `traceAdapter.ts` for generated-proto and loose-json parity.
+- Review gateway outbox restore/persist/full behavior.
+- Regenerate protocols, run Go tests, frontend typecheck/tests/build, and `buf lint`.
+
+### Technical details
+
+Effect routes accept only `actor=agent`, and route authorization occurs before body parsing. Existing and duplicate identical envelopes produce one durable trace entity. Foreign-session envelopes return `400`; foreign principals are rejected by session authorization before reaching the handler.

@@ -64,3 +64,13 @@ Phase 2 interval 1: unified browser effect gateway, approval reservations, idemp
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/agentEffectGateway.ts — Execution state machine
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/approvalLedger.ts — Approval transaction lifecycle
 
+
+## 2026-08-25
+
+Phase 2 interval 2: authenticated durable effect schema, route, idempotent projection, hydration adapter and persistent outbox (commit 56a01b6)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/pbuichat/trace.go — Durable idempotent trace
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/proto/hyperslop/pbui/chat/v1/chat.proto — Effect wire contract
+
