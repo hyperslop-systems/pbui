@@ -1,0 +1,1334 @@
+                    A Guided Tour of CLIM,
+                 Common Lisp Interface Manager
+                                             2006 Update
+                              Clemens Fruhwirth <clemens@endorphin.org>
+                                         The McCLIM Project
+
+                                    Original article∗
+          Ramana Rao <rao@xerox.com>          Xerox Palo Alto Research Center
+          William M. York <york@ila.com>      International Lisp Associates, Inc.
+          Dennis Doughty <doughty@ila.com> International Lisp Associates, Inc.
+                                                    October 14, 2019
+
+
+Abstract                                                               Introduction
+The Common Lisp Interface Manager (clim) pro-              Common Lisp is a language standard that has pro-
+vides a layered set of facilities for building user in-    vided a broad range of functionality, and that has,
+terfaces. These facilities include a portable lay-         to a large degree, successfully enabled the writing
+ers for basic windowing, input, output services,           of truly portable Lisp programs. The emergence
+and mechanisms for constructing window types and           of clos and the cleanup efforts of ANSI X3J13
+user interface components; stream-oriented input           have further enhanced the utility and portability
+and output facilities extended with presentations          of Common Lisp. However, one major stumbling
+and context sensitive input;1 and a gadget-oriented        block remains in the path of those endeavoring to
+toolkit similar to those found in the X world ex-          write large portable applications. The Common
+tended with support for look and feel adaptiveness.        Lisp community has not yet provided a standard
+In this article, we present an overview of clim’s          interface for implementing user interfaces beyond
+broad range of functionality and present a series of       the most basic operations based on stream reading
+examples that illustrates clim’s power. The arti-          and printing.3
+cle originally appeared in Lisp Pointers in 1991 and          The Common Lisp Interface Manager addresses
+was updated in 2006 by Clemens Fruhwirth.2 All             this problem by specifying an interface to a broad
+examples in this article have been run with Mc-            range of services necessary or useful for develop-
+CLIM[McC], a free clim implementation, as of               ing graphical user interfaces. These services in-
+January 2006.                                              clude low level facilities such as geometry, graphics,
+                                                           event-oriented input, and windowing; intermediate
+                                                           level facilities such as support for Common Lisp
+   ∗ Published in Lisp Pointers 1991
+   1 Similar to the work pioneered in the Genera UI system
+                                                           stream operations, output recording, and advanced
+   2 The CLIM 2 specification changed significant parts of output formatting; and high level facilities such as
+clim rendering legacy code unusable. Clemens Fruhwirth context sensitive input, an adaptive toolkit, and an
+has rewritten all examples and the corresponding text sec- application building framework.
+tions for the clim 2 specification. In addition, he has restruc-
+tured the whole article, adding sections to provide additional            3 Notice that this sentence was written in 1991; it is still
+
+insights into clim concepts.                                           true 15 years later.
+
+
+                                                                   1
+   clim implementations will eventually support a            libraries that define and implement their own par-
+large number of window environments including                ticular look and feel. For instance, the clim pro-
+X Windows, Mac OS X and Microsoft Windows.                   grammer can implement new gadget types on top
+clim is designed to exploit the functionality pro-           of the drawing primitives and treat them equally to
+vided by the host environment to the degree that it          the built-in gadget types.
+makes sense. For example, clim top level windows                We will use the term CLIM implementor for the
+are typically mapped onto host windows, and input            party implementing low-level and high-level parts
+and output operations are ultimately performed by            according to the clim specification, CLIM pro-
+host window system code. clim supports the in-               grammer for the party that will use the facilities
+corporation of toolkits written in other languages.          provided by the implementor, and CLIM user for
+A uniform interface provided by clim allows Lisp             the party that will use the programs provided by
+application programmers to deal only with Lisp ob-           the programmer.
+jects and functions regardless of the operating plat-           The next section presents an overview of the
+form.                                                        functionality provided by clim facilities.
+   An important goal that has guided the design of
+clim was to layer the specification into a number
+of distinct facilities. Furthermore, the specification       1    Overview of Functionality
+does not distinguish the use of a facility by higher
+level clim facilities from its use by clim users. For        Figure 1 shows the various aspects of a host envi-
+example, the geometry substrate, which includes              ronment in which clim lives as well as the various
+transformations and regions, is designed for effi-           elements provided by clim. Below we briefly de-
+cient use by the graphics and windowing substrates           scribe a number of clim’s areas of functionality.
+as well as by clim programmers. This means that,             Later sections will illustrate many of these compo-
+in general, a clim programmer can reimplement                nents.
+higher level clim facilities using the interfaces pro-
+vided by lower level facilities.                             Geometry clim provides points, rectangles, and
+   This modular, layered design has a number of              transformations; and functions for manipulating
+benefits. The clim architecture balances the goal            these object types.
+of ease of use on one hand, and the goal of versa-
+tility on the other. High level facilities allow pro-        Graphics substrate clim provides a portable
+grammers to build portable user interfaces quickly,          interface to a broad set of graphics functions for
+whereas lower level facilities provide a useful plat-        drawing complex geometric shapes.
+form for building toolkits or frameworks that better
+support the specific needs or requirements of a par-
+                                                             Windowing        substrate clim provides a
+ticular application.
+                                                             portable layer for implementing sheets (windows
+   For example, clim’s application framework and
+                                                             and other window-like objects).
+adaptive toolkit allow programmers to develop ap-
+plications that automatically adopt the look and
+feel of the host’s environment. We often call this           Extended Streams clim integrates the Com-
+“adaptiveness,” “look and feel independence,” or             mon Lisp Stream I/O functionality with the clim
+occasionally more picturesquely, “chameleon look             graphics, windowing, and panes facilities. In addi-
+and feel”. However, many users may need or want              tion to ordinary text, the programmer can send a
+to define a particular look and feel that is constant        button, a picture or any other arbitrary widget to a
+across all host environments (we call this “portable         clim output stream and clim will display the wid-
+look and feel”). Such users can circumvent the               get in the sheet associated with the output stream.
+look and feel adaptiveness provided by clim, while
+still using most of the application framework facil-         Output Recording clim provides output
+ity and other high level clim facilities like context        recording for capturing all output done to an
+sensitive input. Furthermore, using the lower level          extended stream and automatically repainting it
+facilities of clim, they can develop portable toolkit        when necessary.
+
+
+                                                         2
+                                           Application
+
+    Dialog Facilities        Commands              Presentations                         Frames
+                                         Formated Output
+     Incremental Redisplay
+                                                                                       Layout Panes
+                                                            Application Panes
+                     Output Recording                                                             Gadget Panes
+                                                                                  Panes
+                  Extended Streams
+                                                                     Standard Sheets
+                                       Graphics
+                                                                Sheet Definition
+                            Geometry
+                                                                     Ports
+
+                        Common Lisp                                      Host Look & Feel
+
+
+                                   Figure 1: An Overview of clim facilities
+
+
+Formatted Output clim provides a set of high- panes for displaying and allowing users to interact
+level macros that enable programs to produce with application data.
+neatly formatted tabular and graphical displays
+easily.4
+                                                     Look and Feel Adaptiveness clim supports
+                                                     look and feel independence by specifying a set of
+Presentations clim provides the ability to asso- abstract gadget pane protocols. These protocols
+ciate semantics with output, such that Lisp objects define a gadget in terms of its function and not
+may be retrieved later via user gestures (e.g. mouse in terms of the details of its appearance or oper-
+clicks) on their displayed representation. This con- ation. Applications that use these gadget types
+text sensitive input is modularly layered on top of and related facilities will automatically adapt to
+the output recording facility and is integrated with use whatever toolkit is available on and appropri-
+the Common Lisp type system. A mechanism for ate for the host environment. In addition, portable
+type coercion is also included, providing the basis Lisp-based implementations of the abstract gadget
+for powerful user interfaces.                        pane protocols are provided.5
+
+Panes clim provides panes that are analogous to
+the gadgets or widgets of toolkits like the X toolkit,          Application Building clim provides a set of
+GTK or Mac OS X’s toolkit.                                      tools for defining application frames. These tools
+  Supported pane types include layout panes for                 allow the programmer to specify all aspects of
+arranging other panes, gadget panes for present-                an application’s user interface, including pane lay-
+ing users with feedback information or mechanisms               out, interaction style, look and feel, and command
+for invoking application behavior, and application              menus and/or menu bars.
+  4 This also includes Graph Formatting. Graph formatting         5 McCLIM does not support look and feel adaptiveness
+
+is only partly implemented in McCLIM at this date (March        at the moment. Hence, McCLIM mostly uses this portable
+2006).                                                          Lisp-based implementation.
+
+
+                                                            3
+Commands clim supports the separation of               provide pointers and references and hope that the
+command execution and command invocation. A            interested reader starts to explore the surrounding
+clim user can invoke commands either via typing        text sections on his own.
+it into an interactor, clicking on a menu entry or im-    After loading a clim implementation, the pack-
+plicitly invoking a presentation-translator by click-  age :clim-user is available to absorb user code. This
+ing on a presentation. Commands can also be in-        package is a good start for experimentation and
+voked explicitly by the programmer.                    first steps. When proper packaging is required, sim-
+                                                       ply include the packages :clim and :clim-lisp in your
+Dialogs and Incremental Update/Redisplay new package’s :use list.
+Incremental Redisplay goes a bit further than Out-        The central element of clim application pro-
+put Recording. With Incremental Redisplay, an gramming is the application-frame. An application
+                                                                                                                     6
+output record can not only reproduce content that frame is defined via define-application-frame. Here
+was written to a stream, the clim programmer can is the application frame definition for Hello World:
+also attach the code that generated the content to ( d e f i n e − a p p l i c a t i o n − f r a m e h e l l o − w o r l d ( )
+the content itself. Whenever necessary, the appli-         ( ( g r e e t i n g : i n i t f o r m ” H e l l o World”
+cation programmer can ask an output stream to                                  : accessor greeting ))
+update itself. clim will query all drawn elements          ( : pane ( make−pane ’ h e l l o − w o r l d − p a n e ) ) )
+for obsolescence, and if necessary, rerun the code
+to produce fresh output.                                  define-application-frame’s basic syntax is similar
+                                                       to defclass because define-application-frame also gen-
+This is a large number of facilities to explore. The erates classes. In this case, it creates a frame
+most systematic way – progressing from the lowest- class hello-world that has no superclass except frame
+level to the highest – would also be the lengthiest. (which is added automatically).
+Therefore, we start with showing several facilities       With :pane, we define a top-level-pane that be-
+in action with the most fundamental example in         comes     the content of a fresh window that belongs
+the realm of programming: Hello World.                 to  an   application      frame. Although the usual case
+                                                       is for an application frame to correspond to a top
+                                                       level window, sometimes an application frame is
+2 Our first application                                swallowed by another application and only space in
+                                                       another existing window is reserved. For instance,
+We will start with a few lines of code for the trivial a web site management tool might swallow a text
+Hello World example to give the reader a test case editor, so that the user has the option to edit web
+to verify his clim setup. It also serves as a point sites without switching to another application.
+of reference from where the reader can start his ex-      The list given after the :pane option is a form
+plorations of more challenging clim facilities. We which is evaluated when an instance of the hello-
+do not try to elaborate the clim concepts in de- world class is created. We use make-pane to con-
+tail here, but simply use them with a brief discus- struct a pane as the top-level-pane for frame in-
+sion. The confused reader may hope for a more in- stances. make-pane is a constructor for panes.7 We
+depth explanation in the following section. Please can treat it as an analog to make-instance especially
+regard pane, application frame, sheet, sheet hierar- made for pane classes. Let us have a look at the
+chy, graft and top-level loop as terms we will dis- definition of hello-world-pane.
+cuss later.
+                                                       ( d e f c l a s s hello−world−pane
+   We provide extensive clim specification refer-          ( clim−stream−pane ) ( ) )
+ences in footnotes. The motivation for this is to
+show that all the relevant information can be found       The one and only superclass of hello-world-pane is
+in the clim 2 specification[MY05]. Before a good clim-stream-pane.8 As there are no additional slots,
+clim programmer can master any clim concept,              6 See Section 28.2 “Defining and Creating Application
+he has to get used to the style of writing of the Frames”          in [MY05].
+specification, as this is the most relevant work for      7 See Section 29.2 “Basic Pane Construction” in [MY05].
+
+clim. The best we can do in this short paper is           8 See Section 29.4 “CLIM Stream Panes” in [MY05].
+
+
+
+
+                                                              4
+; ; ; B e h a v i o r d e f i n e d by t h e Handle R e p a i n t P r o t o c o l
+( d e f m e t h o d h a n d l e − r e p a i n t ( ( pane h e l l o − w o r l d − p a n e ) r e g i o n )
+    ( l e t ( ( w ( b o u n d i n g − r e c t a n g l e − w i d t h pane ) )
+                ( h ( b o u n d i n g − r e c t a n g l e − h e i g h t pane ) ) )
+        ; ; Blank t h e pane o u t
+        ( d r a w − r e c t a n g l e ∗ pane 0 0 w h
+                                         : filled t
+                                         : i n k ( pane−background pane ) )
+        ; ; Draw g r e e t i n g i n c e n t e r o f pane
+        ( d r a w −text ∗ pane
+                               ( g r e e t i n g ∗ a p p l i c a t i o n − f r a m e ∗)
+                               ( f l o o r w 2) ( f l o o r h 2)
+                               : align−x : center
+                               : align−y : center )))
+
+
+                                          Figure 2: handle-repaint for hello-world-pane
+
+
+an experienced clos programmer might guess that tent.
+we will use hello-world-pane solely for method spe-      Two functions are needed to see this code in
+cialization. Before doing so, let us have a look what action: make-application-frame and run-frame-top-
+we have actually inherited from clim-stream-pane:9 level. The former is a constructor for instances of
+                                                      frame classes, the latter for running the top-level
+CLIM−USER> ( d e s c r i b e ( f i n d − c l a s s
+                               ’ clim−stream−pane ) )
+                                                      loop of the application frame. The top-level loop
+DIRECT−SUPERCLASSES :                                 is used for command reading, execution and dis-
+PERMANENT−MEDIUM−SHEET−OUTPUT−MIXIN                   playing results. But all we need to know for the
+STANDARD−REPAINTING−MIXIN                             moment is that it makes the frame visible before
+STANDARD−EXTENDED−INPUT−STREAM                        entering the loop.
+STANDARD−EXTENDED−OUTPUT−STREAM
+                                                                            ( run−frame−top−level
+STANDARD−OUTPUT−RECORDING−STREAM
+                                                                              ( make−application−frame ’ hello−world ))
+SHEET−MULTIPLE−CHILD−MIXIN
+BASIC−PANE                                              This completes the Hello World example. In the
+   basic-pane is the foundation of all pane classes. It next section, we catch up to the details we skipped
+provides reasonable defaults for all protocol meth- in this example.
+ods and inherits from the protocol class pane. In
+turn, pane inherits from basic-sheet. Hence, all
+panes we construct via basic-pane automatically ad-
+                                                        3 Basic Facilities
+here to the sheet protocol.
+                                                        3.1 Geometry
+   Our hello-world-pane needs some methods to be
+useful. With handle-repaint in Figure 2, we partic- To clim, geometry means regions. A region is ei-
+ipate in the repaint protocol.10 This method has ther bound or unbound and has a dimensionality
+two tasks: paint the pane with the pane’s back- of either zero, one or two. That corresponds to
+ground and draw the greeting of *application-frame* a point, a path or an area respectively. Regions
+in the center of the pane. The hello-world frame in- can be compared (region predicate protocol11 ) and
+stance is automatically available in the context of      11 clim relies heavily on clos. In clos, the term protocol
+handle-repaint via the dynamically scoped variable
+                                                        means a set of generic functions that together form a coher-
+*application-frame* and so it is possible to use the ent interface. A protocol specification not only includes the
+accessor greeting to obtain the instance’s slot con- syntactic details of the function names and the number of
+                                                                            function arguments, but also the functions’ purpose and the
+   9 Internal classes removed from listing.                                 semantics of the return values (and/or side effects) must be
+  10 See Section 8.4 “Repaint Protocol” in [MY05]                           given in a textual specification.
+
+
+                                                                        5
+composed (region composition protocol).                          clim to appropriate gadget with a native look
+   Every bounded region has a bounding rectangle.                and feel.
+It is the smallest rectangle that contains every point
+in the region. The bounding rectangle of every                 • Structured graphics like output records and an
+bounded region can be accessed via the bounding                  application’s presentation objects
+rectangle protocol.
+                                                                The central abstraction specified by clim is the
+   clim supports affine transformations of regions.          sheet. A sheet is a surface that can be painted on
+Such transformations can move, stretch and rotate            and to which input gestures can be directed, and
+a region. A transformation is affine when every              that lives in a hierarchy of other such objects. To
+straight line remains straight after transformation.         get used to the notation of sheets, you can think of
+Transformations can be composed arbitrarily. The             them as swallowable windows.
+programmer can attach transformations to medi-
+                                                                The fundamental notion in clim is the nesting
+ums and panes. In layout panes, clim uses trans-
+                                                             of sheets within another sheet called a windowing
+formations to map the coordinates of child panes
+                                                             relationship. In a windowing relationship, a par-
+to the coordinate system of their parents.
+                                                             ent sheet provides space to or groups a number of
+   All drawing settings can be changed either per-           other children sheets. The sheet protocols specify
+manently, or temporarily in the context of the with-         functionality for constructing, using, and managing
+drawing-options macro.                                       hierarchies of sheets.
+                                                                Sheets have the following properties:
+3.2    The Windowing Substrate
+                                                      parent/children: a sheet is part of a windowing
+clim does not directly talk to the window system.          hierarchy and maintains links to its parent and
+Instead, clim is layered on top of a windowing             its children.
+            12
+substrate.       This substrate is a middleware be-
+tween clim on one side and the host window sys- coordinate system: a sheet has its own coordi-
+tem on the other. This middleware layer provides           nate system that might have a different scaling
+a portable windowing model that insulates higher           or orientation than its parent.
+levels of clim and clim programmers from the de-
+                                                      transformation: via a sheet transformation these
+tails of the host window system. From the perspec-
+                                                           differing sheet coordinate systems are mapped
+tive of a clim programmer, talking to the window
+                                                           into coordinate system of their parents.
+system is equal to talking to this abstraction layer.
+The implementation details are hidden in backends, clipping region: defines an area within a sheet’s
+like in McCLIM the CLX backend, which hides                coordinate system that indicates the area of
+X11 details. These backends will use the services          interest.
+of a host window system to provide efficient win-
+dowing, input and output facilities. Thanks to this
+                                                      Window hierarchies Sheets participate in a
+middleware, clim is portable across different host
+                                                      number of protocols. The windowing protocols
+windowing systems.
+                                                      describes the relationship between sheets. Every
+   This framework allows uniform treatment of the
+                                                      sheet has a parent, a sheet might have one or more
+following GUI building blocks:
+                                                      children. A sheet can be adopted by a parent sheet
+   • Windows like those in X, Mac OS X and Mi- and disowned later. A sheet is grafted when it is
+      crosoft Windows.                                connected to a graft either directly or through it’s
+                                                      ancestors. A graft is a special kind of sheet that
+   • Gadgets typical of toolkit layers, such as stands in for a host window, typically a root win-
+      Gtk+, QT or Mac OS X’s toolkit. The back- dow (i.e. screen level). A sheet is attached to a
+      end provides a frame manager which takes care particular host window system by making it a child
+      of mapping the abstract gadget types found in of an associated graft. A host window will be allo-
+                                                      cated for that sheet; the sheet will then appear to
+  12 formerly known as Silica.                        be a child of the window associated with the graft.
+
+                                                         6
+   Sheet hierarchies are displayed and manipulated   tiling filling, and pixmaps usage. The features of
+on particular host window systems by establishing    the output protocol are specified briefly in Section
+a connection to that window system and attaching     8.3 “Output Protocol”and more precisely in Chap-
+them to an appropriate place in that window sys-     ters 10-14 of [MY05].
+tem’s window hierarchy. Ports and grafts provide        clim lives in an idealized world in terms of graph-
+the functionality for managing this process. A port  ics operations. A clim programmer can use an in-
+is a connection to a display service that is respon- finitely long and wide drawing pane with arbitrarily
+sible for managing host window system resources      precise resolution and continuously variable opac-
+and for processing input events received from the    ity. As rendering devices with these properties are
+host window system.                                  rare, we need to render the idealized graphic de-
+                                                     scription to a device with finite size and a fixed
+Window input The input architecture of the drawing precision. The rendering rules are spec-
+windowing substrate allows sheets to receive any ified in Section 12.4 “Rendering Conventions for
+window event from the host windowing sys- Geometric Shapes”of [MY05].
+tem. The event class hierarchy descends from
+the class event to device-event (including all key-
+board and mouse actions), window-event (window-
+                                                     4 Building Applications
+size-changed and window-repaint events), window- In this section, we explain a number of the neces-
+manager-events (window-deleted) to artificial timer- sary ingredients for building applications in clim.
+events. See 8.2 “Standard Device Events” in We will illustrate frames, panes, and simple com-
+[MY05].                                              mands with two examples: a color editor and a
+   The function pair dispatch-event and handle-event simple line and text drawing program.
+is the center of all event handling. dispatch-
+event is intended to be called when an event is
+to be dispatched to a client either immediately 4.1 Application Frames
+or queued for later processing in an event queue.
+                                                     Frames are the central abstraction defined by the
+On the other side, handle-event is intended for
+                                                     clim interface for presenting an application’s user
+further specialization, so the application devel-
+                                                     interface. Many of the high level features and facil-
+oper can implement special policies for selected
+                                                     ities for application building provided by clim can
+events. For instance, when a sheet notices through
+                                                     be conveniently accessed through the frame facility.
+a window-configuration-event that the sheet’s size
+                                                        Frames are typically displayed as top level win-
+has changed, it might redo its layout for its chil-
+                                                     dows on a desktop. Frame managers provide the
+dren.
+                                                     machinery for realizing frames on particular host
+                                                     window systems. A frame manager acts as an medi-
+Window output All drawing operation happen ator between the frame and what is typically called
+on a medium. This object captures the state of a desktop manager, or in X terminology, a window
+the drawing like foreground, background, line style, manager. The frame manager is responsible for at-
+and the transformation which is applied to the co- taching the pane hierarchy of a frame to an appro-
+ordinates before drawing. Every medium is associ- priate place in a sheet hierarchy (and therefore to
+ated with a sheet. In turn, a sheet must be asso- a host window system window hierarchy) when the
+ciated with a medium whenever drawing operation frame is adopted.
+should be executed. Many clim sheets are asso-          To build a user interface, an application pro-
+ciated with a medium permanently. sheet-medium grammer defines one or more frame classes. These
+obtains the medium associated with a sheet.          frame classes define a number of frame properties
+   The graphic output capabilities of sheets range including application specific state and a hierarchy
+from simple line style and text style customization of panes (i.e. user interface gadgets and regions,
+over rendering various geometrical shapes, a color for interacting with the users). Frame classes also
+model capable of doing alpha blending, compos- provide hooks for customizing application behavior
+able affine transformations to pattern, stencil and during various portions of the frame protocol. For
+
+
+                                                       7
+example, an :after method on generic functions in             from commands like Open, Save, Search, or Quit.
+the frame protocol can allow applications to man-             The frame is a long-living GUI object compared to
+age application resources when the frame is made              dialogs, and there is no linear execution path as
+visible on some display server.                               there is in after a dialog as the user is free to select
+   clim is able to show dialog windows, but the               any commands he likes as his next action.
+code that brings them up is usually quite different              Hence, the synchronous programming pattern for
+from the code that is used to generate the content of         dialogs is more convenient because after dialog con-
+application frames. This is unusual for a window-             firmations there is a predetermined path of execu-
+ing toolkit as most of them unify the generation of           tion, while an application frame has to be prepared
+dialog content and content of other window types.             to handle an arbitrary sequence of commands.
+   clim generates a dialog with the appropriate in-
+put gadget as consequence of a series of input re-            4.2    Panes
+quests. Thanks to the stream facility, the program-
+mer can actually request input synchronously with             An application frame constructs its pane tree by
+a blocking read request. He does not have to take             specifying a top-level pane in define-application-
+care of asynchronously handling confirmation or               frame. This pane is usually a layout pane that
+cancel button clicks. For instance, the programmer            contains more gadget and/or layout panes as its
+requests a string from the user and the user is pre-          children. With the help of layout panes, a pane
+sented with a prompt, an editable text field, and             hierarchy can be constructed. The top-level pane
+two buttons for confirmation and canceling. The               (and the whole hierarchy when it is a layout pane)
+string requesting function returns only after the             is created when the application frame is adopted
+user hits the confirmation button. The programmer             by a frame manager and made visible to the user.
+can directly use the function’s return value which is         The programmer can compose an interface consist-
+the string provided by the user. Clicking the cancel          ing of pre-defined gadget panes, layout panes, or
+button is dealt with by signaling an abort-gesture            application-specific panes. clim panes are rectan-
+condition.                                                    gular sheets that are analogous to the gadgets or
+   From the caller’s perspective, an attempt to sep-          widgets of other toolkits.
+arate application frames and dialogs could be: a di-             Panes and sheets as defined by the windowing
+alog window itself is side-effect free with respect to        substrate have in common that they are associated
+the application state and therefore the whole sense           with a region on screen, a parent, and optional
+of calling a dialog creation routine must arise from          children. They differ in their usage of the input
+the values it returns. For example, the code that             and output capabilities. A sheet is passive and
+modifies the state of the text editor in a text-replace       intended to be used by other, active components,
+operation does not rest with the callback code of             while a pane already contains this active part. For
+the Ok button in the dialog. This task rests with             this reason, panes are implemented as subclasses
+the code that is executed after the dialog returns            of basic-sheet augmenting the class with an active
+its values, namely the code of the Search/Replace             part. For instance, a button-pane actively draws
+command.                                                      its own button representation on its allotted screen
+   An intermediate dialog is something that is                area and a click on the correct button area triggers
+brought up to collect additional information for (or          a callback for the button. A composite pane lays
+before) an operation. When the user selects the               out its child elements and requests them to draw
+“Search” command, he is queried for a search string           themselves onto specific screen regions.
+in an additional dialog window; probably offering                clim comes with a set of predefined gadget
+other search options like case-insensitive search or          panes. They consist of push-button, toggle-button,
+backwards search. This is done in a synchronous               slider, radio-box, text-field, text-editor panes ready
+manner, blocking until the requested input is made            for use by the clim application programmer. These
+available by the user.                                        gadgets might be remapped to native system gad-
+   An application frame is an interface that provides         gets by the frame manager, so a native look and
+the user with a variety of commands to choose as              feel is possible.
+his next step. For instance, the user may choose                 Each gadget pane class is associated with a set of
+
+
+                                                          8
+generic functions that act as callbacks do in tradi-        tion from the details of how the operation is invoked
+tional toolkits. For example, a pushbutton has an           by the user.
+“activate” callback method which is invoked when               Application programmers define a command for
+its button is pressed. For this particular callback,        each operation that they choose to export as an ex-
+a method named activate-callback is invoked by de-          plicit user entry point. A command is defined to
+fault, and a clim programmer can provide a spe-             have a name and a set of zero or more operands, or
+cialized method to implement application-specific           arguments. These commands can then be invoked
+behavior for a subclassed button-pane. But ex-              using a variety of interaction techniques. For ex-
+cept in the case where the programmer needs a               ample, commands can be invoked from menus, key-
+lot of buttons with related behavior, creating a            board accelerators, direct typein, mouse clicks on
+subclass for changing a single specific callback is         application data, or gadgets.
+not economical. Hence upon gadget creation, the                The commands are processed in a REPL-like
+programmer can specify an alternative callback              loop. Every application frame has its own run-
+method for any callback available. For example,             ning top-level loop specified via :top-level in define-
+by providing the :activate-callback initarg, the pro-       application-frame. For a clim application, it is
+grammer can change the callback to any regular or           rarely necessary to change the default top level
+generic function. By convention, any callback can           loop.
+be changed by providing an initarg keyword equal               The top-level loop becomes visible when an
+to the callback’s name. See Chapter 30 in [MY05]            interactor-pane is added to the user interface. Here
+for a listing and description of available callbacks.       the clim user gains direct access to the command
+   clim also provides composite and layout panes.           loop. The loop steps are similar to read-eval-print:
+These pane types are used for aggregating several
+child panes into a bigger single pane that has a lay-        1. Read a command.
+out according to the requested directives. For ex-           2. Execute the command.
+ample, clim provides two pane classes, hbox-pane
+and vbox-pane, that lay out their children in hor-           3. Run the display function for each pane in the
+izontal rows or vertical columns respectively. The              frame associated with the top-level loop as nec-
+parent/child relations are managed via the sheet’s              essary.
+windowing protocol. If the user interface does not
+change in ways unpredictable in advance (as in a              Whenever a command is invoked other than
+user interface builder for instance), the program           by typing, an appropriate command-invoking text
+does not have to do hierarchy management via the            appears after the command prompt nonetheless.
+windowing protocol. He is provided with a set of            Here, the user can directly see how his commands
+convenience macros that allows elegant interfaces           are synthesized from other invocation methods like
+composed simply by wrapping the respective pane             pointer clicks or menu item selections.
+construction code into the convenience macros.
+   Application pane classes can be used for sub-
+classing. They can be used to present application
+                                                            5     Simple applications
+specific data – for instance by specializing handle-
+                                                            5.1    Color Editor
+repaint – and to manage user interactions – for in-
+stance by specializing handle-event.                 In this next example, we define a frame for color se-
+                                                     lection by manipulating their red, green, and blue
+                                                     components separately. This example illustrates
+4.3 Commands
+                                                     the use of gadget panes provided by clim. In the
+Most applications have a set of operations that can code in Figure 3, we define an application frame
+be invoked by the user. In clim, the command fa- using define-application-frame. As said before, the
+cility is used to define these operations. Commands syntax of this macro is similar to that of defclass.
+support the goal of separating an application’s user It defines a new frame class which automatically
+interface from its underlying functionality. In par- inherits from the class frame which provides most
+ticular, commands separate the notion of an opera- of the functionality for handling frames.
+
+
+                                                        9
+   One requirement must be fulfilled by all frame        first list element is a rational number which denotes
+definitions: code to generate a pane hierarchy must      the amount of space the pane generated by the fol-
+be supplied. The :pane option is the simplest way        lowing form is allowed to occupy in the resulting
+to supply this code. The hello-world frame con-          horizontal layout. In our code in Figure 3, hbox-
+structs a hierarchy with only one application pane       pane generated from the horizontally macro has a
+via make-pane. The pane hierarchy of color editor        space requirement on its own. The whole compos-
+is more interesting.                                     ite pane is forced to have a size 200 pixels high.
+   Every pane can request space via its initarg. A          Now we are ready to turn to the gadget panes.
+request for space allocation is specified as a pre-      The color editor uses three sliders one for each com-
+ferred size (:height, :width), a maximum size (:max-     ponent of RGB. make-color-slider creates all three
+height, :max-width), and a minimum size (:min-           sliders that differ by id, initval and label. The first
+width, :max-width). The special constant +fill+ can      two variables are handed to make-pane to construct
+be used to indicate the tolerance for any width or       the slider panes. The remaining initargs for make-
+height.                                                  pane are shared across all three entities. To deco-
+   The color editor frame uses three application         rate each slider-pane with a proper label, each of
+slots for storing the current RGB values as well         them is wrapped up in a label-pane via the labelling
+as two panes for showing the currently selected col-     convenience macro.
+ors. The variable *application-frame* is dynami-            The slider gadget protocol defines two callback
+cally scoped and is defined in any event handler as      functions: drag-callback is repeatedly invoked while
+well as for all code that is evaluated in the context    the slider is being dragged by the user, and value-
+of the :pane(s) frame option.                            change-callback is invoked when the slider is re-
+   The code provided in the :pane option in Figure       leased in a new location. Notice that this speci-
+3 uses all three kinds of panes provided by clim.        fication is sufficiently abstract to allow a variety of
+It uses two application-panes to display colors, two     different look and feels for a slider. For example,
+layout panes (vbox-pane and hbox-pane) and three         no guarantee is made as to whether the mouse but-
+gadget panes (slider-pane).                              ton is held down during dragging, or whether the
+   In contrast to hello-world, we do not need a spe-     mouse button is pressed once to start and again to
+cialized pane class here. We can use an application-     stop dragging.
+pane for displaying chosen colors. An applica-              We use the gadget ID to distinguish between the
+tion pane supports graphics operations and invokes       red, green and blue slider in the callback code. We
+generic functions on the pane when input events          could use three different callback functions here,
+are received. For the color editor, we only need its     but such callbacks would have much more similar-
+ability to refresh its background color.                 ities than differences, thus we do not do that here.
+   The vertically and horizontally convenience           Instead, we distinguish the gadget by their id.
+macros provide an interface to the hbox-pane and            The drag-callback method resets the background
+vbox-pane classes. Most clim layout panes pro-           of drag-feedback-pane and delegates its redrawing
+vide similar convenience macros. The vertical box        to redisplay-frame-pane, while value-change-callback
+pane arranges its children in a stack from top to        does the same for the frame’s current color pane.
+bottom in the order they are listed at creation in       These methods use the id argument of the gadget
+the vertically form. This pane type also supports        to determine which color component was changed.
+inter-element space and “pieces of glue” at arbi-           The color editor frame uses the :menu-bar op-
+trary points in the children sequence. In the color      tion to indicate that a menu-bar should be added
+editor frame, the +fill+ “glue” is used to absorb        to the application frame. Frame commands de-
+all extra space when too much vertical space is al-      fined with :menu t are accessible from the menu-
+located to the vertical box. clim also provides a        bar. In this example, we define only one command
+horizontal box which does the same thing except in       named com-quit which is presented as “Quit” to
+the horizontal direction.                                the user. com-quit is defined via define-color-editor-
+   In the horizontally macro in Figure 3, we do not      command. This macro is generated automatically
+supply forms to be evaluated directly. Instead, hor-     along define-application-frame from the application
+izontally processes a form wrapped up in a list. The     frame’s name. com-quit simply closes the applica-
+
+
+                                                    10
+   ( labelling (: label label )
+      ( make−pane : s l i d e r : i d i d : o r i e n t a t i o n : h o r i z o n t a l : v a l u e i n i t v a l
+                                : max−value 1 : min−value 0
+                                : show−value−p t : d e c i m a l − p l a c e s 2
+                                : d r a g − c a l l b a c k #’ c o l o r − s l i d e r − d r a g g e d
+                                : v a l u e − c h a n g e d − c a l l b a c k #’ c o l o r − s l i d e r − v a l u e − c h a n g e d ) ) )
+
+( define−application−frame color−editor ()
+   ( current−color−pane
+     drag−feedback−pane
+     ( red : i n i t f o r m 0.0)
+     ( green : i n i t f o r m 1.0)
+     ( blue : initform 0.0))
+   ( : pane ( w i t h − s l o t s ( drag−feedback−pane c u r r e n t − c o l o r − p a n e r e d g r e e n b l u e )
+                      ∗ application−frame ∗
+                 ( v e r t i c a l l y ()
+                      ( s e t f current−color−pane
+                                  ( make−pane ’ a p p l i c a t i o n − p a n e
+                                                     : m i n − h e i g h t 100 : max−height 100
+                                                     : b a c k g r o u n d ( make−rgb−color r e d g r e e n b l u e ) ) )
+                      ( h o r i z o n t a l l y ( : m i n − h e i g h t 100 : max−height 1 0 0 )
+                          ( 1 / 2 ( m a k e − c o l o r − s l i d e r ’ r e d r e d ”Red” ) )
+                          ( 1 / 4 ( m a k e − c o l o r − s l i d e r ’ g r e e n g r e e n ” Green ” ) )
+                          ( 1 / 4 ( m a k e − c o l o r − s l i d e r ’ b l u e b l u e ” Blue ” ) ) )
+                      ( s e t f drag−feedback−pane
+                                  ( make−pane ’ a p p l i c a t i o n − p a n e
+                                                     : m i n − h e i g h t 100 : max−height 100
+                                                     : b a c k g r o u n d ( make−rgb−color r e d g r e e n b l u e ) ) ) ) ) )
+   ( : menu−bar t ) )
+
+( defun color−slider−dragged ( s l i d e r value )
+   ( w i t h − s l o t s ( drag−feedback−pane r e d g r e e n b l u e ) ∗ a p p l i c a t i o n − f r a m e ∗
+      ( l e t ( ( c o l o r ( ecase ( gadget−id s l i d e r )
+                                     ( r e d ( make−rgb−color v a l u e g r e e n b l u e ) )
+                                     ( g r e e n ( make−rgb−color r e d v a l u e b l u e ) )
+                                     ( b l u e ( make−rgb−color r e d g r e e n v a l u e ) ) ) ) )
+           ( s e t f ( pane−background drag−feedback−pane ) c o l o r
+                        ( medium−background drag−feedback−pane ) c o l o r ) )
+      ( r e d i s p l a y − f r a m e − p a n e ∗ a p p l i c a t i o n − f r a m e ∗ drag−feedback−pane ) ) )
+
+( d e f u n c o l o r − s l i d e r − v a l u e − c h a n g e d ( s l i d e r new−value )
+    ( with−slots ( current−color−pane red green blue ) ∗ application−frame ∗
+        ; ; The g a d g e t − i d s y m b o l s match t h e s l o t names i n c o l o r − e d i t o r
+        ( s e t f ( s l o t − v a l u e ∗ a p p l i c a t i o n − f r a m e ∗ ( g a d g e t − i d s l i d e r ) ) new−value )
+        ( l e t ( ( c o l o r ( make−rgb−color r e d g r e e n b l u e ) ) )
+            ( s e t f ( pane−background c u r r e n t − c o l o r − p a n e ) c o l o r
+                      ( medium−background c u r r e n t − c o l o r − p a n e ) c o l o r ) )
+        ( redisplay−frame−pane ∗ application−frame ∗ current−color−pane ) ) )
+
+( d e f i n e − c o l o r − e d i t o r − c o m m a n d ( com−quit : name ” Quit ” : menu t ) ( )
+    ( frame−exit ∗ application−frame ∗))
+
+
+                                                       Figure 3: Color Editor
+
+
+                                                                      11
+tion frame causing the termination of the frame’s                              output-mixin. The first class is used to provide the
+top-level-loop. In the next example, commands will                             application programmer with stream properties for
+be explored in greater detail.                                                 the draw-pane that are required for the convenience
+   We can invoke the color-editor with the regu-                               macro tracking-pointer. basic-pane is responsible for
+lar run-frame-top-level/make-application-frame com-                            handling all requests belonging to the sheet and
+bination.                                                                      pane protocols in a standard manner. The last class
+                                                                               is a mixin to tag the pane as permanently visible
+( run−frame−top−level
+   ( m a k e − a p p l i c a t i o n − f r a m e ’ c o l o r − e d i t o r ) ) on screen during its instances’ lifetime. Most static
+                                                                               user interfaces use this mixin. Note that McCLIM
+                                                                               is sensitive to the order of the superclasses.14
+5.2 A simple drawing application                                                  For draw-pane, the handle-repaint method shown
+                                                                               in Figure 4 is straightforward. It delegates back-
+We move on to a simple application that draws lines ground filling to the next less specific method and
+and inserts text interactively. Our simple drawing then iterates through the lines and strings paint-
+program defines commands for various drawing op- ing them. Here, we implicitly defined the format of
+erations and binds specific input events to these the lines slot and the strings slot of the application
+commands.                                                                      frame class. The elements of the list stored in lines
+   The application frame is defined in Figure 4. A are pairs of points, namely the start and end point
+different approach is used to generate the pane hier- for a line. In strings, we store the text’s position as
+archy: instead of mixing the layout and pane infor- the car of a cons and the text as its cdr.
+mation, we use the :panes keyword to list all panes                               Figure 5 shows the command definitions. We
+that should be available in frame layouts. The :lay- have commands for adding a text string, for adding
+outs keyword combines them into several layouts. It a line and resetting the draw pane. After every
+is possible to define multiple layouts with this op- command, we update the drawing pane via the aux-
+tion. We define two simple layouts, default-layout iliary method update-draw-pane.15
+and alternative.                                                                  At this point, we can actually use the applica-
+   There are two options to define-application-frame tion; although not very conveniently. The interac-
+that we have not seen before, :command-definer and tor pane can be used to invoke one of three com-
+:top-level (both with there defaults). :command- mands, either by typing the complete command in-
+definer is used to specify a name for a command- cluding all its parameters or by typing only the
+defining macro for this frame class. Passing t command name, then a dialog queries the user for
+to this option (its default) generates a command the missing command argument(s). Clicking on the
+definer named define-<frame-name>-command. We menu bar entries is another way to invoke com-
+can use the command-defining macro as a conve- mands. When commands are invoked through the
+nience macro for define-command which is used to menu bar, the user will be queried for the missing
+define frame commands, and will see it in action argument(s) in the same way as if a command had
+before long. :top-level specifies a special form that been typed into the interactor pane.
+is used as top level command loop. The top level is                               But drawing by typing coordinates is not con-
+responsible for dequeuing and executing commands venient. Therefore, we attach these commands
+that have been invoked by the user. This loop is to to other user interactions. Figure 6 defines in-
+a application frame what the REPL is to a termi- put methods (methods for handle-event) for pointer
+nal.                                                                           button presses as well as key presses on the draw
+   This is the first example that does not use pane. Each handler invokes a tracking function
+clim-stream-pane (or one of its subclasses) as                                   14 All stream classes like standard-extended-input-stream
+a pane class.13                   Instead, we compose our must be listed before basic-pane. Otherwise, no stream han-
+own drawing pane using standard-extended-input- dling facilities will be available.
+                                                                                 15 An experienced clim programmer would define a
+stream, basic-pane and permanent-medium-sheet-
+                                                                        display-function for draw-pane. This function is run after
+  13 When using McCLIM, we have to do this as there are                 a command is executed, and causes the display pane to be
+bugs in the behavior of clim-stream-pane that have not been             updated with any changes. We will save this technique for
+fixed yet.                                                              later examples.
+
+
+                                                                   12
+( d e f i n e − a p p l i c a t i o n − f r a m e draw−frame ( )
+    (( l i n e s : accessor l i n e s : initform n i l )                                  ; l i n e s o f drawing
+      ( s t r i n g s : accessor s t r i n g s : initform n i l ))                        ; t e x t s o f drawing
+    ( : p a n e s ( draw−pane ( make−pane ’ draw−pane ) )
+                    ( interactor : interactor ))
+    (: layouts ( default−default ( v e r t i c a l l y ()
+                                                       ( : f i l l draw−pane )
+                                                       (1/4 i n t e r a c t o r ) ) ) )
+    ( : menu−bar t )
+    ( : command−definer t )
+    ( : top−level ( default−frame−top−level )))
+
+( d e f c l a s s draw−pane
+        ( s t a n d a r d − e x t e n d e d − i n p u t − s t r e a m ; must have p r e c e d e n c e o v e r basic−pane
+          basic−pane
+          clime : always−repaint−background−mixin
+          permanent−medium−sheet−output−mixin )
+   ())
+
+( d e f m e t h o d h a n d l e − r e p a i n t ( ( pane draw−pane ) r e g i o n )
+    ( with−application−frame ( frame )
+        ( call−next−method )                                        ; Paints the background
+        ( d o l i s t ( l i n e ( l i n e s frame ) )
+            ( d r a w − l i n e pane ( c a r l i n e ) ( c d r l i n e ) ) )
+        ( d o l i s t ( p a i r ( s t r i n g s frame ) )
+            ( dr a w −text pane ( c d r p a i r ) ( c a r p a i r ) ) ) ) )
+
+
+                                     Figure 4: define-application-frame for draw-frame
+
+
+(track-line-drawing and track-text-drawing) that uses                     can move the displayed string around while he is
+tracking-pointer to bypass the regular input distri-                      free to append additional string characters by ad-
+bution channels and to dispatch events to user de-                        ditional key presses. He can confirm the text posi-
+fined handlers.                                                           tion with a mouse click causing a command to be
+   For pointer-button-press-event, which is used to                       dispatched to the application frame that will add
+draw lines, the input loop manages a “rubber-                             the text to the application frame permanently.
+banding” line. The :pointer-motion is invoked                               As each of these methods invoke execute-frame-
+whenever the mouse pointer is moved by the user.                          command passing in a special command invocation
+The code attached to :pointer-motion clears the                           form, this naturally leads to a separation between
+previously-drawn line and draws a new line with                           the code that specifies how a command is invoked
+the new pointer position. It can easily undraw the                        (menu-bar click, click on draw-pane or typing in
+old line by the using the special ink +flipping-ink+.                     the interactor pane) and the code for command ex-
+When the user confirms the line by releasing the                          ecution (code bodies of define-command).
+pointer button, a command to the application is
+synthesized via execute-frame-command supplying
+all required parameters.
+  We provide a similar input facility for text input. 6   High Level Facilities
+Whenever the user hits a key in the draw-pane,
+the respective handle-event calls track-text-drawing In this section, we explain a number of higher
+which attaches the character entered to the mouse level facilities provided by clim, including output
+pointer. As with the rubber-banding line, the user recording, formatted output, presentations, context
+
+
+                                                                     13
+( define−draw−frame−command ( com−draw−add−string : menu t : name ”Add S t r i n g ” )
+      (( string ’ string ) (x ’ integer ) (y ’ integer ))
+   ( push ( c o n s ( make−point x y ) s t r i n g )
+           ( s t r i n g s ∗ application−frame ∗))
+   ( update−draw−pane ) )
+
+( define−draw−frame−command ( com−draw−add−line : menu t : name ”Add L i n e ” )
+      ( ( x1 ’ i n t e g e r ) ( y1 ’ i n t e g e r ) ( x2 ’ i n t e g e r ) ( y2 ’ i n t e g e r ) )
+   ( with−slots ( l i n e s ) ∗ application−frame ∗
+          ( push ( c o n s ( make−point x1 y1 ) ( make−point x2 y2 ) )
+                   l i n e s ))
+   ( update−draw−pane ) )
+
+( define−draw−frame−command ( com−draw−clear : menu t : name ” C l e a r ” ) ( )
+   ( with−slots ( l i n e s s t r i n g s ) ∗ application−frame ∗
+      ( setf l i n e s n i l s t r i n g s n i l ))
+   ( update−draw−pane ) )
+
+; ; A u x i l a r y Method
+( d e f u n update−draw−pane ( )
+    ( r e p a i n t − s h e e t ( find−pane−named ∗ a p p l i c a t i o n − f r a m e ∗ ’ draw−pane ) +e v e r y w h e r e +))
+
+
+                                         Figure 5: Commands for draw-frame
+
+
+sensitive input, and command processors.16 We il-        typically records that represent a piece of output,
+lustrate these facilities in two examples: a directory   say the result of a call to draw-rectangle or write-
+lister and a simple schedule browser.                    string. The intermediate nodes typically provide
+                                                         additional semantics to the tree, such as marking
+                                                         a subtree of nodes as resultant output of one par-
+Output Recording Many of the higher level fa-
+                                                         ticular phase of an application, for instance row
+cilities in clim are based on the concept of out-
+                                                         and column formatting information. Chapter 16 in
+put recording. The clim output recording facility
+                                                         [MY05] has all the details.
+is simply a mechanism wherein a window remem-
+bers all of the output that has been performed on
+it. This output history (stored basically as a dis- Output Formatting clim provides a conve-
+play list) can be used by clim for several purposes. nient table and graph formatting facility, which is
+For example, the output history can be used to built on top of the output recording facility. The
+automatically support window contents refreshing key to these formatting tools (as opposed to, say,
+(or “damage repaint” events). The application pro- format’s T directive) is that they dynamically com-
+grammer has considerable control over the output pute the formatting parameters based on the actual
+history. Output recording can be enabled or sus- size of the application-generated output.
+pended, and the history itself can be cleared or re-        The application programmer uses these tools by
+arranged.                                                wrapping   any piece of output-producing code with
+                                                         advisory macros that help the system determine the
+   Output records can be nested, thereby forming
+                                                         structure of the output.
+their own hierarchy. The leaves of this tree are
+                                                            For example, start with a simple output function
+  16 Many of these facilities are derived from work done that shows some information about the packages in
+at Symbolics on the Dynamic Windows (DW) project for the Lisp environment:
+Genera[Sym]. See [MYM89] for more detailed information
+on the motivations and design details behind DW. Many              ( d e f u n show−package−info ( s t r e a m )
+of the original contributers to DW have participated in the          ( d o l i s t ( package ( l i s t − a l l − p a c k a g e s ) )
+redesign of these facilities for clim.                                   ( w r i t e − s t r i n g ( package−name p a c k a g e )
+
+
+                                                              14
+( d e f m e t h o d h a n d l e − e v e n t ( ( pane draw−pane ) ( e v e n t p o i n t e r − b u t t o n − p r e s s − e v e n t ) )
+    ; ; S t a r t l i n e t r a c k i n g when l e f t p o i n t e r b u t t o n i s p r e s s e d
+    ( when ( e q l ( p o i n t e r − e v e n t − b u t t o n e v e n t ) +p o i n t e r − l e f t − b u t t o n +)
+        ( t r a c k − l i n e − d r a w i n g pane
+                                              ( pointer−event−x event )
+                                              ( pointer−event−y event ) ) ) )
+
+( d e f m e t h o d h a n d l e − e v e n t ( ( pane draw−pane ) ( e v e n t k e y − p r e s s − e v e n t ) )
+    ( when ( k e y b o a r d − e v e n t − c h a r a c t e r e v e n t )
+        ( m u l t i p l e − v a l u e − b i n d ( x y ) ( s t r e a m − p o i n t e r − p o s i t i o n pane )
+            ; ; S t a r t w i t h empty s t r i n g , as a k e y r e l e a s e e v e n t w i l l be r e c e i v e d anyway
+            ( t r a c k − t e x t − d r a w i n g pane ” ” x y ) ) )
+    ( update−draw−pane ) )
+
+( d e f u n t r a c k − l i n e − d r a w i n g ( pane s t a r t x s t a r t y )
+    ( l e t (( lastx startx )
+               ( lasty starty )
+               endx endy )
+        ( block n i l
+            ( w i t h − d r a w i n g − o p t i o n s ( pane : i n k +f l i p p i n g − i n k +)
+               ( d r a w − l i n e ∗ pane s t a r t x s t a r t y l a s t x l a s t y )
+               ( t r a c k i n g − p o i n t e r ( pane )
+                     ( : p o i n t e r − m o t i o n (& k e y x y )
+                         ( d r a w − l i n e ∗ pane s t a r t x s t a r t y l a s t x l a s t y ) ; d e l e t e o l d
+                         ( d r a w − l i n e ∗ pane s t a r t x s t a r t y x y )                    ; draw new
+                         ( setf lastx x lasty y ))
+                     ( : p o i n t e r − b u t t o n − r e l e a s e (& k e y e v e n t x y )
+                         ( when ( e q l ( p o i n t e r − e v e n t − b u t t o n e v e n t ) +p o i n t e r − l e f t − b u t t o n +)
+                              ( d r a w − l i n e ∗ pane s t a r t x s t a r t y l a s t x l a s t y ) ; d e l e t e o l d
+                              ( s e t f endx x endy y )
+                              ( return ))))))
+        ( execute−frame−command
+          ∗ a p p l i c a t i o n − f r a m e ∗ ‘ ( com−draw−add−line , s t a r t x , s t a r t y , endx , endy ) ) ) )
+
+( d e f u n t r a c k − t e x t − d r a w i n g ( pane c u r r e n t − s t r i n g c u r r e n t − x c u r r e n t − y )
+    ( t r a c k i n g − p o i n t e r ( pane )
+        ( : p o i n t e r − m o t i o n (& k e y x y )
+            ; ; We can ’ t u s e f l i p p i n g i n k f o r t e x t , hence redraw .
+            ( h a n d l e − r e p a i n t pane +e v e r y w h e r e +)
+            ( setq current−x x current−y y )
+            ( d r a w −text ∗ pane c u r r e n t − s t r i n g x y ) )
+        ( : k e y b o a r d (& k e y g e s t u r e )
+            ( when ( and ( t y p e p g e s t u r e ’ k e y − r e l e a s e − e v e n t )
+                                  ( keyboard−event−character gesture ))
+                ( setf current−string
+                            ( concatenate ’ s t r i n g
+                                                      current−string
+                                                      ( s t r i n g ( keyboard−event−character gesture ) ) ) )
+                ( h a n d l e − r e p a i n t pane +e v e r y w h e r e +)
+                ( draw −text ∗ pane c u r r e n t − s t r i n g c u r r e n t − x c u r r e n t − y ) ) )
+        ( : p o i n t e r − b u t t o n − r e l e a s e (& k e y e v e n t x y )
+            ( when ( e q l ( p o i n t e r − e v e n t − b u t t o n e v e n t ) +p o i n t e r − l e f t − b u t t o n +)
+                ( execute−frame−command ∗ a p p l i c a t i o n − f r a m e ∗
+                     ‘ ( com−draw−add−string , c u r r e n t − s t r i n g , x , y ) )
+                ( return−from track−text−drawing n i l ) ) ) ) )
+
+                                                                 15
+                                                      Figure 6: User Interfaces
+        stream )                                         present captures the resulting output and the path-
+    ( w r i t e − s t r i n g ” ” stream )               name object in a presentation of type ’pathname.
+    ( f o r m a t s t r e a m ” ˜D”
+                   ( count−package−symbols
+                                                         Presentation Types clim defines a set of pre-
+                     package ) )
+    ( t e r p r i stream ) ) )
+                                                         sentation types, which are arranged in a super-
+                                                         type/subtype lattice like the CL types. In fact, the
+Any attempt to fix this function to produce tab-         presentation type hierarchy is an extension of the
+ular output by building in a certain fixed spacing       CL type hierarchy. The reason that this extended
+between the package name and symbol count will           type system is needed is that the CL type system
+either get caught by an unexpectedly long package        is insufficient from the UI perspective. For exam-
+name, or will have to reserve way too much space         ple, the integer 72 might represent a heart rate in
+for the typical case. In clim, we can use the code       one application and a Fahrenheit temperature in
+in Figure 7 to produce a neatly formatted table for      another, but it will always be just an integer to
+any set of package names.                                Lisp.
+                                                            The application programmer can define the UI
+Presentations The next step up from preserv-             entities of the application by defining presentation
+ing the mere physical appearance of output done to       types, thus extending the presentation type library.
+a window is to preserve its semantics. For exam-         By defining a presentation type, the programmer
+ple, when an application displays a Lisp pathname        can centralize all of the UI aspects of the new type
+on the screen via (format t ”˜A” path), the string       in one place, including output appearance and in-
+“/clim/demo/cad-demo.lisp” may appear. To the            put syntax. As an example, clim defines a path-
+user this string has obvious semantic meaning; it        name presentation type that defines how a path-
+is a pathname. However, to Lisp and the underly-         name is displayed and how one is input. The path-
+ing system it is just a text string. Fortunately, in     name input side provides pathname completion and
+many cases the semantics can be recovered from           display of possibilities. By defining this behavior in
+the string. Thus the power of the various tex-           one place and using it in all applications that need
+tual cut-and-paste mechanisms supported by con-          to display or read pathnames, clim helps build con-
+temporary computer systems. However, it is possi-        sistent user interfaces.
+ble to improve upon the utility of this lowest com-         Note that in the pathname output example given
+mon denominator facility (i.e. squeezing everything      above present invokes the standard pathname dis-
+through its printed representation) by remembering       player defined by the presentation type. However,
+the semantics of the output as well as its appear-       since the presentation facility is simply based on
+ance. This is the idea behind presentations.             the output recording facility, presentation seman-
+   A presentation is a special kind of output record     tics can be given to any output. The following ex-
+that maintains the link between screen output and        ample shows how the pathname object could be
+the Lisp data structure that it represents. A pre-       associated with some graphics that were displayed
+sentation remembers three things: the displayed          on the screen.
+output by capturing a subtree of output records,         ( with−output−as−presentation
+the Lisp object associated with the output, and                 ( : o b j e c t path
+the presentation type of the output. By maintain-                 : t y p e ’ pathname
+ing this back pointer to the underlying Lisp data                 : stream s )
+structure, the presentation facility allows output to       ( d r a w − r e c t a n g l e ∗ s 0 0 30 3 0 ) )
+be reused at a higher semantic level.
+   An application can produce semantically tagged        Context-Dependent          Input Once       output
+output by calling the clim function present. For         is semantically-tagged, it can be reused as
+example, to display the pathname referred to above       semantically-meaningful input. To achieve this,
+as a presentation, the application would execute:        the application does not only have to tag its out-
+( p r e s e n t p a t h ’ pathname )                     put but it also has to provide additional semantic
+                                                         information when doing input operations. For
+
+
+                                                    16
+( d e f u n show−packages ( s t r e a m )
+    ( formatting−table ( stream )
+        ( d o l i s t ( package ( l i s t − a l l − p a c k a g e s ) )
+           ( formatting−row ( stream )
+                ; ; The f i r s t column c o n t a i n s t h e p a c k a g e name
+               ( f o r m a t t i n g − c e l l ( stream )
+                    ( w r i t e − s t r i n g ( package−name p a c k a g e ) s t r e a m ) )
+
+             ; ; The s e c o n d c o l o r c o n t a i n s t h e symbol count , a l i g n e d w i t h t h e r i g h t
+             ; ; e d g e o f t h e column
+             ( f o r m a t t i n g − c e l l ( stream : align−x ’ : r i g h t )
+                 ( f o r m a t s t r e a m ” ˜D” ( count−package−symbols−package ) ) ) ) ) ) )
+
+
+                              Figure 7: An output function that uses table formatting.
+
+
+instance, whenever a pathname is required, the                         itself (maybe triggered by other ways of user input
+program has to use a special method in contrast                        or network interactions, etc.). The latter case is
+to reading a string of characters.                                     seen in track-line-drawing and track-text-drawing of
+  The counterpart to present is accept. It is used                     the draw-frame example. These methods generate
+to establish an input context. The input context is                    “Add Line” and “Add String” commands as the
+a presentation type that is appropriate for the cur-                   result of event-handling on the draw-pane.
+rent input point. For example, if the application
+requires the user to input a pathname, it can trig-
+ger an appropriate prompt, input parser and input       A command has a name specified as string and
+context with:                                         a set arguments specified as presentation types.
+( a c c e p t ’ pathname : s t r e a m s )            Looking back at the command “Add String” of
+                                                      draw-frame, we see that this command takes a
+Typically, this invokes the input reader (or parser) string and two integer as arguments. This type
+that was defined for the pathname type and es- information is useful for partial command parsing.
+tablishes an input context that indicates that it is Assume the user clicks on a menu entry or types
+waiting for a pathname.                               only the command name in the interactor. clim no-
+   Once the input context is established, clim au- tices that there are arguments missing in the com-
+tomatically makes any appropriate existing output mand and requests the missing ones in a dialog via
+available to the user via mouse gestures. After call- calls to accept. Mentioned early, accept establishes
+ing accept as shown above, the user can move the an input context and so the user is able to fill the
+mouse over any presentation that is of type path- missing argument with clicks on appropriate visi-
+name (or is a subtype of pathname), click on it, and ble output objects. Also keyboard users will find
+the pathname object underlying the presentation is semantically-tagged input methods convenient as
+returned as the value of the call to accept.          implementations of presentation types can provide
+                                                      the user with a completion facility.
+Command Processors clim promotes the sep-
+aration of command execution code and command
+invocation code. The command facility aids this                          In addition, the command processor is extensi-
+task. Every application frame can define applica-                      ble by application programmers. For example, the
+tion commands that are accessible via various in-                      command processor can be extended to support a
+put methods. The most common are clicking on                           “noun then verb” interaction style, where the user
+the command’s entry in the menu bar or a con-                          can first click on a displayed presentation and then
+text menu, typing the command in the interactor                        invoke a command that is defined to take an argu-
+pane, or the application dispatches a command to                       ment of the selected presentation type.
+
+
+                                                                  17
+( define−application−frame file−browser ()
+   (( acti ve−fi les : initform n i l : accessor a ctiv e−fil es ))
+   ( : panes
+     ( file−browser : application
+                        : display−function ’( d i r l i s t − d i s p l a y − f i l e s )
+                        ; ; C a l l t h e d i s p l a y − f u n c t i o n whenever t h e command
+                        ; ; l o o p makes a ‘ ‘ f u l l − c y c l e ’ ’
+                        : d i s p l a y − t i m e : command−loop )
+     ( interactor : interactor ))
+   (: layouts ( default ( v e r t i c a l l y ()
+                                     (: f i l l file−browser )
+                                     (1/4 i n t e r a c t o r ) ) ) )
+   ( : menu−bar n i l ) )
+
+( d e f i n e − p r e s e n t a t i o n − t y p e dir−pathname ( )
+    : i n h e r i t − f r o m ’ pathname )
+
+( d e f m e t h o d d i r l i s t − d i s p l a y − f i l e s ( ( f r a m e f i l e − b r o w s e r ) pane )
+    ; ; Clear old d i s p l a y e d e n t r i e s
+    ( c l e a r − o u t p u t − r e c o r d ( s t r e a m − o u t p u t − h i s t o r y pane ) )
+
+   ( d o l i s t ( f i l e ( a c t i v e − f i l e s frame ) )
+      ; ; I n s t e a d o f w r i t e − s t r i n g , we u s e p r e s e n t so t h a t t h e l i n k t o
+      ; ; o b j e c t f i l e and t h e s e m a n t i c i n f o r m a t i o n t h a t f i l e i s
+      ; ; pathname i s r e t a i n e d .
+      ( present f i l e
+                       ( i f ( c l − f a d : d i r e c t o r y − p a t h n a m e − p f i l e ) ’ dir−pathname ’ pathname )
+                       : s t r e a m pane )
+      ( t e r p r i pane ) ) )
+
+( d e f i n e − f i l e − b r o w s e r − c o m m a n d ( c o m − e d i t − d i r e c t o r y : name ” E d i t D i r e c t o r y ” )
+    ( ( d i r ’ dir−pathname ) )
+    ; ; t h e f o l l o w i n g was a p r e v i o u s a t t e m p t t o d e a l w i t h t h e o d d i t i e s o f
+    ; ; CL pathnames .                    U n f o r t u n a t e l y , i t d o e s n o t work p r o p e r l y w i t h a l l
+    ; ; l i s p i m p l e m e n t a t i o n s . Because o f t h e s e o d d i t i e s , we r e a l l y need
+    ; ; a l a y e r l i k e cl−fad to keep t h i n g s s t r a i g h t . [2007/01/05: rpg ]
+; ;;       ( l e t ( ( d i r ( make−pathname : d i r e c t o r y ( p a t h n a m e − d i r e c t o r y d i r )
+; ;;                                                     : name : w i l d : t y p e : w i l d : v e r s i o n : w i l d
+; ;;                                                     : defaults dir )))
+         ( s e t f ( a c t i v e − f i l e s ∗ a p p l i c a t i o n − f r a m e ∗)
+                       ( cl−fad : l i s t − d i r e c t o r y d i r ) ) )
+
+( d e f i n e − p r e s e n t a t i o n − t o − c o m m a n d − t r a n s l a t o r pathname−to−edit−command
+         ( dir−pathname                                                         ; source presentation−type
+           com−edit−directory                                                   ; target−command
+           file−browser                                                         ; command−table
+           : gesture : select                                                   ; use t h i s t r a n s l a t o r f o r p o i n t e r c l i c k s
+           : d o c u m e n t a t i o n ” E d i t t h i s path ” )               ; used i n c o n t e x t menu
+         ( object )                                                             ; argument L i s t
+         ( l i s t object ))                                                    ; arguments f o r target−command
+
+( d e f i n e − f i l e − b r o w s e r − c o m m a n d ( com−quit : name t ) ( )
+    ( frame−exit ∗ application−frame ∗))
+
+( d e f m e t h o d adopt−frame : a f t e r ( frame−manager ( f r a m e f i l e − b r o w s e r ) )
+    ( d e c l a r e ( i g n o r e frame−manager ) )
+    ( execute−frame−command f r a m e                                 18
+                 ‘ ( c o m − e d i t − d i r e c t o r y , ( make−pathname : d i r e c t o r y ’ ( : a b s o l u t e ) ) ) ) )
+
+
+                                                          Figure 8: File Browser
+6.1    A Directory Browser                                into the edit directory command.
+                                                             The presentation-to-command translator in Fig-
+The dirlist-frame application is a very simple file
+                                                          ure 8 is very simple. It has the name pathname-to-
+system browser using presentation types. It defines
+                                                          edit-command and converts the presentation type
+two panes, an output pane to display directory con-
+                                                          pathname to the command com-edit-directory for
+tents and an input pane to handle user typein. For
+                                                          the command table of file-browser. The gesture op-
+the output pane, the application defines a display
+                                                          tion specifies that it works with the select gesture,
+function. dirlist-display-files works in conjunction
+                                                          while the string supplied to :documentation is used
+with the top level command loop. By default, the
+                                                          in the context menu.
+command loop calls all display functions after a
+                                                             This command translator has little work to do.
+command was processed to make all changes in the
+                                                          The body of the translator has to return a list of
+application’s data structures visible that the com-
+                                                          arguments that are handed to the command com-
+mand execution might have caused. When all dis-
+                                                          edit-directory. But we do not need to any conversion
+play functions have updated their panes, the com-
+                                                          of the supplied object, as it is already a pathname.
+mand loop displays a prompt in the interactor17
+                                                          Thus, the object is wrapped in a list and returned
+and waits for the next command.
+                                                          to the caller which will apply com-edit-directory to
+   The dirlist-display-files display function iterates
+                                                          the list.
+over the contents of the current directory displaying
+                                                             A simple trick is used to dispatch an initial com-
+the files one by one. Each output line is produced
+                                                          mand to the application frame. An after-method is
+by a call to present. present creates the association
+                                                          provided for adopt-frame which runs after the frame
+between the text lines on the screen and the Lisp
+                                                          manager has adopted the frame for displaying. This
+pathname objects.
+                                                          is different for an after-method on initialize-instance
+   draw-frame has a single command “Edit direc-
+                                                          as an after-method on adopt-frame runs later, when
+tory”. The command’s body interprets the path-
+                                                          the application frame instance has already a com-
+name that it receives as a directory, obtaining a
+                                                          mand queue associated with it.
+list of the files contained therein. The command
+                                                             Since this application was defined with an in-
+simply updates the application variable active-files
+                                                          teractor pane for user input, the user can invoke
+with the new list.
+                                                          the sole command by typing its name, “Edit Direc-
+   The clim presentation substrate supports a gen-
+                                                          tory.” Here, clim supports for automatic command
+eral concept of presentation type translation. This
+                                                          completion becomes visible. Only the first letter
+translation mechanism can be used to map objects
+                                                          has to be typed followed by the complete action
+of one type into a different presentation type, if
+                                                          (usually Tab) and the command completion facil-
+appropriate. For example, it might be possible
+                                                          ity will complete the input to “Edit Directory”. At
+to satisfy an input request for a pathname by se-
+                                                          this point, the clim command loop will begin read-
+lecting a computer user’s login ID and returning
+                                                          ing the arguments for that command, and will au-
+the pathname of the user’s home directory. This
+                                                          tomatically enter a pathname input context. Thus,
+would be accomplished by defining a translator
+                                                          the user can fill in the required argument either by
+from a user-id presentation type to the pathname
+                                                          typing a pathname, or by clicking on one of the
+type. The translator would consult the system’s
+                                                          pathnames visible in the display pane.
+user database to retrieve the home directory infor-
+mation to achieve its conversion task.
+   The command loop of an application frame is            6.2    Schedule Example
+regularly requesting commands for processing and
+                                                          In this example, we build a simple appointment
+it uses accept for its request. Hence, an input
+                                                          browser. Since the user of this application will fre-
+context for reading an object with the presenta-
+                                                          quently be dealing with the days of the week, we
+tion type command is established and all objects
+                                                          start by defining a new presentation type weekday.
+that can be used as commands will become click-
+                                                          This simple presentation type, shown in Figure 9,
+able on screen. Here, we can define a presentation-
+                                                          represents a day of the week as a number from 0 to
+to-command translator that translates a pathname
+                                                          6. Each day number is associated with an abbrevi-
+ 17 Omitted when there is no interactor pane.             ated day name, “Mon,” “Tue,” etc.
+
+
+                                                     19
+( d e f v a r ∗ d a y s ∗ #(”Sun” ”Mon” ”Tue” ”Wed” ”Thu” ” F r i ” ” Sat ” ) )
+
+; ; A l i s t o f day number and a p p o i n t m e n t s t r i n g s
+( defvar ∗ test−data ∗
+   ’ ( ( 0 ) ( 1 ” D e n t i s t ” ) ( 2 ” S t a f f meeting ” ) ( 3 ” Performance E v a l u a t i o n ” ” Bowling ” )
+       ( 4 ” I n t e r v i e w a t ACME” ”The Simpsons ” ) ( 5 ”TGIF” ) ( 6 ” S a i l i n g ” ) ) )
+
+( d e f i n e − p r e s e n t a t i o n − t y p e weekday ( ) )
+
+( define−presentation−method accept
+       ( ( t y p e weekday ) s t r e a m ( v i e w t e x t u a l − v i e w ) &k e y )
+   ( v a l u e s ( completing−from−suggestions ( stream )
+                    ( dotimes ( i 7)
+                       ( suggest ( a r e f ∗ days ∗ i ) i ) ) ) ) )
+
+( define−presentation−method present
+      ( daynumber ( t y p e weekday ) s t r e a m ( v i e w t e x t u a l − v i e w ) &k e y )
+   ( w r i t e − s t r i n g ( a r e f ∗ d a y s ∗ daynumber ) s t r e a m ) )
+
+
+( define−application−frame scheduler ()
+   ( ( appointments : i n i t a r g : appointments : i n i t f o r m ∗ test−data ∗)
+     ( current−day : i n i t f o r m n i l ))
+   ( : panes ( s c h e d u l e r − d i s p l a y : a p p l i c a t i o n
+                                                 : display−function ’( display−appointments ))
+              ( interactor : interactor ))
+   (: layouts ( default−layout
+                   ( v e r t i c a l l y ()
+                       scheduler−display
+                       interactor ))
+                 ( alternative−layout
+                   ( horizontally ()
+                       interactor
+                       scheduler−display )))
+   ( : menu−bar t ) )
+
+; ; ; Chooses which day t o s e e i n d e t a i l ,
+( d e f i n e − s c h e d u l e r − c o m m a n d ( com−select−day : name t : menu t )
+         ( ( day ’ weekday : g e s t u r e : s e l e c t ) )
+    ( with−slots ( current−day ) ∗ application−frame ∗
+         ( s e t q c u r r e n t − d a y day ) ) )
+
+; ; ; Show w e e k l y summary .
+( d e f i n e − s c h e d u l e r − c o m m a n d ( com−show−summary : name t : menu t ) ( )
+    ( with−slots ( current−day ) ∗ application−frame ∗
+         ( setq current−day n i l ) ) )
+
+( d e f i n e − s c h e d u l e r − c o m m a n d ( c o m − t o g g l e − l a y o u t : name t : menu t ) ( )
+    ( with−accessors (( layout frame−current−layout )) ∗ application−frame ∗
+         ( s e t f l a y o u t ( i f ( eq l a y o u t ’ d e f a u l t − l a y o u t )
+                                           ’ alternative−layout
+                                           ’ default−layout ))))
+
+
+                    Figure 9: Scheduler: application frame, presentation type and commands
+
+                                                                  20
+; ; ; Complex d i s p l a y f u n c t i o n , shows two c o m p l e t e l y d i f f e r e n t d i s p l a y s .
+( d e f m e t h o d d i s p l a y − a p p o i n t m e n t s ( ( f r a m e s c h e d u l e r ) pane )
+    ( c l e a r − o u t p u t − r e c o r d ( s t r e a m − o u t p u t − h i s t o r y pane ) )
+    ( w i t h − s l o t s ( current−day appointments ) frame
+        ( i f ( n u l l current−day )
+                 ( show−weekly−summary pane a p p o i n t m e n t s )
+                 ( show−appointments pane
+                                                     current−day
+                                                     ( r e s t ( assoc current−day appointments ) ) ) ) ) )
+
+; ; ; Show a summary o f t h e week , w i t h an a p p o i n t m e n t c o u n t f o r each
+; ; ; day . You can s e e t h e a p p o i n t m e n t s f o r a s p e c i f i c day by c l i c k i n g on
+; ; ; t h e day name .
+( d e f u n show−weekly−summary ( pane a p p o i n t m e n t s )
+    ( f o r m a t t i n g − t a b l e ( pane )                            ; Table headings
+        ( f o r m a t t i n g − r o w ( pane )
+            ( w i t h − d r a w i n g − o p t i o n s ( pane : t e x t − f a c e : b o l d )
+                ( f o r m a t t i n g − c e l l ( pane )
+                    ( w r i t e − s t r i n g ”Day o f week ” pane ) )
+                ( f o r m a t t i n g − c e l l ( pane )
+                    ( w r i t e − s t r i n g ”number o f appointments ” pane ) ) ) )
+        ( d o l i s t ( day a p p o i n t m e n t s )
+            ( f o r m a t t i n g − r o w ( pane )
+                ( f o r m a t t i n g − c e l l ( pane )
+                    ( p r e s e n t ( f i r s t day ) ’ weekday : s t r e a m pane ) )
+                ( f o r m a t t i n g − c e l l ( pane )
+                    ( f o r m a t pane ” ˜D appointment ˜ : P”
+                                    ( l e n g t h ( r e s t day ) ) ) ) ) ) ) )
+
+; ; ; Show d e t a i l e d a p p o i n t m e n t l i s t f o r day
+( d e f u n show−appointments ( pane c u r r e n t − d a y c u r r e n t − d a y − a p p o i n t m e n t s )
+    ; ; Show a l l days a t t o p so you can s w i t c h t o a n o t h e r
+    ; ; day w i t h one c l i c k .
+    ( d o t i m e s ( day 7 )
+        ( w i t h − t e x t − f a c e ( pane ( i f ( e q l day c u r r e n t − d a y ) ’ : b o l d ’ : roman ) )
+              ( p r e s e n t day ’ weekday : s t r e a m pane ) )
+        ( w r i t e − s t r i n g ” ” pane ) )
+    ( t e r p r i pane ) ( t e r p r i pane )
+    ; ; Show a l l t h e a p p o i n t m e n t s , one p e r l i n e
+    ( w r i t e − s t r i n g ” Appointments f o r ” pane )
+    ( p r e s e n t c u r r e n t − d a y ’ weekday : s t r e a m pane )
+    ( t e r p r i pane ) ( t e r p r i pane )
+    ( d o l i s t ( appointment current−day−appointments )
+        ( w r i t e − s t r i n g a p p o i n t m e n t pane )
+        ( t e r p r i pane ) ) )
+
+
+                                         Figure 10: Scheduler: display functions
+
+
+
+
+                                                                 21
+   The weekday presentation type defines two ba-            The command “Select Day” has the following ar-
+sic pieces of behavior: how a weekday is dis-             gument specification:
+played, and how it is read as input. The macro
+                                                          ( ( day ’ weekday : g e s t u r e : s e l e c t ) )
+define-presentation-method is intended for specializ-
+ing methods on presentation types. Via this macro,        It takes an argument day of type weekday. Up until
+we define a printer and a parser function for the         now, our command arguments have looked simi-
+type weekday. As is the case with most presenta-          larly to specialized lambda lists, but next to the
+tion types, the printer and parser are duals. That        type information the arguments of commands are
+is, the printer, when given an object to print, pro-      also allowed to have various keyword-value pairs
+duces output that the parser can interpret to arrive      for selection further options. In this case, we sup-
+back at the original object. accept does not need         plied the value :select for the option :gesture. The
+a parser in every case, and for simplicity the pro-       macro define-command parses this keyword-value
+grammer might choose not to provide a parser at           pair and generate a presentation translator. More
+all.                                                      precisely, a presentation-to-command translator is
+   We took the easy way out with our parser. clim         defined that is equal in functionality to the one we
+provides a completion facility and instead of read-       have seen in the file-browser example. Whenever a
+ing the day name of the stream and parsing it             presentation of the type pathname is selected (e.g.
+into an integer, we provided an exhaustive set of         with pointer clicks) in a command input context, it
+input to object mappings. The completing-from-            is translated into a command invocation of “Select
+suggestions macro collects all suggestions made by        Weekday”.
+the parser via suggest. suggest takes an input and           Finally, we turn to the display the appoint-
+object as suggestion. In our case, day name taken         ment information. The display function, display-
+from *days* is the input and the number of the            appointments, shown in Figure 10, is somewhat
+week i is the object. clim will match the input           more complex than our earlier example. It can
+given by the user with the suggestions and in case        display two different sets of information: a weekly
+of a match will return the corresponding object to        summary showing the days of the week and the
+the caller.                                               number of appointments for each day, or a detailed
+   We define an application frame for the appoint-        description of one day’s appointments.
+ment browser in Figure 9. The frame defines state            display-appointments decides which set of infor-
+variables to hold the list of appointments and the        mation to display by examining the application
+current day. This information is kept in slots on         state variable current-day. The table formatting fa-
+the frame, so that multiple copies of the applica-        cility is used to present the weekly summary infor-
+tion can be run, each with its own appointment            mation neatly organized. The daily appointment
+list. The application represents the appointment          list, by contrast, is displayed using write-string.
+data as an alist containing an entry for each day of      Note, however, that whenever a day of the week
+the week, with each entry containing a list of the        is displayed, it is done with a call to present us-
+appointments for the day. Test data is provided as        ing the weekday presentation type. This allows the
+a default initform.                                       printed weekdays to be selected either as a com-
+   Just as in the previous example, the appointment       mand or as a weekday argument. This example
+application defines two panes, an interactor and          illustrates how an application with interesting UI
+an output display pane. The appointment applica-          behavior can be constructed from a high-level spec-
+tion defines two commands. The “Show Summary”             ification of its functionality.
+command resets the display back to the weekly
+summary mode by setting the current-day slot to
+nil. The “Select Day” command sets current-day to         7     Conclusion
+the value of an argument that is specified to be a
+weekday. This presentation type specification al-         The series of examples presented in this article illus-
+lows the command processor to make all presented          trates the broad range of functionality provided by
+weekday active when it is filling in this argument, as    clim. The later examples, especially, demonstrate
+well as, provide completion assistance to the user.       that complex user interfaces can be built econom-
+
+
+                                                     22
+ically and in a modular fashion using clim. Many [MYM89] Scott McKay, William York, and
+of the higher level facilities make it possible to sep-  Michael McMahon. A presentation man-
+arate the issues involved in designing an applica-       ager based on application semantics. In
+tion’s user interface from the functionality of the      Proceedings of the ACM SIG-GRAPH
+application.                                             Symposium on User Interface Software
+   On the other hand, these higher level facilities      and Technology, pages 141–148. ACM
+are not appropriate for all programmers. clim’s          Press, November 1989.
+lower level facilities and clean modularization of
+the higher level facilities provide these program- [Sym] Symbolics, Inc. Programmer’s Reference
+mers with portable platform and a framework for          Manual   Vol 7: Programming the User
+implementing their own user interface toolkits and       Interface.
+frameworks. In addition, clim’s use of clos to
+define explicit, documented protocols provides ap-
+plication programmers with the opportunity to cus-
+tomize clim and support interfaces not anticipated
+by the clim designers.
+   A free clim implementation is available as
+McCLIM, found at http://common-lisp.net/
+project/mcclim/. In addition to the caveats in
+this document, note that McCLIM only works
+with an X windows backend as of January 2006.
+
+
+Acknowledgments
+Original article clim represents the cooperative
+effort of individuals at several companies. These in-
+dividuals include Jim Veitch, John Irwin, and Chris
+Richardson of Franz; Richard Lamson, David Lin-
+den, and Mark Son-Bell of ILA; Paul Wieneke and
+Zack Smith of Lucid; Scott McKay, John Aspinall,
+Dave Moon and Charlie Hornig of Symbolics; and
+Gregor Kizcales and John Seely Brown of Xerox
+PARC. Mark Son-Bell and Jon L. White have help
+us improve this paper.
+
+2006 update Clemens Fruhwirth thanks the de-
+velopers for McCLIM for producing a free clim
+implementation, and especially Robert Strandh for
+answering so many questions in conjunction with
+McCLIM.
+
+
+References
+[McC]      McCLIM. A free CLIM implementation.
+
+[MY05]     Scott McKay and Wiliam York. Com-
+           mon lisp interface manager specification,
+           2005.
+
+
+                                                       23
+
