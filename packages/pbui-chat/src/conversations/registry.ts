@@ -625,7 +625,10 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
         const reportedRevision = Number(data.titleRevision);
         const revision = Number.isSafeInteger(reportedRevision) && reportedRevision >= 0 ? reportedRevision : expectedRevision;
         if (response.status === 409) {
-          if (revision > record.titleRevision) patchRecord(id, { titleRevision: revision });
+          // The session index is explicitly rebuildable and may restart at
+          // revision zero. A 409 response is authoritative even when its
+          // revision moved backward relative to this browser's cached index.
+          if (revision !== record.titleRevision) patchRecord(id, { titleRevision: revision });
           const error = String(data.error ?? "conversation title changed on another client");
           setTitleSync(id, { status: "failed", revision, error });
           persistTitleOutbox();

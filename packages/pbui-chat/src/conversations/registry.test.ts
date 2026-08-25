@@ -320,6 +320,29 @@ describe("createConversationRegistry", () => {
     expect(registry.get("a")).toMatchObject({ title: "mine", titleRevision: 6, titleSync: { status: "synchronized" } });
   });
 
+  test("retry accepts an authoritative lower revision after a rebuildable server index resets", async () => {
+    let conflict = true;
+    const requests: Record<string, unknown>[] = [];
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      requests.push(body);
+      if (conflict) return new Response(JSON.stringify({ error: "stale", titleRevision: 0 }), { status: 409 });
+      return new Response(JSON.stringify({ title: body.title, titleRevision: 1 }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const registry = createConversationRegistry({ key: KEY, storage: memoryConversationStorage(), fetch: fetchImpl, autoConnect: false, configFor: () => ({}) });
+    registry.adopt("a", { titleRevision: 5 });
+
+    await registry.rename("a", "after reset");
+    expect(registry.get("a")?.titleRevision).toBe(0);
+    conflict = false;
+    await registry.retryTitle("a");
+    expect(requests).toEqual([
+      { title: "after reset", expectedRevision: 5 },
+      { title: "after reset", expectedRevision: 0 },
+    ]);
+    expect(registry.get("a")?.titleRevision).toBe(1);
+  });
+
   test("sync adopts what the server lists and never overwrites a human title", async () => {
     const storage = memoryConversationStorage();
     const listing = {
