@@ -198,6 +198,8 @@ function snapshot(patch: Partial<ConversationSnapshot>): ConversationSnapshot {
     active: false,
     ...patch,
     lifecycle: patch.lifecycle ?? { phase: "open", attempt: 1 },
+    titleRevision: patch.titleRevision ?? 0,
+    titleSync: patch.titleSync ?? { status: "synchronized", revision: patch.titleRevision ?? 0 },
   };
 }
 

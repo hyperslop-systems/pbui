@@ -162,7 +162,7 @@ export async function performConversationVerb(verb: ConversationVerb, ctx: Conve
         return;
       }
       if (!verb.title.trim()) throw new Error("a conversation needs a name");
-      ctx.conversations.rename(verb.conversationId, verb.title, ctx.actor === "agent" ? "agent" : "human");
+      await ctx.conversations.rename(verb.conversationId, verb.title, ctx.actor === "agent" ? "agent" : "human");
       return;
     }
     case "conversation.pin":

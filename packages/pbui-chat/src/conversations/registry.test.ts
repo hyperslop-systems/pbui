@@ -99,12 +99,12 @@ describe("createConversationRegistry", () => {
     const registry = registryWith();
     const { a } = await twoConversations(registry);
 
-    registry.rename(a, "  reorder desk  ");
+    await registry.rename(a, "  reorder desk  ");
     expect(registry.get(a)?.title).toBe("reorder desk");
     expect(registry.get(a)?.titledBy).toBe("human");
 
     // An empty rename is not a rename; it would leave a row with no handle.
-    registry.rename(a, "   ");
+    await registry.rename(a, "   ");
     expect(registry.get(a)?.title).toBe("reorder desk");
 
     registry.pin(a, true);
@@ -130,7 +130,7 @@ describe("createConversationRegistry", () => {
     const storage = memoryConversationStorage();
     const first = registryWith(storage);
     const { a } = await twoConversations(first);
-    first.rename(a, "kept");
+    await first.rename(a, "kept");
     first.flush();
 
     const second = registryWith(storage);
@@ -219,6 +219,107 @@ describe("createConversationRegistry", () => {
     expect(registry.all()).not.toBe(first);
   });
 
+  test("rename is immediate locally and PATCHes the exact server revision", async () => {
+    const requests: Record<string, unknown>[] = [];
+    const registry = createConversationRegistry({
+      key: KEY,
+      storage: memoryConversationStorage(),
+      fetch: vi.fn(async (_input, init) => {
+        requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return new Response(JSON.stringify({ title: "reorder desk", titleRevision: 1 }), { status: 200 });
+      }) as unknown as typeof fetch,
+      autoConnect: false,
+      configFor: () => ({}),
+    });
+    registry.adopt("a");
+
+    const pending = registry.rename("a", "  reorder desk  ");
+    expect(registry.get("a")).toMatchObject({ title: "reorder desk", titleSync: { status: "queued" } });
+    await expect(pending).resolves.toEqual({ local: "updated", remote: "updated" });
+    expect(requests).toEqual([{ title: "reorder desk", expectedRevision: 0 }]);
+    expect(registry.get("a")).toMatchObject({ titleRevision: 1, titleSync: { status: "synchronized", revision: 1 } });
+  });
+
+  test("concurrent renames serialize so an old response cannot overwrite the newer title", async () => {
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const requests: Record<string, unknown>[] = [];
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      requests.push(body);
+      if (requests.length === 1) await firstGate;
+      const expected = Number(body.expectedRevision);
+      return new Response(JSON.stringify({ title: body.title, titleRevision: expected + 1 }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const registry = createConversationRegistry({ key: KEY, storage: memoryConversationStorage(), fetch: fetchImpl, autoConnect: false, configFor: () => ({}) });
+    registry.adopt("a");
+
+    const older = registry.rename("a", "older");
+    const newer = registry.rename("a", "newer");
+    expect(registry.get("a")?.title).toBe("newer");
+    expect(requests).toEqual([{ title: "older", expectedRevision: 0 }]);
+
+    releaseFirst();
+    await Promise.all([older, newer]);
+    expect(requests).toEqual([
+      { title: "older", expectedRevision: 0 },
+      { title: "newer", expectedRevision: 1 },
+    ]);
+    expect(registry.get("a")).toMatchObject({ title: "newer", titleRevision: 2, titleSync: { status: "synchronized" } });
+  });
+
+  test("an offline title survives reload in the outbox and retries automatically", async () => {
+    const storage = memoryConversationStorage();
+    const offline = createConversationRegistry({
+      key: KEY,
+      storage,
+      fetch: vi.fn(async () => {
+        throw new TypeError("offline");
+      }) as unknown as typeof fetch,
+      debounceMs: 0,
+      autoConnect: false,
+      configFor: () => ({}),
+    });
+    offline.adopt("a");
+    await expect(offline.rename("a", "offline title")).resolves.toEqual({ local: "updated", remote: "queued" });
+    offline.flush();
+    expect(storage.getItem(`${KEY}.title-outbox`)).toContain("offline title");
+
+    const recoveredFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { title: string; expectedRevision: number };
+      return new Response(JSON.stringify({ title: body.title, titleRevision: body.expectedRevision + 1 }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const recovered = createConversationRegistry({ key: KEY, storage, fetch: recoveredFetch, autoConnect: false, configFor: () => ({}) });
+    await vi.waitFor(() => expect(recovered.get("a")?.titleSync.status).toBe("synchronized"));
+    expect(recovered.get("a")).toMatchObject({ title: "offline title", titleRevision: 1 });
+    expect(storage.getItem(`${KEY}.title-outbox`)).toBeNull();
+  });
+
+  test("a revision conflict keeps the local title visible and retryable", async () => {
+    let conflict = true;
+    const requests: Record<string, unknown>[] = [];
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      requests.push(body);
+      if (conflict) {
+        return new Response(JSON.stringify({ error: "conversation title changed on another client", title: "remote", titleRevision: 5 }), { status: 409 });
+      }
+      return new Response(JSON.stringify({ title: body.title, titleRevision: 6 }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const registry = createConversationRegistry({ key: KEY, storage: memoryConversationStorage(), fetch: fetchImpl, autoConnect: false, configFor: () => ({}) });
+    registry.adopt("a");
+
+    await expect(registry.rename("a", "mine")).resolves.toEqual({ local: "updated", remote: "failed" });
+    expect(registry.get("a")).toMatchObject({ title: "mine", titleRevision: 5, titleSync: { status: "failed" } });
+
+    conflict = false;
+    await expect(registry.retryTitle("a")).resolves.toEqual({ local: "updated", remote: "updated" });
+    expect(requests[1]).toEqual({ title: "mine", expectedRevision: 5 });
+    expect(registry.get("a")).toMatchObject({ title: "mine", titleRevision: 6, titleSync: { status: "synchronized" } });
+  });
+
   test("sync adopts what the server lists and never overwrites a human title", async () => {
     const storage = memoryConversationStorage();
     const listing = {
@@ -243,7 +344,7 @@ describe("createConversationRegistry", () => {
       configFor: () => ({}),
     });
     registry.adopt("a", { title: "mine", messageCount: 3 });
-    registry.rename("a", "mine", "human");
+    await registry.rename("a", "mine", "human");
     registry.adopt("only-here");
 
     const result = await registry.sync();

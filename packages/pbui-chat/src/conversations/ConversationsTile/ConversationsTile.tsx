@@ -151,6 +151,8 @@ export function conversationReference(snapshot: ConversationSnapshot): Reference
       archived: snapshot.archived,
       open: snapshot.open,
       lifecycle: snapshot.lifecycle.phase,
+      titleSync: snapshot.titleSync.status,
+      titleRevision: snapshot.titleRevision,
       ...(snapshot.model ? { model: snapshot.model } : {}),
     },
   };
@@ -200,6 +202,16 @@ function Row({ snapshot, renaming }: { snapshot: ConversationSnapshot; renaming:
       <div className={styles.meta}>
         <Chip label={status.label} tone={status.tone === "danger" ? "var(--pbui-tone-proposal)" : "var(--pbui-tone-neutral)"} />
         {/* Only when it is worth saying: `ready` is the normal case. */}
+        {snapshot.titleSync.status !== "synchronized" ? (
+          <>
+            <Text size="micro" tone={snapshot.titleSync.status === "failed" ? "danger" : "faint"} title={snapshot.titleSync.error}>
+              title {snapshot.titleSync.status}
+            </Text>
+            <Button size="tiny" variant="bare" onClick={() => void chat.conversations.retryTitle(snapshot.id)}>
+              retry title
+            </Button>
+          </>
+        ) : null}
         {snapshot.open && snapshot.wsStatus !== "ready" ? (
           <Text size="micro" tone="faint">
             {snapshot.wsStatus}

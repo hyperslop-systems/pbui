@@ -33,6 +33,8 @@ export interface ConversationRecord {
   id: string;
   title: string;
   titledBy: TitledBy;
+  /** Last server-acknowledged title revision; local title remains immediate source of truth. */
+  titleRevision: number;
   createdAt: string;
   lastActivityAt: string;
   pinned: boolean;
@@ -60,10 +62,15 @@ export type ConversationRuntimeLifecycle =
   | { phase: "failed"; attempt: number; error: string; retryable: boolean }
   | { phase: "closing"; attempt: number };
 
+export type ConversationTitleSync =
+  | { status: "synchronized"; revision: number }
+  | { status: "queued" | "failed"; revision: number; error: string };
+
 export interface ConversationSnapshot extends ConversationRecord, ConversationMirror {
   runtime: ChatRuntime | null;
   /** Explicit provider/connection lifecycle; never infer `opening` from a missing runtime. */
   lifecycle: ConversationRuntimeLifecycle;
+  titleSync: ConversationTitleSync;
   /** True between `open()` and `close()`, even before the runtime attaches. */
   open: boolean;
   active: boolean;
@@ -96,7 +103,9 @@ export interface ConversationRegistry {
   retry(id: string): Promise<void>;
   /** Cancel an opening attempt or dispose an open runtime while keeping the record. */
   close(id: string): void;
-  rename(id: string, title: string, by?: TitledBy): void;
+  rename(id: string, title: string, by?: TitledBy): Promise<TitleRenameResult>;
+  retryTitle(id: string): Promise<TitleRenameResult>;
+  flushTitles(): Promise<TitleFlushResult>;
   pin(id: string, pinned: boolean): void;
   archive(id: string, archived: boolean): void;
   /** Drop the local record. The server keeps the session. */
@@ -140,6 +149,17 @@ export interface ConversationStorage {
 }
 
 /** What one `sync()` changed, so a tile can say so rather than flicker. */
+export interface TitleRenameResult {
+  local: "updated";
+  remote: "updated" | "queued" | "failed";
+}
+
+export interface TitleFlushResult {
+  updated: string[];
+  queued: string[];
+  failed: string[];
+}
+
 export interface SyncResult {
   /** Sessions the server listed that this browser had never seen. */
   adopted: string[];
@@ -153,6 +173,19 @@ export interface ConversationsSnapshotFile {
   schema_version: 1;
   activeId: string | null;
   records: ConversationRecord[];
+}
+
+interface PendingTitleWrite {
+  id: string;
+  title: string;
+  titledBy: TitledBy;
+  localVersion: number;
+  updatedAt: string;
+}
+
+interface TitleOutboxFile {
+  schema_version: 1;
+  writes: PendingTitleWrite[];
 }
 
 export interface CreateConversationRegistryOptions {
@@ -211,6 +244,7 @@ interface ServerSession {
   lastActivityAt?: string;
   messageCount?: number;
   title?: string;
+  titleRevision?: number;
 }
 
 /**
@@ -223,13 +257,15 @@ interface ServerSession {
  * counting submissions — including ones from another browser, which is worth
  * knowing, but never worth losing messages over.
  */
-function serverPatch(session: ServerSession, record: ConversationRecord | null): Partial<ConversationRecord> {
+function serverPatch(session: ServerSession, record: ConversationRecord | null, preserveLocalTitle = false): Partial<ConversationRecord> {
   const patch: Partial<ConversationRecord> = {};
   const title = String(session.title ?? "").trim();
-  if (title && (!record || record.titledBy !== "human") && record?.title !== title) {
+  if (title && !preserveLocalTitle && (!record || record.titledBy !== "human") && record?.title !== title) {
     patch.title = title;
     patch.titledBy = "agent";
   }
+  const revision = Number(session.titleRevision ?? 0);
+  if (Number.isSafeInteger(revision) && revision >= 0 && revision > (record?.titleRevision ?? -1)) patch.titleRevision = revision;
   const count = Number(session.messageCount ?? 0);
   if (Number.isFinite(count) && count > (record?.messageCount ?? -1)) patch.messageCount = count;
   const created = String(session.createdAt ?? "").trim();
@@ -296,6 +332,11 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
   const configs = new Map<string, ChatProviderConfig>();
   const openSet = new Set<string>();
   const listeners = new Set<() => void>();
+  const pendingTitles = new Map<string, PendingTitleWrite>();
+  const titleSync = new Map<string, ConversationTitleSync>();
+  const titleVersions = new Map<string, number>();
+  const titleProcesses = new Map<string, Promise<TitleRenameResult>>();
+  const titleOutboxKey = `${options.key}.title-outbox`;
 
   let activeId: string | null = null;
   let snapshotCache: ConversationSnapshot[] | null = null;
@@ -317,6 +358,51 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
     emit();
   }
 
+  function restoreTitleOutbox() {
+    if (!storage) return;
+    const raw = storage.getItem(titleOutboxKey);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as Partial<TitleOutboxFile>;
+      if (parsed.schema_version !== 1 || !Array.isArray(parsed.writes)) throw new Error("not a title outbox");
+      for (const write of parsed.writes) {
+        if (
+          !write ||
+          typeof write.id !== "string" ||
+          !write.id ||
+          typeof write.title !== "string" ||
+          !Number.isSafeInteger(write.localVersion) ||
+          write.localVersion <= 0 ||
+          (write.titledBy !== "auto" && write.titledBy !== "human" && write.titledBy !== "agent")
+        ) {
+          throw new Error("invalid title outbox entry");
+        }
+        pendingTitles.set(write.id, write);
+        titleVersions.set(write.id, Math.max(titleVersions.get(write.id) ?? 0, write.localVersion));
+        titleSync.set(write.id, { status: "queued", revision: 0, error: "waiting to synchronize" });
+      }
+    } catch (error) {
+      try {
+        storage.setItem(`${titleOutboxKey}.corrupt-${Date.now()}`, raw);
+      } catch {
+        // Preserve the original bytes when even quarantine cannot be written.
+      }
+      options.onRejected?.("restore", error);
+    }
+  }
+
+  function persistTitleOutbox(): boolean {
+    if (!storage) return false;
+    try {
+      if (pendingTitles.size === 0) storage.removeItem(titleOutboxKey);
+      else storage.setItem(titleOutboxKey, JSON.stringify({ schema_version: 1, writes: [...pendingTitles.values()] } satisfies TitleOutboxFile));
+      return true;
+    } catch (error) {
+      options.onRejected?.("persist", error);
+      return false;
+    }
+  }
+
   function restore() {
     if (!storage) return;
     const raw = storage.getItem(options.key);
@@ -326,7 +412,12 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       if (!isFile(parsed)) throw new Error("not a conversations snapshot");
       for (const record of parsed.records) {
         if (!record || typeof record.id !== "string" || !record.id) continue;
-        records.set(record.id, { ...record, pinned: record.pinned === true, archived: record.archived === true });
+        records.set(record.id, {
+          ...record,
+          titleRevision: Number.isSafeInteger(record.titleRevision) && record.titleRevision >= 0 ? record.titleRevision : 0,
+          pinned: record.pinned === true,
+          archived: record.archived === true,
+        });
       }
       activeId = parsed.activeId && records.has(parsed.activeId) ? parsed.activeId : null;
     } catch (error) {
@@ -446,11 +537,15 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
     if (messages !== record.messageCount) patch.lastActivityAt = now();
     // An auto title is recomputed until someone owns it; a human or agent
     // rename ends that for good.
+    let derivedTitle: string | null = null;
     if (record.titledBy === "auto") {
-      const derived = deriveTitle(entities, titleLength);
-      if (derived && derived !== record.title) patch.title = derived;
+      derivedTitle = deriveTitle(entities, titleLength);
+      if (derivedTitle && derivedTitle !== record.title) patch.title = derivedTitle;
     }
     patchRecord(id, patch);
+    if (derivedTitle && derivedTitle !== record.title && pendingTitles.get(id)?.title !== derivedTitle) {
+      void queueTitle(id, derivedTitle, "auto");
+    }
   }
 
   function newRecord(id: string, patch: Partial<ConversationRecord> = {}): ConversationRecord {
@@ -459,6 +554,7 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       id,
       title: "new conversation",
       titledBy: "auto",
+      titleRevision: 0,
       createdAt: at,
       lastActivityAt: at,
       pinned: false,
@@ -478,6 +574,7 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       ...(mirrors.get(id) ?? EMPTY_MIRROR),
       runtime: runtimes.get(id) ?? null,
       lifecycle: lifecycleOf(id),
+      titleSync: titleSync.get(id) ?? { status: "synchronized", revision: record.titleRevision },
       open: openSet.has(id),
       active: activeId === id,
     };
@@ -491,7 +588,102 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
     return a.id < b.id ? -1 : 1;
   }
 
+  function setTitleSync(id: string, state: ConversationTitleSync): void {
+    titleSync.set(id, state);
+    invalidate(id);
+  }
+
+  async function responseJSON(response: Response): Promise<Record<string, unknown>> {
+    try {
+      const value = (await response.json()) as unknown;
+      return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  async function drainTitle(id: string): Promise<TitleRenameResult> {
+    for (;;) {
+      const write = pendingTitles.get(id);
+      const record = records.get(id);
+      if (!write || !record) {
+        return { local: "updated", remote: write ? "failed" : "updated" };
+      }
+      const expectedRevision = record.titleRevision;
+      try {
+        const response = await fetchImpl(`${basePrefix}/api/chat/sessions/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: write.title, expectedRevision }),
+        });
+        const data = await responseJSON(response);
+        const reportedRevision = Number(data.titleRevision);
+        const revision = Number.isSafeInteger(reportedRevision) && reportedRevision >= 0 ? reportedRevision : expectedRevision;
+        if (response.status === 409) {
+          if (revision > record.titleRevision) patchRecord(id, { titleRevision: revision });
+          const error = String(data.error ?? "conversation title changed on another client");
+          setTitleSync(id, { status: "failed", revision, error });
+          persistTitleOutbox();
+          return { local: "updated", remote: "failed" };
+        }
+        if (!response.ok) {
+          const error = String(data.error ?? `could not synchronize title: ${response.status}`);
+          const status = response.status >= 500 ? "queued" : "failed";
+          setTitleSync(id, { status, revision: record.titleRevision, error });
+          persistTitleOutbox();
+          return { local: "updated", remote: status };
+        }
+        const acknowledgedRevision = revision > expectedRevision ? revision : expectedRevision + 1;
+        patchRecord(id, { titleRevision: acknowledgedRevision });
+        if (pendingTitles.get(id)?.localVersion === write.localVersion) pendingTitles.delete(id);
+        persistTitleOutbox();
+        const next = pendingTitles.get(id);
+        if (!next) {
+          setTitleSync(id, { status: "synchronized", revision: acknowledgedRevision });
+          return { local: "updated", remote: "updated" };
+        }
+        // A newer local rename arrived while this PATCH was in flight. Loop
+        // with the just-acknowledged revision so requests can never reorder.
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setTitleSync(id, { status: "queued", revision: record.titleRevision, error: message });
+        persistTitleOutbox();
+        return { local: "updated", remote: "queued" };
+      }
+    }
+  }
+
+  function processTitle(id: string): Promise<TitleRenameResult> {
+    const existing = titleProcesses.get(id);
+    if (existing) return existing;
+    const promise = drainTitle(id).finally(() => {
+      if (titleProcesses.get(id) === promise) titleProcesses.delete(id);
+    });
+    titleProcesses.set(id, promise);
+    return promise;
+  }
+
+  function queueTitle(id: string, title: string, by: TitledBy): Promise<TitleRenameResult> {
+    const trimmed = title.trim();
+    if (!trimmed) return Promise.resolve({ local: "updated", remote: "updated" });
+    const record = records.get(id);
+    if (!record) return Promise.reject(new Error(`unknown conversation ${id}`));
+    patchRecord(id, { title: trimmed, titledBy: by });
+    const localVersion = (titleVersions.get(id) ?? 0) + 1;
+    titleVersions.set(id, localVersion);
+    pendingTitles.set(id, { id, title: trimmed, titledBy: by, localVersion, updatedAt: now() });
+    const persisted = persistTitleOutbox();
+    setTitleSync(id, {
+      status: "queued",
+      revision: record.titleRevision,
+      error: persisted || !storage ? "waiting to synchronize" : "title retry could not be persisted",
+    });
+    return processTitle(id);
+  }
+
   restore();
+  restoreTitleOutbox();
 
   const registry: ConversationRegistry = {
     get: (id) => snapshotOf(id),
@@ -544,7 +736,8 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       const data = (await response.json()) as { sessionId?: string; session_id?: string };
       const id = String(data.sessionId ?? data.session_id ?? "").trim();
       if (!id) throw new Error("the server created a session without an id");
-      const snapshot = registry.adopt(id, createOptions.title ? { title: createOptions.title, titledBy: "human" } : {});
+      const snapshot = registry.adopt(id);
+      if (createOptions.title) await registry.rename(id, createOptions.title, "human");
       if (createOptions.open !== false) registry.open(id);
       if (createOptions.activate !== false) registry.activate(id);
       return registry.get(id) ?? snapshot;
@@ -600,9 +793,27 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
     },
 
     rename(id, title, by = "human") {
-      const trimmed = title.trim();
-      if (!trimmed) return;
-      patchRecord(id, { title: trimmed, titledBy: by });
+      return queueTitle(id, title, by);
+    },
+
+    retryTitle(id) {
+      const pending = pendingTitles.get(id);
+      const record = records.get(id);
+      if (!record) return Promise.reject(new Error(`unknown conversation ${id}`));
+      if (!pending) return Promise.resolve({ local: "updated", remote: "updated" });
+      setTitleSync(id, { status: "queued", revision: record.titleRevision, error: "retrying" });
+      return processTitle(id);
+    },
+
+    async flushTitles() {
+      const result: TitleFlushResult = { updated: [], queued: [], failed: [] };
+      await Promise.all(
+        [...pendingTitles.keys()].map(async (id) => {
+          const outcome = await processTitle(id);
+          result[outcome.remote === "updated" ? "updated" : outcome.remote].push(id);
+        }),
+      );
+      return result;
     },
 
     pin(id, pinned) {
@@ -619,6 +830,11 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       if (renaming === id) renaming = null;
       registry.close(id);
       mirrors.delete(id);
+      pendingTitles.delete(id);
+      titleSync.delete(id);
+      titleVersions.delete(id);
+      titleProcesses.delete(id);
+      persistTitleOutbox();
       lifecycles.delete(id);
       lifecycleAttempts.delete(id);
       connectPromises.delete(id);
@@ -672,8 +888,22 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
           adopted.push(id);
           continue;
         }
-        const patch = serverPatch(session, record);
+        const pending = pendingTitles.has(id);
+        const patch = serverPatch(session, record, pending);
         if (Object.keys(patch).length > 0 && patchRecord(id, patch)) updated.push(id);
+        const serverTitle = String(session.title ?? "").trim();
+        const serverRevision = Number(session.titleRevision ?? 0);
+        if (!pending && record.titledBy === "human" && serverTitle && serverTitle !== record.title && serverRevision > record.titleRevision) {
+          const localVersion = (titleVersions.get(id) ?? 0) + 1;
+          titleVersions.set(id, localVersion);
+          pendingTitles.set(id, { id, title: record.title, titledBy: "human", localVersion, updatedAt: now() });
+          persistTitleOutbox();
+          setTitleSync(id, {
+            status: "failed",
+            revision: serverRevision,
+            error: "conversation title changed on another client; retry to keep this local title",
+          });
+        }
       }
 
       return {
@@ -689,9 +919,11 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
     },
 
     flush() {
-      if (!timer) return;
-      clearTimeout(timer);
-      write();
+      if (timer) {
+        clearTimeout(timer);
+        write();
+      }
+      persistTitleOutbox();
     },
 
     attachRuntime(id, captured) {
@@ -772,6 +1004,7 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
     window.addEventListener("beforeunload", () => registry.flush());
   }
+  if (pendingTitles.size > 0) queueMicrotask(() => void registry.flushTitles());
 
   return registry;
 }
