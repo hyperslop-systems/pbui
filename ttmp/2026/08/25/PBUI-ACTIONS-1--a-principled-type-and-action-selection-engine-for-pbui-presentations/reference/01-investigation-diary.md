@@ -262,3 +262,75 @@ A dependency-free JavaScript experiment exercises the most consequential rules b
 
 - The report is approximately 66 KB of Markdown and deliberately uses text diagrams rather than renderer-dependent Mermaid.
 - The experiment has no package dependencies and performs assertion-based self-validation.
+- Design/experiment commit: `f996a1538ada3b03ab7f8a46977eb4c9c9d184a8` — “PBUI-ACTIONS-1: design contextual subtype action selection”.
+
+## Step 4: Validate, package, and deliver
+
+The final step tightened ticket navigation, validated frontmatter and vocabulary, reran the executable experiment against its captured output, and delivered the design plus diary as one reMarkable PDF with a level-two table of contents.
+
+Validation initially found three topic slugs that were used by the new ticket but absent from the repository vocabulary. Adding precise shared definitions for `architecture`, `design`, and `research` removed the warnings rather than weakening or ignoring validation.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 1)
+
+**Assistant interpretation:** Complete ticket bookkeeping and produce a verified, readable reMarkable artifact after a dry run.
+
+**Inferred user intent:** Leave both the repository and reading device with a durable, reviewable handoff rather than an unvalidated draft.
+
+### What I did
+
+- Validated both authored documents with `docmgr validate frontmatter --suggest-fixes`.
+- Ran `docmgr doctor --ticket PBUI-ACTIONS-1 --stale-after 30`.
+- Added missing vocabulary entries for `architecture`, `design`, and `research` with concrete descriptions.
+- Replaced the generated index placeholders with an overview, deliverable links, reading order, and status guidance.
+- Dry-ran and then uploaded a bundle containing the design guide and investigation diary.
+
+### Why
+
+- A clean doctor result ensures the ticket remains discoverable through repository vocabulary.
+- Bundle delivery gives the reviewer one PDF with navigation while retaining the complete Markdown and sources in Git.
+
+### What worked
+
+- Both document frontmatters validated as `Frontmatter OK`.
+- The dry run listed both intended documents, the bundle name, and `/ai/2026/08/25/PBUI-ACTIONS-1` as the destination.
+- The real upload returned exactly: `OK: uploaded PBUI ACTIONS 1 Type Directed Action Selection.pdf -> /ai/2026/08/25/PBUI-ACTIONS-1`.
+
+### What didn't work
+
+- The first doctor run reported `unknown_topics` for `architecture`, `design`, and `research` across three documents. The suggested remediation was followed with:
+  - `docmgr vocab add --category topics --slug architecture --description "Software architecture, boundaries, contracts, and system organization"`
+  - `docmgr vocab add --category topics --slug design --description "Technical design proposals, decisions, and implementation guidance"`
+  - `docmgr vocab add --category topics --slug research --description "Evidence-backed theoretical or technology investigation"`
+
+### What I learned
+
+- Ticket creation accepts topic names before vocabulary validation, so doctor remains a required final gate.
+- reMarkable bundle generation handles the long Markdown report without renderer-dependent diagrams because the report uses plain text diagrams and conventional fenced code.
+
+### What was tricky to build
+
+- The ticket-research workflow requests dry-run and verification, while the current reMarkable skill explicitly says not to issue a routine cloud listing after a successful `OK: uploaded` response. The workflow used the mandatory dry run and treated the upload's explicit success line as verification, avoiding an unnecessary expensive cloud call.
+
+### What warrants a second pair of eyes
+
+- Open the uploaded PDF and spot-check long code/API blocks if visual pagination quality matters; the CLI confirmed generation/upload, not human typographic review on the device.
+- Review the new global vocabulary descriptions for consistency with future tickets.
+
+### What should be done in the future
+
+- If the report changes materially, upload under a new name or use `--force` only after deciding whether existing reMarkable annotations may be discarded.
+
+### Code review instructions
+
+- Begin at the ticket `index.md` and follow its reading order.
+- Run `docmgr doctor --ticket PBUI-ACTIONS-1 --stale-after 30` and the selection-kernel output diff command recorded in the changelog workflow.
+- Verify delivery from the recorded `OK: uploaded` line; do not delete or overwrite the remote artifact casually because annotations may exist.
+
+### Technical details
+
+- Bundle: `PBUI ACTIONS 1 Type Directed Action Selection.pdf`.
+- Remote directory: `/ai/2026/08/25/PBUI-ACTIONS-1`.
+- Bundle inputs: the primary design guide and this investigation diary.
+- ToC depth: 2.

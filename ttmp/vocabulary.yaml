@@ -19,6 +19,12 @@ topics:
       description: Documents written to hand work to somebody new
     - slug: review
       description: Code-review findings and follow-ups
+    - slug: architecture
+      description: Software architecture, boundaries, contracts, and system organization
+    - slug: design
+      description: Technical design proposals, decisions, and implementation guidance
+    - slug: research
+      description: Evidence-backed theoretical or technology investigation
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes
