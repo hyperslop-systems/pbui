@@ -433,13 +433,13 @@ Subjects now canonicalize domain inputs, sender, scope, targets, and reference k
 
 ### Prompt Context
 
-**User prompt (verbatim):** "commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)
+**User prompt (verbatim):** "continue. Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done.
 
 [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
 
-**Assistant interpretation:** Continue Phase 1 with focused commits and update the ticket diary at each meaningful implementation boundary using the required schema.
+**Assistant interpretation:** Continue the ticket, print its overall plan, and use thermal start/completion gates around every subsequent implementation phase.
 
-**Inferred user intent:** Preserve a reviewable, continuation-friendly implementation history rather than delivering one opaque final changeset.
+**Inferred user intent:** Keep the long remediation sequence physically visible and make phase boundaries explicit before code starts and after validation succeeds.
 
 **Commit (code):** `69678a32e7620aaa297c9db8e8ae94ec99d003e3` — "feat(pbui-chat): add canonical approval ledger"
 
@@ -505,7 +505,9 @@ The demo now uses one timeline-backed ledger adapter: it still treats hydrated `
 
 ### Prompt Context
 
-**User prompt (verbatim):** (same as Step 6)
+**User prompt (verbatim):** "commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
 
 **Assistant interpretation:** Finish Phase 1 in focused increments, preserving a detailed implementation and validation trail.
 
