@@ -118,6 +118,26 @@ describe("two conversations on one workbench", () => {
     expect(chat.conversations.runtimeFor(A)).toBe(runtime);
   });
 
+  test("an opening transport that never settles becomes a retryable timeout", async () => {
+    await renderTwo();
+    const runtime = chat.conversations.runtimeFor(A)!;
+    vi.spyOn(runtime.context.client, "connect").mockImplementation(() => new Promise<void>(() => undefined));
+    vi.useFakeTimers();
+    try {
+      const pending = chat.conversations.connectRuntime(A);
+      const rejected = expect(pending).rejects.toThrow("connection timed out after 10000ms");
+      await vi.advanceTimersByTimeAsync(10_001);
+      await rejected;
+      expect(chat.conversations.get(A)?.lifecycle).toMatchObject({
+        phase: "failed",
+        error: "connection timed out after 10000ms",
+        retryable: true,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("a closed conversation is not mislabeled opening and can be reopened", async () => {
     await renderTwo();
 
