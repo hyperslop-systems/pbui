@@ -10,7 +10,7 @@ import {
   type WorkbenchVerbKind,
 } from "@hyperslop-systems/pbui-workbench";
 import { type JsonValue, fromJson, toJson } from "@bufbuild/protobuf";
-import { type Mutation, MutationSchema, type WorkbenchDocument, WorkbenchDocumentSchema } from "@hyperslop-systems/workbench-protocol";
+import { type Mutation, MutationSchema, WorkbenchDocumentSchema } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 import { z } from "zod";
 import type { EffectCorrelation, Outcome, VerbLike } from "../types";
@@ -148,27 +148,17 @@ export interface WorkbenchToolsOptions {
    * these maps them here.
    */
   mapVerb?(verb: WorkbenchVerb): VerbLike;
-  /** How many document snapshots to keep for undo. Default 20. */
-  history?: number;
   /** Conversation whose agent owns these per-session tools. */
   senderConversationId: string;
   /** Shared product execution, approval, idempotency, and trace gateway. */
   effectGateway: AgentEffectGateway;
 }
 
-export interface UndoEntry {
-  token: string;
-  label: string;
-  at: string;
-  document: WorkbenchDocument;
-}
-
 export interface WorkbenchTools {
   tools: ToolDefinition[];
-  /** The undo ring, so a product can render "Undo" chips and perform them. */
-  history(): readonly UndoEntry[];
-  /** Restore a snapshot. Returns false for a token that has aged out. */
-  undo(token: string): boolean;
+  // Deliberately no undo/history surface. A whole-document snapshot restore
+  // can erase a later agent's work; until safe inverse batches exist, tools
+  // return the committed revision and no unusable undo token.
 }
 
 interface Failure {
@@ -196,24 +186,8 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   // for a kind nobody has an opinion about.
   const policy: Record<string, PolicyDecision | undefined> = { ...DEFAULT_POLICY, ...options.policy };
   const mapVerb = options.mapVerb ?? ((verb: WorkbenchVerb) => verb as unknown as VerbLike);
-  const keep = options.history ?? 20;
-  const ring: UndoEntry[] = [];
-  let counter = 0;
 
   const available = () => options.getWorkbench() !== null;
-
-  /**
-   * The document is an immutable protobuf message replaced wholesale on every
-   * committed batch, so holding a reference IS the snapshot — there is
-   * nothing to clone and nothing to diff.
-   */
-  function snapshot(wb: Workbench, label: string): string {
-    counter += 1;
-    const token = `undo-${counter}`;
-    ring.push({ token, label, at: new Date().toISOString(), document: wb.store.getState().document });
-    if (ring.length > keep) ring.shift();
-    return token;
-  }
 
   async function performVerb(verb: WorkbenchVerb, correlation: EffectCorrelation): Promise<Outcome> {
     return options.perform(mapVerb(verb), correlation);
@@ -225,7 +199,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     expectedRevision: string,
     confirmationId: string | undefined,
     effectId: string,
-    beforePerform?: () => void,
   ): Promise<Outcome> {
     const wb = options.getWorkbench();
     if (!wb) return "rejected:no workbench is attached to this chat";
@@ -252,7 +225,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         if (wb.store.getState().document !== baseDocument) {
           return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
         }
-        beforePerform?.();
         const outcome = await performVerb(verb, {
           effectId,
           invocationKey: effectId.replace(":", "/"),
@@ -469,10 +441,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         spec: input.layout,
         ...(input.select === false ? { select: false } : {}),
       };
-      let undoToken: string | undefined;
-      const outcome = await performWithPolicy(verb, input.expectedRevision, input.confirmationId, `${options.senderConversationId}:${context.toolCallId}`, () => {
-        undoToken = snapshot(wb, `create workspace ${input.name}`);
-      });
+      const outcome = await performWithPolicy(
+        verb,
+        input.expectedRevision,
+        input.confirmationId,
+        `${options.senderConversationId}:${context.toolCallId}`,
+      );
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
 
       // The verb returns nothing through the router, so name the workspace by
@@ -486,7 +460,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         active: wb.store.getState().workspaceId === after?.id,
         revision: await workbenchRevision(wb),
         tiles: description?.workspaces[0]?.tiles ?? [],
-        undoToken,
       } as unknown as Record<string, unknown>;
     },
   };
@@ -527,10 +500,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         ...(input.near ? { near: input.near } : {}),
         ...(input.title ? { title: input.title } : {}),
       };
-      let undoToken: string | undefined;
-      const outcome = await performWithPolicy(verb, input.expectedRevision, input.confirmationId, `${options.senderConversationId}:${context.toolCallId}`, () => {
-        undoToken = snapshot(wb, `open ${input.appId}`);
-      });
+      const outcome = await performWithPolicy(
+        verb,
+        input.expectedRevision,
+        input.confirmationId,
+        `${options.senderConversationId}:${context.toolCallId}`,
+      );
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
 
       const after = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId }).workspaces[0]?.tiles ?? [];
@@ -546,7 +521,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         viewId: target?.viewId ?? null,
         title: target?.title ?? null,
         wentToExisting,
-        undoToken,
         revision: await workbenchRevision(wb),
       } as unknown as Record<string, unknown>;
     },
@@ -675,13 +649,8 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
           if (wb.store.getState().document !== planned.plan.baseDocument) {
             return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
           }
-          const undoToken = snapshot(wb, `perform ${verbs.length} verb(s)`);
           if (!wb.applyPlan(planned.plan)) return { outcome: "rejected:the workbench refused the atomic plan" };
-          return {
-            outcome: "performed",
-            afterRevision: await workbenchRevision(wb),
-            value: { undoToken },
-          } as const;
+          return { outcome: "performed", afterRevision: await workbenchRevision(wb) } as const;
         },
       });
       if (result.outcome !== "performed") {
@@ -700,7 +669,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         atomic: true,
         applied: verbs.length,
         results: verbs.map((verb) => ({ verb, ok: true })),
-        undoToken: result.value?.undoToken,
         revision: await workbenchRevision(wb),
         tiles: description.workspaces[0]?.tiles ?? [],
       } as unknown as Record<string, unknown>;
@@ -810,7 +778,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
           if (wb.store.getState().document !== baseDocument) {
             return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
           }
-          const undoToken = snapshot(wb, `apply ${batch.length} mutation(s)`);
           if (!wb.mutate(batch)) return { outcome: "rejected:the workbench refused the batch" };
           const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
           return {
@@ -819,7 +786,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
             value: {
               ok: true,
               applied: batch.length,
-              undoToken,
               revision: await workbenchRevision(wb),
               tiles: description.workspaces[0]?.tiles ?? [],
             },
@@ -833,18 +799,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
 
   return {
     tools: [describeTool, createWorkspaceTool, openTileTool, switchWorkspaceTool, performTool, applyTool] as ToolDefinition[],
-    history: () => ring,
-    undo(token) {
-      const at = ring.findIndex((entry) => entry.token === token);
-      if (at < 0) return false;
-      const wb = options.getWorkbench();
-      if (!wb) return false;
-      wb.store.replaceDocument(ring[at]!.document);
-      // Everything after the restored point is unreachable; keeping it would
-      // let a second undo jump forward in time.
-      ring.splice(at);
-      return true;
-    },
   };
 }
 

@@ -218,7 +218,7 @@ describe("workbench_create_workspace · success", () => {
     expect(result.workspaceId).toBeTruthy();
     expect(result.active).toBe(true);
     expect(result.tiles.map((t: any) => t.appId)).toEqual(["chat", "trace"]);
-    expect(result.undoToken).toMatch(/^undo-\d+$/);
+    expect(result).not.toHaveProperty("undoToken");
     expect(wb.store.getState().document.workspaces).toHaveLength(2);
   });
 });
@@ -249,11 +249,10 @@ describe("workbench_open_tile", () => {
   });
 
   it("cannot bypass a deny policy through the specialized tool", async () => {
-    const { call, performed, tools } = harness({ policy: { "view.open": "deny" } });
+    const { call, performed } = harness({ policy: { "view.open": "deny" } });
     const result = await call("workbench_open_tile", { appId: "sku", documents: { product: "2049" } });
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining("not something the assistant may do") });
     expect(performed).toHaveLength(0);
-    expect(tools.history()).toHaveLength(0);
   });
 
   it("accepts a matching one-shot approval when view.open requires confirmation", async () => {
@@ -344,8 +343,8 @@ describe("workbench_perform · policy", () => {
     expect(result.applied).toBe(0);
   });
 
-  it("rejects a stale revision before planning, approval or undo", async () => {
-    const { call, wb, tools } = harness();
+  it("rejects a stale revision before planning or approval", async () => {
+    const { call, wb } = harness();
     const described = (await call("workbench_describe", {})) as any;
     const first = described.workspaces[0].tiles[0].placementId;
     wb.verbs.setTitle(described.workspaces[0].tiles[0].viewId, "human changed it");
@@ -358,11 +357,10 @@ describe("workbench_perform · policy", () => {
 
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining("call workbench_describe again") });
     expect(wb.store.getState().document).toBe(before);
-    expect(tools.history()).toHaveLength(0);
   });
 
-  it("preflights all candidates and creates no undo entry for an invalid atomic batch", async () => {
-    const { call, wb, tools } = harness();
+  it("preflights all candidates and changes nothing for an invalid atomic batch", async () => {
+    const { call, wb } = harness();
     const described = (await call("workbench_describe", {})) as any;
     const before = wb.store.getState().document;
     const result = (await call("workbench_perform", {
@@ -376,7 +374,6 @@ describe("workbench_perform · policy", () => {
     expect(result).toMatchObject({ ok: false, atomic: true, applied: 0 });
     expect(result.results.every((entry: any) => entry.ok === false)).toBe(true);
     expect(wb.store.getState().document).toBe(before);
-    expect(tools.history()).toHaveLength(0);
   });
 
   it("refuses more verbs than the limit", async () => {
@@ -417,28 +414,16 @@ describe("workbench_switch_workspace", () => {
   });
 });
 
-describe("undo", () => {
-  it("restores the document a change was made from", async () => {
-    const { call, tools, wb } = harness();
-    const before = wb.store.getState().document;
-    const result = (await call("workbench_create_workspace", { name: "x", layout: { kind: "tile", appId: "chat" } })) as any;
-    expect(wb.store.getState().document).not.toBe(before);
-    expect(tools.undo(result.undoToken)).toBe(true);
-    expect(wb.store.getState().document).toBe(before);
-  });
-
-  it("drops everything after the restored point, so a second undo cannot jump forward", async () => {
+describe("unsafe whole-document undo", () => {
+  it("is not advertised until the protocol can express a revision-safe inverse", async () => {
     const { call, tools } = harness();
-    const one = (await call("workbench_create_workspace", { name: "one", layout: { kind: "tile", appId: "chat" } })) as any;
-    await call("workbench_create_workspace", { name: "two", layout: { kind: "tile", appId: "chat" } });
-    expect(tools.history()).toHaveLength(2);
-    tools.undo(one.undoToken);
-    expect(tools.history()).toHaveLength(0);
-  });
-
-  it("is false for a token that aged out", () => {
-    const { tools } = harness();
-    expect(tools.undo("undo-99")).toBe(false);
+    const result = (await call("workbench_create_workspace", {
+      name: "x",
+      layout: { kind: "tile", appId: "chat" },
+    })) as any;
+    expect(result).not.toHaveProperty("undoToken");
+    expect(tools).not.toHaveProperty("undo");
+    expect(tools).not.toHaveProperty("history");
   });
 });
 
@@ -638,11 +623,11 @@ describe("workbench_apply", () => {
     })) as any;
     expect(result.ok).toBe(true);
     expect(wb.store.getState().document.workspaces[0]!.name).toBe("renamed");
-    expect(result.undoToken).toMatch(/^undo-\d+$/);
+    expect(result).not.toHaveProperty("undoToken");
   });
 
   it("rejects a raw batch based on an old described revision", async () => {
-    const { run, wb, call, tools } = rawHarness();
+    const { run, wb, call } = rawHarness();
     const described = (await call("workbench_describe", {})) as any;
     wb.verbs.renameWorkspace(wb.store.getState().workspaceId, "human update");
     const before = wb.store.getState().document;
@@ -652,7 +637,6 @@ describe("workbench_apply", () => {
     })) as any;
     expect(result.error).toContain("call workbench_describe again");
     expect(wb.store.getState().document).toBe(before);
-    expect(tools.history()).toHaveLength(0);
   });
 
   it("returns the applier's code and path for a batch it refuses", async () => {

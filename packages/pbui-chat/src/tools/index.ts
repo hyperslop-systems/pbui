@@ -46,7 +46,6 @@ export {
 } from "./workbenchTools";
 export type {
   PolicyDecision,
-  UndoEntry,
   WorkbenchPolicy,
   WorkbenchToolLimits,
   WorkbenchTools,

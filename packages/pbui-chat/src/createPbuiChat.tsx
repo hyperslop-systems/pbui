@@ -201,9 +201,9 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
    * traced against whichever conversation happened to be active. Building the
    * set per session moves that knowledge into the closure, where it is exact.
    *
-   * It also gives each agent its own layout undo ring, which is what "undo
-   * what you just did" has to mean when two agents are rearranging one
-   * screen.
+   * No agent undo token is advertised: a whole-document restore could erase
+   * another agent's later changes, and the protocol does not yet provide a
+   * safe inverse batch. Callers receive the committed revision instead.
    *
    * The workbench, library and engine are read through closures rather than
    * received, because they cannot exist yet: the workbench's applications
@@ -485,7 +485,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     pbui,
     /** Product-wide execution, approval, idempotency, and effect trace gateway. */
     effectGateway,
-    /** One conversation's agent tools: the layout undo ring and the program tools. */
+    /** One conversation's revision-bound workbench and program tools. */
     toolsFor,
     /** Route `openInTile` to a workbench's `widget` tiles from now on (null detaches). */
     attachWorkbench(next: Workbench | null) {
