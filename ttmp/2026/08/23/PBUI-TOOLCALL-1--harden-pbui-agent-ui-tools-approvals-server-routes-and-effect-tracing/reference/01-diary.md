@@ -1632,6 +1632,8 @@ The guide also records that chat-provider `0.5.1` is now published and locally s
 
 **Inferred user intent:** Ensure the implementation and acceptance owner has an exact, non-lease-heavy contract to consume and test.
 
+**Commit (docs):** `a2227f5e7916f87665aaccbea79c5f4aecf25f49` — "PBUI-TOOLCALL-1: adopt concise executor protocol"
+
 ### What I did
 
 - Updated PBUI's architecture guide to reference the authoritative concise design.
