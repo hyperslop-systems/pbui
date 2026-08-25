@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { Dialog } from "./components/Dialog";
@@ -57,6 +57,103 @@ describe("the escape surface stack", () => {
     pushEscapeSurface("b");
     popEscapeSurface("a");
     expect(topEscapeSurface()).toBe("b");
+  });
+});
+
+describe("Dialog focus restoration", () => {
+  function Harness() {
+    const [open, setOpen] = useState(false);
+    return (
+      <main>
+        <button type="button" onClick={() => setOpen(true)}>open dialog</button>
+        {open ? (
+          <Dialog title="focus dialog" onClose={() => setOpen(false)}>
+            <button type="button">inside</button>
+          </Dialog>
+        ) : null}
+      </main>
+    );
+  }
+
+  const settleFocus = () => Promise.resolve();
+
+  test("Escape returns focus to the invoker", async () => {
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "open dialog" });
+    opener.focus();
+    fireEvent.click(opener);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "inside" }));
+    press();
+    await settleFocus();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  test("the close button returns focus", async () => {
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "open dialog" });
+    opener.focus();
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await settleFocus();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  test("programmatic close uses a surviving owner when the invoker was removed", async () => {
+    function RemovedInvoker() {
+      const [open, setOpen] = useState(false);
+      const [showInvoker, setShowInvoker] = useState(true);
+      return (
+        <main data-testid="owner">
+          {showInvoker ? <button type="button" onClick={() => setOpen(true)}>temporary opener</button> : null}
+          {open ? (
+            <Dialog title="temporary" onClose={() => { setShowInvoker(false); setOpen(false); }}>
+              <button type="button" onClick={() => { setShowInvoker(false); setOpen(false); }}>finish</button>
+            </Dialog>
+          ) : null}
+        </main>
+      );
+    }
+    render(<RemovedInvoker />);
+    const temporary = screen.getByRole("button", { name: "temporary opener" });
+    temporary.focus();
+    fireEvent.click(temporary);
+    fireEvent.click(screen.getByRole("button", { name: "finish" }));
+    await settleFocus();
+    expect(document.activeElement).toBe(screen.getByTestId("owner"));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  test("nested dialogs restore to the immediate parent invoker", async () => {
+    function Nested() {
+      const [outer, setOuter] = useState(false);
+      const [inner, setInner] = useState(false);
+      return (
+        <main>
+          <button type="button" onClick={() => setOuter(true)}>outer opener</button>
+          {outer ? (
+            <Dialog title="outer" onClose={() => setOuter(false)}>
+              <button type="button" onClick={() => setInner(true)}>inner opener</button>
+              {inner ? <Dialog title="inner" onClose={() => setInner(false)}><button type="button">inner control</button></Dialog> : null}
+            </Dialog>
+          ) : null}
+        </main>
+      );
+    }
+    render(<Nested />);
+    const outerOpener = screen.getByRole("button", { name: "outer opener" });
+    outerOpener.focus();
+    fireEvent.click(outerOpener);
+    const innerOpener = screen.getByRole("button", { name: "inner opener" });
+    innerOpener.focus();
+    fireEvent.click(innerOpener);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "inner control" }));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[1]!);
+    await settleFocus();
+    expect(document.activeElement).toBe(innerOpener);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await settleFocus();
+    expect(document.activeElement).toBe(outerOpener);
   });
 });
 

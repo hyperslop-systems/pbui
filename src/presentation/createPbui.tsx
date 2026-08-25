@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { VisuallyHidden } from "../components/foundation";
+import { captureFocusReturn, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
 import type { PresentationRegistry } from "./registry";
 import type {
@@ -168,7 +169,7 @@ export interface PbuiContextValue<
   isAcceptable(reference: PresentationReference<Values>): boolean;
   satisfyAccept(reference: PresentationReference<Values>): void;
   menu: MenuState<Values> | null;
-  openMenu(reference: PresentationReference<Values>, x: number, y: number): void;
+  openMenu(reference: PresentationReference<Values>, x: number, y: number, invoker?: HTMLElement | null): void;
   closeMenu(): void;
   mouseDoc: string | null;
   setMouseDoc(text: string | null): void;
@@ -259,7 +260,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         isAcceptable,
         satisfyAccept,
         menu,
-        openMenu: (reference, x, y) => setMenu({ reference, x, y }),
+        openMenu: (reference, x, y, invoker) => setMenu({ reference, x, y, returnFocus: captureFocusReturn(invoker) }),
         closeMenu: () => setMenu(null),
         mouseDoc,
         setMouseDoc,
@@ -315,12 +316,12 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         ? `L: ${activate.doc ?? "activate"}   R: menu`
         : "L/R: menu";
     const describe = () => `${doc ?? `<${reference.type}>`}   —   ${clickDoc}`;
-    const open = (x: number, y: number) => pbui.openMenu(reference, x, y);
+    const open = (x: number, y: number, invoker: HTMLElement) => pbui.openMenu(reference, x, y, invoker);
 
     const handleContextMenu = (event: MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      open(event.clientX, event.clientY);
+      open(event.clientX, event.clientY, event.currentTarget as HTMLElement);
     };
 
     /*
@@ -384,7 +385,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         return;
       }
       event.stopPropagation();
-      open(event.clientX, event.clientY);
+      open(event.clientX, event.clientY, event.currentTarget as HTMLElement);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -426,12 +427,12 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
           return;
         }
         const box = (event.target as HTMLElement).getBoundingClientRect();
-        open(box.left, box.bottom);
+        open(box.left, box.bottom, event.currentTarget as HTMLElement);
       } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
         event.preventDefault();
         event.stopPropagation();
         const box = (event.target as HTMLElement).getBoundingClientRect();
-        open(box.left, box.bottom);
+        open(box.left, box.bottom, event.currentTarget as HTMLElement);
       }
     };
 
@@ -474,6 +475,12 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     // inside a dialog, and its z-index says so — but it must not swallow the
     // Escape of anything that opens above it. See `surfaces.ts`.
     const ownsEscape = useEscapeSurface(menu !== null);
+    useEffect(() => {
+      if (!menu) return;
+      const target = menu.returnFocus;
+      return () => queueFocusReturn(target);
+    }, [menu]);
+
     useEffect(() => {
       if (!menu) return;
 

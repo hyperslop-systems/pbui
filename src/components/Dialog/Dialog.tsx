@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import { captureFocusReturn, queueFocusReturn } from "../../focus";
 import { useEscapeSurface } from "../../surfaces";
 
 export interface DialogProps {
@@ -8,6 +9,10 @@ export interface DialogProps {
   footer?: ReactNode;
   closeLabel?: string;
   unstyled?: boolean;
+  /** Return focus when the dialog unmounts; default true. */
+  returnFocus?: boolean;
+  /** Explicit invoker for programmatic dialogs; defaults to the active element at mount. */
+  returnFocusTo?: HTMLElement | null;
 }
 
 const FOCUSABLE =
@@ -24,8 +29,11 @@ export function Dialog({
   footer,
   closeLabel = "Close",
   unstyled = false,
+  returnFocus = true,
+  returnFocusTo,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const returnFocusSettings = useRef({ enabled: returnFocus, explicit: returnFocusTo });
   const titleId = useId();
 
   /**
@@ -38,16 +46,24 @@ export function Dialog({
    */
   const ownsEscape = useEscapeSurface(true);
 
+  useLayoutEffect(() => {
+    const settings = returnFocusSettings.current;
+    if (!settings.enabled) return;
+    const target = captureFocusReturn(settings.explicit);
+    return () => queueFocusReturn(target);
+  }, []);
+
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
-
     const body = panel.querySelector<HTMLElement>('[data-part="dialog-body"]');
-    const target =
-      body?.querySelector<HTMLElement>(FOCUSABLE) ??
-      panel.querySelector<HTMLElement>(FOCUSABLE);
+    const target = body?.querySelector<HTMLElement>(FOCUSABLE) ?? panel.querySelector<HTMLElement>(FOCUSABLE);
     target?.focus();
+  }, []);
 
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         // Not ours: something opened on top of this dialog and owns the key.

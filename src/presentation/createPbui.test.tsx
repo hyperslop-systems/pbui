@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { createPbui } from "./createPbui";
@@ -54,7 +54,7 @@ describe("createPbui", () => {
     expect(screen.getByRole("button", { name: "B: Ada" })).toBeTruthy();
   });
 
-  test("opens a descriptor menu and performs its verb", () => {
+  test("opens a descriptor menu, performs its verb, and restores focus", async () => {
     const pbui = makePbui();
     const performed: Verb[] = [];
     const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
@@ -70,7 +70,8 @@ describe("createPbui", () => {
       </pbui.Provider>,
     );
 
-    fireEvent.contextMenu(screen.getByRole("button", { name: "Ada" }), {
+    const invoker = screen.getByRole("button", { name: "Ada" });
+    fireEvent.contextMenu(invoker, {
       clientX: 20,
       clientY: 30,
     });
@@ -78,6 +79,53 @@ describe("createPbui", () => {
 
     expect(performed).toEqual([{ type: "select", id: "1" }]);
     expect(screen.queryByRole("menu")).toBeNull();
+    await act(async () => Promise.resolve());
+    expect(document.activeElement).toBe(invoker);
+  });
+
+  test("restores menu focus after Escape and click-away", async () => {
+    const pbui = makePbui();
+    const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
+    render(
+      <main>
+        <pbui.Provider onPerform={ignorePerform}>
+          <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
+          <pbui.ObjectMenu />
+        </pbui.Provider>
+      </main>,
+    );
+    const invoker = screen.getByRole("button", { name: "Ada" });
+    fireEvent.keyDown(invoker, { key: "ContextMenu" });
+    expect(screen.getByRole("menu")).toBeTruthy();
+    fireEvent.keyDown(window, { key: "Escape" });
+    await act(async () => Promise.resolve());
+    expect(document.activeElement).toBe(invoker);
+
+    fireEvent.contextMenu(invoker, { clientX: 5, clientY: 5 });
+    fireEvent.click(window);
+    await act(async () => Promise.resolve());
+    expect(document.activeElement).toBe(invoker);
+  });
+
+  test("uses a surviving owner when a menu action removes its invoker", async () => {
+    const pbui = makePbui();
+    const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
+    function Removing() {
+      const [visible, setVisible] = useState(true);
+      return (
+        <main data-testid="menu-owner">
+          <pbui.Provider onPerform={() => setVisible(false)}>
+            {visible ? <pbui.Presentation reference={reference}>Ada</pbui.Presentation> : null}
+            <pbui.ObjectMenu />
+          </pbui.Provider>
+        </main>
+      );
+    }
+    render(<Removing />);
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Ada" }), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Select" }));
+    await act(async () => Promise.resolve());
+    expect(document.activeElement).toBe(screen.getByTestId("menu-owner"));
   });
 
   test("resolves typed accept requests", async () => {

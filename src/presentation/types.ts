@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { FocusReturnTarget } from "../focus";
 
 export type PresentationValues = object;
 export type PresentationType<Values extends PresentationValues> = Extract<keyof Values, string>;
@@ -135,6 +136,7 @@ export interface MenuState<Values extends PresentationValues> {
   reference: PresentationReference<Values>;
   x: number;
   y: number;
+  returnFocus: FocusReturnTarget;
 }
 
 export type PresentationConversion<Values extends PresentationValues> = (
