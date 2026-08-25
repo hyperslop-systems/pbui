@@ -25,6 +25,8 @@ RelatedFiles:
         Request-identity send context and failure cleanup (commit 7b3ccd1)
         One ledger injected into every conversation toolset (commit f320dfc)
         Product-wide gateway and effect reporter wiring (commit 1d05677)
+    - Path: repo://packages/pbui-chat/src/router/createVerbRouter.ts
+      Note: Typed parent effect correlation on verb reports (commit 64b5f9d)
     - Path: repo://packages/pbui-chat/src/store/chatStore.test.ts
       Note: Draft isolation/clear/forget regressions (commit 7b3ccd1)
     - Path: repo://packages/pbui-chat/src/store/chatStore.ts
@@ -51,6 +53,8 @@ RelatedFiles:
       Note: |-
         Canonical workbench and raw approval subjects (commit f320dfc)
         Gateway-routed verbs and raw mutations (commit 1d05677)
+    - Path: repo://packages/pbui-chat/src/types.ts
+      Note: Public effect correlation trace fields (commit 64b5f9d)
     - Path: repo://pkg/chatserver/authorization.go
       Note: Required principal/session policy contract (commit a982f98)
     - Path: repo://pkg/chatserver/authorization_test.go
@@ -64,15 +68,20 @@ RelatedFiles:
     - Path: repo://pkg/pbuichat/plugin.go
       Note: Strict browser effect decoding and digest validation (commit 56a01b6)
     - Path: repo://pkg/pbuichat/trace.go
-      Note: Idempotent effect recording and durable projection (commit 56a01b6)
+      Note: |-
+        Idempotent effect recording and durable projection (commit 56a01b6)
+        Durable verb/effect correlation (commit 64b5f9d)
     - Path: repo://proto/hyperslop/pbui/chat/v1/chat.proto
-      Note: Durable effect envelope and command schema (commit 56a01b6)
+      Note: |-
+        Durable effect envelope and command schema (commit 56a01b6)
+        Generated correlation wire fields (commit 64b5f9d)
 ExternalSources: []
 Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
 LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -777,3 +786,73 @@ Browser canonical JSON and Go `encoding/json` must hash the same bytes. Both rec
 ### Technical details
 
 Effect routes accept only `actor=agent`, and route authorization occurs before body parsing. Existing and duplicate identical envelopes produce one durable trace entity. Foreign-session envelopes return `400`; foreign principals are rejected by session authorization before reaching the handler.
+
+## Step 10: Correlate high-level verbs with parent effects
+
+I added typed effect, invocation, and approval correlation to the existing high-level verb trace rather than embedding hidden provenance into the verb payload. Tool factories now pass the gateway identity through their router callback, and generated wire fields survive server recording and browser hydration.
+
+This closes the structural correlation gap between the durable effect envelope and the user-facing verb row. Phase 2 still requires final end-to-end rendered smoke evidence and a complete validation sweep before its completion slip may be printed.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 8)
+
+**Assistant interpretation:** Continue Phase 2 with explicit trace correlation and commit the next coherent interval.
+
+**Inferred user intent:** Make effect causality directly queryable and reviewable without conventions hidden inside arbitrary verb JSON.
+
+**Commit (code):** `64b5f9d91adfcea17f00a58c445c03894a1747ff` — "feat(pbui-chat): correlate verb and effect traces"
+
+### What I did
+
+- Added typed `effectId`, `invocationKey`, and `approvalId` fields to verb commands and trace entries.
+- Extended router `PerformOptions` and report bodies with those fields.
+- Propagated correlation through conversation, workbench, and sandbox router effects.
+- Recorded and hydrated correlation through generated Go/TypeScript schemas.
+- Added browser router and Go trace regression coverage.
+
+### Why
+
+A nearby effect row is not sufficient causal evidence when traces interleave. Both the parent effect and child high-level verb need the same stable identifiers.
+
+### What worked
+
+```text
+go test ./pkg/pbuichat ./pkg/chatserver -count=1       PASS
+pbui-chat typecheck                                     PASS
+pbui-chat tests                                         24 files, 226 PASS
+buf lint                                                PASS
+pre-commit full Go tests and quality checks             PASS, 0 issues
+```
+
+### What didn't work
+
+N/A
+
+### What I learned
+
+Typed optional fields preserve existing human/router traces while making gateway-caused rows explicitly joinable.
+
+### What was tricky to build
+
+Correlation had to flow through the factory callback type, `createPbuiChat`'s session-bound closure, router report serialization, protobuf decoding, durable trace entry, and hydration adapter. Missing any one layer would produce correlation that appeared live but vanished after reload.
+
+### What warrants a second pair of eyes
+
+- Verify rendered trace tooling exposes these fields intelligibly rather than only retaining them in entity props.
+- Confirm parent/child effect conventions for compound sandbox create-and-open operations.
+
+### What should be done in the future
+
+- Run browser-level effect execution and hydration smoke inspection.
+- Run final Phase 2 protocol-generation, CI, security, package, and repository audit.
+- Only then mark the task and print the Phase 2 completion slip.
+
+### Code review instructions
+
+- Trace `EffectCorrelation` from each factory through `createVerbRouter.report`, Go decoding, `TraceEntry`, and `traceAdapter`.
+- Validate with Go tests, PBUI chat typecheck/tests, protocol generation, and `buf lint`.
+
+### Technical details
+
+Correlation remains optional for ordinary human actions. Gateway-originated high-level verbs use the immutable conversation/tool-call effect id and carry approval id only when a capability participated.

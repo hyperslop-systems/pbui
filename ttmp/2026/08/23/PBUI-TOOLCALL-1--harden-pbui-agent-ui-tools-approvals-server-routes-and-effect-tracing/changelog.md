@@ -74,3 +74,13 @@ Phase 2 interval 2: authenticated durable effect schema, route, idempotent proje
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/pbuichat/trace.go — Durable idempotent trace
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/proto/hyperslop/pbui/chat/v1/chat.proto — Effect wire contract
 
+
+## 2026-08-25
+
+Phase 2 interval 3: typed parent-effect correlation across router, wire, durable trace and hydration (commit 64b5f9d)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/router/createVerbRouter.ts — Router correlation
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/proto/hyperslop/pbui/chat/v1/chat.proto — Wire correlation
+
