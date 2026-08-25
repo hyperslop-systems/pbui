@@ -144,3 +144,13 @@ Phase 5 audit removed unsafe whole-document undo tokens (1d17631), consumed Pino
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/workbenchTools.ts — Undo correction
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/03-phase5-multitab-executor-blocker.md — Release blocker
 
+
+## 2026-08-25
+
+Rechecked the live npm release gate after continuation: chat-provider still has no version after immutable 0.5.0, so the documented two-tab executor blocker remains current and Phase 5 remains open.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/reference/01-diary.md — Step 17 release-gate recheck
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/03-phase5-multitab-executor-blocker.md — Timestamped npm registry evidence
+

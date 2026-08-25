@@ -1546,3 +1546,71 @@ The multi-tab defect crosses all three ownership layers. A PBUI-only localStorag
 ### Technical details
 
 The accepted workbench effect used before revision `723d2475...` and after revision `e73dcfbf...`. The second tab used the same effect id/input digest but independently minted ids and produced after revision `24fd427b...`; its occurrence timestamp also differed. The server retained exactly one `PbuiVerbRecorded` and one accepted terminal result. npm reports `0.5.0` integrity `sha512-HztFHJUM48LMheN/4qi7QAa6piGCjcgztCDXwea+v3sQwB2wok3VUEknH6L036PsBO7f0tsNpazyq7quA58lIw==`, `next: 0.5.0`, `latest: 0.4.2`.
+
+## Step 17: Recheck the external release gate after continuation
+
+### Prompt Context
+
+**User prompt (verbatim):** `Continue working toward the active thread goal. Inspect the current objective and status with get_goal (or the exposed namespaced equivalent, such as pi__get_goal) if needed. Budget: - Time spent pursuing goal: 51m - Tokens used: 844K (843,606) - Token budget: 1M (1,000,000) - Tokens remaining: 156K (156,394) Avoid repeating work that is already done. Choose the next concrete action toward the objective. Before marking the goal complete, audit progress against the objective and call update_goal (or the exposed namespaced equivalent, such as pi__update_goal) with status "complete" only when every requirement is verified.`
+
+**Assistant interpretation:** Reinspect the only unresolved external prerequisite rather than rerun already-green PBUI implementation work or silently relax the exact-version/release constraint.
+
+**Inferred user intent:** Continue only through evidence-backed, authorized actions and keep the durable goal active while one explicit acceptance criterion remains false.
+
+### What I did
+
+- Read active goal `f18ad5e2-b038-4d05-9030-8d53da9aae25`; it remains active and still requires every Phase 5 criterion plus a completion slip.
+- Queried the live npm registry for all chat-provider versions and distribution tags.
+- Inspected PBUI, react-chat, and Pinocchio worktree/branch state.
+- Re-read the react-chat executor-ownership design before considering an upstream workaround.
+
+### Commands run
+
+```text
+npm view @go-go-golems/chat-provider versions --json
+npm view @go-go-golems/chat-provider dist-tags --json
+git -C pbui status --short --branch
+git -C react-chat status --short --branch
+git -C pinocchio status --short --branch
+rg -n -C 5 "multi-tab|executor|lease|Web Locks|localStorage|BroadcastChannel|protocol v2" react-chat/ttmp/.../design-doc/*.md
+```
+
+### What worked
+
+- The registry query completed and showed the complete version set through `0.5.0` only.
+- All three relevant source worktrees were clean.
+- The design evidence remains unambiguous: a PBUI-only or browser-storage election is explicitly rejected; assignment belongs to the authenticated server/session protocol.
+
+### What didn't work
+
+- No hardened npm release appeared. At `2026-08-25T16:39:24-04:00`, npm still reports `next: 0.5.0`, `latest: 0.4.2`, and no version newer than `0.5.0`.
+- The continuation did not authorize publishing a new package, changing PBUI's exact `0.5.0` requirement, or selecting the coordinated protocol-v2 lease policy. Therefore there is no safe code or release mutation available that can make the failing installed-package/two-tab criterion true.
+
+### What I learned
+
+The blocker is current rather than stale registry evidence. Re-running local PBUI tests cannot change it, and introducing the previously rejected localStorage/Web Locks election would violate the documented architecture and the no-compatibility-shim constraint.
+
+### What was tricky to build
+
+No implementation was attempted in this interval. The important distinction was between legitimate upstream protocol work and an unauthorized client-only suppression mechanism that would make one demo appear green without providing authenticated ownership.
+
+### What warrants a second pair of eyes
+
+- Release ownership must explicitly approve a new npm version and replacement of the exact `0.5.0` PBUI pin.
+- Protocol owners must choose and authenticate executor assignment/lease identity before implementation begins.
+
+### What should be done next
+
+- Obtain the two decisions above.
+- Then implement and publish the coordinated Pinocchio/react-chat protocol, consume the immutable release in PBUI, and rerun the exact installed-package plus real two-tab tests.
+- Until then, keep task `cppg` open, do not print the Phase 5 completion slip, and do not complete the durable goal.
+
+### Code review instructions
+
+1. Run both npm queries and confirm there is still no version after `0.5.0`.
+2. Read react-chat guide §8 and the rejected localStorage alternative in §16.
+3. Confirm this interval changes evidence only and does not add a hidden executor shim.
+
+### Technical details
+
+The clean react-chat worktree is on `task/add-pbui-agent` at `4c7ffae`; hardened runtime commit `e341aae` is in its history, but no corresponding npm release exists. PBUI remains clean at `b44f413` before this diary-only interval.

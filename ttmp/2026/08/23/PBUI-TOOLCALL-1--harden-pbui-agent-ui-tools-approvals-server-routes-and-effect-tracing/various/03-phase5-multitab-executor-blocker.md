@@ -82,6 +82,10 @@ The PBUI architecture guide explicitly assigns browser terminal-ledger/executor-
 
 The hardened react-chat source is merged in `v0.0.3`, but npm `0.5.0` is immutable and predates those source changes. The related ticket records that a new npm package version was intentionally not published. PBUI is explicitly constrained to keep exact npm `0.5.0` consumption.
 
+## Live release-gate recheck
+
+At `2026-08-25T16:39:24-04:00`, fresh `npm view` queries still returned versions only through `0.5.0`, with `next: 0.5.0` and `latest: 0.4.2`. No immutable release containing the merged terminal ledger or any server-assigned executor protocol is available to PBUI.
+
 ## Required unblock
 
 A release owner must approve and perform the coordinated protocol-v2/package sequence:
