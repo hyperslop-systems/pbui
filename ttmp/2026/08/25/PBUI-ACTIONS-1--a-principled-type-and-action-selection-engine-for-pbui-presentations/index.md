@@ -1,7 +1,7 @@
 ---
 Title: A principled type and action selection engine for PBUI presentations
 Ticket: PBUI-ACTIONS-1
-Status: active
+Status: complete
 Topics:
     - pbui
     - frontend
@@ -13,11 +13,12 @@ Intent: long-term
 Owners: []
 RelatedFiles: []
 ExternalSources: []
-Summary: "Research and design package for a subtype-, context-, history-, scope-, translator-, and advice-aware PBUI action-selection kernel."
-LastUpdated: 2026-08-25T13:25:00-04:00
-WhatFor: "Navigate the theoretical analysis, executable experiment, source corpus, and chronological investigation record."
-WhenToUse: "Start here when reviewing PBUI-ACTIONS-1 or planning implementation phases."
+Summary: Research and design package for a subtype-, context-, history-, scope-, translator-, and advice-aware PBUI action-selection kernel.
+LastUpdated: 2026-08-25T12:23:34.628962156-04:00
+WhatFor: Navigate the theoretical analysis, executable experiment, source corpus, and chronological investigation record.
+WhenToUse: Start here when reviewing PBUI-ACTIONS-1 or planning implementation phases.
 ---
+
 
 # A principled type and action selection engine for PBUI presentations
 
