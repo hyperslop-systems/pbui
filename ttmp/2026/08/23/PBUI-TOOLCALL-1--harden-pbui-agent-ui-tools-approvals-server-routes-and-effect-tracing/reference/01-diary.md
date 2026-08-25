@@ -20,8 +20,12 @@ RelatedFiles:
       Note: Live/hydrated effect envelope decoding (commit 56a01b6)
     - Path: repo://packages/pbui-chat/src/composer/Composer/Composer.tsx
       Note: Exact conversation draft selection (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/conversations/ConversationScope.tsx
+      Note: Closed/opening/failed/closing UI and recovery actions (commit c5365e6)
     - Path: repo://packages/pbui-chat/src/conversations/conversations.test.tsx
       Note: Cross-conversation and failed-send context regressions (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/conversations/registry.ts
+      Note: Explicit lifecycle and durable versioned title outbox (commits c5365e6, 6a8d8c6)
     - Path: repo://packages/pbui-chat/src/createPbuiChat.tsx
       Note: |-
         Request-identity send context and failure cleanup (commit 7b3ccd1)
@@ -65,8 +69,11 @@ RelatedFiles:
       Note: |-
         Ownership claim and list filtering (commit a982f98)
         Authenticated effect submission handler (commit 56a01b6)
+        Version-aware title PATCH conflict response (commit 5916dc0)
     - Path: repo://pkg/chatserver/server.go
       Note: Authorized route and subscribe boundaries (commit a982f98)
+    - Path: repo://pkg/chatserver/sessions.go
+      Note: Atomic title revision CAS and SQLite migration (commit 5916dc0)
     - Path: repo://pkg/pbuichat/plugin.go
       Note: Strict browser effect decoding and digest validation (commit 56a01b6)
     - Path: repo://pkg/pbuichat/trace.go
@@ -91,6 +98,7 @@ LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -961,3 +969,86 @@ Rendered inspection itself emits human `inspect` verbs, so sequence numbers adva
 ### Technical details
 
 The observed envelope used effect id `720c0e04-62cd-4903-8d3b-63b4eb3160bf:msg-1:tool:conversation_send:3`, digest `b800c25ca0dc53f40bbffefa089b299cccaf48940129fcb413afb331cd27c2e0`, approval `handoff-msg-1`, and target `1490cfcb-9f92-4626-9b01-b2fdd1ed2be8`. The browser received HTTP 200 with `status=effect_recorded`. No console errors were observed.
+
+## Step 12: Start Phase 3 with explicit lifecycle and versioned title truth
+
+After Phase 2 validation and documentation were committed as `77063a8`, I printed the Phase 2 completion slip and the Phase 3 start slip. I then separated conversation lifecycle from the presence or absence of a captured runtime, and implemented local-first, versioned, durable title synchronization across browser and server.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 11)
+
+**Assistant interpretation:** Move through the thermal phase gate and implement conversation correctness in independently reviewable lifecycle, server-CAS, and browser-outbox commits.
+
+**Inferred user intent:** Closed/failed conversations must tell the truth and recover intentionally; names must remain immediate locally while stale/offline writes can neither disappear nor overwrite newer server state.
+
+**Commits:**
+
+- `c5365e60a5c513f355eb03099b757e9e4efc6299` — "fix(pbui-chat): model conversation runtime lifecycle"
+- `5916dc018534894bd55d551c507157db7fbe0d14` — "feat(chatserver): version conversation titles"
+- `6a8d8c61e15a24eb845f6b9b73624f311173d68d` — "feat(pbui-chat): synchronize versioned titles"
+
+### What I did
+
+- Added explicit `closed`, `opening`, `open`, `failed`, and `closing` lifecycle snapshots with monotonic opening-attempt identities.
+- Routed provider connection success/failure through the registry instead of swallowing failure in `ConversationHost`.
+- Added cancel, close, open, and retry states/actions to `ConversationScope` and lifecycle-aware list status.
+- Kept failed retries on the existing runtime rather than creating duplicate clients.
+- Added server-side `title_revision`, SQLite migration, and atomic compare-and-swap PATCH behavior with HTTP 409 conflicts.
+- Added local-first browser renames, per-conversation serialized PATCHes, durable storage outbox, automatic reload retry, conflict preservation, explicit retry, and visible queued/failed state.
+- Synchronized auto-derived titles as well as explicit human/agent names.
+- Preserved human-title ownership when reconciling another browser's server index.
+
+### Why
+
+The old `!runtime => opening` inference mislabeled a deliberately closed conversation forever. The old rename changed only browser storage, so another browser never reliably learned it. A plain optimistic PATCH would add a worse race: an old offline retry could overwrite a newer name. Explicit lifecycle and revision CAS address those as separate state machines.
+
+### What worked
+
+```text
+pbui-chat typecheck                                    PASS
+pbui-chat tests after lifecycle interval               24 files / 229 PASS
+pbui-chat tests after title interval                   24 files / 233 PASS
+pbui-chat production build                             PASS
+go test ./pkg/chatserver -count=1                      PASS
+pre-commit full Go tests + Go quality                  PASS, 0 issues
+```
+
+### What didn't work
+
+1. Adding required lifecycle fields exposed an old test fixture that inferred closed state solely from `open:false`; TypeScript and one status assertion failed. I made the fixture explicit and changed the assertion to pass `{ lifecycle: { phase: "closed" } }`.
+2. The registry-level empty rename test caused an unhandled rejected promise after `rename` became asynchronous. The public registry previously treated whitespace as a no-op, while the verb layer already rejects it. I preserved that existing low-level behavior with a resolved no-op and retained strict user/tool validation in `performConversationVerb`.
+3. The first typecheck after adding title status found the shared `ConversationSnapshot` fixture could spread an optional `titleSync: undefined` over a required field. I normalized required lifecycle/title fields after the patch spread.
+
+### What I learned
+
+- Runtime attachment and transport readiness are distinct. With auto-connect disabled, attachment is enough for the test/story runtime to be open; production remains opening until `client.connect()` resolves.
+- Serializing title writes per conversation is still necessary even with server CAS: it gives every newer local write the revision acknowledged by its predecessor and avoids a preventable 409.
+- A 409 is not a reason to revert local UI. It advances the known server revision, retains the newest local write, and exposes a retry decision.
+
+### What was tricky to build
+
+A newer rename may arrive while an older PATCH is in flight. The outbox replaces only the pending value, while the drain loop keeps the in-flight write identity. When the older response arrives, it advances only `titleRevision`; it cannot delete the newer outbox entry or replace the local title. The loop then sends the newer title against the newly acknowledged revision. SQLite migration also had to preserve existing title rows by adding `title_revision DEFAULT 0` after inspecting `PRAGMA table_info`.
+
+### What warrants a second pair of eyes
+
+- Review whether product copy should distinguish network-queued title writes from explicit revision conflicts more strongly than the current `title queued` / `title failed` labels.
+- Review the policy that a human-owned local title remains visible after another browser renames it; retry explicitly reasserts the local choice and avoids automatic cross-browser ping-pong.
+- Verify StrictMode provider detach/reattach continues to move through a new opening attempt without showing closed.
+
+### What should be done in the future
+
+- Add rendered Chromium evidence for close/reopen/failure copy and title PATCH/reload/conflict behavior.
+- Run the full Phase 3 validation sweep and print its completion slip only after rendered evidence is committed.
+- Then print the Phase 4 start slip before workbench/focus implementation.
+
+### Code review instructions
+
+1. Review lifecycle transitions in `registry.ts`, then `ConversationHost` and `ConversationScope`.
+2. Review server memory and SQLite CAS implementations and legacy migration test.
+3. Trace `rename -> queueTitle -> processTitle -> drainTitle`, including concurrent-write identity and 409 handling.
+4. Run PBUI chat typecheck/tests/build and focused/full Go tests.
+
+### Technical details
+
+Title PATCH bodies carry `{ title, expectedRevision }`; success increments the server revision, and conflict returns the current title/revision with HTTP 409. Outbox entries carry conversation id, newest title, owner, local monotonic version, and update timestamp. A persisted write is retried automatically after registry restoration.

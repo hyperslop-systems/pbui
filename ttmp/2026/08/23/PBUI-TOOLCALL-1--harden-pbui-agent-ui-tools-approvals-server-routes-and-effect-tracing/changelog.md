@@ -94,3 +94,13 @@ Phase 2 validated end-to-end: Chromium handoff, canonical effect POST, rendered 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/demo/src/pbui/vocabulary.test.ts — Demo regression validation
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-server-restart.png — Durable rendered validation
 
+
+## 2026-08-25
+
+Phase 3 intervals: explicit runtime lifecycle/retry UI (c5365e6), server title revision CAS + migration (5916dc0), and local-first durable serialized title outbox (6a8d8c6). Phase 2 completion and Phase 3 start slips printed.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/registry.ts — Lifecycle/title state machines
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/sessions.go — Title CAS
+
