@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { ConversationRegistry } from "../conversations/registry";
 import { ReferenceSchema } from "../vocabulary/schemas";
 import type { Outcome, Reference, VerbLike } from "../types";
+import { consumeApproval, createApprovalSubject, type ApprovalLedger } from "./approvalLedger";
 
 /**
  * The agent's view of the other agents (guide §4.7).
@@ -44,18 +45,13 @@ export interface ConversationToolsOptions {
   /** How many characters of a handoff message to allow. Default 4000. */
   maxPromptLength?: number;
   /**
-   * What the product's `isApproved` actually wants in the proposal, appended
+   * What the product's approval ledger expects in the proposal, appended
    * to the refusal. Without it a model asked for "a proposal" produces one
    * the check cannot match and never learns why.
    */
   confirmationHint?: string;
-  /**
-   * Was this `pbui_propose` id approved by a human FOR THIS SEND? The product
-   * owns the answer, and there is no default that says yes — without a wiring
-   * a `confirm`-policy send is refused, which is the right way round for a
-   * check whose whole job is to not be skippable.
-   */
-  isApproved?(confirmationId: string, target: string, prompt: string): boolean;
+  /** Shared product approval authority. Without it, confirm-policy sends fail closed. */
+  approvalLedger?: ApprovalLedger;
 }
 
 export interface ConversationTools {
@@ -128,7 +124,7 @@ export function createConversationTools(options: ConversationToolsOptions): Conv
       confirmationId: z.string().optional().describe("the id of a pbui_propose the user approved for this send"),
     }),
     available,
-    async execute(input) {
+    async execute(input, context) {
       const conversations = options.getConversations();
       if (!conversations) return fail("this product has only one conversation") as unknown as Record<string, unknown>;
 
@@ -154,8 +150,18 @@ export function createConversationTools(options: ConversationToolsOptions): Conv
             `sending to another agent needs the user's approval: call pbui_propose describing what you want to ask ${target.title}, then call this again with that proposal's id as confirmationId.${hint}`,
           ) as unknown as Record<string, unknown>;
         }
-        if (!options.isApproved?.(input.confirmationId, input.conversationId, input.prompt)) {
-          return fail(`proposal ${input.confirmationId} was not approved for this message`) as unknown as Record<string, unknown>;
+        const subject = createApprovalSubject({
+          senderConversationId: options.conversationId,
+          operation: "conversation.send",
+          arguments: { prompt: input.prompt },
+          targetIds: [input.conversationId],
+          referenceKeys: input.refs?.map((reference) => `${reference.type}:${reference.id}`) ?? [],
+          effectScope: "conversation",
+        });
+        const approval = await consumeApproval(options.approvalLedger, input.confirmationId, subject, `${options.conversationId}:${context.toolCallId}`);
+        if (approval !== "consumed") {
+          const reason = approval === "already-used" ? "has already been used" : approval === "expired" ? "has expired" : "was not approved for this message";
+          return fail(`proposal ${input.confirmationId} ${reason}`) as unknown as Record<string, unknown>;
         }
       }
 

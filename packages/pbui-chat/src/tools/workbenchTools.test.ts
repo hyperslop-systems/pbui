@@ -12,6 +12,22 @@ import {
 import type { FrontendTool } from "@go-go-golems/chat-provider";
 import { createWorkbenchTools, type WorkbenchToolsOptions } from "./workbenchTools";
 import type { Outcome, VerbLike } from "../types";
+import type { ApprovalLedger, ApprovalSubject } from "./approvalLedger";
+
+function approvalLedger(check: (id: string, subject: ApprovalSubject) => boolean): ApprovalLedger {
+  const consumed = new Set<string>();
+  return {
+    async lookup(id) {
+      return { id, subjectDigest: id, issuedAt: "2026-08-25T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z" };
+    },
+    async consume(capability, subject) {
+      if (consumed.has(capability.id)) return "already-used";
+      if (!check(capability.id, subject)) return "mismatch";
+      consumed.add(capability.id);
+      return "consumed";
+    },
+  };
+}
 
 const Blank = () => null;
 
@@ -43,6 +59,7 @@ function harness(overrides: Partial<WorkbenchToolsOptions> = {}) {
       performWorkbenchVerb(wb.verbs, verb as unknown as WorkbenchVerb);
       return "performed" as Outcome;
     },
+    senderConversationId: "agent-a",
     ...overrides,
   });
   const byName = (name: string) => tools.tools.find((tool) => tool.name === name) as FrontendTool<any, any>;
@@ -70,7 +87,7 @@ describe("createWorkbenchTools · surface", () => {
   });
 
   it("is unavailable, not broken, with no workbench attached", async () => {
-    const tools = createWorkbenchTools({ getWorkbench: () => null, perform: async () => "performed" as Outcome });
+    const tools = createWorkbenchTools({ getWorkbench: () => null, perform: async () => "performed" as Outcome, senderConversationId: "agent-a" });
     const describe_ = tools.tools[0] as FrontendTool<any, any>;
     expect((describe_.available as () => boolean)()).toBe(false);
     const result = await describe_.execute({} as never, { signal: new AbortController().signal, toolCallId: "t" });
@@ -216,10 +233,10 @@ describe("workbench_open_tile", () => {
     const seen: WorkbenchVerb[] = [];
     const h = harness({
       policy: { "view.open": "confirm" },
-      isApproved: (id, verb) => {
-        seen.push(verb);
-        return id === "p-open" && verb.kind === "view.open";
-      },
+      approvalLedger: approvalLedger((id, subject) => {
+        seen.push(subject.arguments as unknown as WorkbenchVerb);
+        return id === "p-open" && subject.operation === "view.open";
+      }),
     });
     expect(await h.call("workbench_open_tile", { appId: "sku", documents: { product: "2049" } })).toMatchObject({
       ok: false,
@@ -259,7 +276,7 @@ describe("workbench_perform · policy", () => {
   });
 
   it("refuses a confirmation the product has not approved", async () => {
-    const { call } = harness({ isApproved: () => false });
+    const { call } = harness({ approvalLedger: approvalLedger(() => false) });
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
@@ -269,7 +286,7 @@ describe("workbench_perform · policy", () => {
   });
 
   it("applies a confirm-policy verb once the product says it was approved", async () => {
-    const { call, performed } = harness({ isApproved: (id) => id === "p-1" });
+    const { call, performed } = harness({ approvalLedger: approvalLedger((id) => id === "p-1") });
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
@@ -373,6 +390,7 @@ describe("a refused verb is reported as refused, not as applied", () => {
         return (ok ? "performed" : "rejected:the workbench refused") as Outcome;
       },
       policy: { "tile.close": "allow" },
+      senderConversationId: "agent-a",
     });
     const perform = tools.tools.find((t) => t.name === "workbench_perform") as FrontendTool<any, any>;
     const describe_ = tools.tools.find((t) => t.name === "workbench_describe") as FrontendTool<any, any>;
@@ -406,14 +424,14 @@ describe("an approval names the operation it approved", () => {
     return { h, result, first };
   }
 
-  it("passes the verb to isApproved, so a product can compare it with what it proposed", async () => {
+  it("passes the canonical verb subject to the ledger for exact comparison", async () => {
     const seen: unknown[] = [];
     const { result } = await closeAttempt(
       {
-        isApproved: (id, verb) => {
-          seen.push({ id, verb });
+        approvalLedger: approvalLedger((id, subject) => {
+          seen.push({ id, verb: subject.arguments });
           return false;
-        },
+        }),
       },
       "p-1",
     );
@@ -425,14 +443,21 @@ describe("an approval names the operation it approved", () => {
   it("refuses an approval granted for a different operation", async () => {
     // The product approved a close of n-other; the agent tries n-first.
     const { result } = await closeAttempt(
-      { isApproved: (id, verb) => id === "p-1" && verb.kind === "tile.close" && (verb as { placementId: string }).placementId === "n-other" },
+      {
+        approvalLedger: approvalLedger(
+          (id, subject) =>
+            id === "p-1" &&
+            subject.operation === "tile.close" &&
+            (subject.arguments as { placementId: string }).placementId === "n-other",
+        ),
+      },
       "p-1",
     );
     expect(result.applied).toBe(0);
   });
 
   it("spends an approval, so the same id cannot authorise a second destructive verb", async () => {
-    const h = harness({ isApproved: (id) => id === "p-1" });
+    const h = harness({ approvalLedger: approvalLedger((id) => id === "p-1") });
     const tiles = (await h.call("workbench_describe", {})) as any;
     const [first, second] = tiles.workspaces[0].tiles.map((t: any) => t.placementId);
     const one = (await h.call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
@@ -487,7 +512,7 @@ describe("the perform tool validates ids and availability", () => {
       Component: Blank,
     });
     const wb = createWorkbench({ apps: createAppRegistry([...apps.list(), scoped]), initial: layout(tile("chat")) });
-    const tools = createWorkbenchTools({ getWorkbench: () => wb, perform: async () => "performed" as Outcome });
+    const tools = createWorkbenchTools({ getWorkbench: () => wb, perform: async () => "performed" as Outcome, senderConversationId: "agent-a" });
     const ctx = { signal: new AbortController().signal, toolCallId: "t" };
     const create_ = tools.tools.find((t) => t.name === "workbench_create_workspace") as FrontendTool<any, any>;
     const result = (await create_.execute({ name: "x", layout: { kind: "tile", appId: "ledger" } } as never, ctx)) as any;
@@ -555,10 +580,11 @@ describe("workbench_apply", () => {
   it("deletes once the product approves that exact raw batch", async () => {
     const seen: (readonly unknown[])[] = [];
     const { run, wb } = rawHarness({
-      isRawApproved: (confirmationId, mutations) => {
+      approvalLedger: approvalLedger((confirmationId, subject) => {
+        const mutations = subject.arguments as readonly { workspaceDelete?: unknown }[];
         seen.push(mutations);
-        return confirmationId === "p-9" && mutations[0]?.body.case === "workspaceDelete";
-      },
+        return confirmationId === "p-9" && Boolean(mutations[0]?.workspaceDelete);
+      }),
     });
     const id = wb.verbs.createWorkspace("second", { kind: "tile", appId: "chat" })!;
     const result = (await run({ mutations: [{ workspaceDelete: { workspaceId: id } }], confirmationId: "p-9" })) as any;

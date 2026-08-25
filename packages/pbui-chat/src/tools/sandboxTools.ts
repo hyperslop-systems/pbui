@@ -1,4 +1,5 @@
 import type { FrontendTool, ToolDefinition } from "@go-go-golems/chat-provider";
+import type { JsonValue } from "@bufbuild/protobuf";
 import { describeWorkbench, type Workbench } from "@hyperslop-systems/pbui-workbench";
 import { type ActionBehaviour, type ActionRecord, BOOTSTRAP_VERSION, DEFAULT_LIMITS, type DispatchIntent, type InstanceRegistry, type LoadedProgram, type ProgramEngine, type ProgramErrorPayload, type ProgramGlobalState, type ProgramLibrary, type ProgramRecord, SANDBOX_INTENTS, SANDBOX_UI_KINDS, type SandboxLimits, type UINode, type UIReference, byteLength, countNodes, reducePluginIntent, substituteVerbRef, toProgramError, validateUINode } from "@hyperslop-systems/pbui-sandbox";
 import { z } from "zod";
@@ -6,6 +7,7 @@ import type { Outcome, VerbLike } from "../types";
 import type { Vocabulary } from "../vocabulary/schemas";
 import { validateVerb } from "../vocabulary/validate";
 import type { PolicyDecision } from "./workbenchTools";
+import { consumeApproval, createApprovalSubject, type ApprovalLedger } from "./approvalLedger";
 
 /* ---- policy ------------------------------------------------------------- */
 
@@ -14,9 +16,9 @@ export type SandboxPolicy = Record<SandboxPolicyKey, PolicyDecision>;
 
 /**
  * What the agent may do to the library unassisted. `confirm` is the same
- * mechanism the workbench tools use: a `pbui_propose` id the product's
- * `isApproved(id, verb)` recognises, spent once, only after the change
- * performed. A pinned or human-made artifact escalates `allow` to `confirm`
+ * mechanism the workbench tools use: a `pbui_propose` capability the shared
+ * ApprovalLedger binds to the exact subject and consumes once. A pinned or
+ * human-made artifact escalates `allow` to `confirm`
  * for update and removal, whatever the table says.
  */
 export const DEFAULT_SANDBOX_POLICY: SandboxPolicy = {
@@ -48,7 +50,10 @@ export interface SandboxToolsOptions {
   vocabulary?: Vocabulary;
   limits?: Partial<SandboxLimits>;
   policy?: Partial<SandboxPolicy>;
-  isApproved?(confirmationId: string, verb: VerbLike): boolean;
+  /** Conversation whose agent owns these per-session tools. */
+  senderConversationId: string;
+  /** Shared product approval authority. Without it, confirm-policy effects fail closed. */
+  approvalLedger?: ApprovalLedger;
 }
 
 export interface SandboxTools {
@@ -108,8 +113,6 @@ const WORKED_EXAMPLE =
 export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
   const limits: SandboxLimits = { ...DEFAULT_LIMITS, ...options.limits };
   const policy: Record<string, PolicyDecision | undefined> = { ...DEFAULT_SANDBOX_POLICY, ...options.policy };
-  const isApproved = options.isApproved ?? (() => false);
-  const spent = new Set<string>();
   let scratch = 0;
 
   const available = () => options.getLibrary() !== null && options.getEngine() !== null;
@@ -124,24 +127,43 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     return decision;
   }
 
-  function gate(key: SandboxPolicyKey, verb: VerbLike, confirmationId: string | undefined, protectedArtifact = false): string | null {
+  async function gate(
+    key: SandboxPolicyKey,
+    verb: VerbLike,
+    confirmationId: string | undefined,
+    effectId: string,
+    protectedArtifact = false,
+  ): Promise<string | null> {
     const decision = decisionFor(key, protectedArtifact);
     if (decision === "deny") return `${key} is not something the assistant may do; ask the user to do it`;
     if (decision === "allow") return null;
     if (!confirmationId) {
       return `${key} needs the user's approval${protectedArtifact ? " (it is pinned or human-made)" : ""}: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`;
     }
-    if (spent.has(confirmationId)) return `the approval "${confirmationId}" has already been used; ask again for this change`;
-    if (!isApproved(confirmationId, verb)) return `no approved proposal with id "${confirmationId}" for ${verb.kind}`;
-    return null;
+    const subject = createApprovalSubject({
+      senderConversationId: options.senderConversationId,
+      operation: verb.kind,
+      arguments: verb as unknown as JsonValue,
+      targetIds: sandboxVerbTargetIds(verb),
+      effectScope: "sandbox",
+    });
+    const approval = await consumeApproval(options.approvalLedger, confirmationId, subject, effectId);
+    if (approval === "consumed") return null;
+    if (approval === "already-used") return `the approval "${confirmationId}" has already been used; ask again for this change`;
+    if (approval === "expired") return `the approval "${confirmationId}" has expired; ask again for this change`;
+    return `no approved proposal with id "${confirmationId}" for ${verb.kind}`;
   }
 
-  async function performGated(key: SandboxPolicyKey, verb: VerbLike, confirmationId: string | undefined, protectedArtifact = false): Promise<Outcome> {
-    const denied = gate(key, verb, confirmationId, protectedArtifact);
+  async function performGated(
+    key: SandboxPolicyKey,
+    verb: VerbLike,
+    confirmationId: string | undefined,
+    effectId: string,
+    protectedArtifact = false,
+  ): Promise<Outcome> {
+    const denied = await gate(key, verb, confirmationId, effectId, protectedArtifact);
     if (denied) return `rejected:${denied}`;
-    const outcome = await options.perform(verb);
-    if (outcome === "performed" && decisionFor(key, protectedArtifact) === "confirm" && confirmationId) spent.add(confirmationId);
-    return outcome;
+    return options.perform(verb);
   }
 
   /* ---- the dry run ------------------------------------------------------ */
@@ -264,6 +286,12 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     return { id: action.id, label: action.label, types: action.types, behaviour: action.behaviour, by: action.by, pinned: action.pinned, ...(action.danger ? { danger: true } : {}) };
   }
 
+  function sandboxVerbTargetIds(verb: VerbLike): string[] {
+    return ["programId", "actionId", "placementId"]
+      .map((key) => verb[key])
+      .filter((value): value is string => typeof value === "string" && value.length > 0);
+  }
+
   function protectedProgram(program: ProgramRecord): boolean {
     return program.pinned || program.by === "human";
   }
@@ -272,7 +300,15 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     return program.bindings.filter((key) => !documents[key]);
   }
 
-  async function open(wb: Workbench, programId: string, documents: Record<string, string>, near: string | undefined, title: string | undefined, confirmationId: string | undefined) {
+  async function open(
+    wb: Workbench,
+    programId: string,
+    documents: Record<string, string>,
+    near: string | undefined,
+    title: string | undefined,
+    confirmationId: string | undefined,
+    effectId: string,
+  ) {
     const before = currentTiles(wb);
     const verb: VerbLike = {
       kind: "program.open",
@@ -281,7 +317,7 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       ...(near ? { near } : {}),
       ...(title ? { title } : {}),
     };
-    const outcome = await performGated("program.open", verb, confirmationId);
+    const outcome = await performGated("program.open", verb, confirmationId, effectId);
     if (outcome !== "performed") return { ok: false as const, error: outcome.replace(/^rejected:/, "") };
     const after = currentTiles(wb);
     const fresh = after.find((tile) => !before.some((old) => old.placementId === tile.placementId));
@@ -368,10 +404,15 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       confirmationId: z.string().optional(),
     }),
     available,
-    async execute(input) {
+    async execute(input, context) {
       const library = options.getLibrary();
       if (!library) return asResult(fail("no sandbox is attached to this chat"));
-      const denied = gate("program.create", { kind: "program.create", title: input.title }, input.confirmationId);
+      const denied = await gate(
+        "program.create",
+        { kind: "program.create", title: input.title, source: input.source, bindings: input.bindings, documents: input.documents, open: input.open, near: input.near },
+        input.confirmationId,
+        `${options.senderConversationId}:${context.toolCallId}:create`,
+      );
       if (denied) return asResult(fail(denied));
       const documents = input.documents ?? {};
       const result = await check(input.source, documents);
@@ -398,7 +439,15 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
         if (!wb) warnings.push("not opened: no workbench is attached");
         else if (missing.length > 0) warnings.push(`not opened: the program needs ${missing.map((k) => `a "${k}" binding`).join(", ")}; call sandbox_open with documents`);
         else {
-          const outcome = await open(wb, program.id, documents, input.near, input.title, input.confirmationId);
+          const outcome = await open(
+            wb,
+            program.id,
+            documents,
+            input.near,
+            input.title,
+            input.confirmationId,
+            `${options.senderConversationId}:${context.toolCallId}:open`,
+          );
           if (outcome.ok) opened = outcome;
           else warnings.push(`not opened: ${outcome.error}`);
         }
@@ -431,12 +480,18 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       confirmationId: z.string().optional(),
     }),
     available,
-    async execute(input) {
+    async execute(input, context) {
       const library = options.getLibrary();
       if (!library) return asResult(fail("no sandbox is attached to this chat"));
       const existing = library.getState().programs[input.programId];
       if (!existing) return asResult(fail(`no program "${input.programId}"; sandbox_describe lists them`));
-      const denied = gate("program.update", { kind: "program.update", programId: input.programId }, input.confirmationId, protectedProgram(existing));
+      const denied = await gate(
+        "program.update",
+        { kind: "program.update", programId: input.programId, source: input.source, title: input.title, documents: input.documents },
+        input.confirmationId,
+        `${options.senderConversationId}:${context.toolCallId}`,
+        protectedProgram(existing),
+      );
       if (denied) return asResult(fail(denied));
       const result = await check(input.source, input.documents ?? {});
       if (!result.ok) return asResult({ ok: false, phase: result.phase, code: result.code, error: result.error, keptVersion: existing.version });
@@ -449,7 +504,6 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
           meta: { ...(result.meta.declaredId ? { declaredId: result.meta.declaredId } : {}), widgets: result.meta.widgets },
           by: existing.by,
         });
-        if (input.confirmationId && decisionFor("program.update", protectedProgram(existing)) === "confirm") spent.add(input.confirmationId);
         const wb = options.getWorkbench();
         const openIn = wb ? tilesShowing(wb, program.id) : [];
         return asResult({
@@ -482,7 +536,7 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       confirmationId: z.string().optional(),
     }),
     available,
-    async execute(input) {
+    async execute(input, context) {
       const library = options.getLibrary();
       const wb = options.getWorkbench();
       if (!library) return asResult(fail("no sandbox is attached to this chat"));
@@ -494,7 +548,15 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       if (missing.length > 0) {
         return asResult(fail(`the program needs ${missing.map((k) => `a "${k}" binding`).join(", ")}; got ${JSON.stringify(documents)}`));
       }
-      const outcome = await open(wb, program.id, documents, input.near, input.title, input.confirmationId);
+      const outcome = await open(
+        wb,
+        program.id,
+        documents,
+        input.near,
+        input.title,
+        input.confirmationId,
+        `${options.senderConversationId}:${context.toolCallId}`,
+      );
       return asResult(outcome.ok ? { ...outcome, title: input.title ?? program.title } : fail(outcome.error));
     },
   };
@@ -519,10 +581,15 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       confirmationId: z.string().optional(),
     }),
     available,
-    execute(input) {
+    async execute(input, context) {
       const library = options.getLibrary();
       if (!library) return asResult(fail("no sandbox is attached to this chat"));
-      const denied = gate("action.define", { kind: "action.define", label: input.label }, input.confirmationId);
+      const denied = await gate(
+        "action.define",
+        { kind: "action.define", label: input.label, types: input.types, behaviour: input.behaviour, danger: input.danger, description: input.description, actionId: input.actionId },
+        input.confirmationId,
+        `${options.senderConversationId}:${context.toolCallId}`,
+      );
       if (denied) return asResult(fail(denied));
       const vocabulary = options.vocabulary;
       if (vocabulary) {
@@ -574,7 +641,7 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       confirmationId: z.string().optional(),
     }),
     available,
-    async execute(input) {
+    async execute(input, context) {
       const library = options.getLibrary();
       if (!library) return asResult(fail("no sandbox is attached to this chat"));
       if (Boolean(input.programId) === Boolean(input.actionId)) return asResult(fail("pass exactly one of programId or actionId"));
@@ -583,13 +650,25 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
         const program = library.getState().programs[input.programId];
         if (!program) return asResult(fail(`no program "${input.programId}"`));
         const closing = wb ? tilesShowing(wb, program.id) : [];
-        const outcome = await performGated("program.remove", { kind: "program.remove", programId: program.id }, input.confirmationId, protectedProgram(program));
+        const outcome = await performGated(
+          "program.remove",
+          { kind: "program.remove", programId: program.id },
+          input.confirmationId,
+          `${options.senderConversationId}:${context.toolCallId}`,
+          protectedProgram(program),
+        );
         if (outcome !== "performed") return asResult(fail(outcome.replace(/^rejected:/, "")));
         return asResult({ ok: true, removed: "program", programId: program.id, closedTiles: closing });
       }
       const action = library.getState().actions[input.actionId!];
       if (!action) return asResult(fail(`no action "${input.actionId}"`));
-      const outcome = await performGated("action.remove", { kind: "action.remove", actionId: action.id }, input.confirmationId, action.pinned || action.by === "human");
+      const outcome = await performGated(
+        "action.remove",
+        { kind: "action.remove", actionId: action.id },
+        input.confirmationId,
+        `${options.senderConversationId}:${context.toolCallId}`,
+        action.pinned || action.by === "human",
+      );
       if (outcome !== "performed") return asResult(fail(outcome.replace(/^rejected:/, "")));
       return asResult({ ok: true, removed: "action", actionId: action.id });
     },

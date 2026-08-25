@@ -1,7 +1,24 @@
 import { describe, expect, test, vi } from "vitest";
+import type { FrontendTool } from "@go-go-golems/chat-provider";
 import { createConversationRegistry, memoryConversationStorage, type ConversationRegistry } from "../conversations/registry";
 import type { Outcome, VerbLike } from "../types";
 import { createConversationTools, type ConversationToolsOptions } from "./conversationTools";
+import { InMemoryApprovalLedger, createApprovalSubject, type ApprovalLedger, type ApprovalSubject } from "./approvalLedger";
+
+function approvalLedger(check: (id: string, subject: ApprovalSubject) => boolean): ApprovalLedger {
+  const consumed = new Set<string>();
+  return {
+    async lookup(id) {
+      return { id, subjectDigest: id, issuedAt: "2026-08-25T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z" };
+    },
+    async consume(capability, subject) {
+      if (consumed.has(capability.id)) return "already-used";
+      if (!check(capability.id, subject)) return "mismatch";
+      consumed.add(capability.id);
+      return "consumed";
+    },
+  };
+}
 
 /**
  * The two tools a model uses to know it is not alone, and to hand work over.
@@ -40,9 +57,12 @@ function toolsFor(registry: ConversationRegistry | null, overrides: Partial<Conv
     },
     ...overrides,
   });
-  const byName = (name: string) => tools.tools.find((tool) => tool.name === name) as never as {
-    available?(): boolean;
-    execute(input: unknown, context?: unknown): Promise<Record<string, unknown>> | Record<string, unknown>;
+  const byName = (name: string) => {
+    const tool = tools.tools.find((candidate) => candidate.name === name)! as FrontendTool<any, any>;
+    return {
+      available: () => (typeof tool.available === "function" ? tool.available() : tool.available !== false),
+      execute: (input: unknown) => tool.execute(input as never, { signal: new AbortController().signal, toolCallId: `test-${name}` }),
+    };
   };
   return { performed, list: byName("conversation_list"), send: byName("conversation_send") };
 }
@@ -93,7 +113,10 @@ describe("conversation_send", () => {
   test("an approval that does not match the message is refused", async () => {
     const registry = await registryWith(ME, THEM);
     const { send, performed } = toolsFor(registry, {
-      isApproved: (_id, target, prompt) => target === THEM && prompt === "the message they approved",
+      approvalLedger: approvalLedger(
+        (_id, subject) =>
+          subject.targetIds[0] === THEM && (subject.arguments as { prompt: string }).prompt === "the message they approved",
+      ),
     });
 
     const result = (await send.execute({ conversationId: THEM, prompt: "something else entirely", confirmationId: "p1" })) as { ok: boolean; error: string };
@@ -105,7 +128,7 @@ describe("conversation_send", () => {
 
   test("with a matching approval it performs conversation.send through the router", async () => {
     const registry = await registryWith(ME, THEM);
-    const { send, performed } = toolsFor(registry, { isApproved: () => true });
+    const { send, performed } = toolsFor(registry, { approvalLedger: approvalLedger(() => true) });
 
     const result = (await send.execute({
       conversationId: THEM,
@@ -121,9 +144,43 @@ describe("conversation_send", () => {
     ]);
   });
 
+  test("the canonical ledger binds target, prompt, references, and sender", async () => {
+    const registry = await registryWith(ME, THEM);
+    const ledger = new InMemoryApprovalLedger();
+    await ledger.grant(
+      "p-canonical",
+      createApprovalSubject({
+        senderConversationId: ME,
+        operation: "conversation.send",
+        arguments: { prompt: "price it" },
+        targetIds: [THEM],
+        referenceKeys: ["product:2049"],
+        effectScope: "conversation",
+      }),
+    );
+    const { send, performed } = toolsFor(registry, { approvalLedger: ledger });
+
+    const mismatch = (await send.execute({
+      conversationId: THEM,
+      prompt: "price it",
+      refs: [{ type: "product", id: "2051" }],
+      confirmationId: "p-canonical",
+    })) as { ok: boolean; error: string };
+    expect(mismatch.error).toContain("not approved");
+
+    const matched = (await send.execute({
+      conversationId: THEM,
+      prompt: "price it",
+      refs: [{ type: "product", id: "2049" }],
+      confirmationId: "p-canonical",
+    })) as { ok: boolean };
+    expect(matched.ok).toBe(true);
+    expect(performed).toHaveLength(1);
+  });
+
   test("a model cannot message itself", async () => {
     const registry = await registryWith(ME, THEM);
-    const { send, performed } = toolsFor(registry, { isApproved: () => true });
+    const { send, performed } = toolsFor(registry);
 
     const result = (await send.execute({ conversationId: ME, prompt: "hello me", confirmationId: "p1" })) as { ok: boolean; error: string };
 
@@ -133,7 +190,7 @@ describe("conversation_send", () => {
 
   test("an unknown conversation is refused with the way to find the real ones", async () => {
     const registry = await registryWith(ME, THEM);
-    const { send } = toolsFor(registry, { isApproved: () => true });
+    const { send } = toolsFor(registry);
 
     const result = (await send.execute({ conversationId: "ghost", prompt: "hi", confirmationId: "p1" })) as { error: string };
 
@@ -143,7 +200,7 @@ describe("conversation_send", () => {
   test("a disconnected conversation is refused rather than silently queued", async () => {
     const registry = await registryWith(ME, THEM);
     registry.close(THEM);
-    const { send } = toolsFor(registry, { isApproved: () => true });
+    const { send } = toolsFor(registry);
 
     const result = (await send.execute({ conversationId: THEM, prompt: "hi", confirmationId: "p1" })) as { error: string };
 
@@ -152,7 +209,7 @@ describe("conversation_send", () => {
 
   test("an empty or overlong message is refused before anything is sent", async () => {
     const registry = await registryWith(ME, THEM);
-    const { send } = toolsFor(registry, { isApproved: () => true, maxPromptLength: 10 });
+    const { send } = toolsFor(registry, { maxPromptLength: 10 });
 
     expect(((await send.execute({ conversationId: THEM, prompt: "   ", confirmationId: "p1" })) as { error: string }).error).toContain("something in it");
     expect(((await send.execute({ conversationId: THEM, prompt: "much too long to fit", confirmationId: "p1" })) as { error: string }).error).toContain("the limit is 10");
@@ -179,11 +236,14 @@ describe("conversation_send", () => {
       getConversations: () => registry,
       conversationId: ME,
       perform: async () => "rejected:that conversation is not open" as Outcome,
-      isApproved: () => true,
+      approvalLedger: approvalLedger(() => true),
     });
-    const send = tools.tools.find((tool) => tool.name === "conversation_send") as never as { execute(input: unknown): Promise<Record<string, unknown>> };
+    const send = tools.tools.find((tool) => tool.name === "conversation_send")! as FrontendTool<any, any>;
 
-    const result = (await send.execute({ conversationId: THEM, prompt: "hi", confirmationId: "p1" })) as { ok: boolean; error: string };
+    const result = (await send.execute(
+      { conversationId: THEM, prompt: "hi", confirmationId: "p1" } as never,
+      { signal: new AbortController().signal, toolCallId: "test-send" },
+    )) as { ok: boolean; error: string };
 
     expect(result.ok).toBe(false);
     expect(result.error).toBe("that conversation is not open");

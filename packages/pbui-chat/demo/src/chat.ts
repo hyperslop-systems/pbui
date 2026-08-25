@@ -3,6 +3,8 @@ import {
   createVerbRouter,
   isConversationVerb,
   performConversationVerb,
+  type ApprovalLedger,
+  type ApprovalSubject,
   type ConversationVerb,
   type Reference,
   type VerbFamily,
@@ -123,6 +125,36 @@ function approvedSend(confirmationId: string, target: string, prompt: string): b
   }
   return false;
 }
+
+const consumedApprovals = new Set<string>();
+const demoApprovalLedger: ApprovalLedger = {
+  async lookup(id) {
+    const approved = chat.conversations.all().some((snapshot) =>
+      snapshot.runtime
+        ? selectTimelineEntities(snapshot.runtime.store.getState()).some(
+            (entity) =>
+              entity.kind === "tool_call" &&
+              String(entity.props.toolName ?? "") === "pbui_propose" &&
+              String((entity.props.input as { id?: string } | undefined)?.id ?? "") === id &&
+              (entity.props.result as { decision?: string } | undefined)?.decision === "approve",
+          )
+        : false,
+    );
+    return approved
+      ? { id, subjectDigest: "timeline-verified", issuedAt: "1970-01-01T00:00:00.000Z", expiresAt: "9999-12-31T23:59:59.999Z" }
+      : null;
+  },
+  async consume(capability, subject: ApprovalSubject) {
+    if (consumedApprovals.has(capability.id)) return "already-used";
+    const args = subject.arguments as { prompt?: string };
+    const target = subject.targetIds[0];
+    if (subject.operation !== "conversation.send" || !target || !approvedSend(capability.id, target, String(args.prompt ?? ""))) {
+      return "mismatch";
+    }
+    consumedApprovals.add(capability.id);
+    return "consumed";
+  },
+};
 
 /** Every tile showing a program, across workspaces, by placement id. */
 function tilesShowing(wb: Workbench, programId: string): string[] {
@@ -286,6 +318,7 @@ export const chat = createPbuiChat<Values, Environment, Verb>({
   registry,
   vocabulary,
   router,
+  approvalLedger: demoApprovalLedger,
   basePrefix: "",
   conversations: { key: CONVERSATIONS_STORAGE_KEY },
   /*
@@ -298,7 +331,6 @@ export const chat = createPbuiChat<Values, Environment, Verb>({
   conversationTools: {
     confirmationHint:
       'The proposal must carry fields [{"label":"to","value":"<conversationId>"},{"label":"message","value":"<the exact message>"}], or the approval will not match.',
-    isApproved: approvedSend,
   },
   // The library and the engine are attached by workbench.ts, which owns them;
   // the dry-run resolver is the same one the tiles use.

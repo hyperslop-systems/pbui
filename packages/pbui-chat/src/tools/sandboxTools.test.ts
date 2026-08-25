@@ -15,6 +15,23 @@ import type { FrontendTool } from "@go-go-golems/chat-provider";
 import { defineVocabulary } from "../vocabulary/defineVocabulary";
 import type { Outcome, VerbLike } from "../types";
 import { createSandboxTools, type SandboxToolsOptions } from "./sandboxTools";
+import type { ApprovalLedger } from "./approvalLedger";
+
+function approvalLedger(approved: ReadonlySet<string>): ApprovalLedger {
+  const consumed = new Set<string>();
+  return {
+    async lookup(id) {
+      return approved.has(id)
+        ? { id, subjectDigest: id, issuedAt: "2026-08-25T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z" }
+        : null;
+    },
+    async consume(capability) {
+      if (consumed.has(capability.id)) return "already-used";
+      consumed.add(capability.id);
+      return "consumed";
+    },
+  };
+}
 
 const Blank = () => null;
 
@@ -51,6 +68,7 @@ function harness(overrides: Partial<SandboxToolsOptions> = {}) {
     getWorkbench: () => wb,
     resolve: (key, id) => (key === "product" && id === "2049" ? (PRODUCT_2049 as UIReference) : null),
     vocabulary,
+    senderConversationId: "agent-a",
     perform: async (verb) => {
       performed.push(verb);
       if (verb.kind === "program.open") {
@@ -84,7 +102,7 @@ describe("createSandboxTools · surface", () => {
     ]);
     for (const tool of tools.tools) expect(tool.name).toMatch(/^[a-zA-Z0-9_-]+$/);
     expect((byName("sandbox_test").available as () => boolean)()).toBe(true);
-    const detached = createSandboxTools({ ...harness(), getLibrary: () => null, getEngine: () => null, getWorkbench: () => null, resolve: () => null, perform: async () => "performed" as Outcome });
+    const detached = createSandboxTools({ ...harness(), getLibrary: () => null, getEngine: () => null, getWorkbench: () => null, resolve: () => null, perform: async () => "performed" as Outcome, senderConversationId: "agent-a" });
     expect((detached.tools[0]!.available as () => boolean)()).toBe(false);
   });
 
@@ -177,7 +195,7 @@ describe("sandbox_update_app", () => {
 
   it("needs an approval for a pinned program, spent once", async () => {
     const approvals = new Set(["p-1"]);
-    const { call, library } = harness({ isApproved: (id) => approvals.has(id) });
+    const { call, library } = harness({ approvalLedger: approvalLedger(approvals) });
     const created = (await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM, open: false })) as any;
     library.setPinned("program", created.programId, true);
     const refused = (await call("sandbox_update_app", { programId: created.programId, source: COUNTER_PROGRAM })) as any;

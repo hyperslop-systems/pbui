@@ -52,7 +52,18 @@ describe("InMemoryApprovalLedger", () => {
 
     await expect(ledger.consume(capability, subject("different"), "effect-wrong")).resolves.toBe("mismatch");
     await expect(ledger.consume(capability, subject(), "effect-1")).resolves.toBe("consumed");
-    await expect(ledger.consume(capability, subject(), "effect-2")).resolves.toBe("already-used");
+    await expect(
+      ledger.consume(
+        capability,
+        createApprovalSubject({
+          senderConversationId: "agent-a",
+          operation: "tile.close",
+          arguments: { placementId: "tile-2" },
+          effectScope: "workbench",
+        }),
+        "effect-from-another-factory",
+      ),
+    ).resolves.toBe("already-used");
   });
 
   it("expires capabilities and keeps forged capability objects from consuming", async () => {

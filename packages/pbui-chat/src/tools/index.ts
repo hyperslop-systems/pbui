@@ -5,6 +5,16 @@ export type { ProposeInput, ProposeResult } from "./proposeTool";
 export { AcceptStatus } from "./AcceptStatus";
 export type { AcceptStatusProps } from "./AcceptStatus";
 export { ProposalCard } from "./ProposalCard";
+export { InMemoryApprovalLedger, canonicalJson, consumeApproval, createApprovalSubject, digestApprovalSubject } from "./approvalLedger";
+export type {
+  ApprovalCapability,
+  ApprovalConsumeResult,
+  ApprovalLedger,
+  ApprovalSubject,
+  ApprovalSubjectInput,
+  EffectScope,
+  InMemoryApprovalLedgerOptions,
+} from "./approvalLedger";
 export type { ProposalCardProps, ProposalDecision } from "./ProposalCard";
 export { createConversationTools, DEFAULT_CONVERSATION_POLICY } from "./conversationTools";
 export type {

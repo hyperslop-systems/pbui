@@ -31,6 +31,7 @@ import { ChatInspectorPanel, TilesPanel, TracePanel, WatchlistPanel } from "./pa
 import type { VerbRouter } from "./router/createVerbRouter";
 import { createPbuiChatStore, usePbuiChatStore, type PbuiChatState, type PbuiChatStore } from "./store/chatStore";
 import { pbuiAcceptTool } from "./tools/acceptTool";
+import type { ApprovalLedger } from "./tools/approvalLedger";
 import { pbuiProposeTool } from "./tools/proposeTool";
 import { createConversationTools, type ConversationTools, type ConversationToolsOptions } from "./tools/conversationTools";
 import { createSandboxTools, type SandboxTools, type SandboxToolsOptions } from "./tools/sandboxTools";
@@ -51,6 +52,8 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
   registry?: PresentationRegistry<Values, Environment, Verb>;
   vocabulary: Vocabulary;
   router: VerbRouter<Verb>;
+  /** One product-wide authority shared by every conversation and tool factory. */
+  approvalLedger?: ApprovalLedger;
   /** Prefix for `/api/...`. */
   basePrefix?: string;
   /** Supply one to share it with product code created before the chat. */
@@ -84,25 +87,23 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
   workbench?: Workbench;
   /**
    * Tune the workbench tools the agent uses to rearrange the screen: limits,
-   * the per-verb policy, whether the raw mutation tool is offered, and
-   * `isApproved` — which the product must supply for any `confirm`-policy
-   * verb to be performable at all.
+   * the per-verb policy, and whether the raw mutation tool is offered.
+   * Confirm-policy authority always comes from the product-wide ledger.
    */
-  workbenchTools?: Omit<WorkbenchToolsOptions, "getWorkbench" | "perform">;
+  workbenchTools?: Omit<WorkbenchToolsOptions, "getWorkbench" | "perform" | "senderConversationId" | "approvalLedger">;
   /**
    * The agent's conversation tools: whether it may message another agent
-   * unassisted (`confirm` by default), how long a handoff may be, and
-   * `isApproved` — which the product must supply for a `confirm` send to be
-   * performable at all.
+   * unassisted (`confirm` by default) and how long a handoff may be.
+   * Confirm-policy authority always comes from the product-wide ledger.
    */
-  conversationTools?: Omit<ConversationToolsOptions, "getConversations" | "conversationId" | "perform">;
+  conversationTools?: Omit<ConversationToolsOptions, "getConversations" | "conversationId" | "perform" | "approvalLedger">;
   /**
-   * The sandbox tools: how bindings resolve for a dry render, limits, policy,
-   * `isApproved`. The library and engine usually arrive AFTER construction
+   * The sandbox tools: how bindings resolve for a dry render, limits, and policy.
+   * The library and engine usually arrive AFTER construction
    * through `chat.attachSandbox(library, engine)`, for the same reason the
    * workbench does; until then the tools are not offered to the model.
    */
-  sandbox?: Omit<SandboxToolsOptions, "getLibrary" | "getEngine" | "getWorkbench" | "perform" | "vocabulary"> & {
+  sandbox?: Omit<SandboxToolsOptions, "getLibrary" | "getEngine" | "getWorkbench" | "perform" | "vocabulary" | "senderConversationId" | "approvalLedger"> & {
     library?: ProgramLibrary;
     engine?: ProgramEngine;
   };
@@ -207,6 +208,8 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       getWorkbench: () => workbench,
       perform,
       ...(options.workbenchTools ?? {}),
+      senderConversationId: conversationId,
+      approvalLedger: options.approvalLedger,
     });
     const sandboxTools = createSandboxTools({
       getLibrary: () => library,
@@ -216,6 +219,8 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       perform,
       vocabulary,
       ...sandboxOptions,
+      senderConversationId: conversationId,
+      approvalLedger: options.approvalLedger,
     });
     /*
      * The conversation tools are the one set that MUST be per session: their
@@ -227,6 +232,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       conversationId,
       perform,
       ...(options.conversationTools ?? {}),
+      approvalLedger: options.approvalLedger,
     });
     built = {
       workbenchTools,
