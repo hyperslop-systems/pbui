@@ -32,11 +32,15 @@ type Server struct {
 	real          *realRuntimeFactory
 	turnStore     chatstore.TurnStore
 	sessions      SessionIndex
+	authorizer    SessionAuthorizer
 	closeFn       func() error
 }
 
 // NewServer wires everything. The returned cleanup closes the stores.
 func NewServer(ctx context.Context, opts Options) (*Server, func() error, error) {
+	if opts.Authorizer == nil {
+		return nil, nil, errors.New("chatserver: authorizer is required")
+	}
 	vocab := opts.Vocabulary
 	if vocab == nil {
 		v, err := demo.Vocabulary()
@@ -115,7 +119,13 @@ func NewServer(ctx context.Context, opts Options) (*Server, func() error, error)
 		return first
 	}
 
-	ws, err := wstransport.NewServer(snapshotProvider{store: store})
+	ws, err := wstransport.NewServer(snapshotProvider{store: store}, wstransport.WithSubscribeAuthorizer(func(ctx context.Context, sid sessionstream.SessionId) error {
+		principal, ok := principalFromContext(ctx)
+		if !ok || !opts.Authorizer.CanAccessSession(ctx, principal, sid, SessionSubscribe) {
+			return ErrUnauthorized
+		}
+		return nil
+	}))
 	if err != nil {
 		_ = cleanup()
 		return nil, nil, errors.Wrap(err, "create websocket transport")
@@ -193,6 +203,7 @@ func NewServer(ctx context.Context, opts Options) (*Server, func() error, error)
 		scripted:      scriptedEngine,
 		turnStore:     turnStore,
 		sessions:      sessions,
+		authorizer:    opts.Authorizer,
 		closeFn:       cleanup,
 	}
 	if opts.RealRuntime {
@@ -223,16 +234,56 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /healthz", s.HandleHealth)
 	mux.HandleFunc("GET /api/chat/health", s.HandleHealth)
 	mux.HandleFunc("GET /api/pbui/vocabulary", s.HandleVocabulary)
-	mux.HandleFunc("POST /api/chat/sessions", s.HandleCreateSession)
-	mux.HandleFunc("GET /api/chat/sessions", s.HandleListSessions)
-	mux.HandleFunc("GET /api/chat/sessions/{id}", s.HandleSessionSnapshot)
-	mux.HandleFunc("PATCH /api/chat/sessions/{id}", s.HandleRetitleSession)
-	mux.HandleFunc("POST /api/chat/sessions/{id}/messages", s.HandleSubmitMessage)
-	mux.HandleFunc("POST /api/chat/sessions/{id}/stop", s.HandleStopSession)
-	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/manifest", s.HandleToolManifest)
-	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/results", s.HandleToolResult)
-	mux.HandleFunc("POST /api/chat/sessions/{id}/verbs", s.HandleVerbPerformed)
-	mux.HandleFunc("GET /api/chat/ws", s.HandleWS)
+	mux.HandleFunc("POST /api/chat/sessions", s.requireGlobal(SessionCreate, s.HandleCreateSession))
+	mux.HandleFunc("GET /api/chat/sessions", s.requireGlobal(SessionList, s.HandleListSessions))
+	mux.HandleFunc("GET /api/chat/sessions/{id}", s.requireSession(SessionRead, s.HandleSessionSnapshot))
+	mux.HandleFunc("PATCH /api/chat/sessions/{id}", s.requireSession(SessionRetitle, s.HandleRetitleSession))
+	mux.HandleFunc("POST /api/chat/sessions/{id}/messages", s.requireSession(SessionSend, s.HandleSubmitMessage))
+	mux.HandleFunc("POST /api/chat/sessions/{id}/stop", s.requireSession(SessionStop, s.HandleStopSession))
+	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/manifest", s.requireSession(SessionManifestWrite, s.HandleToolManifest))
+	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/results", s.requireSession(SessionResultWrite, s.HandleToolResult))
+	mux.HandleFunc("POST /api/chat/sessions/{id}/verbs", s.requireSession(SessionVerbWrite, s.HandleVerbPerformed))
+	mux.HandleFunc("GET /api/chat/ws", s.authenticate(s.HandleWS))
+}
+
+func (s *Server) authenticate(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, err := s.authorizer.Authenticate(r)
+		if err != nil || principal.Subject == "" {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		next(w, withPrincipal(r, principal))
+	}
+}
+
+func (s *Server) requireGlobal(action SessionAction, next http.HandlerFunc) http.HandlerFunc {
+	return s.authenticate(func(w http.ResponseWriter, r *http.Request) {
+		principal, _ := principalFromContext(r.Context())
+		allowed := action == SessionCreate && s.authorizer.CanCreateSession(r.Context(), principal)
+		allowed = allowed || action == SessionList && s.authorizer.CanListSessions(r.Context(), principal)
+		if !allowed {
+			writeError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
+}
+
+func (s *Server) requireSession(action SessionAction, next http.HandlerFunc) http.HandlerFunc {
+	return s.authenticate(func(w http.ResponseWriter, r *http.Request) {
+		principal, _ := principalFromContext(r.Context())
+		sid := sessionIDFrom(r)
+		if sid == "" {
+			writeError(w, http.StatusBadRequest, "missing session id")
+			return
+		}
+		if !s.authorizer.CanAccessSession(r.Context(), principal, sid, action) {
+			writeError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	})
 }
 
 type snapshotProvider struct {

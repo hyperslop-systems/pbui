@@ -25,7 +25,7 @@ type snapshotBody struct {
 
 func newTestServer(t *testing.T) (*Server, *httptest.Server) {
 	t.Helper()
-	server, cleanup, err := NewServer(context.Background(), Options{ChunkDelay: time.Millisecond})
+	server, cleanup, err := NewServer(context.Background(), Options{Authorizer: NewDevelopmentAuthorizer(), ChunkDelay: time.Millisecond})
 	if err != nil {
 		t.Fatalf("new server: %v", err)
 	}
@@ -194,7 +194,7 @@ func TestVerbTraceIsRecordedAndReadable(t *testing.T) {
 func TestTraceRehydratesBeforeAllocatingAfterRestart(t *testing.T) {
 	db := filepath.Join(t.TempDir(), "timeline.sqlite")
 	start := func() (*Server, *httptest.Server, func()) {
-		server, cleanup, err := NewServer(context.Background(), Options{TimelineDB: db, ChunkDelay: time.Millisecond})
+		server, cleanup, err := NewServer(context.Background(), Options{Authorizer: NewDevelopmentAuthorizer(), TimelineDB: db, ChunkDelay: time.Millisecond})
 		if err != nil {
 			t.Fatalf("new persistent server: %v", err)
 		}

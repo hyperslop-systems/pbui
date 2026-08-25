@@ -15,6 +15,9 @@ import (
 
 // Options configure the server.
 type Options struct {
+	// Authorizer is required. Local demos/tests must explicitly opt into
+	// NewDevelopmentAuthorizer; production should provide authenticated policy.
+	Authorizer SessionAuthorizer
 	// TimelineDB is a SQLite path for the hydration store; empty = in-memory.
 	TimelineDB string
 	// TurnsDB is a SQLite path for final-turn history; empty = in-memory.

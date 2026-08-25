@@ -94,7 +94,12 @@ func (c *ServeCommand) Run(ctx context.Context, parsed *values.Values) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	ip := net.ParseIP(settings.Host)
+	if ip == nil || !ip.IsLoopback() {
+		return errors.Errorf("development authorization requires a loopback --host, got %q", settings.Host)
+	}
 	server, cleanup, err := chatserver.NewServer(ctx, chatserver.Options{
+		Authorizer:        chatserver.NewDevelopmentAuthorizer(),
 		TimelineDB:        settings.TimelineDB,
 		TurnsDB:           settings.TurnsDB,
 		ChunkDelay:        chunkDelay,

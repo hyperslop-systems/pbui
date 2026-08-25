@@ -114,6 +114,11 @@ func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := uuid.NewString()
+	principal, _ := principalFromContext(r.Context())
+	if err := s.authorizer.ClaimSession(r.Context(), principal, sessionstream.SessionId(id)); err != nil {
+		writeError(w, http.StatusInternalServerError, "could not claim session")
+		return
+	}
 	// The index is a convenience: a session works whether or not it is
 	// remembered, so a failure here is logged and the id still goes back.
 	if err := s.sessions.Remember(r.Context(), id, time.Now()); err != nil {
@@ -132,7 +137,14 @@ func (s *Server) HandleListSessions(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, listSessionsResponse{Sessions: records})
+	principal, _ := principalFromContext(r.Context())
+	authorized := make([]SessionRecord, 0, len(records))
+	for _, record := range records {
+		if s.authorizer.CanAccessSession(r.Context(), principal, sessionstream.SessionId(record.ID), SessionRead) {
+			authorized = append(authorized, record)
+		}
+	}
+	writeJSON(w, http.StatusOK, listSessionsResponse{Sessions: authorized})
 }
 
 // HandleRetitleSession stores a title for a session. Titles live in the
