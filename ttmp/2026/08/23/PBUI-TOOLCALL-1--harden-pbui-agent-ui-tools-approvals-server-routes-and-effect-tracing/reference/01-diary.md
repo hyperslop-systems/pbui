@@ -22,18 +22,31 @@ RelatedFiles:
       Note: |-
         Request-identity send context and failure cleanup (commit 7b3ccd1)
         One ledger injected into every conversation toolset (commit f320dfc)
+        Product-wide gateway and effect reporter wiring (commit 1d05677)
     - Path: repo://packages/pbui-chat/src/store/chatStore.test.ts
       Note: Draft isolation/clear/forget regressions (commit 7b3ccd1)
     - Path: repo://packages/pbui-chat/src/store/chatStore.ts
       Note: Conversation-keyed draft ownership (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/tools/agentEffectGateway.test.ts
+      Note: Race, retry, conflict, release and envelope regressions (commit 1d05677)
+    - Path: repo://packages/pbui-chat/src/tools/agentEffectGateway.ts
+      Note: Unified effect identity, approval lifecycle, execution and report outbox (commit 1d05677)
     - Path: repo://packages/pbui-chat/src/tools/approvalLedger.ts
-      Note: Canonical shared approval authority (commit 69678a3)
+      Note: |-
+        Canonical shared approval authority (commit 69678a3)
+        Reservation/finalization/release state machine (commit 1d05677)
     - Path: repo://packages/pbui-chat/src/tools/conversationTools.ts
-      Note: Sender/target/prompt/reference-bound approvals (commit f320dfc)
+      Note: |-
+        Sender/target/prompt/reference-bound approvals (commit f320dfc)
+        Gateway-routed handoff effects (commit 1d05677)
     - Path: repo://packages/pbui-chat/src/tools/sandboxTools.ts
-      Note: Canonical sandbox approval subjects (commit f320dfc)
+      Note: |-
+        Canonical sandbox approval subjects (commit f320dfc)
+        Gateway-routed library and program effects (commit 1d05677)
     - Path: repo://packages/pbui-chat/src/tools/workbenchTools.ts
-      Note: Canonical workbench and raw approval subjects (commit f320dfc)
+      Note: |-
+        Canonical workbench and raw approval subjects (commit f320dfc)
+        Gateway-routed verbs and raw mutations (commit 1d05677)
     - Path: repo://pkg/chatserver/authorization.go
       Note: Required principal/session policy contract (commit a982f98)
     - Path: repo://pkg/chatserver/authorization_test.go
@@ -48,6 +61,7 @@ LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -580,3 +594,93 @@ Implement the AgentEffectGateway with approval reservation, effect envelopes, ca
 ### Technical details
 
 Confirm-policy tools fail closed when no ledger exists. Allow-policy tools remain usable. One capability is consumed before the routed/local side effect; the next phase replaces this conservative ordering with a reservation state machine tied to a durable effect id.
+
+## Step 8: Put agent effects behind one execution state machine
+
+I replaced the Phase 1 consume-before-perform seam with an `AgentEffectGateway` that owns exact effect identity, concurrent/terminal idempotency, approval reservation/finalization/release, revision evidence, canonical envelopes, and retryable trace reporting. Every high-level workbench verb, raw protobuf mutation batch, sandbox write/open/remove, and cross-conversation send now enters this gateway rather than implementing policy and approval ordering independently.
+
+This is the first Phase 2 implementation interval. The browser now POSTs envelopes to an authenticated session effect route and retains failed reports in a bounded runtime outbox; the next interval adds the server command/schema/timeline projection that durably accepts that route.
+
+### Prompt Context
+
+**User prompt (verbatim):** "phase 2 - 4, budget 500k, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill) [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Complete ticket phases 2–4 under a durable 500K-token goal, committing reviewable increments and maintaining the strict implementation diary throughout.
+
+**Inferred user intent:** Finish the remaining runtime, lifecycle, workbench, and focus hardening comprehensively with enough evidence and history to audit every phase.
+
+**Commit (code):** `1d05677998a21ce88deadf2f641dcf1248739554` — "feat(pbui-chat): route agent effects through gateway"
+
+### What I did
+
+- Extended `ApprovalLedger` from immediate consume to atomic reserve/finalize/release operations.
+- Added bounded running/terminal effect identity and conflict detection.
+- Added canonical `EffectEnvelope` creation with input digest, actor, conversation, scope, targets, references, approval, revisions, outcome, and timestamp.
+- Added report retry/outbox behavior and opportunistic flushing.
+- Routed conversation sends, workbench verbs, raw batches, and sandbox writes through one gateway.
+- Added whole-document SHA-256 revision evidence for local workbench operations and version/timestamp evidence for sandbox records.
+- Removed the superseded per-factory policy/consume implementation rather than retaining a compatibility path.
+- Added gateway race, retry, conflict, approval release, denial, and envelope tests.
+
+### Why
+
+Approval authority must be reserved before an effect, finalized only after a performed outcome, and released after a pre-side-effect rejection. The same effect id must never execute twice after provider retries or concurrent duplicate delivery, and every outcome needs one canonical correlation envelope.
+
+### What worked
+
+```text
+pnpm --filter @hyperslop-systems/pbui-chat typecheck   PASS
+pnpm --filter @hyperslop-systems/pbui-chat test        24 files, 224 PASS
+pnpm --filter @hyperslop-systems/pbui-chat build       PASS
+```
+
+### What didn't work
+
+The first typecheck exposed that the local workbench document has no persisted `revision` field:
+
+```text
+Property 'revision' does not exist on type 'WorkbenchDocument'.
+```
+
+I replaced the false assumption with a deterministic SHA-256 digest of generated protobuf JSON. The first full test run then reported 10 failures because all three old test harnesses reused the literal provider id `t1` for distinct calls:
+
+```text
+EffectConflictError: effect agent-a:t1 was reused with different input
+Test Files  4 failed | 20 passed
+Tests  10 failed | 214 passed
+```
+
+That was valid production behavior and invalid test identity. Each harness now generates a fresh tool-call id per invocation; explicit gateway replay tests retain a fixed id and prove deduplication/conflict behavior.
+
+### What I learned
+
+- Provider tool-call identity is a usable idempotency key only when tests preserve its real uniqueness contract.
+- The local workbench protocol separates mutable documents from server resources, so local revision evidence must be content-derived rather than fabricated from the remote resource schema.
+- Validation should happen before gateway entry when possible; sandbox source/schema checks now run before approval reservation, while router/domain rejection releases the reservation.
+
+### What was tricky to build
+
+The gateway must distinguish four timing zones: validation before reservation, atomic reservation, potentially side-effecting execution, and durable report publication after outcome. A rejected domain result releases authority; a performed result finalizes it before reporting; a failed report never rolls back either the effect or approval and instead remains pending for retry. Concurrent identical requests share one promise, while the same key with a different canonical fingerprint throws before any side effect.
+
+### What warrants a second pair of eyes
+
+- The runtime outbox is bounded by effect terminal retention but is not yet persisted across page reload; server acceptance and any required browser persistence are reviewed in the next interval.
+- If a remote ledger reports an impossible finalize/release state after the domain callback, the gateway throws loudly because silently claiming a safe outcome would hide an authority inconsistency.
+- Sandbox create-and-open intentionally produces a parent library effect and a child workbench/router effect with related tool-call-derived ids.
+
+### What should be done in the future
+
+- Add the authenticated `/effects` route, protobuf command/event, durable timeline projection, and browser adapter.
+- Add explicit router effect correlation fields and server/client end-to-end tests.
+- Decide whether failed effect report outbox entries need durable browser storage beyond server retry semantics.
+
+### Code review instructions
+
+- Start with `agentEffectGateway.ts`, especially `execute`, `#executeOnce`, approval transitions, and `#record`.
+- Review the ledger state transitions in `approvalLedger.ts` next.
+- Trace one operation through each factory and `createPbuiChat.tsx` to confirm one shared gateway.
+- Run package typecheck, all tests, and the production build.
+
+### Technical details
+
+Terminal effect retention defaults to 1,000 entries for 30 minutes. Approval retention remains 1,000 entries for five minutes. Effect fingerprints cover conversation, kind, scope, canonical input, policy, confirmation id, and before-revision so key reuse cannot silently return an unrelated cached result.

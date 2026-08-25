@@ -54,3 +54,13 @@ Phase 1: replaced factory-local approval callbacks and spent sets with one canon
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/createPbuiChat.tsx — Product-wide injection
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/approvalLedger.ts — Ledger contract and local implementation
 
+
+## 2026-08-25
+
+Phase 2 interval 1: unified browser effect gateway, approval reservations, idempotency, revisions and report outbox (commit 1d05677)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/agentEffectGateway.ts — Execution state machine
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/approvalLedger.ts — Approval transaction lifecycle
+
