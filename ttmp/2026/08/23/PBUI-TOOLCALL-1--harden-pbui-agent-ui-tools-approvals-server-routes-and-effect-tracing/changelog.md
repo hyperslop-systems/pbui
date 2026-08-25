@@ -44,3 +44,13 @@ Phase 0 server boundary: required action authorization, ownership claims, filter
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/authorization.go — Authorization contract
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/server.go — Route enforcement
 
+
+## 2026-08-25
+
+Phase 1: replaced factory-local approval callbacks and spent sets with one canonical expiring consume-once ledger (commits 69678a3, f320dfc)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/createPbuiChat.tsx — Product-wide injection
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/approvalLedger.ts — Ledger contract and local implementation
+

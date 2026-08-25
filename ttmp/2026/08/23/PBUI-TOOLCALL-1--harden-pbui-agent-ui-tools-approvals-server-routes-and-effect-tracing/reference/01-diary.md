@@ -19,11 +19,21 @@ RelatedFiles:
     - Path: repo://packages/pbui-chat/src/conversations/conversations.test.tsx
       Note: Cross-conversation and failed-send context regressions (commit 7b3ccd1)
     - Path: repo://packages/pbui-chat/src/createPbuiChat.tsx
-      Note: Request-identity send context and failure cleanup (commit 7b3ccd1)
+      Note: |-
+        Request-identity send context and failure cleanup (commit 7b3ccd1)
+        One ledger injected into every conversation toolset (commit f320dfc)
     - Path: repo://packages/pbui-chat/src/store/chatStore.test.ts
       Note: Draft isolation/clear/forget regressions (commit 7b3ccd1)
     - Path: repo://packages/pbui-chat/src/store/chatStore.ts
       Note: Conversation-keyed draft ownership (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/tools/approvalLedger.ts
+      Note: Canonical shared approval authority (commit 69678a3)
+    - Path: repo://packages/pbui-chat/src/tools/conversationTools.ts
+      Note: Sender/target/prompt/reference-bound approvals (commit f320dfc)
+    - Path: repo://packages/pbui-chat/src/tools/sandboxTools.ts
+      Note: Canonical sandbox approval subjects (commit f320dfc)
+    - Path: repo://packages/pbui-chat/src/tools/workbenchTools.ts
+      Note: Canonical workbench and raw approval subjects (commit f320dfc)
     - Path: repo://pkg/chatserver/authorization.go
       Note: Required principal/session policy contract (commit a982f98)
     - Path: repo://pkg/chatserver/authorization_test.go
@@ -38,6 +48,7 @@ LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -413,3 +424,157 @@ Implement the canonical approval ledger and effect gateway, then lifecycle/workb
 ### Technical details
 
 Foreign existing and missing session ids both return `403 forbidden` after successful authentication. Public health and vocabulary endpoints remain outside session authorization by design.
+
+## Step 6: Establish the canonical approval authority
+
+I printed both the remaining ticket plan and a dedicated Phase 1 start slip before changing code. I then introduced the shared approval vocabulary and an offline ledger implementation as the first independently reviewable Phase 1 commit; tool-factory migration follows in the next step rather than mixing representation, authority, and call-site changes in one diff.
+
+Subjects now canonicalize domain inputs, sender, scope, targets, and reference keys before SHA-256 digesting. Capabilities are immutable, expiring, bounded, cannot be rebound to a different subject, and atomically move from available to consumed once across every caller sharing the ledger.
+
+### Prompt Context
+
+**User prompt (verbatim):** "commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Continue Phase 1 with focused commits and update the ticket diary at each meaningful implementation boundary using the required schema.
+
+**Inferred user intent:** Preserve a reviewable, continuation-friendly implementation history rather than delivering one opaque final changeset.
+
+**Commit (code):** `69678a32e7620aaa297c9db8e8ae94ec99d003e3` — "feat(pbui-chat): add canonical approval ledger"
+
+### What I did
+
+- Printed the overall six-phase ticket work slip and Phase 1 start slip successfully.
+- Added canonical approval subjects, capabilities, consume results, and ledger interface.
+- Added deterministic JSON normalization and SHA-256 subject digests.
+- Added bounded, expiring `InMemoryApprovalLedger` for offline products/tests.
+- Added grant, lookup, exact-capability validation, mismatch, expiry, and global consume-once tests.
+- Committed the ledger core separately before factory integration.
+
+### Why
+
+Factory-local callback signatures and `spent` sets cannot enforce one authority across workbench, sandbox, conversation, and raw effects. A canonical subject and shared CAS-like consume operation are the minimum safe seam.
+
+### What worked
+
+```text
+pbui-chat typecheck                     PASS
+pbui-chat tests                         23 files, 216 PASS
+thermal overall plan                    printed
+thermal Phase 1 start                   printed
+```
+
+### What didn't work
+
+N/A
+
+### What I learned
+
+- Browser and current Node test runtimes both expose Web Crypto SHA-256, avoiding a Node-only hashing dependency.
+- Treating target/reference collections as sorted sets prevents ordering differences from changing authority while argument arrays preserve semantic order.
+
+### What was tricky to build
+
+Canonical JSON must reject non-finite numbers, normalize negative zero, sort object keys recursively, omit undefined object fields, and preserve array order. The ledger also compares the complete immutable capability returned by lookup, so a caller cannot extend expiry by forging a new object with the same id and digest.
+
+### What warrants a second pair of eyes
+
+- Confirm whether a production server-backed ledger should retain consumed records beyond capability expiry for audit/replay diagnostics.
+- The current consume operation intentionally fails closed by burning authority before a later effect; the Phase 2 gateway should add reservation/finalization semantics for revision-rejected local effects.
+
+### What should be done in the future
+
+- Replace every factory-local approval callback/set with this shared ledger.
+- Expose product-level grant/lookup integration for approved `pbui_propose` results.
+
+### Code review instructions
+
+- Review `approvalLedger.ts` from `createApprovalSubject` through `consume` invariants.
+- Run `pnpm --filter @hyperslop-systems/pbui-chat typecheck` and `pnpm --filter @hyperslop-systems/pbui-chat test`.
+
+### Technical details
+
+Default local retention is 1,000 entries with a five-minute TTL. Unconsumed expired entries are pruned; consumed entries remain bounded so replay reports `already-used` until eviction.
+
+## Step 7: Replace every local approval island
+
+I migrated workbench, raw mutation, sandbox, and cross-conversation tools to the product-wide ledger and removed the four incompatible callback APIs plus both factory-local `spent` sets. `createPbuiChat` now injects one ledger into every per-conversation toolset while each factory constructs a domain-specific canonical subject with the exact sender and tool-call effect identity.
+
+The demo now uses one timeline-backed ledger adapter: it still treats hydrated `pbui_propose` results as the human-decision source of truth, but consumption is shared globally instead of living independently in tool closures. I validated the public package and printed the Phase 1 completion slip with the integration commit QR.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 6)
+
+**Assistant interpretation:** Finish Phase 1 in focused increments, preserving a detailed implementation and validation trail.
+
+**Inferred user intent:** Make approval replay prevention an actual shared runtime invariant, not merely a new unused abstraction.
+
+**Commit (code):** `f320dfc55973fc4c5518b872cba5f92da76b8377` — "feat(pbui-chat): unify consequential approvals"
+
+### What I did
+
+- Added `approvalLedger` as one top-level `createPbuiChat` dependency.
+- Injected exact `senderConversationId` and the same ledger into every per-session factory.
+- Canonicalized workbench verbs, raw mutation batches, full sandbox writes, and conversation target/prompt/reference subjects.
+- Correlated consumption with conversation id + provider tool-call id.
+- Removed public `isApproved` and `isRawApproved` callback seams and local spent sets.
+- Migrated demo timeline approval lookup and all affected tests.
+- Added a real-ledger conversation regression proving target/prompt/reference mismatch does not consume the capability.
+- Printed the Phase 1 completion status slip.
+
+### Why
+
+An approval spent in one factory must not remain usable in another factory, recreated closure, or neighboring conversation. Domain callbacks also made it impossible to audit one canonical authority contract.
+
+### What worked
+
+```text
+pbui-chat typecheck                     PASS
+pbui-chat tests                         23 files, 217 PASS
+pbui-chat production build              PASS
+Phase 1 completion work slip            printed
+```
+
+### What didn't work
+
+The first migration typecheck correctly failed at every old callback and every direct factory test that did not yet provide `senderConversationId`. This was expected compiler evidence that no hidden compatibility path remained. The concrete failures included:
+
+```text
+'isApproved' does not exist in type ...
+'isRawApproved' does not exist in type ...
+Property 'senderConversationId' is missing ...
+```
+
+Tests were migrated to small `ApprovalLedger` fakes that inspect canonical subjects, plus real-ledger integration coverage; no callback shim was added to production.
+
+### What I learned
+
+- Provider `toolCallId` is already available at every mutating execute seam and composes cleanly with the immutable conversation id for effect correlation.
+- Full sandbox authority must include source, bindings, behavior, documents, and open options rather than only `kind` and a display label.
+- Raw protobuf JSON should be authorized in its original canonical input form, not by inventing a lossy stand-in verb.
+
+### What was tricky to build
+
+Each tool dialect identifies targets differently. Workbench subjects extract placement/workspace/view/split/app ids; sandbox subjects retain the full write verb and program/action ids; conversation subjects separate prompt arguments, target conversation, and sorted reference keys. The test harnesses had to inspect this common representation while retaining consume-once behavior, otherwise tests would accidentally reintroduce callback semantics under another name.
+
+### What warrants a second pair of eyes
+
+- The demo timeline adapter validates the approved target and message but does not yet encode references into its human proposal fields; production ledgers must compare the complete canonical digest.
+- Current ledger `consume` burns before the domain effect executes. Phase 2 needs reservation/finalization/release so validation or revision rejection before a side effect does not waste authority while post-effect transport failure never restores it.
+
+### What should be done in the future
+
+Implement the AgentEffectGateway with approval reservation, effect envelopes, causal tracing, and outcome-aware finalization.
+
+### Code review instructions
+
+- Start with top-level injection in `createPbuiChat.tsx`.
+- Compare canonical construction in `conversationTools.ts`, `workbenchTools.ts`, and `sandboxTools.ts`.
+- Verify there are no production `isApproved`, `isRawApproved`, or approval-local `spent` sets.
+- Run package typecheck, tests, and build.
+
+### Technical details
+
+Confirm-policy tools fail closed when no ledger exists. Allow-policy tools remain usable. One capability is consumed before the routed/local side effect; the next phase replaces this conservative ordering with a reservation state machine tied to a durable effect id.
