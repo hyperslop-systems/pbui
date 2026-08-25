@@ -9,12 +9,13 @@ import {
   type WorkbenchVerb,
   type WorkbenchVerbKind,
 } from "@hyperslop-systems/pbui-workbench";
-import { type JsonValue, fromJson } from "@bufbuild/protobuf";
-import { type Mutation, MutationSchema, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import { type JsonValue, fromJson, toJson } from "@bufbuild/protobuf";
+import { type Mutation, MutationSchema, type WorkbenchDocument, WorkbenchDocumentSchema } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 import { z } from "zod";
 import type { Outcome, VerbLike } from "../types";
-import { consumeApproval, createApprovalSubject, type ApprovalLedger } from "./approvalLedger";
+import type { AgentEffectGateway } from "./agentEffectGateway";
+import { digestCanonicalJson } from "./approvalLedger";
 
 /* ---- the dialect the model writes ---------------------------------------
  *
@@ -147,24 +148,10 @@ export interface WorkbenchToolsOptions {
   mapVerb?(verb: WorkbenchVerb): VerbLike;
   /** How many document snapshots to keep for undo. Default 20. */
   history?: number;
-  /**
-   * Was this `pbui_propose` id approved by a human, FOR THIS VERB?
-   *
-   * The verb is passed because an approval that names only an id authorises
-   * every `confirm`-policy verb equally: approve one tile's closure and the
-   * same id closes a different tile, or deletes a workspace. A product
-   * compares the verb against what it actually put in front of the user.
-   *
-   * The product owns the answer because it owns the proposal state: the card
-   * performs `resolveProposal` through the router, and whatever records that
-   * is what this reads. There is no default that says yes — without a wiring
-   * a `confirm`-policy verb is refused, which is the right way round for a
-   * check whose whole job is to not be skippable.
-   */
   /** Conversation whose agent owns these per-session tools. */
   senderConversationId: string;
-  /** Shared product approval authority. Without it, confirm-policy effects fail closed. */
-  approvalLedger?: ApprovalLedger;
+  /** Shared product execution, approval, idempotency, and trace gateway. */
+  effectGateway: AgentEffectGateway;
 }
 
 export interface UndoEntry {
@@ -237,36 +224,34 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     effectId: string,
     beforePerform?: () => void,
   ): Promise<Outcome> {
-    const denied = await checkPolicy(verb, confirmationId, effectId);
-    if (denied) return `rejected:${denied}`;
-    beforePerform?.();
-    const outcome = await performVerb(verb);
-    return outcome;
+    const wb = options.getWorkbench();
+    if (!wb) return "rejected:no workbench is attached to this chat";
+    const beforeRevision = await workbenchRevision(wb);
+    const result = await options.effectGateway.execute({
+      effectId,
+      invocationKey: effectId.replace(":", "/"),
+      actor: "agent",
+      conversationId: options.senderConversationId,
+      effectKind: verb.kind,
+      effectScope: "workbench",
+      input: verb as unknown as JsonValue,
+      targetIds: workbenchVerbTargetIds(verb),
+      policy: decisionFor(verb.kind),
+      confirmationId,
+      beforeRevision,
+      approvalPrompt: `${verb.kind} needs the user's approval: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`,
+      approvalDescription: describeWorkbenchVerb(verb),
+      async perform() {
+        beforePerform?.();
+        const outcome = await performVerb(verb);
+        return { outcome, afterRevision: await workbenchRevision(wb) };
+      },
+    });
+    return result.outcome;
   }
 
   function decisionFor(kind: string): PolicyDecision {
     return policy[kind] ?? "allow";
-  }
-
-  async function checkPolicy(verb: WorkbenchVerb, confirmationId: string | undefined, effectId: string): Promise<string | null> {
-    const decision = decisionFor(verb.kind);
-    if (decision === "deny") return `${verb.kind} is not something the assistant may do; ask the user to do it`;
-    if (decision === "allow") return null;
-    if (!confirmationId) {
-      return `${verb.kind} needs the user's approval: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`;
-    }
-    const subject = createApprovalSubject({
-      senderConversationId: options.senderConversationId,
-      operation: verb.kind,
-      arguments: verb as unknown as JsonValue,
-      targetIds: workbenchVerbTargetIds(verb),
-      effectScope: "workbench",
-    });
-    const approval = await consumeApproval(options.approvalLedger, confirmationId, subject, effectId);
-    if (approval === "consumed") return null;
-    if (approval === "already-used") return `the approval "${confirmationId}" has already been used; ask again for this change`;
-    if (approval === "expired") return `the approval "${confirmationId}" has expired; ask again for this change`;
-    return `no approved proposal with id "${confirmationId}" for ${describeWorkbenchVerb(verb)}`;
   }
 
   /* ---- id and availability checks, with messages a model can act on ------ */
@@ -347,6 +332,10 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       default:
         return null;
     }
+  }
+
+  async function workbenchRevision(wb: Workbench): Promise<string> {
+    return digestCanonicalJson(toJson(WorkbenchDocumentSchema, wb.store.getState().document) as JsonValue);
   }
 
   function workbenchVerbTargetIds(verb: WorkbenchVerb): string[] {
@@ -692,25 +681,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         return fail(`${forbidden.mutation.body.case} is not something the assistant may do; ask the user to do it`) as unknown as Record<string, unknown>;
       }
       const confirmationGated = classified.filter((item) => decisionFor(item.policyKind) === "confirm");
-      if (confirmationGated.length > 0) {
-        if (!input.confirmationId) {
-          return fail(
-            `this batch changes ${confirmationGated.map((item) => item.mutation.body.case).join(", ")}; call pbui_propose first ` +
-              "describing exactly that, and pass the id you used as confirmationId",
-          ) as unknown as Record<string, unknown>;
-        }
-        const subject = createApprovalSubject({
-          senderConversationId: options.senderConversationId,
-          operation: "workbench.mutation_batch",
-          arguments: input.mutations as unknown as JsonValue,
-          effectScope: "workbench",
-        });
-        const approval = await consumeApproval(options.approvalLedger, input.confirmationId, subject, `${options.senderConversationId}:${context.toolCallId}`);
-        if (approval !== "consumed") {
-          const reason = approval === "already-used" ? "has already been used" : approval === "expired" ? "has expired" : "was not approved for this mutation batch";
-          return fail(`the approval "${input.confirmationId}" ${reason}`) as unknown as Record<string, unknown>;
-        }
-      }
 
       // Applied twice on purpose: once against a copy to learn WHY the applier
       // refuses, since `store.mutate` only answers true or false, and once for
@@ -724,16 +694,40 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         throw error;
       }
 
-      const undoToken = snapshot(wb, `apply ${batch.length} mutation(s)`);
-      if (!wb.mutate(batch)) return fail("the workbench refused the batch") as unknown as Record<string, unknown>;
-
-      const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
-      return {
-        ok: true,
-        applied: batch.length,
-        undoToken,
-        tiles: description.workspaces[0]?.tiles ?? [],
-      } as unknown as Record<string, unknown>;
+      const beforeRevision = await workbenchRevision(wb);
+      const result = await options.effectGateway.execute({
+        effectId: `${options.senderConversationId}:${context.toolCallId}`,
+        invocationKey: `${options.senderConversationId}/${context.toolCallId}`,
+        actor: "agent",
+        conversationId: options.senderConversationId,
+        effectKind: "workbench.mutation_batch",
+        effectScope: "workbench",
+        input: input.mutations as unknown as JsonValue,
+        policy: confirmationGated.length > 0 ? "confirm" : "allow",
+        confirmationId: input.confirmationId,
+        beforeRevision,
+        approvalPrompt:
+          `this batch changes ${confirmationGated.map((item) => item.mutation.body.case).join(", ")}; call pbui_propose first ` +
+          "describing exactly that, and pass the id you used as confirmationId",
+        approvalDescription: "this mutation batch",
+        async perform() {
+          const undoToken = snapshot(wb, `apply ${batch.length} mutation(s)`);
+          if (!wb.mutate(batch)) return { outcome: "rejected:the workbench refused the batch" };
+          const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
+          return {
+            outcome: "performed",
+            afterRevision: await workbenchRevision(wb),
+            value: {
+              ok: true,
+              applied: batch.length,
+              undoToken,
+              tiles: description.workspaces[0]?.tiles ?? [],
+            },
+          } as const;
+        },
+      });
+      if (result.outcome !== "performed") return fail(result.outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
+      return result.value as unknown as Record<string, unknown>;
     },
   };
 

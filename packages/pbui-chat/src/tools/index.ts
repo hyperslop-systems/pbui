@@ -5,16 +5,27 @@ export type { ProposeInput, ProposeResult } from "./proposeTool";
 export { AcceptStatus } from "./AcceptStatus";
 export type { AcceptStatusProps } from "./AcceptStatus";
 export { ProposalCard } from "./ProposalCard";
-export { InMemoryApprovalLedger, canonicalJson, consumeApproval, createApprovalSubject, digestApprovalSubject } from "./approvalLedger";
+export { InMemoryApprovalLedger, canonicalJson, createApprovalSubject, digestApprovalSubject, digestCanonicalJson } from "./approvalLedger";
 export type {
   ApprovalCapability,
-  ApprovalConsumeResult,
+  ApprovalFinalizeResult,
   ApprovalLedger,
+  ApprovalReleaseResult,
+  ApprovalReserveResult,
   ApprovalSubject,
   ApprovalSubjectInput,
   EffectScope,
   InMemoryApprovalLedgerOptions,
 } from "./approvalLedger";
+export { AgentEffectGateway, EffectConflictError } from "./agentEffectGateway";
+export type {
+  AgentEffectGatewayOptions,
+  AgentEffectRequest,
+  AgentEffectResult,
+  EffectEnvelope,
+  EffectPerformResult,
+  EffectPolicy,
+} from "./agentEffectGateway";
 export type { ProposalCardProps, ProposalDecision } from "./ProposalCard";
 export { createConversationTools, DEFAULT_CONVERSATION_POLICY } from "./conversationTools";
 export type {

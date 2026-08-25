@@ -13,20 +13,34 @@ import type { FrontendTool } from "@go-go-golems/chat-provider";
 import { createWorkbenchTools, type WorkbenchToolsOptions } from "./workbenchTools";
 import type { Outcome, VerbLike } from "../types";
 import type { ApprovalLedger, ApprovalSubject } from "./approvalLedger";
+import { AgentEffectGateway } from "./agentEffectGateway";
 
-function approvalLedger(check: (id: string, subject: ApprovalSubject) => boolean): ApprovalLedger {
+function effectGateway(check: (id: string, subject: ApprovalSubject) => boolean): AgentEffectGateway {
   const consumed = new Set<string>();
-  return {
+  const reserved = new Map<string, string>();
+  const approvalLedger: ApprovalLedger = {
     async lookup(id) {
       return { id, subjectDigest: id, issuedAt: "2026-08-25T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z" };
     },
-    async consume(capability, subject) {
-      if (consumed.has(capability.id)) return "already-used";
+    async reserve(capability, subject, effectId) {
+      if (consumed.has(capability.id) || (reserved.has(capability.id) && reserved.get(capability.id) !== effectId)) return "already-used";
       if (!check(capability.id, subject)) return "mismatch";
+      reserved.set(capability.id, effectId);
+      return "reserved";
+    },
+    async finalize(capability, effectId) {
+      if (reserved.get(capability.id) !== effectId) return "wrong-effect";
+      reserved.delete(capability.id);
       consumed.add(capability.id);
-      return "consumed";
+      return "finalized";
+    },
+    async release(capability, effectId) {
+      if (reserved.get(capability.id) !== effectId) return "wrong-effect";
+      reserved.delete(capability.id);
+      return "released";
     },
   };
+  return new AgentEffectGateway({ approvalLedger });
 }
 
 const Blank = () => null;
@@ -60,11 +74,15 @@ function harness(overrides: Partial<WorkbenchToolsOptions> = {}) {
       return "performed" as Outcome;
     },
     senderConversationId: "agent-a",
+    effectGateway: new AgentEffectGateway(),
     ...overrides,
   });
   const byName = (name: string) => tools.tools.find((tool) => tool.name === name) as FrontendTool<any, any>;
-  const call = (name: string, input: unknown) =>
-    Promise.resolve(byName(name).execute(input as never, { signal: new AbortController().signal, toolCallId: "t1" }));
+  let callSequence = 0;
+  const call = (name: string, input: unknown) => {
+    callSequence += 1;
+    return Promise.resolve(byName(name).execute(input as never, { signal: new AbortController().signal, toolCallId: `t${callSequence}` }));
+  };
   return { wb, tools, performed, byName, call };
 }
 
@@ -87,7 +105,7 @@ describe("createWorkbenchTools · surface", () => {
   });
 
   it("is unavailable, not broken, with no workbench attached", async () => {
-    const tools = createWorkbenchTools({ getWorkbench: () => null, perform: async () => "performed" as Outcome, senderConversationId: "agent-a" });
+    const tools = createWorkbenchTools({ getWorkbench: () => null, perform: async () => "performed" as Outcome, senderConversationId: "agent-a", effectGateway: new AgentEffectGateway() });
     const describe_ = tools.tools[0] as FrontendTool<any, any>;
     expect((describe_.available as () => boolean)()).toBe(false);
     const result = await describe_.execute({} as never, { signal: new AbortController().signal, toolCallId: "t" });
@@ -233,7 +251,7 @@ describe("workbench_open_tile", () => {
     const seen: WorkbenchVerb[] = [];
     const h = harness({
       policy: { "view.open": "confirm" },
-      approvalLedger: approvalLedger((id, subject) => {
+      effectGateway: effectGateway((id, subject) => {
         seen.push(subject.arguments as unknown as WorkbenchVerb);
         return id === "p-open" && subject.operation === "view.open";
       }),
@@ -276,7 +294,7 @@ describe("workbench_perform · policy", () => {
   });
 
   it("refuses a confirmation the product has not approved", async () => {
-    const { call } = harness({ approvalLedger: approvalLedger(() => false) });
+    const { call } = harness({ effectGateway: effectGateway(() => false) });
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
@@ -286,7 +304,7 @@ describe("workbench_perform · policy", () => {
   });
 
   it("applies a confirm-policy verb once the product says it was approved", async () => {
-    const { call, performed } = harness({ approvalLedger: approvalLedger((id) => id === "p-1") });
+    const { call, performed } = harness({ effectGateway: effectGateway((id) => id === "p-1") });
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
@@ -391,6 +409,7 @@ describe("a refused verb is reported as refused, not as applied", () => {
       },
       policy: { "tile.close": "allow" },
       senderConversationId: "agent-a",
+      effectGateway: new AgentEffectGateway(),
     });
     const perform = tools.tools.find((t) => t.name === "workbench_perform") as FrontendTool<any, any>;
     const describe_ = tools.tools.find((t) => t.name === "workbench_describe") as FrontendTool<any, any>;
@@ -428,7 +447,7 @@ describe("an approval names the operation it approved", () => {
     const seen: unknown[] = [];
     const { result } = await closeAttempt(
       {
-        approvalLedger: approvalLedger((id, subject) => {
+        effectGateway: effectGateway((id, subject) => {
           seen.push({ id, verb: subject.arguments });
           return false;
         }),
@@ -444,7 +463,7 @@ describe("an approval names the operation it approved", () => {
     // The product approved a close of n-other; the agent tries n-first.
     const { result } = await closeAttempt(
       {
-        approvalLedger: approvalLedger(
+        effectGateway: effectGateway(
           (id, subject) =>
             id === "p-1" &&
             subject.operation === "tile.close" &&
@@ -457,7 +476,7 @@ describe("an approval names the operation it approved", () => {
   });
 
   it("spends an approval, so the same id cannot authorise a second destructive verb", async () => {
-    const h = harness({ approvalLedger: approvalLedger((id) => id === "p-1") });
+    const h = harness({ effectGateway: effectGateway((id) => id === "p-1") });
     const tiles = (await h.call("workbench_describe", {})) as any;
     const [first, second] = tiles.workspaces[0].tiles.map((t: any) => t.placementId);
     const one = (await h.call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
@@ -512,7 +531,7 @@ describe("the perform tool validates ids and availability", () => {
       Component: Blank,
     });
     const wb = createWorkbench({ apps: createAppRegistry([...apps.list(), scoped]), initial: layout(tile("chat")) });
-    const tools = createWorkbenchTools({ getWorkbench: () => wb, perform: async () => "performed" as Outcome, senderConversationId: "agent-a" });
+    const tools = createWorkbenchTools({ getWorkbench: () => wb, perform: async () => "performed" as Outcome, senderConversationId: "agent-a", effectGateway: new AgentEffectGateway() });
     const ctx = { signal: new AbortController().signal, toolCallId: "t" };
     const create_ = tools.tools.find((t) => t.name === "workbench_create_workspace") as FrontendTool<any, any>;
     const result = (await create_.execute({ name: "x", layout: { kind: "tile", appId: "ledger" } } as never, ctx)) as any;
@@ -580,7 +599,7 @@ describe("workbench_apply", () => {
   it("deletes once the product approves that exact raw batch", async () => {
     const seen: (readonly unknown[])[] = [];
     const { run, wb } = rawHarness({
-      approvalLedger: approvalLedger((confirmationId, subject) => {
+      effectGateway: effectGateway((confirmationId, subject) => {
         const mutations = subject.arguments as readonly { workspaceDelete?: unknown }[];
         seen.push(mutations);
         return confirmationId === "p-9" && Boolean(mutations[0]?.workspaceDelete);

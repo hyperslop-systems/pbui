@@ -7,7 +7,7 @@ import type { Outcome, VerbLike } from "../types";
 import type { Vocabulary } from "../vocabulary/schemas";
 import { validateVerb } from "../vocabulary/validate";
 import type { PolicyDecision } from "./workbenchTools";
-import { consumeApproval, createApprovalSubject, type ApprovalLedger } from "./approvalLedger";
+import type { AgentEffectGateway, EffectPerformResult } from "./agentEffectGateway";
 
 /* ---- policy ------------------------------------------------------------- */
 
@@ -52,8 +52,8 @@ export interface SandboxToolsOptions {
   policy?: Partial<SandboxPolicy>;
   /** Conversation whose agent owns these per-session tools. */
   senderConversationId: string;
-  /** Shared product approval authority. Without it, confirm-policy effects fail closed. */
-  approvalLedger?: ApprovalLedger;
+  /** Shared product execution, approval, idempotency, and trace gateway. */
+  effectGateway: AgentEffectGateway;
 }
 
 export interface SandboxTools {
@@ -127,31 +127,31 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     return decision;
   }
 
-  async function gate(
+  async function executeGated<Value>(
     key: SandboxPolicyKey,
     verb: VerbLike,
     confirmationId: string | undefined,
     effectId: string,
+    perform: () => Promise<EffectPerformResult<Value>>,
     protectedArtifact = false,
-  ): Promise<string | null> {
-    const decision = decisionFor(key, protectedArtifact);
-    if (decision === "deny") return `${key} is not something the assistant may do; ask the user to do it`;
-    if (decision === "allow") return null;
-    if (!confirmationId) {
-      return `${key} needs the user's approval${protectedArtifact ? " (it is pinned or human-made)" : ""}: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`;
-    }
-    const subject = createApprovalSubject({
-      senderConversationId: options.senderConversationId,
-      operation: verb.kind,
-      arguments: verb as unknown as JsonValue,
-      targetIds: sandboxVerbTargetIds(verb),
+    beforeRevision?: string,
+  ) {
+    return options.effectGateway.execute({
+      effectId,
+      invocationKey: effectId.replace(":", "/"),
+      actor: "agent",
+      conversationId: options.senderConversationId,
+      effectKind: verb.kind,
       effectScope: "sandbox",
+      input: verb as unknown as JsonValue,
+      targetIds: sandboxVerbTargetIds(verb),
+      policy: decisionFor(key, protectedArtifact),
+      confirmationId,
+      beforeRevision,
+      approvalPrompt: `${key} needs the user's approval${protectedArtifact ? " (it is pinned or human-made)" : ""}: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`,
+      approvalDescription: verb.kind,
+      perform,
     });
-    const approval = await consumeApproval(options.approvalLedger, confirmationId, subject, effectId);
-    if (approval === "consumed") return null;
-    if (approval === "already-used") return `the approval "${confirmationId}" has already been used; ask again for this change`;
-    if (approval === "expired") return `the approval "${confirmationId}" has expired; ask again for this change`;
-    return `no approved proposal with id "${confirmationId}" for ${verb.kind}`;
   }
 
   async function performGated(
@@ -161,9 +161,15 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     effectId: string,
     protectedArtifact = false,
   ): Promise<Outcome> {
-    const denied = await gate(key, verb, confirmationId, effectId, protectedArtifact);
-    if (denied) return `rejected:${denied}`;
-    return options.perform(verb);
+    const result = await executeGated(
+      key,
+      verb,
+      confirmationId,
+      effectId,
+      async () => ({ outcome: await options.perform(verb) }),
+      protectedArtifact,
+    );
+    return result.outcome;
   }
 
   /* ---- the dry run ------------------------------------------------------ */
@@ -407,29 +413,41 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     async execute(input, context) {
       const library = options.getLibrary();
       if (!library) return asResult(fail("no sandbox is attached to this chat"));
-      const denied = await gate(
+      const documents = input.documents ?? {};
+      const checkResult = await check(input.source, documents);
+      if (!checkResult.ok) return asResult({ ok: false, phase: checkResult.phase, code: checkResult.code, error: checkResult.error });
+
+      const verb: VerbLike = {
+        kind: "program.create",
+        title: input.title,
+        source: input.source,
+        bindings: input.bindings,
+        documents: input.documents,
+        open: input.open,
+        near: input.near,
+      };
+      const effect = await executeGated(
         "program.create",
-        { kind: "program.create", title: input.title, source: input.source, bindings: input.bindings, documents: input.documents, open: input.open, near: input.near },
+        verb,
         input.confirmationId,
         `${options.senderConversationId}:${context.toolCallId}:create`,
+        async () => {
+          try {
+            const program = library.putProgram({
+              title: input.title,
+              source: input.source,
+              bindings: input.bindings ?? checkResult.meta.bindings,
+              meta: { ...(checkResult.meta.declaredId ? { declaredId: checkResult.meta.declaredId } : {}), widgets: checkResult.meta.widgets },
+              by: "agent",
+            });
+            return { outcome: "performed", value: program, afterRevision: String(program.version) };
+          } catch (error) {
+            return { outcome: `rejected:${error instanceof Error ? error.message : String(error)}` };
+          }
+        },
       );
-      if (denied) return asResult(fail(denied));
-      const documents = input.documents ?? {};
-      const result = await check(input.source, documents);
-      if (!result.ok) return asResult({ ok: false, phase: result.phase, code: result.code, error: result.error });
-
-      let program: ProgramRecord;
-      try {
-        program = library.putProgram({
-          title: input.title,
-          source: input.source,
-          bindings: input.bindings ?? result.meta.bindings,
-          meta: { ...(result.meta.declaredId ? { declaredId: result.meta.declaredId } : {}), widgets: result.meta.widgets },
-          by: "agent",
-        });
-      } catch (error) {
-        return asResult(fail(error instanceof Error ? error.message : String(error)));
-      }
+      if (effect.outcome !== "performed" || !effect.value) return asResult(fail(effect.outcome.replace(/^rejected:/, "")));
+      const program = effect.value;
 
       const warnings: string[] = [];
       let opened: { placementId: string | null; viewId: string | null; wentToExisting: boolean } | null = null;
@@ -459,7 +477,7 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
         title: program.title,
         bindings: program.bindings,
         widgets: program.meta.widgets,
-        nodeCount: result.nodeCount,
+        nodeCount: checkResult.nodeCount,
         ...(opened ?? {}),
         warnings,
       });
@@ -485,40 +503,46 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       if (!library) return asResult(fail("no sandbox is attached to this chat"));
       const existing = library.getState().programs[input.programId];
       if (!existing) return asResult(fail(`no program "${input.programId}"; sandbox_describe lists them`));
-      const denied = await gate(
+      const checkResult = await check(input.source, input.documents ?? {});
+      if (!checkResult.ok) return asResult({ ok: false, phase: checkResult.phase, code: checkResult.code, error: checkResult.error, keptVersion: existing.version });
+      const verb: VerbLike = { kind: "program.update", programId: input.programId, source: input.source, title: input.title, documents: input.documents };
+      const effect = await executeGated(
         "program.update",
-        { kind: "program.update", programId: input.programId, source: input.source, title: input.title, documents: input.documents },
+        verb,
         input.confirmationId,
         `${options.senderConversationId}:${context.toolCallId}`,
+        async () => {
+          try {
+            const program = library.putProgram({
+              id: existing.id,
+              title: input.title ?? existing.title,
+              source: input.source,
+              bindings: checkResult.meta.bindings.length > 0 ? checkResult.meta.bindings : existing.bindings,
+              meta: { ...(checkResult.meta.declaredId ? { declaredId: checkResult.meta.declaredId } : {}), widgets: checkResult.meta.widgets },
+              by: existing.by,
+            });
+            const wb = options.getWorkbench();
+            const openIn = wb ? tilesShowing(wb, program.id) : [];
+            return {
+              outcome: "performed",
+              afterRevision: String(program.version),
+              value: {
+                ok: true,
+                programId: program.id,
+                version: program.version,
+                openIn,
+                note: openIn.length > 0 ? `${openIn.length} tile(s) reload the new version now; each tile's details log says whether its state was kept` : "no tile shows it; open it with sandbox_open",
+              },
+            } as const;
+          } catch (error) {
+            return { outcome: `rejected:${error instanceof Error ? error.message : String(error)}` };
+          }
+        },
         protectedProgram(existing),
+        String(existing.version),
       );
-      if (denied) return asResult(fail(denied));
-      const result = await check(input.source, input.documents ?? {});
-      if (!result.ok) return asResult({ ok: false, phase: result.phase, code: result.code, error: result.error, keptVersion: existing.version });
-      try {
-        const program = library.putProgram({
-          id: existing.id,
-          title: input.title ?? existing.title,
-          source: input.source,
-          bindings: result.meta.bindings.length > 0 ? result.meta.bindings : existing.bindings,
-          meta: { ...(result.meta.declaredId ? { declaredId: result.meta.declaredId } : {}), widgets: result.meta.widgets },
-          by: existing.by,
-        });
-        const wb = options.getWorkbench();
-        const openIn = wb ? tilesShowing(wb, program.id) : [];
-        return asResult({
-          ok: true,
-          programId: program.id,
-          version: program.version,
-          openIn,
-          // Whether a tile kept its state is decided per tile when it reloads
-          // (guide D11) and shown in that tile's details log; the tool cannot
-          // know it, so it says where to look rather than guessing.
-          note: openIn.length > 0 ? `${openIn.length} tile(s) reload the new version now; each tile's details log says whether its state was kept` : "no tile shows it; open it with sandbox_open",
-        });
-      } catch (error) {
-        return asResult(fail(error instanceof Error ? error.message : String(error)));
-      }
+      if (effect.outcome !== "performed") return asResult(fail(effect.outcome.replace(/^rejected:/, "")));
+      return asResult(effect.value);
     },
   };
 
@@ -584,13 +608,6 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     async execute(input, context) {
       const library = options.getLibrary();
       if (!library) return asResult(fail("no sandbox is attached to this chat"));
-      const denied = await gate(
-        "action.define",
-        { kind: "action.define", label: input.label, types: input.types, behaviour: input.behaviour, danger: input.danger, description: input.description, actionId: input.actionId },
-        input.confirmationId,
-        `${options.senderConversationId}:${context.toolCallId}`,
-      );
-      if (denied) return asResult(fail(denied));
       const vocabulary = options.vocabulary;
       if (vocabulary) {
         const unknown = input.types.filter((type) => !vocabulary.types[type]);
@@ -612,20 +629,42 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       if (behaviour.kind === "askAgent" && !behaviour.template.includes("{0}")) {
         return asResult(fail("the template must contain {0}, which becomes the clicked object"));
       }
-      try {
-        const action = library.putAction({
-          ...(input.actionId ? { id: input.actionId } : {}),
-          label: input.label,
-          types: input.types,
-          behaviour,
-          ...(input.danger ? { danger: true } : {}),
-          ...(input.description ? { description: input.description } : {}),
-          by: "agent",
-        });
-        return asResult({ ok: true, actionId: action.id, label: action.label, types: action.types });
-      } catch (error) {
-        return asResult(fail(error instanceof Error ? error.message : String(error)));
-      }
+      const verb: VerbLike = {
+        kind: "action.define",
+        label: input.label,
+        types: input.types,
+        behaviour: input.behaviour,
+        danger: input.danger,
+        description: input.description,
+        actionId: input.actionId,
+      };
+      const existing = input.actionId ? library.getState().actions[input.actionId] : undefined;
+      const effect = await executeGated(
+        "action.define",
+        verb,
+        input.confirmationId,
+        `${options.senderConversationId}:${context.toolCallId}`,
+        async () => {
+          try {
+            const action = library.putAction({
+              ...(input.actionId ? { id: input.actionId } : {}),
+              label: input.label,
+              types: input.types,
+              behaviour,
+              ...(input.danger ? { danger: true } : {}),
+              ...(input.description ? { description: input.description } : {}),
+              by: "agent",
+            });
+            return { outcome: "performed", value: { ok: true, actionId: action.id, label: action.label, types: action.types }, afterRevision: action.updatedAt } as const;
+          } catch (error) {
+            return { outcome: `rejected:${error instanceof Error ? error.message : String(error)}` };
+          }
+        },
+        false,
+        existing?.updatedAt,
+      );
+      if (effect.outcome !== "performed") return asResult(fail(effect.outcome.replace(/^rejected:/, "")));
+      return asResult(effect.value);
     },
   };
 

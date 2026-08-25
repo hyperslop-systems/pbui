@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { ConversationRegistry } from "../conversations/registry";
 import { ReferenceSchema } from "../vocabulary/schemas";
 import type { Outcome, Reference, VerbLike } from "../types";
-import { consumeApproval, createApprovalSubject, type ApprovalLedger } from "./approvalLedger";
+import type { AgentEffectGateway } from "./agentEffectGateway";
 
 /**
  * The agent's view of the other agents (guide §4.7).
@@ -50,8 +50,8 @@ export interface ConversationToolsOptions {
    * the check cannot match and never learns why.
    */
   confirmationHint?: string;
-  /** Shared product approval authority. Without it, confirm-policy sends fail closed. */
-  approvalLedger?: ApprovalLedger;
+  /** Shared product execution, approval, idempotency, and trace gateway. */
+  effectGateway: AgentEffectGateway;
 }
 
 export interface ConversationTools {
@@ -129,8 +129,6 @@ export function createConversationTools(options: ConversationToolsOptions): Conv
       if (!conversations) return fail("this product has only one conversation") as unknown as Record<string, unknown>;
 
       const decision = policy.conversation_send;
-      if (decision === "deny") return fail("this product does not let agents message each other") as unknown as Record<string, unknown>;
-
       const target = conversations.get(input.conversationId);
       if (!target) return fail(`no conversation ${input.conversationId}; call conversation_list for the ids`) as unknown as Record<string, unknown>;
       if (input.conversationId === options.conversationId) {
@@ -143,42 +141,51 @@ export function createConversationTools(options: ConversationToolsOptions): Conv
         return fail(`that message is ${input.prompt.length} characters; the limit is ${maxPromptLength}`) as unknown as Record<string, unknown>;
       }
 
-      if (decision === "confirm") {
-        if (!input.confirmationId) {
-          const hint = options.confirmationHint ? ` ${options.confirmationHint}` : "";
-          return fail(
-            `sending to another agent needs the user's approval: call pbui_propose describing what you want to ask ${target.title}, then call this again with that proposal's id as confirmationId.${hint}`,
-          ) as unknown as Record<string, unknown>;
-        }
-        const subject = createApprovalSubject({
-          senderConversationId: options.conversationId,
-          operation: "conversation.send",
-          arguments: { prompt: input.prompt },
-          targetIds: [input.conversationId],
-          referenceKeys: input.refs?.map((reference) => `${reference.type}:${reference.id}`) ?? [],
-          effectScope: "conversation",
-        });
-        const approval = await consumeApproval(options.approvalLedger, input.confirmationId, subject, `${options.conversationId}:${context.toolCallId}`);
-        if (approval !== "consumed") {
-          const reason = approval === "already-used" ? "has already been used" : approval === "expired" ? "has expired" : "was not approved for this message";
-          return fail(`proposal ${input.confirmationId} ${reason}`) as unknown as Record<string, unknown>;
-        }
-      }
-
-      const outcome = await options.perform({
+      const verb: VerbLike = {
         kind: "conversation.send",
         conversationId: input.conversationId,
         template: input.prompt,
         ...(input.refs && input.refs.length > 0 ? { refs: input.refs } : {}),
+      };
+      const result = await options.effectGateway.execute({
+        effectId: `${options.conversationId}:${context.toolCallId}`,
+        invocationKey: `${options.conversationId}/${context.toolCallId}`,
+        actor: "agent",
+        conversationId: options.conversationId,
+        effectKind: "conversation.send",
+        effectScope: "conversation",
+        input: { prompt: input.prompt },
+        targetIds: [input.conversationId],
+        referenceKeys: input.refs?.map((reference) => `${reference.type}:${reference.id}`) ?? [],
+        policy: decision,
+        confirmationId: input.confirmationId,
+        deniedReason: "this product does not let agents message each other",
+        approvalPrompt:
+          `sending to another agent needs the user's approval: call pbui_propose describing what you want to ask ${target.title}, ` +
+          `then call this again with that proposal's id as confirmationId.${options.confirmationHint ? ` ${options.confirmationHint}` : ""}`,
+        approvalDescription: "this message",
+        approvalMismatchReason: `proposal ${input.confirmationId ?? ""} was not approved for this message`,
+        async perform() {
+          const outcome = await options.perform(verb);
+          return {
+            outcome,
+            ...(outcome === "performed"
+              ? {
+                  value: {
+                    ok: true,
+                    conversationId: input.conversationId,
+                    title: target.title,
+                    note: "the other agent is answering now; its reply lands in its own conversation, not here",
+                  },
+                }
+              : {}),
+          };
+        },
       });
-      if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
-
-      return {
-        ok: true,
-        conversationId: input.conversationId,
-        title: target.title,
-        note: "the other agent is answering now; its reply lands in its own conversation, not here",
-      } as unknown as Record<string, unknown>;
+      if (result.outcome !== "performed") {
+        return fail(result.outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
+      }
+      return result.value as unknown as Record<string, unknown>;
     },
   };
 

@@ -127,6 +127,7 @@ function approvedSend(confirmationId: string, target: string, prompt: string): b
 }
 
 const consumedApprovals = new Set<string>();
+const reservedApprovals = new Map<string, string>();
 const demoApprovalLedger: ApprovalLedger = {
   async lookup(id) {
     const approved = chat.conversations.all().some((snapshot) =>
@@ -144,15 +145,30 @@ const demoApprovalLedger: ApprovalLedger = {
       ? { id, subjectDigest: "timeline-verified", issuedAt: "1970-01-01T00:00:00.000Z", expiresAt: "9999-12-31T23:59:59.999Z" }
       : null;
   },
-  async consume(capability, subject: ApprovalSubject) {
+  async reserve(capability, subject: ApprovalSubject, effectId) {
     if (consumedApprovals.has(capability.id)) return "already-used";
+    const current = reservedApprovals.get(capability.id);
+    if (current) return current === effectId ? "already-reserved" : "already-used";
     const args = subject.arguments as { prompt?: string };
     const target = subject.targetIds[0];
     if (subject.operation !== "conversation.send" || !target || !approvedSend(capability.id, target, String(args.prompt ?? ""))) {
       return "mismatch";
     }
+    reservedApprovals.set(capability.id, effectId);
+    return "reserved";
+  },
+  async finalize(capability, effectId) {
+    if (consumedApprovals.has(capability.id)) return "already-finalized";
+    if (reservedApprovals.get(capability.id) !== effectId) return "wrong-effect";
+    reservedApprovals.delete(capability.id);
     consumedApprovals.add(capability.id);
-    return "consumed";
+    return "finalized";
+  },
+  async release(capability, effectId) {
+    if (consumedApprovals.has(capability.id)) return "already-used";
+    if (reservedApprovals.get(capability.id) !== effectId) return "wrong-effect";
+    reservedApprovals.delete(capability.id);
+    return "released";
   },
 };
 

@@ -4,20 +4,34 @@ import { createConversationRegistry, memoryConversationStorage, type Conversatio
 import type { Outcome, VerbLike } from "../types";
 import { createConversationTools, type ConversationToolsOptions } from "./conversationTools";
 import { InMemoryApprovalLedger, createApprovalSubject, type ApprovalLedger, type ApprovalSubject } from "./approvalLedger";
+import { AgentEffectGateway } from "./agentEffectGateway";
 
-function approvalLedger(check: (id: string, subject: ApprovalSubject) => boolean): ApprovalLedger {
+function effectGateway(check: (id: string, subject: ApprovalSubject) => boolean): AgentEffectGateway {
   const consumed = new Set<string>();
-  return {
+  const reserved = new Map<string, string>();
+  const approvalLedger: ApprovalLedger = {
     async lookup(id) {
       return { id, subjectDigest: id, issuedAt: "2026-08-25T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z" };
     },
-    async consume(capability, subject) {
+    async reserve(capability, subject, effectId) {
       if (consumed.has(capability.id)) return "already-used";
       if (!check(capability.id, subject)) return "mismatch";
+      reserved.set(capability.id, effectId);
+      return "reserved";
+    },
+    async finalize(capability, effectId) {
+      if (reserved.get(capability.id) !== effectId) return "wrong-effect";
+      reserved.delete(capability.id);
       consumed.add(capability.id);
-      return "consumed";
+      return "finalized";
+    },
+    async release(capability, effectId) {
+      if (reserved.get(capability.id) !== effectId) return "wrong-effect";
+      reserved.delete(capability.id);
+      return "released";
     },
   };
+  return new AgentEffectGateway({ approvalLedger });
 }
 
 /**
@@ -55,13 +69,18 @@ function toolsFor(registry: ConversationRegistry | null, overrides: Partial<Conv
       performed.push(verb);
       return "performed" as Outcome;
     },
+    effectGateway: new AgentEffectGateway(),
     ...overrides,
   });
+  let callSequence = 0;
   const byName = (name: string) => {
     const tool = tools.tools.find((candidate) => candidate.name === name)! as FrontendTool<any, any>;
     return {
       available: () => (typeof tool.available === "function" ? tool.available() : tool.available !== false),
-      execute: (input: unknown) => tool.execute(input as never, { signal: new AbortController().signal, toolCallId: `test-${name}` }),
+      execute: (input: unknown) => {
+        callSequence += 1;
+        return tool.execute(input as never, { signal: new AbortController().signal, toolCallId: `test-${name}-${callSequence}` });
+      },
     };
   };
   return { performed, list: byName("conversation_list"), send: byName("conversation_send") };
@@ -113,7 +132,7 @@ describe("conversation_send", () => {
   test("an approval that does not match the message is refused", async () => {
     const registry = await registryWith(ME, THEM);
     const { send, performed } = toolsFor(registry, {
-      approvalLedger: approvalLedger(
+      effectGateway: effectGateway(
         (_id, subject) =>
           subject.targetIds[0] === THEM && (subject.arguments as { prompt: string }).prompt === "the message they approved",
       ),
@@ -128,7 +147,7 @@ describe("conversation_send", () => {
 
   test("with a matching approval it performs conversation.send through the router", async () => {
     const registry = await registryWith(ME, THEM);
-    const { send, performed } = toolsFor(registry, { approvalLedger: approvalLedger(() => true) });
+    const { send, performed } = toolsFor(registry, { effectGateway: effectGateway(() => true) });
 
     const result = (await send.execute({
       conversationId: THEM,
@@ -158,7 +177,7 @@ describe("conversation_send", () => {
         effectScope: "conversation",
       }),
     );
-    const { send, performed } = toolsFor(registry, { approvalLedger: ledger });
+    const { send, performed } = toolsFor(registry, { effectGateway: new AgentEffectGateway({ approvalLedger: ledger }) });
 
     const mismatch = (await send.execute({
       conversationId: THEM,
@@ -236,7 +255,7 @@ describe("conversation_send", () => {
       getConversations: () => registry,
       conversationId: ME,
       perform: async () => "rejected:that conversation is not open" as Outcome,
-      approvalLedger: approvalLedger(() => true),
+      effectGateway: effectGateway(() => true),
     });
     const send = tools.tools.find((tool) => tool.name === "conversation_send")! as FrontendTool<any, any>;
 

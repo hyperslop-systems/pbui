@@ -50,10 +50,12 @@ describe("InMemoryApprovalLedger", () => {
     const ledger = new InMemoryApprovalLedger();
     const capability = await ledger.grant("proposal-1", subject());
 
-    await expect(ledger.consume(capability, subject("different"), "effect-wrong")).resolves.toBe("mismatch");
-    await expect(ledger.consume(capability, subject(), "effect-1")).resolves.toBe("consumed");
+    await expect(ledger.reserve(capability, subject("different"), "effect-wrong")).resolves.toBe("mismatch");
+    await expect(ledger.reserve(capability, subject(), "effect-1")).resolves.toBe("reserved");
+    await expect(ledger.reserve(capability, subject(), "effect-1")).resolves.toBe("already-reserved");
+    await expect(ledger.finalize(capability, "effect-1")).resolves.toBe("finalized");
     await expect(
-      ledger.consume(
+      ledger.reserve(
         capability,
         createApprovalSubject({
           senderConversationId: "agent-a",
@@ -71,11 +73,20 @@ describe("InMemoryApprovalLedger", () => {
     const ledger = new InMemoryApprovalLedger({ now: () => now, ttlMs: 1_000 });
     const capability = await ledger.grant("proposal-1", subject());
 
-    await expect(ledger.consume({ ...capability, expiresAt: "2099-01-01T00:00:00.000Z" }, subject(), "forged")).resolves.toBe(
+    await expect(ledger.reserve({ ...capability, expiresAt: "2099-01-01T00:00:00.000Z" }, subject(), "forged")).resolves.toBe(
       "not-found",
     );
     now = new Date("2026-08-25T12:00:01.000Z");
-    await expect(ledger.consume(capability, subject(), "late")).resolves.toBe("expired");
+    await expect(ledger.reserve(capability, subject(), "late")).resolves.toBe("expired");
+  });
+
+  it("releases only the owning reservation and permits a later effect", async () => {
+    const ledger = new InMemoryApprovalLedger();
+    const capability = await ledger.grant("proposal-1", subject());
+    await expect(ledger.reserve(capability, subject(), "effect-1")).resolves.toBe("reserved");
+    await expect(ledger.release(capability, "effect-other")).resolves.toBe("wrong-effect");
+    await expect(ledger.release(capability, "effect-1")).resolves.toBe("released");
+    await expect(ledger.reserve(capability, subject(), "effect-2")).resolves.toBe("reserved");
   });
 
   it("does not let a proposal id be rebound to another subject", async () => {

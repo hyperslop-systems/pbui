@@ -16,21 +16,35 @@ import { defineVocabulary } from "../vocabulary/defineVocabulary";
 import type { Outcome, VerbLike } from "../types";
 import { createSandboxTools, type SandboxToolsOptions } from "./sandboxTools";
 import type { ApprovalLedger } from "./approvalLedger";
+import { AgentEffectGateway } from "./agentEffectGateway";
 
-function approvalLedger(approved: ReadonlySet<string>): ApprovalLedger {
+function effectGateway(approved: ReadonlySet<string>): AgentEffectGateway {
   const consumed = new Set<string>();
-  return {
+  const reserved = new Map<string, string>();
+  const approvalLedger: ApprovalLedger = {
     async lookup(id) {
       return approved.has(id)
         ? { id, subjectDigest: id, issuedAt: "2026-08-25T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z" }
         : null;
     },
-    async consume(capability) {
+    async reserve(capability, _subject, effectId) {
       if (consumed.has(capability.id)) return "already-used";
+      reserved.set(capability.id, effectId);
+      return "reserved";
+    },
+    async finalize(capability, effectId) {
+      if (reserved.get(capability.id) !== effectId) return "wrong-effect";
+      reserved.delete(capability.id);
       consumed.add(capability.id);
-      return "consumed";
+      return "finalized";
+    },
+    async release(capability, effectId) {
+      if (reserved.get(capability.id) !== effectId) return "wrong-effect";
+      reserved.delete(capability.id);
+      return "released";
     },
   };
+  return new AgentEffectGateway({ approvalLedger });
 }
 
 const Blank = () => null;
@@ -69,6 +83,7 @@ function harness(overrides: Partial<SandboxToolsOptions> = {}) {
     resolve: (key, id) => (key === "product" && id === "2049" ? (PRODUCT_2049 as UIReference) : null),
     vocabulary,
     senderConversationId: "agent-a",
+    effectGateway: new AgentEffectGateway(),
     perform: async (verb) => {
       performed.push(verb);
       if (verb.kind === "program.open") {
@@ -83,8 +98,11 @@ function harness(overrides: Partial<SandboxToolsOptions> = {}) {
   };
   const tools = createSandboxTools(options);
   const byName = (name: string) => tools.tools.find((tool) => tool.name === name) as FrontendTool<any, any>;
-  const call = (name: string, input: unknown) =>
-    Promise.resolve(byName(name).execute(input as never, { signal: new AbortController().signal, toolCallId: "t1" }));
+  let callSequence = 0;
+  const call = (name: string, input: unknown) => {
+    callSequence += 1;
+    return Promise.resolve(byName(name).execute(input as never, { signal: new AbortController().signal, toolCallId: `t${callSequence}` }));
+  };
   return { library, engine, wb, performed, tools, byName, call };
 }
 
@@ -102,7 +120,7 @@ describe("createSandboxTools · surface", () => {
     ]);
     for (const tool of tools.tools) expect(tool.name).toMatch(/^[a-zA-Z0-9_-]+$/);
     expect((byName("sandbox_test").available as () => boolean)()).toBe(true);
-    const detached = createSandboxTools({ ...harness(), getLibrary: () => null, getEngine: () => null, getWorkbench: () => null, resolve: () => null, perform: async () => "performed" as Outcome, senderConversationId: "agent-a" });
+    const detached = createSandboxTools({ ...harness(), getLibrary: () => null, getEngine: () => null, getWorkbench: () => null, resolve: () => null, perform: async () => "performed" as Outcome, senderConversationId: "agent-a", effectGateway: new AgentEffectGateway() });
     expect((detached.tools[0]!.available as () => boolean)()).toBe(false);
   });
 
@@ -195,7 +213,7 @@ describe("sandbox_update_app", () => {
 
   it("needs an approval for a pinned program, spent once", async () => {
     const approvals = new Set(["p-1"]);
-    const { call, library } = harness({ approvalLedger: approvalLedger(approvals) });
+    const { call, library } = harness({ effectGateway: effectGateway(approvals) });
     const created = (await call("sandbox_create_app", { title: "Counter", source: COUNTER_PROGRAM, open: false })) as any;
     library.setPinned("program", created.programId, true);
     const refused = (await call("sandbox_update_app", { programId: created.programId, source: COUNTER_PROGRAM })) as any;

@@ -32,6 +32,7 @@ import type { VerbRouter } from "./router/createVerbRouter";
 import { createPbuiChatStore, usePbuiChatStore, type PbuiChatState, type PbuiChatStore } from "./store/chatStore";
 import { pbuiAcceptTool } from "./tools/acceptTool";
 import type { ApprovalLedger } from "./tools/approvalLedger";
+import { AgentEffectGateway, type EffectEnvelope } from "./tools/agentEffectGateway";
 import { pbuiProposeTool } from "./tools/proposeTool";
 import { createConversationTools, type ConversationTools, type ConversationToolsOptions } from "./tools/conversationTools";
 import { createSandboxTools, type SandboxTools, type SandboxToolsOptions } from "./tools/sandboxTools";
@@ -54,6 +55,8 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
   router: VerbRouter<Verb>;
   /** One product-wide authority shared by every conversation and tool factory. */
   approvalLedger?: ApprovalLedger;
+  /** Override the product-wide effect gateway (primarily for offline products/tests). */
+  effectGateway?: AgentEffectGateway;
   /** Prefix for `/api/...`. */
   basePrefix?: string;
   /** Supply one to share it with product code created before the chat. */
@@ -90,20 +93,20 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
    * the per-verb policy, and whether the raw mutation tool is offered.
    * Confirm-policy authority always comes from the product-wide ledger.
    */
-  workbenchTools?: Omit<WorkbenchToolsOptions, "getWorkbench" | "perform" | "senderConversationId" | "approvalLedger">;
+  workbenchTools?: Omit<WorkbenchToolsOptions, "getWorkbench" | "perform" | "senderConversationId" | "effectGateway">;
   /**
    * The agent's conversation tools: whether it may message another agent
    * unassisted (`confirm` by default) and how long a handoff may be.
    * Confirm-policy authority always comes from the product-wide ledger.
    */
-  conversationTools?: Omit<ConversationToolsOptions, "getConversations" | "conversationId" | "perform" | "approvalLedger">;
+  conversationTools?: Omit<ConversationToolsOptions, "getConversations" | "conversationId" | "perform" | "effectGateway">;
   /**
    * The sandbox tools: how bindings resolve for a dry render, limits, and policy.
    * The library and engine usually arrive AFTER construction
    * through `chat.attachSandbox(library, engine)`, for the same reason the
    * workbench does; until then the tools are not offered to the model.
    */
-  sandbox?: Omit<SandboxToolsOptions, "getLibrary" | "getEngine" | "getWorkbench" | "perform" | "vocabulary" | "senderConversationId" | "approvalLedger"> & {
+  sandbox?: Omit<SandboxToolsOptions, "getLibrary" | "getEngine" | "getWorkbench" | "perform" | "vocabulary" | "senderConversationId" | "effectGateway"> & {
     library?: ProgramLibrary;
     engine?: ProgramEngine;
   };
@@ -147,6 +150,22 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   const store = options.store ?? createPbuiChatStore();
   const basePrefix = options.basePrefix ?? "";
   const conversationOptions = options.conversations ?? {};
+  const effectFetch = conversationOptions.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
+  const effectGateway =
+    options.effectGateway ??
+    new AgentEffectGateway({
+      approvalLedger: options.approvalLedger,
+      async report(envelope: EffectEnvelope) {
+        if (!envelope.conversationId) throw new Error("cannot report an effect without a conversation");
+        const response = await effectFetch(`${basePrefix}/api/chat/sessions/${encodeURIComponent(envelope.conversationId)}/effects`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(envelope),
+        });
+        if (!response.ok) throw new Error(`effect report failed: ${response.status}`);
+      },
+    });
 
   /*
    * Queued mentions, per conversation. As one module-level field a mention
@@ -209,7 +228,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       perform,
       ...(options.workbenchTools ?? {}),
       senderConversationId: conversationId,
-      approvalLedger: options.approvalLedger,
+      effectGateway,
     });
     const sandboxTools = createSandboxTools({
       getLibrary: () => library,
@@ -220,7 +239,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       vocabulary,
       ...sandboxOptions,
       senderConversationId: conversationId,
-      approvalLedger: options.approvalLedger,
+      effectGateway,
     });
     /*
      * The conversation tools are the one set that MUST be per session: their
@@ -232,7 +251,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       conversationId,
       perform,
       ...(options.conversationTools ?? {}),
-      approvalLedger: options.approvalLedger,
+      effectGateway,
     });
     built = {
       workbenchTools,
@@ -461,6 +480,8 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     vocabulary,
     registry,
     pbui,
+    /** Product-wide execution, approval, idempotency, and effect trace gateway. */
+    effectGateway,
     /** One conversation's agent tools: the layout undo ring and the program tools. */
     toolsFor,
     /** Route `openInTile` to a workbench's `widget` tiles from now on (null detaches). */

@@ -19,12 +19,16 @@ export interface ApprovalCapability {
   expiresAt: string;
 }
 
-export type ApprovalConsumeResult = "consumed" | "already-used" | "mismatch" | "expired" | "not-found";
+export type ApprovalReserveResult = "reserved" | "already-reserved" | "already-used" | "mismatch" | "expired" | "not-found";
+export type ApprovalFinalizeResult = "finalized" | "already-finalized" | "not-reserved" | "wrong-effect" | "not-found";
+export type ApprovalReleaseResult = "released" | "already-available" | "already-used" | "wrong-effect" | "not-found";
 
 /** One shared authority for every consequential agent effect in a product. */
 export interface ApprovalLedger {
   lookup(proposalId: string): Promise<ApprovalCapability | null>;
-  consume(capability: ApprovalCapability, subject: ApprovalSubject, effectId: string): Promise<ApprovalConsumeResult>;
+  reserve(capability: ApprovalCapability, subject: ApprovalSubject, effectId: string): Promise<ApprovalReserveResult>;
+  finalize(capability: ApprovalCapability, effectId: string): Promise<ApprovalFinalizeResult>;
+  release(capability: ApprovalCapability, effectId: string): Promise<ApprovalReleaseResult>;
 }
 
 export interface ApprovalSubjectInput {
@@ -53,7 +57,11 @@ export function createApprovalSubject(input: ApprovalSubjectInput): ApprovalSubj
 }
 
 export async function digestApprovalSubject(subject: ApprovalSubject): Promise<string> {
-  const bytes = new TextEncoder().encode(canonicalJson(subject as unknown as JsonValue));
+  return digestCanonicalJson(subject as unknown as JsonValue);
+}
+
+export async function digestCanonicalJson(value: JsonValue): Promise<string> {
+  const bytes = new TextEncoder().encode(canonicalJson(value));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -93,7 +101,8 @@ export interface InMemoryApprovalLedgerOptions {
 
 interface LedgerEntry {
   capability: ApprovalCapability;
-  consumedBy: string | null;
+  state: "available" | "reserved" | "consumed";
+  effectId: string | null;
 }
 
 /**
@@ -129,9 +138,10 @@ export class InMemoryApprovalLedger implements ApprovalLedger {
     if (current && current.capability.subjectDigest !== capability.subjectDigest) {
       throw new Error(`approval capability ${id} is already bound to another subject`);
     }
-    if (current?.consumedBy) throw new Error(`approval capability ${id} has already been used`);
+    if (current?.state === "consumed") throw new Error(`approval capability ${id} has already been used`);
+    if (current?.state === "reserved") throw new Error(`approval capability ${id} is reserved by an effect`);
     this.#entries.delete(id);
-    this.#entries.set(id, { capability, consumedBy: null });
+    this.#entries.set(id, { capability, state: "available", effectId: null });
     this.#prune();
     return capability;
   }
@@ -141,20 +151,43 @@ export class InMemoryApprovalLedger implements ApprovalLedger {
     return this.#entries.get(proposalId)?.capability ?? null;
   }
 
-  async consume(capability: ApprovalCapability, subject: ApprovalSubject, effectId: string): Promise<ApprovalConsumeResult> {
+  async reserve(capability: ApprovalCapability, subject: ApprovalSubject, effectId: string): Promise<ApprovalReserveResult> {
     const entry = this.#entries.get(capability.id);
     if (!entry || !sameCapability(entry.capability, capability)) return "not-found";
     if (Date.parse(entry.capability.expiresAt) <= this.#now().getTime()) return "expired";
-    if (entry.consumedBy) return "already-used";
+    if (entry.state === "consumed") return "already-used";
+    if (entry.state === "reserved") return entry.effectId === effectId ? "already-reserved" : "already-used";
     if (entry.capability.subjectDigest !== (await digestApprovalSubject(subject))) return "mismatch";
-    entry.consumedBy = effectId;
-    return "consumed";
+    entry.state = "reserved";
+    entry.effectId = effectId;
+    return "reserved";
+  }
+
+  async finalize(capability: ApprovalCapability, effectId: string): Promise<ApprovalFinalizeResult> {
+    const entry = this.#entries.get(capability.id);
+    if (!entry || !sameCapability(entry.capability, capability)) return "not-found";
+    if (entry.state === "consumed") return entry.effectId === effectId ? "already-finalized" : "wrong-effect";
+    if (entry.state !== "reserved") return "not-reserved";
+    if (entry.effectId !== effectId) return "wrong-effect";
+    entry.state = "consumed";
+    return "finalized";
+  }
+
+  async release(capability: ApprovalCapability, effectId: string): Promise<ApprovalReleaseResult> {
+    const entry = this.#entries.get(capability.id);
+    if (!entry || !sameCapability(entry.capability, capability)) return "not-found";
+    if (entry.state === "consumed") return "already-used";
+    if (entry.state === "available") return "already-available";
+    if (entry.effectId !== effectId) return "wrong-effect";
+    entry.state = "available";
+    entry.effectId = null;
+    return "released";
   }
 
   #prune(): void {
     const now = this.#now().getTime();
     for (const [id, entry] of this.#entries) {
-      if (!entry.consumedBy && Date.parse(entry.capability.expiresAt) <= now) this.#entries.delete(id);
+      if (entry.state === "available" && Date.parse(entry.capability.expiresAt) <= now) this.#entries.delete(id);
     }
     while (this.#entries.size > this.#maxEntries) {
       const oldest = this.#entries.keys().next().value as string | undefined;
@@ -171,16 +204,4 @@ function sameCapability(left: ApprovalCapability, right: ApprovalCapability): bo
     left.issuedAt === right.issuedAt &&
     left.expiresAt === right.expiresAt
   );
-}
-
-export async function consumeApproval(
-  ledger: ApprovalLedger | undefined,
-  proposalId: string,
-  subject: ApprovalSubject,
-  effectId: string,
-): Promise<ApprovalConsumeResult> {
-  if (!ledger) return "not-found";
-  const capability = await ledger.lookup(proposalId);
-  if (!capability) return "not-found";
-  return ledger.consume(capability, subject, effectId);
 }
