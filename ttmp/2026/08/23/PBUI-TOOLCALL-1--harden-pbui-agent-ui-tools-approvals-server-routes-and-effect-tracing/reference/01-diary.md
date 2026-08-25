@@ -13,7 +13,9 @@ Owners:
     - manuel
 RelatedFiles:
     - Path: repo://cmd/pbui-chat/cmds/serve.go
-      Note: Loopback-only development authorization (commit a982f98)
+      Note: |-
+        Loopback-only development authorization (commit a982f98)
+        Persistent sessions/title index CLI flag (commit a34cc68)
     - Path: repo://packages/pbui-chat/demo/src/pbui/vocabulary.test.ts
       Note: Executable demo handoff and trace vocabulary contract (commit 7ecc676)
     - Path: repo://packages/pbui-chat/src/adapters/traceAdapter.ts
@@ -92,12 +94,31 @@ RelatedFiles:
       Note: Rendered live canonical effect envelope inspection
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-server-restart.png
       Note: SQLite server-restart hydration evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-closed.png
+      Note: Rendered explicit closed state
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-open-failed.png
+      Note: Rendered bounded opening timeout and retry UI
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-reopened.png
+      Note: Rendered reopen with transcript
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-retry-recovered.png
+      Note: Rendered recovery after server restart
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-conflict-visible.png
+      Note: Rendered cross-client title conflict without local revert
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-human-synchronized.png
+      Note: Rendered human title at server revision 2
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-offline-queued.png
+      Note: Rendered local-first offline title and retry state
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-retry-synchronized.png
+      Note: Rendered outbox retry success
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-server-restart-persisted.png
+      Note: Rendered SQLite-backed title after server restart
 ExternalSources: []
 Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
 LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -1052,3 +1073,105 @@ A newer rename may arrive while an older PATCH is in flight. The outbox replaces
 ### Technical details
 
 Title PATCH bodies carry `{ title, expectedRevision }`; success increments the server revision, and conflict returns the current title/revision with HTTP 409. Outbox entries carry conversation id, newest title, owner, local monotonic version, and update timestamp. A persisted write is retried automatically after registry restoration.
+
+## Step 13: Exercise lifecycle and title recovery in Chromium
+
+I exercised every user-visible lifecycle/title branch in the embedded Chromium application: synchronized auto and human titles, explicit closed state, reopen with transcript preservation, injected offline rename with persistent queued status, reload retry, cross-client revision conflict, opening timeout while the server was down, and retry after server recovery. This rendered work found three integration defects that unit coverage had not exposed: opening could wait forever, the CLI could not configure the existing SQLite session index, and a rebuilt index could legitimately report a lower title revision than the browser cached.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 11)
+
+**Assistant interpretation:** Treat rendered smoke as an implementation probe: fix any lifecycle/title defect it reveals, add executable regression coverage, rebuild, and repeat until every state recovers correctly.
+
+**Inferred user intent:** User-visible conversation truth must survive real transport failure, offline storage, conflicting clients, page reload, and server restart—not merely mocked fetch responses.
+
+**Additional commits:**
+
+- `53905069ef1ef8015472c7a72e7a89a6bda96b4c` — "fix(pbui-chat): bound conversation opening attempts"
+- `b7ca909ce651ef9deea3e891c5f20a06a0367dc2` — "test(pbui-chat): cover lifecycle opening timeout"
+- `a34cc68daf8133b5e3b3f8b449e7afc373b51c52` — "fix(pbui-chat): expose persistent session index"
+- `13dd824cc4a1fab9d6ed97b77940acd6b58e0465` — "fix(pbui-chat): recover title revisions after index reset"
+
+### What I did
+
+- Observed auto title PATCH `{ title: "inventory overview", expectedRevision: 0 } -> titleRevision: 1`.
+- Renamed through the real conversation object menu and observed revision 1 -> 2.
+- Disconnected the conversation and verified both the tile and conversation list said `closed`, never `opening`.
+- Reopened it and verified the same two-message transcript and title.
+- Aborted PATCH requests in Playwright, renamed locally, and verified `title queued`, `retry title`, and the exact durable localStorage outbox entry.
+- Reloaded while still offline and verified the local title/outbox/status survived.
+- Restored the network, retried, and verified expected revision 2 -> 3 and outbox deletion.
+- Simulated another tab with a direct server PATCH, observed a 409 while local title remained visible, then retried revision 4 -> 5.
+- Stopped the actual server, opened a closed conversation, observed a bounded 10-second failure with Retry/Close, restarted the server, and recovered the existing runtime/transcript.
+- Exposed `--sessions-db` through the demo CLI, ran against SQLite, and verified `persistent desk` at revision 1 before and after process restart.
+- Added timeout and index-reset regression tests and reran full Phase 3 validation.
+
+### Why
+
+A transport library's `connect()` may remain pending while it retries. Without an application deadline, explicit `opening` is still an infinite euphemism. Likewise, server CAS is not durable if the shipped CLI cannot select its SQLite index. Finally, this index is intentionally rebuildable; the browser must treat a 409's current revision as authoritative even when it decreased after index loss.
+
+### What worked
+
+```text
+Rendered closed -> reopened                               PASS
+Rendered server-down opening -> failed after 10000ms      PASS
+Rendered failed -> retry after restart                    PASS
+Rendered offline title + localStorage outbox              PASS
+Rendered reload while offline                             PASS
+Rendered retry -> outbox removed                          PASS
+Rendered cross-client 409 -> local title retained         PASS
+Rendered conflict retry with current revision             PASS
+SQLite sessions/title list before process restart         persistent desk / rev 1
+SQLite sessions/title list after process restart          persistent desk / rev 1
+make protocol-check                                       PASS
+make ci-check                                             PASS
+make gosec                                                PASS, 0 issues / 41 files
+root PBUI typecheck/tests                                  PASS, 12 files / 96
+pbui-chat typecheck/tests/build                            PASS, 24 files / 235
+pbui-chat-demo typecheck/tests/build                       PASS, 1 file / 2
+```
+
+### What didn't work
+
+1. My first server-stop attempt killed the PID captured from a background shell compound command, not the child `pbui-chat` process. `curl` still returned 200, so the apparent successful reopen was invalid evidence. I checked the process table, killed the actual command by exact port arguments, and repeated the test. The real outage then exposed the infinite-opening defect.
+2. `client.connect()` did not reject while reconnecting to an unavailable endpoint; lifecycle remained `opening`. I added a configurable positive `connectTimeoutMs` (10 seconds default), stale-attempt guards, rendered the failure, and added a fake-timer regression.
+3. The first timeout regression attached its rejection assertion only after advancing fake timers. Vitest reported `PromiseRejectionHandledWarning` and an unhandled rejection despite the assertion later passing. I attached `expect(pending).rejects` before advancing time; all 234 tests then passed cleanly.
+4. After a process restart, `/api/chat/sessions` was empty despite SQLite timeline/turn stores. `Options.SessionsDB` already existed, but `pbui-chat serve` had no setting/flag/wiring for it. I added `--sessions-db`, rebuilt, and verified durable title revision across restart.
+5. Testing recovery from a reset in-memory index revealed repeated 409s: the browser only accepted a conflict revision when it was greater than its cached value. Because the session index is rebuildable, revision zero can be authoritative after loss. I changed conflict handling to accept any different server revision and added a 5 -> 0 -> 1 regression. The rendered retry then succeeded.
+6. Playwright's intentionally injected offline and HTTP 409 cases appear as browser resource errors. There were no uncaught application exceptions; the UI surfaced each expected failure and recovered.
+
+### What I learned
+
+- Readiness evidence must include a direct endpoint probe and process identity; a printed PID from a shell grouping is not enough.
+- Application lifecycle deadlines cannot be delegated to a reconnecting transport promise.
+- Revisions are monotonic only within one persisted index lineage. A rebuildable index requires epoch-aware behavior or acceptance of an authoritative lower CAS revision; current behavior safely chooses the latter after an explicit conflict.
+- Durable server configuration has to be reachable from the shipped executable, not merely present in an internal Go options struct.
+
+### What was tricky to build
+
+The rendered sequence intentionally accumulated expected network console errors while testing offline, 409, and server-down behavior. Evidence had to distinguish browser resource failures from uncaught app errors by matching each to an injected condition and confirming the visible queued/failed/retry state. Recovering from index reset also required preserving the local title/outbox while moving only the cached server revision backward.
+
+### What warrants a second pair of eyes
+
+- Consider adding an explicit server-index epoch in a future wire revision; current 409 recovery is safe but infers reset from an authoritative lower revision.
+- Confirm 10 seconds is the desired product opening deadline; it is configurable through registry options.
+- Review whether repeated transport resource errors should be rate-limited by chat-provider during a known server outage.
+
+### What should be done in the future
+
+- Commit and relate the rendered evidence, run `docmgr doctor`, and print the Phase 3 completion slip.
+- Print the Phase 4 start slip before changing workbench or focus code.
+- Begin with a fresh semantic audit of workbench planning/revisions/minimum pane constraints and transient-surface focus paths.
+
+### Code review instructions
+
+1. Compare the closed, failed, retried, offline-title, conflict, and server-restart screenshots.
+2. Review `connectRuntime` deadline/stale-attempt handling and its fake-timer regression.
+3. Run the binary with all three SQLite flags, rename, restart, and compare `/api/chat/sessions` JSON.
+4. Exercise an index reset and verify the retry sends expected revision zero after the 409.
+5. Re-run protocol, CI, GoSec, root/PBUI-chat/demo checks.
+
+### Technical details
+
+The real rendered title sequence was 0 -> 1 (auto), 1 -> 2 (human), 2 -> 3 (offline retry), 3 -> 4 (simulated remote tab), 4 -> 5 (local conflict retry). A deliberately reset session index then returned revision 0 to a browser caching 5; the repaired client retried 0 -> 1. The final SQLite-backed list preserved `persistent desk`, revision 1, and message count 1 across the Go process restart.

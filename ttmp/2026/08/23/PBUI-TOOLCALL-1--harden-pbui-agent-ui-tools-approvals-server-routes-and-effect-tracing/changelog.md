@@ -104,3 +104,13 @@ Phase 3 intervals: explicit runtime lifecycle/retry UI (c5365e6), server title r
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/conversations/registry.ts — Lifecycle/title state machines
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/sessions.go — Title CAS
 
+
+## 2026-08-25
+
+Phase 3 rendered validation complete: lifecycle close/reopen/timeout/retry, offline title outbox/reload/retry, cross-client conflict, index-reset recovery, and SQLite title persistence; fixes 5390506, b7ca909, a34cc68, 13dd824; full CI/security/package checks green.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-open-failed.png — Lifecycle failure evidence
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-server-restart-persisted.png — Durable title evidence
+
