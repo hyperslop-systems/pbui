@@ -22,7 +22,17 @@ type SessionRecord struct {
 	LastActivityAt time.Time `json:"lastActivityAt"`
 	MessageCount   int       `json:"messageCount"`
 	Title          string    `json:"title,omitempty"`
+	TitleRevision  uint64    `json:"titleRevision"`
 }
+
+// TitleRevisionConflict means a client based its rename on stale server state.
+// Current is safe to return so the browser can keep its local title visible
+// and offer an explicit retry against the latest revision.
+type TitleRevisionConflict struct {
+	Current SessionRecord
+}
+
+func (e *TitleRevisionConflict) Error() string { return "conversation title changed on another client" }
 
 // SessionIndex is a list of the sessions this server has seen.
 //
@@ -42,8 +52,8 @@ type SessionIndex interface {
 	Remember(ctx context.Context, id string, at time.Time) error
 	// Touch records activity, counting a message when counted is true.
 	Touch(ctx context.Context, id string, at time.Time, counted bool) error
-	// Retitle sets a session's title. An empty title clears it.
-	Retitle(ctx context.Context, id string, title string) error
+	// Retitle atomically sets a title only at expectedRevision and returns the incremented row.
+	Retitle(ctx context.Context, id string, title string, expectedRevision uint64) (SessionRecord, error)
 	// List returns every session, most recently active first.
 	List(ctx context.Context) ([]SessionRecord, error)
 	Close() error
@@ -95,19 +105,23 @@ func (m *memorySessionIndex) Touch(_ context.Context, id string, at time.Time, c
 	return nil
 }
 
-func (m *memorySessionIndex) Retitle(_ context.Context, id string, title string) error {
+func (m *memorySessionIndex) Retitle(_ context.Context, id string, title string, expectedRevision uint64) (SessionRecord, error) {
 	if id == "" {
-		return errors.New("session id must not be empty")
+		return SessionRecord{}, errors.New("session id must not be empty")
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	record, ok := m.records[id]
 	if !ok {
-		return errors.Errorf("no session %s", id)
+		return SessionRecord{}, errors.Errorf("no session %s", id)
+	}
+	if record.TitleRevision != expectedRevision {
+		return SessionRecord{}, &TitleRevisionConflict{Current: record}
 	}
 	record.Title = strings.TrimSpace(title)
+	record.TitleRevision++
 	m.records[id] = record
-	return nil
+	return record, nil
 }
 
 func (m *memorySessionIndex) List(_ context.Context) ([]SessionRecord, error) {
@@ -143,13 +157,49 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at       TEXT NOT NULL,
   last_activity_at TEXT NOT NULL,
   message_count    INTEGER NOT NULL DEFAULT 0,
-  title            TEXT NOT NULL DEFAULT ''
+  title            TEXT NOT NULL DEFAULT '',
+  title_revision   INTEGER NOT NULL DEFAULT 0
 );`
 	if _, err := db.ExecContext(ctx, schema); err != nil {
 		_ = db.Close()
 		return nil, errors.Wrap(err, "create sessions table")
 	}
+	if err := ensureSessionTitleRevisionColumn(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &sqliteSessionIndex{db: db}, nil
+}
+
+func ensureSessionTitleRevisionColumn(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `PRAGMA table_info(sessions)`)
+	if err != nil {
+		return errors.Wrap(err, "inspect sessions schema")
+	}
+	defer func() { _ = rows.Close() }()
+	found := false
+	for rows.Next() {
+		var cid int
+		var name, columnType string
+		var notNull, primaryKey int
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
+			return errors.Wrap(err, "scan sessions schema")
+		}
+		if name == "title_revision" {
+			found = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(err, "inspect sessions schema")
+	}
+	if found {
+		return nil
+	}
+	if _, err := db.ExecContext(ctx, `ALTER TABLE sessions ADD COLUMN title_revision INTEGER NOT NULL DEFAULT 0`); err != nil {
+		return errors.Wrap(err, "add session title revision")
+	}
+	return nil
 }
 
 func (s *sqliteSessionIndex) Remember(ctx context.Context, id string, at time.Time) error {
@@ -181,27 +231,54 @@ func (s *sqliteSessionIndex) Touch(ctx context.Context, id string, at time.Time,
 	return errors.Wrap(err, "touch session")
 }
 
-func (s *sqliteSessionIndex) Retitle(ctx context.Context, id string, title string) error {
+func (s *sqliteSessionIndex) Retitle(ctx context.Context, id string, title string, expectedRevision uint64) (SessionRecord, error) {
 	if id == "" {
-		return errors.New("session id must not be empty")
+		return SessionRecord{}, errors.New("session id must not be empty")
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE sessions SET title = ? WHERE id = ?`, strings.TrimSpace(title), id)
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE sessions SET title = ?, title_revision = title_revision + 1 WHERE id = ? AND title_revision = ?`,
+		strings.TrimSpace(title), id, expectedRevision)
 	if err != nil {
-		return errors.Wrap(err, "retitle session")
+		return SessionRecord{}, errors.Wrap(err, "retitle session")
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return errors.Wrap(err, "retitle session")
+		return SessionRecord{}, errors.Wrap(err, "retitle session")
 	}
 	if affected == 0 {
-		return errors.Errorf("no session %s", id)
+		current, found, err := s.get(ctx, id)
+		if err != nil {
+			return SessionRecord{}, err
+		}
+		if !found {
+			return SessionRecord{}, errors.Errorf("no session %s", id)
+		}
+		return SessionRecord{}, &TitleRevisionConflict{Current: current}
 	}
-	return nil
+	current, _, err := s.get(ctx, id)
+	return current, err
+}
+
+func (s *sqliteSessionIndex) get(ctx context.Context, id string) (SessionRecord, bool, error) {
+	var record SessionRecord
+	var created, last string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id, created_at, last_activity_at, message_count, title, title_revision FROM sessions WHERE id = ?`, id).
+		Scan(&record.ID, &created, &last, &record.MessageCount, &record.Title, &record.TitleRevision)
+	if errors.Is(err, sql.ErrNoRows) {
+		return SessionRecord{}, false, nil
+	}
+	if err != nil {
+		return SessionRecord{}, false, errors.Wrap(err, "get session")
+	}
+	record.CreatedAt = parseTime(created)
+	record.LastActivityAt = parseTime(last)
+	return record, true, nil
 }
 
 func (s *sqliteSessionIndex) List(ctx context.Context) ([]SessionRecord, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, created_at, last_activity_at, message_count, title FROM sessions`)
+		`SELECT id, created_at, last_activity_at, message_count, title, title_revision FROM sessions`)
 	if err != nil {
 		return nil, errors.Wrap(err, "list sessions")
 	}
@@ -210,7 +287,7 @@ func (s *sqliteSessionIndex) List(ctx context.Context) ([]SessionRecord, error) 
 	for rows.Next() {
 		var record SessionRecord
 		var created, last string
-		if err := rows.Scan(&record.ID, &created, &last, &record.MessageCount, &record.Title); err != nil {
+		if err := rows.Scan(&record.ID, &created, &last, &record.MessageCount, &record.Title, &record.TitleRevision); err != nil {
 			return nil, errors.Wrap(err, "scan session")
 		}
 		record.CreatedAt = parseTime(created)

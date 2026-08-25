@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -495,12 +496,24 @@ func TestSessionTitleIsStoredAndRefusedForUnknownSessions(t *testing.T) {
 	_, ts := newTestServer(t)
 	id := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
 
-	if status := patchJSON(t, ts.URL+"/api/chat/sessions/"+id, map[string]any{"title": "  reorder desk  "}); status != http.StatusOK {
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/"+id, map[string]any{"title": "  reorder desk  ", "expectedRevision": 0}); status != http.StatusOK {
 		t.Fatalf("PATCH title: status %d", status)
 	}
 	listed := listSessions(t, ts)
-	if listed[0].Title != "reorder desk" {
-		t.Errorf("expected the trimmed title, got %q", listed[0].Title)
+	if listed[0].Title != "reorder desk" || listed[0].TitleRevision != 1 {
+		t.Errorf("expected the trimmed title at revision 1, got %+v", listed[0])
+	}
+
+	// A stale retry cannot overwrite the newer title.
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/"+id, map[string]any{"title": "stale", "expectedRevision": 0}); status != http.StatusConflict {
+		t.Fatalf("expected 409 for stale title revision, got %d", status)
+	}
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/"+id, map[string]any{"title": "latest", "expectedRevision": 1}); status != http.StatusOK {
+		t.Fatalf("expected current revision to update, got %d", status)
+	}
+	listed = listSessions(t, ts)
+	if listed[0].Title != "latest" || listed[0].TitleRevision != 2 {
+		t.Errorf("expected latest title at revision 2, got %+v", listed[0])
 	}
 
 	// A session this server never minted is not silently created by a rename.
@@ -540,7 +553,7 @@ func TestSQLiteSessionIndexSurvivesReopening(t *testing.T) {
 	if err := index.Touch(ctx, "s1", at.Add(time.Minute), true); err != nil {
 		t.Fatalf("touch: %v", err)
 	}
-	if err := index.Retitle(ctx, "s1", "kept"); err != nil {
+	if _, err := index.Retitle(ctx, "s1", "kept", 0); err != nil {
 		t.Fatalf("retitle: %v", err)
 	}
 	if err := index.Close(); err != nil {
@@ -556,11 +569,45 @@ func TestSQLiteSessionIndexSurvivesReopening(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if len(records) != 1 || records[0].Title != "kept" || records[0].MessageCount != 1 {
+	if len(records) != 1 || records[0].Title != "kept" || records[0].TitleRevision != 1 || records[0].MessageCount != 1 {
 		t.Fatalf("expected the record to survive, got %+v", records)
 	}
 	if !records[0].LastActivityAt.Equal(at.Add(time.Minute)) {
 		t.Errorf("expected the touched time, got %s", records[0].LastActivityAt)
+	}
+}
+
+func TestSQLiteSessionIndexMigratesLegacyTitleRows(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-sessions.sqlite")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open legacy database: %v", err)
+	}
+	_, err = db.Exec(`CREATE TABLE sessions (
+		id TEXT PRIMARY KEY,
+		created_at TEXT NOT NULL,
+		last_activity_at TEXT NOT NULL,
+		message_count INTEGER NOT NULL DEFAULT 0,
+		title TEXT NOT NULL DEFAULT ''
+	); INSERT INTO sessions (id, created_at, last_activity_at, title) VALUES ('s1', '2026-08-21T00:00:00Z', '2026-08-21T00:00:00Z', 'legacy');`)
+	if err != nil {
+		t.Fatalf("seed legacy database: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	index, err := NewSQLiteSessionIndex(context.Background(), path)
+	if err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	defer func() { _ = index.Close() }()
+	record, err := index.Retitle(context.Background(), "s1", "migrated", 0)
+	if err != nil {
+		t.Fatalf("retitle migrated row: %v", err)
+	}
+	if record.Title != "migrated" || record.TitleRevision != 1 {
+		t.Fatalf("unexpected migrated row: %+v", record)
 	}
 }
 

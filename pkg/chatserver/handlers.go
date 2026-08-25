@@ -2,6 +2,7 @@ package chatserver
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -57,7 +58,8 @@ type listSessionsResponse struct {
 }
 
 type retitleSessionRequest struct {
-	Title string `json:"title"`
+	Title            string `json:"title"`
+	ExpectedRevision uint64 `json:"expectedRevision"`
 }
 
 type acceptedResponse struct {
@@ -161,11 +163,26 @@ func (s *Server) HandleRetitleSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
-	if err := s.sessions.Retitle(r.Context(), string(sid), in.Title); err != nil {
+	record, err := s.sessions.Retitle(r.Context(), string(sid), in.Title, in.ExpectedRevision)
+	if err != nil {
+		var conflict *TitleRevisionConflict
+		if errors.As(err, &conflict) {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"error":         conflict.Error(),
+				"id":            string(sid),
+				"title":         conflict.Current.Title,
+				"titleRevision": conflict.Current.TitleRevision,
+			})
+			return
+		}
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"id": string(sid), "title": strings.TrimSpace(in.Title)})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":            string(sid),
+		"title":         record.Title,
+		"titleRevision": record.TitleRevision,
+	})
 }
 
 // HandleSubmitMessage starts a run. With the scripted engine the refs travel
