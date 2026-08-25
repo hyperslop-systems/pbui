@@ -2,17 +2,33 @@
 Title: Diary
 Ticket: PBUI-TOOLCALL-1
 Status: active
-Topics: [chat, frontend, backend, onboarding]
+Topics:
+    - chat
+    - frontend
+    - backend
+    - onboarding
 DocType: reference
 Intent: long-term
-Owners: [manuel]
-RelatedFiles: []
+Owners:
+    - manuel
+RelatedFiles:
+    - Path: repo://packages/pbui-chat/src/composer/Composer/Composer.tsx
+      Note: Exact conversation draft selection (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/conversations/conversations.test.tsx
+      Note: Cross-conversation and failed-send context regressions (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/createPbuiChat.tsx
+      Note: Request-identity send context and failure cleanup (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/store/chatStore.test.ts
+      Note: Draft isolation/clear/forget regressions (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/store/chatStore.ts
+      Note: Conversation-keyed draft ownership (commit 7b3ccd1)
 ExternalSources: []
-Summary: 'Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.'
+Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
 LastUpdated: 2026-08-23T17:25:00-04:00
-WhatFor: 'Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.'
-WhenToUse: 'When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.'
+WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
+WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 # Diary
 
@@ -233,3 +249,81 @@ The first PBUI file itself was visible, but the shared parent was ambiguous. A n
 ### Technical details
 
 Canonical path: `/ai/2026/08/23-deliveries/PBUI-TOOLCALL-1`.
+
+## Step 4: Isolate conversation drafts and send operations
+
+I began Phase 0 with the two browser-state containment defects that can land independently of server authorization. Composer text and inserted references now belong to explicit conversation ids, while intentionally product-wide inspector, focus, watchlist, table, and tile state remain shared.
+
+Send context is now keyed by the exact `SendMessageRequest` object using a `WeakMap`, not by conversation id. This gives concurrent same-conversation sends distinct identity and guarantees `finally` cleanup when WebSocket or manifest preflight fails before `sendMessageBody` executes.
+
+### Prompt Context
+
+**User prompt (verbatim):** "I guess it's time now to address PBUI-TOOLCALL-1
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Resume the PBUI remediation ticket, account for landed cross-repository prerequisites, and implement its phases in tested commits.
+
+**Inferred user intent:** Move from architecture review into concrete PBUI security and correctness remediation.
+
+**Commit (code):** `7b3ccd1ec5ac647a396f9ae6408fb7338ff2a465` — "fix(pbui-chat): isolate conversation send state"
+
+### What I did
+
+- Replaced the singleton `draft` with `drafts[conversationId]` and explicit draft APIs.
+- Updated Composer and stories to resolve an exact conversation before reading/writing/sending.
+- Added clear/forget semantics scoped to one conversation.
+- Replaced conversation-keyed pending send context with request-identity `WeakMap` state and `try/finally` cleanup.
+- Added draft isolation and failed-preflight regression coverage.
+- Confirmed chat-provider 0.5.0 is already published under npm's `next` tag and PBUI pins that exact version.
+
+### Why
+
+- Two open tiles must never mirror text/reference chips.
+- A failed or concurrent send must not attach one operation's references to another message.
+
+### What worked
+
+```text
+pbui-chat typecheck                 # PASS
+pbui-chat tests                     # 22 files, 211 PASS
+```
+
+### What didn't work
+
+The first typecheck inferred the constant empty draft's `refs` as `{}` and rejected dynamic reference indexing:
+
+```text
+TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'Record<string, Reference<...>> | {}'.
+```
+
+Typing the stable empty value as `ComposerDraft` fixed the selector without a cast or widened store state.
+
+### What I learned
+
+- `sendMessageBody` receives the same request object passed to chat-provider `send`, so object identity provides an operation key without a protocol/API change.
+- npm `latest` remains chat-provider 0.4.2, but exact 0.5.0 is published under `next`; PBUI's exact dependency therefore resolves the hardened runtime.
+
+### What was tricky to build
+
+A per-conversation queue still cannot distinguish two identical concurrent prompts. Request-object identity does, and a `WeakMap` avoids retention after operation completion. The test blocks the mocked send long enough to invoke body construction with that exact object, proving isolation through the real callback seam.
+
+### What warrants a second pair of eyes
+
+- Decide draft persistence/eviction policy before adding durable storage.
+- Review whether forgetting a conversation should call `forgetDraft` directly in the registry integration.
+
+### What should be done in the future
+
+- Implement explicit chatserver principal/session authorization under task `k5uo`.
+- Continue unified approval/effect gateway phases after the security boundary.
+
+### Code review instructions
+
+- Start in `chatStore.ts`, then trace conversation resolution in `Composer.tsx`.
+- Review `sendTo` and `sendMessageBodyFor` together; their shared request object is the invariant.
+- Run `pnpm --filter @hyperslop-systems/pbui-chat typecheck` and `pnpm --filter @hyperslop-systems/pbui-chat test`.
+
+### Technical details
+
+The react-chat Go release failure was diagnosed separately: the repository is `github.com/go-go-golems/react-chat`, but its module declared nonexistent `github.com/go-go-golems/chat-overlay`. Commit `4c7ffae` fixes the module path and PR 13 carries it; the already-pushed invalid v0.0.2 tag should not be moved, so the next valid Go release is v0.0.3.

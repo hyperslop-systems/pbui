@@ -24,3 +24,13 @@ Dry-ran, uploaded, and verified the PBUI guide at /ai/2026/08/23-deliveries/PBUI
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/reference/01-diary.md — Delivery failure/recovery record
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/02-remarkable-delivery.md — Canonical upload and listing evidence
 
+
+## 2026-08-25
+
+Phase 0 browser containment: isolated composer drafts and operation-scoped send context (commit 7b3ccd1)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/createPbuiChat.tsx — Operation-owned refs/focus
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/store/chatStore.ts — Conversation-owned drafts
+
