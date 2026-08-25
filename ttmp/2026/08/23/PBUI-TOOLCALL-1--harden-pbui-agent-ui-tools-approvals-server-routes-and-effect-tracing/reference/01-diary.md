@@ -12,6 +12,8 @@ Intent: long-term
 Owners:
     - manuel
 RelatedFiles:
+    - Path: repo://cmd/pbui-chat/cmds/serve.go
+      Note: Loopback-only development authorization (commit a982f98)
     - Path: repo://packages/pbui-chat/src/composer/Composer/Composer.tsx
       Note: Exact conversation draft selection (commit 7b3ccd1)
     - Path: repo://packages/pbui-chat/src/conversations/conversations.test.tsx
@@ -22,12 +24,21 @@ RelatedFiles:
       Note: Draft isolation/clear/forget regressions (commit 7b3ccd1)
     - Path: repo://packages/pbui-chat/src/store/chatStore.ts
       Note: Conversation-keyed draft ownership (commit 7b3ccd1)
+    - Path: repo://pkg/chatserver/authorization.go
+      Note: Required principal/session policy contract (commit a982f98)
+    - Path: repo://pkg/chatserver/authorization_test.go
+      Note: Cross-principal HTTP and WebSocket regressions (commit a982f98)
+    - Path: repo://pkg/chatserver/handlers.go
+      Note: Ownership claim and list filtering (commit a982f98)
+    - Path: repo://pkg/chatserver/server.go
+      Note: Authorized route and subscribe boundaries (commit a982f98)
 ExternalSources: []
 Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
 LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 # Diary
@@ -327,3 +338,78 @@ A per-conversation queue still cannot distinguish two identical concurrent promp
 ### Technical details
 
 The react-chat Go release failure was diagnosed separately: the repository is `github.com/go-go-golems/react-chat`, but its module declared nonexistent `github.com/go-go-golems/chat-overlay`. Commit `4c7ffae` fixes the module path and PR 13 carries it; the already-pushed invalid v0.0.2 tag should not be moved, so the next valid Go release is v0.0.3.
+
+## Step 5: Fail closed at every chat session boundary
+
+I added a required chatserver authorization contract and applied it before every session operation. HTTP routes now authenticate once and authorize explicit actions, lists are filtered through read policy, creation claims ownership before returning an id, and WebSocket subscriptions reuse the authenticated HTTP principal inside sessionstream's subscribe authorizer.
+
+The built-in permissive policy is explicitly named `DevelopmentAuthorizer`; callers must opt into it, and the demo CLI refuses non-loopback binding while using it. There is no silent unauthenticated server default.
+
+### Prompt Context
+
+**User prompt (verbatim):** "continue
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Continue implementing the next PBUI-TOOLCALL-1 phase without stopping at the browser-state commit.
+
+**Inferred user intent:** Complete the server security boundary and proceed through the remediation plan with tests and bookkeeping.
+
+**Commit (code):** `a982f980a24d88661280a30aff9d5b0efb02448e` — "feat(chatserver): authorize session routes"
+
+### What I did
+
+- Added principal, action, authentication, ownership-claim, list, and session-access contracts.
+- Made `Options.Authorizer` mandatory and fail-closed during construction.
+- Wrapped create/list/read/retitle/send/stop/manifest/result/verb/WS routes.
+- Filtered session lists and installed sessionstream's subscription authorizer.
+- Restricted the development-authorized CLI to loopback hosts.
+- Added unauthenticated, cross-principal, existence-nondisclosure, list-filtering, and WebSocket-denial tests.
+
+### Why
+
+A caller knowing a session UUID must not gain snapshot, mutation, tool-result, trace, or streaming access. Authorization must precede body parsing and domain side effects.
+
+### What worked
+
+- `go test ./... -count=1`: passed.
+- `make lint`: passed with zero issues.
+- `make gosec`: passed with zero issues.
+- PBUI chat typecheck and all 211 tests: passed.
+
+### What didn't work
+
+The first focused Go test invocation failed because `go test`/vet rejected formatting a cleanup function with `%v`:
+
+```text
+pkg/chatserver/authorization_test.go:109:49: (*testing.common).Fatalf format %v arg cleanup is a func value, not called
+```
+
+The assertion now reports boolean presence for the server and cleanup function.
+
+### What I learned
+
+Sessionstream already exposes `WithSubscribeAuthorizer`; the upgraded request context survives into subscribe handling, so PBUI can enforce the same principal without parsing protocol frames itself.
+
+### What was tricky to build
+
+Authorization has two moments for a newly minted UUID: permission to create and atomic policy ownership claim. Claiming before indexing/responding avoids returning an unowned capability. For WebSockets, authenticating only the upgrade is insufficient because each subscribe names a session; both layers are now enforced.
+
+### What warrants a second pair of eyes
+
+- Production authorizers must persist ownership consistently with their identity store; the development implementation intentionally does not model tenancy.
+- Manifest/result policy has explicit actions but executor `ClientID` binding remains a coordinated protocol-v2 task.
+
+### What should be done in the future
+
+Implement the canonical approval ledger and effect gateway, then lifecycle/workbench/focus phases.
+
+### Code review instructions
+
+- Start at `authorization.go`, then inspect wrappers and route matrix in `server.go`.
+- Verify create/list handling in `handlers.go` and subscribe policy in `NewServer`.
+- Run `go test ./... -count=1`, `make lint`, and `make gosec`.
+
+### Technical details
+
+Foreign existing and missing session ids both return `403 forbidden` after successful authentication. Public health and vocabulary endpoints remain outside session authorization by design.

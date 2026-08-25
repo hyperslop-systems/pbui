@@ -34,3 +34,13 @@ Phase 0 browser containment: isolated composer drafts and operation-scoped send 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/createPbuiChat.tsx — Operation-owned refs/focus
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/store/chatStore.ts — Conversation-owned drafts
 
+
+## 2026-08-25
+
+Phase 0 server boundary: required action authorization, ownership claims, filtered lists, and authorized subscriptions (commit a982f98)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/authorization.go — Authorization contract
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/server.go — Route enforcement
+
