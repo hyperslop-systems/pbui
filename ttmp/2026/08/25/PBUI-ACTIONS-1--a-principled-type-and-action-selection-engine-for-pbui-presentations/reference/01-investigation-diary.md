@@ -189,3 +189,76 @@ The sources already expose a useful synthesis: types constrain the candidate set
 - Download commands used `curl -L --fail --silent --show-error`.
 - Text extraction used `pdftotext -layout` to retain page/column context.
 - HTML extraction used `defuddle parse URL --md | fold -w 110 -s` because Defuddle may emit single-line Markdown.
+- Ticket/corpus commit: `5e9f927a70af3e0bfb93a64355efb6cf7594b9cf` — “PBUI-ACTIONS-1: establish action-selection research corpus”.
+
+## Step 3: Derive and exercise the proposed selection kernel
+
+This step turned the repository and literature observations into a concrete semantic design. The report separates classification, discovery, applicability, override, invocation, translation, and execution; it then defines a nominal type graph, independent action rules, immutable context snapshots, explicit scopes and modes, typed translators, deterministic resolution, explanation traces, and execution-only advice.
+
+A dependency-free JavaScript experiment exercises the most consequential rules before production code exists. It confirms inherited action accumulation, subtype-specific override, mode/history-driven explained availability, deterministic advice nesting, and registration-time ambiguity reporting.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 1)
+
+**Assistant interpretation:** Produce both a rigorous intern-facing design and a small executable model that makes its dispatch claims falsifiable.
+
+**Inferred user intent:** Make future implementation start from tested semantics rather than API aesthetics.
+
+### What I did
+
+- Wrote the primary analysis/design/implementation guide with current-state evidence, theoretical foundations, API sketches, ASCII diagrams, pseudocode, decision records, migration examples, phased file guidance, validation rules, tests, performance analysis, risks, and open questions.
+- Created `scripts/01-selection-kernel.mjs` and captured its output in `scripts/01-selection-kernel.output.txt`.
+- Ran the experiment with Node and added assertions for subtype override, review-mode availability, mode activation, absence of unexpected runtime ambiguity, and detection of an intentional registration conflict.
+
+### Why
+
+- The design's key claim is a separation of applicability and specificity; an executable miniature makes accidental registration-order semantics visible.
+- Advice ordering is easy to describe ambiguously, so the experiment records the exact nesting contract.
+
+### What worked
+
+- `image-file` correctly inherited rules from `document` and `file`.
+- The `file.open` rule won over `document.open` for action identity `open` by smaller type distance.
+- Review mode produced `unavailable — review mode is read-only` for delete while making annotate available.
+- Advice executed as `around-enter -> before -> handler -> after -> around-exit`.
+- Two same-action/same-type plugin declarations produced a diagnostic naming both rules.
+
+### What didn't work
+
+- N/A. The experiment executed successfully on the first run. The script was then strengthened with an explicit conflicting-registry demonstration and rerun successfully.
+
+### What I learned
+
+- Action identity must be separate from rule identity: inherited declarations only compete when they implement the same conceptual action.
+- Menu order and override order must remain independent; otherwise a cosmetic reorder changes semantics.
+- Context-driven modes should alter availability, not synthesize virtual subtypes.
+- AOP-style behavior is tractable when the only join point is resolved verb execution and `around` advice receives explicit `proceed`.
+
+### What was tricky to build
+
+- Arbitrary JavaScript predicates cannot provide a computable logical implication relation. The solution is deliberately hybrid: nominal type-vector specificity and declared scope precedence determine override; structured conditions and optional testers determine applicability; testers never establish precedence.
+- Multiple inheritance creates incomparable maxima. The design does not conceal these with array order; it requires a concrete override, explicit declared priority, or an ambiguity diagnostic.
+
+### What warrants a second pair of eyes
+
+- Review the proposed pointwise ordering for multi-subject dispatch versus CLOS-style lexicographic ordering.
+- Review whether Phase 1 should permit multiple inheritance or start with one parent plus later interfaces.
+- Confirm that `hidden` has sufficiently narrow policy reasons and cannot become a convenience for suppressing useful disabled explanations.
+- Verify that execution outcomes can be introduced without losing workbench handlers' current truthful boolean result.
+
+### What should be done in the future
+
+- Before implementation, answer the action-ID namespace and local-callback portability questions in the report's Open Questions section.
+- Keep direct translator edges in the first version; only add path search with explicit costs after concrete use cases exist.
+
+### Code review instructions
+
+- Start with the report's Sections 5–8 for semantic contracts, then Section 14 for phased implementation.
+- Run `node ttmp/2026/08/25/PBUI-ACTIONS-1--a-principled-type-and-action-selection-engine-for-pbui-presentations/scripts/01-selection-kernel.mjs` and compare with the captured output.
+- Cross-check repository claims using the line references in Section 20.
+
+### Technical details
+
+- The report is approximately 66 KB of Markdown and deliberately uses text diagrams rather than renderer-dependent Mermaid.
+- The experiment has no package dependencies and performs assertion-based self-validation.

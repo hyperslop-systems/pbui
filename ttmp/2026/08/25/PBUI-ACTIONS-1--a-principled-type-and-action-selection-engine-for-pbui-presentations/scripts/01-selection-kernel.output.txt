@@ -1,0 +1,116 @@
+SELECTION
+{
+  "actions": [
+    {
+      "id": "open",
+      "label": "Open file",
+      "status": {
+        "kind": "available"
+      },
+      "verb": {
+        "kind": "file.open",
+        "id": "img-7"
+      },
+      "selectedRule": "file.open"
+    },
+    {
+      "id": "delete",
+      "label": "Delete file",
+      "status": {
+        "kind": "unavailable",
+        "because": "review mode is read-only"
+      },
+      "verb": {
+        "kind": "file.delete",
+        "id": "img-7"
+      },
+      "selectedRule": "file.delete"
+    },
+    {
+      "id": "annotate",
+      "label": "Annotate image",
+      "status": {
+        "kind": "available"
+      },
+      "verb": {
+        "kind": "image.annotate",
+        "id": "img-7"
+      },
+      "selectedRule": "image.annotate"
+    }
+  ],
+  "ambiguities": [],
+  "trace": [
+    {
+      "rule": "document.open",
+      "result": "available",
+      "distance": 2,
+      "scope": "global"
+    },
+    {
+      "rule": "file.open",
+      "result": "available",
+      "distance": 1,
+      "scope": "global"
+    },
+    {
+      "rule": "file.delete",
+      "result": "unavailable",
+      "distance": 1,
+      "scope": "editing",
+      "because": "review mode is read-only"
+    },
+    {
+      "rule": "image.annotate",
+      "result": "available",
+      "distance": 0,
+      "scope": "editing"
+    }
+  ]
+}
+
+EXECUTION
+{
+  "verb": {
+    "kind": "file.open",
+    "id": "img-7"
+  },
+  "result": {
+    "changed": true
+  },
+  "executionLog": [
+    [
+      "around-enter",
+      "authorization"
+    ],
+    [
+      "before",
+      "audit"
+    ],
+    [
+      "handler",
+      "file.open"
+    ],
+    [
+      "after",
+      true
+    ],
+    [
+      "around-exit",
+      true
+    ]
+  ]
+}
+
+REGISTRATION DIAGNOSTIC
+{
+  "registrationAmbiguities": [
+    {
+      "key": "inspect@file",
+      "rules": [
+        "plugin-a.inspect",
+        "plugin-b.inspect"
+      ]
+    }
+  ]
+}
