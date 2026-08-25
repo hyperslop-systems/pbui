@@ -82,6 +82,7 @@ func TestSessionRoutesEnforcePrincipalOwnership(t *testing.T) {
 		{http.MethodPost, "/tools/manifest"},
 		{http.MethodPost, "/tools/results"},
 		{http.MethodPost, "/verbs"},
+		{http.MethodPost, "/effects"},
 	}
 	for _, route := range routes {
 		got := request(route.method, "/api/chat/sessions/"+body.SessionID+route.suffix, "bob")

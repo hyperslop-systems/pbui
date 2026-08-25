@@ -119,20 +119,31 @@ describe("AgentEffectGateway", () => {
     );
   });
 
-  it("keeps failed reports in an outbox and marks cached results recorded after flush", async () => {
+  it("persists failed reports across gateway recreation and marks cached results recorded after flush", async () => {
     let available = false;
+    const values = new Map<string, string>();
+    const outboxStorage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => void values.set(key, value),
+      removeItem: (key: string) => void values.delete(key),
+    };
     const report = vi.fn(async () => {
       if (!available) throw new Error("offline");
     });
-    const gateway = new AgentEffectGateway({ report });
+    const gateway = new AgentEffectGateway({ report, outboxStorage });
 
     const result = await gateway.execute(request());
     expect(result.trace).toBe("pending");
     expect(gateway.pendingReports()).toHaveLength(1);
 
+    const restored = new AgentEffectGateway({ report, outboxStorage });
+    expect(restored.pendingReports()).toEqual([result.envelope]);
     available = true;
+    await expect(restored.flushReports()).resolves.toBe(1);
+    expect(restored.pendingReports()).toHaveLength(0);
+    expect(values.size).toBe(0);
+
     await expect(gateway.flushReports()).resolves.toBe(1);
-    expect(gateway.pendingReports()).toHaveLength(0);
     expect(await gateway.execute(request())).toMatchObject({ trace: "recorded", cached: true });
   });
 

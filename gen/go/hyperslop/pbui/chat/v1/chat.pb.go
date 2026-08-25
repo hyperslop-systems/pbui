@@ -284,6 +284,208 @@ func (x *VerbPerformedCommand) GetOutcome() string {
 	return ""
 }
 
+// EffectEnvelope correlates one validated agent invocation with the exact
+// product effect, approval, revisions, and outcome it caused.
+type EffectEnvelope struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	EffectId       string                 `protobuf:"bytes,1,opt,name=effect_id,json=effectId,proto3" json:"effect_id,omitempty"`
+	InvocationKey  string                 `protobuf:"bytes,2,opt,name=invocation_key,json=invocationKey,proto3" json:"invocation_key,omitempty"`
+	Actor          Actor                  `protobuf:"varint,3,opt,name=actor,proto3,enum=hyperslop.pbui.chat.v1.Actor" json:"actor,omitempty"`
+	ConversationId string                 `protobuf:"bytes,4,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	EffectKind     string                 `protobuf:"bytes,5,opt,name=effect_kind,json=effectKind,proto3" json:"effect_kind,omitempty"`
+	EffectScope    string                 `protobuf:"bytes,6,opt,name=effect_scope,json=effectScope,proto3" json:"effect_scope,omitempty"`
+	CanonicalInput *structpb.Value        `protobuf:"bytes,7,opt,name=canonical_input,json=canonicalInput,proto3" json:"canonical_input,omitempty"`
+	InputDigest    string                 `protobuf:"bytes,8,opt,name=input_digest,json=inputDigest,proto3" json:"input_digest,omitempty"`
+	TargetIds      []string               `protobuf:"bytes,9,rep,name=target_ids,json=targetIds,proto3" json:"target_ids,omitempty"`
+	ReferenceKeys  []string               `protobuf:"bytes,10,rep,name=reference_keys,json=referenceKeys,proto3" json:"reference_keys,omitempty"`
+	ApprovalId     string                 `protobuf:"bytes,11,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
+	BeforeRevision string                 `protobuf:"bytes,12,opt,name=before_revision,json=beforeRevision,proto3" json:"before_revision,omitempty"`
+	AfterRevision  string                 `protobuf:"bytes,13,opt,name=after_revision,json=afterRevision,proto3" json:"after_revision,omitempty"`
+	Outcome        string                 `protobuf:"bytes,14,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	OccurredAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *EffectEnvelope) Reset() {
+	*x = EffectEnvelope{}
+	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EffectEnvelope) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EffectEnvelope) ProtoMessage() {}
+
+func (x *EffectEnvelope) ProtoReflect() protoreflect.Message {
+	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EffectEnvelope.ProtoReflect.Descriptor instead.
+func (*EffectEnvelope) Descriptor() ([]byte, []int) {
+	return file_hyperslop_pbui_chat_v1_chat_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *EffectEnvelope) GetEffectId() string {
+	if x != nil {
+		return x.EffectId
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetInvocationKey() string {
+	if x != nil {
+		return x.InvocationKey
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetActor() Actor {
+	if x != nil {
+		return x.Actor
+	}
+	return Actor_ACTOR_UNSPECIFIED
+}
+
+func (x *EffectEnvelope) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetEffectKind() string {
+	if x != nil {
+		return x.EffectKind
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetEffectScope() string {
+	if x != nil {
+		return x.EffectScope
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetCanonicalInput() *structpb.Value {
+	if x != nil {
+		return x.CanonicalInput
+	}
+	return nil
+}
+
+func (x *EffectEnvelope) GetInputDigest() string {
+	if x != nil {
+		return x.InputDigest
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetTargetIds() []string {
+	if x != nil {
+		return x.TargetIds
+	}
+	return nil
+}
+
+func (x *EffectEnvelope) GetReferenceKeys() []string {
+	if x != nil {
+		return x.ReferenceKeys
+	}
+	return nil
+}
+
+func (x *EffectEnvelope) GetApprovalId() string {
+	if x != nil {
+		return x.ApprovalId
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetBeforeRevision() string {
+	if x != nil {
+		return x.BeforeRevision
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetAfterRevision() string {
+	if x != nil {
+		return x.AfterRevision
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *EffectEnvelope) GetOccurredAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.OccurredAt
+	}
+	return nil
+}
+
+type EffectPerformedCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Effect        *EffectEnvelope        `protobuf:"bytes,1,opt,name=effect,proto3" json:"effect,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EffectPerformedCommand) Reset() {
+	*x = EffectPerformedCommand{}
+	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EffectPerformedCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EffectPerformedCommand) ProtoMessage() {}
+
+func (x *EffectPerformedCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EffectPerformedCommand.ProtoReflect.Descriptor instead.
+func (*EffectPerformedCommand) Descriptor() ([]byte, []int) {
+	return file_hyperslop_pbui_chat_v1_chat_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *EffectPerformedCommand) GetEffect() *EffectEnvelope {
+	if x != nil {
+		return x.Effect
+	}
+	return nil
+}
+
 // TraceEntry is the backend event and the durable timeline entity recording
 // one performed verb. The sequence number is assigned server-side per session.
 type TraceEntry struct {
@@ -295,13 +497,14 @@ type TraceEntry struct {
 	Outcome       string                 `protobuf:"bytes,5,opt,name=outcome,proto3" json:"outcome,omitempty"`
 	At            *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=at,proto3" json:"at,omitempty"`
 	ClientSeq     string                 `protobuf:"bytes,7,opt,name=client_seq,json=clientSeq,proto3" json:"client_seq,omitempty"`
+	Effect        *EffectEnvelope        `protobuf:"bytes,8,opt,name=effect,proto3" json:"effect,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TraceEntry) Reset() {
 	*x = TraceEntry{}
-	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[3]
+	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -313,7 +516,7 @@ func (x *TraceEntry) String() string {
 func (*TraceEntry) ProtoMessage() {}
 
 func (x *TraceEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[3]
+	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -326,7 +529,7 @@ func (x *TraceEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TraceEntry.ProtoReflect.Descriptor instead.
 func (*TraceEntry) Descriptor() ([]byte, []int) {
-	return file_hyperslop_pbui_chat_v1_chat_proto_rawDescGZIP(), []int{3}
+	return file_hyperslop_pbui_chat_v1_chat_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TraceEntry) GetSeq() uint64 {
@@ -378,6 +581,13 @@ func (x *TraceEntry) GetClientSeq() string {
 	return ""
 }
 
+func (x *TraceEntry) GetEffect() *EffectEnvelope {
+	if x != nil {
+		return x.Effect
+	}
+	return nil
+}
+
 // WidgetRequestedEvent is the geppetto-side event a backend tool publishes
 // when the model asks for a widget document; the chat plugin turns it into
 // widget-instance events. It is a named message so the schema policy applies
@@ -393,7 +603,7 @@ type WidgetRequestedEvent struct {
 
 func (x *WidgetRequestedEvent) Reset() {
 	*x = WidgetRequestedEvent{}
-	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[4]
+	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -405,7 +615,7 @@ func (x *WidgetRequestedEvent) String() string {
 func (*WidgetRequestedEvent) ProtoMessage() {}
 
 func (x *WidgetRequestedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[4]
+	mi := &file_hyperslop_pbui_chat_v1_chat_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -418,7 +628,7 @@ func (x *WidgetRequestedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WidgetRequestedEvent.ProtoReflect.Descriptor instead.
 func (*WidgetRequestedEvent) Descriptor() ([]byte, []int) {
-	return file_hyperslop_pbui_chat_v1_chat_proto_rawDescGZIP(), []int{4}
+	return file_hyperslop_pbui_chat_v1_chat_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *WidgetRequestedEvent) GetWidgetId() string {
@@ -467,7 +677,30 @@ const file_hyperslop_pbui_chat_v1_chat_proto_rawDesc = "" +
 	"\x05actor\x18\x02 \x01(\x0e2\x1d.hyperslop.pbui.chat.v1.ActorR\x05actor\x12+\n" +
 	"\x04verb\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x04verb\x129\n" +
 	"\x06target\x18\x04 \x01(\v2!.hyperslop.pbui.chat.v1.ReferenceR\x06target\x12\x18\n" +
-	"\aoutcome\x18\x05 \x01(\tR\aoutcome\"\xa0\x02\n" +
+	"\aoutcome\x18\x05 \x01(\tR\aoutcome\"\xe8\x04\n" +
+	"\x0eEffectEnvelope\x12\x1b\n" +
+	"\teffect_id\x18\x01 \x01(\tR\beffectId\x12%\n" +
+	"\x0einvocation_key\x18\x02 \x01(\tR\rinvocationKey\x123\n" +
+	"\x05actor\x18\x03 \x01(\x0e2\x1d.hyperslop.pbui.chat.v1.ActorR\x05actor\x12'\n" +
+	"\x0fconversation_id\x18\x04 \x01(\tR\x0econversationId\x12\x1f\n" +
+	"\veffect_kind\x18\x05 \x01(\tR\n" +
+	"effectKind\x12!\n" +
+	"\feffect_scope\x18\x06 \x01(\tR\veffectScope\x12?\n" +
+	"\x0fcanonical_input\x18\a \x01(\v2\x16.google.protobuf.ValueR\x0ecanonicalInput\x12!\n" +
+	"\finput_digest\x18\b \x01(\tR\vinputDigest\x12\x1d\n" +
+	"\n" +
+	"target_ids\x18\t \x03(\tR\ttargetIds\x12%\n" +
+	"\x0ereference_keys\x18\n" +
+	" \x03(\tR\rreferenceKeys\x12\x1f\n" +
+	"\vapproval_id\x18\v \x01(\tR\n" +
+	"approvalId\x12'\n" +
+	"\x0fbefore_revision\x18\f \x01(\tR\x0ebeforeRevision\x12%\n" +
+	"\x0eafter_revision\x18\r \x01(\tR\rafterRevision\x12\x18\n" +
+	"\aoutcome\x18\x0e \x01(\tR\aoutcome\x12;\n" +
+	"\voccurred_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"occurredAt\"X\n" +
+	"\x16EffectPerformedCommand\x12>\n" +
+	"\x06effect\x18\x01 \x01(\v2&.hyperslop.pbui.chat.v1.EffectEnvelopeR\x06effect\"\xe0\x02\n" +
 	"\n" +
 	"TraceEntry\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x04R\x03seq\x123\n" +
@@ -477,7 +710,8 @@ const file_hyperslop_pbui_chat_v1_chat_proto_rawDesc = "" +
 	"\aoutcome\x18\x05 \x01(\tR\aoutcome\x12*\n" +
 	"\x02at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x1d\n" +
 	"\n" +
-	"client_seq\x18\a \x01(\tR\tclientSeq\"\x94\x01\n" +
+	"client_seq\x18\a \x01(\tR\tclientSeq\x12>\n" +
+	"\x06effect\x18\b \x01(\v2&.hyperslop.pbui.chat.v1.EffectEnvelopeR\x06effect\"\x94\x01\n" +
 	"\x14WidgetRequestedEvent\x12\x1b\n" +
 	"\twidget_id\x18\x01 \x01(\tR\bwidgetId\x12*\n" +
 	"\x11parent_message_id\x18\x02 \x01(\tR\x0fparentMessageId\x123\n" +
@@ -500,33 +734,41 @@ func file_hyperslop_pbui_chat_v1_chat_proto_rawDescGZIP() []byte {
 }
 
 var file_hyperslop_pbui_chat_v1_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_hyperslop_pbui_chat_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_hyperslop_pbui_chat_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_hyperslop_pbui_chat_v1_chat_proto_goTypes = []any{
-	(Actor)(0),                    // 0: hyperslop.pbui.chat.v1.Actor
-	(*Reference)(nil),             // 1: hyperslop.pbui.chat.v1.Reference
-	(*Provenance)(nil),            // 2: hyperslop.pbui.chat.v1.Provenance
-	(*VerbPerformedCommand)(nil),  // 3: hyperslop.pbui.chat.v1.VerbPerformedCommand
-	(*TraceEntry)(nil),            // 4: hyperslop.pbui.chat.v1.TraceEntry
-	(*WidgetRequestedEvent)(nil),  // 5: hyperslop.pbui.chat.v1.WidgetRequestedEvent
-	(*structpb.Struct)(nil),       // 6: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(Actor)(0),                     // 0: hyperslop.pbui.chat.v1.Actor
+	(*Reference)(nil),              // 1: hyperslop.pbui.chat.v1.Reference
+	(*Provenance)(nil),             // 2: hyperslop.pbui.chat.v1.Provenance
+	(*VerbPerformedCommand)(nil),   // 3: hyperslop.pbui.chat.v1.VerbPerformedCommand
+	(*EffectEnvelope)(nil),         // 4: hyperslop.pbui.chat.v1.EffectEnvelope
+	(*EffectPerformedCommand)(nil), // 5: hyperslop.pbui.chat.v1.EffectPerformedCommand
+	(*TraceEntry)(nil),             // 6: hyperslop.pbui.chat.v1.TraceEntry
+	(*WidgetRequestedEvent)(nil),   // 7: hyperslop.pbui.chat.v1.WidgetRequestedEvent
+	(*structpb.Struct)(nil),        // 8: google.protobuf.Struct
+	(*structpb.Value)(nil),         // 9: google.protobuf.Value
+	(*timestamppb.Timestamp)(nil),  // 10: google.protobuf.Timestamp
 }
 var file_hyperslop_pbui_chat_v1_chat_proto_depIdxs = []int32{
-	6,  // 0: hyperslop.pbui.chat.v1.Reference.value:type_name -> google.protobuf.Struct
+	8,  // 0: hyperslop.pbui.chat.v1.Reference.value:type_name -> google.protobuf.Struct
 	2,  // 1: hyperslop.pbui.chat.v1.Reference.provenance:type_name -> hyperslop.pbui.chat.v1.Provenance
 	0,  // 2: hyperslop.pbui.chat.v1.VerbPerformedCommand.actor:type_name -> hyperslop.pbui.chat.v1.Actor
-	6,  // 3: hyperslop.pbui.chat.v1.VerbPerformedCommand.verb:type_name -> google.protobuf.Struct
+	8,  // 3: hyperslop.pbui.chat.v1.VerbPerformedCommand.verb:type_name -> google.protobuf.Struct
 	1,  // 4: hyperslop.pbui.chat.v1.VerbPerformedCommand.target:type_name -> hyperslop.pbui.chat.v1.Reference
-	0,  // 5: hyperslop.pbui.chat.v1.TraceEntry.actor:type_name -> hyperslop.pbui.chat.v1.Actor
-	6,  // 6: hyperslop.pbui.chat.v1.TraceEntry.verb:type_name -> google.protobuf.Struct
-	1,  // 7: hyperslop.pbui.chat.v1.TraceEntry.target:type_name -> hyperslop.pbui.chat.v1.Reference
-	7,  // 8: hyperslop.pbui.chat.v1.TraceEntry.at:type_name -> google.protobuf.Timestamp
-	6,  // 9: hyperslop.pbui.chat.v1.WidgetRequestedEvent.document:type_name -> google.protobuf.Struct
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	0,  // 5: hyperslop.pbui.chat.v1.EffectEnvelope.actor:type_name -> hyperslop.pbui.chat.v1.Actor
+	9,  // 6: hyperslop.pbui.chat.v1.EffectEnvelope.canonical_input:type_name -> google.protobuf.Value
+	10, // 7: hyperslop.pbui.chat.v1.EffectEnvelope.occurred_at:type_name -> google.protobuf.Timestamp
+	4,  // 8: hyperslop.pbui.chat.v1.EffectPerformedCommand.effect:type_name -> hyperslop.pbui.chat.v1.EffectEnvelope
+	0,  // 9: hyperslop.pbui.chat.v1.TraceEntry.actor:type_name -> hyperslop.pbui.chat.v1.Actor
+	8,  // 10: hyperslop.pbui.chat.v1.TraceEntry.verb:type_name -> google.protobuf.Struct
+	1,  // 11: hyperslop.pbui.chat.v1.TraceEntry.target:type_name -> hyperslop.pbui.chat.v1.Reference
+	10, // 12: hyperslop.pbui.chat.v1.TraceEntry.at:type_name -> google.protobuf.Timestamp
+	4,  // 13: hyperslop.pbui.chat.v1.TraceEntry.effect:type_name -> hyperslop.pbui.chat.v1.EffectEnvelope
+	8,  // 14: hyperslop.pbui.chat.v1.WidgetRequestedEvent.document:type_name -> google.protobuf.Struct
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_hyperslop_pbui_chat_v1_chat_proto_init() }
@@ -540,7 +782,7 @@ func file_hyperslop_pbui_chat_v1_chat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hyperslop_pbui_chat_v1_chat_proto_rawDesc), len(file_hyperslop_pbui_chat_v1_chat_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -51,6 +51,46 @@ describe("traceAdapter", () => {
     });
   });
 
+  test("preserves a canonical effect envelope on live and hydrated trace rows", () => {
+    const effectPayload = {
+      seq: "13",
+      actor: "ACTOR_AGENT",
+      verb: { kind: "tile.close" },
+      outcome: "performed",
+      at: "2026-08-25T17:00:00Z",
+      effect: {
+        effectId: "agent-a:tool-1",
+        invocationKey: "agent-a/tool-1",
+        actor: "ACTOR_AGENT",
+        conversationId: "agent-a",
+        effectKind: "tile.close",
+        effectScope: "workbench",
+        canonicalInput: { kind: "tile.close", placementId: "n1" },
+        inputDigest: "a".repeat(64),
+        targetIds: ["n1"],
+        referenceKeys: [],
+        approvalId: "proposal-1",
+        beforeRevision: "r1",
+        afterRevision: "r2",
+        outcome: "performed",
+        occurredAt: "2026-08-25T17:00:00Z",
+      },
+    };
+    expect(traceEntryProps(effectPayload)).toMatchObject({
+      seq: 13,
+      effect: {
+        effectId: "agent-a:tool-1",
+        actor: "agent",
+        canonicalInput: { kind: "tile.close", placementId: "n1" },
+        approvalId: "proposal-1",
+        outcome: "performed",
+      },
+    });
+    expect(traceAdapter.live.project({ type: "ui-event", name: TRACE_UI_EVENT, payload: effectPayload }, context)?.upsert).toEqual(
+      traceAdapter.hydrate.project({ kind: TRACE_SNAPSHOT_KIND, id: "trace-13", payload: effectPayload }, context),
+    );
+  });
+
   test("agent actor, no target, rejected outcome", () => {
     const props = traceEntryProps({ seq: "3", actor: "ACTOR_AGENT", verb: { kind: "openInTile", widgetId: "w1" }, outcome: "rejected:no tile" });
     expect(props).toEqual({

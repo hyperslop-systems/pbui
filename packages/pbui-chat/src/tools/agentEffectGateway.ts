@@ -63,9 +63,17 @@ export interface AgentEffectResult<Value> {
   cached: boolean;
 }
 
+export interface EffectOutboxStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
 export interface AgentEffectGatewayOptions {
   approvalLedger?: ApprovalLedger;
   report?(envelope: EffectEnvelope): Promise<void>;
+  outboxStorage?: EffectOutboxStorage | null;
+  outboxKey?: string;
   now?(): Date;
   maxTerminalEntries?: number;
   terminalTtlMs?: number;
@@ -101,9 +109,12 @@ export class AgentEffectGateway {
   readonly #now: () => Date;
   readonly #maxTerminalEntries: number;
   readonly #terminalTtlMs: number;
+  readonly #outboxStorage: EffectOutboxStorage | null;
+  readonly #outboxKey: string;
   readonly #running = new Map<string, RunningEntry>();
   readonly #terminal = new Map<string, TerminalEntry>();
   readonly #pendingReports = new Map<string, EffectEnvelope>();
+  #outboxError: Error | null = null;
 
   constructor(options: AgentEffectGatewayOptions = {}) {
     this.#approvalLedger = options.approvalLedger;
@@ -111,8 +122,14 @@ export class AgentEffectGateway {
     this.#now = options.now ?? (() => new Date());
     this.#maxTerminalEntries = options.maxTerminalEntries ?? 1_000;
     this.#terminalTtlMs = options.terminalTtlMs ?? 30 * 60_000;
+    this.#outboxStorage = options.outboxStorage ?? null;
+    this.#outboxKey = options.outboxKey ?? "pbui-chat.effect-outbox";
     if (this.#maxTerminalEntries <= 0 || this.#terminalTtlMs <= 0) {
       throw new Error("effect gateway retention limits must be positive");
+    }
+    this.#restoreOutbox();
+    if (this.#pendingReports.size > this.#maxTerminalEntries) {
+      throw new Error(`effect trace outbox has ${this.#pendingReports.size} entries, over the limit ${this.#maxTerminalEntries}`);
     }
   }
 
@@ -171,6 +188,7 @@ export class AgentEffectGateway {
         // Keep the envelope for the next explicit or opportunistic flush.
       }
     }
+    this.#persistOutbox();
     return recorded;
   }
 
@@ -178,8 +196,15 @@ export class AgentEffectGateway {
     return [...this.#pendingReports.values()];
   }
 
+  outboxError(): Error | null {
+    return this.#outboxError;
+  }
+
   async #executeOnce<Value>(request: NormalizedEffectRequest<Value>): Promise<AgentEffectResult<Value>> {
     await this.flushReports();
+    if (this.#reporter && this.#pendingReports.size >= this.#maxTerminalEntries && !this.#pendingReports.has(request.effectId)) {
+      throw new Error(`effect trace outbox is full (${this.#maxTerminalEntries}); refusing an untraceable effect`);
+    }
     const inputDigest = await digestCanonicalJson(request.input);
     let capability: ApprovalCapability | null = null;
     let outcome: Outcome;
@@ -278,10 +303,43 @@ export class AgentEffectGateway {
     try {
       await this.#reporter(envelope);
       this.#pendingReports.delete(envelope.effectId);
+      this.#persistOutbox();
       return "recorded";
     } catch {
       this.#pendingReports.set(envelope.effectId, envelope);
+      this.#persistOutbox();
       return "pending";
+    }
+  }
+
+  #restoreOutbox(): void {
+    if (!this.#outboxStorage) return;
+    const raw = this.#outboxStorage.getItem(this.#outboxKey);
+    if (!raw) return;
+    let values: unknown;
+    try {
+      values = JSON.parse(raw);
+    } catch (error) {
+      throw new Error(`effect trace outbox is corrupt: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (!Array.isArray(values)) throw new Error("effect trace outbox is corrupt: expected an array");
+    for (const value of values) {
+      if (!isEffectEnvelope(value)) throw new Error("effect trace outbox contains an invalid envelope");
+      this.#pendingReports.set(value.effectId, value);
+    }
+  }
+
+  #persistOutbox(): void {
+    if (!this.#outboxStorage) return;
+    try {
+      if (this.#pendingReports.size === 0) {
+        this.#outboxStorage.removeItem(this.#outboxKey);
+      } else {
+        this.#outboxStorage.setItem(this.#outboxKey, JSON.stringify([...this.#pendingReports.values()]));
+      }
+      this.#outboxError = null;
+    } catch (error) {
+      this.#outboxError = error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -327,6 +385,19 @@ function normalizeRequest<Value>(request: AgentEffectRequest<Value>): Normalized
     targetIds: [...new Set((request.targetIds ?? []).map((id) => id.trim()).filter(Boolean))].sort(),
     referenceKeys: [...new Set((request.referenceKeys ?? []).map((key) => key.trim()).filter(Boolean))].sort(),
   };
+}
+
+function isEffectEnvelope(value: unknown): value is EffectEnvelope {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const envelope = value as Partial<EffectEnvelope>;
+  return (
+    typeof envelope.effectId === "string" &&
+    typeof envelope.effectKind === "string" &&
+    typeof envelope.inputDigest === "string" &&
+    typeof envelope.conversationId === "string" &&
+    (envelope.outcome === "performed" || (typeof envelope.outcome === "string" && envelope.outcome.startsWith("rejected:"))) &&
+    typeof envelope.occurredAt === "string"
+  );
 }
 
 function approvalRejection(id: string, kind: string, result: string): string {

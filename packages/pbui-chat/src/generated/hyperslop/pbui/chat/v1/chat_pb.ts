@@ -4,7 +4,7 @@
 
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import type { Timestamp, Value } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_struct, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { JsonObject, Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file hyperslop/pbui/chat/v1/chat.proto.
  */
 export const file_hyperslop_pbui_chat_v1_chat: GenFile = /*@__PURE__*/
-  fileDesc("CiFoeXBlcnNsb3AvcGJ1aS9jaGF0L3YxL2NoYXQucHJvdG8SFmh5cGVyc2xvcC5wYnVpLmNoYXQudjEihQEKCVJlZmVyZW5jZRIMCgR0eXBlGAEgASgJEgoKAmlkGAIgASgJEiYKBXZhbHVlGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBI2Cgpwcm92ZW5hbmNlGAQgASgLMiIuaHlwZXJzbG9wLnBidWkuY2hhdC52MS5Qcm92ZW5hbmNlIkkKClByb3ZlbmFuY2USEgoKbWVzc2FnZV9pZBgBIAEoCRIUCgx0b29sX2NhbGxfaWQYAiABKAkSEQoJd2lkZ2V0X2lkGAMgASgJIsMBChRWZXJiUGVyZm9ybWVkQ29tbWFuZBISCgpjbGllbnRfc2VxGAEgASgJEiwKBWFjdG9yGAIgASgOMh0uaHlwZXJzbG9wLnBidWkuY2hhdC52MS5BY3RvchIlCgR2ZXJiGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIxCgZ0YXJnZXQYBCABKAsyIS5oeXBlcnNsb3AucGJ1aS5jaGF0LnYxLlJlZmVyZW5jZRIPCgdvdXRjb21lGAUgASgJIu4BCgpUcmFjZUVudHJ5EgsKA3NlcRgBIAEoBBIsCgVhY3RvchgCIAEoDjIdLmh5cGVyc2xvcC5wYnVpLmNoYXQudjEuQWN0b3ISJQoEdmVyYhgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSMQoGdGFyZ2V0GAQgASgLMiEuaHlwZXJzbG9wLnBidWkuY2hhdC52MS5SZWZlcmVuY2USDwoHb3V0Y29tZRgFIAEoCRImCgJhdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKY2xpZW50X3NlcRgHIAEoCSJvChRXaWRnZXRSZXF1ZXN0ZWRFdmVudBIRCgl3aWRnZXRfaWQYASABKAkSGQoRcGFyZW50X21lc3NhZ2VfaWQYAiABKAkSKQoIZG9jdW1lbnQYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0KkAKBUFjdG9yEhUKEUFDVE9SX1VOU1BFQ0lGSUVEEAASDwoLQUNUT1JfSFVNQU4QARIPCgtBQ1RPUl9BR0VOVBACQkhaRmdpdGh1Yi5jb20vaHlwZXJzbG9wLXN5c3RlbXMvcGJ1aS9nZW4vZ28vaHlwZXJzbG9wL3BidWkvY2hhdC92MTtjaGF0djFiBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("CiFoeXBlcnNsb3AvcGJ1aS9jaGF0L3YxL2NoYXQucHJvdG8SFmh5cGVyc2xvcC5wYnVpLmNoYXQudjEihQEKCVJlZmVyZW5jZRIMCgR0eXBlGAEgASgJEgoKAmlkGAIgASgJEiYKBXZhbHVlGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBI2Cgpwcm92ZW5hbmNlGAQgASgLMiIuaHlwZXJzbG9wLnBidWkuY2hhdC52MS5Qcm92ZW5hbmNlIkkKClByb3ZlbmFuY2USEgoKbWVzc2FnZV9pZBgBIAEoCRIUCgx0b29sX2NhbGxfaWQYAiABKAkSEQoJd2lkZ2V0X2lkGAMgASgJIsMBChRWZXJiUGVyZm9ybWVkQ29tbWFuZBISCgpjbGllbnRfc2VxGAEgASgJEiwKBWFjdG9yGAIgASgOMh0uaHlwZXJzbG9wLnBidWkuY2hhdC52MS5BY3RvchIlCgR2ZXJiGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIxCgZ0YXJnZXQYBCABKAsyIS5oeXBlcnNsb3AucGJ1aS5jaGF0LnYxLlJlZmVyZW5jZRIPCgdvdXRjb21lGAUgASgJIqgDCg5FZmZlY3RFbnZlbG9wZRIRCgllZmZlY3RfaWQYASABKAkSFgoOaW52b2NhdGlvbl9rZXkYAiABKAkSLAoFYWN0b3IYAyABKA4yHS5oeXBlcnNsb3AucGJ1aS5jaGF0LnYxLkFjdG9yEhcKD2NvbnZlcnNhdGlvbl9pZBgEIAEoCRITCgtlZmZlY3Rfa2luZBgFIAEoCRIUCgxlZmZlY3Rfc2NvcGUYBiABKAkSLwoPY2Fub25pY2FsX2lucHV0GAcgASgLMhYuZ29vZ2xlLnByb3RvYnVmLlZhbHVlEhQKDGlucHV0X2RpZ2VzdBgIIAEoCRISCgp0YXJnZXRfaWRzGAkgAygJEhYKDnJlZmVyZW5jZV9rZXlzGAogAygJEhMKC2FwcHJvdmFsX2lkGAsgASgJEhcKD2JlZm9yZV9yZXZpc2lvbhgMIAEoCRIWCg5hZnRlcl9yZXZpc2lvbhgNIAEoCRIPCgdvdXRjb21lGA4gASgJEi8KC29jY3VycmVkX2F0GA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJQChZFZmZlY3RQZXJmb3JtZWRDb21tYW5kEjYKBmVmZmVjdBgBIAEoCzImLmh5cGVyc2xvcC5wYnVpLmNoYXQudjEuRWZmZWN0RW52ZWxvcGUipgIKClRyYWNlRW50cnkSCwoDc2VxGAEgASgEEiwKBWFjdG9yGAIgASgOMh0uaHlwZXJzbG9wLnBidWkuY2hhdC52MS5BY3RvchIlCgR2ZXJiGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIxCgZ0YXJnZXQYBCABKAsyIS5oeXBlcnNsb3AucGJ1aS5jaGF0LnYxLlJlZmVyZW5jZRIPCgdvdXRjb21lGAUgASgJEiYKAmF0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgpjbGllbnRfc2VxGAcgASgJEjYKBmVmZmVjdBgIIAEoCzImLmh5cGVyc2xvcC5wYnVpLmNoYXQudjEuRWZmZWN0RW52ZWxvcGUibwoUV2lkZ2V0UmVxdWVzdGVkRXZlbnQSEQoJd2lkZ2V0X2lkGAEgASgJEhkKEXBhcmVudF9tZXNzYWdlX2lkGAIgASgJEikKCGRvY3VtZW50GAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCpACgVBY3RvchIVChFBQ1RPUl9VTlNQRUNJRklFRBAAEg8KC0FDVE9SX0hVTUFOEAESDwoLQUNUT1JfQUdFTlQQAkJIWkZnaXRodWIuY29tL2h5cGVyc2xvcC1zeXN0ZW1zL3BidWkvZ2VuL2dvL2h5cGVyc2xvcC9wYnVpL2NoYXQvdjE7Y2hhdHYxYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * Reference is a presentation reference as it travels between the agent
@@ -120,6 +120,113 @@ export const VerbPerformedCommandSchema: GenMessage<VerbPerformedCommand> = /*@_
   messageDesc(file_hyperslop_pbui_chat_v1_chat, 2);
 
 /**
+ * EffectEnvelope correlates one validated agent invocation with the exact
+ * product effect, approval, revisions, and outcome it caused.
+ *
+ * @generated from message hyperslop.pbui.chat.v1.EffectEnvelope
+ */
+export type EffectEnvelope = Message<"hyperslop.pbui.chat.v1.EffectEnvelope"> & {
+  /**
+   * @generated from field: string effect_id = 1;
+   */
+  effectId: string;
+
+  /**
+   * @generated from field: string invocation_key = 2;
+   */
+  invocationKey: string;
+
+  /**
+   * @generated from field: hyperslop.pbui.chat.v1.Actor actor = 3;
+   */
+  actor: Actor;
+
+  /**
+   * @generated from field: string conversation_id = 4;
+   */
+  conversationId: string;
+
+  /**
+   * @generated from field: string effect_kind = 5;
+   */
+  effectKind: string;
+
+  /**
+   * @generated from field: string effect_scope = 6;
+   */
+  effectScope: string;
+
+  /**
+   * @generated from field: google.protobuf.Value canonical_input = 7;
+   */
+  canonicalInput?: Value;
+
+  /**
+   * @generated from field: string input_digest = 8;
+   */
+  inputDigest: string;
+
+  /**
+   * @generated from field: repeated string target_ids = 9;
+   */
+  targetIds: string[];
+
+  /**
+   * @generated from field: repeated string reference_keys = 10;
+   */
+  referenceKeys: string[];
+
+  /**
+   * @generated from field: string approval_id = 11;
+   */
+  approvalId: string;
+
+  /**
+   * @generated from field: string before_revision = 12;
+   */
+  beforeRevision: string;
+
+  /**
+   * @generated from field: string after_revision = 13;
+   */
+  afterRevision: string;
+
+  /**
+   * @generated from field: string outcome = 14;
+   */
+  outcome: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp occurred_at = 15;
+   */
+  occurredAt?: Timestamp;
+};
+
+/**
+ * Describes the message hyperslop.pbui.chat.v1.EffectEnvelope.
+ * Use `create(EffectEnvelopeSchema)` to create a new message.
+ */
+export const EffectEnvelopeSchema: GenMessage<EffectEnvelope> = /*@__PURE__*/
+  messageDesc(file_hyperslop_pbui_chat_v1_chat, 3);
+
+/**
+ * @generated from message hyperslop.pbui.chat.v1.EffectPerformedCommand
+ */
+export type EffectPerformedCommand = Message<"hyperslop.pbui.chat.v1.EffectPerformedCommand"> & {
+  /**
+   * @generated from field: hyperslop.pbui.chat.v1.EffectEnvelope effect = 1;
+   */
+  effect?: EffectEnvelope;
+};
+
+/**
+ * Describes the message hyperslop.pbui.chat.v1.EffectPerformedCommand.
+ * Use `create(EffectPerformedCommandSchema)` to create a new message.
+ */
+export const EffectPerformedCommandSchema: GenMessage<EffectPerformedCommand> = /*@__PURE__*/
+  messageDesc(file_hyperslop_pbui_chat_v1_chat, 4);
+
+/**
  * TraceEntry is the backend event and the durable timeline entity recording
  * one performed verb. The sequence number is assigned server-side per session.
  *
@@ -160,6 +267,11 @@ export type TraceEntry = Message<"hyperslop.pbui.chat.v1.TraceEntry"> & {
    * @generated from field: string client_seq = 7;
    */
   clientSeq: string;
+
+  /**
+   * @generated from field: hyperslop.pbui.chat.v1.EffectEnvelope effect = 8;
+   */
+  effect?: EffectEnvelope;
 };
 
 /**
@@ -167,7 +279,7 @@ export type TraceEntry = Message<"hyperslop.pbui.chat.v1.TraceEntry"> & {
  * Use `create(TraceEntrySchema)` to create a new message.
  */
 export const TraceEntrySchema: GenMessage<TraceEntry> = /*@__PURE__*/
-  messageDesc(file_hyperslop_pbui_chat_v1_chat, 3);
+  messageDesc(file_hyperslop_pbui_chat_v1_chat, 5);
 
 /**
  * WidgetRequestedEvent is the geppetto-side event a backend tool publishes
@@ -199,7 +311,7 @@ export type WidgetRequestedEvent = Message<"hyperslop.pbui.chat.v1.WidgetRequest
  * Use `create(WidgetRequestedEventSchema)` to create a new message.
  */
 export const WidgetRequestedEventSchema: GenMessage<WidgetRequestedEvent> = /*@__PURE__*/
-  messageDesc(file_hyperslop_pbui_chat_v1_chat, 4);
+  messageDesc(file_hyperslop_pbui_chat_v1_chat, 6);
 
 /**
  * Actor distinguishes verbs performed by a person from verbs the router

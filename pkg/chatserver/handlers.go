@@ -351,6 +351,30 @@ func (s *Server) HandleVerbPerformed(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "recorded"})
 }
 
+// HandleEffectPerformed records one canonical agent effect outcome.
+func (s *Server) HandleEffectPerformed(w http.ResponseWriter, r *http.Request) {
+	sid := sessionIDFrom(r)
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad request")
+		return
+	}
+	cmd, err := pbuichat.EffectCommandFromJSON(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if cmd.GetEffect().GetConversationId() != string(sid) {
+		writeError(w, http.StatusBadRequest, "effect conversation does not match session")
+		return
+	}
+	if err := s.hub.Submit(r.Context(), sid, pbuichat.CommandEffectPerformed, cmd); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "effect_recorded"})
+}
+
 // HandleWS upgrades to the sessionstream websocket transport.
 func (s *Server) HandleWS(w http.ResponseWriter, r *http.Request) {
 	s.ws.ServeHTTP(w, r)

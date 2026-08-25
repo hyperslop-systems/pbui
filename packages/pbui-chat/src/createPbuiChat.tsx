@@ -155,6 +155,8 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     options.effectGateway ??
     new AgentEffectGateway({
       approvalLedger: options.approvalLedger,
+      outboxStorage: typeof window !== "undefined" ? window.localStorage : null,
+      outboxKey: `${conversationOptions.key ?? "pbui-chat.conversations"}.effect-outbox`,
       async report(envelope: EffectEnvelope) {
         if (!envelope.conversationId) throw new Error("cannot report an effect without a conversation");
         const response = await effectFetch(`${basePrefix}/api/chat/sessions/${encodeURIComponent(envelope.conversationId)}/effects`, {

@@ -243,6 +243,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/manifest", s.requireSession(SessionManifestWrite, s.HandleToolManifest))
 	mux.HandleFunc("POST /api/chat/sessions/{id}/tools/results", s.requireSession(SessionResultWrite, s.HandleToolResult))
 	mux.HandleFunc("POST /api/chat/sessions/{id}/verbs", s.requireSession(SessionVerbWrite, s.HandleVerbPerformed))
+	mux.HandleFunc("POST /api/chat/sessions/{id}/effects", s.requireSession(SessionEffectWrite, s.HandleEffectPerformed))
 	mux.HandleFunc("GET /api/chat/ws", s.authenticate(s.HandleWS))
 }
 

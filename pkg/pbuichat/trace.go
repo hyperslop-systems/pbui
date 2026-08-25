@@ -11,17 +11,19 @@ import (
 	chatv1 "github.com/hyperslop-systems/pbui/gen/go/hyperslop/pbui/chat/v1"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Wire names for the verb trace.
 const (
-	CommandVerbPerformed  = "PbuiVerbPerformed"
-	EventVerbRecorded     = "PbuiVerbRecorded"
-	UIEventTraceEntry     = "PbuiTraceEntryUpsert"
-	TimelineEntityTrace   = "PbuiTraceEntry"
-	TraceEntryIDPrefix    = "trace-"
-	traceOutcomePerformed = "performed"
+	CommandVerbPerformed   = "PbuiVerbPerformed"
+	CommandEffectPerformed = "PbuiEffectPerformed"
+	EventVerbRecorded      = "PbuiVerbRecorded"
+	UIEventTraceEntry      = "PbuiTraceEntryUpsert"
+	TimelineEntityTrace    = "PbuiTraceEntry"
+	TraceEntryIDPrefix     = "trace-"
+	traceOutcomePerformed  = "performed"
 )
 
 // traceStore keeps the recent trace per session in memory so the pbui_trace
@@ -32,6 +34,7 @@ type traceStore struct {
 	keep     int
 	seq      map[sessionstream.SessionId]uint64
 	entries  map[sessionstream.SessionId][]*chatv1.TraceEntry
+	effects  map[sessionstream.SessionId]map[string]*chatv1.TraceEntry
 	hydrated map[sessionstream.SessionId]bool
 }
 
@@ -43,6 +46,7 @@ func newTraceStore(keep int) *traceStore {
 		keep:     keep,
 		seq:      map[sessionstream.SessionId]uint64{},
 		entries:  map[sessionstream.SessionId][]*chatv1.TraceEntry{},
+		effects:  map[sessionstream.SessionId]map[string]*chatv1.TraceEntry{},
 		hydrated: map[sessionstream.SessionId]bool{},
 	}
 }
@@ -79,6 +83,13 @@ func (s *traceStore) hydrate(sid sessionstream.SessionId, persisted []*chatv1.Tr
 		list = list[len(list)-s.keep:]
 	}
 	s.entries[sid] = list
+	effects := make(map[string]*chatv1.TraceEntry)
+	for _, entry := range list {
+		if id := entry.GetEffect().GetEffectId(); id != "" {
+			effects[id] = entry
+		}
+	}
+	s.effects[sid] = effects
 	s.hydrated[sid] = true
 }
 
@@ -93,9 +104,51 @@ func (s *traceStore) add(sid sessionstream.SessionId, entry *chatv1.TraceEntry) 
 	defer s.mu.Unlock()
 	list := append(s.entries[sid], entry)
 	if len(list) > s.keep {
+		dropped := list[:len(list)-s.keep]
+		for _, old := range dropped {
+			delete(s.effects[sid], old.GetEffect().GetEffectId())
+		}
 		list = list[len(list)-s.keep:]
 	}
 	s.entries[sid] = list
+}
+
+func (s *traceStore) addEffect(sid sessionstream.SessionId, effect *chatv1.EffectEnvelope, at time.Time) (*chatv1.TraceEntry, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.effects[sid] == nil {
+		s.effects[sid] = map[string]*chatv1.TraceEntry{}
+	}
+	if existing := s.effects[sid][effect.GetEffectId()]; existing != nil {
+		if !proto.Equal(existing.GetEffect(), effect) {
+			return nil, false, fmt.Errorf("effect id %q was reused with a different envelope", effect.GetEffectId())
+		}
+		return proto.Clone(existing).(*chatv1.TraceEntry), false, nil
+	}
+	s.seq[sid]++
+	verb, err := structpb.NewStruct(map[string]any{"kind": effect.GetEffectKind()})
+	if err != nil {
+		return nil, false, err
+	}
+	entry := &chatv1.TraceEntry{
+		Seq:     s.seq[sid],
+		Actor:   effect.GetActor(),
+		Verb:    verb,
+		Outcome: effect.GetOutcome(),
+		At:      timestamppb.New(at.UTC()),
+		Effect:  proto.Clone(effect).(*chatv1.EffectEnvelope),
+	}
+	list := append(s.entries[sid], entry)
+	if len(list) > s.keep {
+		dropped := list[:len(list)-s.keep]
+		for _, old := range dropped {
+			delete(s.effects[sid], old.GetEffect().GetEffectId())
+		}
+		list = list[len(list)-s.keep:]
+	}
+	s.entries[sid] = list
+	s.effects[sid][effect.GetEffectId()] = entry
+	return proto.Clone(entry).(*chatv1.TraceEntry), true, nil
 }
 
 func (s *traceStore) list(sid sessionstream.SessionId, sinceSeq uint64, limit int) []*chatv1.TraceEntry {
@@ -149,12 +202,38 @@ func (p *Plugin) HandleVerbPerformed(ctx context.Context, cmd sessionstream.Comm
 	return pub.Publish(ctx, sessionstream.Event{Name: EventVerbRecorded, SessionId: cmd.SessionId, Payload: entry})
 }
 
-// Install registers the trace command on the hub. Call it once per hub.
+// HandleEffectPerformed records one canonical gateway outcome idempotently.
+func (p *Plugin) HandleEffectPerformed(ctx context.Context, cmd sessionstream.Command, _ *sessionstream.Session, pub sessionstream.EventPublisher) error {
+	if err := p.HydrateTrace(ctx, cmd.SessionId); err != nil {
+		return errors.Wrap(err, "hydrate trace")
+	}
+	payload, ok := cmd.Payload.(*chatv1.EffectPerformedCommand)
+	if !ok || payload == nil || payload.GetEffect() == nil {
+		return fmt.Errorf("%s payload must contain an effect", CommandEffectPerformed)
+	}
+	effect := payload.GetEffect()
+	if effect.GetConversationId() != string(cmd.SessionId) {
+		return fmt.Errorf("effect conversation %q does not match session %q", effect.GetConversationId(), cmd.SessionId)
+	}
+	entry, created, err := p.trace.addEffect(cmd.SessionId, effect, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+	if !created {
+		return nil
+	}
+	return pub.Publish(ctx, sessionstream.Event{Name: EventVerbRecorded, SessionId: cmd.SessionId, Payload: entry})
+}
+
+// Install registers the trace commands on the hub. Call it once per hub.
 func (p *Plugin) Install(hub *sessionstream.Hub) error {
 	if hub == nil {
 		return errors.New("hub is nil")
 	}
-	return hub.RegisterCommand(CommandVerbPerformed, p.HandleVerbPerformed)
+	if err := hub.RegisterCommand(CommandVerbPerformed, p.HandleVerbPerformed); err != nil {
+		return err
+	}
+	return hub.RegisterCommand(CommandEffectPerformed, p.HandleEffectPerformed)
 }
 
 // Trace returns recent entries for a session (what pbui_trace reads).

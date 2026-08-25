@@ -3,6 +3,8 @@ package chatserver
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -148,6 +150,43 @@ func TestAttachmentsArePreservedInScriptedMessages(t *testing.T) {
 		}
 	}
 	t.Fatal("user message did not retain attachment image-1")
+}
+
+func TestEffectTraceIsRecordedDurablyAndIdempotently(t *testing.T) {
+	_, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	canonical := []byte(`{"placementId":"n1"}`)
+	digest := sha256.Sum256(canonical)
+	body := map[string]any{
+		"effectId": "effect-1", "invocationKey": sid + "/tool-1", "actor": "agent", "conversationId": sid,
+		"effectKind": "tile.close", "effectScope": "workbench", "canonicalInput": map[string]any{"placementId": "n1"},
+		"inputDigest": hex.EncodeToString(digest[:]), "targetIds": []string{"n1"}, "referenceKeys": []string{},
+		"beforeRevision": "r1", "afterRevision": "r2", "outcome": "performed", "occurredAt": "2026-08-25T17:00:00.000Z",
+	}
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/effects", body)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/effects", body)
+	time.Sleep(20 * time.Millisecond)
+
+	var effectEntries int
+	for _, entity := range snapshot(t, ts, sid).Entities {
+		if entity.Kind == pbuichat.TimelineEntityTrace && strings.Contains(string(entity.Payload), `"effectId":"effect-1"`) {
+			effectEntries++
+		}
+	}
+	if effectEntries != 1 {
+		t.Fatalf("effect trace entries = %d, want 1", effectEntries)
+	}
+
+	body["conversationId"] = "other-session"
+	raw, _ := json.Marshal(body)
+	response, err := http.Post(ts.URL+"/api/chat/sessions/"+sid+"/effects", "application/json", bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("mismatched effect status = %d", response.StatusCode)
+	}
 }
 
 func TestVerbTraceIsRecordedAndReadable(t *testing.T) {

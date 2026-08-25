@@ -1,3 +1,4 @@
+import type { JsonValue } from "@bufbuild/protobuf";
 import type { PresentationReference, PresentationValues } from "@hyperslop-systems/pbui";
 
 /**
@@ -163,6 +164,24 @@ export interface ChatValues {
 }
 
 /** The props of a `trace_entry` timeline entity (see adapters/traceAdapter). */
+export interface EffectTraceEnvelope {
+  effectId: string;
+  invocationKey?: string;
+  actor: Actor;
+  conversationId: string;
+  effectKind: string;
+  effectScope: "workbench" | "sandbox" | "conversation" | "server";
+  canonicalInput: JsonValue;
+  inputDigest: string;
+  targetIds: string[];
+  referenceKeys: string[];
+  approvalId?: string;
+  beforeRevision?: string;
+  afterRevision?: string;
+  outcome: string;
+  occurredAt: string;
+}
+
 export interface TraceEntryProps {
   seq: number;
   actor: Actor;
@@ -171,6 +190,7 @@ export interface TraceEntryProps {
   outcome: string;
   at: string;
   clientSeq?: string;
+  effect?: EffectTraceEnvelope;
 }
 
 /** What `sendMessageBody` sends to `POST …/messages`. An alias so it satisfies chat-provider's `Record<string, unknown>` body type. */

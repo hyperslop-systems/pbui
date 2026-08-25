@@ -23,6 +23,7 @@ export type {
   AgentEffectRequest,
   AgentEffectResult,
   EffectEnvelope,
+  EffectOutboxStorage,
   EffectPerformResult,
   EffectPolicy,
 } from "./agentEffectGateway";

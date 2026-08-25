@@ -28,6 +28,7 @@ const (
 	SessionManifestWrite SessionAction = "manifest-write"
 	SessionResultWrite   SessionAction = "tool-result-write"
 	SessionVerbWrite     SessionAction = "verb-write"
+	SessionEffectWrite   SessionAction = "effect-write"
 	SessionSubscribe     SessionAction = "subscribe"
 )
 
