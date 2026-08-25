@@ -124,3 +124,13 @@ Phase 4 intervals: strict revision-bound atomic workbench plans (27b0025), share
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/workbenchTools.ts — Atomic workbench gateway
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/src/focus.ts — Focus restoration
 
+
+## 2026-08-25
+
+Phase 4 rendered correction: exact launcher invoker restoration, divider-aware pane geometry and ARIA bounds, and shipped atomic workbench smoke scenario (01452a8); captured ObjectMenu, pane, and agent refusal screenshots.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-workbench/src/components/Launcher/Launcher.tsx — Launcher focus correction
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-workbench/src/verbs.ts — Rendered geometry correction
+

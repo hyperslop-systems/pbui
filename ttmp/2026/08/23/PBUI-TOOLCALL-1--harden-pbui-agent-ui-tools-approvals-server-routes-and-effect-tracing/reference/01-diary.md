@@ -64,10 +64,16 @@ RelatedFiles:
         Revision-bound atomic gateway batches (commit 27b0025)
     - Path: repo://packages/pbui-chat/src/types.ts
       Note: Public effect correlation trace fields (commit 64b5f9d)
+    - Path: repo://packages/pbui-workbench/src/components/Launcher/Launcher.tsx
+      Note: Synchronous exact launcher invoker capture (commit 01452a8)
+    - Path: repo://packages/pbui-workbench/src/components/SplitPane/SplitPane.tsx
+      Note: Divider-aware pointer and accessible dynamic bounds (commit 01452a8)
     - Path: repo://packages/pbui-workbench/src/createWorkbench.tsx
       Note: Shadow preflight and atomic plan commit (commit 27b0025)
     - Path: repo://packages/pbui-workbench/src/verbs.ts
-      Note: Strict verbs and rendered pane constraints (commits 27b0025, ceaea2a)
+      Note: |-
+        Strict verbs and rendered pane constraints (commits 27b0025, ceaea2a)
+        Divider-aware pane geometry across all workbench paths (commit 01452a8)
     - Path: repo://pkg/chatserver/authorization.go
       Note: Required principal/session policy contract (commit a982f98)
     - Path: repo://pkg/chatserver/authorization_test.go
@@ -77,6 +83,8 @@ RelatedFiles:
         Ownership claim and list filtering (commit a982f98)
         Authenticated effect submission handler (commit 56a01b6)
         Version-aware title PATCH conflict response (commit 5916dc0)
+    - Path: repo://pkg/chatserver/scripted/scenarios.go
+      Note: Rendered revision-bound atomic workbench scenario (commit 01452a8)
     - Path: repo://pkg/chatserver/server.go
       Note: Authorized route and subscribe boundaries (commit a982f98)
     - Path: repo://pkg/chatserver/sessions.go
@@ -123,12 +131,19 @@ RelatedFiles:
       Note: Rendered outbox retry success
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-server-restart-persisted.png
       Note: Rendered SQLite-backed title after server restart
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase4-agent-atomic-split-and-refusal.png
+      Note: Rendered agent atomic split and refusal evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase4-object-menu-action-focus.png
+      Note: Rendered ObjectMenu action and focus evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase4-rendered-pane-minimum.png
+      Note: Rendered pane minimum evidence
 ExternalSources: []
 Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
 LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -1281,3 +1296,118 @@ The workbench plan has two classes of state: durable protobuf document mutations
 ### Technical details
 
 A plan stores the exact immutable base document, ordered verbs, aggregated protocol mutations, and final browser-local shell state. `applyPlan` refuses if document identity changed. Pane ratio bounds are `max(minFraction, minPx/renderedAxis)` through `1-min`; a split is refused when the lower bound exceeds 0.5. Focus return queues one microtask after unmount, ignores body, and yields to an already-focused transient surface.
+
+## Step 15: Let rendered evidence correct focus and pane geometry
+
+The first Phase 4 Chromium pass did what it was supposed to do: it disproved two unit-green assumptions. Launcher Escape returned focus to `<main>` rather than the toolbar button, because Dialog mounted after another shell update had already moved focus. Keyboard Home on a 618 px split produced a 236 px pane despite a 240 px minimum, because the ratio used the full container width while CSS fractions divide only the 608 px remaining after the 10 px divider. I fixed both, reran package tests, rebuilt the embedded app, and repeated the checks with actual browser geometry.
+
+### Prompt Context
+
+**User prompt (verbatim):** `phase 4-5, budget 1M, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill) [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory.`
+
+**Continuation prompt (verbatim):** `Continue working toward the active thread goal. ... Avoid repeating work that is already done. Choose the next concrete action toward the objective.`
+
+**Assistant interpretation:** Resume at the exact unfinished rendered Phase 4 gate, treat browser measurements as acceptance evidence rather than ceremony, fix every discrepancy, and preserve coherent implementation/diary commits before moving to Phase 5.
+
+**Inferred user intent:** Phase 4 is complete only if real controls return to their real invokers and real CSS tracks honor the declared pane minimum; tests that merely model those claims are insufficient.
+
+**Commit:** `01452a84be5feb2a3a89fbb619dd8bab1e497516` — "fix(pbui-workbench): honor rendered divider and launcher focus"
+
+### What I did
+
+- Captured the launcher invoker synchronously from the workbench store's closed-to-open transition, before React mounts Dialog or another shell effect can move focus.
+- Passed the exact invoker through `WorkbenchLauncher -> LauncherModal -> LauncherShell -> Dialog`.
+- Added a launcher integration regression proving Escape restores the exact opening control.
+- Changed pane calculations to use the distributable axis after subtracting the measured divider track.
+- Measured an existing divider directly and otherwise read the inherited `--pbui-space-4` token, with a documented 10 px headless fallback.
+- Applied divider-aware geometry to prospective splits, resize bounds, nested layout validation, and workspace construction.
+- Corrected pointer coordinates to account for the divider center and distributable axis.
+- Added ResizeObserver/window-resize refresh of separator bounds and exposed the actual pixel-derived limits through `aria-valuemin`/`aria-valuemax`.
+- Added the discoverable scripted `arrange workbench` scenario: it calls `workbench_describe`, reuses its revision/placement id, calls one atomic `workbench_perform`, and says the browser's exact refusal aloud.
+- Exercised one successful agent split followed by the same request on a 304 px pane; the second request visibly reported zero applied changes and `too small to split side by side`.
+- Captured rendered evidence:
+  - `various/phase4-object-menu-action-focus.png`
+  - `various/phase4-rendered-pane-minimum.png`
+  - `various/phase4-agent-atomic-split-and-refusal.png`
+
+### Commands run
+
+```text
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui typecheck
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui test
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui build
+pnpm --filter @hyperslop-systems/pbui-workbench typecheck
+pnpm --filter @hyperslop-systems/pbui-workbench test
+pnpm --filter @hyperslop-systems/pbui-workbench build
+pnpm --filter @hyperslop-systems/pbui-chat typecheck
+pnpm --filter @hyperslop-systems/pbui-chat test
+GOWORK=off go test ./pkg/chatserver/... ./pkg/pbuichat -count=1
+make chat-build
+./bin/pbui-chat serve --port 18092 --timeline-db /tmp/pbui-phase4-timeline.db --turns-db /tmp/pbui-phase4-turns.db --sessions-db /tmp/pbui-phase4-sessions.db
+git diff --check
+```
+
+The browser sequence used launcher click/Escape/close, composer Ctrl+K/Escape, product right-click/Escape/click-away/Inspect, chrome split, separator Home, real pointer drag, and two real `arrange workbench` turns through the frontend-tool bridge.
+
+### What worked
+
+```text
+root PBUI typecheck/tests/build                 12 files / 102 PASS
+pbui-workbench typecheck/tests/build            9 files / 125 PASS
+pbui-chat typecheck/tests                       24 files / 239 PASS
+focused Go tests                                PASS
+pre-commit GOWORK=off go test ./...              PASS
+pre-commit golangci-lint/logcopter/glazed-lint  PASS / zero issues
+launcher toolbar click -> Escape                search input -> exact toolbar button
+composer Ctrl+K -> Escape                       search input -> exact composer textarea
+ObjectMenu Escape/click-away/Inspect             exact product invoker restored
+keyboard Home on 618 px split                   aria 39; panes 239.98 / 368.00 px
+pointer drag to far edge                        aria max 61; panes 367.99 / 240.00 px
+agent first arrange request                     one atomic batch, five tiles, one agent trace
+agent repeated request on 304 px tile           zero changes; actionable too-small refusal
+```
+
+### What didn't work
+
+1. Initial rendered launcher Escape focused `<main>`, not `Ctrl+K · launcher`. Generic Dialog capture at mount was too late for this external-store transition. Capturing in the synchronous launcher-open store notification fixed click and keyboard invokers without putting DOM nodes into serializable workbench state.
+2. Initial rendered keyboard Home produced pane widths `236 / 372` for a declared 240 px minimum. CSS grid allocates fractional tracks after subtracting its auto divider, while JavaScript divided by the full 618 px. Subtracting the measured 10 px divider produced `239.98 / 368.00` (subpixel rendering of the exact 240 px bound).
+3. The first launcher regression used a raw `<button>` and `test/no-raw-controls.test.ts` rejected it: `components/Launcher/Launcher.test.tsx:46 — use Button or IconButton from @hyperslop-systems/pbui`. I changed the fixture to the design-system `Button`.
+4. After making divider geometry honest, three old expectations failed (`0.4/0.6`, `40/60`, pointer `60`). The correct limits over 590 distributable pixels are `240/590 = 0.406779...` and `0.593220...`, announced as 41/59. I changed the tests to assert that calculation and the divider-aware pointer geometry.
+5. The keyboard ARIA-bound test initially still read 10/90 because it mocked geometry after the layout effect. Dispatching the same resize notification production listens for refreshed the derived bounds and proved 41/59.
+6. The accumulated browser console contained expected WebSocket 1006 errors from deliberately killing and rebuilding the server during earlier lifecycle and bundle passes. A fresh stable-tab console audit remains part of final validation; these historical messages are not treated as a clean-console result.
+
+### What I learned
+
+- Focus capture belongs at the state transition that opens a transient surface when an external store participates; mount-time capture is the generic fallback, not always the earliest truthful point.
+- A CSS grid ratio applies to free track space, not necessarily the element's border-box axis. The separator is geometry, not decoration.
+- Accessibility range metadata must report the same dynamic constraints keyboard and pointer handlers enforce; fixed 10/90 values became false once pixel minima existed.
+- A scripted product scenario is valuable executable documentation: one phrase now proves description-before-mutation, revision binding, one atomic effect trace, and actionable refusal in the shipped demo.
+
+### What was tricky to build
+
+The launcher return target must remain ephemeral and exact without contaminating workbench state with an `HTMLElement`; a ref populated by the synchronous subscription is early enough and remains outside serialization/shadow planning. Divider geometry has three contexts: a rendered existing split with a measurable divider, a prospective split whose divider does not exist yet, and headless planning with no geometry. Direct measurement, the inherited CSS token, and a documented fallback cover those contexts in that order.
+
+### What warrants a second pair of eyes
+
+- Confirm that custom themes always leave `--pbui-space-4` parseable as a pixel value; rendered existing splits do not depend on it, but prospective splits do.
+- Review whether `aria-valuemin/max` should expose rounded whole percentages or a more precise value; current values match `aria-valuenow` granularity.
+- Review the demo scenario's choice of the first described tile; it is deterministic and intentionally small, but it is demonstration policy rather than core runtime policy.
+
+### What should be done next
+
+- Commit and relate the rendered screenshots and this diary interval.
+- Run a fresh stable-tab console/network audit and any remaining focus nesting smoke.
+- Run the complete Phase 4 validation matrix, inspect repository/generated/artifact state, update task `biq3`, and print the Phase 4 completion slip only if all evidence is green.
+- Print the Phase 5 start slip, then perform the cross-phase release-readiness and requirement-to-evidence audit.
+
+### Code review instructions
+
+1. Reproduce the 618 px nested split and compare the first separator's ARIA 39/61 range to pane widths at Home/End.
+2. Open launcher from both toolbar and composer, then close by Escape and X.
+3. Right-click a product and close via Escape, click-away, and Inspect.
+4. Reset layout, send `arrange workbench` twice, and confirm tile count changes only once and the trace contains one `agent workbench.verb_batch`.
+5. Review `dividerSize`, `distributableSize`, nested `layoutFits`, and pointer-center math together.
+
+### Technical details
+
+At 618 px total with a 10 px divider, CSS fractions divide 608 px. The exact inline lower bound is `240/608 = 0.3947368421`; Home renders 239.98265 px because Chromium distributes subpixels. The matching upper bound is 0.6052631579. In the 600 px mocked unit geometry, the distributable axis is 590 px and bounds are 0.4067796610/0.5932203390. The successful scripted call persisted one canonical `workbench.verb_batch` trace; the preflight-rejected repeat produced no second effect or mutation.
