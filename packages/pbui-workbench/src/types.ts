@@ -78,6 +78,19 @@ export interface LauncherProps {
   renderDetail?(row: LauncherRow): ReactNode;
 }
 
+export interface WorkbenchPlan {
+  /** Exact immutable document identity the plan was derived from. */
+  baseDocument: WorkbenchDocument;
+  verbs: readonly WorkbenchVerb[];
+  /** One atomic protocol batch produced by running every verb against a shadow store. */
+  mutations: readonly Mutation[];
+  finalState: Pick<WorkbenchState, "workspaceId" | "activePlacementId" | "launcherOpen" | "launcherFrom">;
+}
+
+export type WorkbenchPlanResult =
+  | { ok: true; plan: WorkbenchPlan }
+  | { ok: false; index: number; verb: WorkbenchVerb; error: string };
+
 export interface Workbench {
   apps: AppRegistry;
   store: WorkbenchStore;
@@ -86,8 +99,12 @@ export interface Workbench {
   useWorkbenchState<T>(selector: (state: WorkbenchState) => T): T;
   /** Apply raw protocol mutations; the verbs are the usual door. */
   mutate(mutations: Mutation[]): boolean;
-  /** The data door: one verb object in, the matching handler called. */
-  perform(verb: WorkbenchVerb): void;
+  /** The data door: one verb object in, with refusal represented explicitly. */
+  perform(verb: WorkbenchVerb): boolean;
+  /** Preflight a whole sequence against a shadow store without touching the real workbench. */
+  plan(verbs: readonly WorkbenchVerb[]): WorkbenchPlanResult;
+  /** Commit a fresh plan as one mutation batch plus its browser-local selection state. */
+  applyPlan(plan: WorkbenchPlan): boolean;
   serialize(): string;
   /** Replace the layout from `serialize()` output; false (and untouched) when it does not parse. */
   restore(json: string): boolean;

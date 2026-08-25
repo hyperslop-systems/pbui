@@ -1,4 +1,4 @@
-import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { createAppRegistry, isAppRegistry, type AppDescriptor, type AppRegistry } from "./apps";
 import { WorkbenchLauncher } from "./components/Launcher";
 import { WorkbenchSurface } from "./components/Surface";
@@ -6,8 +6,8 @@ import { WorkspaceStrip } from "./components/WorkspaceStrip";
 import { WorkbenchContext } from "./context";
 import { parseDocument, serializeDocument } from "./document";
 import { createWorkbenchStore, useWorkbenchStore, type WorkbenchStore, type WorkbenchStoreOptions } from "./store";
-import type { LauncherProps, SurfaceProps, Workbench, WorkspaceStripProps } from "./types";
-import { createVerbHandlers, performWorkbenchVerb, type BindingConfig, type SplitPolicy } from "./verbs";
+import type { LauncherProps, SurfaceProps, Workbench, WorkbenchPlan, WorkbenchPlanResult, WorkspaceStripProps } from "./types";
+import { createVerbHandlers, describeWorkbenchVerb, performWorkbenchVerb, type BindingConfig, type SplitPolicy, type WorkbenchVerb } from "./verbs";
 
 export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
   /** The applications this workbench offers — a list, or a registry built with `createAppRegistry`. */
@@ -71,6 +71,57 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     ...(options.binding ? { binding: options.binding } : {}),
   });
 
+  const plan = (plannedVerbs: readonly WorkbenchVerb[]): WorkbenchPlanResult => {
+    const base = store.getState();
+    const mutations: Mutation[] = [];
+    const shadow = createWorkbenchStore(base.document, {
+      onMutate(batch) {
+        mutations.push(...batch);
+      },
+    });
+    shadow.setState({
+      workspaceId: base.workspaceId,
+      activePlacementId: base.activePlacementId,
+      launcherOpen: base.launcherOpen,
+      launcherFrom: base.launcherFrom,
+    });
+    const shadowHandlers = createVerbHandlers({
+      store: shadow,
+      apps,
+      root,
+      ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
+      ...(options.binding ? { binding: options.binding } : {}),
+    });
+    for (let index = 0; index < plannedVerbs.length; index += 1) {
+      const verb = plannedVerbs[index]!;
+      if (!performWorkbenchVerb(shadowHandlers, verb)) {
+        return { ok: false, index, verb, error: `the workbench refused to ${describeWorkbenchVerb(verb)}` };
+      }
+    }
+    const final = shadow.getState();
+    return {
+      ok: true,
+      plan: {
+        baseDocument: base.document,
+        verbs: [...plannedVerbs],
+        mutations: [...mutations],
+        finalState: {
+          workspaceId: final.workspaceId,
+          activePlacementId: final.activePlacementId,
+          launcherOpen: final.launcherOpen,
+          launcherFrom: final.launcherFrom,
+        },
+      },
+    };
+  };
+
+  const applyPlan = (prepared: WorkbenchPlan): boolean => {
+    if (store.getState().document !== prepared.baseDocument) return false;
+    if (prepared.mutations.length > 0 && !store.mutate([...prepared.mutations])) return false;
+    store.setState(prepared.finalState);
+    return true;
+  };
+
   const workbench: Workbench = {
     apps,
     store,
@@ -79,6 +130,8 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     useWorkbenchState: (selector) => useWorkbenchStore(store, selector),
     mutate: (mutations) => store.mutate(mutations),
     perform: (verb) => performWorkbenchVerb(verbs, verb),
+    plan,
+    applyPlan,
     serialize: () => serializeDocument(store.getState().document),
     restore: (json) => {
       const doc = parseDocument(json);

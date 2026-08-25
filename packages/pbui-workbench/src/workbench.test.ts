@@ -6,7 +6,7 @@ import { createWorkbench } from "./createWorkbench";
 import { layout, parseDocument, serializeDocument, singleTile, split, tile, workspaces } from "./document";
 import { createWorkbenchStore } from "./store";
 import { counterApp, demoApps, notesApp } from "./stories/demoApps";
-import { performWorkbenchVerb, workbenchVerbs } from "./verbs";
+import { isWorkbenchVerb, performWorkbenchVerb, workbenchVerbs } from "./verbs";
 
 function leafIds(tree: Node | undefined): string[] {
   return leaves(tree).map((leaf) => leaf.id);
@@ -30,6 +30,68 @@ function threeTiles() {
 afterEach(() => {
   document.body.innerHTML = "";
   vi.restoreAllMocks();
+});
+
+describe("workbench verb validation", () => {
+  test("requires the complete shape rather than accepting a kind prefix", () => {
+    expect(isWorkbenchVerb({ kind: "tile.split" })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "tile.split", placementId: "n1", direction: "diagonal" })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "split.resize", splitId: "s1", ratio: Number.NaN })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "view.rebind", viewId: "v1", documents: { source: 42 } })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "tile.split", placementId: "n1", direction: "row" })).toBe(true);
+    expect(isWorkbenchVerb({ kind: "launcher.close" })).toBe(true);
+  });
+});
+
+describe("atomic plans", () => {
+  test("preflights every verb without touching the real document", () => {
+    const onMutate = vi.fn();
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+      onMutate,
+    });
+    const before = wb.store.getState().document;
+    const first = leafIds(before.workspaces[0]?.tree)[0]!;
+
+    const result = wb.plan([workbenchVerbs.split(first, "row"), workbenchVerbs.close("missing")]);
+
+    expect(result).toMatchObject({ ok: false, index: 1, error: expect.stringContaining("refused") });
+    expect(wb.store.getState().document).toBe(before);
+    expect(onMutate).not.toHaveBeenCalled();
+  });
+
+  test("commits a successful multi-verb plan as one protocol batch", () => {
+    const onMutate = vi.fn();
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+      onMutate,
+    });
+    const before = wb.store.getState().document;
+    const [first, second] = leafIds(before.workspaces[0]?.tree);
+    const firstView = viewOf(before.workspaces[0]?.tree, first!);
+    const result = wb.plan([workbenchVerbs.setTitle(firstView, "renamed"), workbenchVerbs.close(second!)]);
+    if (!result.ok) throw new Error(result.error);
+
+    expect(wb.applyPlan(result.plan)).toBe(true);
+    expect(wb.store.getState().document.views[firstView]?.title).toBe("renamed");
+    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
+    expect(onMutate).toHaveBeenCalledTimes(1);
+    expect(onMutate.mock.calls[0]?.[0]).toHaveLength(result.plan.mutations.length);
+  });
+
+  test("refuses a stale plan and perform exposes handler refusal", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
+    const before = wb.store.getState().document;
+    const [first, second] = leafIds(before.workspaces[0]?.tree);
+    const result = wb.plan([workbenchVerbs.close(second!)]);
+    if (!result.ok) throw new Error(result.error);
+
+    expect(wb.perform(workbenchVerbs.setTitle(viewOf(before.workspaces[0]?.tree, first!), "changed"))).toBe(true);
+    expect(wb.applyPlan(result.plan)).toBe(false);
+    expect(wb.perform(workbenchVerbs.close("missing"))).toBe(false);
+  });
 });
 
 describe("layout builders", () => {

@@ -79,9 +79,17 @@ function harness(overrides: Partial<WorkbenchToolsOptions> = {}) {
   });
   const byName = (name: string) => tools.tools.find((tool) => tool.name === name) as FrontendTool<any, any>;
   let callSequence = 0;
-  const call = (name: string, input: unknown) => {
+  const call = async (name: string, input: unknown) => {
     callSequence += 1;
-    return Promise.resolve(byName(name).execute(input as never, { signal: new AbortController().signal, toolCallId: `t${callSequence}` }));
+    let complete = input;
+    if (name !== "workbench_describe" && input && typeof input === "object" && !("expectedRevision" in input)) {
+      const described = (await byName("workbench_describe").execute(
+        {} as never,
+        { signal: new AbortController().signal, toolCallId: `describe-${callSequence}` },
+      )) as { revision: string };
+      complete = { ...(input as Record<string, unknown>), expectedRevision: described.revision };
+    }
+    return Promise.resolve(byName(name).execute(complete as never, { signal: new AbortController().signal, toolCallId: `t${callSequence}` }));
   };
   return { wb, tools, performed, byName, call };
 }
@@ -124,6 +132,7 @@ describe("workbench_describe", () => {
     const { call } = harness();
     const result = (await call("workbench_describe", {})) as any;
     expect(result.ok).toBe(true);
+    expect(result.revision).toMatch(/^[0-9a-f]{64}$/);
     expect(result.apps.map((a: any) => a.id)).toEqual(["chat", "trace", "sku"]);
     expect(result.workspaces[0].tiles.map((t: any) => t.appId)).toEqual(["chat", "trace"]);
     expect(result.workspaces[0].tree).toMatchObject({ kind: "split", direction: "row", ratio: 0.6 });
@@ -279,7 +288,10 @@ describe("workbench_perform · policy", () => {
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.split", placementId: first, direction: "col" }] })) as any;
     expect(result.applied).toBe(1);
     expect(result.results[0].ok).toBe(true);
-    expect(performed).toHaveLength(1);
+    // Atomic batches commit through Workbench.applyPlan; the gateway effect is
+    // the one causal trace rather than N independently committed router rows.
+    expect(performed).toHaveLength(0);
+    expect(result.atomic).toBe(true);
     expect(result.tiles).toHaveLength(3);
   });
 
@@ -300,7 +312,8 @@ describe("workbench_perform · policy", () => {
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
     // The message names the operation, so a model that reused an id for a
     // different change can see which change was refused.
-    expect(result.results[0].error).toBe('no approved proposal with id "p-1" for close this tile');
+    expect(result.results[0].error).toContain('no approved proposal with id "p-1"');
+    expect(result.results[0].error).toContain("apply 1 workbench changes atomically");
   });
 
   it("applies a confirm-policy verb once the product says it was approved", async () => {
@@ -309,7 +322,7 @@ describe("workbench_perform · policy", () => {
     const first = tiles.workspaces[0].tiles[0].placementId;
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
     expect(result.applied).toBe(1);
-    expect(performed).toHaveLength(1);
+    expect(performed).toHaveLength(0);
   });
 
   it("denies the launcher outright — it is the human's dialog", async () => {
@@ -318,7 +331,7 @@ describe("workbench_perform · policy", () => {
     expect(result.results[0].error).toContain("not something the assistant may do");
   });
 
-  it("rejects a non-verb without taking the batch down", async () => {
+  it("rejects the complete atomic batch when any candidate is not a verb", async () => {
     const { call } = harness();
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
@@ -326,8 +339,44 @@ describe("workbench_perform · policy", () => {
       verbs: [{ kind: "nonsense" }, { kind: "tile.activate", placementId: first }],
     })) as any;
     expect(result.results[0].ok).toBe(false);
-    expect(result.results[1].ok).toBe(true);
-    expect(result.applied).toBe(1);
+    expect(result.results[1].ok).toBe(false);
+    expect(result.results[1].error).toContain("atomic batch rejected");
+    expect(result.applied).toBe(0);
+  });
+
+  it("rejects a stale revision before planning, approval or undo", async () => {
+    const { call, wb, tools } = harness();
+    const described = (await call("workbench_describe", {})) as any;
+    const first = described.workspaces[0].tiles[0].placementId;
+    wb.verbs.setTitle(described.workspaces[0].tiles[0].viewId, "human changed it");
+    const before = wb.store.getState().document;
+
+    const result = (await call("workbench_perform", {
+      verbs: [{ kind: "tile.split", placementId: first, direction: "row" }],
+      expectedRevision: described.revision,
+    })) as any;
+
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining("call workbench_describe again") });
+    expect(wb.store.getState().document).toBe(before);
+    expect(tools.history()).toHaveLength(0);
+  });
+
+  it("preflights all candidates and creates no undo entry for an invalid atomic batch", async () => {
+    const { call, wb, tools } = harness();
+    const described = (await call("workbench_describe", {})) as any;
+    const before = wb.store.getState().document;
+    const result = (await call("workbench_perform", {
+      verbs: [
+        { kind: "view.setTitle", viewId: described.workspaces[0].tiles[0].viewId, title: "would apply" },
+        { kind: "tile.close", placementId: "missing" },
+      ],
+      expectedRevision: described.revision,
+    })) as any;
+
+    expect(result).toMatchObject({ ok: false, atomic: true, applied: 0 });
+    expect(result.results.every((entry: any) => entry.ok === false)).toBe(true);
+    expect(wb.store.getState().document).toBe(before);
+    expect(tools.history()).toHaveLength(0);
   });
 
   it("refuses more verbs than the limit", async () => {
@@ -416,7 +465,8 @@ describe("a refused verb is reported as refused, not as applied", () => {
     const ctx = { signal: new AbortController().signal, toolCallId: "t" };
     const only = ((await describe_.execute({} as never, ctx)) as any).workspaces[0].tiles[0].placementId;
 
-    const result = (await perform.execute({ verbs: [{ kind: "tile.close", placementId: only }] } as never, ctx)) as any;
+    const described = (await describe_.execute({} as never, ctx)) as any;
+    const result = (await perform.execute({ verbs: [{ kind: "tile.close", placementId: only }], expectedRevision: described.revision } as never, ctx)) as any;
     expect(result.applied).toBe(0);
     expect(result.results[0].ok).toBe(false);
     expect(wb.store.getState().document.workspaces[0]!.tree).toBeTruthy();
@@ -455,7 +505,7 @@ describe("an approval names the operation it approved", () => {
       "p-1",
     );
     expect(seen).toHaveLength(1);
-    expect(seen[0]).toMatchObject({ id: "p-1", verb: { kind: "tile.close" } });
+    expect(seen[0]).toMatchObject({ id: "p-1", verb: { verbs: [{ kind: "tile.close" }] } });
     expect(result.results[0].error).toContain("no approved proposal");
   });
 
@@ -466,8 +516,8 @@ describe("an approval names the operation it approved", () => {
         effectGateway: effectGateway(
           (id, subject) =>
             id === "p-1" &&
-            subject.operation === "tile.close" &&
-            (subject.arguments as { placementId: string }).placementId === "n-other",
+            subject.operation === "workbench.verb_batch" &&
+            (subject.arguments as { verbs: { placementId: string }[] }).verbs[0]?.placementId === "n-other",
         ),
       },
       "p-1",
@@ -478,10 +528,10 @@ describe("an approval names the operation it approved", () => {
   it("spends an approval, so the same id cannot authorise a second destructive verb", async () => {
     const h = harness({ effectGateway: effectGateway((id) => id === "p-1") });
     const tiles = (await h.call("workbench_describe", {})) as any;
-    const [first, second] = tiles.workspaces[0].tiles.map((t: any) => t.placementId);
-    const one = (await h.call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
+    const first = tiles.workspaces[0].tiles[0].placementId;
+    const one = (await h.call("workbench_perform", { verbs: [{ kind: "tile.replace", placementId: first, appId: "chat" }], confirmationId: "p-1" })) as any;
     expect(one.applied).toBe(1);
-    const two = (await h.call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: second }], confirmationId: "p-1" })) as any;
+    const two = (await h.call("workbench_perform", { verbs: [{ kind: "tile.replace", placementId: first, appId: "trace" }], confirmationId: "p-1" })) as any;
     expect(two.applied).toBe(0);
     expect(two.results[0].error).toContain("already been used");
   });
@@ -548,8 +598,7 @@ describe("workbench_apply", () => {
   function rawHarness(over: Partial<Parameters<typeof createWorkbenchTools>[0]> = {}) {
     const h = harness({ allowRawMutations: true, ...over });
     const apply = h.tools.tools.find((t) => t.name === "workbench_apply") as FrontendTool<any, any>;
-    const run = (input: unknown) =>
-      Promise.resolve(apply.execute(input as never, { signal: new AbortController().signal, toolCallId: "t" }));
+    const run = (input: unknown) => h.call("workbench_apply", input);
     return { ...h, apply, run };
   }
 
@@ -568,6 +617,20 @@ describe("workbench_apply", () => {
     expect(result.ok).toBe(true);
     expect(wb.store.getState().document.workspaces[0]!.name).toBe("renamed");
     expect(result.undoToken).toMatch(/^undo-\d+$/);
+  });
+
+  it("rejects a raw batch based on an old described revision", async () => {
+    const { run, wb, call, tools } = rawHarness();
+    const described = (await call("workbench_describe", {})) as any;
+    wb.verbs.renameWorkspace(wb.store.getState().workspaceId, "human update");
+    const before = wb.store.getState().document;
+    const result = (await run({
+      mutations: [{ workspaceRename: { workspaceId: wb.store.getState().workspaceId, name: "stale agent" } }],
+      expectedRevision: described.revision,
+    })) as any;
+    expect(result.error).toContain("call workbench_describe again");
+    expect(wb.store.getState().document).toBe(before);
+    expect(tools.history()).toHaveLength(0);
   });
 
   it("returns the applier's code and path for a batch it refuses", async () => {
@@ -600,9 +663,9 @@ describe("workbench_apply", () => {
     const seen: (readonly unknown[])[] = [];
     const { run, wb } = rawHarness({
       effectGateway: effectGateway((confirmationId, subject) => {
-        const mutations = subject.arguments as readonly { workspaceDelete?: unknown }[];
-        seen.push(mutations);
-        return confirmationId === "p-9" && Boolean(mutations[0]?.workspaceDelete);
+        const args = subject.arguments as unknown as { mutations: readonly { workspaceDelete?: unknown }[] };
+        seen.push(args.mutations);
+        return confirmationId === "p-9" && Boolean(args.mutations[0]?.workspaceDelete);
       }),
     });
     const id = wb.verbs.createWorkspace("second", { kind: "tile", appId: "chat" })!;

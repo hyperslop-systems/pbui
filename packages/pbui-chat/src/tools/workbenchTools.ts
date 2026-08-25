@@ -48,6 +48,8 @@ const Depth2 = z.union([TileSpecSchema, splitOf(Depth1)]);
 const Depth3 = z.union([TileSpecSchema, splitOf(Depth2)]);
 export const LayoutSpecSchema = z.union([TileSpecSchema, splitOf(Depth3)]);
 
+const RevisionSchema = z.string().regex(/^[0-9a-f]{64}$/, "expectedRevision must be the SHA-256 revision from workbench_describe");
+
 const WORKED_EXAMPLE =
   '{"kind":"split","direction":"row","ratio":0.55,"a":{"kind":"tile","appId":"chat"},' +
   '"b":{"kind":"split","direction":"col","ratio":0.4,"a":{"kind":"tile","appId":"metals"},' +
@@ -220,6 +222,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   /** The one door every high-level mutating tool uses. */
   async function performWithPolicy(
     verb: WorkbenchVerb,
+    expectedRevision: string,
     confirmationId: string | undefined,
     effectId: string,
     beforePerform?: () => void,
@@ -227,6 +230,10 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     const wb = options.getWorkbench();
     if (!wb) return "rejected:no workbench is attached to this chat";
     const beforeRevision = await workbenchRevision(wb);
+    if (expectedRevision !== beforeRevision) {
+      return "rejected:workbench changed; call workbench_describe again and use its revision";
+    }
+    const baseDocument = wb.store.getState().document;
     const result = await options.effectGateway.execute({
       effectId,
       invocationKey: effectId.replace(":", "/"),
@@ -242,6 +249,9 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       approvalPrompt: `${verb.kind} needs the user's approval: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`,
       approvalDescription: describeWorkbenchVerb(verb),
       async perform() {
+        if (wb.store.getState().document !== baseDocument) {
+          return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
+        }
         beforePerform?.();
         const outcome = await performVerb(verb, {
           effectId,
@@ -399,7 +409,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       geometry: z.boolean().optional().describe("include each tile's rendered size as fractions of the screen"),
     }),
     available,
-    execute(input) {
+    async execute(input) {
       const wb = options.getWorkbench();
       if (!wb) return fail("no workbench is attached to this chat") as unknown as Record<string, unknown>;
       const description = describeWorkbench(wb, {
@@ -417,12 +427,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         const descriptor = wb.apps.get(app.id);
         return { ...app, available: descriptor ? isAppAvailable(descriptor, { workspaceId }) : false };
       });
-      return { ok: true, ...description, apps } as unknown as Record<string, unknown>;
+      return { ok: true, revision: await workbenchRevision(wb), ...description, apps } as unknown as Record<string, unknown>;
     },
   };
 
   const createWorkspaceTool: FrontendTool<
-    { name: string; layout: LayoutSpec; select?: boolean; confirmationId?: string },
+    { name: string; layout: LayoutSpec; expectedRevision: string; select?: boolean; confirmationId?: string },
     Record<string, unknown>
   > = {
     name: "workbench_create_workspace",
@@ -434,6 +444,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     parameters: z.object({
       name: z.string().min(1).describe("what to call it, e.g. 'Gold desk'"),
       layout: LayoutSpecSchema as unknown as z.ZodType<LayoutSpec>,
+      expectedRevision: RevisionSchema.describe("revision from the latest workbench_describe"),
       select: z.boolean().optional().describe("switch to it; default true"),
       confirmationId: z.string().optional().describe("an approved pbui_propose id, if workspace.create requires confirmation"),
     }),
@@ -455,7 +466,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         ...(input.select === false ? { select: false } : {}),
       };
       let undoToken: string | undefined;
-      const outcome = await performWithPolicy(verb, input.confirmationId, `${options.senderConversationId}:${context.toolCallId}`, () => {
+      const outcome = await performWithPolicy(verb, input.expectedRevision, input.confirmationId, `${options.senderConversationId}:${context.toolCallId}`, () => {
         undoToken = snapshot(wb, `create workspace ${input.name}`);
       });
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
@@ -469,6 +480,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         workspaceId: after?.id ?? null,
         name: after?.name ?? input.name,
         active: wb.store.getState().workspaceId === after?.id,
+        revision: await workbenchRevision(wb),
         tiles: description?.workspaces[0]?.tiles ?? [],
         undoToken,
       } as unknown as Record<string, unknown>;
@@ -476,7 +488,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   };
 
   const openTileTool: FrontendTool<
-    { appId: string; documents?: Record<string, string>; near?: string; title?: string; confirmationId?: string },
+    { appId: string; expectedRevision: string; documents?: Record<string, string>; near?: string; title?: string; confirmationId?: string },
     Record<string, unknown>
   > = {
     name: "workbench_open_tile",
@@ -486,6 +498,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       "If a tile already shows exactly these bindings the result says wentToExisting; do not call it again.",
     parameters: z.object({
       appId: z.string(),
+      expectedRevision: RevisionSchema.describe("revision from the latest workbench_describe"),
       documents: z.record(z.string(), z.string()).optional(),
       near: z.string().optional().describe("a placementId to open beside; omitted means the active tile"),
       title: z.string().optional(),
@@ -511,7 +524,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         ...(input.title ? { title: input.title } : {}),
       };
       let undoToken: string | undefined;
-      const outcome = await performWithPolicy(verb, input.confirmationId, `${options.senderConversationId}:${context.toolCallId}`, () => {
+      const outcome = await performWithPolicy(verb, input.expectedRevision, input.confirmationId, `${options.senderConversationId}:${context.toolCallId}`, () => {
         undoToken = snapshot(wb, `open ${input.appId}`);
       });
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
@@ -530,16 +543,18 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         title: target?.title ?? null,
         wentToExisting,
         undoToken,
+        revision: await workbenchRevision(wb),
       } as unknown as Record<string, unknown>;
     },
   };
 
-  const switchWorkspaceTool: FrontendTool<{ workspaceId: string; confirmationId?: string }, Record<string, unknown>> = {
+  const switchWorkspaceTool: FrontendTool<{ workspaceId: string; expectedRevision: string; confirmationId?: string }, Record<string, unknown>> = {
     name: "workbench_switch_workspace",
     mode: "frontend",
     description: "Show a different workspace. Its id comes from workbench_describe.",
     parameters: z.object({
       workspaceId: z.string(),
+      expectedRevision: RevisionSchema.describe("revision from the latest workbench_describe"),
       confirmationId: z.string().optional().describe("an approved pbui_propose id, if workspace.select requires confirmation"),
     }),
     available,
@@ -551,6 +566,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       }
       const outcome = await performWithPolicy(
         { kind: "workspace.select", workspaceId: input.workspaceId },
+        input.expectedRevision,
         input.confirmationId,
         `${options.senderConversationId}:${context.toolCallId}`,
       );
@@ -559,24 +575,26 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       return {
         ok: true,
         activeWorkspaceId: wb.store.getState().workspaceId,
+        revision: await workbenchRevision(wb),
         tiles: description.workspaces[0]?.tiles ?? [],
       } as unknown as Record<string, unknown>;
     },
   };
 
-  const performTool: FrontendTool<{ verbs: unknown[]; confirmationId?: string }, Record<string, unknown>> = {
+  const performTool: FrontendTool<{ verbs: unknown[]; expectedRevision: string; confirmationId?: string }, Record<string, unknown>> = {
     name: "workbench_perform",
     mode: "frontend",
     description:
-      "Make one or two changes to the current layout. Each verb is an object with a kind: " +
-      "tile.split{placementId,direction,appId?}, tile.close{placementId}, tile.swap{a,b}, " +
-      "tile.replace{placementId,appId}, tile.link{placementId,viewId}, split.resize{splitId,ratio}, " +
-      "app.place{appId,from?}, view.setTitle{viewId,title}, view.rebind{viewId,documents}, " +
-      "view.goTo{viewId}, workspace.select{workspaceId}, workspace.rename{workspaceId,name}, " +
-      "workspace.clone{workspaceId}. Ids come from workbench_describe.",
+      "Atomically preflight and apply one or more changes to the current layout. Every verb must be valid or none land. " +
+      "Each verb is an object with a kind: tile.split{placementId,direction,appId?}, tile.close{placementId}, " +
+      "tile.swap{a,b}, tile.replace{placementId,appId}, tile.link{placementId,viewId}, split.resize{splitId,ratio}, " +
+      "app.place{appId,from?}, view.setTitle{viewId,title}, view.rebind{viewId,documents}, view.goTo{viewId}, " +
+      "workspace.select{workspaceId}, workspace.rename{workspaceId,name}, workspace.clone{workspaceId}. " +
+      "Ids and expectedRevision come from workbench_describe.",
     parameters: z.object({
       verbs: z.array(z.record(z.string(), z.unknown())).min(1),
-      confirmationId: z.string().optional().describe("the id of a pbui_propose the user approved, for a verb that needs approval"),
+      expectedRevision: RevisionSchema.describe("revision from the latest workbench_describe"),
+      confirmationId: z.string().optional().describe("an approved pbui_propose id covering the complete atomic batch"),
     }),
     available,
     async execute(input, context) {
@@ -585,37 +603,101 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       if (input.verbs.length > limits.verbsPerCall) {
         return fail(`${input.verbs.length} verbs in one call, the limit is ${limits.verbsPerCall}`) as unknown as Record<string, unknown>;
       }
-      const undoToken = snapshot(wb, `perform ${input.verbs.length} verb(s)`);
-      const results: { verb: unknown; ok: boolean; error?: string }[] = [];
-      let applied = 0;
-      for (const candidate of input.verbs) {
+      const beforeRevision = await workbenchRevision(wb);
+      if (input.expectedRevision !== beforeRevision) {
+        return fail("workbench changed; call workbench_describe again and use its revision") as unknown as Record<string, unknown>;
+      }
+
+      const verbs: WorkbenchVerb[] = [];
+      const errors: { index: number; verb: unknown; error: string }[] = [];
+      input.verbs.forEach((candidate, index) => {
         if (!isWorkbenchVerb(candidate)) {
-          results.push({ verb: candidate, ok: false, error: "not a workbench verb; see the tool description for the kinds" });
-          continue;
+          errors.push({ index, verb: candidate, error: "not a complete workbench verb; see the tool description for required fields" });
+          return;
         }
-        const verb = candidate as WorkbenchVerb;
-        // #2: `isWorkbenchVerb` is a prefix test on `kind`, nothing more. The
-        // protocol accepts any string as an app id, so a misspelled one commits
-        // a tile that renders an empty state while the tool reports success.
-        const unusable = verbProblem(verb, wb);
-        if (unusable) {
-          results.push({ verb, ok: false, error: unusable });
-          continue;
-        }
-        const outcome = await performWithPolicy(verb, input.confirmationId, `${options.senderConversationId}:${context.toolCallId}:${results.length}`);
-        if (outcome === "performed") {
-          applied += 1;
-          results.push({ verb, ok: true });
-        } else {
-          results.push({ verb, ok: false, error: outcome.replace(/^rejected:/, "") });
-        }
+        const unusable = verbProblem(candidate, wb);
+        if (unusable) errors.push({ index, verb: candidate, error: unusable });
+        else verbs.push(candidate);
+      });
+      const forbidden = verbs.find((verb) => decisionFor(verb.kind) === "deny");
+      if (forbidden) errors.push({ index: input.verbs.indexOf(forbidden), verb: forbidden, error: `${forbidden.kind} is not something the assistant may do` });
+      if (errors.length > 0) {
+        return {
+          ok: false,
+          atomic: true,
+          applied: 0,
+          errors,
+          results: input.verbs.map((verb, index) => ({
+            verb,
+            ok: false,
+            error: errors.find((entry) => entry.index === index)?.error ?? "atomic batch rejected because another verb is invalid",
+          })),
+        } as unknown as Record<string, unknown>;
+      }
+
+      const planned = wb.plan(verbs);
+      if (!planned.ok) {
+        return {
+          ok: false,
+          atomic: true,
+          applied: 0,
+          errors: [{ index: planned.index, verb: planned.verb, error: planned.error }],
+          results: verbs.map((verb, index) => ({
+            verb,
+            ok: false,
+            error: index === planned.index ? planned.error : "atomic plan rejected before any verb was applied",
+          })),
+        } as unknown as Record<string, unknown>;
+      }
+      const gated = verbs.filter((verb) => decisionFor(verb.kind) === "confirm");
+      const effectId = `${options.senderConversationId}:${context.toolCallId}`;
+      const result = await options.effectGateway.execute({
+        effectId,
+        invocationKey: effectId.replace(":", "/"),
+        actor: "agent",
+        conversationId: options.senderConversationId,
+        effectKind: "workbench.verb_batch",
+        effectScope: "workbench",
+        input: { verbs: input.verbs, expectedRevision: input.expectedRevision } as unknown as JsonValue,
+        targetIds: verbs.flatMap(workbenchVerbTargetIds),
+        policy: gated.length > 0 ? "confirm" : "allow",
+        confirmationId: input.confirmationId,
+        beforeRevision,
+        approvalPrompt:
+          `this atomic batch includes ${gated.map((verb) => describeWorkbenchVerb(verb)).join(", ")}; call pbui_propose first ` +
+          "describing the complete batch, and pass its id as confirmationId",
+        approvalDescription: `apply ${verbs.length} workbench changes atomically`,
+        async perform() {
+          if (wb.store.getState().document !== planned.plan.baseDocument) {
+            return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
+          }
+          const undoToken = snapshot(wb, `perform ${verbs.length} verb(s)`);
+          if (!wb.applyPlan(planned.plan)) return { outcome: "rejected:the workbench refused the atomic plan" };
+          return {
+            outcome: "performed",
+            afterRevision: await workbenchRevision(wb),
+            value: { undoToken },
+          } as const;
+        },
+      });
+      if (result.outcome !== "performed") {
+        const error = result.outcome.replace(/^rejected:/, "");
+        return {
+          ok: false,
+          atomic: true,
+          applied: 0,
+          error,
+          results: verbs.map((verb) => ({ verb, ok: false, error })),
+        } as unknown as Record<string, unknown>;
       }
       const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
       return {
-        ok: applied > 0,
-        applied,
-        results,
-        undoToken,
+        ok: true,
+        atomic: true,
+        applied: verbs.length,
+        results: verbs.map((verb) => ({ verb, ok: true })),
+        undoToken: result.value?.undoToken,
+        revision: await workbenchRevision(wb),
         tiles: description.workspaces[0]?.tiles ?? [],
       } as unknown as Record<string, unknown>;
     },
@@ -647,7 +729,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     }
   }
 
-  const applyTool: FrontendTool<{ mutations: unknown[]; confirmationId?: string }, Record<string, unknown>> = {
+  const applyTool: FrontendTool<{ mutations: unknown[]; expectedRevision: string; confirmationId?: string }, Record<string, unknown>> = {
     name: "workbench_apply",
     mode: "frontend",
     description:
@@ -656,6 +738,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       "mutation lands or none does.",
     parameters: z.object({
       mutations: z.array(z.record(z.string(), z.unknown())).min(1),
+      expectedRevision: RevisionSchema.describe("revision from the latest workbench_describe"),
       confirmationId: z.string().optional().describe("required when the batch performs a confirmation-gated operation"),
     }),
     // Not merely hidden: `RegisterManifestTools` skips an unavailable
@@ -686,6 +769,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       }
       const confirmationGated = classified.filter((item) => decisionFor(item.policyKind) === "confirm");
 
+      const beforeRevision = await workbenchRevision(wb);
+      if (input.expectedRevision !== beforeRevision) {
+        return fail("workbench changed; call workbench_describe again and use its revision") as unknown as Record<string, unknown>;
+      }
+      const baseDocument = wb.store.getState().document;
+
       // Applied twice on purpose: once against a copy to learn WHY the applier
       // refuses, since `store.mutate` only answers true or false, and once for
       // real. The document is immutable, so the dry run cannot affect it.
@@ -698,7 +787,6 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         throw error;
       }
 
-      const beforeRevision = await workbenchRevision(wb);
       const result = await options.effectGateway.execute({
         effectId: `${options.senderConversationId}:${context.toolCallId}`,
         invocationKey: `${options.senderConversationId}/${context.toolCallId}`,
@@ -706,7 +794,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         conversationId: options.senderConversationId,
         effectKind: "workbench.mutation_batch",
         effectScope: "workbench",
-        input: input.mutations as unknown as JsonValue,
+        input: { mutations: input.mutations, expectedRevision: input.expectedRevision } as unknown as JsonValue,
         policy: confirmationGated.length > 0 ? "confirm" : "allow",
         confirmationId: input.confirmationId,
         beforeRevision,
@@ -715,6 +803,9 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
           "describing exactly that, and pass the id you used as confirmationId",
         approvalDescription: "this mutation batch",
         async perform() {
+          if (wb.store.getState().document !== baseDocument) {
+            return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
+          }
           const undoToken = snapshot(wb, `apply ${batch.length} mutation(s)`);
           if (!wb.mutate(batch)) return { outcome: "rejected:the workbench refused the batch" };
           const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
@@ -725,6 +816,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
               ok: true,
               applied: batch.length,
               undoToken,
+              revision: await workbenchRevision(wb),
               tiles: description.workspaces[0]?.tiles ?? [],
             },
           } as const;

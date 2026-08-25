@@ -123,9 +123,64 @@ export const workbenchVerbs = {
 };
 
 export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
-  if (!value || typeof value !== "object") return false;
-  const kind = (value as { kind?: unknown }).kind;
-  return typeof kind === "string" && /^(tile|split|app|view|workspace|launcher)\./.test(kind);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const verb = value as Record<string, unknown>;
+  const string = (key: string) => typeof verb[key] === "string" && (verb[key] as string).length > 0;
+  const optionalString = (key: string) => verb[key] === undefined || typeof verb[key] === "string";
+  const stringMap = (key: string) =>
+    verb[key] === undefined ||
+    (Boolean(verb[key]) &&
+      typeof verb[key] === "object" &&
+      !Array.isArray(verb[key]) &&
+      Object.values(verb[key] as Record<string, unknown>).every((entry) => typeof entry === "string"));
+
+  switch (verb.kind) {
+    case "tile.split":
+      return string("placementId") && (verb.direction === "row" || verb.direction === "col") && optionalString("appId");
+    case "tile.close":
+    case "tile.activate":
+      return string("placementId");
+    case "tile.swap":
+      return string("a") && string("b");
+    case "tile.dock":
+      return string("source") && string("target") && ["top", "right", "bottom", "left"].includes(String(verb.zone));
+    case "split.resize":
+      return string("splitId") && typeof verb.ratio === "number" && Number.isFinite(verb.ratio);
+    case "app.place":
+      return string("appId") && optionalString("from");
+    case "view.setTitle":
+      return string("viewId") && typeof verb.title === "string";
+    case "view.open":
+      return string("appId") && stringMap("documents") && optionalString("near") && optionalString("title");
+    case "tile.replace":
+      return string("placementId") && string("appId") && stringMap("documents");
+    case "tile.link":
+      return string("placementId") && string("viewId");
+    case "view.rebind":
+      return string("viewId") && stringMap("documents") && verb.documents !== undefined;
+    case "workspace.select":
+    case "workspace.delete":
+      return string("workspaceId");
+    case "workspace.create":
+      return string("name") && optionalString("workspaceId") && (verb.select === undefined || typeof verb.select === "boolean");
+    case "workspace.rename":
+      return string("workspaceId") && string("name");
+    case "workspace.clone":
+      return (
+        string("workspaceId") &&
+        optionalString("name") &&
+        optionalString("newWorkspaceId") &&
+        (verb.select === undefined || typeof verb.select === "boolean")
+      );
+    case "view.goTo":
+      return string("viewId");
+    case "launcher.open":
+      return optionalString("placementId");
+    case "launcher.close":
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
