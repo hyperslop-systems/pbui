@@ -142,12 +142,15 @@ RelatedFiles:
       Note: Rendered ObjectMenu action and focus evidence
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase4-rendered-pane-minimum.png
       Note: Rendered pane minimum evidence
+    - Path: ws://react-chat/ttmp/2026/08/23/REACT-CHAT-TOOL-RUNTIME-1--make-browser-tool-execution-idempotent-single-owner-and-manifest-safe/design-doc/02-concise-frontend-tool-executor-ownership-protocol.md
+      Note: Cross-repository design adopted in Diary Step 18
 ExternalSources: []
 Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
 LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -1614,3 +1617,65 @@ No implementation was attempted in this interval. The important distinction was 
 ### Technical details
 
 The clean react-chat worktree is on `task/add-pbui-agent` at `4c7ffae`; hardened runtime commit `e341aae` is in its history, but no corresponding npm release exists. PBUI remains clean at `b44f413` before this diary-only interval.
+
+## Step 18: Adopt the concise executor design and update release status
+
+This documentation interval replaces the previously open-ended lease requirement with a concrete first-release integration contract. PBUI remains the HTTP/security adapter and acceptance-test owner; it does not elect executors or add a local lock. The new upstream contract carries a client, connection, and server assignment epoch end to end.
+
+The guide also records that chat-provider `0.5.1` is now published and locally selected. That release supplies per-runtime replay prevention, while the next coordinated release will supply cross-tab assignment.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as react-chat Diary Step 10)
+
+**Assistant interpretation:** Keep PBUI's guide and Phase 5 blocker language aligned with the concise authoritative design and current package-release state.
+
+**Inferred user intent:** Ensure the implementation and acceptance owner has an exact, non-lease-heavy contract to consume and test.
+
+### What I did
+
+- Updated PBUI's architecture guide to reference the authoritative concise design.
+- Corrected stale `0.5.0` release language: `0.5.1` now contains the per-runtime terminal ledger.
+- Kept the two-tab acceptance item open because `0.5.1` does not assign one executor.
+- Mapped PBUI work to strict manifest/result DTOs, exact acknowledgement, error handling, package consumption, and browser evidence.
+
+### Why
+
+- A PBUI-only lock would hide rather than solve cross-repository ownership.
+- Release status and acceptance checklists must distinguish per-runtime idempotency from cross-tab ownership.
+
+### What worked
+
+- PBUI's Server already owns the Pinocchio Manager and Hub needed for an atomic acknowledgement adapter.
+- Existing two-tab evidence is directly reusable as the regression acceptance case.
+
+### What didn't work
+
+- No implementation or two-tab rerun was attempted; the concise upstream protocol is not yet published.
+
+### What I learned
+
+- Assignment identity is concurrency provenance, while PBUI's existing route authorizer remains the security boundary.
+
+### What was tricky to build
+
+The HTTP manifest response must return the exact assignment created by that acceptance operation. A generic Hub submit followed by manager lookup can acknowledge a different tab's racing assignment.
+
+### What warrants a second pair of eyes
+
+- Review whether PBUI should map executor mismatches to 409 without leaking session ownership information.
+- Review the local uncommitted `0.5.1` dependency update separately from these docs.
+
+### What should be done in the future
+
+- Consume released Pinocchio/react-chat executor versions and rerun the two-tab, human-tool, reconnect, network, console, and durable event audit.
+
+### Code review instructions
+
+1. Read react-chat design 02.
+2. Review PBUI `toolManifestRequest`, `toolResultRequest`, and handlers against its API sketches.
+3. Re-run the existing Phase 5 multi-tab reproduction after integration.
+
+### Technical details
+
+PBUI must not generate `assignment_id`. It serializes the assignment returned by Pinocchio and rejects missing identity after the coordinated migration.

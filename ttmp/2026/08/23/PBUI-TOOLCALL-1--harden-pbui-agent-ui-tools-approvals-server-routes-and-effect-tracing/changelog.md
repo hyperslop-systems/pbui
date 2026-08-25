@@ -154,3 +154,12 @@ Rechecked the live npm release gate after continuation: chat-provider still has 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/reference/01-diary.md — Step 17 release-gate recheck
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/03-phase5-multitab-executor-blocker.md — Timestamped npm registry evidence
 
+
+## 2026-08-25
+
+Updated Phase 5 status for published chat-provider 0.5.1 and adopted the concise client, connection, and assignment executor contract without timed leases.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/react-chat/ttmp/2026/08/23/REACT-CHAT-TOOL-RUNTIME-1--make-browser-tool-execution-idempotent-single-owner-and-manifest-safe/design-doc/02-concise-frontend-tool-executor-ownership-protocol.md — Authoritative cross-repository protocol
+

@@ -27,12 +27,15 @@ RelatedFiles:
       Note: Manifest and result HTTP boundaries
     - Path: repo://pkg/chatserver/server.go
       Note: Unauthenticated route registration
+    - Path: ws://react-chat/ttmp/2026/08/23/REACT-CHAT-TOOL-RUNTIME-1--make-browser-tool-execution-idempotent-single-owner-and-manifest-safe/design-doc/02-concise-frontend-tool-executor-ownership-protocol.md
+      Note: Authoritative concise executor contract for PBUI HTTP integration and acceptance
 ExternalSources: []
 Summary: 'Intern-oriented architecture, design, and phased implementation guide for PBUI-owned fixes to agent-driven UI tools: route authorization, shared approval ledger, effect tracing, conversation-local drafts/lifecycle/title sync, send context, workbench semantics, focus, contracts, and pane limits.'
 LastUpdated: 2026-08-23T17:20:00-04:00
 WhatFor: Guide implementation of all PBUI-repository fixes identified by the PBUI-AGENT-4 tool-call and architecture reviews while preserving the typed presentation/verb model.
 WhenToUse: Before changing pbui-chat tool factories, createPbuiChat, conversation lifecycle, chatserver routes, workbench tool semantics, effect tracing, Dialog/ObjectMenu focus, or dependency integration with Pinocchio/chat-provider.
 ---
+
 
 
 # PBUI agent-to-UI hardening: architecture, security, approvals, implementation guide
@@ -735,7 +738,7 @@ flowchart LR
 4. [x] build/test/package/consumer validation for PBUI-owned code and released Pinocchio;
 5. [x] docs/migration/release evidence, with the unresolved executor release recorded explicitly.
 
-> **Implementation status, 2026-08-25:** PBUI-owned focus, correlation, package, rendered, and documentation work is complete. The installed immutable npm `@go-go-golems/chat-provider@0.5.0` predates the merged browser terminal ledger. A fresh two-tab test executes one requested effect in both tabs and produces terminal/envelope conflicts. The exact-version constraint and one-executor criterion cannot both be satisfied until a release owner approves a new npm version and coordinated executor protocol. See `reference/02-phase-2-5-requirement-to-evidence-audit.md`.
+> **Implementation status, 2026-08-25:** PBUI-owned focus, correlation, package, rendered, and documentation work is complete. npm `@go-go-golems/chat-provider@0.5.1` now publishes the merged per-runtime terminal ledger and PBUI's local dependency update is under validation, but independent tabs still execute independently. The remaining coordinated contract is the concise `(client_instance_id, connection_id, assignment_id)` design in react-chat's `REACT-CHAT-TOOL-RUNTIME-1/design-doc/02-concise-frontend-tool-executor-ownership-protocol.md`; it intentionally does not require timed leases. See `reference/02-phase-2-5-requirement-to-evidence-audit.md` for the failing two-tab evidence.
 
 ## 15. Test strategy
 
@@ -847,8 +850,8 @@ Rejected in multi-agent mode. It can erase unrelated later changes. Use inverse/
 - [x] workbench plans declare atomicity and revision;
 - [x] unsafe whole-document undo tokens/API are removed, so undo cannot overwrite newer work;
 - [x] focus returns after every tested surface close path;
-- [ ] publish and consume the merged browser terminal-ledger/executor release (exact npm `0.5.0` is immutable and predates it);
-- [ ] pass the two-tab one-executor browser/network audit; all other browser, JS/TS, Go, package, and doc validations pass.
+- [x] publish the merged per-runtime browser terminal ledger as immutable npm `0.5.1` and begin exact PBUI consumption;
+- [ ] implement and publish the concise three-part executor assignment contract, then pass the two-tab one-executor browser/network audit; all other browser, JS/TS, Go, package, and doc validations pass.
 
 ## 18. References
 
