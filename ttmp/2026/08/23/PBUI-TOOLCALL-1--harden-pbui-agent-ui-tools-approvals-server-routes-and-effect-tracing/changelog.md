@@ -114,3 +114,13 @@ Phase 3 rendered validation complete: lifecycle close/reopen/timeout/retry, offl
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-open-failed.png — Lifecycle failure evidence
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-server-restart-persisted.png — Durable title evidence
 
+
+## 2026-08-25
+
+Phase 4 intervals: strict revision-bound atomic workbench plans (27b0025), shared rendered pane minima (ceaea2a), and Dialog/ObjectMenu focus restoration (ab2a629). Phase 3 completion and Phase 4 start slips printed.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/workbenchTools.ts — Atomic workbench gateway
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/src/focus.ts — Focus restoration
+

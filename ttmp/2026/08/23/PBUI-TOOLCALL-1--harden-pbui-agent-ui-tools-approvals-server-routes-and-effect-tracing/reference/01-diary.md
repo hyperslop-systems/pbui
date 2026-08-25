@@ -61,8 +61,13 @@ RelatedFiles:
       Note: |-
         Canonical workbench and raw approval subjects (commit f320dfc)
         Gateway-routed verbs and raw mutations (commit 1d05677)
+        Revision-bound atomic gateway batches (commit 27b0025)
     - Path: repo://packages/pbui-chat/src/types.ts
       Note: Public effect correlation trace fields (commit 64b5f9d)
+    - Path: repo://packages/pbui-workbench/src/createWorkbench.tsx
+      Note: Shadow preflight and atomic plan commit (commit 27b0025)
+    - Path: repo://packages/pbui-workbench/src/verbs.ts
+      Note: Strict verbs and rendered pane constraints (commits 27b0025, ceaea2a)
     - Path: repo://pkg/chatserver/authorization.go
       Note: Required principal/session policy contract (commit a982f98)
     - Path: repo://pkg/chatserver/authorization_test.go
@@ -86,6 +91,12 @@ RelatedFiles:
       Note: |-
         Durable effect envelope and command schema (commit 56a01b6)
         Generated correlation wire fields (commit 64b5f9d)
+    - Path: repo://src/components/Dialog/Dialog.tsx
+      Note: Dialog focus restoration (commit ab2a629)
+    - Path: repo://src/focus.ts
+      Note: Shared transient-surface focus return ownership (commit ab2a629)
+    - Path: repo://src/presentation/createPbui.tsx
+      Note: ObjectMenu invoker capture and restoration (commit ab2a629)
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-correlated-verb-hydrated.png
       Note: Hydrated parent effect correlation on high-level verb
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-hydrated.png
@@ -118,6 +129,7 @@ LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -1175,3 +1187,97 @@ The rendered sequence intentionally accumulated expected network console errors 
 ### Technical details
 
 The real rendered title sequence was 0 -> 1 (auto), 1 -> 2 (human), 2 -> 3 (offline retry), 3 -> 4 (simulated remote tab), 4 -> 5 (local conflict retry). A deliberately reset session index then returned revision 0 to a browser caching 5; the repaired client retried 0 -> 1. The final SQLite-backed list preserved `persistent desk`, revision 1, and message count 1 across the Go process restart.
+
+## Step 14: Start Phase 4 with atomic workbench semantics and focus ownership
+
+I printed the Phase 3 completion slip and Phase 4 start slip, then hardened the workbench data door before touching rendered focus. High-level agent batches now preflight against a shadow store, bind to a SHA-256 document revision, reserve one approval for the complete batch, commit one protocol mutation batch, and create undo history only when something lands. Raw mutation batches and specialized tools use the same revision discipline. I then added rendered pane minima shared by pointer, keyboard, human, and agent paths, and focus-return ownership shared by Dialog and ObjectMenu.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 11)
+
+**Assistant interpretation:** Implement the complete Phase 4 semantics in coherent workbench-plan, pane-constraint, and focus-restoration intervals, testing every refusal and close path rather than preserving partial legacy behavior.
+
+**Inferred user intent:** Agent layout operations must be atomic, based on the screen they actually described, unable to create unusable slivers, honest about refusal, and unable to strand keyboard focus after transient UI closes.
+
+**Commits:**
+
+- `27b00258f883de94c9d2943561a569c19744dde0` — "feat(pbui-chat): apply revision-bound workbench plans"
+- `ceaea2ae9cd9672dc3190f5cee6fd16df34590dd` — "fix(pbui-workbench): enforce rendered pane minima"
+- `ab2a629d0895b670ac170d34945e5b7d0befdcd1` — "fix(pbui): restore focus after transient surfaces"
+
+### What I did
+
+- Corrected public `Workbench.perform` from `void` to `boolean`.
+- Strengthened `isWorkbenchVerb` from kind-prefix detection to complete per-kind runtime shape validation.
+- Added `Workbench.plan` with a shadow store and `applyPlan` with immutable base-document CAS.
+- Aggregated planned mutations into one store commit and one persistence callback.
+- Made `workbench_describe` return canonical document revision.
+- Required expected revision on specialized, high-level batch, and raw mutation tools.
+- Changed `workbench_perform` to all-or-nothing preflight and one canonical `workbench.verb_batch` gateway effect/approval.
+- Prevented stale approval waits from committing by checking plan document identity inside the gateway perform callback.
+- Created undo snapshots only immediately before a fresh plan/batch commits.
+- Added configurable inline/block/fraction pane minima and shared ratio bounds.
+- Applied pane bounds to split, dock, open/place, workspace layouts, pointer drag, keyboard Home/End/arrows, and agent preflight.
+- Added actionable too-small errors to agent results.
+- Added shared invoker/fallback capture and deferred focus restoration.
+- Restored Dialog focus on Escape, close button, programmatic unmount, and nested close.
+- Restored ObjectMenu focus on Escape, click-away, selection, and invoker removal, without stealing focus from a newly opened transient surface.
+
+### Why
+
+The previous high-level batch snapshotted before validation and sequentially applied whatever happened to be valid. A later error could leave partial layout and an undo entry for a call reported as mixed success. Ratios alone also allowed repeated nested splits to produce panes too small to operate. Dialog and ObjectMenu moved focus in but never owned the return journey.
+
+### What worked
+
+```text
+pbui-workbench plan/type checks                         PASS
+pbui-workbench tests after atomic plans                 9 files / 119 PASS
+pbui-workbench tests after pane constraints             9 files / 124 PASS
+pbui-chat tests after atomic/revision/pane changes       24 files / 239 PASS
+root PBUI focus tests                                    12 files / 102 PASS
+PBUI, workbench and chat production builds              PASS
+```
+
+### What didn't work
+
+1. The first PBUI-chat typecheck/tests after adding `Workbench.plan` still resolved the last built `pbui-workbench/dist`; TypeScript reported `plan/applyPlan` missing and runtime tests reported `wb.plan is not a function`. I built the dependency package first, then reran consumers.
+2. Nineteen workbench-tool tests initially failed because they encoded the old partial-batch and per-verb-router semantics, and raw-test helpers bypassed expected-revision injection. I preserved useful result detail while changing valid siblings to explicit atomic rejection, updated canonical approval subjects to the whole batch, and made raw helpers describe before mutation.
+3. The first pointer constraint test produced `NaN percent`: jsdom's synthetic pointer event did not populate coordinates. This also revealed the component lacked a finite-coordinate/zero-box guard. I added production guards and dispatched a coordinate-bearing test event; pointer, keyboard, and agent constraints then agreed.
+4. The first Dialog focus tests captured `document.body` because testing-library's synthetic click does not perform the browser's native focus step. I explicitly focused test invokers before clicking.
+5. Opening a nested Dialog caused the outer Dialog's effect to rerun and steal focus back because `onClose` identity changed. I separated one-time initial focus from the key-listener effect; the inner dialog then retained focus and restored it to its immediate parent invoker.
+
+### What I learned
+
+- A package's source typecheck is insufficient in a workspace whose consumers import its built export; dependency builds must precede consumer validation.
+- Atomicity changes the approval subject: the authority must bind the entire ordered batch and expected revision, not one child verb.
+- A shadow store is a practical plan compiler because existing handlers already emit protocol mutations and local selection state; applying the aggregated mutations once preserves persistence hooks.
+- Focus restoration is an ownership lifecycle, not a close-handler feature. Capturing at mount/open and restoring on unmount covers every close path, including programmatic state changes.
+
+### What was tricky to build
+
+The workbench plan has two classes of state: durable protobuf document mutations and browser-local workspace/active/launcher selection. The shadow store must preflight both in order, aggregate only durable mutations, and apply local final state only after the atomic batch commits. Focus restoration similarly must prefer an exact connected invoker, fall back through surviving owners without ever choosing body, and yield when another dialog/menu has already taken focus.
+
+### What warrants a second pair of eyes
+
+- Review the decision to trace one canonical batch effect rather than N misleading independently performed child verbs.
+- Review default pane minima (240 px inline, 160 px block, 0.1 fraction) against all product layouts.
+- Review direct consumers that may have relied on the incorrect `Workbench.perform(): void` declaration.
+- Verify ObjectMenu action flows that synchronously open another dialog do not have focus stolen back; the shared utility intentionally detects a newly focused transient surface.
+
+### What should be done in the future
+
+- Build the embedded demo and run rendered keyboard/pointer/agent workbench smoke checks.
+- Run rendered Dialog launcher and ObjectMenu Escape/selection/click-away focus checks.
+- Fix any integration failures, then run complete Phase 4 validation and print its completion slip.
+
+### Code review instructions
+
+1. Review `Workbench.plan/applyPlan`, then the agent batch gateway path and stale-revision tests.
+2. Review pure pane bounds, DOM geometry lookup, and SplitPane pointer/keyboard use.
+3. Review `focus.ts`, Dialog mount/unmount ownership, and ObjectMenu invoker propagation.
+4. Run root PBUI, workbench, and chat tests/builds in dependency order.
+
+### Technical details
+
+A plan stores the exact immutable base document, ordered verbs, aggregated protocol mutations, and final browser-local shell state. `applyPlan` refuses if document identity changed. Pane ratio bounds are `max(minFraction, minPx/renderedAxis)` through `1-min`; a split is refused when the lower bound exceeds 0.5. Focus return queues one microtask after unmount, ignores body, and yields to an already-focused transient surface.
