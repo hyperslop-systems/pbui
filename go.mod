@@ -7,9 +7,10 @@ require (
 	github.com/go-go-golems/geppetto v0.13.10
 	github.com/go-go-golems/glazed v1.4.3
 	github.com/go-go-golems/logcopter v0.1.1
-	github.com/go-go-golems/pinocchio v0.11.12
+	github.com/go-go-golems/pinocchio v0.11.14
 	github.com/go-go-golems/sessionstream v0.1.2
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.10.2
@@ -70,7 +71,6 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.17 // indirect
 	github.com/googleapis/gax-go/v2 v2.22.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
-	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
