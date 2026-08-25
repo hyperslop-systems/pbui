@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   LauncherShell,
   isEditableTarget,
@@ -32,6 +32,24 @@ export function WorkbenchLauncher({
   const workbench = useWorkbench();
   const open = workbench.useWorkbenchState((state) => state.launcherOpen);
   const anySurfaceOpen = useAnyEscapeSurface();
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const previousOpenRef = useRef(workbench.store.getState().launcherOpen);
+
+  // The store changes synchronously inside the click/key handler, before React
+  // mounts Dialog. Capture there: another shell effect may move focus while
+  // rendering, which is too late to identify the actual launcher invoker.
+  useLayoutEffect(
+    () =>
+      workbench.store.subscribe(() => {
+        const next = workbench.store.getState().launcherOpen;
+        if (next && !previousOpenRef.current) {
+          const active = globalThis.document?.activeElement;
+          returnFocusRef.current = active instanceof HTMLElement ? active : null;
+        }
+        previousOpenRef.current = next;
+      }),
+    [workbench],
+  );
 
   useEffect(() => {
     if (!shortcut) return;
@@ -67,11 +85,26 @@ export function WorkbenchLauncher({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [shortcut, shortcutContext, anySurfaceOpen, workbench]);
 
-  return open ? <LauncherModal title={title} rows={rows} choose={choose} renderDetail={renderDetail} /> : null;
+  return open ? (
+    <LauncherModal
+      title={title}
+      rows={rows}
+      choose={choose}
+      renderDetail={renderDetail}
+      returnFocusTo={returnFocusRef.current}
+    />
+  ) : null;
 }
 
 /** Remounted per opening, so the query and the highlight start fresh. */
-function LauncherModal({ title, rows, choose, renderDetail }: Required<Pick<LauncherProps, "title">> & Pick<LauncherProps, "rows" | "choose" | "renderDetail">) {
+function LauncherModal({
+  title,
+  rows,
+  choose,
+  renderDetail,
+  returnFocusTo,
+}: Required<Pick<LauncherProps, "title">> &
+  Pick<LauncherProps, "rows" | "choose" | "renderDetail"> & { returnFocusTo: HTMLElement | null }) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
@@ -161,6 +194,7 @@ function LauncherModal({ title, rows, choose, renderDetail }: Required<Pick<Laun
       onQueryChange={setQuery}
       onChoose={onChoose}
       onClose={close}
+      returnFocusTo={returnFocusTo}
       status={status}
       enterVerb={(rowId) => {
         const row = rowId ? rowOf(rowId, model) : null;

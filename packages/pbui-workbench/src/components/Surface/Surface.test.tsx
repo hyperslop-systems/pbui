@@ -104,15 +104,18 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
     vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue({
       x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400, toJSON: () => ({}),
     } as DOMRect);
-    const divider = container.querySelector('[data-part="split-divider"]')!;
+    const divider = container.querySelector<HTMLElement>('[data-part="split-divider"]')!;
+    vi.spyOn(divider, "getBoundingClientRect").mockReturnValue({
+      x: 295, y: 0, left: 295, top: 0, right: 305, bottom: 400, width: 10, height: 400, toJSON: () => ({}),
+    } as DOMRect);
 
     fireEvent.pointerDown(divider);
     const move = new Event("pointermove") as PointerEvent;
     Object.defineProperties(move, { clientX: { value: 590 }, clientY: { value: 20 } });
     fireEvent(window, move);
-    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("60 percent");
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("59 percent");
     fireEvent.pointerUp(window);
-    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("60 percent");
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("59 percent");
   });
 
   test("keyboard extremes use the same rendered pixel bounds as agent resize", () => {
@@ -123,11 +126,14 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
       x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400, toJSON: () => ({}),
     } as DOMRect);
     const divider = container.querySelector('[data-part="split-divider"]')!;
+    fireEvent(window, new Event("resize"));
 
     fireEvent.keyDown(divider, { key: "Home" });
-    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("40 percent");
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("41 percent");
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuemin")).toBe("41");
     fireEvent.keyDown(divider, { key: "End" });
-    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("60 percent");
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("59 percent");
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuemax")).toBe("59");
   });
 
   test("the divider announces a unit, and Home/End/double-click move it", () => {

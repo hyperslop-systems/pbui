@@ -129,9 +129,11 @@ describe("rendered pane constraints", () => {
     root.append(splitElement);
     wb.setRoot(root);
 
-    expect(wb.verbs.ratioBounds(tree.id)).toEqual({ min: 0.4, max: 0.6 });
-    expect(wb.verbs.resize(tree.id, 0.95, { snap: false })).toBe(0.6);
-    expect(wb.verbs.resize(tree.id, 0.05, { snap: false })).toBe(0.4);
+    const minimum = 240 / (600 - 10);
+    expect(wb.verbs.ratioBounds(tree.id)?.min).toBeCloseTo(minimum);
+    expect(wb.verbs.ratioBounds(tree.id)?.max).toBeCloseTo(1 - minimum);
+    expect(wb.verbs.resize(tree.id, 0.95, { snap: false })).toBeCloseTo(1 - minimum);
+    expect(wb.verbs.resize(tree.id, 0.05, { snap: false })).toBeCloseTo(minimum);
   });
 
   test("rejects a nested workspace layout whose rendered allocation would be a sliver", () => {

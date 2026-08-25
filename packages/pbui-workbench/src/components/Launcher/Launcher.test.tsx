@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
+import { Button } from "@hyperslop-systems/pbui";
 import { leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "../../createWorkbench";
 import { layout, split, tile } from "../../document";
@@ -41,6 +42,24 @@ describe("Launcher", () => {
     expect(wb.store.getState().launcherOpen).toBe(false);
     expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
+  });
+
+  test("returns focus to the exact control that opened it", async () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(tile("counter")) });
+    const { getByRole } = render(
+      <>
+        <Button onClick={() => wb.verbs.openLauncher()}>open launcher</Button>
+        <wb.Surface />
+        <wb.Launcher />
+      </>,
+    );
+    const opener = getByRole("button", { name: "open launcher" });
+    opener.focus();
+    fireEvent.click(opener);
+    expect(document.activeElement).not.toBe(opener);
+    fireEvent.keyDown(window, { key: "Escape" });
+    await Promise.resolve();
+    expect(document.activeElement).toBe(opener);
   });
 
   test("a doc-bound application is not offered as a new tile", () => {

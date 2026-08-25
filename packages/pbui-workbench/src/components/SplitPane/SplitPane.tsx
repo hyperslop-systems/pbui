@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
 import { snapRatio } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
@@ -25,7 +25,27 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
   const row = split?.direction !== Direction.COLUMN;
   const committed = split?.ratio ?? 0.5;
   const [live, setLive] = useState<{ ratio: number; snapped: boolean } | null>(null);
+  const [bounds, setBounds] = useState<{ min: number; max: number } | null>(null);
   const ratio = live?.ratio ?? committed;
+
+  useLayoutEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const refresh = () => {
+      const next = workbench.verbs.ratioBounds(node.id);
+      setBounds((current) =>
+        current?.min === next?.min && current?.max === next?.max ? current : next,
+      );
+    };
+    refresh();
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(refresh) : null;
+    observer?.observe(element);
+    window.addEventListener("resize", refresh);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", refresh);
+    };
+  }, [node.id, workbench]);
 
   // A drag that outlives the component (the split closed under it) must not
   // leave window listeners behind.
@@ -38,14 +58,19 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
       teardown.current?.();
       const previous = document.body.style.userSelect;
       document.body.style.userSelect = "none";
+      const divider = event.currentTarget.getBoundingClientRect();
+      const dividerSize = row ? divider.width : divider.height;
       let last = committed;
 
       const move = (moveEvent: PointerEvent) => {
         const element = container.current;
         if (!element) return;
         const box = element.getBoundingClientRect();
-        if ((row && !box.width) || (!row && !box.height)) return;
-        const raw = row ? (moveEvent.clientX - box.left) / box.width : (moveEvent.clientY - box.top) / box.height;
+        const total = row ? box.width : box.height;
+        const available = total - dividerSize;
+        if (!Number.isFinite(available) || available <= 0) return;
+        const pointer = row ? moveEvent.clientX - box.left : moveEvent.clientY - box.top;
+        const raw = (pointer - dividerSize / 2) / available;
         if (!Number.isFinite(raw)) return;
         const bounds = workbench.verbs.ratioBounds(node.id);
         if (!bounds) return;
@@ -120,8 +145,8 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
         aria-orientation={row ? "vertical" : "horizontal"}
         aria-label={row ? "resize horizontally" : "resize vertically"}
         aria-valuenow={Math.round(ratio * 100)}
-        aria-valuemin={10}
-        aria-valuemax={90}
+        aria-valuemin={Math.round((bounds?.min ?? 0.1) * 100)}
+        aria-valuemax={Math.round((bounds?.max ?? 0.9) * 100)}
         // A screen reader announcing "60" says nothing; the unit is the point.
         aria-valuetext={`${Math.round(ratio * 100)} percent`}
         data-part="split-divider"

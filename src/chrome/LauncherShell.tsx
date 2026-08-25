@@ -42,6 +42,8 @@ export interface LauncherShellProps {
   onQueryChange(query: string): void;
   onChoose(rowId: string): void;
   onClose(): void;
+  /** Exact control that opened this launcher, captured before the modal mounts. */
+  returnFocusTo?: HTMLElement | null;
   /** The line naming where a choice will land, shown before Enter commits. */
   status?: ReactNode;
   /** The verb named in the footer hint for the ACTIVE row ("go to", "place"…). */
@@ -73,6 +75,7 @@ export function LauncherShell({
   onQueryChange,
   onChoose,
   onClose,
+  returnFocusTo,
   status,
   enterVerb,
   searchLabel = "search views and applications",
@@ -145,7 +148,7 @@ export function LauncherShell({
   };
 
   return (
-    <Dialog title={title} onClose={onClose} closeLabel="close the launcher">
+    <Dialog title={title} onClose={onClose} closeLabel="close the launcher" returnFocusTo={returnFocusTo}>
       <div data-part="launcher">
         <TextInput
           accessibleName={searchLabel}

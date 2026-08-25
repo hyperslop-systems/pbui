@@ -26,6 +26,8 @@ func (e *Engine) respond(t *turn) error {
 		return e.handoffScenario(t)
 	case has(p, "what did i", "trace", "summar", "undo"):
 		return e.traceScenario(t)
+	case has(p, "arrange workbench", "split my workspace", "split the workbench"):
+		return e.workbenchScenario(t)
 	case has(p, "program", "counter", "make me a", "build me", "tile that", "tile for", "days of cover", "define an action", "add an action"):
 		return e.programScenario(t)
 	case has(p, "reorder", "draft"):
@@ -71,6 +73,7 @@ func (e *Engine) helpScenario(t *turn) error {
 		"- \"top sellers\" — a tool result projected into a table\n" +
 		"- \"reorder details form\" — a form whose fields accept objects\n" +
 		"- \"what did I do?\" — I read the verb trace\n" +
+		"- \"arrange workbench\" — I describe the current screen, then try one revision-bound atomic split\n" +
 		"- \"show an error\" — what a rejected widget looks like\n\n" +
 		"For example, " + productMention(demo.Products[0]) + " sits in " + mention("category", "7", "American Gold Eagles") + " and is made of " + mention("metal", "gold", "gold") + ". Right-click either to see its verbs."
 	if len(t.refs) > 0 {
@@ -454,6 +457,72 @@ func toAny(in []int) []any {
 		out[i] = v
 	}
 	return out
+}
+
+// workbenchScenario is the smallest visible agent-layout round trip: discover
+// the current ids/revision, then ask the browser to atomically split the first
+// tile. Repeating it on the resulting narrow tile demonstrates the same
+// rendered minimum refusing an agent call with an actionable explanation.
+func (e *Engine) workbenchScenario(t *turn) error {
+	if !t.hasTool(pbuichat.ToolWorkbenchDescribe) || !t.hasTool(pbuichat.ToolWorkbenchPerform) {
+		return t.say("This client did not advertise the workbench tools, so I left the layout untouched.")
+	}
+
+	described, status, err := t.frontendTool(pbuichat.ToolWorkbenchDescribe, map[string]any{"geometry": true})
+	if err != nil {
+		return err
+	}
+	if status != "success" {
+		return t.say("I could not describe the workbench, so I left it untouched.")
+	}
+	revision, _ := described["revision"].(string)
+	workspaces, _ := described["workspaces"].([]any)
+	if revision == "" || len(workspaces) == 0 {
+		return t.say("The workbench description had no revision or active workspace, so I left it untouched.")
+	}
+	workspace := asMap(workspaces[0])
+	tiles, _ := workspace["tiles"].([]any)
+	if len(tiles) == 0 {
+		return t.say("The active workspace has no tile to split, so I left it untouched.")
+	}
+	tile := asMap(tiles[0])
+	placementID, _ := tile["placementId"].(string)
+	title, _ := tile["title"].(string)
+	if placementID == "" {
+		return t.say("The first tile had no placement id, so I left it untouched.")
+	}
+
+	result, status, err := t.frontendTool(pbuichat.ToolWorkbenchPerform, map[string]any{
+		"expectedRevision": revision,
+		"verbs": []any{map[string]any{
+			"kind":        "tile.split",
+			"placementId": placementID,
+			"direction":   "row",
+		}},
+	})
+	if err != nil {
+		return err
+	}
+	if status != "success" {
+		return t.say("The workbench tool did not complete, so the atomic split was not applied.")
+	}
+	if ok, _ := result["ok"].(bool); ok {
+		shortRevision := revision
+		if len(shortRevision) > 8 {
+			shortRevision = shortRevision[:8]
+		}
+		return t.say(fmt.Sprintf("I described revision %s, then atomically split %q side by side. The result reports one applied change and a new revision.", shortRevision, title))
+	}
+	reason, _ := result["error"].(string)
+	if reason == "" {
+		if entries, _ := result["errors"].([]any); len(entries) > 0 {
+			reason, _ = asMap(entries[0])["error"].(string)
+		}
+	}
+	if reason == "" {
+		reason = "the browser rejected the atomic plan"
+	}
+	return t.say("I described the current revision, but applied zero changes: " + reason + ".")
 }
 
 // handoffScenario is the agent-to-agent gesture end to end: find out who else

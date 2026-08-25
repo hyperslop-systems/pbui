@@ -56,9 +56,14 @@ export interface SplitRatioBounds {
   max: number;
 }
 
+/** Fallback for headless geometry; the rendered token is measured when available. */
+export const DEFAULT_DIVIDER_PX = 10;
+
+/** Bounds over the DISTRIBUTABLE pane axis, excluding the divider track. */
 export function paneRatioBounds(size: number | null, minPx: number, minFraction: number): SplitRatioBounds | null {
   const floor = Math.max(0, Math.min(0.5, minFraction));
-  if (size === null || !Number.isFinite(size) || size <= 0) return { min: floor, max: 1 - floor };
+  if (size === null) return { min: floor, max: 1 - floor };
+  if (!Number.isFinite(size) || size <= 0) return null;
   const renderedFloor = Math.max(floor, minPx / size);
   if (renderedFloor > 0.5) return null;
   return { min: renderedFloor, max: 1 - renderedFloor };
@@ -532,12 +537,33 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     return scope.querySelector<HTMLElement>(`[data-${attribute}="${escaped}"]`);
   };
 
+  const dividerSize = (element: HTMLElement, row: boolean): number => {
+    const rendered = Array.from(element.children).find(
+      (child) => (child as HTMLElement).dataset?.part === "split-divider",
+    ) as HTMLElement | undefined;
+    const measured = rendered?.getBoundingClientRect();
+    const measuredSize = measured ? (row ? measured.width : measured.height) : 0;
+    if (Number.isFinite(measuredSize) && measuredSize > 0) return measuredSize;
+    if (typeof getComputedStyle === "function") {
+      const token = Number.parseFloat(getComputedStyle(element).getPropertyValue("--pbui-space-4"));
+      if (Number.isFinite(token) && token >= 0) return token;
+    }
+    return DEFAULT_DIVIDER_PX;
+  };
+
+  const distributableSize = (element: HTMLElement, row: boolean): number | null => {
+    const box = element.getBoundingClientRect();
+    const total = row ? box.width : box.height;
+    if (!Number.isFinite(total) || total <= 0) return null;
+    return Math.max(0, total - dividerSize(element, row));
+  };
+
   const canSplitPlacement = (placementId: string, direction: SplitDirection): boolean => {
     const element = elementByDataId("placement-id", placementId);
     if (!element) return true;
-    const box = element.getBoundingClientRect();
-    const size = direction === "row" ? box.width : box.height;
-    const minimum = direction === "row" ? constraints.minInlinePx : constraints.minBlockPx;
+    const row = direction === "row";
+    const size = distributableSize(element, row);
+    const minimum = row ? constraints.minInlinePx : constraints.minBlockPx;
     return paneRatioBounds(size, minimum, constraints.minFraction) !== null;
   };
 
@@ -552,25 +578,34 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     }
     if (!splitNode_ || splitNode_.body.case !== "split") return null;
     const element = elementByDataId("split-id", splitId);
-    const box = element?.getBoundingClientRect();
     const row = splitNode_.body.value.direction !== Direction.COLUMN;
-    const size = box ? (row ? box.width : box.height) : null;
+    const size = element ? distributableSize(element, row) : null;
     const minimum = row ? constraints.minInlinePx : constraints.minBlockPx;
     return paneRatioBounds(size, minimum, constraints.minFraction);
   };
 
-  const layoutFits = (spec: LayoutSpec, width: number | null, height: number | null): boolean => {
+  const layoutFits = (
+    spec: LayoutSpec,
+    width: number | null,
+    height: number | null,
+    inlineDivider: number,
+    blockDivider: number,
+  ): boolean => {
     if (spec.kind === "tile") return true;
     const row = spec.direction === "row";
-    const size = row ? width : height;
+    const total = row ? width : height;
+    const size = total === null ? null : Math.max(0, total - (row ? inlineDivider : blockDivider));
     const minimum = row ? constraints.minInlinePx : constraints.minBlockPx;
     const bounds = paneRatioBounds(size, minimum, constraints.minFraction);
     if (!bounds || spec.ratio < bounds.min || spec.ratio > bounds.max) return false;
-    const aWidth = row && width !== null ? width * spec.ratio : width;
-    const bWidth = row && width !== null ? width * (1 - spec.ratio) : width;
-    const aHeight = !row && height !== null ? height * spec.ratio : height;
-    const bHeight = !row && height !== null ? height * (1 - spec.ratio) : height;
-    return layoutFits(spec.a, aWidth, aHeight) && layoutFits(spec.b, bWidth, bHeight);
+    const aWidth = row && size !== null ? size * spec.ratio : width;
+    const bWidth = row && size !== null ? size * (1 - spec.ratio) : width;
+    const aHeight = !row && size !== null ? size * spec.ratio : height;
+    const bHeight = !row && size !== null ? size * (1 - spec.ratio) : height;
+    return (
+      layoutFits(spec.a, aWidth, aHeight, inlineDivider, blockDivider) &&
+      layoutFits(spec.b, bWidth, bHeight, inlineDivider, blockDivider)
+    );
   };
 
   const activate = (placementId: string | null) => {
@@ -861,8 +896,11 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     const fallbackApp = apps.list()[0];
     const effective = spec ?? (fallbackApp ? ({ kind: "tile", appId: fallbackApp.id } as LayoutSpec) : null);
     if (!effective) return null;
-    const box = root()?.getBoundingClientRect();
-    if (!layoutFits(effective, box?.width || null, box?.height || null)) return null;
+    const rootElement = root();
+    const box = rootElement?.getBoundingClientRect();
+    const inlineDivider = rootElement ? dividerSize(rootElement, true) : DEFAULT_DIVIDER_PX;
+    const blockDivider = rootElement ? dividerSize(rootElement, false) : DEFAULT_DIVIDER_PX;
+    if (!layoutFits(effective, box?.width || null, box?.height || null, inlineDivider, blockDivider)) return null;
     const built = buildLayout(effective);
     const workspaceId = options.workspaceId ?? newId("ws");
     if (!store.mutate([...built.mutations, workspaceCreateMutation(workspaceId, name, built.tree)])) return null;
@@ -954,8 +992,15 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     resize,
     ratioBounds,
     layoutFits: (spec) => {
-      const box = root()?.getBoundingClientRect();
-      return layoutFits(spec, box?.width || null, box?.height || null);
+      const rootElement = root();
+      const box = rootElement?.getBoundingClientRect();
+      return layoutFits(
+        spec,
+        box?.width || null,
+        box?.height || null,
+        rootElement ? dividerSize(rootElement, true) : DEFAULT_DIVIDER_PX,
+        rootElement ? dividerSize(rootElement, false) : DEFAULT_DIVIDER_PX,
+      );
     },
     place,
     setTitle,
