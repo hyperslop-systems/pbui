@@ -3,7 +3,7 @@ import type { JsonValue } from "@bufbuild/protobuf";
 import { describeWorkbench, type Workbench } from "@hyperslop-systems/pbui-workbench";
 import { type ActionBehaviour, type ActionRecord, BOOTSTRAP_VERSION, DEFAULT_LIMITS, type DispatchIntent, type InstanceRegistry, type LoadedProgram, type ProgramEngine, type ProgramErrorPayload, type ProgramGlobalState, type ProgramLibrary, type ProgramRecord, SANDBOX_INTENTS, SANDBOX_UI_KINDS, type SandboxLimits, type UINode, type UIReference, byteLength, countNodes, reducePluginIntent, substituteVerbRef, toProgramError, validateUINode } from "@hyperslop-systems/pbui-sandbox";
 import { z } from "zod";
-import type { Outcome, VerbLike } from "../types";
+import type { EffectCorrelation, Outcome, VerbLike } from "../types";
 import type { Vocabulary } from "../vocabulary/schemas";
 import { validateVerb } from "../vocabulary/validate";
 import type { PolicyDecision } from "./workbenchTools";
@@ -41,7 +41,7 @@ export interface SandboxToolsOptions {
   /** The instance registry, when the product runs one: `sandbox_describe` then reports what is running and how it is doing. */
   getInstances?(): InstanceRegistry | null;
   /** Perform a verb through the PRODUCT's router with `actor: "agent"`, so the trace records it. */
-  perform(verb: VerbLike): Promise<Outcome>;
+  perform(verb: VerbLike, correlation?: EffectCorrelation): Promise<Outcome>;
   /** Resolve a binding for a dry render, the same way the tile does. */
   resolve(key: string, id: string): UIReference | null;
   /** The product's descriptor environment for a dry render; default `{}`. */
@@ -166,7 +166,13 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
       verb,
       confirmationId,
       effectId,
-      async () => ({ outcome: await options.perform(verb) }),
+      async () => ({
+        outcome: await options.perform(verb, {
+          effectId,
+          invocationKey: effectId.replace(":", "/"),
+          ...(confirmationId ? { approvalId: confirmationId } : {}),
+        }),
+      }),
       protectedArtifact,
     );
     return result.outcome;

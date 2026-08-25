@@ -190,13 +190,16 @@ func (p *Plugin) HandleVerbPerformed(ctx context.Context, cmd sessionstream.Comm
 	}
 	seq := p.trace.next(cmd.SessionId)
 	entry := &chatv1.TraceEntry{
-		Seq:       seq,
-		Actor:     payload.GetActor(),
-		Verb:      payload.GetVerb(),
-		Target:    payload.GetTarget(),
-		Outcome:   outcome,
-		At:        timestamppb.New(time.Now().UTC()),
-		ClientSeq: payload.GetClientSeq(),
+		Seq:           seq,
+		Actor:         payload.GetActor(),
+		Verb:          payload.GetVerb(),
+		Target:        payload.GetTarget(),
+		Outcome:       outcome,
+		At:            timestamppb.New(time.Now().UTC()),
+		ClientSeq:     payload.GetClientSeq(),
+		EffectId:      payload.GetEffectId(),
+		InvocationKey: payload.GetInvocationKey(),
+		ApprovalId:    payload.GetApprovalId(),
 	}
 	p.trace.add(cmd.SessionId, entry)
 	return pub.Publish(ctx, sessionstream.Event{Name: EventVerbRecorded, SessionId: cmd.SessionId, Payload: entry})

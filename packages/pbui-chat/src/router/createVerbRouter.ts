@@ -88,6 +88,10 @@ export interface PerformOptions {
    * the active one (guide D4).
    */
   conversationId?: string;
+  /** Correlate this high-level verb row with its parent gateway effect. */
+  effectId?: string;
+  invocationKey?: string;
+  approvalId?: string;
 }
 
 /**
@@ -147,6 +151,7 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
     target: Reference | undefined,
     outcome: Outcome,
     provenance?: Record<string, unknown>,
+    correlation?: Pick<PerformOptions, "effectId" | "invocationKey" | "approvalId">,
   ) {
     if (options.report === false || !reportBinding) return;
     // The trace belongs to the conversation the verb came from, not to
@@ -159,6 +164,9 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
       verb: provenance ? { ...verb, _provenance: provenance } : verb,
       ...(target ? { target } : {}),
       outcome,
+      ...(correlation?.effectId ? { effectId: correlation.effectId } : {}),
+      ...(correlation?.invocationKey ? { invocationKey: correlation.invocationKey } : {}),
+      ...(correlation?.approvalId ? { approvalId: correlation.approvalId } : {}),
     };
     const prefix = reportBinding.basePrefix ?? options.basePrefix ?? "";
     try {
@@ -230,7 +238,7 @@ export function createVerbRouter<Verb extends VerbLike>(options: VerbRouterOptio
 
       const reportBinding = binding;
       const pendingReport = reportQueue.then(() =>
-        report(reportBinding, conversation?.id ?? null, actor, verb, target, outcome, performOptions?.provenance),
+        report(reportBinding, conversation?.id ?? null, actor, verb, target, outcome, performOptions?.provenance, performOptions),
       );
       // Keep the queue usable even if report is later changed to propagate an
       // error; perform itself still waits for this report before returning.

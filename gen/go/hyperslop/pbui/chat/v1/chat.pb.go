@@ -215,6 +215,9 @@ type VerbPerformedCommand struct {
 	Verb          *structpb.Struct       `protobuf:"bytes,3,opt,name=verb,proto3" json:"verb,omitempty"`
 	Target        *Reference             `protobuf:"bytes,4,opt,name=target,proto3" json:"target,omitempty"`
 	Outcome       string                 `protobuf:"bytes,5,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	EffectId      string                 `protobuf:"bytes,6,opt,name=effect_id,json=effectId,proto3" json:"effect_id,omitempty"`
+	InvocationKey string                 `protobuf:"bytes,7,opt,name=invocation_key,json=invocationKey,proto3" json:"invocation_key,omitempty"`
+	ApprovalId    string                 `protobuf:"bytes,8,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -280,6 +283,27 @@ func (x *VerbPerformedCommand) GetTarget() *Reference {
 func (x *VerbPerformedCommand) GetOutcome() string {
 	if x != nil {
 		return x.Outcome
+	}
+	return ""
+}
+
+func (x *VerbPerformedCommand) GetEffectId() string {
+	if x != nil {
+		return x.EffectId
+	}
+	return ""
+}
+
+func (x *VerbPerformedCommand) GetInvocationKey() string {
+	if x != nil {
+		return x.InvocationKey
+	}
+	return ""
+}
+
+func (x *VerbPerformedCommand) GetApprovalId() string {
+	if x != nil {
+		return x.ApprovalId
 	}
 	return ""
 }
@@ -498,6 +522,9 @@ type TraceEntry struct {
 	At            *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=at,proto3" json:"at,omitempty"`
 	ClientSeq     string                 `protobuf:"bytes,7,opt,name=client_seq,json=clientSeq,proto3" json:"client_seq,omitempty"`
 	Effect        *EffectEnvelope        `protobuf:"bytes,8,opt,name=effect,proto3" json:"effect,omitempty"`
+	EffectId      string                 `protobuf:"bytes,9,opt,name=effect_id,json=effectId,proto3" json:"effect_id,omitempty"`
+	InvocationKey string                 `protobuf:"bytes,10,opt,name=invocation_key,json=invocationKey,proto3" json:"invocation_key,omitempty"`
+	ApprovalId    string                 `protobuf:"bytes,11,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -588,6 +615,27 @@ func (x *TraceEntry) GetEffect() *EffectEnvelope {
 	return nil
 }
 
+func (x *TraceEntry) GetEffectId() string {
+	if x != nil {
+		return x.EffectId
+	}
+	return ""
+}
+
+func (x *TraceEntry) GetInvocationKey() string {
+	if x != nil {
+		return x.InvocationKey
+	}
+	return ""
+}
+
+func (x *TraceEntry) GetApprovalId() string {
+	if x != nil {
+		return x.ApprovalId
+	}
+	return ""
+}
+
 // WidgetRequestedEvent is the geppetto-side event a backend tool publishes
 // when the model asks for a widget document; the chat plugin turns it into
 // widget-instance events. It is a named message so the schema policy applies
@@ -670,14 +718,18 @@ const file_hyperslop_pbui_chat_v1_chat_proto_rawDesc = "" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12 \n" +
 	"\ftool_call_id\x18\x02 \x01(\tR\n" +
 	"toolCallId\x12\x1b\n" +
-	"\twidget_id\x18\x03 \x01(\tR\bwidgetId\"\xec\x01\n" +
+	"\twidget_id\x18\x03 \x01(\tR\bwidgetId\"\xd1\x02\n" +
 	"\x14VerbPerformedCommand\x12\x1d\n" +
 	"\n" +
 	"client_seq\x18\x01 \x01(\tR\tclientSeq\x123\n" +
 	"\x05actor\x18\x02 \x01(\x0e2\x1d.hyperslop.pbui.chat.v1.ActorR\x05actor\x12+\n" +
 	"\x04verb\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x04verb\x129\n" +
 	"\x06target\x18\x04 \x01(\v2!.hyperslop.pbui.chat.v1.ReferenceR\x06target\x12\x18\n" +
-	"\aoutcome\x18\x05 \x01(\tR\aoutcome\"\xe8\x04\n" +
+	"\aoutcome\x18\x05 \x01(\tR\aoutcome\x12\x1b\n" +
+	"\teffect_id\x18\x06 \x01(\tR\beffectId\x12%\n" +
+	"\x0einvocation_key\x18\a \x01(\tR\rinvocationKey\x12\x1f\n" +
+	"\vapproval_id\x18\b \x01(\tR\n" +
+	"approvalId\"\xe8\x04\n" +
 	"\x0eEffectEnvelope\x12\x1b\n" +
 	"\teffect_id\x18\x01 \x01(\tR\beffectId\x12%\n" +
 	"\x0einvocation_key\x18\x02 \x01(\tR\rinvocationKey\x123\n" +
@@ -700,7 +752,7 @@ const file_hyperslop_pbui_chat_v1_chat_proto_rawDesc = "" +
 	"\voccurred_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"occurredAt\"X\n" +
 	"\x16EffectPerformedCommand\x12>\n" +
-	"\x06effect\x18\x01 \x01(\v2&.hyperslop.pbui.chat.v1.EffectEnvelopeR\x06effect\"\xe0\x02\n" +
+	"\x06effect\x18\x01 \x01(\v2&.hyperslop.pbui.chat.v1.EffectEnvelopeR\x06effect\"\xc5\x03\n" +
 	"\n" +
 	"TraceEntry\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x04R\x03seq\x123\n" +
@@ -711,7 +763,12 @@ const file_hyperslop_pbui_chat_v1_chat_proto_rawDesc = "" +
 	"\x02at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x1d\n" +
 	"\n" +
 	"client_seq\x18\a \x01(\tR\tclientSeq\x12>\n" +
-	"\x06effect\x18\b \x01(\v2&.hyperslop.pbui.chat.v1.EffectEnvelopeR\x06effect\"\x94\x01\n" +
+	"\x06effect\x18\b \x01(\v2&.hyperslop.pbui.chat.v1.EffectEnvelopeR\x06effect\x12\x1b\n" +
+	"\teffect_id\x18\t \x01(\tR\beffectId\x12%\n" +
+	"\x0einvocation_key\x18\n" +
+	" \x01(\tR\rinvocationKey\x12\x1f\n" +
+	"\vapproval_id\x18\v \x01(\tR\n" +
+	"approvalId\"\x94\x01\n" +
 	"\x14WidgetRequestedEvent\x12\x1b\n" +
 	"\twidget_id\x18\x01 \x01(\tR\bwidgetId\x12*\n" +
 	"\x11parent_message_id\x18\x02 \x01(\tR\x0fparentMessageId\x123\n" +

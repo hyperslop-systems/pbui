@@ -222,7 +222,7 @@ func TestTraceCommandAndProjections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := []byte(`{"clientSeq":"c1","actor":"human","verb":{"kind":"watch","ref":{"type":"product","id":"2049"}},"target":{"type":"product","id":"2049","value":{"name":"AGE"}},"outcome":"performed"}`)
+	body := []byte(`{"clientSeq":"c1","actor":"human","verb":{"kind":"watch","ref":{"type":"product","id":"2049"}},"target":{"type":"product","id":"2049","value":{"name":"AGE"}},"outcome":"performed","effectId":"s1:tool-1","invocationKey":"s1/tool-1","approvalId":"proposal-1"}`)
 	cmd, err := VerbCommandFromJSON(body)
 	if err != nil {
 		t.Fatal(err)
@@ -244,7 +244,7 @@ func TestTraceCommandAndProjections(t *testing.T) {
 	if first.GetSeq() != 1 || second.GetSeq() != 2 {
 		t.Errorf("seq: %d %d", first.GetSeq(), second.GetSeq())
 	}
-	if first.GetActor() != chatv1.Actor_ACTOR_HUMAN || first.GetOutcome() != "performed" || first.GetTarget().GetId() != "2049" {
+	if first.GetActor() != chatv1.Actor_ACTOR_HUMAN || first.GetOutcome() != "performed" || first.GetTarget().GetId() != "2049" || first.GetEffectId() != "s1:tool-1" || first.GetApprovalId() != "proposal-1" {
 		t.Errorf("first: %+v", first)
 	}
 	if second.GetActor() != chatv1.Actor_ACTOR_AGENT || second.GetOutcome() != "rejected:unknown verb nope" {

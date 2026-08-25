@@ -314,11 +314,14 @@ func buildVerbCommand(actor chatv1.Actor, verb map[string]any, target *Reference
 // {clientSeq, actor: "human"|"agent", verb, target?, outcome}.
 func VerbCommandFromJSON(data []byte) (*chatv1.VerbPerformedCommand, error) {
 	var body struct {
-		ClientSeq string         `json:"clientSeq"`
-		Actor     string         `json:"actor"`
-		Verb      map[string]any `json:"verb"`
-		Target    map[string]any `json:"target"`
-		Outcome   string         `json:"outcome"`
+		ClientSeq     string         `json:"clientSeq"`
+		Actor         string         `json:"actor"`
+		Verb          map[string]any `json:"verb"`
+		Target        map[string]any `json:"target"`
+		Outcome       string         `json:"outcome"`
+		EffectID      string         `json:"effectId"`
+		InvocationKey string         `json:"invocationKey"`
+		ApprovalID    string         `json:"approvalId"`
 	}
 	if err := json.Unmarshal(data, &body); err != nil {
 		return nil, errors.Wrap(err, "decode verb command")
@@ -330,7 +333,14 @@ func VerbCommandFromJSON(data []byte) (*chatv1.VerbPerformedCommand, error) {
 	if strings.EqualFold(body.Actor, "agent") {
 		actor = chatv1.Actor_ACTOR_AGENT
 	}
-	return buildVerbCommand(actor, body.Verb, ReferenceFromMap(body.Target), body.Outcome, body.ClientSeq)
+	cmd, err := buildVerbCommand(actor, body.Verb, ReferenceFromMap(body.Target), body.Outcome, body.ClientSeq)
+	if err != nil {
+		return nil, err
+	}
+	cmd.EffectId = strings.TrimSpace(body.EffectID)
+	cmd.InvocationKey = strings.TrimSpace(body.InvocationKey)
+	cmd.ApprovalId = strings.TrimSpace(body.ApprovalID)
+	return cmd, nil
 }
 
 // EffectCommandFromJSON validates and decodes the browser effect envelope.

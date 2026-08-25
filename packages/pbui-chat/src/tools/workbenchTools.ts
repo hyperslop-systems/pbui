@@ -13,7 +13,7 @@ import { type JsonValue, fromJson, toJson } from "@bufbuild/protobuf";
 import { type Mutation, MutationSchema, type WorkbenchDocument, WorkbenchDocumentSchema } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 import { z } from "zod";
-import type { Outcome, VerbLike } from "../types";
+import type { EffectCorrelation, Outcome, VerbLike } from "../types";
 import type { AgentEffectGateway } from "./agentEffectGateway";
 import { digestCanonicalJson } from "./approvalLedger";
 
@@ -128,7 +128,7 @@ export interface WorkbenchToolsOptions {
    * validates against the vocabulary, records the outcome — including a
    * rejection — and reports it with `actor: "agent"`.
    */
-  perform(verb: VerbLike): Promise<Outcome>;
+  perform(verb: VerbLike, correlation?: EffectCorrelation): Promise<Outcome>;
   limits?: Partial<WorkbenchToolLimits>;
   policy?: Partial<WorkbenchPolicy>;
   /**
@@ -213,8 +213,8 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     return token;
   }
 
-  async function performVerb(verb: WorkbenchVerb): Promise<Outcome> {
-    return options.perform(mapVerb(verb));
+  async function performVerb(verb: WorkbenchVerb, correlation: EffectCorrelation): Promise<Outcome> {
+    return options.perform(mapVerb(verb), correlation);
   }
 
   /** The one door every high-level mutating tool uses. */
@@ -243,7 +243,11 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       approvalDescription: describeWorkbenchVerb(verb),
       async perform() {
         beforePerform?.();
-        const outcome = await performVerb(verb);
+        const outcome = await performVerb(verb, {
+          effectId,
+          invocationKey: effectId.replace(":", "/"),
+          ...(confirmationId ? { approvalId: confirmationId } : {}),
+        });
         return { outcome, afterRevision: await workbenchRevision(wb) };
       },
     });

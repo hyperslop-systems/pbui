@@ -81,6 +81,12 @@ export type VerbLike = { kind: string } & Record<string, unknown>;
 
 export type Actor = "human" | "agent";
 
+export interface EffectCorrelation {
+  effectId: string;
+  invocationKey?: string;
+  approvalId?: string;
+}
+
 /** `"performed"` or `"rejected:<why>"`. */
 export type Outcome = "performed" | `rejected:${string}`;
 
@@ -191,6 +197,9 @@ export interface TraceEntryProps {
   at: string;
   clientSeq?: string;
   effect?: EffectTraceEnvelope;
+  effectId?: string;
+  invocationKey?: string;
+  approvalId?: string;
 }
 
 /** What `sendMessageBody` sends to `POST …/messages`. An alias so it satisfies chat-provider's `Record<string, unknown>` body type. */

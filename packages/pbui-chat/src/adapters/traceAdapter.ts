@@ -122,6 +122,9 @@ export function traceEntryProps(payload: unknown): TraceEntryProps | null {
       at,
       ...(entry.clientSeq ? { clientSeq: entry.clientSeq } : {}),
       ...(effect ? { effect } : {}),
+      ...(entry.effectId ? { effectId: entry.effectId } : {}),
+      ...(entry.invocationKey ? { invocationKey: entry.invocationKey } : {}),
+      ...(entry.approvalId ? { approvalId: entry.approvalId } : {}),
     };
   } catch {
     const seq = Number(payload.seq);
@@ -138,6 +141,9 @@ export function traceEntryProps(payload: unknown): TraceEntryProps | null {
       at,
       ...(typeof payload.clientSeq === "string" && payload.clientSeq ? { clientSeq: payload.clientSeq } : {}),
       ...(effect ? { effect } : {}),
+      ...(typeof payload.effectId === "string" && payload.effectId ? { effectId: payload.effectId } : {}),
+      ...(typeof payload.invocationKey === "string" && payload.invocationKey ? { invocationKey: payload.invocationKey } : {}),
+      ...(typeof payload.approvalId === "string" && payload.approvalId ? { approvalId: payload.approvalId } : {}),
     };
   }
 }

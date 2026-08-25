@@ -54,6 +54,30 @@ describe("createVerbRouter", () => {
     });
   });
 
+  test("reports explicit gateway correlation as typed fields", async () => {
+    const fetchImpl = okFetch();
+    const router = createVerbRouter<{ kind: string } & Record<string, unknown>>({
+      families: () => "local",
+      local: () => undefined,
+      fetch: fetchImpl,
+    });
+    router.bind(binding(fetchImpl));
+
+    await router.perform(
+      { kind: "inspect", ref: product },
+      undefined,
+      { actor: "agent", effectId: "s1:tool-1", invocationKey: "s1/tool-1", approvalId: "proposal-1" },
+    );
+    const body = JSON.parse(String(((fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit])[1].body));
+    expect(body).toMatchObject({
+      effectId: "s1:tool-1",
+      invocationKey: "s1/tool-1",
+      approvalId: "proposal-1",
+      actor: "agent",
+    });
+    expect(body.verb).not.toHaveProperty("_provenance");
+  });
+
   test("serializes reports in perform invocation order", async () => {
     let releaseFirst!: () => void;
     const firstResponse = new Promise<void>((resolve) => { releaseFirst = resolve; });

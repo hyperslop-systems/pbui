@@ -2,7 +2,7 @@ import type { FrontendTool, ToolDefinition } from "@go-go-golems/chat-provider";
 import { z } from "zod";
 import type { ConversationRegistry } from "../conversations/registry";
 import { ReferenceSchema } from "../vocabulary/schemas";
-import type { Outcome, Reference, VerbLike } from "../types";
+import type { EffectCorrelation, Outcome, Reference, VerbLike } from "../types";
 import type { AgentEffectGateway } from "./agentEffectGateway";
 
 /**
@@ -40,7 +40,7 @@ export interface ConversationToolsOptions {
    */
   conversationId: string;
   /** Perform through the product's router, so the handoff lands in the trace. */
-  perform(verb: VerbLike): Promise<Outcome>;
+  perform(verb: VerbLike, correlation?: EffectCorrelation): Promise<Outcome>;
   policy?: Partial<ConversationToolsPolicy>;
   /** How many characters of a handoff message to allow. Default 4000. */
   maxPromptLength?: number;
@@ -166,7 +166,12 @@ export function createConversationTools(options: ConversationToolsOptions): Conv
         approvalDescription: "this message",
         approvalMismatchReason: `proposal ${input.confirmationId ?? ""} was not approved for this message`,
         async perform() {
-          const outcome = await options.perform(verb);
+          const effectId = `${options.conversationId}:${context.toolCallId}`;
+          const outcome = await options.perform(verb, {
+            effectId,
+            invocationKey: `${options.conversationId}/${context.toolCallId}`,
+            ...(input.confirmationId ? { approvalId: input.confirmationId } : {}),
+          });
           return {
             outcome,
             ...(outcome === "performed"

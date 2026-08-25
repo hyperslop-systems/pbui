@@ -38,7 +38,7 @@ import { createConversationTools, type ConversationTools, type ConversationTools
 import { createSandboxTools, type SandboxTools, type SandboxToolsOptions } from "./tools/sandboxTools";
 import { createWorkbenchTools, type WorkbenchTools, type WorkbenchToolsOptions } from "./tools/workbenchTools";
 import type { InstanceRegistry, ProgramEngine, ProgramLibrary } from "@hyperslop-systems/pbui-sandbox";
-import type { ChatMessageBody, Reference, VerbLike } from "./types";
+import type { ChatMessageBody, EffectCorrelation, Reference, VerbLike } from "./types";
 import { fromPresentationReference, toPresentationReference } from "./types";
 import { exportVocabulary } from "./vocabulary/defineVocabulary";
 import type { Vocabulary } from "./vocabulary/schemas";
@@ -224,7 +224,8 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   function toolsFor(conversationId: string): ConversationToolset {
     let built = toolsByConversation.get(conversationId);
     if (built) return built;
-    const perform = (verb: VerbLike) => router.perform(verb, undefined, { actor: "agent", conversationId });
+    const perform = (verb: VerbLike, correlation?: EffectCorrelation) =>
+      router.perform(verb, undefined, { actor: "agent", conversationId, ...correlation });
     const workbenchTools = createWorkbenchTools({
       getWorkbench: () => workbench,
       perform,
