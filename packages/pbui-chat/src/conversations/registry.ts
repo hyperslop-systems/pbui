@@ -206,6 +206,8 @@ export interface CreateConversationRegistryOptions {
   titleLength?: number;
   /** Connect each runtime as it attaches; default true. Stories and tests pass false. */
   autoConnect?: boolean;
+  /** Fail an opening attempt that never settles; default 10 seconds. */
+  connectTimeoutMs?: number;
 }
 
 const EMPTY_MIRROR: ConversationMirror = Object.freeze({
@@ -321,6 +323,8 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
   const fetchImpl = options.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
   const basePrefix = options.basePrefix ?? "";
   const titleLength = options.titleLength ?? 60;
+  const connectTimeoutMs = options.connectTimeoutMs ?? 10_000;
+  if (!Number.isFinite(connectTimeoutMs) || connectTimeoutMs <= 0) throw new Error("connectTimeoutMs must be positive");
 
   const records = new Map<string, ConversationRecord>();
   const mirrors = new Map<string, ConversationMirror>();
@@ -959,8 +963,14 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
       const current = lifecycleOf(id);
       const attempt = current.phase === "opening" ? current.attempt : nextAttempt(id);
       if (current.phase !== "opening") setLifecycle(id, { phase: "opening", attempt });
-      const promise = runtime.context.client
-        .connect()
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+      const timedConnect = Promise.race([
+        runtime.context.client.connect(),
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => reject(new Error(`connection timed out after ${connectTimeoutMs}ms`)), connectTimeoutMs);
+        }),
+      ]);
+      const promise = timedConnect
         .then(() => {
           const lifecycle = lifecycleOf(id);
           if (openSet.has(id) && lifecycle.phase === "opening" && lifecycle.attempt === attempt) {
@@ -980,6 +990,7 @@ export function createConversationRegistry(options: CreateConversationRegistryOp
           throw error;
         })
         .finally(() => {
+          if (timeout) clearTimeout(timeout);
           if (connectPromises.get(id) === promise) connectPromises.delete(id);
         });
       connectPromises.set(id, promise);
