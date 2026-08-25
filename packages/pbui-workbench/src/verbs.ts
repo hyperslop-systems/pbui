@@ -36,6 +36,34 @@ import type { WorkbenchStore } from "./store";
 
 export type SplitDirection = "row" | "col";
 
+export interface PaneConstraints {
+  /** Minimum width of either child in a row split. */
+  minInlinePx: number;
+  /** Minimum height of either child in a column split. */
+  minBlockPx: number;
+  /** Headless/relative floor even when rendered geometry is unavailable. */
+  minFraction: number;
+}
+
+export const DEFAULT_PANE_CONSTRAINTS: PaneConstraints = {
+  minInlinePx: 240,
+  minBlockPx: 160,
+  minFraction: 0.1,
+};
+
+export interface SplitRatioBounds {
+  min: number;
+  max: number;
+}
+
+export function paneRatioBounds(size: number | null, minPx: number, minFraction: number): SplitRatioBounds | null {
+  const floor = Math.max(0, Math.min(0.5, minFraction));
+  if (size === null || !Number.isFinite(size) || size <= 0) return { min: floor, max: 1 - floor };
+  const renderedFloor = Math.max(floor, minPx / size);
+  if (renderedFloor > 0.5) return null;
+  return { min: renderedFloor, max: 1 - renderedFloor };
+}
+
 /**
  * What `place` does when the singleton it would place already has a view in
  * ANOTHER workspace. `"switch"` goes there (turboproof's and datalab-ui's
@@ -237,12 +265,15 @@ export interface WorkbenchVerbHandlers {
    * with the same bindings. Returns the new placement's id, or null.
    */
   split(placementId: string, direction: SplitDirection, appId?: string): string | null;
+  canSplit(placementId: string, direction: SplitDirection): boolean;
   /** A no-op on the last tile: the workbench never renders empty. */
   close(placementId: string): boolean;
   swap(a: string, b: string): boolean;
   dock(source: string, target: string, zone: DockZone): boolean;
-  /** Clamp to [0.1, 0.9], then snap (default on) to the family's shared ratios. */
+  /** Clamp to this split's rendered pane constraints, then optionally snap. */
   resize(splitId: string, ratio: number, options?: { snap?: boolean }): number | null;
+  ratioBounds(splitId: string): SplitRatioBounds | null;
+  layoutFits(spec: LayoutSpec): boolean;
   /**
    * The launcher rule: a placed singleton is GONE TO (activated), anything
    * else splits the active tile — or `from` — along its longer RENDERED axis
@@ -426,9 +457,18 @@ export interface VerbEnvironment {
   root(): HTMLElement | null;
   splitPolicy?: SplitPolicy;
   binding?: BindingConfig;
+  paneConstraints?: Partial<PaneConstraints>;
 }
 
-export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: VerbEnvironment): WorkbenchVerbHandlers {
+export function createVerbHandlers({ store, apps, root, splitPolicy, binding, paneConstraints }: VerbEnvironment): WorkbenchVerbHandlers {
+  const constraints: PaneConstraints = { ...DEFAULT_PANE_CONSTRAINTS, ...paneConstraints };
+  if (
+    !Number.isFinite(constraints.minInlinePx) || constraints.minInlinePx <= 0 ||
+    !Number.isFinite(constraints.minBlockPx) || constraints.minBlockPx <= 0 ||
+    !Number.isFinite(constraints.minFraction) || constraints.minFraction <= 0 || constraints.minFraction > 0.5
+  ) {
+    throw new Error("pane constraints require positive pixel minima and minFraction in (0, 0.5]");
+  }
   const doc = () => store.getState().document;
   const workspace = () => store.getState().workspaceId;
 
@@ -485,6 +525,54 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     return leaves(tree)[0]?.id ?? null;
   };
 
+  const elementByDataId = (attribute: "placement-id" | "split-id", id: string): HTMLElement | null => {
+    const scope = root();
+    if (!scope) return null;
+    const escaped = typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(id) : id.replace(/"/g, '\\"');
+    return scope.querySelector<HTMLElement>(`[data-${attribute}="${escaped}"]`);
+  };
+
+  const canSplitPlacement = (placementId: string, direction: SplitDirection): boolean => {
+    const element = elementByDataId("placement-id", placementId);
+    if (!element) return true;
+    const box = element.getBoundingClientRect();
+    const size = direction === "row" ? box.width : box.height;
+    const minimum = direction === "row" ? constraints.minInlinePx : constraints.minBlockPx;
+    return paneRatioBounds(size, minimum, constraints.minFraction) !== null;
+  };
+
+  const ratioBounds = (splitId: string): SplitRatioBounds | null => {
+    let splitNode_: Node | undefined;
+    for (const candidate of doc().workspaces) {
+      const found = findNode(candidate.tree, splitId);
+      if (found?.body.case === "split") {
+        splitNode_ = found;
+        break;
+      }
+    }
+    if (!splitNode_ || splitNode_.body.case !== "split") return null;
+    const element = elementByDataId("split-id", splitId);
+    const box = element?.getBoundingClientRect();
+    const row = splitNode_.body.value.direction !== Direction.COLUMN;
+    const size = box ? (row ? box.width : box.height) : null;
+    const minimum = row ? constraints.minInlinePx : constraints.minBlockPx;
+    return paneRatioBounds(size, minimum, constraints.minFraction);
+  };
+
+  const layoutFits = (spec: LayoutSpec, width: number | null, height: number | null): boolean => {
+    if (spec.kind === "tile") return true;
+    const row = spec.direction === "row";
+    const size = row ? width : height;
+    const minimum = row ? constraints.minInlinePx : constraints.minBlockPx;
+    const bounds = paneRatioBounds(size, minimum, constraints.minFraction);
+    if (!bounds || spec.ratio < bounds.min || spec.ratio > bounds.max) return false;
+    const aWidth = row && width !== null ? width * spec.ratio : width;
+    const bWidth = row && width !== null ? width * (1 - spec.ratio) : width;
+    const aHeight = !row && height !== null ? height * spec.ratio : height;
+    const bHeight = !row && height !== null ? height * (1 - spec.ratio) : height;
+    return layoutFits(spec.a, aWidth, aHeight) && layoutFits(spec.b, bWidth, bHeight);
+  };
+
   const activate = (placementId: string | null) => {
     if (store.getState().activePlacementId === placementId) return;
     store.setState({ activePlacementId: placementId });
@@ -510,6 +598,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     if (!workspaceId) return null;
     const node = findNode(workspaceTree(current, workspaceId), placementId);
     if (!node || node.body.case !== "leaf") return null;
+    if (!canSplitPlacement(placementId, direction)) return null;
     const currentView = current.views[node.body.value.viewId];
 
     let mutations: Mutation[];
@@ -563,8 +652,13 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
   };
 
   const resize: WorkbenchVerbHandlers["resize"] = (splitId, ratio, options = {}) => {
-    const clamped = clampRatio(ratio);
-    const final = options.snap === false ? clamped : snapRatio(clamped).ratio;
+    const bounds = ratioBounds(splitId);
+    if (!bounds) return null;
+    const constrained = Math.max(bounds.min, Math.min(bounds.max, ratio));
+    const snapped = options.snap === false ? constrained : snapRatio(constrained).ratio;
+    // A conventional snap point may sit outside the rendered minimum. Clamp
+    // it through the same bounds pointer, keyboard and agent calls share.
+    const final = Math.max(bounds.min, Math.min(bounds.max, snapped));
     return store.mutate(resizeSplit(doc(), splitId, final)) ? final : null;
   };
 
@@ -595,7 +689,9 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
         }
         const target = targetPlacement(options.from);
         if (!target) return null;
-        const mutations = splitWithView(current, target, splitDirectionFor(target, root()), existing.id);
+        const direction = splitDirectionFor(target, root());
+        if (!canSplitPlacement(target, direction)) return null;
+        const mutations = splitWithView(current, target, direction, existing.id);
         const created = newPlacementIdOf(mutations);
         if (!store.mutate(mutations)) return null;
         if (created) activate(created);
@@ -624,6 +720,8 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     }
     const target = targetPlacement(options.near);
     if (!target) return null;
+    const direction = splitDirectionFor(target, root());
+    if (!canSplitPlacement(target, direction)) return null;
     const view = create(AppViewSchema, {
       id: newId("v"),
       appId,
@@ -632,7 +730,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     });
     const mutations = [
       mutation({ case: "viewCreate", value: { view } }),
-      ...splitWithView(current, target, splitDirectionFor(target, root()), view.id),
+      ...splitWithView(current, target, direction, view.id),
     ];
     const created = newPlacementIdOf(mutations);
     if (!store.mutate(mutations)) return null;
@@ -763,6 +861,8 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
     const fallbackApp = apps.list()[0];
     const effective = spec ?? (fallbackApp ? ({ kind: "tile", appId: fallbackApp.id } as LayoutSpec) : null);
     if (!effective) return null;
+    const box = root()?.getBoundingClientRect();
+    if (!layoutFits(effective, box?.width || null, box?.height || null)) return null;
     const built = buildLayout(effective);
     const workspaceId = options.workspaceId ?? newId("ws");
     if (!store.mutate([...built.mutations, workspaceCreateMutation(workspaceId, name, built.tree)])) return null;
@@ -834,6 +934,8 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
 
   const dock: WorkbenchVerbHandlers["dock"] = (source, target, zone) => {
     const current = doc();
+    const direction: SplitDirection = zone === "left" || zone === "right" ? "row" : "col";
+    if (!canSplitPlacement(target, direction)) return false;
     const sourceNode = findNode(workspaceTree(current, workspaceOfPlacement(current, source) ?? ""), source);
     const sourceViewId = sourceNode?.body.case === "leaf" ? sourceNode.body.value.viewId : null;
     const ok = store.mutate(dockPlacement(current, source, target, zone));
@@ -845,10 +947,16 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding }: 
 
   return {
     split,
+    canSplit: canSplitPlacement,
     close,
     swap: (a, b) => store.mutate(swapPlacements(doc(), a, b)),
     dock,
     resize,
+    ratioBounds,
+    layoutFits: (spec) => {
+      const box = root()?.getBoundingClientRect();
+      return layoutFits(spec, box?.width || null, box?.height || null);
+    },
     place,
     setTitle,
     openView,

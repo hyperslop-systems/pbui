@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
 import { snapRatio } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
-import { clampRatio } from "../../verbs";
 import styles from "./SplitPane.module.css";
 
 export interface SplitPaneProps {
@@ -45,10 +44,16 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
         const element = container.current;
         if (!element) return;
         const box = element.getBoundingClientRect();
+        if ((row && !box.width) || (!row && !box.height)) return;
         const raw = row ? (moveEvent.clientX - box.left) / box.width : (moveEvent.clientY - box.top) / box.height;
-        const next = snapRatio(clampRatio(raw));
-        last = next.ratio;
-        setLive(next);
+        if (!Number.isFinite(raw)) return;
+        const bounds = workbench.verbs.ratioBounds(node.id);
+        if (!bounds) return;
+        const constrained = Math.max(bounds.min, Math.min(bounds.max, raw));
+        const snapped = snapRatio(constrained);
+        const ratio = Math.max(bounds.min, Math.min(bounds.max, snapped.ratio));
+        last = ratio;
+        setLive({ ratio, snapped: snapped.snapped && ratio === snapped.ratio });
       };
       const finish = (commit: boolean) => {
         if (teardown.current !== stop) return;
@@ -82,7 +87,7 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
     const increase = row ? "ArrowRight" : "ArrowDown";
     if (event.key === "Home" || event.key === "End") {
       event.preventDefault();
-      workbench.verbs.resize(node.id, event.key === "Home" ? 0.1 : 0.9, { snap: false });
+      workbench.verbs.resize(node.id, event.key === "Home" ? 0 : 1, { snap: false });
       return;
     }
     if (event.key !== decrease && event.key !== increase) return;

@@ -17,6 +17,10 @@ function viewOf(tree: Node | undefined, placementId: string): string {
   return leaf?.body.case === "leaf" ? leaf.body.value.viewId : "";
 }
 
+function box(width: number, height: number): DOMRect {
+  return { x: 0, y: 0, left: 0, top: 0, right: width, bottom: height, width, height, toJSON: () => ({}) } as DOMRect;
+}
+
 function threeTiles() {
   const wb = createWorkbench({
     apps: demoApps,
@@ -91,6 +95,57 @@ describe("atomic plans", () => {
     expect(wb.perform(workbenchVerbs.setTitle(viewOf(before.workspaces[0]?.tree, first!), "changed"))).toBe(true);
     expect(wb.applyPlan(result.plan)).toBe(false);
     expect(wb.perform(workbenchVerbs.close("missing"))).toBe(false);
+  });
+});
+
+describe("rendered pane constraints", () => {
+  test("rejects a split that cannot leave both rendered panes usable", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const placementId = leafIds(wb.store.getState().document.workspaces[0]?.tree)[0]!;
+    const root = document.createElement("div");
+    const placement = document.createElement("div");
+    placement.dataset.placementId = placementId;
+    vi.spyOn(placement, "getBoundingClientRect").mockReturnValue(box(400, 300));
+    root.append(placement);
+    wb.setRoot(root);
+    const before = wb.store.getState().document;
+
+    expect(wb.verbs.canSplit(placementId, "row")).toBe(false);
+    expect(wb.verbs.split(placementId, "row")).toBeNull();
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  test("clamps resize to pixel-derived bounds shared with the separator", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+      paneConstraints: { minInlinePx: 240, minBlockPx: 120, minFraction: 0.1 },
+    });
+    const tree = wb.store.getState().document.workspaces[0]!.tree!;
+    const root = document.createElement("div");
+    const splitElement = document.createElement("div");
+    splitElement.dataset.splitId = tree.id;
+    vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue(box(600, 400));
+    root.append(splitElement);
+    wb.setRoot(root);
+
+    expect(wb.verbs.ratioBounds(tree.id)).toEqual({ min: 0.4, max: 0.6 });
+    expect(wb.verbs.resize(tree.id, 0.95, { snap: false })).toBe(0.6);
+    expect(wb.verbs.resize(tree.id, 0.05, { snap: false })).toBe(0.4);
+  });
+
+  test("rejects a nested workspace layout whose rendered allocation would be a sliver", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const root = document.createElement("div");
+    vi.spyOn(root, "getBoundingClientRect").mockReturnValue(box(800, 600));
+    wb.setRoot(root);
+    const tooNarrow = split("row", 0.2, tile("counter"), tile("notes"));
+    const usable = split("row", 0.4, tile("counter"), tile("notes"));
+
+    expect(wb.verbs.layoutFits(tooNarrow)).toBe(false);
+    expect(wb.verbs.createWorkspace("sliver", tooNarrow)).toBeNull();
+    expect(wb.verbs.layoutFits(usable)).toBe(true);
+    expect(wb.verbs.createWorkspace("usable", usable)).toMatch(/^ws-/);
   });
 });
 

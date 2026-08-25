@@ -7,7 +7,7 @@ import { WorkbenchContext } from "./context";
 import { parseDocument, serializeDocument } from "./document";
 import { createWorkbenchStore, useWorkbenchStore, type WorkbenchStore, type WorkbenchStoreOptions } from "./store";
 import type { LauncherProps, SurfaceProps, Workbench, WorkbenchPlan, WorkbenchPlanResult, WorkspaceStripProps } from "./types";
-import { createVerbHandlers, describeWorkbenchVerb, performWorkbenchVerb, type BindingConfig, type SplitPolicy, type WorkbenchVerb } from "./verbs";
+import { createVerbHandlers, describeWorkbenchVerb, performWorkbenchVerb, type BindingConfig, type PaneConstraints, type SplitPolicy, type WorkbenchVerb } from "./verbs";
 
 export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
   /** The applications this workbench offers — a list, or a registry built with `createAppRegistry`. */
@@ -34,6 +34,8 @@ export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
    * come up unbound and read as broken.
    */
   binding?: BindingConfig;
+  /** Runtime pane minima shared by pointer, keyboard, human and agent verbs. */
+  paneConstraints?: Partial<PaneConstraints>;
 }
 
 /**
@@ -69,6 +71,7 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     root,
     ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
     ...(options.binding ? { binding: options.binding } : {}),
+    ...(options.paneConstraints ? { paneConstraints: options.paneConstraints } : {}),
   });
 
   const plan = (plannedVerbs: readonly WorkbenchVerb[]): WorkbenchPlanResult => {
@@ -91,6 +94,7 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       root,
       ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
       ...(options.binding ? { binding: options.binding } : {}),
+      ...(options.paneConstraints ? { paneConstraints: options.paneConstraints } : {}),
     });
     for (let index = 0; index < plannedVerbs.length; index += 1) {
       const verb = plannedVerbs[index]!;

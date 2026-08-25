@@ -550,6 +550,28 @@ describe("the perform tool validates ids and availability", () => {
     expect(wb.store.getState().document).toBe(before);
   });
 
+  it("returns an actionable refusal when rendered pane minima forbid a split", async () => {
+    const { call, wb } = harness();
+    const description = (await call("workbench_describe", {})) as any;
+    const first = description.workspaces[0].tiles[0].placementId;
+    const root = document.createElement("div");
+    const placement = document.createElement("div");
+    placement.dataset.placementId = first;
+    placement.getBoundingClientRect = () => ({
+      x: 0, y: 0, left: 0, top: 0, right: 400, bottom: 300, width: 400, height: 300, toJSON: () => ({}),
+    } as DOMRect);
+    root.append(placement);
+    wb.setRoot(root);
+    const before = wb.store.getState().document;
+
+    const result = (await call("workbench_perform", {
+      verbs: [{ kind: "tile.split", placementId: first, direction: "row" }],
+      expectedRevision: description.revision,
+    })) as any;
+    expect(result.results[0].error).toContain("too small to split side by side");
+    expect(wb.store.getState().document).toBe(before);
+  });
+
   it("rejects a stale placement with the ids that are actually on screen", async () => {
     const { call } = harness();
     const result = (await call("workbench_perform", { verbs: [{ kind: "tile.activate", placementId: "n-gone" }] })) as any;

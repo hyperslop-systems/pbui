@@ -310,6 +310,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     switch (verb.kind) {
       case "tile.split":
         if (!knownPlacement(verb.placementId)) return unknownPlacement(verb.placementId, tiles);
+        if (!wb.verbs.canSplit(verb.placementId, verb.direction)) return `tile "${verb.placementId}" is too small to split ${verb.direction === "row" ? "side by side" : "top and bottom"}`;
         return verb.appId ? appProblem(verb.appId, wb) : null;
       case "tile.replace":
         if (!knownPlacement(verb.placementId)) return unknownPlacement(verb.placementId, tiles);
@@ -325,17 +326,19 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       case "tile.swap":
         if (!knownPlacement(verb.a)) return unknownPlacement(verb.a, tiles);
         return knownPlacement(verb.b) ? null : unknownPlacement(verb.b, tiles);
-      case "tile.dock":
+      case "tile.dock": {
         if (!knownPlacement(verb.source)) return unknownPlacement(verb.source, tiles);
-        return knownPlacement(verb.target) ? null : unknownPlacement(verb.target, tiles);
+        if (!knownPlacement(verb.target)) return unknownPlacement(verb.target, tiles);
+        const direction = verb.zone === "left" || verb.zone === "right" ? "row" : "col";
+        return wb.verbs.canSplit(verb.target, direction) ? null : `tile "${verb.target}" is too small to dock another tile`;
+      }
       case "view.setTitle":
       case "view.rebind":
       case "view.goTo":
         return knownView(verb.viewId) ? null : `unknown view "${verb.viewId}"`;
       case "split.resize":
-        return description.workspaces[0]?.splits.some((split) => split.splitId === verb.splitId)
-          ? null
-          : `unknown split "${verb.splitId}"`;
+        if (!description.workspaces[0]?.splits.some((split) => split.splitId === verb.splitId)) return `unknown split "${verb.splitId}"`;
+        return wb.verbs.ratioBounds(verb.splitId) ? null : `split "${verb.splitId}" is too small to resize while keeping both panes usable`;
       case "workspace.select":
       case "workspace.rename":
       case "workspace.delete":
@@ -393,6 +396,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     const problem = walk(spec, 1);
     if (problem) return problem;
     if (tiles > limits.tilesPerWorkspace) return `layout has ${tiles} tiles, the limit is ${limits.tilesPerWorkspace}`;
+    if (!wb.verbs.layoutFits(spec)) return "layout would create panes smaller than this workbench's configured minimum size";
     return null;
   }
 

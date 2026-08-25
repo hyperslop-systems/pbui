@@ -1,11 +1,14 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "../../createWorkbench";
 import { layout, singleTile, split, tile } from "../../document";
 import { demoApps } from "../../stories/demoApps";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("Surface", () => {
   test("renders one TileFrame per leaf, and a split container per split", () => {
@@ -92,6 +95,39 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
     expect(focused?.contains(tiles[1]!)).toBe(true);
     // Focusing a tile also makes it the active placement, through the capture handler.
     expect(wb.activePlacementId()).toBe(second);
+  });
+
+  test("pointer dragging uses the same rendered pixel bounds as agent resize", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
+    const { container } = render(<wb.Surface />);
+    const splitElement = container.querySelector<HTMLElement>('[data-part="split"]')!;
+    vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400, toJSON: () => ({}),
+    } as DOMRect);
+    const divider = container.querySelector('[data-part="split-divider"]')!;
+
+    fireEvent.pointerDown(divider);
+    const move = new Event("pointermove") as PointerEvent;
+    Object.defineProperties(move, { clientX: { value: 590 }, clientY: { value: 20 } });
+    fireEvent(window, move);
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("60 percent");
+    fireEvent.pointerUp(window);
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("60 percent");
+  });
+
+  test("keyboard extremes use the same rendered pixel bounds as agent resize", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
+    const { container } = render(<wb.Surface />);
+    const splitElement = container.querySelector<HTMLElement>('[data-part="split"]')!;
+    vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400, toJSON: () => ({}),
+    } as DOMRect);
+    const divider = container.querySelector('[data-part="split-divider"]')!;
+
+    fireEvent.keyDown(divider, { key: "Home" });
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("40 percent");
+    fireEvent.keyDown(divider, { key: "End" });
+    expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("60 percent");
   });
 
   test("the divider announces a unit, and Home/End/double-click move it", () => {
