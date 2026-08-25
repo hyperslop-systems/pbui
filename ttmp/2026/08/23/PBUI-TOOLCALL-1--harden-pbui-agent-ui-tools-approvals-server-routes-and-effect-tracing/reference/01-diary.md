@@ -16,6 +16,8 @@ RelatedFiles:
       Note: |-
         Loopback-only development authorization (commit a982f98)
         Persistent sessions/title index CLI flag (commit a34cc68)
+    - Path: repo://go.mod
+      Note: Pinocchio v0.11.14 release consumption (commit ac76a40)
     - Path: repo://packages/pbui-chat/demo/src/pbui/vocabulary.test.ts
       Note: Executable demo handoff and trace vocabulary contract (commit 7ecc676)
     - Path: repo://packages/pbui-chat/src/adapters/traceAdapter.ts
@@ -62,6 +64,7 @@ RelatedFiles:
         Canonical workbench and raw approval subjects (commit f320dfc)
         Gateway-routed verbs and raw mutations (commit 1d05677)
         Revision-bound atomic gateway batches (commit 27b0025)
+        Unsafe undo API/tokens removed during Phase 5 audit (commit 1d17631)
     - Path: repo://packages/pbui-chat/src/types.ts
       Note: Public effect correlation trace fields (commit 64b5f9d)
     - Path: repo://packages/pbui-workbench/src/components/Launcher/Launcher.tsx
@@ -105,6 +108,8 @@ RelatedFiles:
       Note: Shared transient-surface focus return ownership (commit ab2a629)
     - Path: repo://src/presentation/createPbui.tsx
       Note: ObjectMenu invoker capture and restoration (commit ab2a629)
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/reference/02-phase-2-5-requirement-to-evidence-audit.md
+      Note: Requirement map and exact Phase 5 blocker
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-correlated-verb-hydrated.png
       Note: Hydrated parent effect correlation on high-level verb
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-hydrated.png
@@ -143,6 +148,7 @@ LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -1411,3 +1417,132 @@ The launcher return target must remain ephemeral and exact without contaminating
 ### Technical details
 
 At 618 px total with a 10 px divider, CSS fractions divide 608 px. The exact inline lower bound is `240/608 = 0.3947368421`; Home renders 239.98265 px because Chromium distributes subpixels. The matching upper bound is 0.6052631579. In the 600 px mocked unit geometry, the distributable axis is 590 px and bounds are 0.4067796610/0.5932203390. The successful scripted call persisted one canonical `workbench.verb_batch` trace; the preflight-rejected repeat produced no second effect or mutation.
+
+## Step 16: Begin Phase 5, remove unsafe undo, and expose the executor blocker
+
+After the complete Phase 4 validation matrix passed, I printed its completion slip (and immediately reprinted it with the corrected frontend test total, 615 rather than 813), then printed the Phase 5 start plan. The first requirement audit found one PBUI-owned gap: `WorkbenchTools.undo` still restored a whole immutable document snapshot without revision checking, persistence, gateway tracing, or a safe inverse. The architecture guide explicitly says to remove returned tokens until inverse operations are real, so I removed the ring, public API, and every returned `undoToken`. I also upgraded the Go consumer from Pinocchio `v0.11.12` to the hardened `v0.11.14` release.
+
+The next audit gate deliberately opened two tabs on one session. That exposed the known but still unresolved upstream executor-ownership boundary: exact npm chat-provider `0.5.0` executes the same request in both tabs and re-executes a terminal request. Pinocchio and the effect endpoint correctly reject divergent duplicate results/envelopes, but rejection occurs after both browser effects have run. This blocks the Phase 5 `two tabs, one frontend executor` acceptance criterion.
+
+### Prompt Context
+
+**User prompt (verbatim):** `phase 4-5, budget 1M, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill) [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory.`
+
+**Continuation prompt (verbatim):** `Continue working toward the active thread goal. ... Before marking the goal complete, audit progress against the objective ... only when every requirement is verified.`
+
+**Assistant interpretation:** Treat Phase 5 as a hostile completion audit: remove any unsafe promise the implementation still exposes, consume the released server hardening, then test the exact installed browser package and multi-tab topology rather than inferring readiness from sibling source.
+
+**Inferred user intent:** Do not call Phase 4–5 complete merely because PBUI's local suites pass; prove the actual released dependency chain and stop honestly if an immutable dependency constraint prevents the required runtime behavior.
+
+**Commits:**
+
+- `1d17631e555d9068e2fe6d5c48db6a5e122d16f7` — "fix(pbui-chat): remove unsafe workbench undo tokens"
+- `ac76a40fc6a6f2b854a7bfae239f406135ee7ec5` — "build(pbui-chat): consume pinocchio v0.11.14"
+
+### What I did
+
+- Ran protocol generation/lint reproducibility, all relevant frontend typechecks/tests/builds, root consumer smoke/pack inspection, full uncached Go tests, focused Go race tests, local CI, GoSec, and artifact hashes.
+- Removed the per-conversation whole-document undo ring and exported `UndoEntry` surface.
+- Removed `undoToken` from specialized, atomic batch, and raw mutation results.
+- Added regressions proving no unsafe undo API or token is advertised.
+- Upgraded and tidied Pinocchio to `v0.11.14`; full/race/security checks pass.
+- Added `scripts/01-phase5-contract-audit.py`; it currently reports 20/20 PBUI-owned static contracts passing.
+- Added `scripts/02-probe-installed-chat-provider-multitab.mjs`; it imports the exact installed package and exits 1 when replay/two-runtime ownership executes more than once.
+- Opened two real Chromium tabs on the same session and ran one workbench tool sequence.
+- Captured exact network, durable SQLite, and installed-package evidence in `various/03-phase5-multitab-executor-blocker.md` and `various/phase5-installed-provider-multitab-probe.json`.
+
+### Commands run
+
+```text
+make protocol-check
+pnpm -r --if-present typecheck
+pnpm --filter '!@hyperslop-systems/datalab-ui' -r --if-present typecheck
+pnpm --filter '!@hyperslop-systems/datalab-ui' -r --if-present test
+pnpm --filter '!@hyperslop-systems/datalab-ui' -r --if-present build
+make ci-check
+make gosec
+GOWORK=off go test ./... -count=1
+GOWORK=off go test -race ./pkg/chatserver ./pkg/pbuichat ./pkg/workbench ./pkg/workbenchapi -count=1
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui typecheck
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui test
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui build
+pnpm consumer:smoke
+pnpm pack:check
+GOWORK=off go list -m -versions github.com/go-go-golems/pinocchio
+GOWORK=off go get github.com/go-go-golems/pinocchio@v0.11.14
+GOWORK=off go mod tidy
+npm view @go-go-golems/chat-provider@0.5.0 version dist.integrity dist.tarball --json
+npm view @go-go-golems/chat-provider dist-tags --json
+./scripts/01-phase5-contract-audit.py
+./scripts/02-probe-installed-chat-provider-multitab.mjs
+```
+
+### What worked
+
+```text
+protocol-check / generated diff                         PASS
+relevant package typechecks                             PASS
+workbench-protocol                                      44 PASS
+PBUI                                                     102 PASS
+pbui-workbench                                           125 PASS
+pbui-sandbox                                             103 PASS
+pbui-chat before final undo removal                      239 PASS
+pbui-chat after unsafe undo removal                      237 PASS
+pbui-chat demo                                           2 PASS
+current final frontend total                             613 PASS
+full GOWORK=off Go tests -count=1                        PASS
+chatserver/pbuichat/workbench/workbenchapi race          PASS
+make ci-check                                            PASS
+GoSec                                                    0 issues
+root clean consumer smoke                                PASS
+root npm tarball inspection                              PASS
+static cross-file contract audit                         20/20 PASS
+fresh one-tab stable console                             0 errors / 0 warnings
+```
+
+The Phase 4 completion print succeeded twice; the first paper says the wrong `JS=813 PASS`, so it is superseded by the second print at `2026-08-25T20:07:50Z`, which correctly says `JS=615 PASS`. The Phase 5 start plan printed at `2026-08-25T20:08:01Z`.
+
+### What didn't work
+
+1. `pnpm -r --if-present typecheck` included `packages/datalab-ui`, whose intentionally uninstalled dependency tree produced many `TS2307` errors and the explicit warning `Local package.json exists, but node_modules missing`. The repository Makefile itself documents installation with `--filter '!@hyperslop-systems/datalab-ui'`; rerunning the complete installed/relevant workspace with that filter passed typecheck, 513 package tests, and all builds. Root PBUI's 102 tests were run separately, totaling 615.
+2. The first completion slip used my incorrect arithmetic (`813`). I did not treat it as evidence; I printed a corrected slip with the actual 615-test total and recorded both.
+3. The Phase 5 audit found the old undo API could overwrite later work and bypass persistence/effect tracing. Rather than add a last-writer-wins revision check or compatibility shim, I followed the guide's explicit safe option and removed the unusable tokens/API.
+4. The first static-audit script run referenced a removed `conversations/types.ts` path and used stale marker names for outbox/auth/title code. I changed it to inspect the actual `registry.ts`, route registration, handler parser/submission markers, and real title CAS names; the rerun passes 20/20.
+5. The first installed-package probe could not resolve a package from the nested ticket directory. I changed it to locate the repository root and create a resolver from `packages/pbui-chat/package.json`; the rerun imports the exact installed package and fails for the intended behavioral reason.
+6. The two-tab browser test failed the required ownership invariant. Both tabs changed from four to five tiles. The losing tab received repeated HTTP 500s: Pinocchio `terminal_conflict` for `workbench_describe` and `effect id ... was reused with a different envelope` for `workbench_perform`.
+7. The exact installed npm package probe reports terminal replay `executions: 2, submissions: 2` and two independent tabs `executions: 2, submissions: 2`, where each required value is 1.
+
+### What I learned
+
+- A completion audit must test immutable release artifacts, not a sibling repository's green source tree. React-chat's hardened source is merged, but npm `0.5.0` predates it and cannot be overwritten.
+- Pinocchio's strict terminal ledger and PBUI's complete-envelope comparison are functioning: they reject the second divergent result. They cannot retroactively prevent a second browser from performing the effect.
+- Random ids make independently executed local workbench plans semantically equivalent but bytewise different; strict envelope conflict is therefore the correct alarm, not something to weaken.
+- Removing a false undo promise is safer and smaller than inventing a snapshot compatibility layer that silently erases concurrent changes.
+
+### What was tricky to build
+
+The multi-tab defect crosses all three ownership layers. A PBUI-only localStorage lock could suppress one mutation, but it could not suppress duplicate read results, human prompts, manifest writes, or return the winning result consistently. Relaxing server envelope equality would only hide two executions. Correctness needs protocol-level executor identity/assignment and a published browser runtime that obeys it.
+
+### What warrants a second pair of eyes
+
+- Confirm that the explicit requirement to keep npm `@go-go-golems/chat-provider@0.5.0` still overrides the Phase 5 requirement to consume the hardened browser terminal ledger. Both cannot be true because npm versions are immutable.
+- Review the safe removal of `WorkbenchTools.undo/history` and `undoToken`; no production caller existed, but it is an intentional public API contraction.
+- Review the exact two-tab network and SQLite evidence before deciding the coordinated release path.
+
+### What should be done next
+
+- Commit and relate the audit scripts, outputs, blocker report, and diary.
+- Produce the full requirement-to-evidence table with every PBUI-owned requirement marked and the executor criterion explicitly blocked.
+- Do not print the Phase 5 completion slip and do not complete the durable goal unless a release owner authorizes a new chat-provider version/protocol-v2 integration and the two-tab probe becomes one execution with no conflicts.
+
+### Code review instructions
+
+1. Review `1d17631` against guide §§7.5, 12, and Phase 3 item 4; confirm no `undoToken`, ring, or whole-document agent restore remains.
+2. Review `ac76a40` and `go.sum`; run with `GOWORK=off` to prove release consumption.
+3. Run `01-phase5-contract-audit.py` and inspect all 20 lines.
+4. Run `02-probe-installed-chat-provider-multitab.mjs`; the nonzero exit is the exact release blocker.
+5. Follow the browser reproduction in `03-phase5-multitab-executor-blocker.md` and compare both tabs plus `/tools/results`, `/effects`, and SQLite events.
+
+### Technical details
+
+The accepted workbench effect used before revision `723d2475...` and after revision `e73dcfbf...`. The second tab used the same effect id/input digest but independently minted ids and produced after revision `24fd427b...`; its occurrence timestamp also differed. The server retained exactly one `PbuiVerbRecorded` and one accepted terminal result. npm reports `0.5.0` integrity `sha512-HztFHJUM48LMheN/4qi7QAa6piGCjcgztCDXwea+v3sQwB2wok3VUEknH6L036PsBO7f0tsNpazyq7quA58lIw==`, `next: 0.5.0`, `latest: 0.4.2`.

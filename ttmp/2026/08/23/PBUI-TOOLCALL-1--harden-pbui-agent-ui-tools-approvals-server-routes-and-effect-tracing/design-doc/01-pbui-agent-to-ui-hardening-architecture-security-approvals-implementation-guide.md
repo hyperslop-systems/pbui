@@ -729,11 +729,13 @@ flowchart LR
 
 ### Phase 4 — Accessibility/observability/release
 
-1. Dialog/ObjectMenu focus restoration;
-2. Tools/Events/Context correlation vocabulary;
-3. multi-tab executor E2E with upgraded chat-provider;
-4. build/test/package/consumer validation;
-5. docs/migration/release notes.
+1. [x] Dialog/ObjectMenu focus restoration;
+2. [x] Tools/Events/Context correlation vocabulary;
+3. [ ] multi-tab executor E2E with upgraded chat-provider;
+4. [x] build/test/package/consumer validation for PBUI-owned code and released Pinocchio;
+5. [x] docs/migration/release evidence, with the unresolved executor release recorded explicitly.
+
+> **Implementation status, 2026-08-25:** PBUI-owned focus, correlation, package, rendered, and documentation work is complete. The installed immutable npm `@go-go-golems/chat-provider@0.5.0` predates the merged browser terminal ledger. A fresh two-tab test executes one requested effect in both tabs and produces terminal/envelope conflicts. The exact-version constraint and one-executor criterion cannot both be satisfied until a release owner approves a new npm version and coordinated executor protocol. See `reference/02-phase-2-5-requirement-to-evidence-audit.md`.
 
 ## 15. Test strategy
 
@@ -832,21 +834,21 @@ Rejected in multi-agent mode. It can erase unrelated later changes. Use inverse/
 
 ## 17. Intern implementation checklist
 
-- [ ] read PBUI-AGENT-4 review docs 03–06 and diary evidence;
-- [ ] keep agent tools per conversation;
-- [ ] no unauthenticated session route remains by default;
-- [ ] approval subject is canonical and includes sender/refs;
-- [ ] no tool factory owns an independent spent set;
-- [ ] all persistent agent effects emit correlation envelopes;
-- [ ] drafts are conversation-local;
-- [ ] closed/opening/failed are distinct;
-- [ ] title sync has version/retry tests;
-- [ ] send context is operation-scoped and cleared on all failures;
-- [ ] workbench plans declare atomicity and revision;
-- [ ] undo cannot overwrite another agent's newer state;
-- [ ] focus returns after every surface close path;
-- [ ] dependency bumps are tested against source changes, not stale dist;
-- [ ] browser, JS/TS, Go, package, and doc validations pass.
+- [x] read PBUI-AGENT-4 review docs 03–06 and diary evidence;
+- [x] keep agent tools per conversation;
+- [x] no unauthenticated session route remains by default;
+- [x] approval subject is canonical and includes sender/refs;
+- [x] no tool factory owns an independent spent set;
+- [x] all persistent agent effects emit correlation envelopes;
+- [x] drafts are conversation-local;
+- [x] closed/opening/failed are distinct;
+- [x] title sync has version/retry tests;
+- [x] send context is operation-scoped and cleared on all failures;
+- [x] workbench plans declare atomicity and revision;
+- [x] unsafe whole-document undo tokens/API are removed, so undo cannot overwrite newer work;
+- [x] focus returns after every tested surface close path;
+- [ ] publish and consume the merged browser terminal-ledger/executor release (exact npm `0.5.0` is immutable and predates it);
+- [ ] pass the two-tab one-executor browser/network audit; all other browser, JS/TS, Go, package, and doc validations pass.
 
 ## 18. References
 

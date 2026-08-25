@@ -1,0 +1,21 @@
+PASS	exact hardened chat-provider dependency	pbui-chat and demo both pin @go-go-golems/chat-provider exactly to 0.5.0
+PASS	hardened Pinocchio dependency	go.mod pins github.com/go-go-golems/pinocchio v0.11.14
+PASS	no legacy approval authorities	no callback/spent-set authority remains
+PASS	no unsafe whole-document agent undo	no undo token/history/restore surface is advertised
+PASS	workbench gateway coverage	packages/pbui-chat/src/tools/workbenchTools.ts: all markers present
+PASS	sandbox gateway coverage	packages/pbui-chat/src/tools/sandboxTools.ts: all markers present
+PASS	conversation gateway coverage	packages/pbui-chat/src/tools/conversationTools.ts: all markers present
+PASS	transactional approval lifecycle	packages/pbui-chat/src/tools/agentEffectGateway.ts: all markers present
+PASS	durable effect outbox	packages/pbui-chat/src/tools/agentEffectGateway.ts: all markers present
+PASS	canonical durable effect protocol	proto/hyperslop/pbui/chat/v1/chat.proto: all markers present
+PASS	authenticated effect route registration	pkg/chatserver/server.go: all markers present
+PASS	strict effect handler	pkg/chatserver/handlers.go: all markers present
+PASS	explicit conversation lifecycle	packages/pbui-chat/src/conversations/registry.ts: all markers present
+PASS	versioned title synchronization	packages/pbui-chat/src/conversations/registry.ts: all markers present
+PASS	persistent title API	pkg/chatserver/sessions.go: all markers present
+PASS	focus return ownership	src/focus.ts: all markers present
+PASS	Dialog focus restoration	src/components/Dialog/Dialog.tsx: all markers present
+PASS	ObjectMenu focus restoration	src/presentation/createPbui.tsx: all markers present
+PASS	rendered pane constraints	packages/pbui-workbench/src/verbs.ts: all markers present
+PASS	no placeholders in hardened paths	no TODO/FIXME/HACK markers
+SUMMARY	20/20 contracts passed

@@ -11,4 +11,5 @@
 - [x] Validate Phase 0 JS/Go/package checks and update implementation diary <!-- t:2m6c -->
 - [x] Phase 1: implement one canonical single-use ApprovalLedger across consequential tool factories <!-- t:2ukd -->
 - [x] Phase 1: route all consequential effects through an AgentEffectGateway with durable trace outcomes <!-- t:5ham -->
-- [ ] Phase 2: harden conversation lifecycle, title synchronization, workbench semantics, and focus restoration <!-- t:biq3 -->
+- [x] Phase 2: harden conversation lifecycle, title synchronization, workbench semantics, and focus restoration <!-- t:biq3 -->
+- [ ] Phase 5: consume a published single-owner browser executor release, pass two-tab E2E without duplicate execution/conflicts, and complete the final slip/audit <!-- t:cppg -->

@@ -134,3 +134,13 @@ Phase 4 rendered correction: exact launcher invoker restoration, divider-aware p
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-workbench/src/components/Launcher/Launcher.tsx — Launcher focus correction
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-workbench/src/verbs.ts — Rendered geometry correction
 
+
+## 2026-08-25
+
+Phase 5 audit removed unsafe whole-document undo tokens (1d17631), consumed Pinocchio v0.11.14 (ac76a40), passed 20/20 PBUI static contracts, and reproduced the remaining two-tab executor failure in exact npm chat-provider 0.5.0. Phase 5 remains blocked; no completion slip.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/tools/workbenchTools.ts — Undo correction
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/03-phase5-multitab-executor-blocker.md — Release blocker
+
