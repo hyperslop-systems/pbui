@@ -14,6 +14,8 @@ Owners:
 RelatedFiles:
     - Path: repo://cmd/pbui-chat/cmds/serve.go
       Note: Loopback-only development authorization (commit a982f98)
+    - Path: repo://packages/pbui-chat/demo/src/pbui/vocabulary.test.ts
+      Note: Executable demo handoff and trace vocabulary contract (commit 7ecc676)
     - Path: repo://packages/pbui-chat/src/adapters/traceAdapter.ts
       Note: Live/hydrated effect envelope decoding (commit 56a01b6)
     - Path: repo://packages/pbui-chat/src/composer/Composer/Composer.tsx
@@ -75,12 +77,21 @@ RelatedFiles:
       Note: |-
         Durable effect envelope and command schema (commit 56a01b6)
         Generated correlation wire fields (commit 64b5f9d)
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-correlated-verb-hydrated.png
+      Note: Hydrated parent effect correlation on high-level verb
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-hydrated.png
+      Note: Browser-reload effect hydration evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-live.png
+      Note: Rendered live canonical effect envelope inspection
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-server-restart.png
+      Note: SQLite server-restart hydration evidence
 ExternalSources: []
 Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
 LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -856,3 +867,97 @@ Correlation had to flow through the factory callback type, `createPbuiChat`'s se
 ### Technical details
 
 Correlation remains optional for ordinary human actions. Gateway-originated high-level verbs use the immutable conversation/tool-call effect id and carry approval id only when a capability participated.
+
+## Step 11: Validate Phase 2 through the rendered and durable boundaries
+
+I built the full embedded application, ran the deterministic two-conversation handoff in Chromium, approved the exact proposal, and observed the real browser POST a canonical `conversation.send` effect envelope. The server accepted it, the trace pane rendered both the correlated high-level verb and durable effect row, and the inspector exposed the full identity, digest, target, approval, and occurrence fields. I then reloaded the browser and restarted the Go server against the same SQLite database; the exact digest and correlation fields hydrated after both boundaries.
+
+The full validation sweep found that the demo package advertised a `test` script but had no test files, causing Vitest to exit 1. I did not suppress the failure with `--passWithNoTests`; I added a focused demo vocabulary contract test and committed it as `7ecc676dcd084957ecf2a281ad8e0af4129cdbf8`.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+> phase 2 - 4, budget 1M, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill) [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory.
+
+**Assistant interpretation:** Resume the budget-limited ticket, finish Phase 2 with fresh rendered/durable evidence, and continue through lifecycle/title and workbench/focus phases without repeating completed implementation.
+
+**Inferred user intent:** Complete every remaining hard acceptance criterion with auditable commits, failures, UI evidence, and phase slips rather than treating previously green unit tests as sufficient.
+
+**Commit (validation regression):** `7ecc676dcd084957ecf2a281ad8e0af4129cdbf8` — "test(pbui-chat-demo): cover handoff vocabulary"
+
+### What I did
+
+- Rebuilt all PBUI/chat/workbench/sandbox/demo packages and the embedded Go binary.
+- Ran a real Chromium handoff between two live conversation runtimes.
+- Captured the successful `/effects` request and response, including effect id, invocation key, SHA-256 input digest, approval id, exact target, and `effect_recorded` acknowledgement.
+- Inspected the live effect row and its correlated verb row in the rendered trace panel.
+- Reloaded the browser and verified hydration from the server snapshot.
+- Restarted the server against `/tmp/pbui-phase2-timeline.db` and verified the same trace after process recovery.
+- Captured five rendered screenshots under the ticket `various/` directory.
+- Ran protocol generation/diff checks, local CI, GoSec, every affected package typecheck/test/build, and embedded binary build.
+- Added two demo vocabulary tests rather than allowing an empty test suite.
+
+### Why
+
+Phase 2 promises durable causal evidence. That is not demonstrated by an adapter unit test alone: the browser, authenticated route, command bus, SQLite trace, snapshot hydration, React trace panel, and inspector all have to preserve the same identity across reload and restart.
+
+### What worked
+
+```text
+make protocol-check                                      PASS, generated diff clean
+make ci-check                                            PASS
+make gosec                                               PASS, 0 issues / 41 files
+@hyperslop-systems/pbui typecheck                        PASS
+@hyperslop-systems/pbui tests                            12 files / 96 PASS
+pbui-workbench typecheck/tests                           9 files / 115 PASS
+pbui-sandbox typecheck/tests                             15 files / 103 PASS
+pbui-chat typecheck/tests                                24 files / 226 PASS
+pbui-chat-demo typecheck                                 PASS
+pbui-chat-demo tests after repair                        1 file / 2 PASS
+make chat-build                                          PASS
+Chromium console errors                                  0
+POST /effects                                            200 effect_recorded
+browser reload hydration                                 PASS
+Go server restart + SQLite hydration                     PASS
+```
+
+### What didn't work
+
+1. The first readiness loop probed `/health`, which is not a registered public path. The server had started successfully but the probe received `404`, so the loop reported failure. I inspected the process and responses, switched the readiness probe to `/`, and retained the server log evidence.
+2. `pnpm --filter @hyperslop-systems/pbui-chat-demo test` failed with `No test files found, exiting with code 1`. I added a real vocabulary contract test.
+3. The first new assertion expected `vocabulary.verbs["conversation.send"].danger === true`; `danger` is product UI metadata and is intentionally not part of the exported model vocabulary. The test failed with `expected undefined to be true`. I inspected the generated Go vocabulary JSON and corrected the test to assert the exported operation documentation and typed fields instead.
+4. The first root-package filters omitted `--include-workspace-root`, producing `No projects matched`. I reran the root PBUI typecheck and 96 tests with the required flag.
+
+### What I learned
+
+- The rendered trace intentionally shows two `conversation.send` rows: one is the high-level routed verb with typed parent correlation and one is the durable effect envelope. Inspecting each proves the join explicitly.
+- SQLite-backed timeline hydration reconstructs effect idempotency and UI projection after process restart; browser local storage is not the source of the recovered effect row.
+- The demo's model vocabulary omits UI-only danger metadata, while the approval enforcement remains in the shared gateway/ledger.
+
+### What was tricky to build
+
+Rendered inspection itself emits human `inspect` verbs, so sequence numbers advance while collecting evidence. The durable effect retained sequence `#3`, and the correlated high-level verb retained `#2`; later inspect rows are expected evidence of user actions, not duplicate gateway execution. The trace had to be selected by its original sequence and digest after reload and restart rather than assuming it remained the newest row.
+
+### What warrants a second pair of eyes
+
+- Review the deliberate two-row rendered representation (verb plus effect) for clarity; it is causally sound but may benefit from a visual parent/child affordance in future product design.
+- Confirm that retaining full canonical inputs in the inspector is acceptable for every future effect kind; current diagnostics are redacted only by canonical subject construction policy.
+- Review storage quota observability through `outboxError()` for product-level user messaging.
+
+### What should be done in the future
+
+- Begin Phase 3 only after printing the Phase 2 completion slip and Phase 3 start slip.
+- Implement explicit conversation lifecycle and versioned durable title synchronization next.
+- Keep the rendered SQLite smoke procedure available for the final cross-phase audit.
+
+### Code review instructions
+
+1. Review commits `1d05677`, `56a01b6`, and `64b5f9d` in order.
+2. Inspect `phase2-effect-inspector-live.png`, `phase2-effect-inspector-hydrated.png`, `phase2-effect-inspector-server-restart.png`, and `phase2-correlated-verb-hydrated.png`.
+3. Re-run `make protocol-check`, `make ci-check`, `make gosec`, affected package checks, and `make chat-build`.
+4. Start the embedded binary with SQLite stores, complete the scripted handoff, restart it, and inspect trace sequences `#2` and `#3`.
+
+### Technical details
+
+The observed envelope used effect id `720c0e04-62cd-4903-8d3b-63b4eb3160bf:msg-1:tool:conversation_send:3`, digest `b800c25ca0dc53f40bbffefa089b299cccaf48940129fcb413afb331cd27c2e0`, approval `handoff-msg-1`, and target `1490cfcb-9f92-4626-9b01-b2fdd1ed2be8`. The browser received HTTP 200 with `status=effect_recorded`. No console errors were observed.

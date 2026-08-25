@@ -84,3 +84,13 @@ Phase 2 interval 3: typed parent-effect correlation across router, wire, durable
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/src/router/createVerbRouter.ts — Router correlation
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/proto/hyperslop/pbui/chat/v1/chat.proto — Wire correlation
 
+
+## 2026-08-25
+
+Phase 2 validated end-to-end: Chromium handoff, canonical effect POST, rendered correlation, browser reload and SQLite server-restart hydration; full CI/security/package checks green; demo empty-suite failure repaired (commit 7ecc676)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/demo/src/pbui/vocabulary.test.ts — Demo regression validation
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-server-restart.png — Durable rendered validation
+
