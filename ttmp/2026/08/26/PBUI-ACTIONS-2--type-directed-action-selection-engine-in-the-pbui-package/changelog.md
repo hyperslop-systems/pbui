@@ -62,3 +62,8 @@ P5 complete (37b51d6): inspectable/watchable abstract nodes replace eight datala
 
 P6 complete (ae29000): typed translators with subtype satisfaction and chooser ambiguity; AcceptChooser transient surface; both products migrated off conversions; chat-demo descriptor-to-chat module cycle broken with a conversationFacts slot. 1240 tests green.
 
+
+## 2026-08-26
+
+P7 complete (9dc7768): datalab fully kernel-native (15/15 types), withGeneratedActions deleted, tile descriptor representation-only with a standalone row spec, compat surface deprecated for one migration window (delete-vs-deprecate adjudicated in diary step 10), playbook kernel section, versions pbui 0.7.0 / workbench 0.3.0 / sandbox 0.3.0. All phases P0-P7 done; 1224 tests green.
+
