@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { census, readings } from "../src/fixtures";
+import { datadropActionRegistry, snapshotForDatalab } from "../src/pbui/actions";
 import { datadropRegistry } from "../src/pbui/registry";
 import { catToField, datadropConversions } from "../src/pbui/runtime";
 import type { DatadropPresentationReference } from "../src/pbui/runtime";
@@ -33,7 +34,22 @@ function env(overrides: Partial<PbuiEnvironment> = {}): PbuiEnvironment {
 const reference = (type: PresentationType, value: unknown) =>
   ({ type, value }) as DatadropPresentationReference;
 
+/** field/datum/doc/stage resolve through the kernel since P3. */
+const MIGRATED = new Set<PresentationType>(["field", "datum", "doc", "stage"]);
+
 function menuOf(type: PresentationType, value: unknown, environment = env()) {
+  if (MIGRATED.has(type)) {
+    const query = { subject: reference(type, value), invocation: "menu" } as const;
+    const result = datadropActionRegistry.resolve(query, snapshotForDatalab(query, environment));
+    return result.actions.map((action) => ({
+      id: action.candidateId,
+      label: String(action.label),
+      verb: action.verb,
+      ...(action.status.kind === "unavailable"
+        ? { disabledBecause: action.status.because }
+        : {}),
+    }));
+  }
   return datadropRegistry.actionsFor(reference(type, value), environment).map((action) => ({
     id: action.id,
     label: action.label,
@@ -103,16 +119,18 @@ describe("golden menus (PBUI-ACTIONS-2 P0)", () => {
 });
 
 describe("action identity is semantic, not positional (PBUI-ACTIONS-2 P0)", () => {
-  test("ids derive from verb content and are unique within a menu", () => {
-    for (const [type, value] of [
-      ["field", { docId: "d2", name: "population" }],
-      ["datum", { docId: "d1", row: readings.rows[0] }],
-      ["tile", TILE],
+  test("ids derive from declarations, are unique, and never positional", () => {
+    for (const [type, value, pattern] of [
+      // Migrated types carry deliberate kernel rule/candidate ids.
+      ["field", { docId: "d2", name: "population" }, /^datalab\.field\./],
+      ["datum", { docId: "d1", row: readings.rows[0] }, /^datalab\.datum\./],
+      // Unmigrated types keep the P0 verb-derived adapter ids.
+      ["tile", TILE, /^tile\./],
     ] as const) {
       const ids = menuOf(type, value).map((row) => row.id);
       expect(new Set(ids).size).toBe(ids.length);
       for (const id of ids) {
-        expect(id).toMatch(new RegExp(`^${type}\\.`));
+        expect(id).toMatch(pattern);
         expect(id).not.toMatch(/:\d+:/);
       }
     }
@@ -120,8 +138,8 @@ describe("action identity is semantic, not positional (PBUI-ACTIONS-2 P0)", () =
 
   test("a label is not identity: mapping ids name the channel", () => {
     const ids = menuOf("field", { docId: "d2", name: "population" }).map((row) => row.id);
-    expect(ids).toContain("field.setMapping.x");
-    expect(ids).toContain("field.setMapping.y");
+    expect(ids).toContain("datalab.field.map.x");
+    expect(ids).toContain("datalab.field.map.y");
   });
 });
 

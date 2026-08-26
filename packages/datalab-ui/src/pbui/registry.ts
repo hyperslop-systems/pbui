@@ -50,8 +50,14 @@ export interface PresentationDescriptor<V = unknown> {
    * Pure: (value, environment) in, serialisable verbs out. A test can assert
    * the exact verb a menu entry produces with a literal environment and no
    * store, no Provider, no DOM.
+   *
+   * OPTIONAL since PBUI-ACTIONS-2 P3: a migrated type declares its actions
+   * as kernel rules in `actions.ts` and drops this callback, which is how
+   * the legacy family knows to stay silent for it. Absent callback means the
+   * rules are the only voice; present callback means the type has not
+   * migrated yet. Never both.
    */
-  actions(value: V, env: PbuiEnvironment): Action[];
+  actions?(value: V, env: PbuiEnvironment): Action[];
   /** The token naming this type's accent colour. */
   tone: string;
 }
@@ -120,7 +126,7 @@ function bindProductDescriptor<Value>(
        * descriptor changed.
        */
       const seen = new Set<string>();
-      return descriptor.actions(value, environment).map((action) => {
+      return (descriptor.actions?.(value, environment) ?? []).map((action) => {
         const discriminant = verbDiscriminant(action.verb);
         const id = discriminant
           ? `${descriptor.ptype}.${action.verb.kind}.${discriminant}`

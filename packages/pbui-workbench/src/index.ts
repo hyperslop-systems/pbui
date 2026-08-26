@@ -1,5 +1,11 @@
 import "./styles.css";
 
+export {
+  workbenchScopes,
+  workbenchTileContributions,
+  workbenchTypeDefinitions,
+} from "./actions";
+export type { WorkbenchTileContributionOptions } from "./actions";
 export { defineApp, createAppRegistry, isAppAvailable } from "./apps";
 export type { AppAvailability, AppDescriptor, AppProps, AppRegistry, DefineAppInput } from "./apps";
 export {

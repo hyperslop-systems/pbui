@@ -1,6 +1,5 @@
 import type { PresentationDescriptor } from "../registry";
 import type { DocId } from "../types";
-import type { Action } from "../verbs";
 
 /**
  * `<doc>` — a live chart document (α, β, γ …).
@@ -26,24 +25,4 @@ export const docDescriptor: PresentationDescriptor<DocId> = {
     };
   },
 
-  actions: (docId, env) => {
-    const actions: Action[] = [];
-    if (env.activeDocId !== docId) {
-      actions.push({
-        // Ambient verbs — those fired from a chip that names no document — land
-        // on the active one, so making a document active is how you aim them.
-        label: "Make the ACTIVE chart",
-        verb: { kind: "setActiveDoc", docId },
-      });
-    }
-    actions.push({ label: "⚑ Snapshot it", verb: { kind: "snapshot", docId } });
-    actions.push({ label: "Duplicate document", verb: { kind: "duplicateDoc", docId } });
-    actions.push({ label: "Delete document", verb: { kind: "deleteDoc", docId } });
-    actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "doc", value: docId } });
-    actions.push({
-      label: "Add to watchlist",
-      verb: { kind: "watch", ptype: "doc", value: docId },
-    });
-    return actions;
-  },
 };

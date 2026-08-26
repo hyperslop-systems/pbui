@@ -1,9 +1,7 @@
-import { CHANNELS, CHANNEL_ACCEPTS } from "../../model/graphic";
 import { TYPE_LABEL, TYPE_SOURCE_LABEL, asNumber } from "../../model/table";
 import type { Field, FieldType, Table } from "../../model/table";
 import type { PresentationDescriptor } from "../registry";
 import type { FieldRef, PbuiEnvironment } from "../types";
-import type { Action } from "../verbs";
 
 /**
  * `<field>` — a column, with a type and a provenance.
@@ -111,55 +109,4 @@ export const fieldDescriptor: PresentationDescriptor<FieldRef> = {
     };
   },
 
-  actions: (ref, env) => {
-    const { type } = resolveField(ref, env);
-    const target = ref.docId ?? env.activeDocId;
-    const where = `chart ${env.nameOf(target)}`;
-    const actions: Action[] = [];
-
-    for (const channel of CHANNELS) {
-      const accepted = type !== null && CHANNEL_ACCEPTS[channel].includes(type);
-      actions.push({
-        label: `Map to ${channel}  (${where})`,
-        verb: { kind: "setMapping", docId: target, channel, field: ref.name },
-        // Offered and disabled, never hidden. A user who never sees "Map to y"
-        // on a nominal column never learns that y requires a quantitative one.
-        disabledBecause: accepted
-          ? undefined
-          : type === null
-            ? "not in the pipeline output"
-            : `${channel} accepts ${CHANNEL_ACCEPTS[channel].map((t) => TYPE_LABEL[t]).join(", ")}`,
-      });
-    }
-
-    actions.push({
-      label: "Filter on this field",
-      verb: {
-        kind: "addFilter",
-        docId: target,
-        field: ref.name,
-        op: type === "q" ? ">" : "=",
-        value: "",
-      },
-    });
-
-    if (type !== null && type !== "q") {
-      actions.push({
-        label: "Group by + count",
-        verb: { kind: "addSummarize", docId: target, by: ref.name, fn: "count", field: ref.name },
-      });
-    }
-
-    actions.push({
-      label: "Sort output by (descending)",
-      verb: { kind: "addSort", docId: target, field: ref.name, dir: "desc" },
-    });
-
-    actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "field", value: ref } });
-    actions.push({
-      label: "Add to watchlist",
-      verb: { kind: "watch", ptype: "field", value: ref },
-    });
-    return actions;
-  },
 };

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { census, readings } from "../src/fixtures";
+import { datadropActionRegistry, snapshotForDatalab } from "../src/pbui/actions";
 import { datadropRegistry } from "../src/pbui/registry";
+import type { Action } from "../src/pbui/verbs";
 import type { DatadropPresentationReference } from "../src/pbui/runtime";
 import type { PbuiEnvironment, PresentationType } from "../src/pbui/types";
 import type { Table } from "../src/model/table";
@@ -30,8 +32,29 @@ function env(overrides: Partial<PbuiEnvironment> = {}): PbuiEnvironment {
 
 const reference = (type: PresentationType, value: unknown) =>
   ({ type, value }) as DatadropPresentationReference;
-const actionsFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) =>
-  datadropRegistry.actionsFor(reference(type, value), environment);
+
+/**
+ * PBUI-ACTIONS-2 P3: field, datum, doc, and stage moved from descriptor
+ * callbacks to kernel rules, so their menus resolve through the action
+ * registry; everything else still answers through the descriptor adapter.
+ * The rows are adapted back to the old shape so every assertion below reads
+ * exactly as it did before the migration — same labels, same verbs, same
+ * reasons.
+ */
+const MIGRATED = new Set<PresentationType>(["field", "datum", "doc", "stage"]);
+const actionsFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) => {
+  if (!MIGRATED.has(type)) return datadropRegistry.actionsFor(reference(type, value), environment);
+  const query = { subject: reference(type, value), invocation: "menu" } as const;
+  const result = datadropActionRegistry.resolve(query, snapshotForDatalab(query, environment));
+  expect(result.ambiguities).toEqual([]);
+  return result.actions.map((action) => ({
+    id: action.candidateId,
+    label: String(action.label),
+    verb: action.verb as Action["verb"],
+    disabledBecause:
+      action.status.kind === "unavailable" ? action.status.because : undefined,
+  }));
+};
 const describeFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) =>
   datadropRegistry.describeFor(reference(type, value), environment);
 const labelFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) =>

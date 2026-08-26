@@ -5,6 +5,8 @@ import {
   type PresentationReference,
 } from "@hyperslop-systems/pbui/presentation";
 import type { ReactNode } from "react";
+import { datadropActionRegistry, snapshotForDatalab } from "./actions";
+import type { DatalabFacts } from "./actions";
 import { datadropRegistry } from "./registry";
 import type { CatRef, FieldRef, PbuiEnvironment, PresentationValues } from "./types";
 import type { Verb } from "./verbs";
@@ -36,9 +38,14 @@ export function catToField(
 
 export const datadropConversions = [catToField] as const;
 
-const datadropPbui = createPbui<PresentationValues, PbuiEnvironment, Verb>({
+const datadropPbui = createPbui<PresentationValues, PbuiEnvironment, Verb, DatalabFacts>({
   registry: datadropRegistry,
   defaultEnvironment: EMPTY_ENVIRONMENT,
+  // PBUI-ACTIONS-2 P3: the product supplies its own kernel — field, datum,
+  // doc, and stage as rules/families, everything else via the legacy family
+  // inside datadropActionRegistry. See ./actions.ts.
+  actions: datadropActionRegistry,
+  snapshotFor: snapshotForDatalab,
   conversions: datadropConversions,
   renderMenuHeader: (reference, environment, label: ReactNode) => {
     const ambient = ["field", "source", "geom"].includes(reference.type);

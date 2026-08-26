@@ -1,6 +1,5 @@
 import type { PresentationDescriptor } from "../registry";
 import type { StageRef } from "../types";
-import type { Action } from "../verbs";
 
 /**
  * `<stage>` — a named set of workspaces, an application allow-list and chrome.
@@ -28,39 +27,4 @@ export const stageDescriptor: PresentationDescriptor<StageRef> = {
     current: stage.current,
   }),
 
-  actions: (stage) => {
-    const actions: Action[] = [];
-
-    if (!stage.current) {
-      actions.push({
-        label: "Switch to it",
-        verb: { kind: "switchStage", stageId: stage.stageId },
-      });
-    }
-
-    actions.push({
-      label: "Copy this stage to the clipboard",
-      verb: { kind: "exportStage", stageId: stage.stageId },
-    });
-    actions.push({
-      label: "Add a stage from the clipboard …",
-      verb: { kind: "importStage" },
-    });
-    actions.push({
-      label: "Add a workspace from the clipboard …",
-      verb: { kind: "importWorkspace", stageId: stage.stageId },
-    });
-    actions.push({
-      label: "Save as a template …",
-      verb: {
-        kind: "storeTemplate",
-        source: { kind: "stage", stageId: stage.stageId },
-        name: stage.name,
-      },
-    });
-
-    actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "stage", value: stage } });
-
-    return actions;
-  },
 };
