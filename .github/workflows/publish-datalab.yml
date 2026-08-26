@@ -76,11 +76,6 @@ jobs:
       - name: Build generated TypeScript protocol package
         run: pnpm --filter @hyperslop-systems/workbench-protocol build
 
-      # The generated protocol package ships only its dist/, which is not
-      # committed; ci.yml builds it for the same reason.
-      - name: Build generated TypeScript protocol package
-        run: pnpm --filter @hyperslop-systems/workbench-protocol build
-
       - name: Typecheck
         run: pnpm --filter @hyperslop-systems/datalab-ui typecheck
 
