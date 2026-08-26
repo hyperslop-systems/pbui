@@ -91,7 +91,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datalab.datum.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -117,7 +117,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datalab.datum.watch",
+    "id": "datalab.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -172,7 +172,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
     },
   },
   {
-    "id": "datalab.doc.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -181,7 +181,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
     },
   },
   {
-    "id": "datalab.doc.watch",
+    "id": "datalab.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -227,7 +227,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
     },
   },
   {
-    "id": "datalab.doc.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -236,7 +236,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
     },
   },
   {
-    "id": "datalab.doc.watch",
+    "id": "datalab.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -324,7 +324,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
     },
   },
   {
-    "id": "datalab.field.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -336,7 +336,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
     },
   },
   {
-    "id": "datalab.field.watch",
+    "id": "datalab.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -420,7 +420,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
     },
   },
   {
-    "id": "datalab.field.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -432,7 +432,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
     },
   },
   {
-    "id": "datalab.field.watch",
+    "id": "datalab.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -556,7 +556,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <stage> not current 1`] = `
     },
   },
   {
-    "id": "datalab.stage.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",

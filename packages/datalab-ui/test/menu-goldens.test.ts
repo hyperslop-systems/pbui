@@ -121,9 +121,11 @@ describe("golden menus (PBUI-ACTIONS-2 P0)", () => {
 describe("action identity is semantic, not positional (PBUI-ACTIONS-2 P0)", () => {
   test("ids derive from declarations, are unique, and never positional", () => {
     for (const [type, value, pattern] of [
-      // Migrated types carry deliberate kernel rule/candidate ids.
-      ["field", { docId: "d2", name: "population" }, /^datalab\.field\./],
-      ["datum", { docId: "d1", row: readings.rows[0] }, /^datalab\.datum\./],
+      // Migrated types carry deliberate kernel rule/candidate ids; since P5
+      // the shared inspect/watch rows come from inherited rules whose ids
+      // name the declaration (datalab.inspect), not the concrete type.
+      ["field", { docId: "d2", name: "population" }, /^datalab\./],
+      ["datum", { docId: "d1", row: readings.rows[0] }, /^datalab\./],
       // Unmigrated types keep the P0 verb-derived adapter ids.
       ["tile", TILE, /^tile\./],
     ] as const) {
@@ -157,5 +159,33 @@ describe("current conversions, frozen before typed translators (PBUI-ACTIONS-2 P
   test("a cat with no field converts to nothing, and other types pass through untouched", () => {
     expect(catToField(reference("cat", { docId: "d2", field: "", value: "x" }))).toBeUndefined();
     expect(catToField(reference("doc", "d1"))).toBeUndefined();
+  });
+});
+
+describe("inheritance is real, not copied (PBUI-ACTIONS-2 P5)", () => {
+  test("one inherited declaration serves every subtype, and provenance says so", () => {
+    const query = {
+      subject: reference("field", { docId: "d2", name: "population" }),
+      invocation: "menu",
+    } as const;
+    const result = datadropActionRegistry.resolve(query, snapshotForDatalab(query, env()));
+    const inspect = result.actions.find((action) => action.candidateId === "datalab.inspect");
+    expect(inspect?.provenance).toMatchObject({
+      declaredType: "inspectable",
+      concreteType: "field",
+      typeDistance: 1,
+    });
+    // The inherited rule receives the ORIGINAL concrete reference.
+    expect(inspect?.verb).toMatchObject({ kind: "inspect", ptype: "field" });
+  });
+
+  test("stage is inspectable but deliberately not watchable — inheritance adds no rows", () => {
+    const query = {
+      subject: reference("stage", { stageId: "s1", name: "work", pinned: true, current: false }),
+      invocation: "menu",
+    } as const;
+    const result = datadropActionRegistry.resolve(query, snapshotForDatalab(query, env()));
+    expect(result.actions.some((action) => action.candidateId === "datalab.inspect")).toBe(true);
+    expect(result.actions.some((action) => action.candidateId === "datalab.watch")).toBe(false);
   });
 });
