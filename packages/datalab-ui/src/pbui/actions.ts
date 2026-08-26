@@ -180,20 +180,6 @@ function fieldContributions(): ActionContribution<PresentationValues, DatalabFac
         dir: "desc",
       }),
     }),
-    define.exact("field", {
-      id: "datalab.field.inspect",
-      action: "object.inspect",
-      scopes: ["datalab"],
-      metadata: { label: "Inspect", order: 13 },
-      bind: ({ subject }) => ({ kind: "inspect", ptype: "field", value: subject.value }),
-    }),
-    define.exact("field", {
-      id: "datalab.field.watch",
-      action: "object.watch",
-      scopes: ["datalab"],
-      metadata: { label: "Add to watchlist", order: 14 },
-      bind: ({ subject }) => ({ kind: "watch", ptype: "field", value: subject.value }),
-    }),
   ];
 }
 
@@ -239,20 +225,6 @@ function datumContributions(): ActionContribution<PresentationValues, DatalabFac
         });
       },
     }),
-    define.exact("datum", {
-      id: "datalab.datum.inspect",
-      action: "object.inspect",
-      scopes: ["datalab"],
-      metadata: { label: "Inspect", order: 100 },
-      bind: ({ subject }) => ({ kind: "inspect", ptype: "datum", value: subject.value }),
-    }),
-    define.exact("datum", {
-      id: "datalab.datum.watch",
-      action: "object.watch",
-      scopes: ["datalab"],
-      metadata: { label: "Add to watchlist", order: 101 },
-      bind: ({ subject }) => ({ kind: "watch", ptype: "datum", value: subject.value }),
-    }),
   ];
 }
 
@@ -288,20 +260,6 @@ function docContributions(): ActionContribution<PresentationValues, DatalabFacts
       scopes: ["datalab"],
       metadata: { label: "Delete document", order: 3 },
       bind: ({ subject }) => ({ kind: "deleteDoc", docId: subject.value }),
-    }),
-    define.exact("doc", {
-      id: "datalab.doc.inspect",
-      action: "object.inspect",
-      scopes: ["datalab"],
-      metadata: { label: "Inspect", order: 4 },
-      bind: ({ subject }) => ({ kind: "inspect", ptype: "doc", value: subject.value }),
-    }),
-    define.exact("doc", {
-      id: "datalab.doc.watch",
-      action: "object.watch",
-      scopes: ["datalab"],
-      metadata: { label: "Add to watchlist", order: 5 },
-      bind: ({ subject }) => ({ kind: "watch", ptype: "doc", value: subject.value }),
     }),
   ];
 }
@@ -348,37 +306,59 @@ function stageContributions(): ActionContribution<PresentationValues, DatalabFac
         name: subject.value.name,
       }),
     }),
-    define.exact("stage", {
-      id: "datalab.stage.inspect",
-      action: "object.inspect",
-      scopes: ["datalab"],
-      metadata: { label: "Inspect", order: 5 },
-      bind: ({ subject }) => ({ kind: "inspect", ptype: "stage", value: subject.value }),
-    }),
   ];
 }
 
 /* -------------------------------------------------------------- registry --- */
 
-/** Every declared presentation type, flat — abstract parents arrive with the
- * inheritance phase, backed by demonstrated reuse, not speculation. */
+/**
+ * The runtime type graph (PBUI-ACTIONS-2 P5).
+ *
+ * Two abstract nodes exist because reuse DEMONSTRATED them: every migrated
+ * type carried an identical Inspect rule and three carried an identical
+ * Watch rule, so `inspectable` and `watchable` replace eight per-type
+ * declarations with two inherited ones. Only migrated types declare parents
+ * — a legacy-family type must not inherit rules while its menu still comes
+ * from its descriptor callback, or its rows would double.
+ *
+ * Stage is deliberately inspectable but NOT watchable: its menu never
+ * offered Watch, and inheritance must not add rows as a side effect of
+ * refactoring. Growing stage a Watch row is a product decision.
+ */
 const TYPE_DEFINITIONS = [
-  "field",
-  "source",
-  "doc",
-  "cat",
-  "datum",
-  "geom",
-  "step",
-  "user",
-  "token",
-  "member",
-  "upload",
-  "tile",
-  "workspace",
-  "stage",
-  "traceEntry",
-].map((id) => ({ id }));
+  { id: "inspectable", abstract: true },
+  { id: "watchable", abstract: true },
+  { id: "field", parents: ["inspectable", "watchable"] },
+  { id: "datum", parents: ["inspectable", "watchable"] },
+  { id: "doc", parents: ["inspectable", "watchable"] },
+  { id: "stage", parents: ["inspectable"] },
+  ...["source", "cat", "geom", "step", "user", "token", "member", "upload", "tile", "workspace", "traceEntry"].map(
+    (id) => ({ id }),
+  ),
+];
+
+function inheritedContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
+  return [
+    define.inherited("inspectable", {
+      id: "datalab.inspect",
+      action: "object.inspect",
+      scopes: ["datalab"],
+      // 13/14 sit above every migrated type's own rows (field tops out at 12,
+      // doc at 3, stage at 4) and below datum's family — wait, datum's family
+      // used 0..7; 13/14 keep Inspect/Watch last there too. One order pair,
+      // four preserved menus; checked by the goldens.
+      metadata: { label: "Inspect", order: 13 },
+      bind: ({ subject }) => ({ kind: "inspect", ptype: subject.type, value: subject.value }),
+    }),
+    define.inherited("watchable", {
+      id: "datalab.watch",
+      action: "object.watch",
+      scopes: ["datalab"],
+      metadata: { label: "Add to watchlist", order: 14 },
+      bind: ({ subject }) => ({ kind: "watch", ptype: subject.type, value: subject.value }),
+    }),
+  ];
+}
 
 export const datadropActionRegistry = createActionRegistry<
   PresentationValues,
@@ -399,5 +379,6 @@ export const datadropActionRegistry = createActionRegistry<
     ...datumContributions(),
     ...docContributions(),
     ...stageContributions(),
+    ...inheritedContributions(),
   ],
 });
