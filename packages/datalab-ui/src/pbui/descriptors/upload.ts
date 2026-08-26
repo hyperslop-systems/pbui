@@ -1,6 +1,5 @@
 import type { PresentationDescriptor } from "../registry";
 import type { UploadRef } from "../types";
-import type { Action } from "../verbs";
 
 /** `<upload>` — one file in an upload batch. */
 export const uploadDescriptor: PresentationDescriptor<UploadRef> = {
@@ -26,17 +25,4 @@ export const uploadDescriptor: PresentationDescriptor<UploadRef> = {
     error: upload.error,
   }),
 
-  actions: (upload): Action[] => [
-    {
-      label: "Retry",
-      verb: { kind: "retryUpload", batchId: upload.batchId, path: upload.path },
-      disabledBecause:
-        upload.state === "done"
-          ? "already uploaded"
-          : upload.state === "failed"
-            ? undefined
-            : "still in progress",
-    },
-    { label: "Inspect", verb: { kind: "inspect", ptype: "upload", value: upload } },
-  ],
 };

@@ -1,6 +1,5 @@
 import type { PresentationDescriptor } from "../registry";
 import type { TraceEntryRef } from "../types";
-import type { Action } from "../verbs";
 
 /**
  * The value: a trace entry's sequence number.
@@ -26,14 +25,4 @@ export const traceEntryDescriptor: PresentationDescriptor<TraceEntryRef> = {
 
   describe: (ref) => ({ presentationType: "traceEntry", seq: ref.seq }),
 
-  actions: (ref): Action[] => [
-    {
-      label: "Inspect this entry",
-      verb: { kind: "inspect", ptype: "traceEntry", value: ref },
-    },
-    {
-      label: "Watch it",
-      verb: { kind: "watch", ptype: "traceEntry", value: ref },
-    },
-  ],
 };

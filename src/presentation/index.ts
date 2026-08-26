@@ -20,6 +20,7 @@ export type {
   PresentationProps,
 } from "./createPbui";
 export type {
+  PresentationDescriptorRegistry,
   PresentationRegistry,
 } from "./registry";
 export type {

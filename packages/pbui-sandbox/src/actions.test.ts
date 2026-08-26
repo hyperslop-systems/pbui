@@ -1,15 +1,10 @@
-import { createPresentationRegistry } from "@hyperslop-systems/pbui";
 import { describe, expect, test } from "vitest";
-import { createGeneratedActionsFamily, substituteRef, withGeneratedActions } from "./actions";
+import { createGeneratedActionsFamily, substituteRef } from "./actions";
 import type { GeneratedActionFacts } from "./actions";
 import type { ActionRecord } from "./library";
 
 type Values = { product: { id: string; name: string }; metal: { id: string } };
 type Verb = { kind: string } & Record<string, unknown>;
-
-const base = createPresentationRegistry<Values, object, Verb>({
-  product: { label: (v) => v.name, actions: (v) => [{ id: "own", label: "Inspect", verb: { kind: "inspect", id: v.id } }] },
-});
 
 function action(overrides: Partial<ActionRecord> = {}): ActionRecord {
   return {
@@ -24,55 +19,6 @@ function action(overrides: Partial<ActionRecord> = {}): ActionRecord {
     ...overrides,
   };
 }
-
-describe("withGeneratedActions", () => {
-  test("appends actions for the reference's type only, after the product's own", () => {
-    const registry = withGeneratedActions(base, {
-      getActions: () => [action(), action({ id: "act-2", label: "Metal only", types: ["metal"] })],
-      toVerb: (a, ref) => ({ kind: "action.run", actionId: a.id, ref: { type: ref.type, id: (ref.value as { id: string }).id } }),
-    });
-    const actions = registry.actionsFor({ type: "product", value: { id: "2049", name: "Eagle" } }, {});
-    expect(actions.map((a) => a.id)).toEqual(["own", "generated:act-1"]);
-    expect(actions[1]).toMatchObject({ label: "Days of cover", group: "generated", verb: { kind: "action.run", actionId: "act-1", ref: { type: "product", id: "2049" } } });
-    expect(registry.actionsFor({ type: "metal", value: { id: "gold" } }, {}).map((a) => a.label)).toEqual(["Metal only"]);
-  });
-
-  test("an action defined after the registry was built appears in the next menu (liveness)", () => {
-    // PBUI-ACTIONS-2 P0: the property the kernel's generated-actions family
-    // must preserve — `getActions` is read at resolution time, so a record the
-    // agent creates a moment ago is in the next actionsFor with no
-    // re-registration.
-    const records: ActionRecord[] = [action()];
-    const registry = withGeneratedActions(base, {
-      getActions: () => records,
-      toVerb: (a) => ({ kind: "action.run", actionId: a.id }),
-    });
-    const productRef = { type: "product", value: { id: "2049", name: "Eagle" } } as const;
-    expect(registry.actionsFor(productRef, {}).map((a) => a.id)).toEqual(["own", "generated:act-1"]);
-
-    records.push(action({ id: "act-2", label: "Reorder threshold" }));
-    expect(registry.actionsFor(productRef, {}).map((a) => a.id)).toEqual([
-      "own",
-      "generated:act-1",
-      "generated:act-2",
-    ]);
-
-    records.length = 0;
-    expect(registry.actionsFor(productRef, {}).map((a) => a.id)).toEqual(["own"]);
-  });
-
-  test("disables an openProgram action whose program is gone, and forwards the rest of the registry", () => {
-    const registry = withGeneratedActions(base, {
-      getActions: () => [action()],
-      toVerb: () => ({ kind: "action.run" }),
-      programExists: () => false,
-    });
-    const [, generated] = registry.actionsFor({ type: "product", value: { id: "1", name: "x" } }, {});
-    expect(generated?.disabledBecause).toBe("program prg-7 is no longer in the library");
-    expect(registry.labelFor({ type: "product", value: { id: "1", name: "x" } }, {})).toBe("x");
-    expect(registry.has("product")).toBe(true);
-  });
-});
 
 describe("substituteRef", () => {
   test("replaces the three placeholders anywhere in a verb", () => {

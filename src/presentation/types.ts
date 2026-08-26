@@ -114,6 +114,14 @@ export interface PresentationAction<Verb> {
 export interface PresentationDescriptor<Value, Environment, Verb> {
   label(value: Value, environment: Environment): ReactNode;
   describe?(value: Value, environment: Environment): unknown;
+  /**
+   * @deprecated PBUI-ACTIONS-2: declare actions as kernel rules/families in
+   * an action registry (`createActionRegistry`) and pass it to `createPbui`.
+   * A descriptor with this callback still works through the automatic legacy
+   * engine — the one-migration-window compatibility path for products still
+   * on 0.6.x shapes — and both are deleted together at the next major.
+   * No in-repository product uses this callback any more.
+   */
   actions?(value: Value, environment: Environment): readonly PresentationAction<Verb>[];
   tone?: PresentationTone;
 }

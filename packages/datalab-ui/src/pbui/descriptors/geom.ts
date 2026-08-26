@@ -1,6 +1,5 @@
 import type { Mark } from "../../model/graphic";
 import type { PresentationDescriptor } from "../registry";
-import type { Action } from "../verbs";
 
 /** `<geom>` — a geometry, and the type requirements it states about itself. */
 export const geomDescriptor: PresentationDescriptor<Mark> = {
@@ -22,11 +21,4 @@ export const geomDescriptor: PresentationDescriptor<Mark> = {
       geom === "bar" || geom === "area" ? "zero — otherwise magnitude is misrepresented" : "none",
   }),
 
-  actions: (geom, env): Action[] => [
-    {
-      label: `Use this geom  (chart ${env.nameOf(env.activeDocId)})`,
-      verb: { kind: "setGeom", docId: env.activeDocId, geom },
-    },
-    { label: "Inspect", verb: { kind: "inspect", ptype: "geom", value: geom } },
-  ],
 };

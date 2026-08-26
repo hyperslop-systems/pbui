@@ -1,6 +1,5 @@
 import type { PresentationDescriptor } from "../registry";
 import type { UserRef } from "../types";
-import type { Action } from "../verbs";
 
 /** `<user>` — a person: the signed-in user, or a member of a drop. */
 export const userDescriptor: PresentationDescriptor<UserRef> = {
@@ -20,8 +19,4 @@ export const userDescriptor: PresentationDescriptor<UserRef> = {
     managedBy: "the identity provider — password, MFA and email live there",
   }),
 
-  actions: (user): Action[] => [
-    { label: "Inspect", verb: { kind: "inspect", ptype: "user", value: user } },
-    { label: "Watch", verb: { kind: "watch", ptype: "user", value: user } },
-  ],
 };

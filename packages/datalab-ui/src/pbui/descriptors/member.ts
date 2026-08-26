@@ -1,8 +1,6 @@
 import type { PresentationDescriptor } from "../registry";
 import type { MemberRef } from "../types";
-import type { Action } from "../verbs";
 
-const ROLES = ["reader", "writer", "admin"] as const;
 
 /** `<member>` — one row of a drop's access list. */
 export const memberDescriptor: PresentationDescriptor<MemberRef> = {
@@ -25,28 +23,4 @@ export const memberDescriptor: PresentationDescriptor<MemberRef> = {
           : "everything a writer can, plus manage members and delete versions",
   }),
 
-  actions: (member): Action[] => {
-    // The owner is an implicit admin and cannot be demoted out of their own
-    // drop. Shown greyed rather than hidden, so the rule is visible.
-    const ownerReason = member.isOwner ? "the owner's role cannot be changed" : undefined;
-
-    return [
-      ...ROLES.filter((role) => role !== member.role).map((role) => ({
-        label: `Set role → ${role}`,
-        verb: {
-          kind: "setMemberRole" as const,
-          drop: member.drop,
-          userId: member.user.id,
-          role,
-        },
-        disabledBecause: ownerReason,
-      })),
-      {
-        label: "Remove from this drop",
-        verb: { kind: "removeMember", drop: member.drop, userId: member.user.id },
-        disabledBecause: ownerReason ?? undefined,
-      },
-      { label: "Inspect", verb: { kind: "inspect", ptype: "member", value: member } },
-    ];
-  },
 };
