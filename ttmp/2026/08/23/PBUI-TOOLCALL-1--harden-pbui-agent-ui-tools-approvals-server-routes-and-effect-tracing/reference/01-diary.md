@@ -18,6 +18,8 @@ RelatedFiles:
         Persistent sessions/title index CLI flag (commit a34cc68)
     - Path: repo://go.mod
       Note: Pinocchio v0.11.14 release consumption (commit ac76a40)
+    - Path: repo://packages/pbui-chat/demo/src/approvalConsumption.ts
+      Note: Durable demo approval spent markers from PR review
     - Path: repo://packages/pbui-chat/demo/src/pbui/vocabulary.test.ts
       Note: Executable demo handoff and trace vocabulary contract (commit 7ecc676)
     - Path: repo://packages/pbui-chat/package.json
@@ -69,12 +71,16 @@ RelatedFiles:
         Unsafe undo API/tokens removed during Phase 5 audit (commit 1d17631)
     - Path: repo://packages/pbui-chat/src/types.ts
       Note: Public effect correlation trace fields (commit 64b5f9d)
+    - Path: repo://packages/pbui-sandbox/src/host/useProgramInstance.ts
+      Note: Per-view serialized program event transitions
     - Path: repo://packages/pbui-workbench/src/components/Launcher/Launcher.tsx
       Note: Synchronous exact launcher invoker capture (commit 01452a8)
     - Path: repo://packages/pbui-workbench/src/components/SplitPane/SplitPane.tsx
       Note: Divider-aware pointer and accessible dynamic bounds (commit 01452a8)
     - Path: repo://packages/pbui-workbench/src/createWorkbench.tsx
       Note: Shadow preflight and atomic plan commit (commit 27b0025)
+    - Path: repo://packages/pbui-workbench/src/document.ts
+      Note: Singleton-safe declarative workspace layout
     - Path: repo://packages/pbui-workbench/src/verbs.ts
       Note: |-
         Strict verbs and rendered pane constraints (commits 27b0025, ceaea2a)
@@ -89,6 +95,7 @@ RelatedFiles:
         Authenticated effect submission handler (commit 56a01b6)
         Version-aware title PATCH conflict response (commit 5916dc0)
         Strict executor manifest acknowledgement and result validation
+        Count only accepted messages
     - Path: repo://pkg/chatserver/scripted/scenarios.go
       Note: Rendered revision-bound atomic workbench scenario (commit 01452a8)
     - Path: repo://pkg/chatserver/server.go
@@ -155,6 +162,7 @@ LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -1787,3 +1795,92 @@ The browser had multiple conversation panes. Network evidence identified authori
 ### Technical details
 
 The browser acceptance session was `99e6c8a0-b310-4be6-a504-e3860f21e2eb`. Automatic tool executor assignment was `f529b7b0-a445-462b-a5aa-86c6d90d59a7`; reconnect assignment was `cc15bb04-0c33-4abd-95f2-2ce12dd68543`. Server logs contained no terminal, executor-mismatch, duplicate, or effect-envelope conflict.
+
+## Step 20: Resolve the final PBUI pull-request review
+
+The newest Codex review found three post-acceptance correctness gaps: demo approval consumption did not survive reload, program events could race on stale plugin state, and failed message submissions advanced the conversation index. I fixed each at its owning boundary and added focused regressions. I also audited the older review threads and closed the one remaining gap: workspace creation now shares singleton views across existing workspaces and repeated leaves.
+
+The fixes preserve the Phase 5 executor protocol and do not introduce a second authority. Approval decisions still come from hydrated timeline evidence; only the spent marker is persisted. Program events remain fire-and-forget to React but execute serially per mounted view. Session counts now advance only after the hub/service accepts a message.
+
+### Prompt Context
+
+**User prompt (verbatim):** `Address code review comments on https://github.com/hyperslop-systems/pbui/pull/11`
+
+**Additional user instruction (verbatim):** `request new review with "@codex review" when done`
+
+**Assistant interpretation:** Audit every open PR review comment against the current branch, implement the still-valid fixes with regressions, push them, reply to the review threads, and trigger a fresh Codex review.
+
+**Inferred user intent:** Make PR 11 review-ready with concrete evidence that the reported correctness and authorization gaps are closed.
+
+**Commit (code):** `ef6ad86` — "fix: address PBUI pull request review"
+
+### What I did
+
+- Added `ConsumedApprovalStore`, backed by demo `localStorage`, so a newly constructed ledger rejects proposal IDs spent before reload.
+- Added reload, multi-instance merge, and malformed-storage tests.
+- Serialized sandbox program events per view and dropped queued work from disposed instances.
+- Added a delayed-engine rapid-double-event regression proving counter state reaches 2 rather than losing one increment.
+- Moved session `Touch(..., counted=true)` after successful real or scripted submission.
+- Added a missing-profile submission regression proving HTTP 500 leaves `message_count` at zero.
+- Extended `buildLayout` with explicit singleton knowledge and made `createWorkspace` seed it from current views.
+- Added tests for existing and repeated newly-created singleton leaves.
+- Re-audited prior comments covering operation-bound approvals, generic ID validation, app availability, raw mutation support/policy, specialized open policy, refused outcomes, cross-workspace go-to, and post-commit hook isolation.
+- Ran focused, full, race, typecheck, build, static-audit, lint, and pre-commit validation.
+
+### Why
+
+- A user approval is a single-use capability; process-local consumption can be reset by reload.
+- Event handlers are state transitions and must observe the previous transition's output.
+- An index must describe accepted messages, not attempted requests.
+- Singleton identity is document-wide, including declarative workspace creation.
+
+### What worked
+
+- Root PBUI: 102 tests.
+- Protocol: 44 tests.
+- Workbench: 127 tests.
+- Sandbox: 104 tests.
+- PBUI Chat: 237 tests.
+- Demo: 5 tests.
+- Total frontend tests: 619 passing.
+- All relevant typechecks and sequential builds passed.
+- Full Go tests/vet, focused chatserver race tests, golangci-lint, logcopter, and glazed-lint passed.
+- Static contract audit remained 20/20.
+
+### What didn't work
+
+- I initially ran the root build and dependent workspace build matrix concurrently. The root Vite build temporarily cleared `dist/` while `pbui-workbench` resolved `@hyperslop-systems/pbui`, producing transient `TS7016: Could not find a declaration file for module '@hyperslop-systems/pbui'` and follow-on implicit-any errors. Rerunning dependent builds sequentially after the root declarations existed passed. This was a validation-command race, not a source failure.
+
+### What I learned
+
+- Build order is part of validation when workspace packages consume generated declarations from a sibling's `dist` directory.
+- Persisting approval decisions and persisting capability consumption are separate responsibilities; timeline hydration answers the former, a durable spent marker answers the latter.
+- A Promise chain is a small, explicit per-view event sequencer and can reject stale queued events by captured instance identity.
+
+### What was tricky to build
+
+The event API intentionally returns `void`, so callers cannot serialize by awaiting it. The hook now captures the exact instance and appends an async transition to a private Promise chain. Each transition reads plugin state only when it reaches the head of the queue. A program reload changes `instanceRef`; queued old transitions then no-op instead of touching replacement state. The chain recovers before every append so an unexpected rejection cannot wedge all future interaction.
+
+Singleton layout construction was also subtle because the generic `LayoutSpec` has no application registry. `buildLayout` therefore accepts optional, explicit singleton metadata from the workbench verb layer rather than guessing globally. Bare document builders retain their old behavior.
+
+### What warrants a second pair of eyes
+
+- Confirm demo `localStorage` is an acceptable persistence boundary; production consumers should provide a server-backed approval ledger.
+- Confirm dropping queued events from a disposed program instance is preferable to recording an explicit ignored-event timeline note.
+- Review singleton title/document semantics when a layout references an already-existing singleton; identity currently wins, matching split/replace behavior.
+
+### What should be done in the future
+
+- Consider a first-class durable server approval ledger for production deployments rather than the demo adapter.
+- Consider a repository build orchestration target that encodes package declaration dependency order.
+
+### Code review instructions
+
+1. Start with `approvalConsumption.ts`, `useProgramInstance.ts`, `document.ts`/`verbs.ts`, and `HandleSubmitMessage`.
+2. Read each adjacent regression before implementation details.
+3. Run the six relevant workspace test/typecheck matrix sequentially, then full Go tests and focused race tests.
+4. Verify the PR review replies point to `ef6ad86` and request a new `@codex review` after the final documentation commit is pushed.
+
+### Technical details
+
+The delayed sandbox-engine test evaluates the first increment against zero and blocks its result. A non-serialized second invocation would also evaluate against zero; the queue prevents that invocation until state one is committed, so the second result deterministically produces state two.

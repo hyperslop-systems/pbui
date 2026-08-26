@@ -178,3 +178,15 @@ Phase 5 executor blocker closed: trusted-published chat-provider 0.6.0, consumed
 
 Ticket closed
 
+
+## 2026-08-25
+
+PR 11 review: persisted demo approval consumption, serialized program events, counted only accepted messages, and made workspace creation singleton-safe (ef6ad86).
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/demo/src/approvalConsumption.ts — Reload-safe spent capability marker
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox/src/host/useProgramInstance.ts — Event sequencing
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-workbench/src/verbs.ts — Singleton-aware workspace creation
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/handlers.go — Post-acceptance session touch
+
