@@ -275,7 +275,9 @@ func TestReorderRoundTripsThroughHumanTools(t *testing.T) {
 	server, ts := newTestServer(t)
 	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
 	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
-		"revision": 1,
+		"clientInstanceId": "reorder-test-client",
+		"connectionId":     "reorder-test-connection",
+		"revision":         1,
 		"tools": []any{
 			map[string]any{"name": pbuichat.ToolAccept, "mode": "human", "available": true, "inputSchema": map[string]any{"type": "object"}},
 			map[string]any{"name": pbuichat.ToolPropose, "mode": "human", "available": true, "inputSchema": map[string]any{"type": "object"}},
@@ -293,10 +295,11 @@ func TestReorderRoundTripsThroughHumanTools(t *testing.T) {
 					continue
 				}
 				var p struct {
-					ToolCallID string `json:"toolCallId"`
+					ToolCallID string               `json:"toolCallId"`
+					Executor   frontendToolExecutor `json:"executor"`
 				}
 				_ = json.Unmarshal(e.Payload, &p)
-				postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/results", map[string]any{"toolCallId": p.ToolCallID, "toolName": toolName, "result": result, "status": "success"})
+				postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/results", map[string]any{"toolCallId": p.ToolCallID, "toolName": toolName, "result": result, "status": "success", "executor": p.Executor})
 				return
 			}
 			time.Sleep(20 * time.Millisecond)
@@ -364,11 +367,12 @@ func answerFrontendTool(t *testing.T, ts *httptest.Server, sid, toolName string,
 				continue
 			}
 			var p struct {
-				ToolCallID string         `json:"toolCallId"`
-				Input      map[string]any `json:"input"`
+				ToolCallID string               `json:"toolCallId"`
+				Input      map[string]any       `json:"input"`
+				Executor   frontendToolExecutor `json:"executor"`
 			}
 			_ = json.Unmarshal(e.Payload, &p)
-			postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/results", map[string]any{"toolCallId": p.ToolCallID, "toolName": toolName, "result": result, "status": "success"})
+			postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/results", map[string]any{"toolCallId": p.ToolCallID, "toolName": toolName, "result": result, "status": "success", "executor": p.Executor})
 			return p.Input
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -381,7 +385,9 @@ func TestProgramScenarioBridgesTheSandboxTools(t *testing.T) {
 	server, ts := newTestServer(t)
 	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
 	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
-		"revision": 1,
+		"clientInstanceId": "program-test-client",
+		"connectionId":     "program-test-connection",
+		"revision":         1,
 		"tools": []any{
 			map[string]any{"name": pbuichat.ToolSandboxTest, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
 			map[string]any{"name": pbuichat.ToolSandboxCreateApp, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
@@ -435,7 +441,9 @@ func TestProgramScenarioStopsOnAFailedTest(t *testing.T) {
 	server, ts := newTestServer(t)
 	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
 	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
-		"revision": 1,
+		"clientInstanceId": "failed-program-test-client",
+		"connectionId":     "failed-program-test-connection",
+		"revision":         1,
 		"tools": []any{
 			map[string]any{"name": pbuichat.ToolSandboxTest, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
 			map[string]any{"name": pbuichat.ToolSandboxCreateApp, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},

@@ -136,8 +136,8 @@ github.com/go-go-golems/glazed v1.4.3 h1:Wzcr/xJkNawKoT6I1KmiNYdprSNgUAbRU6EhT9P
 github.com/go-go-golems/glazed v1.4.3/go.mod h1:d/xwH6o5N4lGv7Mz3x00hp9EiMSBOm4SAI+250Mfcps=
 github.com/go-go-golems/logcopter v0.1.1 h1:/zrfmA7057hZyBoes+X9EpASP+aZQJx3kip89eRQqXM=
 github.com/go-go-golems/logcopter v0.1.1/go.mod h1:GUB5A7JwPVdYAu/8CKURcIaJb0h16nz8mKbkf5opzqo=
-github.com/go-go-golems/pinocchio v0.11.14 h1:NgDV11QG9xv43f5ifRfZT+Lvti6vZLGBUWXVKaJIB2o=
-github.com/go-go-golems/pinocchio v0.11.14/go.mod h1:MWXEyzIfoYewQvO5pOKNudiI9wj4gG6KJhnvNOsMpOY=
+github.com/go-go-golems/pinocchio v0.11.16 h1:TO0ZDYrpMz4+iL8KqJOOLQIrqNvFctp7TizLwXAMo+g=
+github.com/go-go-golems/pinocchio v0.11.16/go.mod h1:MWXEyzIfoYewQvO5pOKNudiI9wj4gG6KJhnvNOsMpOY=
 github.com/go-go-golems/sessionstream v0.1.2 h1:aUthVFD8f8M08s6zH0Y42z9DsDtInGgetyNm7taVEM8=
 github.com/go-go-golems/sessionstream v0.1.2/go.mod h1:1PWviVKm2Xi7fNfX2Pk0eQOLmNOBFl0Ubjced3B8xfs=
 github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=

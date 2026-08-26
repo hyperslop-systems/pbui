@@ -109,7 +109,9 @@ describe("selectToolTraffic", () => {
     // Nothing has parked p1 with the tool runtime, so nothing is waiting yet.
     expect(selectWaiting(chat.conversations)).toHaveLength(0);
 
-    runtime.toolRuntime.reconcileFrontendToolRequests([{ toolCallId: "p1", toolName: "pbui_propose", input: { id: "p1", title: "t", body: "b" } }]);
+    const executor = { clientInstanceId: "selector-client", connectionId: "selector-connection", assignmentId: "selector-assignment" };
+    runtime.toolRuntime.setExecutorIdentity(executor);
+    runtime.toolRuntime.reconcileFrontendToolRequests([{ toolCallId: "p1", toolName: "pbui_propose", input: { id: "p1", title: "t", body: "b" }, executor }]);
     await waitFor(() => {
       expect(runtime.toolRuntime.isPendingHumanTool("p1")).toBe(true);
     });

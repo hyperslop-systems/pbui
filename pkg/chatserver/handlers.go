@@ -41,16 +41,25 @@ type toolDescriptorRequest struct {
 }
 
 type toolManifestRequest struct {
-	Revision uint64                  `json:"revision,omitempty"`
-	Tools    []toolDescriptorRequest `json:"tools"`
+	ClientInstanceID string                  `json:"clientInstanceId"`
+	ConnectionID     string                  `json:"connectionId"`
+	Revision         uint64                  `json:"revision,omitempty"`
+	Tools            []toolDescriptorRequest `json:"tools"`
+}
+
+type frontendToolExecutor struct {
+	ClientInstanceID string `json:"clientInstanceId"`
+	ConnectionID     string `json:"connectionId"`
+	AssignmentID     string `json:"assignmentId"`
 }
 
 type toolResultRequest struct {
-	ToolCallID string         `json:"toolCallId"`
-	ToolName   string         `json:"toolName,omitempty"`
-	Result     map[string]any `json:"result,omitempty"`
-	Status     string         `json:"status,omitempty"`
-	Error      string         `json:"error,omitempty"`
+	ToolCallID string               `json:"toolCallId"`
+	ToolName   string               `json:"toolName,omitempty"`
+	Result     map[string]any       `json:"result,omitempty"`
+	Status     string               `json:"status,omitempty"`
+	Error      string               `json:"error,omitempty"`
+	Executor   frontendToolExecutor `json:"executor"`
 }
 
 type listSessionsResponse struct {
@@ -63,9 +72,11 @@ type retitleSessionRequest struct {
 }
 
 type acceptedResponse struct {
-	SessionID string `json:"sessionId"`
-	Accepted  bool   `json:"accepted"`
-	Status    string `json:"status"`
+	SessionID string                `json:"sessionId"`
+	Accepted  bool                  `json:"accepted"`
+	Status    string                `json:"status"`
+	Revision  uint64                `json:"revision,omitempty"`
+	Executor  *frontendToolExecutor `json:"executor,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -305,11 +316,24 @@ func (s *Server) HandleToolManifest(w http.ResponseWriter, r *http.Request) {
 		}
 		tools = append(tools, &toolv1.FrontendToolDescriptor{Name: name, Description: t.Description, InputSchema: schema, Mode: parseToolMode(t.Mode), Available: t.Available})
 	}
-	if err := s.hub.Submit(r.Context(), sid, frontendtools.CommandManifest, &toolv1.FrontendToolManifestCommand{Tools: tools, Revision: in.Revision}); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	updated, err := s.frontendTools.AcceptManifest(r.Context(), sid, s.hub, &toolv1.FrontendToolManifestCommand{
+		Tools:            tools,
+		Revision:         in.Revision,
+		ClientInstanceId: strings.TrimSpace(in.ClientInstanceID),
+		ConnectionId:     strings.TrimSpace(in.ConnectionID),
+	})
+	if err != nil {
+		writeError(w, toolManifestErrorStatus(err), err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "manifest_updated"})
+	executor := frontendToolExecutorFromProto(updated.GetExecutor())
+	writeJSON(w, http.StatusOK, acceptedResponse{
+		SessionID: string(sid),
+		Accepted:  true,
+		Status:    "manifest_updated",
+		Revision:  updated.GetRevision(),
+		Executor:  &executor,
+	})
 }
 
 // HandleToolResult delivers a browser tool result (accept, proposal, …).
@@ -337,11 +361,67 @@ func (s *Server) HandleToolResult(w http.ResponseWriter, r *http.Request) {
 	if status == "" {
 		status = "success"
 	}
-	if err := s.hub.Submit(r.Context(), sid, frontendtools.CommandResult, &toolv1.FrontendToolResultCommand{ToolCallId: strings.TrimSpace(in.ToolCallID), ToolName: strings.TrimSpace(in.ToolName), Result: result, Status: status, Error: in.Error}); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	if err := s.hub.Submit(r.Context(), sid, frontendtools.CommandResult, &toolv1.FrontendToolResultCommand{ToolCallId: strings.TrimSpace(in.ToolCallID), ToolName: strings.TrimSpace(in.ToolName), Result: result, Status: status, Error: in.Error, Executor: in.Executor.toProto()}); err != nil {
+		writeError(w, toolResultErrorStatus(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "result_received"})
+}
+
+func toolManifestErrorStatus(err error) int {
+	code, ok := frontendtools.ManifestErrorCodeOf(err)
+	if !ok {
+		return http.StatusInternalServerError
+	}
+	switch code {
+	case frontendtools.ManifestErrorIdentityMissing, frontendtools.ManifestErrorIdentityTooLong:
+		return http.StatusBadRequest
+	case frontendtools.ManifestErrorRevisionRegression, frontendtools.ManifestErrorRevisionConflict:
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func toolResultErrorStatus(err error) int {
+	code, ok := frontendtools.InvocationErrorCodeOf(err)
+	if !ok {
+		return http.StatusInternalServerError
+	}
+	switch code {
+	case frontendtools.InvocationErrorInvalidStatus, frontendtools.InvocationErrorExecutorMissing:
+		return http.StatusBadRequest
+	case frontendtools.InvocationErrorUnknownResult:
+		return http.StatusNotFound
+	case frontendtools.InvocationErrorLateResult:
+		return http.StatusGone
+	case frontendtools.InvocationErrorDuplicatePending,
+		frontendtools.InvocationErrorSessionMismatch,
+		frontendtools.InvocationErrorToolMismatch,
+		frontendtools.InvocationErrorTerminalConflict,
+		frontendtools.InvocationErrorKeyReuse,
+		frontendtools.InvocationErrorExecutorMismatch,
+		frontendtools.InvocationErrorExecutorUnavailable:
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func (executor frontendToolExecutor) toProto() *toolv1.FrontendToolExecutor {
+	return &toolv1.FrontendToolExecutor{
+		ClientInstanceId: strings.TrimSpace(executor.ClientInstanceID),
+		ConnectionId:     strings.TrimSpace(executor.ConnectionID),
+		AssignmentId:     strings.TrimSpace(executor.AssignmentID),
+	}
+}
+
+func frontendToolExecutorFromProto(executor *toolv1.FrontendToolExecutor) frontendToolExecutor {
+	return frontendToolExecutor{
+		ClientInstanceID: executor.GetClientInstanceId(),
+		ConnectionID:     executor.GetConnectionId(),
+		AssignmentID:     executor.GetAssignmentId(),
+	}
 }
 
 // HandleVerbPerformed records a verb the browser performed.

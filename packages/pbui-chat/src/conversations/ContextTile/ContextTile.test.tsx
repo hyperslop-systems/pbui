@@ -69,14 +69,14 @@ describe("ContextTile", () => {
     expect(document.body.textContent).toContain("advertised on connect and on every send");
   });
 
-  test("a sync stamps when the manifest last went out", async () => {
+  test("a manual sync waits for connection readiness rather than recording an unsent manifest", async () => {
     await mount();
-    await chat.conversations.runtimeFor(A)!.syncManifest();
+    const sync = chat.conversations.runtimeFor(A)!.syncManifest();
+    void sync.catch(() => undefined);
+    await Promise.resolve();
 
-    await waitFor(() => {
-      expect(document.body.textContent).toContain("last advertised");
-    });
-    expect(document.body.textContent).toMatch(/revision \d+/);
+    expect(document.body.textContent).toContain("advertised on connect and on every send");
+    expect(document.body.textContent).not.toContain("last advertised");
   });
 
   test("the last message shows the objects it carried, as objects", async () => {
@@ -85,7 +85,6 @@ describe("ContextTile", () => {
     await chat.conversations.configFor(A).sendMessageBody!({ prompt: "how is the Eagle?" });
 
     // The tile reads `runtime.lastSend`, which the body function just set.
-    await chat.conversations.runtimeFor(A)!.syncManifest();
     await waitFor(() => {
       expect(document.body.textContent).toContain("how is the Eagle?");
     });
