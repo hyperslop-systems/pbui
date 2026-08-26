@@ -398,3 +398,91 @@ kernel"
 
 ### Technical details
 - Root suite: 152 tests (102 pre-existing + 50 kernel).
+
+## Step 5: P2 — one selection engine behind ObjectMenu, zero product changes
+
+Integrated the kernel into `createPbui` per Amendments A and B. `actions` and
+`snapshotFor` are optional and come together (actions alone throws at
+construction); absent, the provider builds an internal registry around
+`legacyDescriptorFamily` over the descriptor registry with a trivial
+`{revision: 0, scopes: ["global"], product: {environment}}` snapshot — one
+live selection engine either way. ObjectMenu resolves `{subject, invocation:
+"menu"}` on every render, maps `ResolvedAction` rows keyed by candidate id
+(the `unavailable` status carries the one-field disabled/reason invariant
+forward), and renders ties as a non-executable `data-part="menu-ambiguity"`
+row. The context gains `resolve()` and `performAction()` (fresh revalidation,
+fresh verb); `perform(verb)` is untouched for chrome and toolbars.
+
+Every pre-existing test passes unmodified: root 158 (152 + 6 new integration
+tests), workbench-protocol 44, pbui-workbench 131, pbui-sandbox 105,
+datalab-ui 531, pbui-chat 237, chat demo 13.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `db3269e` — "PBUI-ACTIONS-2 P2: one selection engine
+behind ObjectMenu, zero product changes"
+
+### What I did
+- `createPbui.tsx`: fourth defaulted generic `ProductFacts =
+  LegacyFacts<Environment>` (existing three-arg callers compile untouched);
+  engine/snapshot fallback construction; context `resolve`/`performAction`;
+  ObjectMenu row mapping and ambiguity rendering.
+- `public/presentation-parts.css`: the `menu-ambiguity` hook, styled like a
+  reason and explicitly not a button.
+- `createPbui.actions.test.tsx`: six integration tests — fresh-verb
+  delegation, refusal after state change (onPerform never called), visible
+  unavailable row, ambiguity row non-executability, legacy-engine parity with
+  environment-sensitive labels, and the actions-without-snapshotFor error.
+
+### Why
+- Amendment B's zero-change property is the whole point of P2: the engine
+  swap must be reviewable as "the fence still passes", not as a product
+  migration.
+
+### What worked
+- The `MenuState` question resolved even less invasively than the intern
+  guide sketched: the query is derived in ObjectMenu (`invocation: "menu"` is
+  constant there), so `MenuState`/`openMenu` did not change at all.
+- `performAction` calls `onPerform` synchronously within the click segment
+  (the await suspends after the call), so existing synchronous delegation
+  tests hold without modification.
+
+### What didn't work
+- `toBeDisabled()` — jest-dom matchers are not installed in this repo's
+  vitest setup; plain `disabled` property assertion instead. One-line fix.
+
+### What I learned
+- Unmigrated products gained real behavior from P2 despite "zero changes":
+  revalidation re-runs their descriptor callback at click time, so the stale
+  render-time verb can no longer be delegated. The legacy test pins this via
+  an environment-sensitive verb.
+
+### What was tricky to build
+- The default-generic dance: `ProductFacts = LegacyFacts<Environment>` makes
+  the internal casts honest (the fallback pair really is that type), while a
+  product supplying its own registry instantiates the generic explicitly.
+  The alternative — overloads — duplicated the options type for no gain.
+
+### What warrants a second pair of eyes
+- `resolve` in the context closes over `environment` from the current render;
+  a menu open across an environment change re-resolves with the new
+  environment on next render (correct), but `performAction` uses the
+  environment captured when the context value was memoized — same as today's
+  `perform`, worth confirming as intended.
+- The ambiguity row wording ("N rules tie for <action> — nothing runs") is
+  developer-facing; product copy may want it gated to dev builds (source
+  guide leaves production policy to products).
+
+### What should be done in the future
+- P3: workbench contribution fragments + datalab migration.
+
+### Code review instructions
+- `git show db3269e`; the review surface is ObjectMenu's row mapping and the
+  engine fallback block. Then `pnpm vitest run src/presentation` — the fence
+  plus the new file.
+
+### Technical details
+- Suites: root 158, protocol 44, workbench 131, sandbox 105, datalab 531,
+  chat 237, demo 13 — 1219 total, all green.
