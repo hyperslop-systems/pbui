@@ -136,6 +136,17 @@
   font-size: var(--pbui-fs-tiny, 10px);
 }
 
+/* A tie the declarations do not decide (PBUI-ACTIONS-2): diagnostic, never
+ * executable — deliberately not a button, so it can never be clicked into
+ * running an ambiguous action. */
+[data-part="menu-ambiguity"] {
+  padding: var(--pbui-space-2, 4px) var(--pbui-space-3, 6px);
+  color: var(--pbui-faint, #8b857a);
+  font-size: var(--pbui-fs-tiny, 10px);
+  font-style: italic;
+  border-top: 1px dashed var(--pbui-line, #d8d2c6);
+}
+
 /* ---- the accept banner -------------------------------------------------- */
 
 [data-part="accept-banner"] {
