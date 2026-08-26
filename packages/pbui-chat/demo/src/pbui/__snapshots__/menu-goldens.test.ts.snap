@@ -3,7 +3,7 @@
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> sort pair distinguished by direction 1`] = `
 [
   {
-    "id": "field.inspect",
+    "id": "demo.field.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -17,7 +17,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> sort pair distinguished by d
     },
   },
   {
-    "id": "field.sortBy.asc",
+    "id": "demo.field.sort-asc",
     "label": "Sort ascending",
     "verb": {
       "dir": "asc",
@@ -27,7 +27,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> sort pair distinguished by d
     },
   },
   {
-    "id": "field.sortBy.desc",
+    "id": "demo.field.sort-desc",
     "label": "Sort descending",
     "verb": {
       "dir": "desc",
@@ -37,7 +37,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> sort pair distinguished by d
     },
   },
   {
-    "id": "field.addFilter.total.!=",
+    "id": "demo.field.hide-empty",
     "label": "Hide empty values",
     "verb": {
       "field": "total",
@@ -48,7 +48,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> sort pair distinguished by d
     },
   },
   {
-    "id": "field.askAgent",
+    "id": "demo.field.ask-meaning",
     "label": "Ask what it means",
     "verb": {
       "kind": "askAgent",
@@ -70,7 +70,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> sort pair distinguished by d
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> with approver role 1`] = `
 [
   {
-    "id": "product.inspect",
+    "id": "demo.product.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -86,7 +86,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> with approver role 1`] = `
     },
   },
   {
-    "id": "product.watch",
+    "id": "demo.product.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -103,7 +103,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> with approver role 1`] = `
   },
   {
     "description": "pick another product to compare against",
-    "id": "product.compareWith",
+    "id": "demo.product.compare",
     "label": "Compare with…",
     "verb": {
       "kind": "compareWith",
@@ -119,7 +119,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> with approver role 1`] = `
     },
   },
   {
-    "id": "product.askAgent",
+    "id": "demo.product.ask-sales",
     "label": "Ask the agent why it sells",
     "verb": {
       "kind": "askAgent",
@@ -139,7 +139,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> with approver role 1`] = `
   },
   {
     "danger": true,
-    "id": "product.reorder",
+    "id": "demo.product.reorder",
     "label": "Draft a reorder (stock is low)",
     "verb": {
       "kind": "reorder",
@@ -152,7 +152,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> with approver role 1`] = `
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> without approver role 1`] = `
 [
   {
-    "id": "product.inspect",
+    "id": "demo.product.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -168,7 +168,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> without approver role 1`] 
     },
   },
   {
-    "id": "product.watch",
+    "id": "demo.product.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -185,7 +185,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> without approver role 1`] 
   },
   {
     "description": "pick another product to compare against",
-    "id": "product.compareWith",
+    "id": "demo.product.compare",
     "label": "Compare with…",
     "verb": {
       "kind": "compareWith",
@@ -201,7 +201,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> without approver role 1`] 
     },
   },
   {
-    "id": "product.askAgent",
+    "id": "demo.product.ask-sales",
     "label": "Ask the agent why it sells",
     "verb": {
       "kind": "askAgent",
@@ -222,12 +222,9 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> without approver role 1`] 
   {
     "danger": true,
     "disabledBecause": "needs approver role",
-    "id": "product.reorder",
+    "id": "demo.product.reorder",
     "label": "Draft a reorder (stock is low)",
-    "verb": {
-      "kind": "reorder",
-      "productId": "2049",
-    },
+    "verb": undefined,
   },
 ]
 `;
@@ -235,7 +232,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> without approver role 1`] 
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <proposal> undecided, approver 1`] = `
 [
   {
-    "id": "proposal.inspect",
+    "id": "demo.proposal.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -249,7 +246,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <proposal> undecided, approver 1`] =
   },
   {
     "danger": true,
-    "id": "proposal.resolveProposal.approve",
+    "id": "demo.proposal.approve",
     "label": "Approve",
     "verb": {
       "decision": "approve",
@@ -258,7 +255,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <proposal> undecided, approver 1`] =
     },
   },
   {
-    "id": "proposal.resolveProposal.reject",
+    "id": "demo.proposal.reject",
     "label": "Reject",
     "verb": {
       "decision": "reject",
@@ -267,7 +264,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <proposal> undecided, approver 1`] =
     },
   },
   {
-    "id": "proposal.askAgent",
+    "id": "demo.proposal.ask-reasoning",
     "label": "Ask for the reasoning",
     "verb": {
       "kind": "askAgent",

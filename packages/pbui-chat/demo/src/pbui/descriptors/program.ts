@@ -26,26 +26,4 @@ export const programDescriptor: PresentationDescriptor<"program"> = {
     };
   },
 
-  actions: (ref) => {
-    const record = library.getState().programs[ref.id];
-    const bindings = record?.bindings ?? ref.value?.bindings ?? [];
-    const pinned = record?.pinned ?? ref.value?.pinned ?? false;
-    return [
-      {
-        label: "Open in a tile",
-        verb: { kind: "program.open", programId: ref.id },
-        ...(bindings.length > 0
-          ? { disabledBecause: `needs ${bindings.map((b) => `a "${b}" binding`).join(", ")}; open it from that object's menu or ask the agent` }
-          : {}),
-        ...(record ? {} : { disabledBecause: "this program is not in the library" }),
-      },
-      { label: "View source", verb: { kind: "inspect", ref } },
-      { label: pinned ? "Unpin" : "Pin (the agent must ask before changing it)", verb: { kind: "program.pin", programId: ref.id, pinned: !pinned } },
-      { label: "Remove", verb: { kind: "program.remove", programId: ref.id }, danger: true },
-      {
-        label: "Ask the agent to improve it",
-        verb: { kind: "askAgent", template: "improve the program {0}: ", refs: [ref] },
-      },
-    ];
-  },
 };

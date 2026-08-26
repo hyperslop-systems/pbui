@@ -14,9 +14,4 @@ export const actionDescriptor: PresentationDescriptor<"action"> = {
     return { presentationType: "action", ...ref.value, ...(record ?? { missing: "not in this browser's library" }), id: ref.id };
   },
 
-  actions: (ref) => [
-    { label: "Inspect", verb: { kind: "inspect", ref } },
-    { label: "Remove from menus", verb: { kind: "action.remove", actionId: ref.id }, danger: true },
-    { label: "Ask the agent to change it", verb: { kind: "askAgent", template: "change the action {0}: ", refs: [ref] } },
-  ],
 };

@@ -14,10 +14,4 @@ export const unresolvedDescriptor: PresentationDescriptor<"unresolved"> = {
 
   describe: (ref) => ({ presentationType: "unresolved", ...ref.value, note: "the server could not resolve this mention" }),
 
-  actions: (ref) => [
-    {
-      label: "Ask the agent what this is",
-      verb: { kind: "askAgent", template: "what did you mean by {0}? I could not resolve it.", refs: [ref] },
-    },
-  ],
 };

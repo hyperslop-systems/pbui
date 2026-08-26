@@ -1,4 +1,11 @@
-import type { PresentationAction, PresentationReference, PresentationRegistry, PresentationValues } from "@hyperslop-systems/pbui";
+import { unavailable } from "@hyperslop-systems/pbui";
+import type {
+  ActionFamily,
+  PresentationAction,
+  PresentationReference,
+  PresentationRegistry,
+  PresentationValues,
+} from "@hyperslop-systems/pbui";
 import type { UIReference, VerbLike } from "./contracts";
 import type { ActionRecord } from "./library";
 
@@ -38,6 +45,12 @@ export interface GeneratedActionsOptions<Values extends PresentationValues, Verb
   group?: string;
 }
 
+/**
+ * @deprecated PBUI-ACTIONS-2: use `createGeneratedActionsFamily` in the
+ * product's action registry instead — same liveness, plus override, trace,
+ * and fresh-revalidation semantics. Deleted with descriptor actions in the
+ * final cleanup.
+ */
 export function withGeneratedActions<Values extends PresentationValues, Environment, Verb>(
   base: PresentationRegistry<Values, Environment, Verb>,
   options: GeneratedActionsOptions<Values, Verb>,
@@ -67,5 +80,75 @@ export function withGeneratedActions<Values extends PresentationValues, Environm
         });
       return generated.length === 0 ? own : [...own, ...generated];
     },
+  };
+}
+
+/* ------------------------------------------------------------------------- */
+
+/**
+ * The generated-actions FAMILY (PBUI-ACTIONS-2 P4) — the kernel-native
+ * replacement for `withGeneratedActions`. The wrapper appended rows to a
+ * wrapped registry's output; the family contributes candidates that pass
+ * through the same applicability, override, ambiguity, trace, and fresh
+ * revalidation pipeline as every static rule. Liveness is unchanged: the
+ * records ride in the SNAPSHOT, which the product builds at resolution time
+ * from the live library, so an action the agent defines a moment ago is in
+ * the next menu with no re-registration.
+ *
+ * The library's stable `act-N` ids provide exactly the identity fresh
+ * revalidation requires: candidate key `record.id`, action id
+ * `generated:<record.id>` (the sandbox's existing convention).
+ */
+export interface GeneratedActionFacts {
+  /** Immutable list read from the library at snapshot time. */
+  generatedActions: readonly ActionRecord[];
+  /** Program ids present in the library, for openProgram availability. */
+  generatedPrograms: ReadonlySet<string>;
+}
+
+export interface GeneratedActionsFamilyOptions<Values extends PresentationValues, Verb> {
+  /** Family id; default "sandbox.generated-actions". */
+  id?: string;
+  /** Build the product's verb for one record on one reference. */
+  toVerb(action: ActionRecord, reference: PresentationReference<Values>): Verb;
+  /** The menu group generated actions sit in; default "generated". */
+  group?: string;
+}
+
+export function createGeneratedActionsFamily<
+  Values extends PresentationValues,
+  ProductFacts extends GeneratedActionFacts,
+  Verb,
+>(options: GeneratedActionsFamilyOptions<Values, Verb>): ActionFamily<Values, ProductFacts, Verb> {
+  const group = options.group ?? "generated";
+  return {
+    kind: "family",
+    id: options.id ?? "sandbox.generated-actions",
+    subject: "*",
+    match: "exact",
+    scopes: ["global"],
+    expand: ({ subject, snapshot }) =>
+      snapshot.product.generatedActions
+        .filter((record) => record.types.includes(subject.type))
+        .map((record, index) => {
+          const missing =
+            record.behaviour.kind === "openProgram" &&
+            !snapshot.product.generatedPrograms.has(record.behaviour.programId)
+              ? `program ${record.behaviour.programId} is no longer in the library`
+              : undefined;
+          return {
+            key: record.id,
+            action: `generated:${record.id}`,
+            ...(missing ? { status: unavailable(missing) } : {}),
+            metadata: {
+              label: record.label,
+              group,
+              order: 1000 + index,
+              description: record.description ?? `added by the ${record.by}`,
+              ...(record.danger ? { danger: true } : {}),
+            },
+            bind: () => options.toVerb(record, subject),
+          };
+        }),
   };
 }
