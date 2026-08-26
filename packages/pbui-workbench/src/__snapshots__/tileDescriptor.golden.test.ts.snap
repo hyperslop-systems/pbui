@@ -1,0 +1,259 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden tile menus (PBUI-ACTIONS-2 P0) > a linked view (informational row included) 1`] = `
+[
+  {
+    "id": "split-row",
+    "label": "Split beside",
+    "verb": {
+      "direction": "row",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "split-col",
+    "label": "Split below",
+    "verb": {
+      "direction": "col",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "replace",
+    "label": "Show something else here…",
+    "verb": {
+      "kind": "launcher.open",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "duplicate",
+    "label": "Duplicate",
+    "verb": {
+      "direction": "row",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "rename",
+    "label": "Name this tile…",
+    "verb": {
+      "kind": "view.setTitle",
+      "title": "",
+      "viewId": "v-1",
+    },
+  },
+  {
+    "disabledBecause": "this is a description, not an action",
+    "id": "linked",
+    "label": "Shown in 3 tiles",
+    "verb": {
+      "kind": "view.goTo",
+      "viewId": "v-1",
+    },
+  },
+  {
+    "danger": true,
+    "id": "close",
+    "label": "Close tile",
+    "verb": {
+      "kind": "tile.close",
+      "placementId": "n-1",
+    },
+  },
+]
+`;
+
+exports[`golden tile menus (PBUI-ACTIONS-2 P0) > a plain tile 1`] = `
+[
+  {
+    "id": "split-row",
+    "label": "Split beside",
+    "verb": {
+      "direction": "row",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "split-col",
+    "label": "Split below",
+    "verb": {
+      "direction": "col",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "replace",
+    "label": "Show something else here…",
+    "verb": {
+      "kind": "launcher.open",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "duplicate",
+    "label": "Duplicate",
+    "verb": {
+      "direction": "row",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "rename",
+    "label": "Name this tile…",
+    "verb": {
+      "kind": "view.setTitle",
+      "title": "",
+      "viewId": "v-1",
+    },
+  },
+  {
+    "danger": true,
+    "id": "close",
+    "label": "Close tile",
+    "verb": {
+      "kind": "tile.close",
+      "placementId": "n-1",
+    },
+  },
+]
+`;
+
+exports[`golden tile menus (PBUI-ACTIONS-2 P0) > product extras append last, in the product's order 1`] = `
+[
+  {
+    "id": "split-row",
+    "label": "Split beside",
+    "verb": {
+      "direction": "row",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "split-col",
+    "label": "Split below",
+    "verb": {
+      "direction": "col",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "replace",
+    "label": "Show something else here…",
+    "verb": {
+      "kind": "launcher.open",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "duplicate",
+    "label": "Duplicate",
+    "verb": {
+      "direction": "row",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "rename",
+    "label": "Name this tile…",
+    "verb": {
+      "kind": "view.setTitle",
+      "title": "",
+      "viewId": "v-1",
+    },
+  },
+  {
+    "danger": true,
+    "id": "close",
+    "label": "Close tile",
+    "verb": {
+      "kind": "tile.close",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "ask",
+    "label": "Ask the agent",
+    "verb": {
+      "kind": "view.goTo",
+      "viewId": "v-1",
+    },
+  },
+  {
+    "id": "export",
+    "label": "Export",
+    "verb": {
+      "kind": "view.goTo",
+      "viewId": "v-1",
+    },
+  },
+]
+`;
+
+exports[`golden tile menus (PBUI-ACTIONS-2 P0) > the last tile (close disabled with its reason) 1`] = `
+[
+  {
+    "id": "split-row",
+    "label": "Split beside",
+    "verb": {
+      "direction": "row",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "split-col",
+    "label": "Split below",
+    "verb": {
+      "direction": "col",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "replace",
+    "label": "Show something else here…",
+    "verb": {
+      "kind": "launcher.open",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "duplicate",
+    "label": "Duplicate",
+    "verb": {
+      "direction": "row",
+      "kind": "tile.split",
+      "placementId": "n-1",
+    },
+  },
+  {
+    "id": "rename",
+    "label": "Name this tile…",
+    "verb": {
+      "kind": "view.setTitle",
+      "title": "",
+      "viewId": "v-1",
+    },
+  },
+  {
+    "danger": true,
+    "disabledBecause": "a workspace keeps at least one tile",
+    "id": "close",
+    "label": "Close tile",
+    "verb": {
+      "kind": "tile.close",
+      "placementId": "n-1",
+    },
+  },
+]
+`;

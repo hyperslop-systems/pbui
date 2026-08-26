@@ -36,6 +36,30 @@ describe("withGeneratedActions", () => {
     expect(registry.actionsFor({ type: "metal", value: { id: "gold" } }, {}).map((a) => a.label)).toEqual(["Metal only"]);
   });
 
+  test("an action defined after the registry was built appears in the next menu (liveness)", () => {
+    // PBUI-ACTIONS-2 P0: the property the kernel's generated-actions family
+    // must preserve — `getActions` is read at resolution time, so a record the
+    // agent creates a moment ago is in the next actionsFor with no
+    // re-registration.
+    const records: ActionRecord[] = [action()];
+    const registry = withGeneratedActions(base, {
+      getActions: () => records,
+      toVerb: (a) => ({ kind: "action.run", actionId: a.id }),
+    });
+    const productRef = { type: "product", value: { id: "2049", name: "Eagle" } } as const;
+    expect(registry.actionsFor(productRef, {}).map((a) => a.id)).toEqual(["own", "generated:act-1"]);
+
+    records.push(action({ id: "act-2", label: "Reorder threshold" }));
+    expect(registry.actionsFor(productRef, {}).map((a) => a.id)).toEqual([
+      "own",
+      "generated:act-1",
+      "generated:act-2",
+    ]);
+
+    records.length = 0;
+    expect(registry.actionsFor(productRef, {}).map((a) => a.id)).toEqual(["own"]);
+  });
+
   test("disables an openProgram action whose program is gone, and forwards the rest of the registry", () => {
     const registry = withGeneratedActions(base, {
       getActions: () => [action()],

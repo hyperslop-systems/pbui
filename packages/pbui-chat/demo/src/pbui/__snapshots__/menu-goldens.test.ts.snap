@@ -1,0 +1,286 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> sort pair distinguished by direction 1`] = `
+[
+  {
+    "id": "field.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ref": {
+        "id": "orders.total",
+        "value": {
+          "name": "total",
+          "tableId": "orders",
+        },
+      },
+    },
+  },
+  {
+    "id": "field.sortBy.asc",
+    "label": "Sort ascending",
+    "verb": {
+      "dir": "asc",
+      "field": "total",
+      "kind": "sortBy",
+      "tableId": "orders",
+    },
+  },
+  {
+    "id": "field.sortBy.desc",
+    "label": "Sort descending",
+    "verb": {
+      "dir": "desc",
+      "field": "total",
+      "kind": "sortBy",
+      "tableId": "orders",
+    },
+  },
+  {
+    "id": "field.addFilter.total.!=",
+    "label": "Hide empty values",
+    "verb": {
+      "field": "total",
+      "kind": "addFilter",
+      "op": "!=",
+      "tableId": "orders",
+      "value": "",
+    },
+  },
+  {
+    "id": "field.askAgent",
+    "label": "Ask what it means",
+    "verb": {
+      "kind": "askAgent",
+      "refs": [
+        {
+          "id": "orders.total",
+          "value": {
+            "name": "total",
+            "tableId": "orders",
+          },
+        },
+      ],
+      "template": "what does the {0} column mean, and how is it computed?",
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> with approver role 1`] = `
+[
+  {
+    "id": "product.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ref": {
+        "id": "2049",
+        "value": {
+          "name": "1oz American Gold Eagle 2024",
+          "reorderPoint": 5,
+          "sku": "AGE-2024",
+          "stock": 3,
+        },
+      },
+    },
+  },
+  {
+    "id": "product.watch",
+    "label": "Add to watchlist",
+    "verb": {
+      "kind": "watch",
+      "ref": {
+        "id": "2049",
+        "value": {
+          "name": "1oz American Gold Eagle 2024",
+          "reorderPoint": 5,
+          "sku": "AGE-2024",
+          "stock": 3,
+        },
+      },
+    },
+  },
+  {
+    "description": "pick another product to compare against",
+    "id": "product.compareWith",
+    "label": "Compare with…",
+    "verb": {
+      "kind": "compareWith",
+      "left": {
+        "id": "2049",
+        "value": {
+          "name": "1oz American Gold Eagle 2024",
+          "reorderPoint": 5,
+          "sku": "AGE-2024",
+          "stock": 3,
+        },
+      },
+    },
+  },
+  {
+    "id": "product.askAgent",
+    "label": "Ask the agent why it sells",
+    "verb": {
+      "kind": "askAgent",
+      "refs": [
+        {
+          "id": "2049",
+          "value": {
+            "name": "1oz American Gold Eagle 2024",
+            "reorderPoint": 5,
+            "sku": "AGE-2024",
+            "stock": 3,
+          },
+        },
+      ],
+      "template": "why does {0} sell the way it does?",
+    },
+  },
+  {
+    "danger": true,
+    "id": "product.reorder",
+    "label": "Draft a reorder (stock is low)",
+    "verb": {
+      "kind": "reorder",
+      "productId": "2049",
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <product> without approver role 1`] = `
+[
+  {
+    "id": "product.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ref": {
+        "id": "2049",
+        "value": {
+          "name": "1oz American Gold Eagle 2024",
+          "reorderPoint": 5,
+          "sku": "AGE-2024",
+          "stock": 3,
+        },
+      },
+    },
+  },
+  {
+    "id": "product.watch",
+    "label": "Add to watchlist",
+    "verb": {
+      "kind": "watch",
+      "ref": {
+        "id": "2049",
+        "value": {
+          "name": "1oz American Gold Eagle 2024",
+          "reorderPoint": 5,
+          "sku": "AGE-2024",
+          "stock": 3,
+        },
+      },
+    },
+  },
+  {
+    "description": "pick another product to compare against",
+    "id": "product.compareWith",
+    "label": "Compare with…",
+    "verb": {
+      "kind": "compareWith",
+      "left": {
+        "id": "2049",
+        "value": {
+          "name": "1oz American Gold Eagle 2024",
+          "reorderPoint": 5,
+          "sku": "AGE-2024",
+          "stock": 3,
+        },
+      },
+    },
+  },
+  {
+    "id": "product.askAgent",
+    "label": "Ask the agent why it sells",
+    "verb": {
+      "kind": "askAgent",
+      "refs": [
+        {
+          "id": "2049",
+          "value": {
+            "name": "1oz American Gold Eagle 2024",
+            "reorderPoint": 5,
+            "sku": "AGE-2024",
+            "stock": 3,
+          },
+        },
+      ],
+      "template": "why does {0} sell the way it does?",
+    },
+  },
+  {
+    "danger": true,
+    "disabledBecause": "needs approver role",
+    "id": "product.reorder",
+    "label": "Draft a reorder (stock is low)",
+    "verb": {
+      "kind": "reorder",
+      "productId": "2049",
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <proposal> undecided, approver 1`] = `
+[
+  {
+    "id": "proposal.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ref": {
+        "id": "p-1",
+        "value": {
+          "title": "Reorder 20 Eagles",
+        },
+      },
+    },
+  },
+  {
+    "danger": true,
+    "id": "proposal.resolveProposal.approve",
+    "label": "Approve",
+    "verb": {
+      "decision": "approve",
+      "id": "p-1",
+      "kind": "resolveProposal",
+    },
+  },
+  {
+    "id": "proposal.resolveProposal.reject",
+    "label": "Reject",
+    "verb": {
+      "decision": "reject",
+      "id": "p-1",
+      "kind": "resolveProposal",
+    },
+  },
+  {
+    "id": "proposal.askAgent",
+    "label": "Ask for the reasoning",
+    "verb": {
+      "kind": "askAgent",
+      "refs": [
+        {
+          "id": "p-1",
+          "value": {
+            "title": "Reorder 20 Eagles",
+          },
+        },
+      ],
+      "template": "why are you proposing {0}?",
+    },
+  },
+]
+`;
