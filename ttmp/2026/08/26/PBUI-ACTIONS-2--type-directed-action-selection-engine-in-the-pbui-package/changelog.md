@@ -37,3 +37,8 @@ P0 complete (fbfa492): semantic verb-derived action ids in both adapters (collis
 
 P1 complete (b58e23b): pure action kernel under src/presentation/actions — type graph, availability quartet, conditions, rules/families, fail-fast registry, 16-step resolver with trace, fresh-perform evaluation, legacy family. 50 new tests; root suite 152 green.
 
+
+## 2026-08-26
+
+P2 complete (db3269e): kernel behind ObjectMenu with automatic legacy family, resolve/performAction context operations, ambiguity row, menu-ambiguity CSS hook, six integration tests. All 1219 tests green with zero product changes.
+
