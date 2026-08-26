@@ -1,0 +1,15 @@
+# Changelog
+
+## 2026-08-26
+
+- Initial workspace created
+
+
+## 2026-08-26
+
+Created ticket, imported the PBUI-ACTIONS-1 source-audited implementation guide into sources/, and audited it against current HEAD: all seams hold (exact actionsFor, render-time menu resolution, raw-verb perform, tileDescriptor extra, sandbox wrapper, unstable adapter IDs); drift is limited to required onPerform, MenuState relocation, direct pbui.perform(verb) callers, and the PBUI-TOOLCALL-1 executor runtime around the chat router.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/ttmp/2026/08/26/PBUI-ACTIONS-2--type-directed-action-selection-engine-in-the-pbui-package/sources/PBUI-ACTIONS-1-source-audited-implementation-guide.md — The design of record being implemented
+
