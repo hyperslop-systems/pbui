@@ -449,7 +449,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <source> 1`] = `
 [
   {
-    "id": "source.setSource",
+    "id": "datalab.source.load",
     "label": "Load into chart α",
     "verb": {
       "docId": "d1",
@@ -464,7 +464,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <source> 1`] = `
     },
   },
   {
-    "id": "source.newDoc",
+    "id": "datalab.source.new-doc",
     "label": "New chart document from it",
     "verb": {
       "kind": "newDoc",
@@ -478,7 +478,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <source> 1`] = `
     },
   },
   {
-    "id": "source.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -493,7 +493,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <source> 1`] = `
     },
   },
   {
-    "id": "source.watch",
+    "id": "datalab.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -575,7 +575,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <stage> not current 1`] = `
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the linked-view variant 1`] = `
 [
   {
-    "id": "tile.openReplaceView",
+    "id": "datalab.tile.replace",
     "label": "Replace …",
     "verb": {
       "kind": "openReplaceView",
@@ -583,7 +583,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.beginRenameView",
+    "id": "datalab.tile.rename",
     "label": "Rename …",
     "verb": {
       "kind": "beginRenameView",
@@ -591,7 +591,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.createLinkedDuplicate",
+    "id": "datalab.tile.link",
     "label": "Create linked duplicate",
     "verb": {
       "kind": "createLinkedDuplicate",
@@ -599,7 +599,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.duplicateView",
+    "id": "datalab.tile.duplicate",
     "label": "Duplicate",
     "verb": {
       "kind": "duplicateView",
@@ -607,7 +607,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.splitTile.row",
+    "id": "datalab.tile.split-right",
     "label": "Split right",
     "verb": {
       "dir": "row",
@@ -616,7 +616,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.splitTile.col",
+    "id": "datalab.tile.split-below",
     "label": "Split below",
     "verb": {
       "dir": "col",
@@ -625,7 +625,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.exportTile",
+    "id": "datalab.tile.export",
     "label": "Copy view to clipboard",
     "verb": {
       "kind": "exportTile",
@@ -633,7 +633,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.importIntoTile",
+    "id": "datalab.tile.import",
     "label": "Replace from clipboard …",
     "verb": {
       "kind": "importIntoTile",
@@ -641,7 +641,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.storeTemplate",
+    "id": "datalab.tile.template",
     "label": "Save as a template …",
     "verb": {
       "kind": "storeTemplate",
@@ -653,7 +653,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -672,7 +672,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.removePlacement",
+    "id": "datalab.tile.remove",
     "label": "Remove from this workspace",
     "verb": {
       "kind": "removePlacement",
@@ -680,7 +680,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.closeView",
+    "id": "datalab.tile.close-view",
     "label": "Close view",
     "verb": {
       "kind": "closeView",
@@ -693,7 +693,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the linked-view variant 2`] = `
 [
   {
-    "id": "tile.openReplaceView",
+    "id": "datalab.tile.replace",
     "label": "Replace …",
     "verb": {
       "kind": "openReplaceView",
@@ -701,7 +701,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.beginRenameView",
+    "id": "datalab.tile.rename",
     "label": "Rename …",
     "verb": {
       "kind": "beginRenameView",
@@ -709,7 +709,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.createLinkedDuplicate",
+    "id": "datalab.tile.link",
     "label": "Create linked duplicate",
     "verb": {
       "kind": "createLinkedDuplicate",
@@ -717,7 +717,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.duplicateView",
+    "id": "datalab.tile.duplicate",
     "label": "Duplicate",
     "verb": {
       "kind": "duplicateView",
@@ -725,7 +725,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.splitTile.row",
+    "id": "datalab.tile.split-right",
     "label": "Split right",
     "verb": {
       "dir": "row",
@@ -734,7 +734,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.splitTile.col",
+    "id": "datalab.tile.split-below",
     "label": "Split below",
     "verb": {
       "dir": "col",
@@ -743,7 +743,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.exportTile",
+    "id": "datalab.tile.export",
     "label": "Copy view to clipboard",
     "verb": {
       "kind": "exportTile",
@@ -751,7 +751,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.importIntoTile",
+    "id": "datalab.tile.import",
     "label": "Replace from clipboard …",
     "verb": {
       "kind": "importIntoTile",
@@ -759,7 +759,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.storeTemplate",
+    "id": "datalab.tile.template",
     "label": "Save as a template …",
     "verb": {
       "kind": "storeTemplate",
@@ -771,7 +771,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -790,7 +790,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.removePlacement",
+    "id": "datalab.tile.remove",
     "label": "Remove from this workspace",
     "verb": {
       "kind": "removePlacement",
@@ -798,7 +798,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
     },
   },
   {
-    "id": "tile.closeView",
+    "id": "datalab.tile.close-view",
     "label": "Close view everywhere",
     "verb": {
       "kind": "closeView",
@@ -811,7 +811,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <workspace> pinned 1`] = `
 [
   {
-    "id": "workspace.switchStage",
+    "id": "datalab.workspace.switch-stage",
     "label": "Switch to it",
     "verb": {
       "kind": "switchStage",
@@ -820,15 +820,12 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <workspace> pinned 1`] = `
   },
   {
     "disabledBecause": "defined in code — cannot be renamed",
-    "id": "workspace.beginRenameWorkspace",
+    "id": "datalab.workspace.rename",
     "label": "Rename this workspace …",
-    "verb": {
-      "kind": "beginRenameWorkspace",
-      "spaceId": "ws-account",
-    },
+    "verb": undefined,
   },
   {
-    "id": "workspace.duplicateWorkspace",
+    "id": "datalab.workspace.duplicate",
     "label": "Duplicate",
     "verb": {
       "kind": "duplicateWorkspace",
@@ -836,7 +833,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <workspace> pinned 1`] = `
     },
   },
   {
-    "id": "workspace.exportWorkspace",
+    "id": "datalab.workspace.export",
     "label": "Copy this workspace to the clipboard",
     "verb": {
       "kind": "exportWorkspace",
@@ -844,7 +841,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <workspace> pinned 1`] = `
     },
   },
   {
-    "id": "workspace.importWorkspace",
+    "id": "datalab.workspace.import",
     "label": "Add a workspace from the clipboard …",
     "verb": {
       "kind": "importWorkspace",
@@ -852,7 +849,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <workspace> pinned 1`] = `
     },
   },
   {
-    "id": "workspace.storeTemplate",
+    "id": "datalab.workspace.template",
     "label": "Save as a template …",
     "verb": {
       "kind": "storeTemplate",
@@ -864,7 +861,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <workspace> pinned 1`] = `
     },
   },
   {
-    "id": "workspace.inspect",
+    "id": "datalab.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -880,12 +877,9 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <workspace> pinned 1`] = `
   },
   {
     "disabledBecause": "defined in code — cannot be deleted",
-    "id": "workspace.deleteWorkspace",
+    "id": "datalab.workspace.delete",
     "label": "Delete",
-    "verb": {
-      "kind": "deleteWorkspace",
-      "spaceId": "ws-account",
-    },
+    "verb": undefined,
   },
 ]
 `;

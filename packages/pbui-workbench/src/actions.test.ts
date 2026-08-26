@@ -8,14 +8,16 @@ import {
   workbenchTileContributions,
   workbenchTypeDefinitions,
 } from "./actions";
-import { createTileDescriptor, type TileRef } from "./tileDescriptor";
-import type { WorkbenchVerb } from "./verbs";
+import type { TileRef } from "./tileDescriptor";
+import { workbenchVerbs, type WorkbenchVerb } from "./verbs";
 
 /**
- * PBUI-ACTIONS-2 P3 — the contribution fragment must reproduce
- * `createTileDescriptor`'s rows exactly: same labels, same reasons, same
- * verbs, same order. The descriptor is the golden here; when it is deleted
- * in the final cleanup, these expectations become the standalone spec.
+ * PBUI-ACTIONS-2 — the standalone row spec for the shared tile menu.
+ *
+ * Through P3–P6 these tests compared the fragment against
+ * `createTileDescriptor`'s rows; P7 made the descriptor representation-only,
+ * so the expectations below are now the single written source of the shared
+ * labels, reasons, verbs, and order.
  */
 
 type Values = { tile: TileRef };
@@ -60,31 +62,43 @@ function kernelRows(value: TileRef) {
   }));
 }
 
-function descriptorRows(value: TileRef) {
-  const descriptor = createTileDescriptor();
-  return (descriptor.actions?.(value, undefined) ?? []).map((action) => ({
-    label: action.label,
-    // Unavailable kernel rows carry no verb by contract; align the comparison.
-    verb: action.disabledBecause === undefined ? action.verb : undefined,
-    danger: action.danger || undefined,
-    disabledBecause: action.disabledBecause,
-  }));
-}
+describe("workbenchTileContributions — the shared tile menu, spelled out", () => {
+  test("a plain tile", () => {
+    expect(kernelRows(ref())).toEqual([
+      { label: "Split beside", verb: workbenchVerbs.split("n-1", "row"), danger: undefined, disabledBecause: undefined },
+      { label: "Split below", verb: workbenchVerbs.split("n-1", "col"), danger: undefined, disabledBecause: undefined },
+      { label: "Show something else here…", verb: workbenchVerbs.openLauncher("n-1"), danger: undefined, disabledBecause: undefined },
+      { label: "Duplicate", verb: workbenchVerbs.split("n-1", "row"), danger: undefined, disabledBecause: undefined },
+      { label: "Name this tile…", verb: workbenchVerbs.setTitle("v-1", ""), danger: undefined, disabledBecause: undefined },
+      { label: "Close tile", verb: workbenchVerbs.close("n-1"), danger: true, disabledBecause: undefined },
+    ]);
+  });
 
-describe("workbenchTileContributions reproduces createTileDescriptor", () => {
-  for (const [name, value] of [
-    ["a plain tile", ref()],
-    ["a linked view", ref({ placementCount: 3 })],
-    ["the last tile", ref({ canClose: false })],
-    ["a non-duplicable app", ref({ duplicable: false })],
-    ["a custom title", ref({ customTitle: "my tile", title: "my tile" })],
-  ] as const) {
-    test(name, () => {
-      expect(kernelRows(value)).toEqual(descriptorRows(value));
+  test("a linked view gains the informational row, disabled with its reason", () => {
+    const rows = kernelRows(ref({ placementCount: 3 }));
+    expect(rows.find((row) => row.label === "Shown in 3 tiles")).toEqual({
+      label: "Shown in 3 tiles",
+      verb: undefined,
+      danger: undefined,
+      disabledBecause: "this is a description, not an action",
     });
-  }
+  });
 
-  test("without the launcher, the replace row is absent in both", () => {
+  test("the last tile cannot close, a non-duplicable app links, a named tile renames", () => {
+    expect(
+      kernelRows(ref({ canClose: false })).find((row) => row.label === "Close tile")
+        ?.disabledBecause,
+    ).toBe("a workspace keeps at least one tile");
+    expect(
+      kernelRows(ref({ duplicable: false })).find((row) => row.label === "Duplicate")
+        ?.disabledBecause,
+    ).toBe("this application shows one view; splitting links a second tile to it");
+    expect(
+      kernelRows(ref({ customTitle: "left", title: "left" })).map((row) => row.label),
+    ).toContain("Rename…");
+  });
+
+  test("without the launcher, the replace row is absent", () => {
     const noLauncher = createActionRegistry<Values, Facts, WorkbenchVerb>({
       graph: createPresentationTypeGraph(workbenchTypeDefinitions),
       scopes: [...workbenchScopes, "global"],
@@ -97,11 +111,6 @@ describe("workbenchTileContributions reproduces createTileDescriptor", () => {
     expect(result.actions.map((action) => action.label)).not.toContain(
       "Show something else here…",
     );
-    expect(
-      createTileDescriptor({ launcher: false })
-        .actions?.(ref(), undefined)
-        ?.map((action) => action.label),
-    ).not.toContain("Show something else here…");
   });
 
   test("outside the workbench scope, tile rules are not candidates", () => {

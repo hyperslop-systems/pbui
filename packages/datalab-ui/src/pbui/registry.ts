@@ -45,60 +45,17 @@ export interface PresentationDescriptor<V = unknown> {
   /** The full object, for the inspector. Must be JSON-serialisable. */
   describe(value: V, env: PbuiEnvironment): unknown;
   /**
-   * The menu, most likely entry first.
+   * TOMBSTONE (PBUI-ACTIONS-2 P7). Menus are declared as kernel rules in
+   * `./actions.ts`; a descriptor is representation only. Typed `never`
+   * rather than deleted so a revived callback is a compile error instead of
+   * a silently ignored menu — the same trick `PresentationAction`'s removed
+   * fields use, and for the same structural-assignability reason.
    *
-   * Pure: (value, environment) in, serialisable verbs out. A test can assert
-   * the exact verb a menu entry produces with a literal environment and no
-   * store, no Provider, no DOM.
-   *
-   * OPTIONAL since PBUI-ACTIONS-2 P3: a migrated type declares its actions
-   * as kernel rules in `actions.ts` and drops this callback, which is how
-   * the legacy family knows to stay silent for it. Absent callback means the
-   * rules are the only voice; present callback means the type has not
-   * migrated yet. Never both.
+   * @deprecated declare rules in ./actions.ts
    */
-  actions?(value: V, env: PbuiEnvironment): Action[];
+  actions?: never;
   /** The token naming this type's accent colour. */
   tone: string;
-}
-
-/**
- * The extra segment that keeps two same-kind verbs in one menu apart.
- *
- * PBUI-ACTIONS-2 P0: action ids used to be `${ptype}:${index}:${label}` —
- * a label edit changed identity, and inserting a row renumbered every later
- * one. The kernel migration needs ids that survive both, because they feed
- * overrides, traces, and fresh revalidation. The id is now derived from the
- * verb's semantic content: `${ptype}.${kind}` plus, where one menu can emit
- * the same kind twice, the field that tells the entries apart.
- */
-const FILTER_OP_SLUGS: Record<string, string> = { "=": "eq", "!=": "ne", ">": "gt", "<": "lt" };
-
-function verbDiscriminant(verb: Action["verb"]): string | null {
-  switch (verb.kind) {
-    case "setMapping":
-      return verb.channel;
-    case "addFilter":
-      return `${verb.field}.${FILTER_OP_SLUGS[verb.op] ?? verb.op}`;
-    case "addSort":
-      return verb.dir;
-    case "setGeom":
-      return verb.geom;
-    case "setYScale":
-      return verb.scale;
-    case "moveStep":
-      return verb.by === -1 ? "up" : "down";
-    case "pinSnapshot":
-      return `slot-${verb.slot}`;
-    case "splitTile":
-      return verb.dir;
-    case "signIn":
-      return verb.intent;
-    case "setMemberRole":
-      return verb.role;
-    default:
-      return null;
-  }
 }
 
 function bindProductDescriptor<Value>(
@@ -108,46 +65,11 @@ function bindProductDescriptor<Value>(
     label: descriptor.label,
     describe: descriptor.describe,
     tone: descriptor.tone,
-    actions: (value, environment) => {
-      /*
-       * `disabledBecause` passes straight through since pbui 0.4.0.
-       *
-       * These two lines used to be here:
-       *
-       *     disabled: action.disabledBecause !== undefined,
-       *     disabledReason: action.disabledBecause,
-       *
-       * because this product had merged the pair into one field on its own,
-       * years before the library did, and had to translate back into pbui's
-       * two-field shape at this boundary. It was the only one of four products
-       * that never shipped the disabled/reason disconnect — and it paid this
-       * adapter for the privilege. pbui adopted the field and the name from
-       * here (PBUI-HARDEN-1 P3.1), so the translation is gone and not one
-       * descriptor changed.
-       */
-      const seen = new Set<string>();
-      return (descriptor.actions?.(value, environment) ?? []).map((action) => {
-        const discriminant = verbDiscriminant(action.verb);
-        const id = discriminant
-          ? `${descriptor.ptype}.${action.verb.kind}.${discriminant}`
-          : `${descriptor.ptype}.${action.verb.kind}`;
-        // A collision means two menu entries would be indistinguishable to
-        // overrides and revalidation — loud now beats subtly wrong later.
-        if (seen.has(id)) {
-          throw new Error(
-            `duplicate action id "${id}" in the <${descriptor.ptype}> menu — ` +
-              `add a case to verbDiscriminant() for this verb kind`,
-          );
-        }
-        seen.add(id);
-        return {
-          id,
-          label: action.label,
-          verb: action.verb,
-          disabledBecause: action.disabledBecause,
-        };
-      });
-    },
+    /*
+     * PBUI-ACTIONS-2 P7: no descriptor carries actions() any more — every
+     * menu resolves through the kernel registry in ./actions.ts. This
+     * adapter binds representation only.
+     */
   };
 }
 

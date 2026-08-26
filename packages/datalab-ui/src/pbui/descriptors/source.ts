@@ -1,7 +1,6 @@
 import { describeSource } from "../../model/graphicAuthoring";
 import type { SourceRef } from "../../model/table";
 import type { PresentationDescriptor } from "../registry";
-import type { Action } from "../verbs";
 
 /** `<source>` — a stream or a dataset file that can be loaded or inspected. */
 
@@ -34,20 +33,4 @@ export const sourceDescriptor: PresentationDescriptor<SourceRef> = {
     };
   },
 
-  actions: (source, env) => {
-    const actions: Action[] = [
-      {
-        label: `Load into chart ${env.nameOf(env.activeDocId)}`,
-        verb: { kind: "setSource", docId: env.activeDocId, source },
-      },
-      { label: "New chart document from it", verb: { kind: "newDoc", source } },
-    ];
-
-    actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "source", value: source } });
-    actions.push({
-      label: "Add to watchlist",
-      verb: { kind: "watch", ptype: "source", value: source },
-    });
-    return actions;
-  },
 };

@@ -1,6 +1,5 @@
 import type { PresentationDescriptor } from "../registry";
 import type { TileRef } from "../types";
-import type { Action } from "../verbs";
 
 /**
  * `<tile>` — one leaf of a workspace: an application, an optional document, an
@@ -37,74 +36,4 @@ export const tileDescriptor: PresentationDescriptor<TileRef> = {
     duplicable: tile.duplicable,
   }),
 
-  actions: (tile) => {
-    const actions: Action[] = [];
-
-    actions.push({
-      label: "Replace …",
-      verb: { kind: "openReplaceView", placementId: tile.placementId },
-    });
-
-    actions.push({
-      label: "Rename …",
-      verb: { kind: "beginRenameView", placementId: tile.placementId },
-    });
-
-    actions.push({
-      label: "Create linked duplicate",
-      verb: { kind: "createLinkedDuplicate", placementId: tile.placementId },
-    });
-
-    actions.push({
-      label: "Duplicate",
-      verb: { kind: "duplicateView", placementId: tile.placementId },
-      // Shown greyed with the reason rather than hidden: a user who never sees
-      // Duplicate on a trace tile does not learn that the trace is the same in
-      // every tile, they conclude the feature is missing.
-      ...(tile.duplicable
-        ? {}
-        : { disabledBecause: `a second ${tile.app} tile would show the same thing` }),
-    });
-
-    actions.push({
-      label: "Split right",
-      verb: { kind: "splitTile", nodeId: tile.placementId, dir: "row" },
-    });
-    actions.push({
-      label: "Split below",
-      verb: { kind: "splitTile", nodeId: tile.placementId, dir: "col" },
-    });
-
-    actions.push({
-      label: "Copy view to clipboard",
-      verb: { kind: "exportTile", nodeId: tile.placementId },
-    });
-    actions.push({
-      label: "Replace from clipboard …",
-      verb: { kind: "importIntoTile", nodeId: tile.placementId },
-    });
-    actions.push({
-      label: "Save as a template …",
-      verb: {
-        kind: "storeTemplate",
-        source: { kind: "tile", nodeId: tile.placementId },
-        name: tile.title,
-      },
-    });
-
-    actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "tile", value: tile } });
-
-    actions.push({
-      label: "Remove from this workspace",
-      verb: { kind: "removePlacement", placementId: tile.placementId },
-      ...(tile.canClose ? {} : { disabledBecause: "the last tile in a workspace cannot close" }),
-    });
-
-    actions.push({
-      label: tile.placementCount > 1 ? "Close view everywhere" : "Close view",
-      verb: { kind: "closeView", viewId: tile.viewId },
-    });
-
-    return actions;
-  },
 };

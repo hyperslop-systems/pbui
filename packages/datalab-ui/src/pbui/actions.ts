@@ -4,7 +4,6 @@ import {
   createPresentationTypeGraph,
   defineActions,
   inapplicable,
-  legacyDescriptorFamily,
   unavailable,
 } from "@hyperslop-systems/pbui/presentation";
 import type {
@@ -14,26 +13,21 @@ import type {
   SelectionSnapshot,
 } from "@hyperslop-systems/pbui/presentation";
 import { CHANNELS, CHANNEL_ACCEPTS } from "../model/graphic";
+import type { Mark } from "../model/graphic";
 import { TYPE_LABEL, asText } from "../model/table";
 import type { FieldType } from "../model/table";
-import { datadropRegistry } from "./registry";
-import type { DatumRef, DocId, FieldRef, PbuiEnvironment, StageRef, PresentationValues } from "./types";
+import type { CatRef, DatumRef, DocId, FieldRef, MemberRef, PbuiEnvironment, StageRef, TileRef, TokenRef, UploadRef, PresentationValues, WorkspaceRef } from "./types";
 import type { Verb } from "./verbs";
 
 /**
  * The Datalab action registry (PBUI-ACTIONS-2 P3).
  *
- * Four presentation types — field, datum, doc, stage — now declare their
- * actions as kernel rules and one bounded family; every other type still
- * routes through the legacy descriptor family until its own migration. The
- * migrated descriptors keep label/describe/tone and have NO `actions()`
- * callback, so the legacy family naturally contributes nothing for them:
- * one engine, no double rows.
- *
- * Rule ids follow the source guide's Appendix B (`datalab.field.map.x`);
- * action ids name the conceptual operation (`chart.mapping.x`). Labels,
- * reasons, and verbs are byte-identical to the pre-migration descriptors —
- * the golden tests are the fence.
+ * Every presentation type declares its menu as kernel rules here (PBUI-ACTIONS-2
+ * P3 migrated four types, P7 the remaining eleven); the descriptors are
+ * representation only. Rule ids follow the source guide's Appendix B
+ * (`datalab.field.map.x`); action ids name the conceptual operation. Labels,
+ * reasons, and verbs are byte-identical to the descriptor callbacks they
+ * replaced — the golden tests are the fence.
  */
 
 /* ---------------------------------------------------------------- facts --- */
@@ -68,6 +62,9 @@ export function snapshotForDatalab(
     targetDocId = ref.docId ?? environment.activeDocId;
     fieldType =
       environment.fieldsFor(ref.docId).find((field) => field.name === ref.name)?.type ?? null;
+  } else if (query.subject.type === "cat") {
+    const ref = query.subject.value as CatRef;
+    targetDocId = ref.docId ?? environment.activeDocId;
   } else if (query.subject.type === "datum") {
     const ref = query.subject.value as DatumRef;
     targetDocId = ref.docId ?? environment.activeDocId;
@@ -332,10 +329,441 @@ const TYPE_DEFINITIONS = [
   { id: "datum", parents: ["inspectable", "watchable"] },
   { id: "doc", parents: ["inspectable", "watchable"] },
   { id: "stage", parents: ["inspectable"] },
-  ...["source", "cat", "geom", "step", "user", "token", "member", "upload", "tile", "workspace", "traceEntry"].map(
-    (id) => ({ id }),
-  ),
+  { id: "source", parents: ["inspectable", "watchable"] },
+  { id: "cat", parents: ["inspectable", "watchable"] },
+  { id: "geom", parents: ["inspectable"] },
+  { id: "token", parents: ["inspectable"] },
+  { id: "member", parents: ["inspectable"] },
+  { id: "upload", parents: ["inspectable"] },
+  { id: "tile", parents: ["inspectable"] },
+  { id: "workspace", parents: ["inspectable"] },
+  // step has no Inspect row; user and traceEntry word theirs differently
+  // ("Watch", "Inspect this entry") — different labels are different rows,
+  // so they keep their own rules rather than inheriting a wrong word.
+  ...["step", "user", "traceEntry"].map((id) => ({ id })),
 ];
+
+function sourceContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
+  return [
+    define.exact("source", {
+      id: "datalab.source.load",
+      action: "source.load",
+      scopes: ["datalab"],
+      metadata: {
+        label: ({ snapshot }) => `Load into chart ${snapshot.product.targetName}`,
+        order: 0,
+      },
+      bind: ({ subject, snapshot }) => ({
+        kind: "setSource",
+        docId: snapshot.product.activeDocId,
+        source: subject.value,
+      }),
+    }),
+    define.exact("source", {
+      id: "datalab.source.new-doc",
+      action: "source.new-doc",
+      scopes: ["datalab"],
+      metadata: { label: "New chart document from it", order: 1 },
+      bind: ({ subject }) => ({ kind: "newDoc", source: subject.value }),
+    }),
+  ];
+}
+
+function catContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
+  return [
+    define.exact("cat", {
+      id: "datalab.cat.keep",
+      action: "cat.addFilter.eq",
+      scopes: ["datalab"],
+      metadata: {
+        label: ({ subject, snapshot }) => {
+          const ref = subject.value as CatRef;
+          return `Keep only ${ref.field} = ${ref.value}  (chart ${snapshot.product.targetName})`;
+        },
+        order: 0,
+      },
+      bind: ({ subject, snapshot }) => ({
+        kind: "addFilter",
+        docId: snapshot.product.targetDocId,
+        field: subject.value.field,
+        op: "=",
+        value: subject.value.value,
+      }),
+    }),
+    define.exact("cat", {
+      id: "datalab.cat.exclude",
+      action: "cat.addFilter.ne",
+      scopes: ["datalab"],
+      metadata: {
+        label: ({ subject }) => {
+          const ref = subject.value as CatRef;
+          return `Exclude ${ref.field} = ${ref.value}`;
+        },
+        order: 1,
+      },
+      bind: ({ subject, snapshot }) => ({
+        kind: "addFilter",
+        docId: snapshot.product.targetDocId,
+        field: subject.value.field,
+        op: "!=",
+        value: subject.value.value,
+      }),
+    }),
+    define.exact("cat", {
+      id: "datalab.cat.facet",
+      action: "chart.mapping.facet",
+      scopes: ["datalab"],
+      metadata: {
+        label: ({ subject }) => `Facet by ${(subject.value as CatRef).field}`,
+        order: 2,
+      },
+      bind: ({ subject, snapshot }) => ({
+        kind: "setMapping",
+        docId: snapshot.product.targetDocId,
+        channel: "facet",
+        field: subject.value.field,
+      }),
+    }),
+  ];
+}
+
+function geomStepContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
+  return [
+    define.exact("geom", {
+      id: "datalab.geom.use",
+      action: "chart.geom",
+      scopes: ["datalab"],
+      metadata: {
+        label: ({ snapshot }) => `Use this geom  (chart ${snapshot.product.targetName})`,
+        order: 0,
+      },
+      bind: ({ subject, snapshot }) => ({
+        kind: "setGeom",
+        docId: snapshot.product.activeDocId,
+        // The <geom> presentation value is the mark name as a string; the
+        // verb narrows it — same trust the descriptor callback had.
+        geom: subject.value as Mark,
+      }),
+    }),
+    define.exact("step", {
+      id: "datalab.step.toggle",
+      action: "step.toggle",
+      scopes: ["datalab"],
+      metadata: { label: "Enable / disable (keeps it in the chain)", order: 0 },
+      bind: ({ subject, snapshot }) => ({
+        kind: "toggleStep",
+        docId: snapshot.product.activeDocId,
+        stepId: subject.value,
+      }),
+    }),
+    define.exact("step", {
+      id: "datalab.step.move-up",
+      action: "step.move.up",
+      scopes: ["datalab"],
+      metadata: { label: "Move up ↑", order: 1 },
+      bind: ({ subject, snapshot }) => ({
+        kind: "moveStep",
+        docId: snapshot.product.activeDocId,
+        stepId: subject.value,
+        by: -1,
+      }),
+    }),
+    define.exact("step", {
+      id: "datalab.step.move-down",
+      action: "step.move.down",
+      scopes: ["datalab"],
+      metadata: { label: "Move down ↓", order: 2 },
+      bind: ({ subject, snapshot }) => ({
+        kind: "moveStep",
+        docId: snapshot.product.activeDocId,
+        stepId: subject.value,
+        by: 1,
+      }),
+    }),
+    define.exact("step", {
+      id: "datalab.step.remove",
+      action: "step.remove",
+      scopes: ["datalab"],
+      metadata: { label: "Remove", order: 3 },
+      bind: ({ subject, snapshot }) => ({
+        kind: "removeStep",
+        docId: snapshot.product.activeDocId,
+        stepId: subject.value,
+      }),
+    }),
+  ];
+}
+
+function accountContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
+  return [
+    define.exact("user", {
+      id: "datalab.user.inspect",
+      action: "object.inspect",
+      scopes: ["datalab"],
+      metadata: { label: "Inspect", order: 0 },
+      bind: ({ subject }) => ({ kind: "inspect", ptype: "user", value: subject.value }),
+    }),
+    define.exact("user", {
+      id: "datalab.user.watch",
+      action: "object.watch",
+      scopes: ["datalab"],
+      metadata: { label: "Watch", order: 1 },
+      bind: ({ subject }) => ({ kind: "watch", ptype: "user", value: subject.value }),
+    }),
+    define.exact("token", {
+      id: "datalab.token.revoke",
+      action: "token.revoke",
+      scopes: ["datalab"],
+      test: ({ subject }) =>
+        (subject.value as TokenRef).revokedAt
+          ? unavailable("this token is already revoked")
+          : available(),
+      metadata: { label: "Revoke", order: 0 },
+      bind: ({ subject }) => ({ kind: "revokeToken", tokenId: subject.value.id }),
+    }),
+    define.family("member", {
+      id: "datalab.member.roles",
+      scopes: ["datalab"],
+      expand: ({ subject }) => {
+        const member = subject.value as MemberRef;
+        const ownerReason = member.isOwner ? "the owner's role cannot be changed" : undefined;
+        return (["reader", "writer", "admin"] as const)
+          .filter((role) => role !== member.role)
+          .map((role, index) => ({
+            key: `role:${role}`,
+            action: `member.role.${role}`,
+            ...(ownerReason ? { status: unavailable(ownerReason) } : {}),
+            metadata: { label: `Set role → ${role}`, order: index },
+            bind: () => ({
+              kind: "setMemberRole" as const,
+              drop: member.drop,
+              userId: member.user.id,
+              role,
+            }),
+          }));
+      },
+    }),
+    define.exact("member", {
+      id: "datalab.member.remove",
+      action: "member.remove",
+      scopes: ["datalab"],
+      test: ({ subject }) =>
+        (subject.value as MemberRef).isOwner
+          ? unavailable("the owner's role cannot be changed")
+          : available(),
+      metadata: { label: "Remove from this drop", order: 10 },
+      bind: ({ subject }) => ({
+        kind: "removeMember",
+        drop: subject.value.drop,
+        userId: subject.value.user.id,
+      }),
+    }),
+    define.exact("upload", {
+      id: "datalab.upload.retry",
+      action: "upload.retry",
+      scopes: ["datalab"],
+      test: ({ subject }) => {
+        const upload = subject.value as UploadRef;
+        if (upload.state === "done") return unavailable("already uploaded");
+        if (upload.state === "failed") return available();
+        return unavailable("still in progress");
+      },
+      metadata: { label: "Retry", order: 0 },
+      bind: ({ subject }) => ({
+        kind: "retryUpload",
+        batchId: subject.value.batchId,
+        path: subject.value.path,
+      }),
+    }),
+    define.exact("traceEntry", {
+      id: "datalab.trace-entry.inspect",
+      action: "object.inspect",
+      scopes: ["datalab"],
+      metadata: { label: "Inspect this entry", order: 0 },
+      bind: ({ subject }) => ({ kind: "inspect", ptype: "traceEntry", value: subject.value }),
+    }),
+    define.exact("traceEntry", {
+      id: "datalab.trace-entry.watch",
+      action: "object.watch",
+      scopes: ["datalab"],
+      metadata: { label: "Watch it", order: 1 },
+      bind: ({ subject }) => ({ kind: "watch", ptype: "traceEntry", value: subject.value }),
+    }),
+  ];
+}
+
+function layoutContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
+  const tileRule = (
+    slug: string,
+    action: string,
+    order: number,
+    label: string | ((tile: TileRef) => string),
+    bind: (tile: TileRef) => Verb,
+    test?: (tile: TileRef) => ReturnType<typeof available>,
+  ): ActionContribution<PresentationValues, DatalabFacts, Verb> =>
+    define.exact("tile", {
+      id: `datalab.tile.${slug}`,
+      action,
+      scopes: ["datalab"],
+      ...(test ? { test: ({ subject }) => test(subject.value as TileRef) } : {}),
+      metadata: {
+        label:
+          typeof label === "function"
+            ? ({ subject }) => label(subject.value as TileRef)
+            : label,
+        order,
+      },
+      bind: ({ subject }) => bind(subject.value as TileRef),
+    });
+
+  return [
+    tileRule("replace", "tile.replace", 0, "Replace …", (tile) => ({
+      kind: "openReplaceView",
+      placementId: tile.placementId,
+    })),
+    tileRule("rename", "view.rename", 1, "Rename …", (tile) => ({
+      kind: "beginRenameView",
+      placementId: tile.placementId,
+    })),
+    tileRule("link", "view.link", 2, "Create linked duplicate", (tile) => ({
+      kind: "createLinkedDuplicate",
+      placementId: tile.placementId,
+    })),
+    tileRule(
+      "duplicate",
+      "view.duplicate",
+      3,
+      "Duplicate",
+      (tile) => ({ kind: "duplicateView", placementId: tile.placementId }),
+      (tile) =>
+        tile.duplicable
+          ? available()
+          : unavailable(`a second ${tile.app} tile would show the same thing`),
+    ),
+    tileRule("split-right", "tile.split.row", 4, "Split right", (tile) => ({
+      kind: "splitTile",
+      nodeId: tile.placementId,
+      dir: "row",
+    })),
+    tileRule("split-below", "tile.split.col", 5, "Split below", (tile) => ({
+      kind: "splitTile",
+      nodeId: tile.placementId,
+      dir: "col",
+    })),
+    tileRule("export", "tile.export", 6, "Copy view to clipboard", (tile) => ({
+      kind: "exportTile",
+      nodeId: tile.placementId,
+    })),
+    tileRule("import", "tile.import", 7, "Replace from clipboard …", (tile) => ({
+      kind: "importIntoTile",
+      nodeId: tile.placementId,
+    })),
+    tileRule("template", "tile.template", 8, "Save as a template …", (tile) => ({
+      kind: "storeTemplate",
+      source: { kind: "tile", nodeId: tile.placementId },
+      name: tile.title,
+    })),
+    // Inherited Inspect sits at order 13 — between template (8) and these.
+    tileRule(
+      "remove",
+      "tile.close",
+      20,
+      "Remove from this workspace",
+      (tile) => ({ kind: "removePlacement", placementId: tile.placementId }),
+      (tile) =>
+        tile.canClose ? available() : unavailable("the last tile in a workspace cannot close"),
+    ),
+    tileRule(
+      "close-view",
+      "view.close",
+      21,
+      (tile) => (tile.placementCount > 1 ? "Close view everywhere" : "Close view"),
+      (tile) => ({ kind: "closeView", viewId: tile.viewId }),
+    ),
+    define.exact("workspace", {
+      id: "datalab.workspace.switch-stage",
+      action: "stage.switch",
+      scopes: ["datalab"],
+      metadata: { label: "Switch to it", order: 0 },
+      bind: ({ subject }) => ({
+        kind: "switchStage",
+        stageId: (subject.value as WorkspaceRef).stageId,
+      }),
+    }),
+    define.exact("workspace", {
+      id: "datalab.workspace.rename",
+      action: "workspace.rename",
+      scopes: ["datalab"],
+      test: ({ subject }) =>
+        (subject.value as WorkspaceRef).pinned
+          ? unavailable("defined in code — cannot be renamed")
+          : available(),
+      metadata: { label: "Rename this workspace …", order: 1 },
+      bind: ({ subject }) => ({
+        kind: "beginRenameWorkspace",
+        spaceId: (subject.value as WorkspaceRef).spaceId,
+      }),
+    }),
+    define.exact("workspace", {
+      id: "datalab.workspace.duplicate",
+      action: "workspace.duplicate",
+      scopes: ["datalab"],
+      metadata: { label: "Duplicate", order: 2 },
+      bind: ({ subject }) => ({
+        kind: "duplicateWorkspace",
+        spaceId: (subject.value as WorkspaceRef).spaceId,
+      }),
+    }),
+    define.exact("workspace", {
+      id: "datalab.workspace.export",
+      action: "workspace.export",
+      scopes: ["datalab"],
+      metadata: { label: "Copy this workspace to the clipboard", order: 3 },
+      bind: ({ subject }) => ({
+        kind: "exportWorkspace",
+        spaceId: (subject.value as WorkspaceRef).spaceId,
+      }),
+    }),
+    define.exact("workspace", {
+      id: "datalab.workspace.import",
+      action: "workspace.import",
+      scopes: ["datalab"],
+      metadata: { label: "Add a workspace from the clipboard …", order: 4 },
+      bind: ({ subject }) => ({
+        kind: "importWorkspace",
+        stageId: (subject.value as WorkspaceRef).stageId,
+      }),
+    }),
+    define.exact("workspace", {
+      id: "datalab.workspace.template",
+      action: "workspace.template",
+      scopes: ["datalab"],
+      metadata: { label: "Save as a template …", order: 5 },
+      bind: ({ subject }) => ({
+        kind: "storeTemplate",
+        source: { kind: "workspace", spaceId: (subject.value as WorkspaceRef).spaceId },
+        name: (subject.value as WorkspaceRef).name,
+      }),
+    }),
+    define.exact("workspace", {
+      id: "datalab.workspace.delete",
+      action: "workspace.delete",
+      scopes: ["datalab"],
+      test: ({ subject }) => {
+        const space = subject.value as WorkspaceRef;
+        if (space.pinned) return unavailable("defined in code — cannot be deleted");
+        return space.canDelete
+          ? available()
+          : unavailable("the last workspace in a stage cannot be deleted");
+      },
+      metadata: { label: "Delete", order: 20 },
+      bind: ({ subject }) => ({
+        kind: "deleteWorkspace",
+        spaceId: (subject.value as WorkspaceRef).spaceId,
+      }),
+    }),
+  ];
+}
 
 function inheritedContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
   return [
@@ -368,17 +796,17 @@ export const datadropActionRegistry = createActionRegistry<
   graph: createPresentationTypeGraph(TYPE_DEFINITIONS),
   scopes: ["datalab", "global"],
   contributions: [
-    // Unmigrated types still speak through their descriptor callbacks; a
-    // migrated descriptor has no callback, so the family yields nothing for
-    // it and the rules below are the only voice. One engine, no double rows.
-    legacyDescriptorFamily<PresentationValues, PbuiEnvironment, Verb>({
-      id: "legacy.descriptor-actions",
-      descriptors: datadropRegistry,
-    }),
+    // PBUI-ACTIONS-2 P7: every type is kernel-native; the legacy descriptor
+    // family is gone from this product entirely.
     ...fieldContributions(),
     ...datumContributions(),
     ...docContributions(),
     ...stageContributions(),
+    ...sourceContributions(),
+    ...catContributions(),
+    ...geomStepContributions(),
+    ...accountContributions(),
+    ...layoutContributions(),
     ...inheritedContributions(),
   ],
 });

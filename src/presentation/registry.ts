@@ -14,11 +14,19 @@ export interface PresentationRegistry<
   Environment,
   Verb,
 > {
+  /*
+   * NAMING NOTE (PBUI-ACTIONS-2 P7): this is the DESCRIPTOR registry —
+   * representation policy (label/describe/tone) per exact concrete type.
+   * Action discovery lives in the action kernel; `actionsFor` below exists
+   * only for the deprecated legacy engine. `PresentationDescriptorRegistry`
+   * is the forward-looking alias.
+   */
   descriptorFor<Type extends PresentationType<Values>>(
     type: Type,
   ): PresentationDescriptor<Values[Type], Environment, Verb> | null;
   labelFor(reference: PresentationReference<Values>, environment: Environment): ReactNode;
   describeFor(reference: PresentationReference<Values>, environment: Environment): unknown;
+  /** @deprecated PBUI-ACTIONS-2: menus resolve through the action kernel; this feeds only the legacy engine. */
   actionsFor(
     reference: PresentationReference<Values>,
     environment: Environment,
@@ -78,3 +86,12 @@ export function createPresentationRegistry<
     },
   };
 }
+
+/** The forward-looking name (PBUI-ACTIONS-2 P7): a registry of representation
+ * descriptors, distinct from the action registry. Same type; new code should
+ * spell it this way. */
+export type PresentationDescriptorRegistry<
+  Values extends PresentationValues,
+  Environment,
+  Verb,
+> = PresentationRegistry<Values, Environment, Verb>;

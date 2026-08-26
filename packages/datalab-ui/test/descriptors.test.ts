@@ -41,9 +41,9 @@ const reference = (type: PresentationType, value: unknown) =>
  * exactly as it did before the migration — same labels, same verbs, same
  * reasons.
  */
-const MIGRATED = new Set<PresentationType>(["field", "datum", "doc", "stage"]);
+// PBUI-ACTIONS-2 P7: every type resolves through the kernel now.
 const actionsFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) => {
-  if (!MIGRATED.has(type)) return datadropRegistry.actionsFor(reference(type, value), environment);
+  void datadropRegistry; // representation-only since P7; menus come from the kernel
   const query = { subject: reference(type, value), invocation: "menu" } as const;
   const result = datadropActionRegistry.resolve(query, snapshotForDatalab(query, environment));
   expect(result.ambiguities).toEqual([]);
@@ -350,15 +350,18 @@ describe("the account descriptors", () => {
       role: "admin" as const,
       isOwner: true,
     };
+    // An unavailable kernel row carries no verb by contract, so the rows are
+    // identified by their declarations rather than by binding them.
     for (const action of actionsFor("member", owner, env())) {
-      if (action.verb.kind === "setMemberRole" || action.verb.kind === "removeMember") {
+      if (action.id.startsWith("datalab.member.roles/") || action.id === "datalab.member.remove") {
         expect(action.disabledBecause).toBe("the owner's role cannot be changed");
+        expect(action.verb).toBeUndefined();
       }
     }
 
     const member = { ...owner, isOwner: false, role: "reader" as const };
     const roles = actionsFor("member", member, env())
-      .filter((action) => action.verb.kind === "setMemberRole")
+      .filter((action) => action.verb?.kind === "setMemberRole")
       .map((action) => (action.verb as { role: string }).role);
     // Every role except the one they already hold.
     expect(roles).toEqual(["writer", "admin"]);

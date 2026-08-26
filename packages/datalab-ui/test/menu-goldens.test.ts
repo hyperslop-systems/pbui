@@ -35,26 +35,19 @@ const reference = (type: PresentationType, value: unknown) =>
   ({ type, value }) as DatadropPresentationReference;
 
 /** field/datum/doc/stage resolve through the kernel since P3. */
-const MIGRATED = new Set<PresentationType>(["field", "datum", "doc", "stage"]);
+// PBUI-ACTIONS-2 P7: every type resolves through the kernel now.
 
 function menuOf(type: PresentationType, value: unknown, environment = env()) {
-  if (MIGRATED.has(type)) {
-    const query = { subject: reference(type, value), invocation: "menu" } as const;
-    const result = datadropActionRegistry.resolve(query, snapshotForDatalab(query, environment));
-    return result.actions.map((action) => ({
-      id: action.candidateId,
-      label: String(action.label),
-      verb: action.verb,
-      ...(action.status.kind === "unavailable"
-        ? { disabledBecause: action.status.because }
-        : {}),
-    }));
-  }
-  return datadropRegistry.actionsFor(reference(type, value), environment).map((action) => ({
-    id: action.id,
-    label: action.label,
+  const query = { subject: reference(type, value), invocation: "menu" } as const;
+  const result = datadropActionRegistry.resolve(query, snapshotForDatalab(query, environment));
+  expect(result.ambiguities).toEqual([]);
+  return result.actions.map((action) => ({
+    id: action.candidateId,
+    label: String(action.label),
     verb: action.verb,
-    ...(action.disabledBecause !== undefined ? { disabledBecause: action.disabledBecause } : {}),
+    ...(action.status.kind === "unavailable"
+      ? { disabledBecause: action.status.because }
+      : {}),
   }));
 }
 
@@ -121,13 +114,11 @@ describe("golden menus (PBUI-ACTIONS-2 P0)", () => {
 describe("action identity is semantic, not positional (PBUI-ACTIONS-2 P0)", () => {
   test("ids derive from declarations, are unique, and never positional", () => {
     for (const [type, value, pattern] of [
-      // Migrated types carry deliberate kernel rule/candidate ids; since P5
-      // the shared inspect/watch rows come from inherited rules whose ids
-      // name the declaration (datalab.inspect), not the concrete type.
+      // Every type carries deliberate kernel rule/candidate ids since P7;
+      // inherited rows name the declaration (datalab.inspect), not the type.
       ["field", { docId: "d2", name: "population" }, /^datalab\./],
       ["datum", { docId: "d1", row: readings.rows[0] }, /^datalab\./],
-      // Unmigrated types keep the P0 verb-derived adapter ids.
-      ["tile", TILE, /^tile\./],
+      ["tile", TILE, /^datalab\./],
     ] as const) {
       const ids = menuOf(type, value).map((row) => row.id);
       expect(new Set(ids).size).toBe(ids.length);
