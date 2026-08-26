@@ -26,7 +26,15 @@ export interface TileRef {
 }
 
 export interface TileDescriptorOptions {
-  /** Product verbs to append — the chat's `askAgent`, a product's `inspect`. */
+  /**
+   * Product verbs to append — the chat's `askAgent`, a product's `inspect`.
+   *
+   * @deprecated PBUI-ACTIONS-2: register product rules for subject `"tile"`
+   * in the product's action registry instead, alongside
+   * `workbenchTileContributions()` from `./actions`. The kernel's override
+   * and ambiguity machinery replaces this append seam; `extra` is deleted
+   * together with descriptor `actions()` in the final cleanup.
+   */
   extra?(tile: TileRef): readonly PresentationAction<WorkbenchVerb>[];
   /** Offer "Replace application…" and "Link here…" through the per-pane launcher. Default true. */
   launcher?: boolean;

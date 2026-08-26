@@ -3,7 +3,7 @@
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over categorical columns 1`] = `
 [
   {
-    "id": "datum.addFilter.id.eq",
+    "id": "datalab.datum.filters/keep:id",
     "label": "Keep only id = evt-00001  (chart α)",
     "verb": {
       "docId": "d1",
@@ -14,7 +14,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.addFilter.id.ne",
+    "id": "datalab.datum.filters/exclude:id",
     "label": "Exclude id = evt-00001",
     "verb": {
       "docId": "d1",
@@ -25,7 +25,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.addFilter.drop.eq",
+    "id": "datalab.datum.filters/keep:drop",
     "label": "Keep only drop = lab  (chart α)",
     "verb": {
       "docId": "d1",
@@ -36,7 +36,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.addFilter.drop.ne",
+    "id": "datalab.datum.filters/exclude:drop",
     "label": "Exclude drop = lab",
     "verb": {
       "docId": "d1",
@@ -47,7 +47,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.addFilter.stream.eq",
+    "id": "datalab.datum.filters/keep:stream",
     "label": "Keep only stream = temps  (chart α)",
     "verb": {
       "docId": "d1",
@@ -58,7 +58,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.addFilter.stream.ne",
+    "id": "datalab.datum.filters/exclude:stream",
     "label": "Exclude stream = temps",
     "verb": {
       "docId": "d1",
@@ -69,7 +69,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.addFilter.time.eq",
+    "id": "datalab.datum.filters/keep:time",
     "label": "Keep only time = 2026-07-24T09:00:00.000Z  (chart α)",
     "verb": {
       "docId": "d1",
@@ -80,7 +80,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.addFilter.time.ne",
+    "id": "datalab.datum.filters/exclude:time",
     "label": "Exclude time = 2026-07-24T09:00:00.000Z",
     "verb": {
       "docId": "d1",
@@ -91,7 +91,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.inspect",
+    "id": "datalab.datum.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -117,7 +117,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
     },
   },
   {
-    "id": "datum.watch",
+    "id": "datalab.datum.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -148,7 +148,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over cat
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
 [
   {
-    "id": "doc.snapshot",
+    "id": "datalab.doc.snapshot",
     "label": "⚑ Snapshot it",
     "verb": {
       "docId": "d1",
@@ -156,7 +156,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
     },
   },
   {
-    "id": "doc.duplicateDoc",
+    "id": "datalab.doc.duplicate",
     "label": "Duplicate document",
     "verb": {
       "docId": "d1",
@@ -164,7 +164,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
     },
   },
   {
-    "id": "doc.deleteDoc",
+    "id": "datalab.doc.delete",
     "label": "Delete document",
     "verb": {
       "docId": "d1",
@@ -172,7 +172,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
     },
   },
   {
-    "id": "doc.inspect",
+    "id": "datalab.doc.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -181,7 +181,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
     },
   },
   {
-    "id": "doc.watch",
+    "id": "datalab.doc.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -195,7 +195,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
 [
   {
-    "id": "doc.setActiveDoc",
+    "id": "datalab.doc.activate",
     "label": "Make the ACTIVE chart",
     "verb": {
       "docId": "d2",
@@ -203,7 +203,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
     },
   },
   {
-    "id": "doc.snapshot",
+    "id": "datalab.doc.snapshot",
     "label": "⚑ Snapshot it",
     "verb": {
       "docId": "d2",
@@ -211,7 +211,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
     },
   },
   {
-    "id": "doc.duplicateDoc",
+    "id": "datalab.doc.duplicate",
     "label": "Duplicate document",
     "verb": {
       "docId": "d2",
@@ -219,7 +219,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
     },
   },
   {
-    "id": "doc.deleteDoc",
+    "id": "datalab.doc.delete",
     "label": "Delete document",
     "verb": {
       "docId": "d2",
@@ -227,7 +227,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
     },
   },
   {
-    "id": "doc.inspect",
+    "id": "datalab.doc.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -236,7 +236,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
     },
   },
   {
-    "id": "doc.watch",
+    "id": "datalab.doc.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -250,7 +250,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible mappings disabled with reasons 1`] = `
 [
   {
-    "id": "field.setMapping.x",
+    "id": "datalab.field.map.x",
     "label": "Map to x  (chart α)",
     "verb": {
       "channel": "x",
@@ -261,17 +261,12 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
   },
   {
     "disabledBecause": "y accepts quantitative",
-    "id": "field.setMapping.y",
+    "id": "datalab.field.map.y",
     "label": "Map to y  (chart α)",
-    "verb": {
-      "channel": "y",
-      "docId": "d1",
-      "field": "data.station",
-      "kind": "setMapping",
-    },
+    "verb": undefined,
   },
   {
-    "id": "field.setMapping.color",
+    "id": "datalab.field.map.color",
     "label": "Map to color  (chart α)",
     "verb": {
       "channel": "color",
@@ -282,17 +277,12 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
   },
   {
     "disabledBecause": "size accepts quantitative",
-    "id": "field.setMapping.size",
+    "id": "datalab.field.map.size",
     "label": "Map to size  (chart α)",
-    "verb": {
-      "channel": "size",
-      "docId": "d1",
-      "field": "data.station",
-      "kind": "setMapping",
-    },
+    "verb": undefined,
   },
   {
-    "id": "field.setMapping.facet",
+    "id": "datalab.field.map.facet",
     "label": "Map to facet  (chart α)",
     "verb": {
       "channel": "facet",
@@ -302,7 +292,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
     },
   },
   {
-    "id": "field.addFilter.data.station.eq",
+    "id": "datalab.field.filter",
     "label": "Filter on this field",
     "verb": {
       "docId": "d1",
@@ -313,7 +303,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
     },
   },
   {
-    "id": "field.addSummarize",
+    "id": "datalab.field.group-count",
     "label": "Group by + count",
     "verb": {
       "by": "data.station",
@@ -324,7 +314,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
     },
   },
   {
-    "id": "field.addSort.desc",
+    "id": "datalab.field.sort-desc",
     "label": "Sort output by (descending)",
     "verb": {
       "dir": "desc",
@@ -334,7 +324,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
     },
   },
   {
-    "id": "field.inspect",
+    "id": "datalab.field.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -346,7 +336,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
     },
   },
   {
-    "id": "field.watch",
+    "id": "datalab.field.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -363,7 +353,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible m
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`] = `
 [
   {
-    "id": "field.setMapping.x",
+    "id": "datalab.field.map.x",
     "label": "Map to x  (chart β)",
     "verb": {
       "channel": "x",
@@ -373,7 +363,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
     },
   },
   {
-    "id": "field.setMapping.y",
+    "id": "datalab.field.map.y",
     "label": "Map to y  (chart β)",
     "verb": {
       "channel": "y",
@@ -383,7 +373,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
     },
   },
   {
-    "id": "field.setMapping.color",
+    "id": "datalab.field.map.color",
     "label": "Map to color  (chart β)",
     "verb": {
       "channel": "color",
@@ -393,7 +383,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
     },
   },
   {
-    "id": "field.setMapping.size",
+    "id": "datalab.field.map.size",
     "label": "Map to size  (chart β)",
     "verb": {
       "channel": "size",
@@ -404,17 +394,12 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
   },
   {
     "disabledBecause": "facet accepts nominal, temporal",
-    "id": "field.setMapping.facet",
+    "id": "datalab.field.map.facet",
     "label": "Map to facet  (chart β)",
-    "verb": {
-      "channel": "facet",
-      "docId": "d2",
-      "field": "population",
-      "kind": "setMapping",
-    },
+    "verb": undefined,
   },
   {
-    "id": "field.addFilter.population.gt",
+    "id": "datalab.field.filter",
     "label": "Filter on this field",
     "verb": {
       "docId": "d2",
@@ -425,7 +410,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
     },
   },
   {
-    "id": "field.addSort.desc",
+    "id": "datalab.field.sort-desc",
     "label": "Sort output by (descending)",
     "verb": {
       "dir": "desc",
@@ -435,7 +420,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
     },
   },
   {
-    "id": "field.inspect",
+    "id": "datalab.field.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
@@ -447,7 +432,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`
     },
   },
   {
-    "id": "field.watch",
+    "id": "datalab.field.watch",
     "label": "Add to watchlist",
     "verb": {
       "kind": "watch",
@@ -528,7 +513,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <source> 1`] = `
 exports[`golden menus (PBUI-ACTIONS-2 P0) > <stage> not current 1`] = `
 [
   {
-    "id": "stage.switchStage",
+    "id": "datalab.stage.switch",
     "label": "Switch to it",
     "verb": {
       "kind": "switchStage",
@@ -536,7 +521,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <stage> not current 1`] = `
     },
   },
   {
-    "id": "stage.exportStage",
+    "id": "datalab.stage.export",
     "label": "Copy this stage to the clipboard",
     "verb": {
       "kind": "exportStage",
@@ -544,14 +529,14 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <stage> not current 1`] = `
     },
   },
   {
-    "id": "stage.importStage",
+    "id": "datalab.stage.import-stage",
     "label": "Add a stage from the clipboard …",
     "verb": {
       "kind": "importStage",
     },
   },
   {
-    "id": "stage.importWorkspace",
+    "id": "datalab.stage.import-workspace",
     "label": "Add a workspace from the clipboard …",
     "verb": {
       "kind": "importWorkspace",
@@ -559,7 +544,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <stage> not current 1`] = `
     },
   },
   {
-    "id": "stage.storeTemplate",
+    "id": "datalab.stage.template",
     "label": "Save as a template …",
     "verb": {
       "kind": "storeTemplate",
@@ -571,7 +556,7 @@ exports[`golden menus (PBUI-ACTIONS-2 P0) > <stage> not current 1`] = `
     },
   },
   {
-    "id": "stage.inspect",
+    "id": "datalab.stage.inspect",
     "label": "Inspect",
     "verb": {
       "kind": "inspect",
