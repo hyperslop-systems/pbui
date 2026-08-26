@@ -843,3 +843,101 @@ accept tests passed unchanged).
 ### Technical details
 - Suites: root 168, protocol 44, workbench 138, sandbox 107, datalab 533,
   chat 237, demo 13 — 1240 total.
+
+## Step 10: P7 — the last eleven types, the deletions, and the delete-vs-deprecate adjudication
+
+P7's true scope was larger than the plan slip implied: "delete descriptor
+actions" first required migrating datalab's eleven remaining legacy types.
+All eleven landed as kernel rules (plus a member-roles family), eight of them
+joining the P5 inheritance nodes; the legacy descriptor family left datalab
+entirely — every one of its fifteen types is kernel-native, and the golden
+re-pin was again pure id substitution with zero label changes.
+`withGeneratedActions` was deleted from pbui-sandbox (its only consumer
+migrated in P4), `createTileDescriptor` became representation-only with its
+`extra`/`launcher` options absorbed by the fragment, and the fragment's test
+file was rewritten from descriptor-parity into the standalone written spec of
+the shared tile rows.
+
+One scope adjudication, made explicitly rather than by drift: the source
+guide's PR 7 deletes descriptor `actions()`, the legacy engine, and
+`conversions` outright; its exit criterion, though, is "no in-repository
+production users" — which is now true — while Amendment B built the automatic
+legacy engine precisely as a one-window migration path for products outside
+this repository still on 0.6.x. Deleting the generic surface in 0.7.0 would
+strand them with no path. Decision: all four compat mechanisms are
+`@deprecated` with pointers and a stated next-major deletion, in-repo users
+are zero, and `PresentationDescriptorRegistry` is the forward-looking alias.
+Versions: pbui 0.7.0, pbui-workbench 0.3.0, pbui-sandbox 0.3.0.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3; mid-phase status question: "how far
+are we?" — answered inline before P7 started)
+
+**Commit (code):** `9dc7768`
+
+### What I did
+- Datalab: eleven type migrations (source/cat/geom/step/user/token/member/
+  upload/tile/workspace/traceEntry) with exact label/reason/verb parity;
+  inheritance extended (user and traceEntry deliberately keep their own
+  differently-worded inspect/watch rows); legacy family removed; adapter
+  reduced to representation with a `never` tombstone on the product
+  descriptor interface; both test files route every type through the kernel.
+- Sandbox: wrapper + its tests deleted; family tests stay.
+- Workbench: representation-only tile descriptor; standalone row spec;
+  golden test file removed as superseded.
+- Core: deprecations, registry alias, playbook section "The action kernel";
+  version bumps; full rebuild and seven-suite sweep (1224).
+
+### Why
+- The kernel's value claim was always "adding a variable/action touches one
+  declaration"; P7 is where the old path stops being an option for any code
+  in this repository, which is what keeps the claim true.
+
+### What worked
+- The golden-audit protocol held for the third time: eleven-type migration,
+  zero label diffs, one reviewed semantic diff class (disabled rows without
+  verbs — established in P3).
+- The member owner test exposed exactly the right contract change: it had
+  been reading verbs off DISABLED rows; the kernel refuses to bind those, and
+  the adapted test now asserts the absence.
+
+### What didn't work
+- Two over-eager python edits: the sandbox deletion swallowed
+  `substituteRef` (restored), and a stale export (`GeneratedActionsOptions`)
+  lingered in the sandbox index. Both caught by tsc within a minute.
+
+### What was tricky to build
+- Preserving eleven different menus' row orders under inherited
+  Inspect/Watch at fixed orders 13/14: tile and workspace needed their tail
+  rows pushed to 20/21 so the inherited rows land exactly where Inspect used
+  to sit. Checked by goldens, not by argument.
+
+### What warrants a second pair of eyes
+- The delete-vs-deprecate adjudication above — if the team prefers the source
+  guide's hard deletion in 0.7.0, it is now a small mechanical commit
+  (legacy.ts, actionsFor, conversions, the tombstoned fields, and the fence
+  tests' descriptor-actions fixtures).
+- Deferred from the §29 definition of done, recorded rather than skipped
+  silently: Storybook stories for inheritance/ambiguity/hidden/translator
+  choice (all semantics are test-covered; stories are a docs artifact), and
+  the optional chat `pbuiAction` provenance wiring from §18.5.
+
+### What should be done in the future
+- Next major: the four deletions above.
+- Products may now reintroduce visual menu groups deliberately (the order
+  space note in the fragment docstring).
+- OPTKIT-022's ragttc product should be written kernel-native from day one —
+  the guide's §8 coordination section stands.
+
+### Code review instructions
+- `git show 9dc7768` — read `datalab-ui/src/pbui/actions.ts` end to end (it
+  is now the complete written form of datalab's menu system), then the
+  workbench actions.test.ts row spec, then the playbook section.
+- Full sweep: `pnpm build && pnpm -r build && pnpm -r test` (1224 tests).
+
+### Technical details
+- Final suites: root 168, protocol 44, workbench 125, sandbox 104,
+  datalab 533, chat 237, demo 13.
+- Commit ladder: P0 fbfa492 → P1 b58e23b → P2 db3269e → P3 e33f213 →
+  P4 7f528d2 → P5 37b51d6 → P6 ae29000 → P7 9dc7768 (docs commits between).
