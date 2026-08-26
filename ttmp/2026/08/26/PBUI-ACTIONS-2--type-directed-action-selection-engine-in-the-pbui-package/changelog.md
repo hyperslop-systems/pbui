@@ -42,3 +42,8 @@ P1 complete (b58e23b): pure action kernel under src/presentation/actions — typ
 
 P2 complete (db3269e): kernel behind ObjectMenu with automatic legacy family, resolve/performAction context operations, ambiguity row, menu-ambiguity CSS hook, six integration tests. All 1219 tests green with zero product changes.
 
+
+## 2026-08-26
+
+P3 complete (e33f213): workbench contribution fragments with descriptor-parity suite; datalab field/datum/doc/stage migrated to kernel rules and a bounded family with optional descriptor callbacks; goldens re-pinned after an 82-row equivalence audit. 1226 tests green.
+
