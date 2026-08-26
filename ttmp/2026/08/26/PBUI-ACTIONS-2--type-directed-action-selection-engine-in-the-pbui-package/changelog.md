@@ -22,3 +22,8 @@ Wrote the intern implementation guide: HEAD system tour, drift-audit table, kern
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/ttmp/2026/08/26/PBUI-ACTIONS-2--type-directed-action-selection-engine-in-the-pbui-package/design-doc/01-intern-guide-implementing-the-action-selection-kernel-in-current-pbui.md — Primary implementation guide
 
+
+## 2026-08-26
+
+Committed guide/diary/tasks (44e4904) and uploaded 'PBUI-ACTIONS-2 Action Kernel Implementation Guide.pdf' (intern guide + source guide) to /ai/2026/08/26/PBUI-ACTIONS-2 on the reMarkable.
+
