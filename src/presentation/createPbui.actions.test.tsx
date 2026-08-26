@@ -184,3 +184,143 @@ describe("the automatic legacy engine", () => {
     ).toThrow(/requires `snapshotFor`/);
   });
 });
+
+describe("typed accept and the chooser (PBUI-ACTIONS-2 P6)", () => {
+  type AValues = {
+    doc: { id: string };
+    "image-doc": { id: string };
+    tag: { name: string; docId: string };
+  };
+  type AFacts = Record<string, never>;
+  type AVerb = { kind: string };
+
+  const aDescriptors = createPresentationRegistry<AValues, Record<string, never>, AVerb>({
+    doc: { label: (value) => value.id },
+    "image-doc": { label: (value) => value.id },
+    tag: { label: (value) => value.name },
+  });
+  const aGraph = createPresentationTypeGraph([
+    { id: "doc" },
+    { id: "image-doc", parents: ["doc"] },
+    { id: "tag" },
+  ]);
+  const aRegistry = createActionRegistry<AValues, AFacts, AVerb>({
+    graph: aGraph,
+    scopes: ["global"],
+    contributions: [],
+  });
+  const aSnapshot = () => ({
+    revision: 0,
+    scopes: ["global"] as const,
+    modes: new Set<string>(),
+    capabilities: new Set<string>(),
+    product: {},
+  });
+
+  function mountAccept(
+    translators: readonly {
+      id: string;
+      from: string;
+      to: string;
+      match: "exact" | "subtypes";
+      translate: (r: unknown) => unknown;
+    }[],
+  ) {
+    const pbui = createPbui<AValues, Record<string, never>, AVerb, AFacts>({
+      registry: aDescriptors,
+      defaultEnvironment: {},
+      actions: aRegistry,
+      snapshotFor: aSnapshot,
+      translators: translators as never,
+    });
+    const onAccept = vi.fn();
+    let acceptResult: unknown = "unset";
+    function Trigger() {
+      const context = pbui.usePbui();
+      return (
+        <button
+          type="button"
+          onClick={() => void context.accept({ types: "doc", prompt: "pick" }).then((r) => (acceptResult = r))}
+        >
+          want-doc
+        </button>
+      );
+    }
+    render(
+      <pbui.Provider onPerform={vi.fn()} onAccept={onAccept}>
+        <Trigger />
+        <pbui.Presentation reference={{ type: "image-doc", value: { id: "img-1" } }}>
+          img-1
+        </pbui.Presentation>
+        <pbui.Presentation reference={{ type: "tag", value: { name: "urgent", docId: "d9" } }}>
+          urgent
+        </pbui.Presentation>
+        <pbui.AcceptChooser />
+      </pbui.Provider>,
+    );
+    return { onAccept, result: () => acceptResult };
+  }
+
+  test("a subtype satisfies the request with the ORIGINAL reference", () => {
+    const { onAccept } = mountAccept([]);
+    fireEvent.click(screen.getByText("want-doc"));
+    fireEvent.click(screen.getByText("img-1"));
+    expect(onAccept).toHaveBeenCalledWith({ type: "image-doc", value: { id: "img-1" } });
+  });
+
+  test("one translator edge settles; highlighting and clicking agree", () => {
+    const { onAccept } = mountAccept([
+      {
+        id: "tag-to-doc",
+        from: "tag",
+        to: "doc",
+        match: "exact",
+        translate: (r) => {
+          const reference = r as { type: string; value: { docId: string } };
+          return { type: "doc", value: { id: reference.value.docId } };
+        },
+      },
+    ]);
+    fireEvent.click(screen.getByText("want-doc"));
+    const tag = screen.getByText("urgent").closest('[data-pbui="presentation"]');
+    expect(tag?.getAttribute("data-state")).toBe("acceptable");
+    fireEvent.click(screen.getByText("urgent"));
+    expect(onAccept).toHaveBeenCalledWith({ type: "doc", value: { id: "d9" } });
+  });
+
+  test("two tied edges open the chooser; Escape keeps the accept pending; a pick settles", () => {
+    const edge = (id: string, suffix: string) => ({
+      id,
+      from: "tag",
+      to: "doc",
+      match: "exact" as const,
+      translate: (r: unknown) => {
+        const reference = r as { type: string; value: { docId: string } };
+        return { type: "doc", value: { id: reference.value.docId + suffix } };
+      },
+    });
+    const { onAccept } = mountAccept([edge("a.edge", "-a"), edge("b.edge", "-b")]);
+    fireEvent.click(screen.getByText("want-doc"));
+    fireEvent.click(screen.getByText("urgent"));
+
+    // Nothing settled by itself; the chooser is on screen with both options.
+    expect(onAccept).not.toHaveBeenCalled();
+    const chooser = document.querySelector('[data-part="accept-chooser"]');
+    expect(chooser).not.toBeNull();
+
+    // Escape dismisses the chooser only — the accept request stays pending.
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(document.querySelector('[data-part="accept-chooser"]')).toBeNull();
+    expect(onAccept).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("urgent").closest('[data-pbui="presentation"]')?.getAttribute("data-state"),
+    ).toBe("acceptable");
+
+    // Click again and pick the second option deliberately.
+    fireEvent.click(screen.getByText("urgent"));
+    const options = document.querySelectorAll('[data-part="accept-chooser-option"]');
+    expect(options).toHaveLength(2);
+    fireEvent.click(options[1] as Element);
+    expect(onAccept).toHaveBeenCalledWith({ type: "doc", value: { id: "d9-b" } });
+  });
+});

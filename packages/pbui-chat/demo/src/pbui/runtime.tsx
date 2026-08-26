@@ -30,13 +30,24 @@ export function rowToProduct(reference: PresentationReference<Values>): Presenta
 /** Frozen by tests (PBUI-ACTIONS-2 P0) before typed translators replace this. */
 export const demoConversions = [rowToProduct] as const;
 
+/** PBUI-ACTIONS-2 P6: the same conversion as a typed translator. */
+export const demoTranslators = [
+  {
+    id: "demo.row-to-product",
+    from: "row",
+    to: "product",
+    match: "exact",
+    translate: (reference: PresentationReference<Values>) => rowToProduct(reference),
+  },
+] as const;
+
 export const pbui = createPbui<Values, Environment, Verb, DemoFacts>({
   registry,
   defaultEnvironment: DEFAULT_ENVIRONMENT,
   // PBUI-ACTIONS-2 P4: all nineteen types resolve through the kernel.
   actions: demoActionRegistry,
   snapshotFor: snapshotForDemo,
-  conversions: demoConversions,
+  translators: demoTranslators,
   renderMenuHeader: (reference, _environment, label) => (
     <>
       &lt;{reference.type}&gt; {label}

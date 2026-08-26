@@ -1,4 +1,4 @@
-import { chat } from "../../chat";
+import { conversationRecord } from "../conversationFacts";
 import type { PresentationDescriptor } from "../registry";
 import { TONES } from "../types";
 
@@ -20,7 +20,7 @@ export const chatEventDescriptor: PresentationDescriptor<"chatEvent"> = {
     presentationType: "chatEvent",
     id: ref.id,
     ...ref.value,
-    conversation: ref.value ? (chat.conversations.get(ref.value.conversationId)?.title ?? ref.value.conversationId) : undefined,
+    conversation: ref.value ? (conversationRecord(ref.value.conversationId)?.title ?? ref.value.conversationId) : undefined,
   }),
 
 };

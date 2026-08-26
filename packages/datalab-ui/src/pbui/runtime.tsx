@@ -38,6 +38,21 @@ export function catToField(
 
 export const datadropConversions = [catToField] as const;
 
+/**
+ * PBUI-ACTIONS-2 P6: the same conversion as a typed translator — declared
+ * source and target, deterministic, chooser-ready. `catToField` stays
+ * exported as the pure mapping both spellings share.
+ */
+export const datadropTranslators = [
+  {
+    id: "datalab.cat-to-field",
+    from: "cat",
+    to: "field",
+    match: "exact",
+    translate: (reference: PresentationReference<PresentationValues>) => catToField(reference),
+  },
+] as const;
+
 const datadropPbui = createPbui<PresentationValues, PbuiEnvironment, Verb, DatalabFacts>({
   registry: datadropRegistry,
   defaultEnvironment: EMPTY_ENVIRONMENT,
@@ -46,7 +61,7 @@ const datadropPbui = createPbui<PresentationValues, PbuiEnvironment, Verb, Datal
   // inside datadropActionRegistry. See ./actions.ts.
   actions: datadropActionRegistry,
   snapshotFor: snapshotForDatalab,
-  conversions: datadropConversions,
+  translators: datadropTranslators,
   renderMenuHeader: (reference, environment, label: ReactNode) => {
     const ambient = ["field", "source", "geom"].includes(reference.type);
     return (
