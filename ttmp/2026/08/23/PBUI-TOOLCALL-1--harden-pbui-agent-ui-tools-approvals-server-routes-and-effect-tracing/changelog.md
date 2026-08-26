@@ -173,3 +173,8 @@ Phase 5 executor blocker closed: trusted-published chat-provider 0.6.0, consumed
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/handlers.go — Executor-aware server adapter
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase5-executor-acceptance-evidence.json — Final browser evidence
 
+
+## 2026-08-25
+
+Ticket closed
+

@@ -1,18 +1,23 @@
 ---
-Title: 'Harden PBUI agent UI tools, approvals, server routes, and effect tracing'
+Title: Harden PBUI agent UI tools, approvals, server routes, and effect tracing
 Ticket: PBUI-TOOLCALL-1
-Status: active
-Topics: [chat, frontend, backend, onboarding]
+Status: complete
+Topics:
+    - chat
+    - frontend
+    - backend
+    - onboarding
 DocType: index
 Intent: long-term
 Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: 'Implementation ticket for PBUI-owned fixes from the PBUI-AGENT-4 reviews: route authorization, approval/effect primitives, conversation state correctness, workbench semantics, and UI accessibility.'
-LastUpdated: 2026-08-23T17:30:00-04:00
-WhatFor: 'Landing page for the PBUI agent-to-UI hardening design, diary, tasks, evidence, and delivery.'
-WhenToUse: 'Before implementing or reviewing PBUI-owned tool-call and UI-interaction fixes.'
+LastUpdated: 2026-08-25T20:16:23.54242734-04:00
+WhatFor: Landing page for the PBUI agent-to-UI hardening design, diary, tasks, evidence, and delivery.
+WhenToUse: Before implementing or reviewing PBUI-owned tool-call and UI-interaction fixes.
 ---
+
 
 # Harden PBUI agent UI tools, approvals, server routes, and effect tracing
 
