@@ -1,5 +1,5 @@
-PASS	exact hardened chat-provider dependency	pbui-chat and demo both pin @go-go-golems/chat-provider exactly to 0.5.0
-PASS	hardened Pinocchio dependency	go.mod pins github.com/go-go-golems/pinocchio v0.11.14
+PASS	exact hardened chat-provider dependency	pbui-chat and demo both pin @go-go-golems/chat-provider exactly to 0.6.0
+PASS	hardened Pinocchio dependency	go.mod pins github.com/go-go-golems/pinocchio v0.11.16
 PASS	no legacy approval authorities	no callback/spent-set authority remains
 PASS	no unsafe whole-document agent undo	no undo token/history/restore surface is advertised
 PASS	workbench gateway coverage	packages/pbui-chat/src/tools/workbenchTools.ts: all markers present

@@ -20,6 +20,8 @@ RelatedFiles:
       Note: Pinocchio v0.11.14 release consumption (commit ac76a40)
     - Path: repo://packages/pbui-chat/demo/src/pbui/vocabulary.test.ts
       Note: Executable demo handoff and trace vocabulary contract (commit 7ecc676)
+    - Path: repo://packages/pbui-chat/package.json
+      Note: Exact chat-provider 0.6.0 consumer
     - Path: repo://packages/pbui-chat/src/adapters/traceAdapter.ts
       Note: Live/hydrated effect envelope decoding (commit 56a01b6)
     - Path: repo://packages/pbui-chat/src/composer/Composer/Composer.tsx
@@ -86,6 +88,7 @@ RelatedFiles:
         Ownership claim and list filtering (commit a982f98)
         Authenticated effect submission handler (commit 56a01b6)
         Version-aware title PATCH conflict response (commit 5916dc0)
+        Strict executor manifest acknowledgement and result validation
     - Path: repo://pkg/chatserver/scripted/scenarios.go
       Note: Rendered revision-bound atomic workbench scenario (commit 01452a8)
     - Path: repo://pkg/chatserver/server.go
@@ -142,6 +145,8 @@ RelatedFiles:
       Note: Rendered ObjectMenu action and focus evidence
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase4-rendered-pane-minimum.png
       Note: Rendered pane minimum evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase5-executor-acceptance-evidence.json
+      Note: Installed-package and real two-tab acceptance
     - Path: ws://react-chat/ttmp/2026/08/23/REACT-CHAT-TOOL-RUNTIME-1--make-browser-tool-execution-idempotent-single-owner-and-manifest-safe/design-doc/02-concise-frontend-tool-executor-ownership-protocol.md
       Note: Cross-repository design adopted in Diary Step 18
 ExternalSources: []
@@ -150,6 +155,7 @@ LastUpdated: 2026-08-23T17:25:00-04:00
 WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
 WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
 ---
+
 
 
 
@@ -1681,3 +1687,103 @@ The HTTP manifest response must return the exact assignment created by that acce
 ### Technical details
 
 PBUI must not generate `assignment_id`. It serializes the assignment returned by Pinocchio and rejects missing identity after the coordinated migration.
+
+## Step 19: Close Phase 5 with immutable releases and real two-tab evidence
+
+The maintainer merged react-chat release PR 17. I ran the upstream trusted-publishing dry run and real npm publication from authoritative `main`, verified registry integrity, installed exact chat-provider `0.6.0` and Pinocchio `v0.11.16` in PBUI, migrated PBUI's strict HTTP adapter, and reran package/server/browser validation.
+
+The installed-package probe and real Chromium tabs now prove one owner. Automatic execution produced owner-only result submissions and one durable effect envelope. Human-tool controls appeared only in the assigned tab. Reload preserved the tab client identity, rotated connection/assignment, left the old pending call unassigned, and made a new call actionable only in the reconnected owner.
+
+### Prompt Context
+
+**User prompt (verbatim):** `good, i merged it`
+
+**Assistant interpretation:** Publish chat-provider `0.6.0` through trusted publishing, verify it, consume exact corrected releases in PBUI, and complete the blocked Phase 5 acceptance matrix.
+
+**Inferred user intent:** Finish the cross-repository executor rollout and replace the historical two-tab blocker with immutable installed-package and browser evidence.
+
+**Commit (code):** `98d3156` — "feat(pbui-chat): adopt executor-aware tool runtime"
+
+### What I did
+
+- Verified PR 17 merge commit `09597c5653f750c7f392cf76ea4343b548c0393e`.
+- Ran trusted-publishing dry-run workflow `32912825633` and real publish workflow `32912868721`.
+- Verified npm `0.6.0`, `next=0.6.0`, integrity and shasum.
+- Pinned PBUI and demo to exact chat-provider `0.6.0` and Pinocchio `v0.11.16`.
+- Migrated manifest/result handlers to exact assignment acknowledgement and executor validation/error mapping.
+- Updated Go integration tests to echo request executor provenance.
+- Updated strict frontend tests for fail-closed executor identity and pre-connect synchronization.
+- Rewrote the exact installed-package probe for executor-aware replay/two-runtime assertions.
+- Ran two Chromium tabs on one session through automatic, human, and reconnect flows.
+- Captured JSON and screenshot evidence and superseded the blocker documentation.
+
+### Why
+
+- PBUI Phase 5 required proof from immutable installed releases and real independent tabs, not sibling source or one runtime.
+
+### What worked
+
+- npm dry-run and real trusted publish passed all workflow stages.
+- Registry metadata: integrity `sha512-dMJsObneOmksPkAfxdd+ZrHdGclAPSDmDh3MczqdYRNRWSXv1TLiAQRmFnlui1B39WLi05tkFXNHnkUuMSm2sQ==`; shasum `0569a3853d205662823f5ddcf84db84da58bfa6e`.
+- Installed-package probe: one execution/one submission for terminal replay and two runtimes.
+- PBUI Chat: 237 tests; root: 102; protocol: 44; workbench: 125; sandbox: 103; demo: 2 — 613 total.
+- Relevant typechecks/builds and full Go tests/vet passed.
+- Focused Go race tests passed.
+- Static contract audit returned 20/20.
+- Automatic browser call `sandbox_create_app` completed with one owner and one durable `program.open` effect envelope; non-owner submitted no result/effect.
+- Human `pbui_accept` entered ACCEPT MODE only in the owner; the non-owner retained read-only history and submitted nothing.
+- Reload kept client `1c57427a...`, rotated connection `8dac146c...` -> `1c216dcf...`, and assignment `f529b7b0...` -> `cc15bb04...`.
+
+### What didn't work
+
+1. The first full `pnpm install --frozen-lockfile` failed because an existing GitHub Packages token could not fetch private plot `0.2.0`:
+
+   ```text
+   ERR_PNPM_FETCH_403 ... @hyperslop-systems/plot/0.2.0 ... Forbidden - 403
+   ```
+
+   A filtered offline install restored the six relevant PBUI workspaces and installed exact chat-provider `0.6.0` without touching the intentionally excluded datalab package.
+
+2. The first package test run had three strict-migration failures: a human fixture lacked executor identity, and two direct pre-connect manifest sync tests timed out. Fixtures now install matching executor provenance; offline ContextTile tests assert that unsent pre-connect sync stays pending rather than falsely stamping advertisement.
+
+3. The first probe invocation used the obsolete root `scripts/` path and failed `MODULE_NOT_FOUND`. The probe lives in the ticket `scripts/` directory.
+
+4. The rewritten probe initially resolved `package.json` through an unexported subpath, then ascended one directory too far. It now derives package root from the exported package entry.
+
+5. The first recursive workspace validation included intentionally uninstalled `datalab-ui` after the failed full install and produced missing-module errors. Reinstalling and validating the six relevant workspaces restored the documented matrix; root PBUI was run separately.
+
+6. The first static contract audit still hard-coded chat-provider `0.5.0` and Pinocchio `v0.11.14`, yielding 18/20. Updating the release contract expectations produced 20/20.
+
+7. The automatic program scenario attempted two `program.create` effect reports whose client digest disagreed with server canonicalization and received HTTP 400. The actual canonical `program.open` consequential effect was accepted once and persisted once. This pre-existing create-report canonicalization issue did not cause duplicate execution or envelope conflict and warrants a separate follow-up.
+
+### What I learned
+
+- Exact installed-package probing catches export-map and strict-identity behavior that source tests do not.
+- Human actionability must be observed separately from timeline visibility: both tabs display requested history, but only the assigned runtime enters ACCEPT MODE.
+- Reconnect evidence needs both old and new calls to prove no in-flight reassignment and new-assignment liveness.
+
+### What was tricky to build
+
+The browser had multiple conversation panes. Network evidence identified authoritative session `99e6c8a0...`; durable snapshots then tied every tool call to exact executor tuples. Tab-specific Playwright request logs proved the owner submitted results while the non-owner had zero result/effect requests. The human call was stopped after reload to terminalize its old assignment, then a new call proved controls on the rotated assignment.
+
+### What warrants a second pair of eyes
+
+- Investigate the `program.create` client/server digest disagreement that generated two HTTP 400 reports before the accepted `program.open` envelope.
+- Review whether ContextTile should disable/reject manual manifest sync visibly while a runtime is disconnected rather than leave it pending.
+- Confirm the datalab private-registry token should be repaired independently of this ticket.
+
+### What should be done in the future
+
+- Track turn-scoped executor capture in react-chat issue 16.
+- Track effect canonicalization parity on `program.create` in `hyperslop-systems/pbui#12`.
+
+### Code review instructions
+
+1. Review exact dependency pins and PBUI handler DTOs first.
+2. Run the installed-package probe and 20/20 static audit.
+3. Run relevant six-workspace tests/typechecks/builds plus root PBUI and full Go/race tests.
+4. Inspect `phase5-executor-acceptance-evidence.json` and both screenshots.
+
+### Technical details
+
+The browser acceptance session was `99e6c8a0-b310-4be6-a504-e3860f21e2eb`. Automatic tool executor assignment was `f529b7b0-a445-462b-a5aa-86c6d90d59a7`; reconnect assignment was `cc15bb04-0c33-4abd-95f2-2ce12dd68543`. Server logs contained no terminal, executor-mismatch, duplicate, or effect-envelope conflict.

@@ -14,7 +14,7 @@ Owners:
     - manuel
 RelatedFiles:
     - Path: repo://go.mod
-      Note: Released Pinocchio v0.11.14 integration (commit ac76a40)
+      Note: Released Pinocchio v0.11.16 strict executor integration
     - Path: repo://packages/pbui-chat/src/tools/workbenchTools.ts
       Note: Unsafe whole-document undo removed and revision-bound gateway tools audited (commit 1d17631)
     - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/scripts/01-phase5-contract-audit.py
@@ -39,9 +39,9 @@ WhenToUse: ""
 
 Audit date: 2026-08-25  
 Branch: `task/add-pbui-agent`  
-Audit status: **BLOCKED — do not mark the goal complete**
+Audit status: **PASS — Phase 5 completion contract satisfied**
 
-This document maps every PBUI-owned Phase 2–4 implementation requirement and the Phase 5 completion contract to concrete source, commits, executable checks, rendered artifacts, and release artifacts. One acceptance criterion is not satisfied: two tabs connected to one session do not have one frontend executor when consuming the required immutable npm `@go-go-golems/chat-provider@0.5.0`. The exact blocker evidence and required unblock are at the end.
+This document maps every PBUI-owned Phase 2–4 implementation requirement and the Phase 5 completion contract to concrete source, commits, executable checks, rendered artifacts, and release artifacts. The former two-tab blocker is closed by immutable Pinocchio `v0.11.16` and npm `@go-go-golems/chat-provider@0.6.0`, the strict PBUI HTTP adapter, installed-package probing, and real two-tab Chromium evidence.
 
 ## 1. Phase 2 — transactional approvals and durable causal effects
 
@@ -132,12 +132,16 @@ Phase 4 slip evidence:
 | PBUI static completion probe | `phase5-static-contract-audit.txt`: 20/20 PASS |
 | Stable one-tab console | 0 errors, 0 warnings |
 | `docmgr doctor --ticket PBUI-TOOLCALL-1` | PASS before blocker documentation |
-| Pinocchio release consumption | upgraded from `v0.11.12` to `v0.11.14` in `ac76a40`; full/race/GoSec PASS |
-| npm dependency constraint | exact `@go-go-golems/chat-provider@0.5.0`; npm integrity and lock agree; `next=0.5.0`, `latest=0.4.2` |
+| Pinocchio release consumption | exact `v0.11.16`; strict manifest acknowledgement and executor-bound result adapter; full/race validation PASS |
+| npm dependency constraint | exact `@go-go-golems/chat-provider@0.6.0`; registry `next=0.6.0`; integrity `sha512-dMJsObne...MSm2sQ==` |
+| Installed-package executor probe | PASS: terminal replay 1 execution/1 submission; two independent runtimes 1 execution/1 submission with exact assigned tuple |
+| Real two-tab automatic tool | PASS: owner submitted results; non-owner submitted 0; one durable `program.open` effect envelope; no terminal/envelope conflict |
+| Real two-tab human tool | PASS: owner displayed ACCEPT MODE; non-owner showed read-only requested history; owner alone submitted cancellation |
+| Reconnect | PASS: client identity stable, connection/assignment rotated, old pending call was not reassigned, new call actionable only in reconnected owner |
 
 The first unfiltered recursive typecheck failed only because `packages/datalab-ui` is intentionally excluded from this repository install and has no local dependency tree. The Makefile documents that exclusion. The complete installed/relevant workspace passed with `--filter '!@hyperslop-systems/datalab-ui'`; root PBUI was validated separately.
 
-Phase 5 start slip printed successfully at `2026-08-25T20:08:01Z`. No Phase 5 completion slip may be printed while the blocker below remains.
+Phase 5 start slip printed successfully at `2026-08-25T20:08:01Z`. The Phase 5 completion slip is permitted after the final documentation/doctor/clean-tree audit.
 
 ## 5. Constraints audit
 
@@ -149,33 +153,30 @@ Phase 5 start slip printed successfully at `2026-08-25T20:08:01Z`. No Phase 5 co
 | No dead legacy approval/undo authorities | static audit and source search | PASS |
 | No undocumented behavior changes | strict diary Steps 1–16, changelog, related-file notes, this audit | PASS so far |
 | Coherent commits at intervals | implementation/evidence commits listed above | PASS |
-| Required phase slips | Phase 2, 3, 4 completion and Phase 5 start recorded; Phase 5 completion intentionally absent | BLOCKED by design |
-| Clean status/diff | must be rerun after audit docs are committed | PENDING final blocked-state commit |
+| Required phase slips | Phase 2, 3, 4 completion and Phase 5 start recorded; Phase 5 completion follows final audit | PASS pending final print |
+| Clean status/diff | implementation committed; evidence/docs will be committed after doctor | PASS pending final evidence commit |
 
-## 6. Blocking acceptance criterion — two tabs, one frontend executor
+## 6. Closed acceptance criterion — two tabs, one frontend executor
 
-The architecture guide's browser matrix requires `two tabs, one frontend executor`. It separately and explicitly assigns implementation of the browser terminal ledger/executor lease to `REACT-CHAT-TOOL-RUNTIME-1`, so PBUI must consume a released implementation rather than add a hidden local shim.
+The architecture guide requires `two tabs, one frontend executor`. The coordinated implementation now satisfies it without a PBUI-local lock:
 
-Fresh evidence proves the installed immutable release does not satisfy it:
+- Pinocchio `v0.11.16` creates and validates `(client_instance_id, connection_id, assignment_id)`.
+- Chat-provider `0.6.0` filters before claim/effect/human controls and retains invocation-captured executor for result retries.
+- PBUI's strict HTTP adapter returns exact manifest acknowledgement and echoes result executor provenance.
+- `scripts/02-probe-installed-chat-provider-multitab.mjs` exits 0 against the exact installed registry package.
+- The real two-tab Chromium run recorded one automatic owner, zero non-owner result submissions, one durable effect envelope, and zero terminal/effect conflicts.
+- The owner alone entered human ACCEPT MODE; the non-owner retained a read-only requested projection.
+- Reload retained `client_instance_id`, rotated connection/assignment, did not reassign the old pending call, and made a new human call actionable only in the reconnected owner.
 
-- `scripts/02-probe-installed-chat-provider-multitab.mjs` exits 1.
-- Terminal replay executes/submits twice instead of once.
-- Two independent runtimes execute/submit twice instead of once.
-- Two real Chromium tabs on one session both executed `workbench_describe` and `workbench_perform`.
-- Both tabs changed local layout.
-- The server accepted one terminal result/effect, then returned `terminal_conflict` and conflicting-envelope HTTP 500 responses to the second tab.
-- Full details: `various/phase5-installed-provider-multitab-probe.json` and `various/03-phase5-multitab-executor-blocker.md`.
+Evidence:
 
-The hardened react-chat source is merged under Go tag `v0.0.3`, but its ticket says npm versions were not bumped/published. npm `@go-go-golems/chat-provider@0.5.0` predates the terminal-ledger work and is immutable. This PBUI task also carries an explicit constraint to preserve exact `0.5.0` consumption. Therefore the required behavior and dependency constraint cannot both be satisfied without release-owner input.
+- `various/phase5-executor-acceptance-evidence.json`
+- `various/phase5-owner-human-tool.png`
+- `various/phase5-non-owner-read-only.png`
+- updated installed-package probe script
 
-### Required input to unblock
-
-1. Approve coordinated protocol-v2 client/executor identity and one-owner delivery across Pinocchio/react-chat/PBUI.
-2. Approve bumping and publishing a new immutable npm chat-provider version containing the merged runtime hardening.
-3. Explicitly supersede PBUI's exact-`0.5.0` dependency constraint.
-4. Update PBUI to that release and rerun the installed-package probe and real two-tab flow.
-5. Require one execution, one terminal result, one effect envelope, and zero conflict/500 loops before printing the Phase 5 completion slip.
+The earlier failing `0.5.0` artifacts remain as historical evidence and are explicitly superseded rather than rewritten.
 
 ## 7. Completion decision
 
-**NOT COMPLETE.** All PBUI-owned Phase 2–4 implementation contracts audited above pass, including the Phase 5-discovered unsafe undo correction and Pinocchio release bump. The durable goal must remain active/blocked because the installed browser release fails one explicit cross-phase acceptance criterion and current constraints forbid the dependency change needed to consume the unpublished fix.
+**COMPLETE AFTER FINAL BOOKKEEPING.** Every Phase 2–5 requirement now maps to implementation, executable checks, immutable releases, or rendered browser evidence. The only remaining actions are to update the diary/changelog/tasks, run `docmgr doctor`, commit and push evidence, print the Phase 5 completion slip, and close the durable goal.

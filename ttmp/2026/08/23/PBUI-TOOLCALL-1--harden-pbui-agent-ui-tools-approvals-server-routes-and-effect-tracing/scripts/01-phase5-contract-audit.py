@@ -36,14 +36,14 @@ chat_package = json.loads(text("packages/pbui-chat/package.json"))
 demo_package = json.loads(text("packages/pbui-chat/demo/package.json"))
 check(
     "exact hardened chat-provider dependency",
-    chat_package["dependencies"].get("@go-go-golems/chat-provider") == "0.5.0"
-    and demo_package["dependencies"].get("@go-go-golems/chat-provider") == "0.5.0",
-    "pbui-chat and demo both pin @go-go-golems/chat-provider exactly to 0.5.0",
+    chat_package["dependencies"].get("@go-go-golems/chat-provider") == "0.6.0"
+    and demo_package["dependencies"].get("@go-go-golems/chat-provider") == "0.6.0",
+    "pbui-chat and demo both pin @go-go-golems/chat-provider exactly to 0.6.0",
 )
 check(
     "hardened Pinocchio dependency",
-    bool(re.search(r"github\.com/go-go-golems/pinocchio\s+v0\.11\.14\b", text("go.mod"))),
-    "go.mod pins github.com/go-go-golems/pinocchio v0.11.14",
+    bool(re.search(r"github\.com/go-go-golems/pinocchio\s+v0\.11\.16\b", text("go.mod"))),
+    "go.mod pins github.com/go-go-golems/pinocchio v0.11.16",
 )
 
 production_tools = "\n".join(

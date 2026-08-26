@@ -1,7 +1,7 @@
 ---
 Title: Phase 5 multi-tab executor blocker evidence
 Ticket: PBUI-TOOLCALL-1
-Status: active
+Status: archived
 Topics:
     - chat
     - frontend
@@ -13,6 +13,9 @@ Owners:
 ---
 
 # Phase 5 multi-tab executor blocker evidence
+
+> [!success] Closed on 2026-08-25
+> This document preserves the original immutable `0.5.0` failure. Pinocchio `v0.11.16` plus chat-provider `0.6.0` now pass the installed-package and real two-tab acceptance. See `phase5-executor-acceptance-evidence.json`.
 
 Date: 2026-08-25 16:23 EDT  
 Server: embedded `pbui-chat` built from `task/add-pbui-agent` after `ac76a40`  
@@ -95,4 +98,18 @@ A release owner must approve and perform the coordinated protocol-v2/package seq
 3. Explicitly authorize PBUI to replace its required exact `0.5.0` dependency.
 4. Rerun this two-tab browser case and require one execution, one terminal result, one effect envelope, and no 500/conflict loop.
 
-Until then, Phase 5 cannot honestly claim the guide's `two tabs, one frontend executor` acceptance criterion or a clean multi-tab network/console audit.
+This condition was true for immutable `0.5.0` and remains useful regression evidence.
+
+## Closure evidence
+
+The coordinated release sequence completed:
+
+- Pinocchio `v0.11.16` resolves to merge commit `d0fb2e485bb21a14d0b43968276ab876443b28c0`.
+- Chat-provider `0.6.0` was trusted-published from merge commit `09597c5653f750c7f392cf76ea4343b548c0393e` under npm tag `next`.
+- PBUI pins both exact releases and uses strict manifest/result DTOs.
+- The installed-package probe reports one execution and one submission for terminal replay and two independent runtimes.
+- In real Chromium tabs, only the assigned tab submitted automatic and human results; the non-owner submitted none.
+- One durable `program.open` effect envelope was recorded with no terminal or envelope conflict.
+- Reload rotated connection and assignment while retaining the client instance and never reassigned the old pending call.
+
+The blocker is closed. The old failing data is not deleted or normalized because it proves the regression that `0.6.0` fixes.

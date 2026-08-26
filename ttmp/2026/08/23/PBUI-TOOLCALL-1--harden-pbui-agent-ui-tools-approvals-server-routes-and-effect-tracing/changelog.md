@@ -163,3 +163,13 @@ Updated Phase 5 status for published chat-provider 0.5.1 and adopted the concise
 
 - /home/manuel/workspaces/2026-08-20/add-pbui-agent/react-chat/ttmp/2026/08/23/REACT-CHAT-TOOL-RUNTIME-1--make-browser-tool-execution-idempotent-single-owner-and-manifest-safe/design-doc/02-concise-frontend-tool-executor-ownership-protocol.md — Authoritative cross-repository protocol
 
+
+## 2026-08-25
+
+Phase 5 executor blocker closed: trusted-published chat-provider 0.6.0, consumed Pinocchio v0.11.16, migrated strict adapter, passed installed-package probe and real two-tab automatic/human/reconnect acceptance (98d3156).
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/pkg/chatserver/handlers.go — Executor-aware server adapter
+- /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase5-executor-acceptance-evidence.json — Final browser evidence
+
