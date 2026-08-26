@@ -68,6 +68,13 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build workspace dependencies
+        run: |
+          pnpm --workspace-root build
+          pnpm --filter @hyperslop-systems/workbench-protocol build
+          pnpm --filter @hyperslop-systems/pbui-workbench build
+          pnpm --filter @hyperslop-systems/pbui-sandbox build
+
       - name: Typecheck
         run: pnpm --filter @hyperslop-systems/pbui-chat typecheck
 
