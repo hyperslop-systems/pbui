@@ -57,3 +57,8 @@ P4 complete (7f528d2): createGeneratedActionsFamily replaces the sandbox wrapper
 
 P5 complete (37b51d6): inspectable/watchable abstract nodes replace eight datalab rules with two inherited declarations; stage inherits Inspect only; goldens re-pinned as pure id substitution; provenance tests pin distance-1 inheritance. Demo deliberately stays flat (per-type menu positions). 1230 tests green.
 
+
+## 2026-08-26
+
+P6 complete (ae29000): typed translators with subtype satisfaction and chooser ambiguity; AcceptChooser transient surface; both products migrated off conversions; chat-demo descriptor-to-chat module cycle broken with a conversationFacts slot. 1240 tests green.
+

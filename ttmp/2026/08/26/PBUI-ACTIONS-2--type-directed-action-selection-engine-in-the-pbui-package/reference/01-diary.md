@@ -750,3 +750,96 @@ is a finding about inheritance's limits, not a failure.
 ### Code review instructions
 - `git show 37b51d6`; the golden diff is the equivalence proof; the two new
   tests are the semantics proof.
+
+## Step 9: P6 — typed accept, the chooser, and a module-cycle hunt
+
+Accept mode got its type system. `src/presentation/translators/` holds
+`PresentationTranslator` (declared source/target, scopes, condition,
+priority, direct edges only — no chaining) and `resolveAcceptance`, one
+resolver shared by highlighting and clicking so the two can never disagree.
+Subtyping is substitutability: a graph subtype settles the request with the
+ORIGINAL reference, and a supertype never satisfies a subtype request. Ties
+reduce by nearest scope, then priority; a genuine remainder returns an
+explicit chooser — `AcceptChooser`, a transient Escape/focus surface whose
+dismissal keeps the accept request pending. `conversions` is deprecated but
+fully preserved for unmigrated products; both in-repo products moved their
+single conversion to a translator with identical behavior (their own UI
+accept tests passed unchanged).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `ae29000`
+
+### What I did
+- Translator types + resolution with the §24.7 matrix as tests (7 kernel
+  tests: subtype-original-reference, supertype-never, single edge, scope
+  removal, filter-on-translated, order-independent chooser, scope/priority
+  ladder).
+- createPbui: `translators` option (requires `actions`), acceptanceFor
+  routing, chooser state/context, `AcceptChooser`, chooser CSS,
+  `ActionInvocation` gains "accept".
+- Product migrations; 3 integration tests through real components
+  (subtype accept, edge accept with highlight/click agreement, tied edges →
+  chooser → Escape-keeps-pending → deliberate pick).
+
+### Why
+- First-registered-wins conversion was the last order-dependent semantics in
+  the presentation layer; P6 removes it the same way P1 removed it from
+  menus: ladder, then explicit ambiguity.
+
+### What worked
+- "One resolver for highlight and click" fell out naturally by routing
+  `isAcceptable` and `satisfyAccept` through the same `acceptanceFor`.
+
+### What didn't work
+- Two rounds of module-cycle whack-a-mole in the chat demo. First:
+  `actions.ts → chat.ts → runtime.tsx → actions.ts` made `createPbui` see a
+  partial actions module (my new construction guard threw where the old
+  closure-based code had silently tolerated the cycle). Second, deeper: the
+  conversation and chatEvent DESCRIPTORS import `chat` for labels/describe,
+  so the registry itself closed the same loop. Fix: a dependency-light
+  `conversationFacts` slot that `chat.ts` registers its registry into at
+  startup; descriptors and the snapshot builder read through it, and an
+  unregistered slot resolves to the honest "not in this browser's list"
+  state. The guard that exposed the latent cycle stays — it turned a
+  silently-tolerated partial-module evaluation into a loud error.
+- Two cwd-drift incidents again (a "root" build that was actually the demo's
+  vite build). Third occurrence this session; absolute paths from here on.
+
+### What I learned
+- The old createPbui survived cycles because it only closed over its options;
+  any create-time validation converts latent cycles into startup crashes.
+  That is a FEATURE (the cycle was real), but it means construction guards
+  and module graphs have to be reviewed together.
+
+### What was tricky to build
+- Chooser semantics: Escape must dismiss the CHOOSER while accept stays
+  pending (the banner still shows, presentations stay acceptable), and
+  settling must clear both. `settle()` clearing chooser state plus a
+  dismiss-only path covers the matrix; the integration test walks it.
+
+### What warrants a second pair of eyes
+- Translator `when` conditions currently evaluate against an EMPTY predicate
+  map inside createPbui (mode/capability conditions work; named predicates
+  in translators would throw fail-closed). Kernel-level API accepts a real
+  map; wiring product predicates through createPbui is deferred until a
+  product declares a conditional translator. Documented here so it is a
+  decision.
+- `AcceptChooser` must be mounted by products whose translators can tie;
+  existing products cannot tie (single edge each). The playbook update in P7
+  should state this.
+
+### What should be done in the future
+- P7: delete descriptor `actions()`, the legacy adapter, `withGeneratedActions`,
+  and `conversions`; tombstones; version bump; docs.
+
+### Code review instructions
+- `git show ae29000`; start at `translators/resolve.ts` with source §19
+  beside it, then the chooser part of `createPbui.tsx`, then the
+  `conversationFacts` slot and its rationale.
+
+### Technical details
+- Suites: root 168, protocol 44, workbench 138, sandbox 107, datalab 533,
+  chat 237, demo 13 — 1240 total.
