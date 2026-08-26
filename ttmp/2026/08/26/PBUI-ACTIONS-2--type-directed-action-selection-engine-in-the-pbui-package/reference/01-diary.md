@@ -585,3 +585,102 @@ fragments; datalab field/datum/doc/stage on kernel rules"
 ### Technical details
 - Suites: root 158, workbench 138, sandbox 105, datalab 531, chat 237,
   demo 13, protocol 44.
+
+## Step 7: P4 — chat demo and sandbox on the kernel
+
+The dynamic half of the proof. `createGeneratedActionsFamily` in pbui-sandbox
+replaces the `withGeneratedActions` registry wrapper (deprecated, deleted in
+the final cleanup): the records ride in the snapshot's product facts, read
+from the live library at resolution time, so liveness is identical while the
+instances now pass through override, trace, and fresh revalidation; the
+library's stable `act-N` ids provide the candidate identity revalidation
+requires. `workbenchTileContributions` gained a `project` option — the chat
+demo's tile value is a wire reference, not a `TileRef`, and the option lets
+it consume the shared rules unchanged instead of forking them.
+
+All nineteen demo descriptors dropped their `actions()` callbacks;
+`demo/src/pbui/actions.ts` declares every menu as rules via a compact
+`rulesFor` builder (rule ids `demo.<type>.<slug>`, sequential order),
+including the conversation type's twelve availability-laden entries, plus
+the workbench fragment and the generated family. The demo has NO legacy
+family — it is the first fully kernel-native product. `canApprove` became a
+real capability (`capability set {"approve"}` in the snapshot), used by the
+product-reorder and proposal-approve gates.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `7f528d2` — "PBUI-ACTIONS-2 P4: chat demo and sandbox on
+the kernel; no legacy family left in the demo"
+
+### What I did
+- pbui-sandbox: `GeneratedActionFacts`, `createGeneratedActionsFamily`,
+  wrapper deprecation, two family tests (type filtering + stable identity;
+  missing-program unavailability with the wrapper's exact wording).
+- pbui-workbench: `project` option threaded through every fragment rule.
+- Demo: `actions.ts` (19 types, ~60 rules + 1 family + fragment),
+  `snapshotForDemo` (conversation/program facts derived per subject;
+  generated records and program ids always; revision = JSON of the derived
+  facts), descriptor strip, registry wrapper removal, runtime wiring.
+- Tests: demo goldens re-pinned via the kernel (audit: 19 labels both
+  sides, only the disabled reorder row lost its verb); pbui-chat's
+  `descriptor.test.ts` resolves through the demo kernel with unchanged
+  assertions; ConversationsTile and the rest of pbui-chat passed without any
+  edit (their menus flow through ObjectMenu, which was already kernel-backed
+  since P2).
+
+### Why
+- P4's exit criterion is dynamic live contributions through the kernel with
+  routers untouched; the demo going fully kernel-native also derisks the
+  final cleanup (one product already lives where PR 7 wants everyone).
+
+### What worked
+- The P2 investment paid out: pbui-chat's tile/menu component tests needed
+  zero changes because ObjectMenu had been the only door since P2.
+- Reusing the P0 semantic id derivation as the kernel ACTION ids kept
+  conceptual identity continuous across all three phases of the demo's
+  menus.
+
+### What didn't work
+- First typecheck failed six ways at once: a stale replace left two
+  `registry` exports in demo registry.ts (my python target text drifted from
+  the file); the demo compiled against stale dists (sandbox/workbench needed
+  a rebuild before their new exports resolved); two `as Values["row"]` test
+  casts needed `as unknown as` once the wrapper types tightened. All
+  mechanical; all fixed in one pass.
+
+### What I learned
+- The chat demo's conversation menu is the richest availability surface in
+  the repository (missing/active/open/waiting interactions) and it ported to
+  `test` functions over derived facts without losing a single reason string
+  — good evidence the condition/test split is expressive enough pre-P5.
+
+### What was tricky to build
+- `snapshotForDemo` had to read the conversation registry and library at
+  resolution time without leaking live objects into facts: everything copied
+  into plain booleans/numbers/arrays, and the revision built from exactly
+  those copies. The generated-actions liveness test then passes purely
+  because snapshots are rebuilt per resolution.
+
+### What warrants a second pair of eyes
+- The demo tile menu now sorts fragment rows (orders 10–30) before the two
+  agent rows (40, 41) — identical to the old order; but any product mixing
+  fragment rules with its own must mind the shared order space. Documented
+  in the fragment's docstring; worth a line in the playbook at P7.
+- `rulesFor`'s label-context cast (`as unknown as`) is the one place the
+  demo bypasses inference; acceptable for a builder-local cast, but the
+  helper should not be copied into pbui core as-is.
+
+### What should be done in the future
+- P5: abstract nodes + inherited inspect/watch where reuse is demonstrated;
+  scope stacks beyond the flat product scope.
+
+### Code review instructions
+- `git show 7f528d2` — read `demo/src/pbui/actions.ts` beside the stripped
+  descriptors in the parent commit; then the golden snapshot diff.
+- Full sweep: `pnpm -r build && pnpm -r test` (1228 tests).
+
+### Technical details
+- Suites: root 158, protocol 44, workbench 138, sandbox 107, datalab 531,
+  chat 237, demo 13.

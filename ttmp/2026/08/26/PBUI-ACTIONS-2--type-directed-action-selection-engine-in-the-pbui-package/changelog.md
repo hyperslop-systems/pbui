@@ -47,3 +47,8 @@ P2 complete (db3269e): kernel behind ObjectMenu with automatic legacy family, re
 
 P3 complete (e33f213): workbench contribution fragments with descriptor-parity suite; datalab field/datum/doc/stage migrated to kernel rules and a bounded family with optional descriptor callbacks; goldens re-pinned after an 82-row equivalence audit. 1226 tests green.
 
+
+## 2026-08-26
+
+P4 complete (7f528d2): createGeneratedActionsFamily replaces the sandbox wrapper; workbench fragment gains project option; all 19 chat-demo types migrate to kernel rules with no legacy family; goldens re-pinned after 19-label equivalence audit. 1228 tests green.
+
