@@ -87,6 +87,21 @@ A real publication tagged `latest` additionally requires the operator to enter
 `CONFIRM_LATEST`. Never force-overwrite a version; increment `version` in
 `package.json` and regenerate the lockfile instead.
 
+The package-specific **Publish Workbench Protocol**, **Publish PBUI
+Workbench**, **Publish PBUI Sandbox**, and **Publish PBUI Chat** workflows use
+the same immutable-version and `latest` confirmation gates. Publish a
+coordinated package set in dependency order:
+
+1. `@hyperslop-systems/pbui`
+2. `@hyperslop-systems/workbench-protocol`
+3. `@hyperslop-systems/pbui-workbench`
+4. `@hyperslop-systems/pbui-sandbox`
+5. `@hyperslop-systems/pbui-chat`
+
+Run every workflow as a dry run first. Use a prerelease dist-tag such as
+`next` while the package set is under integration review; promote with a new
+immutable version rather than overwriting an artifact.
+
 The separate **Publish Datalab UI** workflow applies the same gates to
 `@hyperslop-systems/datalab-ui`. It uses `pnpm publish` so the packed manifest
 rewrites the workspace PBUI dependency to a normal semver dependency before
