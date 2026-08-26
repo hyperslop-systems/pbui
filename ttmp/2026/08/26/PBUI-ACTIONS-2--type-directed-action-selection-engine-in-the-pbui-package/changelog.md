@@ -27,3 +27,8 @@ Wrote the intern implementation guide: HEAD system tour, drift-audit table, kern
 
 Committed guide/diary/tasks (44e4904) and uploaded 'PBUI-ACTIONS-2 Action Kernel Implementation Guide.pdf' (intern guide + source guide) to /ai/2026/08/26/PBUI-ACTIONS-2 on the reMarkable.
 
+
+## 2026-08-26
+
+P0 complete (fbfa492): semantic verb-derived action ids in both adapters (collision guard caught a real conversation-menu duplicate), 18 golden menu snapshots across datalab-ui/workbench/chat-demo, exported+frozen conversion arrays, sandbox liveness test. All six suites green (1119 tests).
+
