@@ -50,8 +50,8 @@ rather than reads has to memoise. `selectToolTraffic` and `selectWaiting` do.
 A runtime is captured rather than constructed: `ConversationHost` (rendered
 by `chat.Provider`) mounts one `<ChatProvider>` per open conversation outside
 every tile, and `ChatRuntimeScope` re-provides it to whatever tile is showing
-the conversation. `createToolRuntime` is not reachable through
-chat-provider 0.5.0's export paths, which is the whole reason; see
+the conversation. `createToolRuntime` is not reachable through the installed chat-provider's
+export paths, which is the whole reason; see
 `conversations/runtime.ts`.
 
 ## Verbs

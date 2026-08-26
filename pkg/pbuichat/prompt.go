@@ -200,7 +200,7 @@ func RenderRefsSuffix(refs []Reference, focus *Focus) string {
 	var b strings.Builder
 	b.WriteString("\n\n```pbui-refs\n")
 	for _, r := range refs {
-		b.WriteString(fmt.Sprintf("- %s:%s", r.Type, r.ID))
+		_, _ = fmt.Fprintf(&b, "- %s:%s", r.Type, r.ID)
 		if label, ok := r.Value["label"].(string); ok && label != "" {
 			b.WriteString(" (" + label + ")")
 		} else if name, ok := r.Value["name"].(string); ok && name != "" {
@@ -209,7 +209,7 @@ func RenderRefsSuffix(refs []Reference, focus *Focus) string {
 		b.WriteString("\n")
 	}
 	if focus != nil && focus.Reference != nil {
-		b.WriteString(fmt.Sprintf("focus: %s:%s\n", focus.Reference.Type, focus.Reference.ID))
+		_, _ = fmt.Fprintf(&b, "focus: %s:%s\n", focus.Reference.Type, focus.Reference.ID)
 	}
 	b.WriteString("```")
 	return b.String()

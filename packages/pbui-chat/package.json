@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/pbui-chat",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "PBUI-native chat: widget documents, typed mentions, human tools and a verb trace on top of @go-go-golems/chat-provider",
   "type": "module",
   "sideEffects": [
@@ -48,7 +48,7 @@
     "zod": "^4.4.0"
   },
   "peerDependencies": {
-    "@hyperslop-systems/pbui": ">=0.5.0",
+    "@hyperslop-systems/pbui": ">=0.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

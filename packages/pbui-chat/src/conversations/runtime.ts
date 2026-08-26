@@ -8,7 +8,7 @@ import type { ChatRuntimeContextValue } from "./providerTypes";
  * chat-provider exports. It cannot be written that way: `createChatClient`
  * requires a `ToolRuntime`, and `createToolRuntime` is not reachable through
  * any of the package's export paths (`.`, `/core`, `/store`, `/tools`,
- * `/widgets`, `/ws`, `/debug`) in 0.5.0 — nor are the `parseToolInput` /
+ * `/widgets`, `/ws`, `/debug`) — nor are the `parseToolInput` /
  * `parseToolResult` helpers it is built on, so vendoring it would mean
  * vendoring the registry's validation too.
  *
