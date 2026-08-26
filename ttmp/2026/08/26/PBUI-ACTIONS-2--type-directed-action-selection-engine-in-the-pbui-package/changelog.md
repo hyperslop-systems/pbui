@@ -32,3 +32,8 @@ Committed guide/diary/tasks (44e4904) and uploaded 'PBUI-ACTIONS-2 Action Kernel
 
 P0 complete (fbfa492): semantic verb-derived action ids in both adapters (collision guard caught a real conversation-menu duplicate), 18 golden menu snapshots across datalab-ui/workbench/chat-demo, exported+frozen conversion arrays, sandbox liveness test. All six suites green (1119 tests).
 
+
+## 2026-08-26
+
+P1 complete (b58e23b): pure action kernel under src/presentation/actions — type graph, availability quartet, conditions, rules/families, fail-fast registry, 16-step resolver with trace, fresh-perform evaluation, legacy family. 50 new tests; root suite 152 green.
+

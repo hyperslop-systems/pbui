@@ -310,3 +310,91 @@ action identity semantic"
 ### Technical details
 - Suites after P0: root 102, datalab-ui 531, pbui-workbench 131,
   pbui-sandbox 105, pbui-chat 237, chat demo 13 — all green.
+
+## Step 4: P1 — the pure action-selection kernel
+
+Implemented `src/presentation/actions/` in eleven modules plus six test
+files: identities (`ids.ts`), the four-state availability model
+(`availability.ts`), the validated nominal type graph with BFS shortest
+distances (`typeGraph.ts`), the fail-closed condition algebra with named
+predicates (`conditions.ts`), the contract types (`types.ts`), the
+`defineActions` factories making the exact/inherited payload distinction
+visible (`define.ts`), the fail-fast registry with guaranteed-collision
+rejection and potential-conflict diagnostics (`registry.ts`), the 16-step
+resolver with same-branch compact trace (`resolve.ts`), verbose trace
+materialization (`explain.ts`), fresh-perform evaluation (`perform.ts`), and
+the Amendment B legacy descriptor family (`legacy.ts`). Exported through
+`src/presentation/index.ts`. 50 kernel tests; root suite 152 green.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `b58e23b` — "PBUI-ACTIONS-2 P1: the pure action-selection
+kernel"
+
+### What I did
+- Wrote the kernel per the source guide §§7–18 with the intern guide's
+  amendments; method-syntax interfaces keep exact rules assignable to the
+  contribution union (bivariance where we need it).
+- Tests: graph (reflexive/transitive/diamond/cycle/isolated), conditions
+  (short-circuit first reason, fail-closed unknown predicate), registry
+  validation (nine rejection classes incl. rule-id-as-action-id and
+  guaranteed collisions), the §24.3 resolver table (specific-over-generic,
+  unavailable-suppresses, inapplicable-permits, hidden-suppresses,
+  scope/priority/ambiguity, invocation filter), families (stable candidate
+  ids, duplicate-key throw, static-vs-family override, unavailable instance),
+  invariants (permutation, unrelated-action isolation, bind-only-selected,
+  menu-order-never-precedence, label materialization), perform (§24.6 five
+  refusal cases plus fresh-verb proof), and the legacy family
+  (order/danger/reason preservation, namespaced actions, current-environment
+  re-expansion).
+- The legacy adapter design decision from the intern guide held: `subject:
+  "*"` families make the graph tolerate undeclared query types as isolated
+  nodes, so unmigrated products need no graph at all.
+
+### Why
+- PR 1 must be UI-independent so PR 2 can be reviewed purely as integration;
+  every semantic question is settled and tested here.
+
+### What worked
+- The resolver's trace-from-the-same-branch design made the hidden test
+  meaningful: the menu is empty AND the trace proves the suppression.
+
+### What didn't work
+- Two strict-TS rounds: a discriminated-union spread
+  (`status.code` inside a ternary chain) would not narrow — restructured to
+  an explicit entry object; and `.find()` in a test grabbed the type-stage
+  trace entry instead of the condition-stage one (filter by stage). Both
+  caught by tsc/vitest immediately.
+
+### What I learned
+- `Math.min(...pool.map(...))` over a partition then filter is clearer than a
+  sort for the ladder, and keeps ties visible for the ambiguity branch.
+
+### What was tricky to build
+- The `hidden` vs `inapplicable` split shows up in three distinct places
+  (status evaluation, partition retention, assembly skip) and the compiler
+  cannot prove `inapplicable` never reaches assembly — an explicit
+  unreachable throw documents the invariant instead of a cast.
+
+### What warrants a second pair of eyes
+- Ambiguity `because` values: the implementation reports
+  `incomparable-types` when tied candidates declare different types, else
+  `equal-priority`; `equal-specificity`/`equal-scope` are currently never
+  emitted. Semantically covered, but the union suggests finer reporting —
+  confirm this simplification or refine in PR 5 when real inheritance lands.
+- The type-unreachable-contributions-produce-no-trace choice (documented in
+  resolve.ts) trades §16 completeness for compactness.
+
+### What should be done in the future
+- P2: createPbui integration with optional `actions`/`snapshotFor`,
+  `performAction`, ambiguity row.
+
+### Code review instructions
+- Start at `resolve.ts` with the source guide §15 beside it; then
+  `registry.test.ts` and `resolve.test.ts` as the executable spec.
+- `pnpm vitest run src/presentation/actions` and `npx tsc --noEmit`.
+
+### Technical details
+- Root suite: 152 tests (102 pre-existing + 50 kernel).
