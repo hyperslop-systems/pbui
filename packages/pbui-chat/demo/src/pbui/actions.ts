@@ -17,7 +17,7 @@ import { workbenchTileContributions } from "@hyperslop-systems/pbui-workbench";
 import { createGeneratedActionsFamily } from "@hyperslop-systems/pbui-sandbox";
 import type { GeneratedActionFacts } from "@hyperslop-systems/pbui-sandbox";
 import { fromPresentationReference } from "@hyperslop-systems/pbui-chat";
-import { chat } from "../chat";
+import { conversationRecord } from "./conversationFacts";
 import { library } from "../sandbox";
 import type { Environment, PresentationType, Values } from "./types";
 import type { Verb } from "./verbs";
@@ -77,7 +77,7 @@ export function snapshotForDemo(
         ? (query.subject.value.value?.conversationId ?? "")
         : null;
   if (conversationId !== null) {
-    const snapshot = conversationId ? chat.conversations.get(conversationId) : null;
+    const snapshot = conversationId ? conversationRecord(conversationId) : null;
     conversation = snapshot
       ? {
           known: true,

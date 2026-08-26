@@ -23,7 +23,7 @@ import type {
 
 /* ------------------------------------------------------------- the query -- */
 
-export type ActionInvocation = "menu" | "primary" | "agent" | "introspection";
+export type ActionInvocation = "menu" | "primary" | "agent" | "introspection" | "accept";
 
 export interface ActionQuery<Values extends PresentationValues> {
   subject: PresentationReference<Values>;

@@ -4,6 +4,13 @@ export { createPbui, presentationTypes } from "./createPbui";
  * presentation runtime; nothing in the kernel imports React at runtime.
  */
 export * from "./actions";
+export { resolveAcceptance } from "./translators/resolve";
+export type {
+  AcceptanceOption,
+  AcceptanceResolution,
+  PresentationTranslator,
+  TranslatorId,
+} from "./translators/types";
 export { createPresentationRegistry } from "./registry";
 export type {
   CreatePbuiOptions,

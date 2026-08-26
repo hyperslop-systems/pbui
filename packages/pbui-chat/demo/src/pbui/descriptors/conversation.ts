@@ -1,4 +1,4 @@
-import { chat } from "../../chat";
+import { conversationRecord } from "../conversationFacts";
 import type { PresentationDescriptor } from "../registry";
 import { TONES } from "../types";
 
@@ -23,10 +23,10 @@ export const conversationDescriptor: PresentationDescriptor<"conversation"> = {
   ptype: "conversation",
   tone: TONES.conversation,
 
-  label: (ref) => chat.conversations.get(ref.id)?.title ?? ref.value?.title ?? `conversation ${ref.id.slice(0, 8)}`,
+  label: (ref) => conversationRecord(ref.id)?.title ?? ref.value?.title ?? `conversation ${ref.id.slice(0, 8)}`,
 
   describe: (ref) => {
-    const snapshot = chat.conversations.get(ref.id);
+    const snapshot = conversationRecord(ref.id);
     return {
       presentationType: "conversation",
       id: ref.id,

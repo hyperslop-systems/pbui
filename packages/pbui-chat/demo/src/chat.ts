@@ -20,6 +20,7 @@ import {
 } from "@hyperslop-systems/pbui-workbench";
 import { selectTimelineEntities } from "@go-go-golems/chat-provider";
 import { ConsumedApprovalStore } from "./approvalConsumption";
+import { registerConversationSource } from "./pbui/conversationFacts";
 import { pbui } from "./pbui/runtime";
 import { registry } from "./pbui/registry";
 import type { Environment, Values } from "./pbui/types";
@@ -359,3 +360,8 @@ export const chat = createPbuiChat<Values, Environment, Verb>({
   // the dry-run resolver is the same one the tiles use.
   sandbox: { resolve: resolveDemoBinding },
 });
+
+// PBUI-ACTIONS-2 P6: hand the conversation registry to the action snapshot
+// builder through the dependency-light slot (see pbui/conversationFacts.ts —
+// a direct import here would close the chat → runtime → actions → chat cycle).
+registerConversationSource(chat.conversations);
