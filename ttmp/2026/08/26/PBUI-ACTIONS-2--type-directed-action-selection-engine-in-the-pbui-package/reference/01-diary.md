@@ -486,3 +486,102 @@ behind ObjectMenu, zero product changes"
 ### Technical details
 - Suites: root 158, protocol 44, workbench 131, sandbox 105, datalab 531,
   chat 237, demo 13 — 1219 total, all green.
+
+## Step 6: P3 — workbench fragments and the datalab migration
+
+The exit criterion for this phase was "two materially different consumer
+styles prove the API", and both landed. pbui-workbench now exports
+contribution fragments (`workbenchTypeDefinitions`, `workbenchScopes`,
+`workbenchTileContributions()`) — the shared-package pattern replacing the
+deprecated `TileDescriptorOptions.extra` seam — with a parity suite pinning
+the fragment to `createTileDescriptor` row for row across five tile states.
+datalab-ui migrated field, datum, doc, and stage to kernel rules and one
+bounded family in a new `src/pbui/actions.ts`; the four descriptors dropped
+their `actions()` callbacks (now optional on the product descriptor
+interface), which is exactly how the legacy family knows to stay silent for
+them. `runtime.tsx` passes the product registry and `snapshotForDatalab`
+into `createPbui`.
+
+Equivalence audit before re-pinning goldens: 82 menu rows before and after,
+every label and every available verb byte-identical. Two deliberate semantic
+changes, both kernel-native: unavailable rows no longer carry verbs
+(bind-only-available), and "Make the ACTIVE chart" / "Switch to it" /
+"Group by + count on quantitative" are now `inapplicable` rather than
+conditionally-not-pushed — same visible menus, honest override semantics.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `e33f213` — "PBUI-ACTIONS-2 P3: workbench contribution
+fragments; datalab field/datum/doc/stage on kernel rules"
+
+### What I did
+- `packages/pbui-workbench/src/actions.ts` + tests; `extra` deprecated with
+  a pointer, deleted later with descriptor actions.
+- `packages/datalab-ui/src/pbui/actions.ts`: `DatalabFacts` (schema-only
+  derivation with a facts-derived revision string), field/datum/doc/stage
+  contributions, flat 15-type graph, registry composing the legacy family
+  with the new rules.
+- Four descriptor files stripped of actions; adapter guards optional
+  callbacks; runtime wired; both test files route migrated types through the
+  kernel via one dispatch helper so every behavioral assertion reads as
+  before.
+
+### Why
+- Partial migration had to be a first-class state: the optional-callback
+  convention (absent callback ⇒ rules are the only voice) gives a crisp,
+  testable rule for which engine speaks for a type, with no except-lists.
+
+### What worked
+- The golden-diff audit protocol: filter the snapshot diff down to
+  non-id/non-label lines, count label lines on both sides (82 = 82, no
+  singletons). The only surviving diff was `verb: undefined` on disabled
+  rows — reviewed and accepted as the kernel invariant.
+- Datalab's 519 non-menu tests (apps, organisms, effects, DuckDB) passed
+  untouched on the first post-migration run: the UI genuinely only spoke to
+  menus through the seams we replaced.
+
+### What didn't work
+- `define.exact("tile", …)` inside a generic `Values extends {tile:
+  TileRef}` function: TS cannot prove `"tile"` is a key of an unresolved
+  generic. Built against the canonical `{tile: TileRef}` and widened on
+  return with a documented cast; the constraint guarantees safety.
+- A python heredoc edit ran from the wrong cwd (shell had drifted into a
+  package dir) — FileNotFoundError, harmless, re-ran from the root. Same
+  cwd-drift lesson as the P0 git failure.
+
+### What I learned
+- The `inapplicable` state earned its keep on real product logic
+  immediately: three previously conditionally-pushed rows became declarative
+  tests, and their absence semantics (permits fallback) is now explicit
+  instead of accidental.
+
+### What was tricky to build
+- The facts/revision design: the revision string must name exactly the
+  derived facts so it moves iff they move; deriving it from the environment
+  object identity would have missed store changes behind stable closures.
+  Fields: activeDocId, targetDocId, fieldType, categoricalFields.
+
+### What warrants a second pair of eyes
+- `verb: undefined` on disabled golden rows is an API-visible change for
+  anything that read verbs off disabled rows (nothing in-repo does; the
+  goldens prove the menus; but external consumers of `actionsFor` shapes
+  should be checked at release notes time).
+- The datum family's action ids embed the field name
+  (`datum.keep.region`); names with unusual characters would produce odd
+  ids — the source guide's `stableActionSegment` encoder is deferred until a
+  real corpus needs it, noted here so it is a decision, not an oversight.
+
+### What should be done in the future
+- P4: chat demo descriptors → rules/families; sandbox wrapper → generated
+  family; re-audit chat internals post-TOOLCALL-1 first.
+
+### Code review instructions
+- `git show e33f213`; review `actions.ts` beside the four pre-migration
+  descriptors in the parent commit; then the golden snapshot diff.
+- `pnpm -r build && pnpm -r test` — 1226 tests.
+
+### Technical details
+- Suites: root 158, workbench 138, sandbox 105, datalab 531, chat 237,
+  demo 13, protocol 44.
