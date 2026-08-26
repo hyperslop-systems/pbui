@@ -13,6 +13,19 @@ import {
 import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
+import { createActionRegistry } from "./actions/registry";
+import type { ActionRegistry } from "./actions/registry";
+import { legacyDescriptorFamily } from "./actions/legacy";
+import type { LegacyFacts } from "./actions/legacy";
+import { evaluateFresh } from "./actions/perform";
+import { createPresentationTypeGraph } from "./actions/typeGraph";
+import type {
+  ActionQuery,
+  PerformResult,
+  ResolutionResult,
+  ResolvedAction,
+  SelectionSnapshot,
+} from "./actions/types";
 import type { PresentationRegistry } from "./registry";
 import type {
   AcceptRequest,
@@ -27,6 +40,7 @@ export interface CreatePbuiOptions<
   Values extends PresentationValues,
   Environment,
   Verb,
+  ProductFacts = LegacyFacts<Environment>,
 > {
   registry: PresentationRegistry<Values, Environment, Verb>;
   defaultEnvironment: Environment;
@@ -36,6 +50,23 @@ export interface CreatePbuiOptions<
     environment: Environment,
     label: ReactNode,
   ) => ReactNode;
+  /**
+   * The action-selection kernel (PBUI-ACTIONS-2). OPTIONAL, and absence is
+   * not a second engine: when a product passes no registry, `createPbui`
+   * builds one internally around `legacyDescriptorFamily`, which routes the
+   * descriptor `actions()` callbacks through the same resolver. One live
+   * selection engine either way; the legacy path exists for one migration
+   * window and is deleted with descriptor actions in the final cleanup.
+   *
+   * `actions` and `snapshotFor` come together: the kernel never reads live
+   * stores, so a product supplying its own registry must also say how a
+   * query's immutable fact snapshot is built from the environment.
+   */
+  actions?: ActionRegistry<Values, ProductFacts, Verb>;
+  snapshotFor?(
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ): SelectionSnapshot<ProductFacts>;
 }
 
 export interface PbuiProviderProps<
@@ -173,16 +204,78 @@ export interface PbuiContextValue<
   closeMenu(): void;
   mouseDoc: string | null;
   setMouseDoc(text: string | null): void;
+  /**
+   * Raw verb delegation for chrome buttons and toolbars that construct their
+   * verbs at click time from live props — that path never had the stale-menu
+   * problem. Menu-derived actions must go through `performAction`, which
+   * revalidates.
+   */
   perform(verb: Verb): void | Promise<void>;
+  /** Resolve a query against the current environment's snapshot. Pure. */
+  resolve(query: ActionQuery<Values>): ResolutionResult<Values, Verb>;
+  /**
+   * Fresh revalidation, then delegation (PBUI-ACTIONS-2 Amendment A): the
+   * query re-resolves against a fresh snapshot; the same candidate must still
+   * win its action partition and be available; the FRESH verb is delegated.
+   * Refusals never reach `onPerform`.
+   */
+  performAction(action: ResolvedAction<Values, Verb>): Promise<PerformResult>;
 }
 
-export function createPbui<Values extends PresentationValues, Environment, Verb>({
+export function createPbui<
+  Values extends PresentationValues,
+  Environment,
+  Verb,
+  ProductFacts = LegacyFacts<Environment>,
+>({
   registry,
   defaultEnvironment,
   conversions = [],
   renderMenuHeader,
-}: CreatePbuiOptions<Values, Environment, Verb>) {
+  actions,
+  snapshotFor,
+}: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
+
+  if (actions !== undefined && snapshotFor === undefined) {
+    throw new Error(
+      "createPbui: `actions` requires `snapshotFor` — the kernel never reads " +
+        "live stores, so the product must build the query's fact snapshot",
+    );
+  }
+
+  const EMPTY_MODES: ReadonlySet<string> = new Set();
+  const EMPTY_CAPABILITIES: ReadonlySet<string> = new Set();
+
+  // One live selection engine. Absent product options mean the internal
+  // legacy pair, whose ProductFacts is LegacyFacts<Environment> — which is
+  // exactly what the default type parameter says, making the casts honest.
+  const actionEngine: ActionRegistry<Values, ProductFacts, Verb> =
+    actions ??
+    (createActionRegistry<Values, LegacyFacts<Environment>, Verb>({
+      graph: createPresentationTypeGraph([]),
+      scopes: ["global"],
+      contributions: [
+        legacyDescriptorFamily<Values, Environment, Verb>({
+          id: "legacy.descriptor-actions",
+          descriptors: registry,
+        }),
+      ],
+    }) as unknown as ActionRegistry<Values, ProductFacts, Verb>);
+
+  const snapshotOf: (
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ) => SelectionSnapshot<ProductFacts> =
+    snapshotFor ??
+    ((_query, environment) =>
+      ({
+        revision: 0,
+        scopes: ["global"],
+        modes: EMPTY_MODES,
+        capabilities: EMPTY_CAPABILITIES,
+        product: { environment },
+      }) as SelectionSnapshot<LegacyFacts<Environment>> as SelectionSnapshot<ProductFacts>);
 
   function acceptedReference(
     request: AcceptRequest<Values>,
@@ -267,6 +360,21 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         perform: (verb) => {
           setMenu(null);
           return onPerform(verb);
+        },
+        resolve: (query) => actionEngine.resolve(query, snapshotOf(query, environment)),
+        performAction: async (stale) => {
+          setMenu(null);
+          const fresh = actionEngine.resolve(stale.query, snapshotOf(stale.query, environment));
+          const decision = evaluateFresh(stale, fresh);
+          if (decision.kind !== "proceed") return decision;
+          try {
+            // Called synchronously within the click segment; the fresh verb,
+            // never the stale one.
+            await onPerform(decision.verb);
+            return { kind: "delegated" };
+          } catch (error) {
+            return { kind: "failed", error };
+          }
         },
       }),
       [
@@ -506,7 +614,15 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     if (!pbui.menu) return null;
 
     const { reference, x, y } = pbui.menu;
-    const actions = registry.actionsFor(reference, pbui.environment);
+    /*
+     * The menu resolves through the kernel on every render — same
+     * recompute-on-render property the descriptor path had, now with
+     * override, ambiguity, and trace semantics. A rendered menu is not
+     * durable authority: clicking a row goes through `performAction`, which
+     * re-resolves before anything is delegated.
+     */
+    const resolution = pbui.resolve({ subject: reference, invocation: "menu" });
+    const menuActions = resolution.actions;
     const label = registry.labelFor(reference, pbui.environment);
     const left = Math.max(0, Math.min(x, window.innerWidth - 300));
     const top = Math.max(0, Math.min(y, window.innerHeight - 340));
@@ -543,39 +659,47 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
             </>
           )}
         </header>
-        {actions.length === 0 ? (
+        {menuActions.length === 0 && resolution.ambiguities.length === 0 ? (
           <div data-part="menu-item">No actions available</div>
         ) : (
-          actions.map((action) => (
-            <button
-              type="button"
-              role="menuitem"
-              key={action.id}
-              data-part="menu-item"
-              data-danger={action.danger || undefined}
-              /*
-               * Every one of these reads ONE field, and that is the point.
-               *
-               * P2 fixed this render by guarding the reason on `disabled`
-               * rather than on the reason existing. P3.1 removed the guard's
-               * reason to exist: with `disabledBecause` merged, the field being
-               * set MEANS disabled, so there is nothing left to disagree.
-               *
-               * That collapse is the test for whether a merge was real. If the
-               * downstream guards had multiplied instead of disappearing, the
-               * two fields would still have been two concepts wearing one name.
-               */
-              disabled={action.disabledBecause !== undefined}
-              title={action.disabledBecause ?? action.description}
-              onClick={() => pbui.perform(action.verb)}
-            >
-              {action.label}
-              {action.disabledBecause && (
-                <span data-part="menu-reason"> — {action.disabledBecause}</span>
-              )}
-            </button>
-          ))
+          menuActions.map((action) => {
+            /*
+             * One field still drives disabled, title, and the visible reason —
+             * the `disabledBecause` invariant survived the kernel migration as
+             * the `unavailable` status: present ⇔ disabled, and the string is
+             * why. An unavailable action has no verb; `performAction` would
+             * refuse it even if the DOM disabled attribute were bypassed.
+             */
+            const because =
+              action.status.kind === "unavailable" ? action.status.because : undefined;
+            return (
+              <button
+                type="button"
+                role="menuitem"
+                key={action.candidateId}
+                data-part="menu-item"
+                data-danger={action.danger || undefined}
+                disabled={because !== undefined}
+                title={because ?? action.description}
+                onClick={() => void pbui.performAction(action)}
+              >
+                {action.label}
+                {because && <span data-part="menu-reason"> — {because}</span>}
+              </button>
+            );
+          })
         )}
+        {resolution.ambiguities.map((ambiguity) => (
+          /*
+           * A tie the declarations do not decide is DATA, not a guess. The row
+           * is deliberately not a button: an ambiguous action — least of all a
+           * destructive one — must never execute. data-part="menu-ambiguity"
+           * is its styling hook.
+           */
+          <div key={ambiguity.action} data-part="menu-ambiguity" role="note">
+            {ambiguity.candidates.length} rules tie for {ambiguity.action} — nothing runs
+          </div>
+        ))}
       </div>
     );
   }
