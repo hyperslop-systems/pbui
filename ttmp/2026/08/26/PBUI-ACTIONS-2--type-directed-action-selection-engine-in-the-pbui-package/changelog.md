@@ -52,3 +52,8 @@ P3 complete (e33f213): workbench contribution fragments with descriptor-parity s
 
 P4 complete (7f528d2): createGeneratedActionsFamily replaces the sandbox wrapper; workbench fragment gains project option; all 19 chat-demo types migrate to kernel rules with no legacy family; goldens re-pinned after 19-label equivalence audit. 1228 tests green.
 
+
+## 2026-08-26
+
+P5 complete (37b51d6): inspectable/watchable abstract nodes replace eight datalab rules with two inherited declarations; stage inherits Inspect only; goldens re-pinned as pure id substitution; provenance tests pin distance-1 inheritance. Demo deliberately stays flat (per-type menu positions). 1230 tests green.
+

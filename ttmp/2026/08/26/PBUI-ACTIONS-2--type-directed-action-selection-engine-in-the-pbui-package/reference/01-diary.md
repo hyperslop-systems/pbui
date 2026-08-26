@@ -684,3 +684,69 @@ the kernel; no legacy family left in the demo"
 ### Technical details
 - Suites: root 158, protocol 44, workbench 138, sandbox 107, datalab 531,
   chat 237, demo 13.
+
+## Step 8: P5 — inheritance where duplication proved it
+
+The source guide's rule for this phase — "introduce real abstract runtime
+nodes only for demonstrated reuse" — had exactly one qualifying case in the
+migrated code: every kernel-migrated datalab type carried an identical
+Inspect rule, and three carried an identical Watch rule. Two abstract nodes
+(`inspectable`, `watchable`) and two inherited declarations
+(`datalab.inspect`, `datalab.watch`) replaced the eight per-type rules.
+Stage is inspectable but deliberately not watchable: its menu never offered
+Watch, and inheritance must not add rows as a side effect of refactoring.
+Legacy-family types declare no parents so their descriptor-driven menus
+cannot double. The chat demo deliberately stayed flat — its Inspect rows sit
+at wildly different menu positions per type (first on product, ninth on
+conversation), so a single inherited order would have reordered menus; that
+is a finding about inheritance's limits, not a failure.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `37b51d6`
+
+### What I did
+- Datalab graph: abstract nodes + parents on the four migrated types;
+  `inheritedContributions()`; deleted the eight per-type rules; orders 13/14
+  chosen so all four menus keep their exact row order (checked by goldens).
+- Goldens re-pinned; diff audited as pure id substitution; two new tests pin
+  the inheritance semantics: provenance `{declaredType: "inspectable",
+  typeDistance: 1}`, the inherited verb still naming the concrete ptype, and
+  stage's absence of Watch.
+
+### Why
+- This is the phase that proves inheritance delivers value beyond exact
+  migration — one declaration now serves four types, and a fifth migrated
+  type gets Inspect/Watch by declaring two parents.
+
+### What worked
+- The kernel needed zero changes: graph, resolver, and provenance handled
+  the first real inheritance exactly as the P1 unit tests promised.
+
+### What didn't work
+- The identity-pattern test asserted `^datalab\.field\.` for every field row
+  and failed on `datalab.inspect` — the pattern was over-narrow for
+  inherited rules; relaxed to `^datalab\.` with a comment.
+
+### What was tricky to build
+- Choosing inherited menu orders that preserve four different menus' row
+  sequences with one number pair (13/14) — verified by goldens rather than
+  argued.
+
+### What warrants a second pair of eyes
+- The demo-stays-flat decision: if the team wants inherited inspect there
+  too, menu order must become per-type overridable first (a rule-level
+  metadata override on inherited rules is a plausible P7+ addition).
+- Scope stacks and modes remain static in both products; the kernel supports
+  dynamic stacks (P1 tests) but no product surface demands one yet — noted
+  as deliberately unexercised, not missing.
+
+### What should be done in the future
+- P6: typed translators replacing the two ordered conversions; chooser
+  surface.
+
+### Code review instructions
+- `git show 37b51d6`; the golden diff is the equivalence proof; the two new
+  tests are the semantics proof.
