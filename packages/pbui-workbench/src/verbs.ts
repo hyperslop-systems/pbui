@@ -901,7 +901,14 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     const inlineDivider = rootElement ? dividerSize(rootElement, true) : DEFAULT_DIVIDER_PX;
     const blockDivider = rootElement ? dividerSize(rootElement, false) : DEFAULT_DIVIDER_PX;
     if (!layoutFits(effective, box?.width || null, box?.height || null, inlineDivider, blockDivider)) return null;
-    const built = buildLayout(effective);
+    const singletonAppIds = new Set(apps.list().filter((app) => app.singleton).map((app) => app.id));
+    const existingViewsByAppId = new Map<string, string>();
+    for (const view of Object.values(doc().views)) {
+      if (singletonAppIds.has(view.appId) && !existingViewsByAppId.has(view.appId)) {
+        existingViewsByAppId.set(view.appId, view.id);
+      }
+    }
+    const built = buildLayout(effective, { singletonAppIds, existingViewsByAppId });
     const workspaceId = options.workspaceId ?? newId("ws");
     if (!store.mutate([...built.mutations, workspaceCreateMutation(workspaceId, name, built.tree)])) return null;
     if (options.select !== false) selectWorkspace(workspaceId);

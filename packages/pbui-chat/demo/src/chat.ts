@@ -19,6 +19,7 @@ import {
   type WorkbenchVerb,
 } from "@hyperslop-systems/pbui-workbench";
 import { selectTimelineEntities } from "@go-go-golems/chat-provider";
+import { ConsumedApprovalStore } from "./approvalConsumption";
 import { pbui } from "./pbui/runtime";
 import { registry } from "./pbui/registry";
 import type { Environment, Values } from "./pbui/types";
@@ -126,7 +127,7 @@ function approvedSend(confirmationId: string, target: string, prompt: string): b
   return false;
 }
 
-const consumedApprovals = new Set<string>();
+const consumedApprovals = new ConsumedApprovalStore();
 const reservedApprovals = new Map<string, string>();
 const demoApprovalLedger: ApprovalLedger = {
   async lookup(id) {
@@ -161,7 +162,13 @@ const demoApprovalLedger: ApprovalLedger = {
     if (consumedApprovals.has(capability.id)) return "already-finalized";
     if (reservedApprovals.get(capability.id) !== effectId) return "wrong-effect";
     reservedApprovals.delete(capability.id);
-    consumedApprovals.add(capability.id);
+    try {
+      consumedApprovals.add(capability.id);
+    } catch (error) {
+      // The in-memory mark is installed before persistence. A committed effect
+      // remains non-reusable in this page even when storage quota is exhausted.
+      console.error("pbui-chat demo: could not persist consumed approval", error);
+    }
     return "finalized";
   },
   async release(capability, effectId) {

@@ -55,11 +55,18 @@ export function emptyDocument(options: LayoutOptions = {}): WorkbenchDocument {
 
 /** What `buildLayout` produces: the views to create, and the tree that places them. */
 export interface BuiltLayout {
-  /** `viewCreate` per tile, in reading order. */
+  /** `viewCreate` per newly minted tile, in reading order. */
   mutations: Mutation[];
   /** The placement tree, ready for a `workspaceCreate`. */
   tree: Node;
   views: { viewId: string; appId: string; title?: string }[];
+}
+
+export interface BuildLayoutOptions {
+  /** Applications whose logical view must be shared rather than minted twice. */
+  singletonAppIds?: ReadonlySet<string>;
+  /** Existing singleton view to place when the application is already present. */
+  existingViewsByAppId?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -67,12 +74,25 @@ export interface BuiltLayout {
  * workspace, so the same builder serves `layout()` (one workspace over an
  * empty document), `workspaces()` (several), and the `workspace.create` verb
  * (one more inside a document that already exists).
+ *
+ * The optional singleton knowledge belongs to the caller because a bare
+ * `LayoutSpec` has no application registry. When supplied, an existing
+ * singleton is referenced and repeated singleton leaves in one spec share
+ * the first view created for that application.
  */
-export function buildLayout(spec: LayoutSpec): BuiltLayout {
+export function buildLayout(spec: LayoutSpec, options: BuildLayoutOptions = {}): BuiltLayout {
   const mutations: Mutation[] = [];
   const views: BuiltLayout["views"] = [];
+  const singletonViews = new Map(options.existingViewsByAppId);
   const build = (node: LayoutSpec): Node => {
     if (node.kind === "tile") {
+      if (options.singletonAppIds?.has(node.appId)) {
+        const existing = singletonViews.get(node.appId);
+        if (existing) {
+          views.push({ viewId: existing, appId: node.appId, ...(node.title ? { title: node.title } : {}) });
+          return leafNode(existing);
+        }
+      }
       const view = create(AppViewSchema, {
         id: newId("v"),
         appId: node.appId,
@@ -81,6 +101,7 @@ export function buildLayout(spec: LayoutSpec): BuiltLayout {
       });
       mutations.push(create(MutationSchema, { body: { case: "viewCreate", value: { view } } }));
       views.push({ viewId: view.id, appId: node.appId, ...(node.title ? { title: node.title } : {}) });
+      if (options.singletonAppIds?.has(node.appId)) singletonViews.set(node.appId, view.id);
       return leafNode(view.id);
     }
     // Both children are built BEFORE the split so viewCreate mutations land

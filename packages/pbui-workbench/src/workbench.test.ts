@@ -491,6 +491,37 @@ describe("workspaces (5.B)", () => {
     expect(leaves(workspaceTree(wb.store.getState().document, id!)).length).toBe(2);
   });
 
+  it("reuses one singleton view across existing and repeated workspace leaves", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+    });
+    const original = Object.values(wb.store.getState().document.views).find((view) => view.appId === "notes")!.id;
+
+    const id = wb.verbs.createWorkspace(
+      "shared singleton",
+      split("row", 0.5, tile("notes"), tile("notes")),
+    )!;
+    const doc = wb.store.getState().document;
+    const viewIds = leaves(workspaceTree(doc, id)).map((leaf) => (leaf.body.value as { viewId: string }).viewId);
+
+    expect(viewIds).toEqual([original, original]);
+    expect(Object.values(doc.views).filter((view) => view.appId === "notes")).toHaveLength(1);
+  });
+
+  it("shares a singleton first minted inside a repeated workspace layout", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const id = wb.verbs.createWorkspace(
+      "new singleton",
+      split("row", 0.5, tile("notes"), tile("notes")),
+    )!;
+    const doc = wb.store.getState().document;
+    const viewIds = leaves(workspaceTree(doc, id)).map((leaf) => (leaf.body.value as { viewId: string }).viewId);
+
+    expect(new Set(viewIds).size).toBe(1);
+    expect(Object.values(doc.views).filter((view) => view.appId === "notes")).toHaveLength(1);
+  });
+
   it("creates a one-tile workspace of the first app when no spec is given", () => {
     const wb = createWorkbench({ apps: demoApps, initial: singleTile("notes") });
     const id = wb.verbs.createWorkspace("scratch");

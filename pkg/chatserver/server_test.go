@@ -136,6 +136,35 @@ func TestLowStockProducesRefsAndWidgets(t *testing.T) {
 	}
 }
 
+func TestFailedMessageSubmissionDoesNotAdvanceSessionIndex(t *testing.T) {
+	server, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	// Force the real-runtime request builder down a deterministic missing
+	// profile path. The request must fail before the chat service accepts it.
+	server.real = &realRuntimeFactory{profile: "pbui-test-profile-that-does-not-exist"}
+
+	raw, err := json.Marshal(map[string]any{"prompt": "must not count"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.Post(ts.URL+"/api/chat/sessions/"+sid+"/messages", "application/json", bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+
+	records, err := server.sessions.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].MessageCount != 0 {
+		t.Fatalf("records = %+v, want one session with message_count 0", records)
+	}
+}
+
 func TestAttachmentsArePreservedInScriptedMessages(t *testing.T) {
 	server, ts := newTestServer(t)
 	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)

@@ -44,6 +44,51 @@ describe("useProgramInstance", () => {
     expect(kinds).toEqual(expect.arrayContaining(["load", "render", "event", "intent"]));
   });
 
+  test("serializes rapid events so each handler observes the preceding plugin state", async () => {
+    const base = createEvalEngine();
+    let calls = 0;
+    let releaseFirst!: () => void;
+    const firstBlocked = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const engine = {
+      ...base,
+      async event(input: Parameters<typeof base.event>[0]) {
+        const intents = await base.event(input);
+        calls += 1;
+        if (calls === 1) await firstBlocked;
+        return intents;
+      },
+    };
+    const states = createProgramStateStore();
+    const instances = createInstanceRegistry();
+    const { result } = renderHook(() =>
+      useProgramInstance({
+        engine,
+        program: record(COUNTER_PROGRAM),
+        viewId: "v-queued",
+        placementId: "n-queued",
+        states,
+        instances,
+        documents: NONE,
+        env: NONE,
+        perform: async () => "performed",
+      }),
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    act(() => {
+      result.current.onEvent("main", { handler: "increment" });
+      result.current.onEvent("main", { handler: "increment" });
+    });
+    await waitFor(() => expect(calls).toBe(1));
+    releaseFirst();
+
+    await waitFor(() => expect(states.get("v-queued")).toEqual({ value: 2 }));
+    expect(calls).toBe(2);
+    expect(instances.timeline().filter((entry) => entry.kind === "event")).toHaveLength(2);
+  });
+
   test("a verb intent is performed with the program as provenance", async () => {
     const engine = createEvalEngine();
     const states = createProgramStateStore();

@@ -90,6 +90,10 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
   onErrorRef.current = onError;
   const performRef = useRef(perform);
   performRef.current = perform;
+  // Browser events are fire-and-forget to React, but state transitions are
+  // sequential inside one logical view. Chaining here ensures event N+1
+  // reads the plugin state produced by event N and cannot overtake its verbs.
+  const eventQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const bumpTimings = useCallback(
     (patch: Partial<InstanceTimings>) => {
@@ -255,10 +259,13 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
     (widgetId: string, ref: UIEventRef, payload?: unknown) => {
       const instanceId = instanceRef.current;
       if (!instanceId || !meta || !globalState || !programId) return;
-      void (async () => {
+      const args = payload ?? ref.args;
+      const run = async () => {
+        // A queued event from an instance disposed by a program update must
+        // not execute against the replacement instance or mutate its state.
+        if (instanceRef.current !== instanceId) return;
         let intents: DispatchIntent[];
         const started = clock();
-        const args = payload ?? ref.args;
         try {
           intents = await engine.event({ instanceId, widgetId, handler: ref.handler, args, pluginState: states.get(viewId) ?? {}, globalState });
         } catch (raw) {
@@ -274,12 +281,20 @@ export function useProgramInstance(options: UseProgramInstanceOptions): ProgramI
             if (applied) states.set(viewId, next);
             instances.record({ kind: "intent", viewId, programId, version, instanceId, intent, outcome: applied ? "applied" : "ignored" });
           } else if (intent.scope === "verb") {
-            const outcome = await performRef.current(intent.verb, { provenance: { programId } });
-            const performed = outcome === "performed";
-            instances.record({ kind: "intent", viewId, programId, version, instanceId, intent, outcome: performed ? "performed" : "rejected", ...(performed ? {} : { detail: outcome }) });
+            try {
+              const outcome = await performRef.current(intent.verb, { provenance: { programId } });
+              const performed = outcome === "performed";
+              instances.record({ kind: "intent", viewId, programId, version, instanceId, intent, outcome: performed ? "performed" : "rejected", ...(performed ? {} : { detail: outcome }) });
+            } catch (raw) {
+              fail(raw, "event");
+              return;
+            }
           }
         }
-      })();
+      };
+      // Recover the chain before each append as a second line of defence: a
+      // reporting callback must not permanently wedge this view's event loop.
+      eventQueueRef.current = eventQueueRef.current.catch(() => undefined).then(run);
     },
     [engine, meta, globalState, programId, version, states, viewId, instances, fail, bumpTimings],
   );

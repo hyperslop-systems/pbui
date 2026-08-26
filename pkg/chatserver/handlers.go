@@ -1,6 +1,7 @@
 package chatserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -228,9 +229,6 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := s.sessions.Touch(r.Context(), string(sid), time.Now(), true); err != nil {
-		log.Warn().Err(err).Str("session_id", string(sid)).Msg("pbui-chat: could not index the message")
-	}
 	if s.real != nil {
 		req, err := s.real.promptRequest(r.Context(), sid, prompt+pbuichat.RenderRefsSuffix(in.Refs, in.Focus))
 		if err != nil {
@@ -243,6 +241,7 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		s.touchAcceptedMessage(r.Context(), sid)
 		writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "running"})
 		return
 	}
@@ -254,7 +253,14 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	s.touchAcceptedMessage(r.Context(), sid)
 	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "running"})
+}
+
+func (s *Server) touchAcceptedMessage(ctx context.Context, sid sessionstream.SessionId) {
+	if err := s.sessions.Touch(ctx, string(sid), time.Now(), true); err != nil {
+		log.Warn().Err(err).Str("session_id", string(sid)).Msg("pbui-chat: could not index the message")
+	}
 }
 
 // HandleStopSession cancels the active run.
