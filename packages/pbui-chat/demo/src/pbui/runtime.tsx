@@ -1,4 +1,6 @@
 import { createPbui, type PresentationReference } from "@hyperslop-systems/pbui";
+import { demoActionRegistry, snapshotForDemo } from "./actions";
+import type { DemoFacts } from "./actions";
 import { registry } from "./registry";
 import { DEFAULT_ENVIRONMENT, type Environment, type RowValue, type Values } from "./types";
 import type { Verb } from "./verbs";
@@ -28,9 +30,12 @@ export function rowToProduct(reference: PresentationReference<Values>): Presenta
 /** Frozen by tests (PBUI-ACTIONS-2 P0) before typed translators replace this. */
 export const demoConversions = [rowToProduct] as const;
 
-export const pbui = createPbui<Values, Environment, Verb>({
+export const pbui = createPbui<Values, Environment, Verb, DemoFacts>({
   registry,
   defaultEnvironment: DEFAULT_ENVIRONMENT,
+  // PBUI-ACTIONS-2 P4: all nineteen types resolve through the kernel.
+  actions: demoActionRegistry,
+  snapshotFor: snapshotForDemo,
   conversions: demoConversions,
   renderMenuHeader: (reference, _environment, label) => (
     <>

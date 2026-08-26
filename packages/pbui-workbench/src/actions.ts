@@ -50,26 +50,36 @@ export const workbenchTypeDefinitions: readonly PresentationTypeDefinition[] = [
 
 export const workbenchScopes: readonly ScopeId[] = ["workbench"];
 
-export interface WorkbenchTileContributionOptions {
+export interface WorkbenchTileContributionOptions<TileValue = TileRef> {
   /** Offer "Show something else here…" through the per-pane launcher. Default true. */
   launcher?: boolean;
+  /**
+   * Project the product's tile value onto the canonical `TileRef`. Products
+   * whose `<tile>` presentation carries a different shape (the chat layer's
+   * wire reference, for one) supply the mapping here and consume the shared
+   * rules unchanged. Default: the value already IS a TileRef.
+   */
+  project?(value: TileValue): TileRef;
 }
 
 export function workbenchTileContributions<
-  Values extends { tile: TileRef },
+  Values extends { tile: unknown },
   ProductFacts,
 >(
-  options: WorkbenchTileContributionOptions = {},
+  options: WorkbenchTileContributionOptions<Values["tile"]> = {},
 ): readonly ActionContribution<Values, ProductFacts, WorkbenchVerb>[] {
   /*
-   * Built against the canonical `{tile: TileRef}` and widened on return: the
+   * Built against a canonical `{tile}` shape and widened on return: the
    * compiler cannot prove `"tile"` is a key of an unresolved `Values`, but
-   * the constraint guarantees it, and these rules read nothing beyond the
-   * TileRef payload the constraint pins.
+   * the constraint guarantees it, and every rule reads the payload only
+   * through `project`, which pins the shape.
    */
   type TileValues = { tile: TileRef };
   const define = defineActions<TileValues, ProductFacts, WorkbenchVerb>();
   const useLauncher = options.launcher ?? true;
+  const project = (options.project ?? ((value: unknown) => value as TileRef)) as (
+    value: unknown,
+  ) => TileRef;
 
   const contributions: ActionContribution<TileValues, ProductFacts, WorkbenchVerb>[] = [
     define.exact("tile", {
@@ -77,14 +87,14 @@ export function workbenchTileContributions<
       action: "tile.split.row",
       scopes: [...workbenchScopes],
       metadata: { label: "Split beside", order: 10 },
-      bind: ({ subject }) => workbenchVerbs.split(subject.value.placementId, "row"),
+      bind: ({ subject }) => workbenchVerbs.split(project(subject.value).placementId, "row"),
     }),
     define.exact("tile", {
       id: "workbench.tile.split-col",
       action: "tile.split.col",
       scopes: [...workbenchScopes],
       metadata: { label: "Split below", order: 11 },
-      bind: ({ subject }) => workbenchVerbs.split(subject.value.placementId, "col"),
+      bind: ({ subject }) => workbenchVerbs.split(project(subject.value).placementId, "col"),
     }),
   ];
 
@@ -99,7 +109,7 @@ export function workbenchTileContributions<
           description: "opens the launcher aimed at this tile",
           order: 12,
         },
-        bind: ({ subject }) => workbenchVerbs.openLauncher(subject.value.placementId),
+        bind: ({ subject }) => workbenchVerbs.openLauncher(project(subject.value).placementId),
       }),
     );
   }
@@ -110,7 +120,7 @@ export function workbenchTileContributions<
       action: "view.duplicate",
       scopes: [...workbenchScopes],
       test: ({ subject }) =>
-        subject.value.duplicable
+        project(subject.value).duplicable
           ? available()
           : unavailable("this application shows one view; splitting links a second tile to it"),
       metadata: {
@@ -118,7 +128,7 @@ export function workbenchTileContributions<
         description: "a second tile with its own state",
         order: 20,
       },
-      bind: ({ subject }) => workbenchVerbs.split(subject.value.placementId, "row"),
+      bind: ({ subject }) => workbenchVerbs.split(project(subject.value).placementId, "row"),
     }),
     define.exact("tile", {
       id: "workbench.tile.rename",
@@ -126,11 +136,13 @@ export function workbenchTileContributions<
       scopes: [...workbenchScopes],
       metadata: {
         label: ({ subject }) =>
-          (subject.value as TileRef).customTitle ? "Rename…" : "Name this tile…",
+          project(subject.value).customTitle ? "Rename…" : "Name this tile…",
         order: 21,
       },
-      bind: ({ subject }) =>
-        workbenchVerbs.setTitle(subject.value.viewId, subject.value.customTitle ?? ""),
+      bind: ({ subject }) => {
+        const tile = project(subject.value);
+        return workbenchVerbs.setTitle(tile.viewId, tile.customTitle ?? "");
+      },
     }),
     define.exact("tile", {
       id: "workbench.tile.linked-info",
@@ -138,27 +150,27 @@ export function workbenchTileContributions<
       scopes: [...workbenchScopes],
       // Informational on a linked view; simply not relevant on a lone one.
       test: ({ subject }) =>
-        subject.value.placementCount > 1
+        project(subject.value).placementCount > 1
           ? unavailable("this is a description, not an action")
           : inapplicable(),
       metadata: {
         label: ({ subject }) =>
-          `Shown in ${(subject.value as TileRef).placementCount} tiles`,
+          `Shown in ${project(subject.value).placementCount} tiles`,
         description: "the same view; changes appear in both",
         order: 22,
       },
-      bind: ({ subject }) => workbenchVerbs.goTo(subject.value.viewId),
+      bind: ({ subject }) => workbenchVerbs.goTo(project(subject.value).viewId),
     }),
     define.exact("tile", {
       id: "workbench.tile.close",
       action: "tile.close",
       scopes: [...workbenchScopes],
       test: ({ subject }) =>
-        subject.value.canClose
+        project(subject.value).canClose
           ? available()
           : unavailable("a workspace keeps at least one tile"),
       metadata: { label: "Close tile", danger: true, order: 30 },
-      bind: ({ subject }) => workbenchVerbs.close(subject.value.placementId),
+      bind: ({ subject }) => workbenchVerbs.close(project(subject.value).placementId),
     }),
   );
 
