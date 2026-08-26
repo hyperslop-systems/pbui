@@ -208,3 +208,105 @@ corrections captured durably.
 ### Technical details
 - Guide: `design-doc/01-intern-guide-implementing-the-action-selection-kernel-in-current-pbui.md`.
 - reMarkable: `/ai/2026/08/26/PBUI-ACTIONS-2`.
+
+## Step 3: P0 — freeze golden menus, make action identity semantic
+
+The implementation began with the migration fence. Both product adapters
+stopped manufacturing `${ptype}:${index}:${label}` ids and now derive identity
+from verb content (`ptype.kind[.discriminant]`), with a loud collision guard.
+Golden snapshot tests freeze the full menus of representative references in
+datalab-ui, pbui-workbench, and the chat demo; the two conversion arrays are
+exported and frozen; the sandbox gained an explicit generated-action liveness
+test. Six suites green: root 102, datalab-ui 531, workbench 131, sandbox 105,
+pbui-chat 237, demo 13.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Print out a brutalist work slip with the plan /
+different phases for the ticket. then before stsarting a phase, plrint a
+split about the phase, and print one when the phase is done. \n\ncommit at
+appropriate intervals and keep a detailed diary as you work (using the diary
+format from the skill)"
+
+**Assistant interpretation:** Begin implementing the ticket phase by phase,
+printing physical work slips (almanach thermal printer, brutalist theme) at
+plan/phase-start/phase-done boundaries, committing per phase, diarying as I
+go.
+
+**Inferred user intent:** Run the PBUI-ACTIONS-2 implementation as a properly
+instrumented workflow with physical progress artifacts, matching the
+work-slip discipline the OPTKIT-012–015 implementation tickets used.
+
+**Commit (code):** `fbfa492` — "PBUI-ACTIONS-2 P0: freeze golden menus, make
+action identity semantic"
+
+### What I did
+- Printed the ticket plan slip (8 phases) and P0 start/done slips; YAML
+  archived under `various/work-slips/`.
+- Restored the toolchain: `pnpm install` failed with 403 on
+  `@hyperslop-systems/plot` because the `~/.npmrc` GitHub Packages token is
+  stale; the gh CLI token works, so the install ran with
+  `npm_config_//npm.pkg.github.com/:_authToken=$(gh auth token)` — no edit to
+  the user's `~/.npmrc`. Built all workspace packages (`pnpm -r build`) so
+  cross-package test imports resolve.
+- `packages/datalab-ui/src/pbui/registry.ts` and
+  `packages/pbui-chat/demo/src/pbui/registry.ts`: verb-derived stable ids
+  with per-kind discriminants and a duplicate-id throw.
+- `runtime.tsx` in both products: conversions extracted/exported
+  (`catToField`/`datadropConversions`, `rowToProduct`/`demoConversions`).
+- New golden tests: `datalab-ui/test/menu-goldens.test.ts` (10 snapshots,
+  identity-shape assertions, conversion freeze),
+  `pbui-workbench/src/tileDescriptor.golden.test.ts` (4 snapshots incl.
+  informational row and `extra` composition),
+  `pbui-chat/demo/src/pbui/menu-goldens.test.ts` (4 snapshots, live-library
+  liveness through the real registry, conversion freeze).
+- `pbui-sandbox/src/actions.test.ts`: explicit liveness test (define after
+  registry build → next menu; remove → gone).
+
+### Why
+- P0 exists so every later PR is reviewed as equivalence against recorded
+  behavior; the id fix had to precede the snapshots or the goldens would have
+  fossilized positional identity (intern guide Amendment D).
+
+### What worked
+- The collision guard proved itself within minutes: pbui-chat's own
+  conversation tests hit `duplicate action id "conversation.view.open"` — the
+  conversation menu emits one open-tile entry per app, a duplicate the old
+  positional ids silently tolerated. Fixed with a `view.open → appId`
+  discriminant.
+
+### What didn't work
+- First full datalab-ui run: 11 files failed with unresolved
+  `@hyperslop-systems/workbench-protocol` — unbuilt workspace dep, not my
+  change; `pnpm -r build` fixed it. Recorded because the same trap will hit
+  every fresh checkout.
+- `pnpm install --frozen-lockfile`: `ERR_PNPM_FETCH_403` on plot (stale
+  token), fixed via env-var token override as above.
+
+### What I learned
+- pbui-chat's `src/conversations` tests import the *demo* registry, so demo
+  adapter changes propagate further than the demo — good: the fence is wider
+  than expected.
+
+### What was tricky to build
+- Choosing discriminants without over-qualifying: ids must be stable per
+  (reference, conceptual action), so discriminants use only fields that
+  distinguish same-kind siblings within one menu (channel, dir, decision,
+  zone, appId…), never payload ids that vary per subject.
+
+### What warrants a second pair of eyes
+- The discriminant tables are enumerated by hand; a new same-kind sibling in
+  a future menu will throw at menu-open time. That is the designed behavior
+  (loud beats silently wrong), but confirm the team accepts runtime throws
+  here until PR 3/4 replace the adapters entirely.
+
+### What should be done in the future
+- P1: the pure kernel under `src/presentation/actions/`.
+
+### Code review instructions
+- `git show fbfa492`; run `pnpm -r build && pnpm -r test` from the repo root.
+- Read the datalab snapshot file once: the ids are the review surface.
+
+### Technical details
+- Suites after P0: root 102, datalab-ui 531, pbui-workbench 131,
+  pbui-sandbox 105, pbui-chat 237, chat demo 13 — all green.
