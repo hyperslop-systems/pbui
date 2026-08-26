@@ -39,14 +39,49 @@ export interface AppDescriptor {
    * "go to the existing tile" rather than a second one.
    */
   docBound?: boolean;
+  /**
+   * The binding keys a doc-bound application requires — the keys of
+   * `view.documents` without which it has nothing to show. Declaring them
+   * costs one optional field and turns the silently empty tile ("open a sku
+   * tile" with no sku) into something a caller can refuse before placing:
+   * `app "sku" needs a "product" binding; got {}`. Read by `describeWorkbench`
+   * so an agent knows what to bind; the workbench itself never enforces it,
+   * because a product may bind a tile after placing it.
+   */
+  bindings?: string[];
   /** The title of ONE view; defaults to `title`. Receives the bindings so a doc-bound app can name its document. */
   titleFor?(view: AppView): string;
+  /**
+   * Which launcher group the application is offered in. The default rows
+   * model puts everything without one in "NEW TILE"; a product with twenty
+   * applications gives them two or three groups instead.
+   */
+  group?: string;
+  /** One line under the title in the launcher, so a name that is not self-explanatory can explain itself. */
+  blurb?: string;
+  /**
+   * May this application be offered right now? Datalab's app scoping as a
+   * predicate. A tile whose layout ALREADY names an excluded application
+   * still renders it — hiding it from the launcher must never silently drop
+   * a tile from a seeded layout.
+   */
+  available?(context: AppAvailability): boolean;
   Component: ComponentType<AppProps>;
+}
+
+/** What `available` is asked about. */
+export interface AppAvailability {
+  workspaceId: string;
 }
 
 export interface DefineAppInput extends Omit<AppDescriptor, "duplicable" | "docBound"> {
   duplicable?: boolean;
   docBound?: boolean;
+}
+
+/** Is the application offered in this workspace? An app without a predicate always is. */
+export function isAppAvailable(app: AppDescriptor, context: AppAvailability): boolean {
+  return app.available?.(context) ?? true;
 }
 
 /** Normalise the optional fields so readers never branch on `undefined`. */

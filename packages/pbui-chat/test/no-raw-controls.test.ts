@@ -9,7 +9,11 @@ import { describe, expect, test } from "vitest";
  * the atom exists or the atom is missing a variant — both are conversations
  * worth forcing (pbui playbook §6a).
  */
-const ROOTS = [resolve(import.meta.dirname, "../src"), resolve(import.meta.dirname, "../demo/src")];
+const ROOTS = [
+  resolve(import.meta.dirname, "../src"),
+  resolve(import.meta.dirname, "../demo/src"),
+  resolve(import.meta.dirname, "../../pbui-sandbox/src"),
+];
 
 const RULES = [
   { pattern: /<button\b/, use: "Button or IconButton from @hyperslop-systems/pbui" },

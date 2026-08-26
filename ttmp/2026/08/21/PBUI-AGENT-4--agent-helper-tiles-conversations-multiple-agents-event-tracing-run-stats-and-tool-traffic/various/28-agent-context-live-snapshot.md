@@ -1,0 +1,135 @@
+---
+Title: 'Live Agent Context tile accessibility snapshot'
+Ticket: PBUI-AGENT-4
+Status: active
+Topics: [pbui, chat, frontend, onboarding]
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: 'Playwright accessibility-tree snapshot of the Agent Context tile and its current tool manifest, session facts, environment and vocabulary.'
+WhatFor: Live evidence for Agent Context tile behavior and review findings.
+WhenToUse: Reviewing manifest observability or helper-tile presentation.
+---
+
+- generic [ref=e594]:
+  - generic [ref=e595]:
+    - button "the conversation this describes" [ref=e597]:
+      - generic [ref=e598]: BROWSER-TITLE-SYNC-PROBE
+    - generic "idle" [ref=e599]:
+      - generic: idle
+    - button "re-sync manifest" [ref=e600] [cursor=pointer]
+  - generic [ref=e601]:
+    - generic [ref=e603]: session
+    - generic [ref=e604]:
+      - term [ref=e605]: id
+      - definition: d56bed9a-a382-44f0-8b6d-6fa31c05c004
+      - term [ref=e606]: model
+      - definition: not reported yet
+      - term [ref=e607]: provider
+      - definition: not reported yet
+      - term [ref=e608]: connection
+      - definition: ready
+      - term [ref=e609]: messages
+      - definition: "0"
+  - generic [ref=e610]:
+    - generic [ref=e611]:
+      - generic [ref=e612]: tools · 17
+      - generic [ref=e613]: advertised on connect and on every send
+    - list "advertised tools" [ref=e614]:
+      - listitem [ref=e615]:
+        - generic [ref=e616]: pbui_accept
+        - generic "human" [ref=e617]:
+          - generic [ref=e618]: human
+        - generic: "Ask the user to pick an object of one of the given presentation types by clicking it. Returns the picked reference, or {cancelled: true}."
+      - listitem [ref=e619]:
+        - generic [ref=e620]: pbui_propose
+        - generic "human" [ref=e621]:
+          - generic [ref=e622]: human
+        - generic: "Propose a consequential action and wait for the user to approve or reject it. Returns {decision: 'approve' | 'reject', id}."
+      - listitem [ref=e623]:
+        - generic [ref=e624]: workbench_describe
+        - generic "frontend" [ref=e625]:
+          - generic [ref=e626]: frontend
+        - generic: "Read the user's screen: the applications that can be placed, the workspaces, and every tile with the id its verbs take. Call this before changing anything — every id you use must have come from a tool result, never from memory."
+      - listitem [ref=e627]:
+        - generic [ref=e628]: workbench_create_workspace
+        - generic "frontend" [ref=e629]:
+          - generic [ref=e630]: frontend
+        - generic: "Create a new workspace of tiles and switch to it. A tile is {kind:'tile',appId}; a split is {kind:'split',direction:'row'|'col',ratio,a,b} where 'row' places a and b side by side and ratio is a's share. Example: {\"kind\":\"split\",\"direction\":\"row\",\"ratio\":0.55,\"a\":{\"kind\":\"tile\",\"appId\":\"chat\"},\"b\":{\"kind\":\"split\",\"direction\":\"col\",\"ratio\":0.4,\"a\":{\"kind\":\"tile\",\"appId\":\"metals\"},\"b\":{\"kind\":\"tile\",\"appId\":\"inventory\"}}}. Application ids come from workbench_describe; never invent one."
+      - listitem [ref=e631]:
+        - generic [ref=e632]: workbench_open_tile
+        - generic "frontend" [ref=e633]:
+          - generic [ref=e634]: frontend
+        - generic: Open one application in a new tile beside an existing one, optionally bound to specific documents. If a tile already shows exactly these bindings the result says wentToExisting; do not call it again.
+      - listitem [ref=e635]:
+        - generic [ref=e636]: workbench_switch_workspace
+        - generic "frontend" [ref=e637]:
+          - generic [ref=e638]: frontend
+        - generic: Show a different workspace. Its id comes from workbench_describe.
+      - listitem [ref=e639]:
+        - generic [ref=e640]: workbench_perform
+        - generic "frontend" [ref=e641]:
+          - generic [ref=e642]: frontend
+        - generic: "Make one or two changes to the current layout. Each verb is an object with a kind: tile.split{placementId,direction,appId?}, tile.close{placementId}, tile.swap{a,b}, tile.replace{placementId,appId}, tile.link{placementId,viewId}, split.resize{splitId,ratio}, app.place{appId,from?}, view.setTitle{viewId,title}, view.rebind{viewId,documents}, view.goTo{viewId}, workspace.select{workspaceId}, workspace.rename{workspaceId,name}, workspace.clone{workspaceId}. Ids come from workbench_describe."
+      - listitem [ref=e643]:
+        - generic [ref=e644]: workbench_apply
+        - generic "frontend" [ref=e645]:
+          - generic [ref=e646]: frontend
+        - generic: not available — the product has turned it off, or has not attached what it needs
+      - listitem [ref=e647]:
+        - generic [ref=e648]: sandbox_describe
+        - generic "frontend" [ref=e649]:
+          - generic [ref=e650]: frontend
+        - generic: List the programs and generated actions in the user's library, with their ids, and the dialect programs are written in. Call it before sandbox_open, sandbox_update_app, sandbox_define_action or sandbox_remove — ids come from here, never from memory.
+      - listitem [ref=e651]:
+        - generic [ref=e652]: sandbox_test
+        - generic "frontend" [ref=e653]:
+          - generic [ref=e654]: frontend
+        - generic: "Run a program without storing it: load it, render every widget with its initialState (or the state you pass) and the bindings in documents, then replay any events through its handlers. Returns the rendered trees, the intents the handlers emitted and the final state, or the error with the phase it happened in. Call this before sandbox_create_app; fix what it reports."
+      - listitem [ref=e655]:
+        - generic [ref=e656]: sandbox_create_app
+        - generic "frontend" [ref=e657]:
+          - generic [ref=e658]: frontend
+        - generic: "Store a program in the user's library and open it in a tile. The program is run first (as sandbox_test does) and nothing is stored if it fails. A program that reads objects declares bindings and is opened with documents, e.g. bindings ['product'] and documents {product: '2049'}. Returns the programId and the tile it opened in; mention the program as [[program:<programId>|title]]."
+      - listitem [ref=e659]:
+        - generic [ref=e660]: sandbox_update_app
+        - generic "frontend" [ref=e661]:
+          - generic [ref=e662]: frontend
+        - generic: Replace a program's source. It is run first and the old version keeps running if the new one fails. Every tile showing the program reloads it; a tile keeps its state when the new version can render it, else resets to initialState. A pinned program needs the user's approval.
+      - listitem [ref=e663]:
+        - generic [ref=e664]: sandbox_open
+        - generic "frontend" [ref=e665]:
+          - generic [ref=e666]: frontend
+        - generic: Open a stored program in a tile, bound to the objects in documents. If a tile already shows this program with exactly these bindings the result says wentToExisting; do not open it again.
+      - listitem [ref=e667]:
+        - generic [ref=e668]: sandbox_define_action
+        - generic "frontend" [ref=e669]:
+          - generic [ref=e670]: frontend
+        - generic: "Add an action to the menu of every object of the given presentation types. An action opens a program bound to the clicked object ({kind:'openProgram', programId}), performs a declared verb on it ({kind:'verb', verb:{kind:'watch', ref:'$ref'}}), or asks you ({kind:'askAgent', template:'… {0} …'}). It is saved in this browser and offered on the next menu."
+      - listitem [ref=e671]:
+        - generic [ref=e672]: sandbox_remove
+        - generic "frontend" [ref=e673]:
+          - generic [ref=e674]: frontend
+        - generic: "Remove a program (closing the tiles that show it) or a generated action. Something pinned or human-made needs the user's approval: call pbui_propose first and pass its id as confirmationId."
+      - listitem [ref=e675]:
+        - generic [ref=e676]: conversation_list
+        - generic "frontend" [ref=e677]:
+          - generic [ref=e678]: frontend
+        - generic: "The other conversations on this workbench: their ids, names, whether they are connected, how busy they are, which one the user is currently working in, and which one is you. Ids come from here and nowhere else."
+      - listitem [ref=e679]:
+        - generic [ref=e680]: conversation_send
+        - generic "frontend" [ref=e681]:
+          - generic [ref=e682]: frontend
+        - generic: Send a message to ANOTHER conversation on this workbench, which starts a run there. Say what you are asking for and include the mentions it will need — the other agent cannot see this conversation. Use it when the user asks, or when work plainly belongs to an agent already doing it; never to think out loud.
+  - generic [ref=e683]:
+    - generic [ref=e685]: last message on the wire
+    - text: nothing sent from this browser yet
+  - generic [ref=e686]:
+    - generic [ref=e688]: environment
+    - generic [ref=e689]: "{ \"canApprove\": false, \"sessionId\": \"d56bed9a-a382-44f0-8b6d-6fa31c05c004\" }"
+  - generic [ref=e690]:
+    - generic [ref=e692]: vocabulary · 19 types · 44 verbs
+    - group [ref=e693]:
+      - generic "what the model is told exists" [ref=e694]

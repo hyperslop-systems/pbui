@@ -1,0 +1,9 @@
+5. [POST] http://127.0.0.1:8090/api/chat/sessions => [200] OK
+8. [POST] http://127.0.0.1:8090/api/chat/sessions/99e6c8a0-b310-4be6-a504-e3860f21e2eb/tools/manifest => [200] OK
+9. [POST] http://127.0.0.1:8090/api/chat/sessions/99e6c8a0-b310-4be6-a504-e3860f21e2eb/tools/manifest => [200] OK
+10. [POST] http://127.0.0.1:8090/api/chat/sessions/99e6c8a0-b310-4be6-a504-e3860f21e2eb/messages => [200] OK
+11. [POST] http://127.0.0.1:8090/api/chat/sessions => [200] OK
+12. [POST] http://127.0.0.1:8090/api/chat/sessions/99e6c8a0-b310-4be6-a504-e3860f21e2eb/verbs => [200] OK
+13. [POST] http://127.0.0.1:8090/api/chat/sessions/d56bed9a-a382-44f0-8b6d-6fa31c05c004/tools/manifest => [200] OK
+
+Note: 6 static requests not shown, run with "static" option to see them.

@@ -1,5 +1,5 @@
-import { fromJson, type JsonValue } from "@bufbuild/protobuf";
-import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { fromJson, toJson, type JsonValue } from "@bufbuild/protobuf";
+import { timestampDate, ValueSchema } from "@bufbuild/protobuf/wkt";
 import {
   defineLiveAndHydrateAdapter,
   type HydrationPolicy,
@@ -7,7 +7,7 @@ import {
   type TimelineEntity,
 } from "@go-go-golems/chat-provider";
 import { Actor as ActorEnum, TraceEntrySchema } from "../generated/hyperslop/pbui/chat/v1/chat_pb";
-import type { Actor, Reference, TraceEntryProps, VerbLike } from "../types";
+import type { Actor, EffectTraceEnvelope, Reference, TraceEntryProps, VerbLike } from "../types";
 
 export const TRACE_UI_EVENT = "PbuiTraceEntryUpsert";
 export const TRACE_SNAPSHOT_KIND = "PbuiTraceEntry";
@@ -21,6 +21,34 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function actorName(value: unknown): Actor {
   if (value === ActorEnum.AGENT || value === "ACTOR_AGENT" || value === "agent" || value === 2) return "agent";
   return "human";
+}
+
+function effectFromJson(raw: unknown): EffectTraceEnvelope | undefined {
+  if (!isRecord(raw)) return undefined;
+  const effectId = typeof raw.effectId === "string" ? raw.effectId : "";
+  const effectKind = typeof raw.effectKind === "string" ? raw.effectKind : "";
+  const conversationId = typeof raw.conversationId === "string" ? raw.conversationId : "";
+  const effectScope = raw.effectScope;
+  if (!effectId || !effectKind || !conversationId || !["workbench", "sandbox", "conversation", "server"].includes(String(effectScope))) {
+    return undefined;
+  }
+  return {
+    effectId,
+    ...(typeof raw.invocationKey === "string" && raw.invocationKey ? { invocationKey: raw.invocationKey } : {}),
+    actor: actorName(raw.actor),
+    conversationId,
+    effectKind,
+    effectScope: effectScope as EffectTraceEnvelope["effectScope"],
+    canonicalInput: (raw.canonicalInput ?? null) as JsonValue,
+    inputDigest: typeof raw.inputDigest === "string" ? raw.inputDigest : "",
+    targetIds: Array.isArray(raw.targetIds) ? raw.targetIds.filter((id): id is string => typeof id === "string") : [],
+    referenceKeys: Array.isArray(raw.referenceKeys) ? raw.referenceKeys.filter((key): key is string => typeof key === "string") : [],
+    ...(typeof raw.approvalId === "string" && raw.approvalId ? { approvalId: raw.approvalId } : {}),
+    ...(typeof raw.beforeRevision === "string" && raw.beforeRevision ? { beforeRevision: raw.beforeRevision } : {}),
+    ...(typeof raw.afterRevision === "string" && raw.afterRevision ? { afterRevision: raw.afterRevision } : {}),
+    outcome: typeof raw.outcome === "string" ? raw.outcome : "",
+    occurredAt: typeof raw.occurredAt === "string" ? raw.occurredAt : "",
+  };
 }
 
 function referenceFromJson(raw: unknown): Reference | undefined {
@@ -66,6 +94,25 @@ export function traceEntryProps(payload: unknown): TraceEntryProps | null {
             : undefined,
         })
       : undefined;
+    const effect = entry.effect
+      ? effectFromJson({
+          effectId: entry.effect.effectId,
+          invocationKey: entry.effect.invocationKey,
+          actor: entry.effect.actor,
+          conversationId: entry.effect.conversationId,
+          effectKind: entry.effect.effectKind,
+          effectScope: entry.effect.effectScope,
+          canonicalInput: entry.effect.canonicalInput ? toJson(ValueSchema, entry.effect.canonicalInput) : null,
+          inputDigest: entry.effect.inputDigest,
+          targetIds: entry.effect.targetIds,
+          referenceKeys: entry.effect.referenceKeys,
+          approvalId: entry.effect.approvalId,
+          beforeRevision: entry.effect.beforeRevision,
+          afterRevision: entry.effect.afterRevision,
+          outcome: entry.effect.outcome,
+          occurredAt: entry.effect.occurredAt ? timestampDate(entry.effect.occurredAt).toISOString() : "",
+        })
+      : undefined;
     return {
       seq: Number(entry.seq),
       actor: actorName(entry.actor),
@@ -74,12 +121,17 @@ export function traceEntryProps(payload: unknown): TraceEntryProps | null {
       outcome: entry.outcome,
       at,
       ...(entry.clientSeq ? { clientSeq: entry.clientSeq } : {}),
+      ...(effect ? { effect } : {}),
+      ...(entry.effectId ? { effectId: entry.effectId } : {}),
+      ...(entry.invocationKey ? { invocationKey: entry.invocationKey } : {}),
+      ...(entry.approvalId ? { approvalId: entry.approvalId } : {}),
     };
   } catch {
     const seq = Number(payload.seq);
     if (!Number.isFinite(seq)) return null;
     const target = referenceFromJson(payload.target);
     const at = typeof payload.at === "string" ? payload.at : "";
+    const effect = effectFromJson(payload.effect);
     return {
       seq,
       actor: actorName(payload.actor),
@@ -88,6 +140,10 @@ export function traceEntryProps(payload: unknown): TraceEntryProps | null {
       outcome: typeof payload.outcome === "string" ? payload.outcome : "",
       at,
       ...(typeof payload.clientSeq === "string" && payload.clientSeq ? { clientSeq: payload.clientSeq } : {}),
+      ...(effect ? { effect } : {}),
+      ...(typeof payload.effectId === "string" && payload.effectId ? { effectId: payload.effectId } : {}),
+      ...(typeof payload.invocationKey === "string" && payload.invocationKey ? { invocationKey: payload.invocationKey } : {}),
+      ...(typeof payload.approvalId === "string" && payload.approvalId ? { approvalId: payload.approvalId } : {}),
     };
   }
 }

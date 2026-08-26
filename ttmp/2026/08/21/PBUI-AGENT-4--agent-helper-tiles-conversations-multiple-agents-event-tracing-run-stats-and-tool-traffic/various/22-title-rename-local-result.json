@@ -1,0 +1,22 @@
+{
+  "id": "d56bed9a-a382-44f0-8b6d-6fa31c05c004",
+  "record": {
+    "id": "d56bed9a-a382-44f0-8b6d-6fa31c05c004",
+    "title": "BROWSER-TITLE-SYNC-PROBE",
+    "titledBy": "human",
+    "createdAt": "2026-08-22T22:03:34.814Z",
+    "lastActivityAt": "2026-08-22T22:03:34.814Z",
+    "pinned": false,
+    "archived": false,
+    "messageCount": 0,
+    "runStatus": "idle",
+    "wsStatus": "closed",
+    "error": null,
+    "streaming": false,
+    "stats": null,
+    "waiting": 0,
+    "runtime": null,
+    "open": false,
+    "active": true
+  }
+}

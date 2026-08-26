@@ -9,7 +9,8 @@ const product: Reference = { type: "product", id: "2049", value: { name: "Eagle"
 function binding(fetchImpl: typeof fetch, sessionId = "s1"): RouterBinding {
   return {
     store: createPbuiChatStore(),
-    client: { getStore: () => ({ getState: () => ({ overlay: { sessionId } }) }) } as never,
+    conversation: () => (sessionId ? { id: sessionId, client: {} as never } : null),
+    runtimeFor: () => null,
     vocabulary,
     basePrefix: "/app",
     accept: async () => null,
@@ -51,6 +52,30 @@ describe("createVerbRouter", () => {
       target: product,
       outcome: "performed",
     });
+  });
+
+  test("reports explicit gateway correlation as typed fields", async () => {
+    const fetchImpl = okFetch();
+    const router = createVerbRouter<{ kind: string } & Record<string, unknown>>({
+      families: () => "local",
+      local: () => undefined,
+      fetch: fetchImpl,
+    });
+    router.bind(binding(fetchImpl));
+
+    await router.perform(
+      { kind: "inspect", ref: product },
+      undefined,
+      { actor: "agent", effectId: "s1:tool-1", invocationKey: "s1/tool-1", approvalId: "proposal-1" },
+    );
+    const body = JSON.parse(String(((fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit])[1].body));
+    expect(body).toMatchObject({
+      effectId: "s1:tool-1",
+      invocationKey: "s1/tool-1",
+      approvalId: "proposal-1",
+      actor: "agent",
+    });
+    expect(body.verb).not.toHaveProperty("_provenance");
   });
 
   test("serializes reports in perform invocation order", async () => {

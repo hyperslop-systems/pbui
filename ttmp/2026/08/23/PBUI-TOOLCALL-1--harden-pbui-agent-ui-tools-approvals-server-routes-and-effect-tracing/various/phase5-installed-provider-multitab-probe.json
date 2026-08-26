@@ -1,0 +1,13 @@
+{
+  "package": "@go-go-golems/chat-provider@0.5.0",
+  "terminalReplay": {
+    "executions": 2,
+    "submissions": 2,
+    "requiredExecutions": 1
+  },
+  "twoIndependentTabs": {
+    "executions": 2,
+    "submissions": 2,
+    "requiredExecutions": 1
+  }
+}

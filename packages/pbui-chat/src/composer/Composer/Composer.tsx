@@ -5,11 +5,13 @@ import { RefPresentation } from "../../components/RefPresentation";
 import { usePbuiChat } from "../../context";
 import { scanMentions, uniqueMentions } from "../../mentions/mentions";
 import { resolveMention, useReferenceIndex } from "../../refs/referenceIndex";
-import { usePbuiChatStore } from "../../store/chatStore";
+import { usePbuiChatStore, type ComposerDraft } from "../../store/chatStore";
 import { toneVar } from "../../tone";
 import type { Reference } from "../../types";
 import { fromPresentationReference, referenceKey } from "../../types";
 import styles from "./Composer.module.css";
+
+const EMPTY_DRAFT: ComposerDraft = { text: "", refs: {} };
 
 export interface ComposerProps {
   placeholder?: string;
@@ -29,7 +31,8 @@ export function Composer({ placeholder = "ask the agent… (Enter sends, Shift+E
   const pbui = chat.pbui.usePbui();
   const client = useChatClient();
   const overlay = useChatSelector(selectOverlay);
-  const draft = usePbuiChatStore(chat.store, (s) => s.draft);
+  const conversationId = chat.conversationId ?? chat.conversations.activeId();
+  const draft = usePbuiChatStore(chat.store, (s) => (conversationId ? s.drafts[conversationId] ?? EMPTY_DRAFT : EMPTY_DRAFT));
   const index = useReferenceIndex();
   const [busy, setBusy] = useState(false);
 
@@ -40,14 +43,22 @@ export function Composer({ placeholder = "ask the agent… (Enter sends, Shift+E
     return draft.refs[key] ?? resolveMention(index, m.type, m.id, m.label);
   });
   const trimmed = draft.text.trim();
-  const disabledBecause = busy ? "sending…" : streaming ? "the agent is still answering — stop it first" : trimmed === "" ? "nothing to send" : undefined;
+  const disabledBecause = !conversationId
+    ? "select or open a conversation first"
+    : busy
+      ? "sending…"
+      : streaming
+        ? "the agent is still answering — stop it first"
+        : trimmed === ""
+          ? "nothing to send"
+          : undefined;
 
   const send = async () => {
-    if (disabledBecause) return;
+    if (disabledBecause || !conversationId) return;
     setBusy(true);
     try {
       await chat.send({ prompt: trimmed, refs });
-      chat.store.clearDraft();
+      chat.store.clearDraft(conversationId);
     } finally {
       setBusy(false);
     }
@@ -58,7 +69,7 @@ export function Composer({ placeholder = "ask the agent… (Enter sends, Shift+E
     const picked = await pbui.accept({ types, prompt: "pick an object to mention" });
     if (!picked) return;
     const reference = fromPresentationReference(picked);
-    chat.store.insertReference(reference, chat.labelFor(reference));
+    if (conversationId) chat.store.insertReference(conversationId, reference, chat.labelFor(reference));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -81,7 +92,9 @@ export function Composer({ placeholder = "ask the agent… (Enter sends, Shift+E
       )}
       <TextArea
         value={draft.text}
-        onValueChange={(text) => chat.store.setDraftText(text)}
+        onValueChange={(text) => {
+          if (conversationId) chat.store.setDraftText(conversationId, text);
+        }}
         accessibleName="message to the agent"
         rows={3}
         placeholder={placeholder}

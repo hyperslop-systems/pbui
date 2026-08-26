@@ -222,7 +222,7 @@ func TestTraceCommandAndProjections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := []byte(`{"clientSeq":"c1","actor":"human","verb":{"kind":"watch","ref":{"type":"product","id":"2049"}},"target":{"type":"product","id":"2049","value":{"name":"AGE"}},"outcome":"performed"}`)
+	body := []byte(`{"clientSeq":"c1","actor":"human","verb":{"kind":"watch","ref":{"type":"product","id":"2049"}},"target":{"type":"product","id":"2049","value":{"name":"AGE"}},"outcome":"performed","effectId":"s1:tool-1","invocationKey":"s1/tool-1","approvalId":"proposal-1"}`)
 	cmd, err := VerbCommandFromJSON(body)
 	if err != nil {
 		t.Fatal(err)
@@ -244,7 +244,7 @@ func TestTraceCommandAndProjections(t *testing.T) {
 	if first.GetSeq() != 1 || second.GetSeq() != 2 {
 		t.Errorf("seq: %d %d", first.GetSeq(), second.GetSeq())
 	}
-	if first.GetActor() != chatv1.Actor_ACTOR_HUMAN || first.GetOutcome() != "performed" || first.GetTarget().GetId() != "2049" {
+	if first.GetActor() != chatv1.Actor_ACTOR_HUMAN || first.GetOutcome() != "performed" || first.GetTarget().GetId() != "2049" || first.GetEffectId() != "s1:tool-1" || first.GetApprovalId() != "proposal-1" {
 		t.Errorf("first: %+v", first)
 	}
 	if second.GetActor() != chatv1.Actor_ACTOR_AGENT || second.GetOutcome() != "rejected:unknown verb nope" {
@@ -318,4 +318,158 @@ func indexOf(s, sub string) int {
 		}
 	}
 	return -1
+}
+
+// withoutTypes returns the vocabulary with some types removed, so the prompt's
+// gating can be exercised from both sides. The demo product declares tile and
+// workspace, which is why the NEGATIVE case is the one that needs building.
+func withoutTypes(v *Vocabulary, drop ...string) *Vocabulary {
+	gone := map[string]bool{}
+	for _, name := range drop {
+		gone[name] = true
+	}
+	copied := *v
+	copied.Types = map[string]TypeSpec{}
+	for name, spec := range v.Types {
+		if gone[name] {
+			continue
+		}
+		copied.Types[name] = spec
+	}
+	return &copied
+}
+
+func TestWorkbenchPromptSectionIsGatedOnTheTileType(t *testing.T) {
+	// A product with a fixed layout has no workbench tools in its manifest;
+	// telling its model about workspaces would invite calls that go nowhere.
+	// `app` goes too: its idHint names workbench_describe, which is where an
+	// agent learns application ids — true, and not the workspace section.
+	plain := SystemPromptSection(withoutTypes(loadDemoVocabulary(t), "tile", "workspace", "app"))
+	if contains(plain, "## The workspace") {
+		t.Error("a vocabulary without a tile type must not get the workspace section")
+	}
+	for _, name := range []string{ToolWorkbenchDescribe, ToolWorkbenchCreateWorkspace, ToolWorkbenchPerform} {
+		if contains(plain, name) {
+			t.Errorf("prompt names %s without a tile type", name)
+		}
+	}
+
+	full := SystemPromptSection(loadDemoVocabulary(t))
+	for _, want := range []string{
+		"## The workspace",
+		ToolWorkbenchDescribe,
+		ToolWorkbenchCreateWorkspace,
+		ToolWorkbenchOpenTile,
+		ToolWorkbenchPerform,
+		ToolWorkbenchSwitchWorkspace,
+		// The worked example: PBUI-AGENT-1 recorded the model guessing a shape
+		// for pbui_widget until the description carried a complete value.
+		`"kind":"split"`,
+		`"ratio":0.55`,
+		"Never invent an id",
+		// Destroying a tile is a proposal, not an action.
+		ToolPropose,
+		"[[workspace:<workspaceId>|name]]",
+	} {
+		if !contains(full, want) {
+			t.Errorf("workbench section missing %q", want)
+		}
+	}
+}
+
+func TestWorkbenchPromptOmitsMentionsWithoutTheWorkspaceType(t *testing.T) {
+	s := SystemPromptSection(withoutTypes(loadDemoVocabulary(t), "workspace"))
+	if !contains(s, "## The workspace") {
+		t.Fatal("tile type alone should still produce the section")
+	}
+	if contains(s, "[[workspace:<workspaceId>|name]]") {
+		t.Error("a product without a workspace type must not be told to mention workspaces")
+	}
+}
+
+func TestConversationsPromptSectionIsGatedOnTheConversationType(t *testing.T) {
+	// A product with one conversation has no conversation tools in its
+	// manifest; telling its model it can hand work to another agent would
+	// invite calls that go nowhere.
+	plain := SystemPromptSection(withoutTypes(loadDemoVocabulary(t), "conversation"))
+	if contains(plain, "## Conversations") {
+		t.Error("a vocabulary without a conversation type must not get the conversations section")
+	}
+	for _, name := range []string{ToolConversationList, ToolConversationSend} {
+		if contains(plain, name) {
+			t.Errorf("prompt names %s without a conversation type", name)
+		}
+	}
+
+	full := SystemPromptSection(loadDemoVocabulary(t))
+	for _, want := range []string{
+		"## Conversations",
+		ToolConversationList,
+		ToolConversationSend,
+		"[[conversation:<conversationId>|title]]",
+		// The two facts that keep several agents on one screen from fighting:
+		// the others' work is not yours to undo, and a message starts a run.
+		"Do not undo their work",
+		"starts a run there",
+	} {
+		if !contains(full, want) {
+			t.Errorf("conversations section missing %q", want)
+		}
+	}
+}
+
+func TestSandboxPromptSectionIsGatedOnTheProgramType(t *testing.T) {
+	// A product without programs as objects, or without a sandbox block, has
+	// no sandbox tools in its manifest; teaching its model the dialect would
+	// invite calls that go nowhere.
+	plain := SystemPromptSection(withoutTypes(loadDemoVocabulary(t), "program", "action"))
+	if contains(plain, "## Programs") {
+		t.Error("a vocabulary without a program type must not get the programs section")
+	}
+	for _, name := range []string{ToolSandboxTest, ToolSandboxCreateApp, ToolSandboxDefineAction} {
+		if contains(plain, name) {
+			t.Errorf("prompt names %s without a program type", name)
+		}
+	}
+	noBlock := *loadDemoVocabulary(t)
+	noBlock.Sandbox = nil
+	if contains(SystemPromptSection(&noBlock), "## Programs") {
+		t.Error("a program type without a sandbox block must not get the programs section")
+	}
+
+	full := SystemPromptSection(loadDemoVocabulary(t))
+	for _, want := range []string{
+		"## Programs",
+		ToolSandboxDescribe, ToolSandboxTest, ToolSandboxCreateApp, ToolSandboxUpdateApp, ToolSandboxOpen, ToolSandboxDefineAction, ToolSandboxRemove,
+		"definePlugin(", "dispatchVerb", "state/merge", "globalState.shared.documents",
+		// The worked example, complete.
+		`bindings: ["product"]`, `dispatchVerb({ kind: "reorder"`,
+		"[[program:<programId>|title]]",
+		ToolPropose,
+	} {
+		if !contains(full, want) {
+			t.Errorf("programs section missing %q", want)
+		}
+	}
+	for _, kind := range loadDemoVocabulary(t).Sandbox.Kinds {
+		if !contains(full, kind) {
+			t.Errorf("programs section does not list kind %q", kind)
+		}
+	}
+}
+
+func TestVocabularySandboxBlockValidates(t *testing.T) {
+	v := loadDemoVocabulary(t)
+	if v.Sandbox == nil || len(v.Sandbox.Kinds) == 0 {
+		t.Fatal("the demo vocabulary should declare a sandbox block")
+	}
+	bad := *v
+	bad.Sandbox = &SandboxVocabulary{SchemaVersion: 1, Kinds: []string{"image"}, Intents: []string{"verb"}}
+	if err := bad.Validate(); err == nil || !contains(err.Error(), `sandbox kind "image"`) {
+		t.Errorf("expected an unknown-kind error, got %v", err)
+	}
+	bad.Sandbox = &SandboxVocabulary{SchemaVersion: 1, Kinds: []string{"text"}, Intents: []string{"shared"}}
+	if err := bad.Validate(); err == nil || !contains(err.Error(), `sandbox intent "shared"`) {
+		t.Errorf("expected an unknown-intent error, got %v", err)
+	}
 }

@@ -5,4 +5,49 @@ export type { ProposeInput, ProposeResult } from "./proposeTool";
 export { AcceptStatus } from "./AcceptStatus";
 export type { AcceptStatusProps } from "./AcceptStatus";
 export { ProposalCard } from "./ProposalCard";
+export { InMemoryApprovalLedger, canonicalJson, createApprovalSubject, digestApprovalSubject, digestCanonicalJson } from "./approvalLedger";
+export type {
+  ApprovalCapability,
+  ApprovalFinalizeResult,
+  ApprovalLedger,
+  ApprovalReleaseResult,
+  ApprovalReserveResult,
+  ApprovalSubject,
+  ApprovalSubjectInput,
+  EffectScope,
+  InMemoryApprovalLedgerOptions,
+} from "./approvalLedger";
+export { AgentEffectGateway, EffectConflictError } from "./agentEffectGateway";
+export type {
+  AgentEffectGatewayOptions,
+  AgentEffectRequest,
+  AgentEffectResult,
+  EffectEnvelope,
+  EffectOutboxStorage,
+  EffectPerformResult,
+  EffectPolicy,
+} from "./agentEffectGateway";
 export type { ProposalCardProps, ProposalDecision } from "./ProposalCard";
+export { createConversationTools, DEFAULT_CONVERSATION_POLICY } from "./conversationTools";
+export type {
+  ConversationPolicyDecision,
+  ConversationTools,
+  ConversationToolsOptions,
+  ConversationToolsPolicy,
+} from "./conversationTools";
+export { createSandboxTools, DEFAULT_SANDBOX_POLICY, SANDBOX_VERB_KINDS } from "./sandboxTools";
+export type { CheckResult, SandboxPolicy, SandboxPolicyKey, SandboxTools, SandboxToolsOptions } from "./sandboxTools";
+export {
+  createWorkbenchTools,
+  LayoutSpecSchema,
+  DEFAULT_LIMITS,
+  DEFAULT_POLICY,
+  WORKBENCH_VERB_KINDS,
+} from "./workbenchTools";
+export type {
+  PolicyDecision,
+  WorkbenchPolicy,
+  WorkbenchToolLimits,
+  WorkbenchTools,
+  WorkbenchToolsOptions,
+} from "./workbenchTools";

@@ -48,6 +48,96 @@
       ],
       "example": "[[order:88213|order 88213]]"
     },
+    "tile": {
+      "doc": "one pane of the user's screen, showing one application",
+      "idHint": "placementId, from workbench_describe",
+      "tone": "var(--pbui-selected)",
+      "verbs": [
+        "tile.split",
+        "tile.close",
+        "tile.replace",
+        "tile.link",
+        "view.setTitle",
+        "view.goTo",
+        "askAgent"
+      ],
+      "example": "[[tile:n-7|inventory]]"
+    },
+    "workspace": {
+      "doc": "a named tree of tiles; the user sees one at a time",
+      "idHint": "workspaceId, from workbench_describe",
+      "tone": "var(--pbui-tone-neutral)",
+      "verbs": [
+        "workspace.select",
+        "workspace.rename",
+        "workspace.delete",
+        "workspace.clone",
+        "askAgent"
+      ],
+      "example": "[[workspace:ws-2|Gold desk]]"
+    },
+    "app": {
+      "doc": "an application that can be placed in a tile",
+      "idHint": "appId, from workbench_describe",
+      "tone": "var(--pbui-pane-alt)",
+      "verbs": [
+        "app.place",
+        "askAgent"
+      ],
+      "example": "[[app:inventory|inventory]]"
+    },
+    "program": {
+      "doc": "a small program written in the sandbox dialect, running in a tile",
+      "idHint": "programId, from sandbox_describe or the tool that created it",
+      "tone": "var(--pbui-tone-widget)",
+      "verbs": [
+        "program.open",
+        "inspect",
+        "program.pin",
+        "program.remove",
+        "askAgent"
+      ],
+      "example": "[[program:prg-7|Days of cover]]"
+    },
+    "action": {
+      "doc": "a generated action in the menu of some presentation types",
+      "idHint": "actionId, from sandbox_describe",
+      "tone": "var(--pbui-tone-neutral)",
+      "verbs": [
+        "inspect",
+        "action.remove",
+        "askAgent"
+      ],
+      "example": "[[action:act-3|Days of cover]]"
+    },
+    "conversation": {
+      "doc": "one conversation with an agent; the id is its chat session id",
+      "idHint": "conversationId, from conversation_list",
+      "tone": "var(--pbui-pane-alt)",
+      "verbs": [
+        "conversation.open",
+        "conversation.select",
+        "conversation.rename",
+        "conversation.pin",
+        "conversation.archive",
+        "conversation.close",
+        "conversation.forget",
+        "conversation.send",
+        "inspect",
+        "askAgent"
+      ],
+      "example": "[[conversation:3f0a…|reorder desk]]"
+    },
+    "chatEvent": {
+      "doc": "one entry of a conversation's wire log: a frame, a connection change, a projected UI event",
+      "idHint": "<conversationId>:<entryId>, from the events tile",
+      "tone": "var(--pbui-tone-trace)",
+      "verbs": [
+        "inspect",
+        "conversation.select",
+        "askAgent"
+      ]
+    },
     "field": {
       "doc": "a column of a table the agent produced",
       "idHint": "<tableId>.<column>",
@@ -199,6 +289,250 @@
         "productId": "string"
       },
       "danger": true
+    },
+    "tile.split": {
+      "doc": "open a new pane beside a tile",
+      "fields": {
+        "placementId": "string",
+        "direction": "string",
+        "appId?": "string"
+      }
+    },
+    "tile.close": {
+      "doc": "close a tile",
+      "fields": {
+        "placementId": "string"
+      },
+      "danger": true
+    },
+    "tile.swap": {
+      "doc": "exchange what two tiles show",
+      "fields": {
+        "a": "string",
+        "b": "string"
+      }
+    },
+    "tile.dock": {
+      "doc": "move a tile to an edge of another",
+      "fields": {
+        "source": "string",
+        "target": "string",
+        "zone": "string"
+      }
+    },
+    "tile.activate": {
+      "doc": "make a tile the keyboard target",
+      "fields": {
+        "placementId": "string"
+      }
+    },
+    "tile.replace": {
+      "doc": "show a different application in a tile",
+      "fields": {
+        "placementId": "string",
+        "appId": "string",
+        "documents?": "object"
+      },
+      "danger": true
+    },
+    "tile.link": {
+      "doc": "show an existing view in a tile too",
+      "fields": {
+        "placementId": "string",
+        "viewId": "string"
+      }
+    },
+    "split.resize": {
+      "doc": "move a divider",
+      "fields": {
+        "splitId": "string",
+        "ratio": "number"
+      }
+    },
+    "app.place": {
+      "doc": "open an application beside the active tile",
+      "fields": {
+        "appId": "string",
+        "from?": "string"
+      }
+    },
+    "view.setTitle": {
+      "doc": "name a tile, or clear its name",
+      "fields": {
+        "viewId": "string",
+        "title": "string"
+      }
+    },
+    "view.open": {
+      "doc": "open an application on specific documents in a new tile",
+      "fields": {
+        "appId": "string",
+        "documents": "object",
+        "near?": "string",
+        "title?": "string"
+      }
+    },
+    "view.rebind": {
+      "doc": "point a tile at different documents",
+      "fields": {
+        "viewId": "string",
+        "documents": "object"
+      }
+    },
+    "view.goTo": {
+      "doc": "go to the tile showing a view",
+      "fields": {
+        "viewId": "string"
+      }
+    },
+    "workspace.select": {
+      "doc": "show a different workspace",
+      "fields": {
+        "workspaceId": "string"
+      }
+    },
+    "workspace.create": {
+      "doc": "create a workspace of tiles",
+      "fields": {
+        "name": "string",
+        "spec?": "object",
+        "workspaceId?": "string",
+        "select?": "boolean"
+      }
+    },
+    "workspace.rename": {
+      "doc": "rename a workspace",
+      "fields": {
+        "workspaceId": "string",
+        "name": "string"
+      }
+    },
+    "workspace.delete": {
+      "doc": "delete a workspace and its tiles",
+      "fields": {
+        "workspaceId": "string"
+      },
+      "danger": true
+    },
+    "workspace.clone": {
+      "doc": "duplicate a workspace",
+      "fields": {
+        "workspaceId": "string",
+        "name?": "string",
+        "newWorkspaceId?": "string",
+        "select?": "boolean"
+      }
+    },
+    "launcher.open": {
+      "doc": "open the launcher",
+      "fields": {
+        "placementId?": "string"
+      }
+    },
+    "launcher.close": {
+      "doc": "close the launcher",
+      "fields": {}
+    },
+    "program.open": {
+      "doc": "open a stored program in a tile, bound to the given documents",
+      "fields": {
+        "programId": "string",
+        "documents?": "object",
+        "near?": "string",
+        "title?": "string"
+      }
+    },
+    "program.remove": {
+      "doc": "remove a program from the library and close its tiles",
+      "fields": {
+        "programId": "string"
+      },
+      "danger": true
+    },
+    "program.pin": {
+      "doc": "pin a program so the agent cannot change or remove it unasked",
+      "fields": {
+        "programId": "string",
+        "pinned": "boolean"
+      }
+    },
+    "action.run": {
+      "doc": "perform a generated action on an object",
+      "fields": {
+        "actionId": "string",
+        "ref": "ref"
+      }
+    },
+    "action.remove": {
+      "doc": "remove a generated action from every menu",
+      "fields": {
+        "actionId": "string"
+      },
+      "danger": true
+    },
+    "conversation.new": {
+      "doc": "start another conversation and open it in a tile",
+      "fields": {
+        "title?": "string",
+        "prompt?": "string",
+        "near?": "string"
+      }
+    },
+    "conversation.open": {
+      "doc": "open a conversation in a tile beside another",
+      "fields": {
+        "conversationId": "string",
+        "near?": "string"
+      }
+    },
+    "conversation.select": {
+      "doc": "make a conversation the active one",
+      "fields": {
+        "conversationId": "string"
+      }
+    },
+    "conversation.rename": {
+      "doc": "give a conversation a name; without a title, ask the user for one",
+      "fields": {
+        "conversationId": "string",
+        "title?": "string"
+      }
+    },
+    "conversation.pin": {
+      "doc": "keep a conversation at the top of the list",
+      "fields": {
+        "conversationId": "string",
+        "pinned": "boolean"
+      }
+    },
+    "conversation.archive": {
+      "doc": "put a conversation out of the way; it keeps its transcript",
+      "fields": {
+        "conversationId": "string",
+        "archived": "boolean"
+      }
+    },
+    "conversation.close": {
+      "doc": "disconnect a conversation; the record and the server's session stay",
+      "fields": {
+        "conversationId": "string"
+      },
+      "danger": true
+    },
+    "conversation.forget": {
+      "doc": "drop a conversation from this browser's list; the server keeps the session",
+      "fields": {
+        "conversationId": "string"
+      },
+      "danger": true
+    },
+    "conversation.send": {
+      "doc": "send a message to another conversation",
+      "fields": {
+        "conversationId": "string",
+        "template": "string",
+        "refs?": "refs"
+      }
     }
   },
   "widget": {
@@ -227,5 +561,28 @@
       "from": "row",
       "to": "product"
     }
-  ]
+  ],
+  "sandbox": {
+    "schema_version": 1,
+    "kinds": [
+      "panel",
+      "row",
+      "column",
+      "text",
+      "badge",
+      "button",
+      "input",
+      "select",
+      "table",
+      "meter",
+      "sparkline",
+      "callout",
+      "ref"
+    ],
+    "intents": [
+      "state/merge",
+      "state/replace",
+      "verb"
+    ]
+  }
 }

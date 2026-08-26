@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-08-22T22:04:24.435Z",
+  "url": "http://127.0.0.1:8090/",
+  "composerValues": [
+    "SECOND-ONLY-DRAFT-PROBE",
+    "SECOND-ONLY-DRAFT-PROBE"
+  ],
+  "activeElement": "<textarea aria-label=\"message to the agent\" rows=\"3\" spellcheck=\"false\" class=\"_root_1vi5u_6 _text_2p7sc_23\" placeholder=\"ask the agent… (Enter sends, Shift+Enter for a newline)\" style=\"\">SECOND-ONLY-DRAFT-PROBE</textarea>",
+  "conversationRecords": [
+    {
+      "id": "d56bed9a-a382-44f0-8b6d-6fa31c05c004",
+      "title": "new conversation",
+      "open": true,
+      "active": true,
+      "archived": false
+    },
+    {
+      "id": "99e6c8a0-b310-4be6-a504-e3860f21e2eb",
+      "title": "Show me the gold coin shop inventory and explain the curren…",
+      "open": true,
+      "active": false,
+      "archived": false
+    }
+  ]
+}

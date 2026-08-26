@@ -1,15 +1,29 @@
 import type { PbuiInstance, PresentationRegistry, PresentationValues } from "@hyperslop-systems/pbui";
 import {
+  createChatDebugEventStore,
+  createDefaultChatDebugClassifier,
   defineChatExtensions,
   selectTimelineEntities,
-  useChatClient,
+  type ChatDebugEventStore,
   type ChatExtension,
+  type ChatProviderConfig,
+  type CreateChatDebugEventStoreOptions,
+  type ChatDebugFamily,
   type SendMessageRequest,
 } from "@go-go-golems/chat-provider";
 import type { Workbench } from "@hyperslop-systems/pbui-workbench";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { traceAdapter } from "./adapters/traceAdapter";
 import { Composer } from "./composer/Composer";
+import { ConversationHost } from "./conversations/ConversationHost";
+import { ConversationScope } from "./conversations/ConversationScope";
+import { DEFAULT_EVENT_FAMILIES } from "./conversations/EventsTile";
+import {
+  createConversationRegistry,
+  type ConversationRegistry,
+  type ConversationStorage,
+  type CreateConversationRegistryOptions,
+} from "./conversations/registry";
 import { PbuiChatContext, type PbuiChatContextValue } from "./context";
 import { formatMention } from "./mentions/mentions";
 import { Messages } from "./messages/Messages";
@@ -17,8 +31,14 @@ import { ChatInspectorPanel, TilesPanel, TracePanel, WatchlistPanel } from "./pa
 import type { VerbRouter } from "./router/createVerbRouter";
 import { createPbuiChatStore, usePbuiChatStore, type PbuiChatState, type PbuiChatStore } from "./store/chatStore";
 import { pbuiAcceptTool } from "./tools/acceptTool";
+import type { ApprovalLedger } from "./tools/approvalLedger";
+import { AgentEffectGateway, type EffectEnvelope } from "./tools/agentEffectGateway";
 import { pbuiProposeTool } from "./tools/proposeTool";
-import type { ChatMessageBody, Reference, VerbLike } from "./types";
+import { createConversationTools, type ConversationTools, type ConversationToolsOptions } from "./tools/conversationTools";
+import { createSandboxTools, type SandboxTools, type SandboxToolsOptions } from "./tools/sandboxTools";
+import { createWorkbenchTools, type WorkbenchTools, type WorkbenchToolsOptions } from "./tools/workbenchTools";
+import type { InstanceRegistry, ProgramEngine, ProgramLibrary } from "@hyperslop-systems/pbui-sandbox";
+import type { ChatMessageBody, EffectCorrelation, Reference, VerbLike } from "./types";
 import { fromPresentationReference, toPresentationReference } from "./types";
 import { exportVocabulary } from "./vocabulary/defineVocabulary";
 import type { Vocabulary } from "./vocabulary/schemas";
@@ -33,16 +53,63 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
   registry?: PresentationRegistry<Values, Environment, Verb>;
   vocabulary: Vocabulary;
   router: VerbRouter<Verb>;
-  /** Prefix for `/api/...`; same value you give `ChatProvider`'s `basePrefix`. */
+  /** One product-wide authority shared by every conversation and tool factory. */
+  approvalLedger?: ApprovalLedger;
+  /** Override the product-wide effect gateway (primarily for offline products/tests). */
+  effectGateway?: AgentEffectGateway;
+  /** Prefix for `/api/...`. */
   basePrefix?: string;
   /** Supply one to share it with product code created before the chat. */
   store?: PbuiChatStore;
+  /**
+   * How conversations are created, persisted and connected. Every open
+   * conversation gets a chat-provider runtime built from this (guide §4.1);
+   * the product no longer mounts `<ChatProvider>` itself.
+   */
+  conversations?: {
+    /** Storage key for the conversation records; default `pbui-chat.conversations`. */
+    key?: string;
+    storage?: ConversationStorage | null;
+    /** Transport, http and `apiBase` for every runtime. */
+    config?: Omit<ChatProviderConfig, "extensions" | "sessionPolicy" | "onDebugEvent" | "sendMessageBody" | "basePrefix">;
+    debug?: ChatDebugEventStore;
+    debugOptions?: CreateChatDebugEventStoreOptions;
+    /** Extra UI-event name → family entries, merged over `DEFAULT_EVENT_FAMILIES`. */
+    eventFamilies?: Partial<Record<string, ChatDebugFamily>>;
+    fetch?: typeof fetch;
+    onRejected?: CreateConversationRegistryOptions["onRejected"];
+    now?(): string;
+    /** Connect each runtime as it opens; default true. Stories and tests pass false. */
+    autoConnect?: boolean;
+  };
   /**
    * A pbui-workbench to open widget tiles in. Usually attached AFTER
    * construction with `chat.attachWorkbench(wb)`, because the workbench's
    * apps (`createChatApps(chat)`) need the chat first.
    */
   workbench?: Workbench;
+  /**
+   * Tune the workbench tools the agent uses to rearrange the screen: limits,
+   * the per-verb policy, and whether the raw mutation tool is offered.
+   * Confirm-policy authority always comes from the product-wide ledger.
+   */
+  workbenchTools?: Omit<WorkbenchToolsOptions, "getWorkbench" | "perform" | "senderConversationId" | "effectGateway">;
+  /**
+   * The agent's conversation tools: whether it may message another agent
+   * unassisted (`confirm` by default) and how long a handoff may be.
+   * Confirm-policy authority always comes from the product-wide ledger.
+   */
+  conversationTools?: Omit<ConversationToolsOptions, "getConversations" | "conversationId" | "perform" | "effectGateway">;
+  /**
+   * The sandbox tools: how bindings resolve for a dry render, limits, and policy.
+   * The library and engine usually arrive AFTER construction
+   * through `chat.attachSandbox(library, engine)`, for the same reason the
+   * workbench does; until then the tools are not offered to the model.
+   */
+  sandbox?: Omit<SandboxToolsOptions, "getLibrary" | "getEngine" | "getWorkbench" | "perform" | "vocabulary" | "senderConversationId" | "effectGateway"> & {
+    library?: ProgramLibrary;
+    engine?: ProgramEngine;
+  };
 }
 
 export interface PbuiChatProviderProps<Environment> {
@@ -55,16 +122,24 @@ interface PendingSend {
   focus?: { reference: Reference };
 }
 
+/** One conversation's agent tools, and the extension that installs them. */
+export interface ConversationToolset {
+  workbenchTools: WorkbenchTools;
+  sandboxTools: SandboxTools;
+  conversationTools: ConversationTools;
+  extension: ChatExtension;
+}
+
 /**
  * Assemble a PBUI-native chat for one product. The result is everything the
- * product mounts: a chat-provider extension (widgets, human tools, the
- * trace adapter), a Provider that wraps pbui's with the router as
- * `onPerform`, the transcript, the composer, the side panels, and the
- * `sendMessageBody` hook that puts typed refs and focus on the wire.
+ * product mounts: a Provider that wraps pbui's with the router as
+ * `onPerform` and hosts every open conversation's runtime, the transcript,
+ * the composer, the side panels, and the conversation registry the chat and
+ * helper tiles are views of.
  *
- * Mount order: `<ChatProvider config={{ extensions: [chat.extension],
- * sendMessageBody: chat.sendMessageBody }}>` outside, `<chat.Provider>`
- * inside it (the Provider needs the chat client to bind the router).
+ * Mount `<chat.Provider>` once, at the product's root. There is no
+ * `<ChatProvider>` above it any more: one lives inside, per open
+ * conversation, so a product can have several agents at once (guide §4.5).
  */
 export function createPbuiChat<Values extends PresentationValues, Environment, Verb extends VerbLike>(
   options: CreatePbuiChatOptions<Values, Environment, Verb>,
@@ -74,9 +149,33 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   const router = options.router as unknown as VerbRouter<VerbLike>;
   const store = options.store ?? createPbuiChatStore();
   const basePrefix = options.basePrefix ?? "";
+  const conversationOptions = options.conversations ?? {};
+  const effectFetch = conversationOptions.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
+  const effectGateway =
+    options.effectGateway ??
+    new AgentEffectGateway({
+      approvalLedger: options.approvalLedger,
+      outboxStorage: typeof window !== "undefined" ? window.localStorage : null,
+      outboxKey: `${conversationOptions.key ?? "pbui-chat.conversations"}.effect-outbox`,
+      async report(envelope: EffectEnvelope) {
+        if (!envelope.conversationId) throw new Error("cannot report an effect without a conversation");
+        const response = await effectFetch(`${basePrefix}/api/chat/sessions/${encodeURIComponent(envelope.conversationId)}/effects`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(envelope),
+        });
+        if (!response.ok) throw new Error(`effect report failed: ${response.status}`);
+      },
+    });
 
-  let pending: PendingSend | null = null;
-  let workbench: Workbench | null = options.workbench ?? null;
+  /*
+   * Queued mentions, per conversation. As one module-level field a mention
+   * composed in conversation A rode along on whichever conversation sent
+   * next — the refs would arrive attached to a message the user never
+   * associated with them.
+   */
+  const pending = new WeakMap<SendMessageRequest, PendingSend>();
 
   /**
    * Where "Open in tile" goes. With a workbench: a `widget` tile bound to
@@ -95,23 +194,161 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     };
   }
 
-  const extension: ChatExtension = defineChatExtensions({
-    name: "pbui-chat",
-    widgets: pbuiWidgets,
-    tools: [pbuiAcceptTool, pbuiProposeTool],
-    timelineAdapters: [traceAdapter],
+  /*
+   * The agent's tools are built PER CONVERSATION (guide D5). A tool's
+   * `execute` receives only `{ signal, toolCallId }`, so one shared closure
+   * could not tell which model called it and every verb it performed would be
+   * traced against whichever conversation happened to be active. Building the
+   * set per session moves that knowledge into the closure, where it is exact.
+   *
+   * No agent undo token is advertised: a whole-document restore could erase
+   * another agent's later changes, and the protocol does not yet provide a
+   * safe inverse batch. Callers receive the committed revision instead.
+   *
+   * The workbench, library and engine are read through closures rather than
+   * received, because they cannot exist yet: the workbench's applications
+   * come from `createChatApps(chat)`, so the chat must be built first. Each
+   * tool's `available()` is false until `attachWorkbench` / `attachSandbox`
+   * runs, and `RegisterManifestTools` skips an unavailable descriptor — so
+   * the model is simply not offered them rather than being offered ones that
+   * fail.
+   */
+  let workbench: Workbench | null = options.workbench ?? null;
+  let library: ProgramLibrary | null = options.sandbox?.library ?? null;
+  let engine: ProgramEngine | null = options.sandbox?.engine ?? null;
+  let instances: InstanceRegistry | null = null;
+  const { library: _library, engine: _engine, ...sandboxOptions } = options.sandbox ?? { resolve: () => null };
+
+  const toolsByConversation = new Map<string, ConversationToolset>();
+
+  function toolsFor(conversationId: string): ConversationToolset {
+    let built = toolsByConversation.get(conversationId);
+    if (built) return built;
+    const perform = (verb: VerbLike, correlation?: EffectCorrelation) =>
+      router.perform(verb, undefined, { actor: "agent", conversationId, ...correlation });
+    const workbenchTools = createWorkbenchTools({
+      getWorkbench: () => workbench,
+      perform,
+      ...(options.workbenchTools ?? {}),
+      senderConversationId: conversationId,
+      effectGateway,
+    });
+    const sandboxTools = createSandboxTools({
+      getLibrary: () => library,
+      getEngine: () => engine,
+      getWorkbench: () => workbench,
+      getInstances: () => instances,
+      perform,
+      vocabulary,
+      ...sandboxOptions,
+      senderConversationId: conversationId,
+      effectGateway,
+    });
+    /*
+     * The conversation tools are the one set that MUST be per session: their
+     * whole job is to tell this model which conversation it is, and a shared
+     * descriptor could only guess.
+     */
+    const conversationTools = createConversationTools({
+      getConversations: () => conversations,
+      conversationId,
+      perform,
+      ...(options.conversationTools ?? {}),
+      effectGateway,
+    });
+    built = {
+      workbenchTools,
+      sandboxTools,
+      conversationTools,
+      extension: defineChatExtensions({
+        name: "pbui-chat",
+        widgets: pbuiWidgets,
+        tools: [pbuiAcceptTool, pbuiProposeTool, ...workbenchTools.tools, ...sandboxTools.tools, ...conversationTools.tools],
+        timelineAdapters: [traceAdapter],
+      }),
+    };
+    toolsByConversation.set(conversationId, built);
+    return built;
+  }
+
+  /** The chat extension for one conversation; the registry installs it into that runtime. */
+  function extensionFor(conversationId: string): ChatExtension {
+    return toolsFor(conversationId).extension;
+  }
+
+  /*
+   * The classifier files an unlisted `ui-event` under `timeline`, so without
+   * a family map the events tile's `llm`, `tool` and `widget` chips can never
+   * match anything. The default map covers the chatapp event vocabulary; a
+   * product with its own events adds to it.
+   */
+  const debug =
+    conversationOptions.debug ??
+    createChatDebugEventStore({
+      maxEntriesPerConversation: 1000,
+      classifier: createDefaultChatDebugClassifier({
+        familyAliases: { ...DEFAULT_EVENT_FAMILIES, ...(conversationOptions.eventFamilies ?? {}) },
+      }),
+      ...(conversationOptions.debugOptions ?? {}),
+    });
+
+  function sendMessageBodyFor(conversationId: string) {
+    return (request: SendMessageRequest): ChatMessageBody => {
+      const queued = pending.get(request) ?? null;
+      pending.delete(request);
+      const focus =
+        queued?.focus ?? (store.getState().focus ? { reference: store.getState().focus as Reference } : undefined);
+      const body: ChatMessageBody = {
+        prompt: request.prompt,
+        ...(request.attachments && request.attachments.length > 0 ? { attachments: request.attachments } : {}),
+        ...(queued && queued.refs.length > 0 ? { refs: queued.refs } : {}),
+        ...(focus ? { focus } : {}),
+      };
+      // What actually went on the wire, which is what the agent-context tile
+      // shows — not the prompt the composer had.
+      conversations.runtimeFor(conversationId)?.recordSend(request.prompt, body as unknown as Record<string, unknown>);
+      return body;
+    };
+  }
+
+  const conversations: ConversationRegistry = createConversationRegistry({
+    key: conversationOptions.key ?? "pbui-chat.conversations",
+    ...(conversationOptions.storage !== undefined ? { storage: conversationOptions.storage } : {}),
+    basePrefix,
+    ...(conversationOptions.fetch ? { fetch: conversationOptions.fetch } : {}),
+    ...(conversationOptions.onRejected ? { onRejected: conversationOptions.onRejected } : {}),
+    ...(conversationOptions.now ? { now: conversationOptions.now } : {}),
+    ...(conversationOptions.autoConnect === undefined ? {} : { autoConnect: conversationOptions.autoConnect }),
+    configFor: (conversationId) => ({
+      ...conversationOptions.config,
+      basePrefix,
+      extensions: [extensionFor(conversationId)],
+      sendMessageBody: sendMessageBodyFor(conversationId),
+      onDebugEvent: (event) => debug.push(conversationId, event),
+      sessionPolicy: { restore: "never" },
+    }),
   });
 
-  function sendMessageBody(request: SendMessageRequest): ChatMessageBody {
-    const queued = pending;
-    pending = null;
-    const focus = queued?.focus ?? (store.getState().focus ? { reference: store.getState().focus as Reference } : undefined);
-    return {
-      prompt: request.prompt,
-      ...(request.attachments && request.attachments.length > 0 ? { attachments: request.attachments } : {}),
-      ...(queued && queued.refs.length > 0 ? { refs: queued.refs } : {}),
-      ...(focus ? { focus } : {}),
-    };
+  /** Send to a conversation, queueing its refs and focus for `sendMessageBody`. */
+  async function sendTo(conversationId: string | null, body: Omit<ChatMessageBody, "attachments">) {
+    const target = conversationId ?? conversations.activeId();
+    if (!target) throw new Error("there is no conversation to send to");
+    const runtime = conversations.runtimeFor(target);
+    if (!runtime) throw new Error(`conversation ${target} is not open`);
+    const request: SendMessageRequest = { prompt: body.prompt };
+    pending.set(request, { refs: body.refs ?? [], ...(body.focus ? { focus: body.focus } : {}) });
+    try {
+      await runtime.client.send(request);
+    } finally {
+      pending.delete(request);
+    }
+  }
+
+  /** Re-advertise every open conversation's manifest — an `attach…` changed what is available. */
+  function syncAllManifests() {
+    conversations.forEachOpen((runtime) => {
+      void runtime.syncManifest().catch(() => undefined);
+    });
   }
 
   function labelWith(environment: Environment) {
@@ -130,17 +367,12 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   }
 
   function Binder({ children }: { children: ReactNode }) {
-    const client = useChatClient();
     const pbuiContext = pbui.usePbui();
     const environment = pbuiContext.environment;
     const accept = pbuiContext.accept;
 
     const value = useMemo<PbuiChatContextValue>(() => {
       const labelFor = labelWith(environment);
-      const send = async (body: Omit<ChatMessageBody, "attachments">) => {
-        pending = { refs: body.refs ?? [], ...(body.focus ? { focus: body.focus } : {}) };
-        await client.send({ prompt: body.prompt });
-      };
       return {
         pbui,
         registry,
@@ -148,37 +380,64 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
         store,
         router,
         basePrefix,
-        send,
+        conversations,
+        debug,
+        // Outside any conversation tile: the inspector, the watchlist, an
+        // object menu on a product tile. Their sends go to the active one.
+        conversationId: null,
+        runtime: null,
+        send: (body) => sendTo(null, body),
+        sendTo,
         labelFor,
         docFor: (type) => vocabulary.types[type]?.doc,
         toneFor: (type) => vocabulary.types[type]?.tone,
       };
-    }, [client, environment, accept]);
+    }, [environment, accept]);
 
+    /*
+     * ONE binding for the product, not one per client. The vocabulary, the
+     * families and the handlers are product facts; only the destination of a
+     * trace POST and of `sendToAgent` is a session fact, and that is resolved
+     * per call through `conversation()` (guide D4).
+     */
     useEffect(() => {
       const labelFor = value.labelFor;
       return router.bind({
         store,
-        client,
         vocabulary,
         basePrefix,
+        conversation: (conversationId) => {
+          const id = conversationId ?? conversations.activeId();
+          if (!id) return null;
+          const runtime = conversations.runtimeFor(id);
+          return runtime ? { id, client: runtime.client } : null;
+        },
+        runtimeFor: (conversationId) => conversations.runtimeFor(conversationId),
         accept: async ({ types, prompt }) => {
           const picked = await accept({ types: types as never, prompt });
           return picked ? fromPresentationReference(picked) : null;
         },
         labelFor,
-        openTile: openTileWith(() => selectTimelineEntities(client.getStore().getState())),
-        sendToAgent: async (template, refs) => {
+        openTile: openTileWith(() => {
+          const runtime = conversations.activeRuntime();
+          return runtime ? selectTimelineEntities(runtime.store.getState()) : [];
+        }),
+        sendToAgent: async (template, refs, target) => {
           const prompt = template.replace(/\{(\d+)\}/g, (whole, index: string) => {
             const reference = refs[Number(index)];
             return reference ? formatMention(reference, labelFor(reference)) : whole;
           });
-          await value.send({ prompt, refs: [...refs] });
+          await sendTo(target?.conversationId ?? null, { prompt, refs: [...refs] });
         },
       });
-    }, [value, client, accept]);
+    }, [value, accept]);
 
-    return <PbuiChatContext.Provider value={value}>{children}</PbuiChatContext.Provider>;
+    return (
+      <PbuiChatContext.Provider value={value}>
+        <ConversationHost registry={conversations} />
+        {children}
+      </PbuiChatContext.Provider>
+    );
   }
 
   function Provider({ children, environment }: PbuiChatProviderProps<Environment>) {
@@ -200,10 +459,10 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   }
 
   return {
-    extension,
     Provider,
     Messages,
     Composer,
+    ConversationScope,
     TracePanel,
     InspectorPanel: ChatInspectorPanel,
     WatchlistPanel,
@@ -211,7 +470,12 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     MouseDocLine: pbui.MouseDocLine,
     ObjectMenu: pbui.ObjectMenu,
     AcceptBanner: pbui.AcceptBanner,
-    sendMessageBody,
+    /** Every conversation, open or not, and which one is active. */
+    conversations,
+    /** The classified debug stream of every conversation, keyed by session id. */
+    debug,
+    /** The chat extension for one session; the registry installs it per runtime. */
+    extensionFor,
     exportVocabulary: () => exportVocabulary(vocabulary),
     store,
     useStore,
@@ -219,12 +483,37 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     vocabulary,
     registry,
     pbui,
+    /** Product-wide execution, approval, idempotency, and effect trace gateway. */
+    effectGateway,
+    /** One conversation's revision-bound workbench and program tools. */
+    toolsFor,
     /** Route `openInTile` to a workbench's `widget` tiles from now on (null detaches). */
     attachWorkbench(next: Workbench | null) {
       workbench = next;
+      // Re-advertise: every workbench tool's `available()` just flipped, and
+      // the manifest the server holds is only refreshed on connect, on send,
+      // and on extension install. Without this the tools are invisible to the
+      // model for exactly one message, which reads as the model ignoring them.
+      syncAllManifests();
     },
     /** The attached workbench, if any. */
     workbench: () => workbench,
+
+    /** Offer the sandbox tools from now on (null, null detaches). Re-advertises every open manifest. */
+    attachSandbox(
+      nextLibrary: ProgramLibrary | null,
+      nextEngine: ProgramEngine | null,
+      nextInstances: InstanceRegistry | null = null,
+    ) {
+      library = nextLibrary;
+      engine = nextEngine;
+      instances = nextInstances;
+      syncAllManifests();
+    },
+    /** The attached library, if any. */
+    library: () => library,
+    /** The attached engine, if any. */
+    engine: () => engine,
   };
 }
 

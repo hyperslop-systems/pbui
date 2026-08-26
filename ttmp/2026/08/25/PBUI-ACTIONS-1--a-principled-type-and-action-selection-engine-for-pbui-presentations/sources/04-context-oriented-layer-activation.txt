@@ -1,0 +1,1025 @@
+                                                            Information and Software Technology 156 (2023) 107132
+
+
+                                                                    Contents lists available at ScienceDirect
+
+
+                                                    Information and Software Technology
+                                                           journal homepage: www.elsevier.com/locate/infsof
+
+
+
+
+An expressive and modular layer activation mechanism for Context-Oriented
+Programming
+Paul Leger a ,∗, Nicolás Cardozo b , Hidehiko Masuhara c
+a Escuela de Ingeniría, Universidad Católica del Norte, Coquimbo, Chile
+b
+    Systems and Computing Engineering Department, Universidad de los Andes, Colombia
+c
+    Tokyo Institute of Technology, Japan
+
+
+
+ARTICLE                 INFO                               ABSTRACT
+
+Keywords:                                                  Context. There is a trend in the software industry towards building systems that dynamically adapt their
+Context-Oriented Programming                               behavior in response to their surrounding environment, given the proliferation of various technological devices,
+Activation mechanisms                                      such as notebooks, smartphones, and wearables, capable of capturing their execution context. Context-oriented
+EMA
+                                                           Programming (COP) allows developers to use layer abstractions to adapt software behavior to the context. A
+                                                           layer is associated with a context and can be dynamically activated in direct response to gathered information
+                                                           from its surrounding execution environment. However, most existing layer activation mechanisms have been
+                                                           tailored specifically to address a particular concern; implying that developers need to tweak layer definitions
+                                                           in contortive ways or create new specialized activation mechanisms altogether if their specific needs are not
+                                                           supported.
+                                                           Objective. Complementing ideas to expressively declare activation mechanism models with interfaces that
+                                                           define conditionals of activation mechanisms modularly, this paper proposes an Expressive and Modular
+                                                           Activation mechanism, named EMA.
+                                                           Method. To propose EMA, we analyze existing activation mechanisms in COP regarding activation features
+                                                           and scope strategies. After, we propose the design of EMA and validate it with a case study discussion.
+                                                           Results. Using a concrete JavaScript implementation of EMA, named EMAjs, we can implement two Web
+                                                           applications: a smartphone application as an example to illustrate EMAjs in action, and an application of
+                                                           home automation to discuss and compare our proposal.
+                                                           Conclusions. Our proposed mechanism allows developers to instantiate different activation scope strategies
+                                                           and interfaces to decouple the declaration of activation mechanism conditionals from the base code.
+
+
+
+1. Introduction                                                                             literature [2,5–14], each, tailored to address a particular development
+                                                                                            need. Given the target to specific needs, these mechanisms seldom share
+    Context-awareness is important for building pervasive systems as                        the same semantics, for example, event-based mechanisms activate a
+they have to adapt their behavior according to their current context of                     layer when a pattern of triggered events happens. As a consequence,
+execution, gathered from the surrounding environment (e.g., location,
+                                                                                            developers end up tweaking layer declarations in contortive ways,
+users’ preferences) [1]. The Context-oriented Programming (COP) [2]
+                                                                                            or creating new specialized activation mechanisms. We highlight two
+paradigm allows developers to dynamically change the software be-
+havior in response to an identified context. COP languages provide                          problems from this observation. First, each activation mechanism offers
+dynamic adaptations by means of layers that identify contexts [3] as                        a single and fixed semantics to activate a layer (Fig. 1a). However,
+concrete situations sensed from the surrounding environment, and                            interaction between layers can be complex, requiring different mech-
+execute partial methods [4] that are specialized fine-grained behavior                      anisms for their activation. To enable such interaction and increase the
+of the system’s base code.                                                                  flexibility of the system, we require an activation and scoping model
+    A layer is activated or deactivated following a defined activation                      that unifies different mechanisms. For example, a global activation
+mechanism. Whenever the system identifies the execution of a context,                       scope causes a smartphone to reduce the precision of calculations
+the layer associated to the context activates, otherwise, it deactivates.
+                                                                                            whenever its battery level is low (i.e., the context). However, some
+A large number of activation mechanisms have been proposed in the
+
+
+     ∗ Corresponding author.
+       E-mail address: pleger@ucn.cl (P. Leger).
+
+https://doi.org/10.1016/j.infsof.2022.107132
+Received 7 September 2022; Received in revised form 28 November 2022; Accepted 6 December 2022
+Available online 13 December 2022
+0950-5849/© 2022 Elsevier B.V. All rights reserved.
+P. Leger et al.                                                                                                   Information and Software Technology 156 (2023) 107132
+
+
+
+
+                                           Fig. 1. Comparison between existing activation mechanisms and our proposal.
+
+
+operations may require higher precision, and would benefit from a                      4. An extensive and updated reference frame that compares COP
+local activation scope to keep the precision for those instances. Second,                 languages in terms of activation mechanisms and scope sup-
+most activation mechanisms keep a close relationship with the system’s                    ported.
+base code, implying a coupling between the layer declaration, its use,
+and the base code. This is so because developers implicitly depend on                  The rest of this paper is organized as follows. We motivate the
+variable references or method invocations in the base code to declare a             need of an expressive and modular layer activation mechanism using
+conditional (Fig. 1b), increasing the fragility of dynamically adaptive             a prototypical example of a smartphone’s adaptive display orientation
+programs. Changes in base code or a conditional declaration may                     application in Section 2. Based on this motivation, Section 3 presents
+spuriously activate or deactivate layers [15]. A similar problem has                the background of COP concepts required for our approach and a
+been identified in other areas like aspect-oriented programming [16],               comparison of existing COP languages. Section 4 presents the idea and
+known as the fragile pointcut problem [17].                                         details of EMA, while its implementation details are made explicit by
+                                                                                    extending JavaScript with COP capabilities. Section 5 shows the val-
+    To address the previous issues, we propose an EMA mechanism
+                                                                                    idation through the implementation of two applications using EMAjs,
+for COP languages. As Fig. 1c shows, EMA complements ideas to
+                                                                                    performance evaluation, and threats to validate our proposal. Section 6
+expressively declare customized activation mechanism scope strate-
+                                                                                    presents COP approaches related to our proposal, and finally, Section 7
+gies [18] with interfaces to define conditionals of these mechanisms
+                                                                                    closes the paper with the conclusion and avenues of future work.
+that remove implicit dependencies with the base code [19].1 EMA uses
+a unified activation mechanism interpreter that enables managing case               Availability. The current implementation of EMAjs is open-source and
+by case activation scoping strategies by means of dedicated predicates              available at https://github.com/pragmaticslaboratory/EMAjs [20]. In
+to arbitrate interaction among layers. In addition, this language al-               addition, a running example presented in this paper is available at http:
+lows developers to specify interfaces to exhibit part of the internal               //pleger.cl/sites/emajs (revision 903fdae). Our proposal currently
+system’s state (i.e., field values) and behavior (i.e., method executions)          supports Nodejs (v16) [21], and the Google Chrome (v90) [22] and
+of an object, using predicate conditionals to explicitly associate variable         Mozilla Firefox (v88) [23] browsers, without the need for an extension.
+identifiers available in these interfaces. As a consequence, developers
+can define layers with low coupling to the base code, in which the                  2. Motivation: A mobile video game with an adaptive user inter-
+layer itself can include the particular specification of its activation             face
+scope strategy. Our proposal works because these two complementary
+ideas help each other: scope strategies use interfaces to be defined, and               This section presents a variation of the context-aware smartphone
+interfaces with scope strategies expressed in another layer component               display prototypical example [5,11,19]. We use a smartphone video
+make simpler conditional definitions. Finally, as a benefit for EMA                 game application with an adaptive layout interface with respect to the
+developers, layers improve their reuse, flexibility, and their modularity           device’s orientation. In COP, dynamic adaptations are carried out by
+to be applied in adaptive software systems. To highlight the novel of               means of software (re)composition as response to layer activation. This
+this proposal, we develop a reference frame that compares the existing              example motivates the difficulties and interaction intricacies between
+proposals in terms of activation mechanisms and scope supported. In                 existing activation mechanisms, which supports the expression and
+summary, this paper makes the following four contributions:                         modularity problems in activation mechanisms for COP languages.
+                                                                                        The application offers the feature to adapt its layout and behavior
+     1. An Expressive and Modular layer Activation (EMA), which pro-                to support the landscape and portrait orientations in such a way that
+        vides an expressive API for layers scoping, and interfaces be-              the layout of the interface is always parallel to the ground, regardless
+        tween layers and the base code. With these features, EMA allows             of the physical orientation of the device. Fig. 2 shows the way the
+        developers to enhance the modular definition of layers because              interface adapts by rearranging the distribution of displayed icons on
+        their specification contains its scope and variable conditions to           the screen, in response to physical orientation changes, between Portrait
+        be (de)activated.                                                           and Landscape. As in the figure shows, an additional feature is Keep
+     2. A concrete implementation in JavaScript, named EMAjs, with a                Orientation, which allows users to fix displayed components on the
+        preliminary performance evaluation.                                         screen, even if the device rotates (e.g., the video game scene). Imple-
+     3. A discussion of two applications that use our concrete imple-               mentations of such specialized features are crosscutting concerns [16] as
+        mentation, where one is compared to object-oriented paradigm                they are scattered across many places in the base code, tangled with
+        and context-oriented paradigm without EMAjs. Additionally, we               other concerns. Tangled features defining crosscutting concerns can be
+        discuss the threats to validate our proposal.                               modularly implemented by means of COP abstractions.
+                                                                                        Fig. 3 shows an excerpt the smartphone application with two
+                                                                                    classes. The Screen class captures the physical orientation and ro-
+  1
+     Basic and immature notions of these two ideas have been pre-                   tates window components in the application, and the wComponent
+sented independently and disconnected at the Context-Oriented Programming           class is in charge of displaying the application components using a
+workshop.                                                                           display() method. The behavior of the application is specialized
+
+                                                                                2
+P. Leger et al.                                                                                                      Information and Software Technology 156 (2023) 107132
+
+
+
+
+                                                      Fig. 2. A video game with the (almost) full adaptive mode.
+
+
+
+
+                   Fig. 3. Implicit relation and dependency between base code and layers with their activation mechanisms in the smartphone example.
+
+
+by three layers: Landscape, Portrait, and KeepOrientation.                                 As a consequence of these previous two problems, the reuse, flex-
+Landscape displays window components using a landscape layout,                         ibility, and modularity of layers are hindered. To the best of our
+for example, the icons in a menu bar with their name showing to the                    knowledge, existing COP languages do not allow developers to cus-
+right. Portrait displays window components using a portrait layout,                    tomize an expressive scope strategy together with decoupling layers
+for example, the icons in a menu bar with their name underneath                        and the base code. As our proposal does, previous both features put
+the icon. Finally, KeepOrientation keeps specific displayed compo-                     together make it possible to define full-fledged modularized layers.
+nents fixed on the screen, even if the device rotates (e.g., the video game
+scene in Fig. 2). Note that the changes to the display() method to                     3. Context-Oriented Programming
+customize the way components appear on the screen crosscuts objects
+from different classes of the application (e.g., icons, labels, scene).                    COP [2] allows programmers to develop software systems that adapt
+    Whereas previous layers can be implicitly activated when a variable                their behavior at runtime according to identified contexts from the
+changes its value, the KeepOrientation layer is explicitly activated                   surrounding execution environment. The implementation of behavior
+on an object of a window component. Therefore, we have at least two                    adaptations, together with their associated layers and their activation,
+different ways to deal with the activation of layers: global activation                crosscut several concerns of the system. Before diving into our proposed
+and per-instance (object) activation. In addition, triggering the dynamic              approach in the next section, this section introduces the main concepts
+adaptation of the behavior associated to each of the layers Landscape                  of COP, and discusses the existing activation mechanisms and scoping
+and Portrait, these layers need to access the angle variable from                      strategies. Finally, this section discusses different COP languages in
+the Screen class, implying an implicit dependency between these two                    terms of the two previous features.
+layers and the base code.
+                                                                                       3.1. Layers
+Summary. Taking into account the situation described for the smart-
+phone display orientation example, we highlight two problems that                         The main abstraction in COP languages is a layer [4],2 which encap-
+arise from the existing activation mechanisms in COP languages:                        sules the components to modularly implement the dynamic adaptation
+                                                                                       of base code behavior. This dynamic adaptation is carried out by
+     1. Lack of an expressive activation mechanism scope strategy that
+        allows developers to have customized and specialized scope
+        semantics for a layer.                                                            2
+                                                                                            Layers are sometimes refer to as contexts [5]. Following most of works
+     2. Coupling between layers and base code with implicit dependen-                  (discussed in this paper), we will use the term layers as language abstractions
+        cies, making fragile programs that use COP.                                    for dynamic adaptations that are related to an identified context.
+
+
+                                                                                   3
+P. Leger et al.                                                                                                        Information and Software Technology 156 (2023) 107132
+
+
+
+
+                                                            Fig. 4. Layer method and its partial method.
+
+
+partial method [4] definitions, which specialize method implementa-                             Snippet 2: Layer activation interaction management
+tions (known as layered methods) in object-oriented languages (Fig. 4).                 a c t i v a t e Landscape i f ( Screen . a n g l e > THRESHOLD) ;
+Snippet 1 illustrates the definition of a layer with a partial method in                a c t i v a t e P o r t r a i t when ! Landscape ;
+the smartphone application example using ServalCJ [11,14], a Java-
+like for COP. In ServalCJ, developers can define layers (Lines 1–3).                 3.3. Layer activation scope strategies
+Within a class declaration, ServalCJ developers can express how a
+layer modifies the class behavior (Lines 10–15). In this case, when                      We differentiate when a layer is active from when a layer has to be
+the Landscape layer is activated, the display() behavior will be                     applied. The last is the scope strategy for an activated layer, meaning
+the one declared in the method inside the layer (Lines 11–13), rather                that the layer may keep active although its scope does not apply in a
+than the base definition in the wComponent class (Lines 6–8). In COP                 certain portion of a program execution. This difference can be useful
+languages, a partial method can execute the original implementation of               for several examples when we need:
+its layered method using a construct like proceed.
+                                                                                         1. a persistent layer which keeps information in an active layer and
+                                                                                            not applied, e.g., the rotation angle that activated the landscape
+ 1 layer          Landscape {
+ 2       //other code                                                                       layer.
+ 3   }                                                                                   2. not apply an active layer in some particular place without an ex-
+                                                                                            ecution of the enter and exit transition process, e.g., the KeepOri-
+ 5 class wComponent             {
+ 6       void d i s p l a y ( ) {
+                                                                                            entation layer.
+ 7           //implementation                                                            3. to apply a layer to specific objects that could be created un-
+ 8       }                                                                                  der some conditions, e.g., objects created by untrusted third
+                                                                                            applications inside of the video game like advertisements.
+10       layer Landscape {
+11         void d i s p l a y ( ) {                                                      4. to apply a layer considering the relation with other (de)active
+12                //variation for the display method                                        layers, e.g., Landscape and Portrait layers.
+13            }                                                                          5. any combination of previous ones, e.g., our proposal.
+14       }
+15   }
+                                                                                         Researchers have already discussed different scope strategies (com-
+             Snippet 1: Partial method and layer definition in ServalCJ              binations of lexical and dynamic scope) in programming languages
+                                                                                     [27], and particularly in areas related to COP [28–30]. Specifically in
+                                                                                     COP, ContextJS [31] allows developers to express some scope strategies
+3.2. Layer activation mechanisms                                                     to a layer (more in the next section).
+
+                                                                                     3.4. Context-oriented languages
+    As a layer is dynamically activated and deactivated, its associated
+partial methods are respectively composed with and withdrawn from
+                                                                                         In the body of literature, we can find several COP languages, starting
+the system. Activation mechanisms in layers establish how and when a
+                                                                                     by ContextL [4] which is one of the first COP language. Ordered by the
+layer must be activated. We can find different kinds of mechanisms to                release year, this section briefly describes COP languages in terms of
+activate layers: Imperative mechanisms [2,5] activate layers explicitly              activation mechanisms and scope strategies (summarized in Table 1).
+in the system execution workflow, using constructs as with or acti-
+vate, implicit mechanisms [8,10–12,24,25] activate layers whenever a                 ContextL. In 2005, Costanza and Hirschfeld proposed ContextL [4]
+specified condition is satisfied, and event-based mechanisms [9,26] use              as an extension of the Common Lisp Object System (CLOS) [42] to
+                                                                                     support context-oriented programming. ContextL uses an explicit ac-
+event matching triggers in combination with imperative and implicit
+                                                                                     tivation mechanism utilizing the construct with-active-layers,
+mechanisms [13,14]. Using the smartphone application example, Fig. 5
+                                                                                     and layers are dynamically scoped to a specific control flow of a code
+illustrates the three mechanisms to activate the Landscape layer
+                                                                                     block.
+when the angle of rotation for the smartphone exceeds a threshold. Un-
+like the imperative activation mechanism, other activation mechanisms                Ambience. González et al. propose Ambience [34], an implementation
+use a conditional that must be satisfied to activate a layer, as Snippet             of the AmOS [43] object system to support COP. Although the language
+2 describes. The snippet shows the manual management of relations                    uses the term context to refer to a layer, we can find the same concep-
+between layers. For example, the interaction between Portrait and                    tual abstractions that the rest of COP languages. Similar to ContextL,
+Landscape must explicitly deactivate the opposite layer whenever                     the language uses and an explicit activation mechanism, and layers are
+one of the two layers is activated. To resolve relations and activation              dynamically scoped to a specific control flow and global.
+conflicts between layers, COP languages add ad hoc constructs to                     ContextJ. A Java extension to support COP is ContextJ [2,26]. The
+existing activation mechanisms.                                                      language uses an explicit activation mechanism through the with
+
+                                                                                 4
+P. Leger et al.                                                                                                          Information and Software Technology 156 (2023) 107132
+
+
+
+
+                                             Fig. 5. Activating the Landscape layer using three different activation mechanisms.
+
+
+                  Table 1
+                  Activation mechanism and scope strategies of existing COP languages.
+                   Year           COP Language                       Language                  Activation mechanism         Scope strategies
+                   2005           ContextL [4]                       CLOS                      Explicit                     Control flow
+                   2007           ContextS [32]                      Squeak                    Explicit                     Control flow
+                   2007           PyContext [33]                     Python                    Implicit                     Control flow
+                   2007           Ambience [34]                      CLOS-like                 Explicit                     Control flow & global
+                   2008           ContextJ [2]                       Java                      Explicit                     Control flow
+                   2009           NextEJ [35]                        Java-like                 Explicit                     Control flow
+                   2010           ContextErlang [36]                 Erlang                    Explicit                     Per-actor
+                                  JCOP [26]
+                   2010                                              Java                      Event-Based                  Control flow
+                                  (ContextJ variation)
+                   2010           ContextPy [37]                     Python                    Explicit                     Control flow & global
+                   2010           ContextLua [38]                    Lua                       Explicit                     Control flow
+                   2010           Subjective-C [5]                   Objective-C               Explicit                     Global & per-thread
+                   2011           EventCJ [9]                        Spoofax/IMP               Event-Based                  Per-object
+                                                                                                                            Control flow & global &
+                   2011           ContextJS [31]                     JavaScript                Explicit
+                                                                                                                            per-object (customizable)
+                                  ServalCJ [39]
+                   2013                                              Java-like                 Implicit                     Per-object & global
+                                  (or Javanese)
+                   2013           L [40]                             Java-like                 Explicit                     Control flow
+                   2013           Context Traits [6]                 JavaScript                Explicit                     Global & per-object
+                   2015           Congolo [41]                       Golo                      Implicit                     Module
+                   2017           ServalCJ extension [11]            Java-like                 Implicit                     Per-object & global
+                   2018           Emfrp extension [12]               Emfrp                     Implicit                     Global
+
+
+
+construct and follows the scope of a control flow of dynamic extent.                         strategies that allow developers to express dynamic extent of a block
+A ContextJ variant is JCop [26], which uses join points and pointcuts                        code, per-object with restrictions, and global.
+from AspectJ [44] to support an event-based activation mechanism.                            ContextErlang. An Erlang extension to support COP [36] in distributed
+                                                                                             and concurrent environments. ContextErlang is used to develop self-
+Subjective-C. An extension of Objective-C is proposed to enable                              adaptive applications that based actor-oriented programming. The ex-
+context-orientation for mobile devices [5]. Subjective-C acts as a pre-                      tension uses an explicit activation mechanism which is scoped by
+compiler on top of Objective-C using metaprogramming to dynam-                               actors.
+ically modify method implementations during method dispatch. In
+                                                                                             ServalCJ. Kamina et al. propose ServalCJ [39], a Java-like language
+Subjective-C adaptations use an explicit (de)activation mechanism                            that supports COP. Similar to PyContext, the language supports an im-
+(with dedicated @activate and @deactivate abstractions), immediately en-                     plicit activation mechanism that activates layers when conditionals are
+acting such (de)activation. In Subjective-C adaptations are scoped                           satisfied. In [11], ServalCJ is extended to support an implementation
+both globally and locally to all objects in an execution thread. More-                       variant of implicit activation that uses reactive values to activate layers.
+over, Subjective-C was the first language to reconcile multiple scoping                      This variant allows a layer to be (de)activated immediately when its
+                                                                                             associated conditional changes. ServalCJ supports two scope strategies:
+mechanisms in a single (de)activation model [7].
+                                                                                             per-object and global layer activations.
+EventCJ. This is a compiler that is built on the top of Spoofax/IMP                          Context Traits. Context Traits [6] posits a compositional way to enable
+language workbench [45]. EventCJ [9] translates developer pieces of                          dynamic variations to the contexts based on the concepts of traits
+code to AspectJ and Java. The compiler enables to developers to use                          and trait (re)composition. This language uses an explicit activation
+an event-based activation mechanism using the matching of join points.                       mechanism in which the (de)activations take place immediately after
+                                                                                             they are called. Similar to our approach, enables de adaptation of
+Additionally, EventCJ layers have can define a per-object scope instead
+                                                                                             specific object instances, or all objects of a class, depending on the
+of the dynamic extent of a specific control flow like ContextJ.
+                                                                                             association of behavior variations with object instances or their class
+                                                                                             representative.
+PyContext. A Python extension to support COP [33]. PyContext sup-
+ports an implicit activation mechanism that verifies which layers are ac-                    Congolo. Golo [46] is a lightweight dynamic language for the Java
+tive before a layered method is executed. Similarly ContextJ, PyContext                      Virtual Machine (JVM). Congolo [41] is a COP extension for Golo,
+uses a scope that follows a specific control flow.                                           which uses an implicit activation mechanism, the extension follows the
+                                                                                             per-module scope strategy.
+ContextJS. Lincke et al. propose ContextJS [31], a JavaScript extension                      Emfrp extension. Emfrp is a pure-FRP (Functional Reactive Program-
+for COP. The proposal uses an explicit activation mechanism. Regarding                       ming) language for small-scale embedded systems [47]. In [12], Watan-
+the scope strategies, ContextJS offers an open customization for scope                       abe proposes a COP extension for Emfrp. Similar to ServalCJ, the
+
+                                                                                         5
+P. Leger et al.                                                                                                        Information and Software Technology 156 (2023) 107132
+
+
+extension uses an implicit activation mechanism and supports a global              Table 2
+                                                                                   Flexible layer activation/deactivation API.
+scope.
+    COP languages like ContextS [32], ContextPy [37], L [40], NextEJ                             𝐿𝑎𝑦𝑒𝑟𝐴𝑐𝑡𝑖𝑣𝑎𝑡𝑖𝑜𝑛 ∶∶= activate(𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒𝐸𝑥𝑝𝑟𝑒𝑠𝑠𝑖𝑜𝑛 [, 𝑆𝑐𝑜𝑝𝑒])
+                                                                                               𝐿𝑎𝑦𝑒𝑟𝐷𝑒𝑎𝑐𝑡𝑖𝑣𝑎𝑡𝑖𝑜𝑛 ∶∶= deactivate(𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒𝐸𝑥𝑝𝑟𝑒𝑠𝑠𝑖𝑜𝑛 [, 𝑆𝑐𝑜𝑝𝑒])
+[35], and ContextLua [38] (mainly) propose to use an explicit activa-                       𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒𝐸𝑥𝑝𝑟𝑒𝑠𝑠𝑖𝑜𝑛 ∶∶= {𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒}(𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛)
+tion mechanism and its scope follows the control flow or a global layer                                𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒 ∶∶= between | allOf | atLeastOne |
+activation. In addition, we can find other proposals like Lambic [24]                                                 atMostOne | unique
+and Flute [25], proposed COP language introducing the definition                                       𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛 ∶∶= 𝑅𝑎𝑛𝑔𝑒 | 𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒
+                                                                                                           𝑆𝑐𝑜𝑝𝑒 ∶∶= 𝐼𝑛𝑠𝑡𝑎𝑛𝑐𝑒 | 𝐶𝑙𝑎𝑠𝑠 | 𝑇 ℎ𝑟𝑒𝑎𝑑
+and realization of adaptations to the context for group behavior and
+reactive programming, respectively. Finally, we can find alternatives
+to address issues related to context-oriented implementations that go
+beyond the concepts of layers like the language Korz [48] and context-            all layer activations and deactivations use a global scope.
+oriented behavioral programming [49]; however, these proposals are                𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒𝑠 (e.g., RotationCondition) specify a predicate that the
+beyond the scope of this paper.                                                   interface must satisfy to enact the required action. For example,
+                                                                                  activate(allOf(RotationCondition)) results in the activation of the layer
+4. EMA                                                                            (Landscape) for all the program entities that satisfies the specified
+                                                                                  𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒:
+   This section presents EMA, an expressive and modular activation
+                                                                                     R o t a t i o n C o n d i t i o n = ( ) => Screen . a n g l e > THRESHOLD
+mechanism for COP. Our proposal complements ideas to expressively
+declare customized activation mechanism [18] with interfaces to define
+                                                                                      The predicates atLeastOne, atMostOne respectively activate any (possibly
+conditionals of these mechanisms that remove implicit dependencies
+                                                                                  several), and at most one, of the layers satisfying the given 𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛.
+with the base code [19]. Using the smartphone application example, we
+                                                                                  The unique predicate lets us express the condition where just the speci-
+describe how each idea to work together in EMA as a complementary
+                                                                                  fied layer satisfying the condition must be active (all other layers are
+manner.
+                                                                                  implicitly deactivated). In the example in Snippet 2, assuring the acti-
+                                                                                  vation of Portrait takes place when Landscape is inactive, can be expressed
+4.1. An expressive API for scoping
+                                                                                  as activate(unique(RotationCondition)). Finally, the between predicate enables
+                                                                                  the activation of all layers for which the 𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛 is satisfied, specified
+    To manage layer activation scope, we define an expressive API
+                                                                                  as a 𝑅𝑎𝑛𝑔𝑒 query. In addition to 𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒𝐸𝑥𝑝𝑟𝑒𝑠𝑠𝑖𝑜𝑛𝑠, each action
+(Application Programming Interface) that enables developers to acti-
+                                                                                  can specify the 𝑆𝑐𝑜𝑝𝑒 of the activation/deactivation for the layers,
+vate/deactivate multiple layers simultaneously, defining dedicated and
+                                                                                  following any of the existing five models:
+customized scoping strategies for each particular activation.
+    Layer (de)activation is performed using our defined API to explicitly           (1) local to the lexical scope in which the adaptation is defined/-
+and expressively state the scope in which a layer is active. As an                      called [4] (using withCurrentScope),
+example of the need for this scope in activation mechanisms, consider               (2) local to all the objects in the current execution thread [7] (using
+the activation of the Landscape layer in our video game application, de-                a specific 𝑡ℎ𝑟𝑒𝑎𝑑 id),
+fined in Section 3.2 using ServalCJ as activate Landscape if(Screen.angle >         (3) global to all objects and all execution threads [50] (default
+THRESHOLD). If such conditional is not satisfied, the layer is deactivated.             behavior not specifying the 𝑆𝑐𝑜𝑝𝑒),
+Such activation mechanisms present two problems.                                    (4) local to a specific object instance [9] (specifying an object
+    First, the activation mechanism explicitly targets a specific layer.                𝐼𝑛𝑠𝑡𝑎𝑛𝑐𝑒 as 𝑆𝑐𝑜𝑝𝑒), and
+For example, each activation and deactivation of the Landscape and                  (5) specific to all object instances of a type [51] (specifying a 𝐶𝑙𝑎𝑠𝑠
+Portrait layers in the video game application must be managed inde-
+                                                                                        as 𝑆𝑐𝑜𝑝𝑒).
+pendently, even though they refer to the same system property. This
+hinders the conciseness of activations, opposed to implicit or more                  As a consequence, EMA eases the layer activation scope from two
+flexible mechanisms. Second, scoping rules in activation mechanisms               perspectives. First, we provide a unified interface to scope adaptations
+are managed uniformly. However, different layers may require different            using different mechanisms within the same application. Second, we
+scopes to assure the correct system behavior. For example, in the                 enable the selection of many layers based on their interfaces.
+video game application, the Landscape layer can be activated with a
+global scope, applying the specialized behavior to all entities in the            4.2. Interfaces
+system, while the KeepOrientation layer may be applied to specific objects
+(e.g., instances of wComponent) for which we do not want to change the                Fig. 6a shows the implicit dependency between base programs and
+orientation along with the device.                                                layers through program variables used in conditional declarations to
+    To the best of our knowledge, the purpose of our expressive scoping           activate layers, which is problematic for code maintenance and reuse.
+API within EMA arises from the observation that there is no unifying              EMA uses interfaces [19] to decouple such implicit dependency. Taking
+interface for scoping the activation/deactivation of layers that is in-           inspiration from Open Modules [52] and other related proposals [53–
+dependent from a COP language. We address both problems existing                  55], interfaces allow developers to exhibit field values and method
+in common activation mechanisms in COP. The idea behind our API                   executions (with a return value) from any object of a class. Note
+is to enable layer (de)activation through the use of the interface to             that exhibiting a method without a return value would not make
+which layers subscribe (Section 4.2). The activation scopes are defined           sense to define a 𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛, as conditions are defined for base-level
+as functions on layers’ interfaces, which are able to apply the action to         values; therefore that is not allowed. Exhibited values are used in the
+multiple layers simultaneously.                                                   𝐶𝑜𝑛𝑑𝑖𝑡𝑖𝑜𝑛𝑃 𝑟𝑒𝑑𝑖𝑐𝑎𝑡𝑒 declaration to activate and deactivate layers. For
+    The expressive scoping API for layer activation and deactivation              example, Fig. 6b shows the Screen class exhibiting the angle variable as
+used in EMA is defined in Table 2. Each function specifies the action             a rotation interface (shown in the white square in the figure), to satisfy
+(activate or deactivate) to execute over a set of layers specified by a           the conditional requirements of the Landscape layer. Interfaces also accept
+predicate over a conditional (predicate) on conditions over interfaces,           expressions as values to address the problem of context reuse. For
+and applying the activation/deactivation on a particular scope.                   example, consider a new device (e.g., tablet) whose rotation angle is
+    The activation and deactivation functions effectively actuate over all        provided in radians. As the layer requires the rotation in degrees, the
+layers satisfying the condition predicate on the interface. By default,           expression rotation : angleInRadian∗180/PI is used in the interface definition
+
+                                                                              6
+P. Leger et al.                                                                                                     Information and Software Technology 156 (2023) 107132
+
+
+
+
+                        Fig. 6. Coupling due to the implicit dependency between base program and layers, and how interfaces can decouple them.
+
+
+
+
+                                                        Fig. 7. Application of EMA to the smartphone example.
+
+
+to reconcile both implementations, as shown in Fig. 6c. As a layer is                 4.4. EMAjs
+an object, its conditional evaluation can be exhibited to other layers to
+resolve activation conflicts. Through interfaces, developers can replace                  This section presents a concrete implementation of EMA as a
+the implicit dependency between layer definition and activation, and                  JavaScript library, named EMAjs [20].3 Readers should note that while
+the base program.                                                                     our implementation uses the object-oriented paradigm, the model is
+                                                                                      agnostic to a concrete paradigm could be implemented, for example,
+                                                                                      using functions as first-class entities.
+4.3. Complementing an expressive scoping API and interfaces                               In EMAjs, we introduce two main abstractions to increase the ex-
+                                                                                      pressiveness and modularity of layer activation: interfaces, and dedi-
+    EMA, as an expressive and modular activation mechanism, allows                    cated scoping rules.
+developers to define customized activation mechanisms according to                        Interfaces are implemented using a reactive programming style
+their needs. This proposal is carried out by putting together an expres-              [19]. Interfaces are created using the exhibit language abstraction. All
+sive API for scope strategies and interfaces, in which developers can                 interfaces are registered and kept in a signalInterfacePool as part of a
+                                                                                      management object, EMA. Upon creation, we associate the new inter-
+expressively and modularly define layers. Fig. 7 shows the application
+                                                                                      face with the layers deployed in the environment, as a condition for
+of EMA for the case of the smartphone video game. First, we can
+                                                                                      the layer activation/deactivation. Layer activation conditions, coming
+see that developers can customize different scope strategies to layers:
+                                                                                      from interfaces, are created as reactive signals, so that whenever the
+Landscape and Portrait use a global scope to modify window components,
+                                                                                      interface value changes, the layer condition is evaluated reactively. If
+and KeepOrientation uses a per-object activation scope (i.e., video game
+                                                                                      the condition is satisfied, the layer is activated, otherwise the layer
+scene). Second, the Screen class exhibits the angle field as a rotation inter-
+                                                                                      becomes inactive.
+face to satisfy the requirements for the Landscape and Portrait layers. In                In addition to the layer activation/deactivation using interfaces,
+this way, the layer definitions are now decoupled from the smartphone                 we extend the scoping of layers following a declarative set of rules
+application, i.e., the base program. Notice that both scope API and                   implementing different predicates applicable to layers and the program
+interfaces are powered when they cooperate with each other. This is
+because the scope API are defined as interfaces on layers, and this API
+allows developers to remove scope restrictions from the conditional                     3
+                                                                                          The EMAjs implementation           is   available   at:   https://github.com/
+definitions used by interfaces to (de)activate a layer.                               pragmaticslaboratory/EMAjs.
+
+
+                                                                                  7
+P. Leger et al.                                                                                                             Information and Software Technology 156 (2023) 107132
+
+
+entities they affect [18]. Scoping rules can be specified by developers            an interface to capture a particular situation from the system state.
+upon the explicit activation/deactivation of a layer, using the activate           Layers define a conditional property listing all the condition entities
+/deactivate abstractions. At layer activation/deactivation developers              that may be applicable to the layer. Snippet 4 shows the definition
+can specify the activation conditions and restrictions, the extend of              of the Landscape layer (Lines 1–6) and a RotationCondition object (Line
+the layers’ effect, and the entities over which the layer is applied,              8). Similarly the ServalCJ extension [11], layers may also define two
+as explained in Section 4.1. To do this, the EMA manager filters the               optional methods, to execute predefine actions as soon as the layer is
+application of the layer to the application entities based on the given            activated (onEnter()), and as soon as the layer is deactivated (onExit()).
+predicate to the activation, applying the layers exclusively for the entity        Partial method definitions are associated with the layers in which they
+instances specified in the activation conditions and for the specified             apply by means of the addPartialMethod construct. This construct takes a
+extend (i.e., global or local).                                                    layer, a prototype object, a method selector, and its partial implemen-
+    These two additions to COP languages, together with the definition             tation, to associate the partial implementation to the method selector in
+of partial methods, helps us define dynamic adaptations to the context             the prototype. In our case, Lines 11–13 define the behavior variation to
+that are more expressive and modular, as we explain in the following               the display method of the wComponent prototype object. Finally, developers
+section.                                                                           use the EMA.layer method to deploy a layer (Line 14).
+                                                                                   1    l e t Landscape = {
+5. Validation                                                                      2        conditional : [ RotationCondition ] ,
+                                                                                   3         //optional methods
+    We now present the validation of our work evaluating the modular-              4         onEnter : function ( ) { Screen . r o t a t e ( ) ; } ,
+                                                                                   5         o n E x i t : function ( ) { . . . }
+ity and flexibly benefits of the features to scope adaptations introduced
+                                                                                   6    };
+in EMA. To do this we use the EMAjs implementation on two COP
+systems, coming from different applications domains. Additionally, we              8    l e t R o t a t i o n C o n d i t i o n = ( )=> r o t a t i o n > THRESHOLD ;
+compliment this evaluation of the new features in EMA with a per-
+                                                                                   10 EMA. addPartialMethod ( Landscape ,
+formance evaluation, contrasting EMA to implementations using layers               11          wComponent , d i s p l a y , function ( ) {
+and objects, to gauge the speed-up incurred by implementing interfaces.            12          //method variation
+Finally, we put in perspective the results of our validation with a                13   }) ;
+                                                                                   14 EMA. layer ( Landscape ) ;
+discussion of the limitations and threats to validity of our approach.
+                                                                                                      Snippet 4: Defining and exhibiting an interface
+5.1. EMA application
+                                                                                       Finally, the activation and scoping mechanisms of layers and their
+    We validate the features introduced in EMA by means of two
+                                                                                   associated partial methods become available to the runtime system
+applications from different domains and sizes, these are: a smartphone
+                                                                                   by means of the new activate and deactivate constructs. Snippet 5
+video game application, and a smart-home environment.
+                                                                                   shows some of the different mechanisms, available in EMA, to scope the
+    The smartphone application is used to show case the main features
+                                                                                   activation and deactivation of layers. Line 1 uses a global scoping, in
+introduced with EMA, in a small scale application. Additionally, the
+                                                                                   which all layers satisfying the RotationCondition predicate become active.
+contexts in this application are characterized as internal to the appli-
+                                                                                   Line 2 also uses an activation with global scoping, where the unique
+cation — that is, they are monitored variables from the system objects.
+                                                                                   predicate assures that only the layers that satisfy the RotationCondition are
+The smart home application is a larger scale application in which
+                                                                                   active, implicitly deactivating all other layers. Line 3 uses a scoping rule
+context changes are driven by variables external to the system gathered
+                                                                                   in which all layers satisfying FixedCondition become active exclusively for
+through sensors. With this application we evaluate further EMA’s fea-
+                                                                                   the gameScreen object instance, while other objects are unaffected by the
+tures with respect to the modularity and flexibility of COP applications
+                                                                                   layer. Line 4 uses a scoping rule in which, at least, one of the layers
+by comparing it with alternative implementations using other COP
+                                                                                   satisfying RotationCondition deactivates from a specific execution thread.
+languages (i.e., without EMA), and object-oriented implementations.
+    Overall, our validation shows that using EMA in context-aware                  1 EMA. activate ( R o t a t i o n C o n d i t i o n ) ;
+                                                                                   2 EMA. activate ( unique ( R o t a t i o n C o n d i t i o n ) ) ;
+applications leads to solutions that are more expressive and modular
+                                                                                   3 EMA. activate ( allOf ( F i x e d C o n d i t i o n ) ,   gameScreen ) ;
+than their counterparts using other COP languages.                                 4 EMA. deactivate ( atLeastOne ( R o t a t i o n C o n d i t i o n ) , thread ) ;
+
+5.1.1. Smartphone video game application                                                        Snippet 5: Scoping mechanisms for layer (de)activation
+    The first part of the validation consists of a description of the
+smartphone vide game application implementation using EMAjs,4 to                       From the implementation of the smartphone application, in Snippet
+showcase the main components of EMA at work.                                       6, we note two characteristics that help us to support the statements of
+    First, system objects may use the exhibit construct to define inter-           this paper when compared to implementations in other COP languages:
+faces. This construct takes an object and creates an interface from
+specified object properties (both fields or methods with return values).           1. We note the decoupling between the base behavior, layers, and
+Snippet 3 shows the definition of the rotation interface, taken from the              partial method definitions. The use of interfaces allows us to define
+angle field in the Screen prototype object.                                           layers and partial methods as modules independent of base code,
+                                                                                      i.e., class definitions. In the Screen class (Line 1 in Snippet 6), we can
+   EMA. exhibit ( Screen , { r o t a t i o n :   "angle" } ) ;
+                                                                                      see the class declaration is independent from the declarations for
+                  Snippet 3: Defining and exhibiting an interface                     the Landscape and KeepOrientation layers (Line 10). Approaches as that
+                                                                                      of ServalCJ follow a layer-in-class declaration [56] as in Snippet
+   Second, we add a Condition as a function object providing a user-                  1. Additionally, interfaces prevent the dependency between base-
+defined predicate that specifies the situations in which a layer should               level variables and layer activation conditions (Line 6 in Snippet 6),
+become active. Condition predicates should be defined in terms of                     increasing its modularity. A second point of decoupling takes place
+                                                                                      between the definition of partial methods and layers. We define
+                                                                                      partial methods outside of layers, unlike other COP languages, to
+  4
+    The full running implementation is available at: http://pleger.cl/sites/          let base programmers define the specialization of their system’s
+emajs.                                                                                behavior for any layer, and not just the ones defined by them. The
+
+                                                                               8
+P. Leger et al.                                                                                                                           Information and Software Technology 156 (2023) 107132
+
+
+   addPartialMethod method lets developers associate: a layer, the class on                                  of the case study. The first version implements adaptation definition
+   which it takes effect, and the specialized behavior (Line 17).                                            through the use of the strategy design pattern. Adaptation activation
+2. EMAjs allows developers to define different scoping mechanism to                                          is made explicit with manual global variables’ manipulation, scoped
+   take effect in each activation instance of a layer (Line 28). Effec-                                      globally. The second version implements a standard COP definition
+   tively, this implies that developers are able to express individual                                       of adaptations with explicit activation and global scoping. The third
+   layer activations with different scoping mechanisms at different                                          version implements the system using EMA to manage both activation
+   execution points. As consequence, layer activation is more flexible,                                      and scoping. Activation is implicit using exposed interfaces, and the
+   allowing for richer interaction between adaptations.                                                      scoping is tailored to each specific situation.
+                                                                                                                 We compare the expressiveness and flexibility of the three adapta-
+                                                                                                             tion models used in terms of the LOC required to define the modularity
+ 1 l e t Screen = {                                                                                          for three aspects for adaptation (i.e., base system logic, adaptation logic,
+ 2     angle : getDeviceInf ( ) . orientation ,                                                              and activation logic) in terms of their scattering and tangling in the
+ 3     r o t a t e : function ( ) {/* implementation */}
+                                                                                                             system.
+ 4 }
+                                                                                                                 To evaluate the modularity of EMA, we first measure how expressive
+ 6 EMA. exhibit ( Screen ,               { r o t a t i o n : "angle" } ) ;                                   is the language. We do this by measuring the LOCs for our case study,
+ 7 l e t R o t a t i o n C o n d i t i o n = ( )=> r o t a t i o n > THRESHOLD ;
+                                                                                                             taking into account the special situations described before. Our hypoth-
+ 8 l e t F i x e d C o n d i t i o n = ( )=> r o t a t i o n == "fixed" ;
+                                                                                                             esis is that, if EMA is more expressive, then it should require a lower
+10 l e t Landscape = {                                                                                       implementation effort (i.e., LOCs) to develop the application concerns.
+11     c o n d i t i o n : ( ) => R o t a t i o n C o n d i t i o n ;
+                                                                                                             Moreover, as EMA improves on the definition and management of
+12 }
+13 l e t K e e p O r i e n t a t i o n = {                                                                   dynamic adaptations, there should be a reduction in the percentage
+14     c o n d i t i o n : ( ) => F i x e d C o n d i t i o n ;                                              of code dedicated to these concerns. Fig. 8 shows the results of this
+15 }
+                                                                                                             measurement. The results confirm our hypothesis, that a more expres-
+17 EMA. addPartialMethod ( Landscape ,                         wComponent ,   ’display’ , function ( )       sive approach reduces the total LOCs in the application. This reduction
+                 {                                                                                           comes from the effort reduction (i.e., LOC) in the adaptation logic
+18          ( ’#grid’ ) . w2grid ( {                                                                         and adaptation management concerns. This way developers can focus
+19              columns : [
+20              { i c o n : ’icon1’ } ,
+                                                                                                             on the core logic of their application, rather than in the adaptation
+21              { c a p t i o n : ’new’ } ,                                                                  concerns. The EMAjs version of the case study is 0.21𝑥 more concise
+22               // ...                                                                                      than its counter part using design patterns. When evaluating each of the
+23              { i c o n : ’icon5’ } ,
+                                                                                                             concerns in the application, we observe that we reduce the adaptation
+24              { c a p t i o n : ’share’ } ,
+25            ]}) ;                                                                                          logic in 0.17𝑥 and the adaptation management logic in 1.98𝑥, yielding
+26 }) ;                                                                                                      an increase in the application logic of 1.38𝑥. Note that the increase
+27 l e t gameScreen = new wComponent ( ) ;
+                                                                                                             in the application logic does not imply an increase in the LOCs for
+28 EMA. activate ( unique ( R o t a t i o n C o n d i t i o n ) ) ;
+29 EMA. activate ( allOf ( F i x e d C o n d i t i o n ) , gameScreen ) ;                                    this concern, rather it highlights the importance of this concern in the
+                                                                                                             application.
+31 EMA. layer ( Landscape ) ;
+                                                                                                                 To continue the evaluation of the expressiveness of the applications,
+32 EMA. layer ( K e e p O r i e n t a t i o n ) ;
+                                                                                                             we turn our attention to the system modularity. Fig. 9 shows a division
+                       Snippet 6: Video game application in EMAjs                                            of the modules required to develop the application. Each of the modules
+                                                                                                             represent a specific entity in the case study (in the x-axis) and the
+                                                                                                             quantity of concerns that are defined/used within the module (y-axis).
+                                                                                                             From Fig. 9, we observe that as we move towards more expressive
+5.1.2. Home automation system
+                                                                                                             languages, the complete system becomes more cleanly modularized,
+    We use a home automation system as a case study to evaluate the
+                                                                                                             reducing the number of concerns used per module (i.e., object file).
+modularity and flexibility of EMA. The home consists of different rooms
+                                                                                                             Note that there is still some modules with multiple concerns, these
+and appliances within those rooms that users can interact with. For this
+                                                                                                             correspond to the definition of layers, and the orchestration for the
+case study we focus on the behavior of door ring alerts.
+                                                                                                             whole system. In the former case, we could split the definition of layers
+    The base behavior of the alert system is to advertise visitors at the
+                                                                                                             into individual modules, however this would increase the number of
+front door of the home with a ringtone. The base alert sounds in a
+                                                                                                             files. Given that the application is small, we preferred keeping all the
+standard chime installed at the door to provide visitors feedback about
+                                                                                                             definitions to a file. In the latter case, the concerns could also be split
+the action. To advertise the alert to home inhabitants, the ringtone
+                                                                                                             into different modules. This division depends on the characteristics and
+should echo throughout the home. However, such alerts should echo
+                                                                                                             controls of the systems (e.g., sensors) on the edge of the application.
+only in the rooms occupied by a user; which is defined as an adaptation
+                                                                                                             We note that in most cases for small application, at least one file will
+to the regular behavior. Whenever a user enters a room, the ring alert
+                                                                                                             orchestrate the complete system, and therefore, containing all concerns.
+is forwarded to the appliances in the room (e.g., TV, radio, soundbar)
+                                                                                                                 Finally, Listings 7–9 complement our evaluation on modularity, in
+by echoing the sound. A second adaptation is defined to manage
+                                                                                                             this case showing the behavior and corresponding adaptations for the
+alerts according to the appliances currently in use. Alerts should not
+                                                                                                             situations when both a regular user and a baby are in a room.5 Note
+disrupt the regular behavior of appliances, and therefore alternative
+                                                                                                             that the color scheme in the listings follows the division of Fig. 8
+notification options are used. For example, in the case of a TV, the
+                                                                                                             into application logic, adaptation logic, and adaptation management.
+alert is displayed as a text message on the screen rather than as sound.
+                                                                                                             The dotted lines in the listings represent different application modules.
+The home should also make sure that ring alerts do not echo in babys’
+                                                                                                             From the code snippets it is possible to see how the code becomes more
+rooms, not to disturb them. Moreover, if all rooms are occupied, the
+                                                                                                             modular, by cleanly separating the three different concerns. First, we
+alert should sound on a single device, to avoid loud disturbances.
+    The purpose of this case study is to highlight the advantages of
+the activation and scoping mechanisms proposed in EMA with respect                                             5
+                                                                                                                  The purpose of the code snippets is to show the interplay and tangling
+to the modularity and flexibility of adaptations and their activation.                                       between the three adaptation aspects, rather than to focus on the imple-
+For this purpose we follow the evaluation strategy from the litera-                                          mentation details. The full implementation of the application is available at:
+ture [57], where we compare the implementation of three versions                                             https://github.com/pragmaticslaboratory/EMAjs [20].
+
+
+                                                                                                         9
+P. Leger et al.                                                                                                    Information and Software Technology 156 (2023) 107132
+
+
+
+
+                                                           Fig. 8. LOCs percentage per application concern.
+
+
+
+
+                                                           Fig. 9. LOCs percentage per application concern.
+
+
+gain modularity by separating the adaptation logic from the base logic,                 }
+                                                                                        -------------------------------------
+when moving from the strategy pattern based implementation to an                        EMA. addPartialMethod ( OccupiedLayer , Home.rooms , " playSound " ,
+implementation using COP. However, in the latter implementation, we                        function () {
+                                                                                               this. appliances . forEach (a => {
+still observe, adaptation managing code tangled with the application                              a. playSound ( " Advertise " ) ;
+                                                                                                  console .log ( " ring alarm on " ) ;
+logic. With EMA, we can remove that last dependency by exhibiting                              })
+                                                                                           }
+the appropriate interfaces, rather than by depending on each specific                   );
+variable in the code.                                                                   EMA. addPartialMethod ( BabyRoomLayer , Home.rooms , " playSound " ,
+                                                                                           function () {
+       Snippet 7: Pattern-based implementation of the case study                             if(this.baby)
+                                                                                               console .log ( " Not playing a sound as the baby sleeps " ) ;
+  function Room(name , appliances ) {                                                      }
+    this. strategy = null;                                                              );
+    this.users = 0;                                                                     -------------------------------------
+    this. baby = false;                                                                 let OccupiedLayer = {name : " occupied " , condition : " " , enter :
+    this. userExit = function () {                                                             function () {}, exit: function () {}};
+       this.users = Math.max (0, this.users -1);                                        EMA. deploy ( OccupiedLayer );
+       if(this.users === 0)                                                             let BabyRoomLayer = {name: " babyRoom " , condition : " " , enter :
+         this. strategy = null;                                                                function () {}, exit: function () {}};
+       else                                                                             EMA. deploy ( BabyRoomLayer );
+         this. strategy = new OccupiedStrategy (this);
+    };
+    this. babyInRoom = function () {                                                            Snippet 9: EMAjs implementation of the case study
+       this.baby = true;                                                                let Room = {
+       this. userEnter ();                                                                users: new Signal (0) ,
+       this. strategy = new BabyRoomStrategy (this);                                      baby: new Signal (0) ,
+    };                                                                                    userExit : function () {
+  }                                                                                          this.users.value = Math.max (0, this.users.value - 1);
+                                                                                             if(this.users.value === 0)
+  function OccupiedStrategy (p) {                                                              this. fullHome .value = Math.max (0, this. fullHome .value -1);
+    Room.call(p.name , p. appliances );                                                   },
+    this. playSound = function () {                                                       babyInRoom : function () {
+      p. appliances . forEach (a => {                                                        this.baby.value += 1;
+         a. playSound ( " Advertise " ) ;                                                 }
+         console .log ( " ring alarm on " ) ;                                           }
+      })
+    }                                                                                   EMA. exhibit (Room , { occupied : Room.users });
+  }                                                                                     EMA. exhibit (Room , { withBaby : Room.baby });
+  OccupiedStrategy . prototype =new Room;                                               -------------------------------------
+                                                                                        EMA. addPartialMethod ( OccupiedLayer , Home.rooms , " playSound " ,
+  function BabyRoomStrategy (p) {                                                          function () {
+    Room.call(p.name , p. appliances );                                                      this. appliances . forEach (a => {
+    this. playSound = function () {                                                             a. playSound ( " Advertise " ) ;
+      console .log ( " Not playing a sound as the baby sleeps " ) ;                             console .log ( " ring alarm on " ) ;
+    }                                                                                        })
+  }                                                                                        }
+  BabyRoomStrategy . prototype = new Room                                               );
+
+              Snippet 8: COP implementation of the case study                           EMA. addPartialMethod ( BabyRoomLayer , Home.rooms , " playSound " ,
+                                                                                           function () {
+  let Room = {                                                                               if(this.baby)
+    users: 0,                                                                                   console .log ( " Not playing a sound as the baby sleeps " ) ;
+    baby: false ,                                                                          }
+    userExit : function () {                                                            );
+       this.users = Math.max (0, this. users - 1);                                      -------------------------------------
+       if(this.users === 0)                                                             let OccupiedLayer = {name : " occupied " , condition : " occupied > 0" ,
+         EMA. deactivate ( OccupiedLayer );                                                    enter: function () {}, exit: function () {}};
+       else                                                                             BabyCondition = " withBaby > 0 "
+         EMA. activate ( OccupiedLayer );                                               let BabyRoomLayer = {name: " silent " , condition : BabyCondition ,
+    },                                                                                         enter: function () {}, exit: function () {}};
+    babyInRoom : function () {
+       this.baby = true;                                                                  To evaluate the flexibility of EMA, we focus our attention in the in-
+       this. userEnter ();                                                            teraction between the OccupiedRoom and BabyRoom adaptations. The
+       EMA. activate ( BabyRoomLayer );
+    }                                                                                 OccupiedRoom adaptations modifies the behavior of alerts in a room,
+
+                                                                                 10
+P. Leger et al.                                                                                                             Information and Software Technology 156 (2023) 107132
+
+
+
+
+Fig. 10. Three pieces of code used for the EMAjs performance evaluation: (a) Only creates objects, (b) creates objects and deploys layers, and (c) creates objects and interfaces.
+
+
+whenever a user is in it. The BabyRoom adaptation has a similar effect,                     5.3. Threats to validity
+however, the behavior of both adaptations differs. As a consequence,
+using COP, if there is a user in a room, and a baby in other room of the                        We now present the threats to the validity of our evaluation, and
+house, the behavior observed upon an alert will correspond to the same                      discuss possible limitations of our approach.
+behavior. This an undesired behavior, as we unintentionally capture a                           Threats to external validity refer to the generalization of the results
+global behavior for all adaptations.                                                        from our evaluation. The evaluation presented in this work is based on
+    EMA makes it possible to scope adaptations for each specific sit-                       the development of two applications coming from different domains,
+                                                                                            to account for different types of interactions between adaptations for
+uation, offering a greater flexibility to apply adaptations and avoid
+                                                                                            different contexts. Moreover, the applications are of different sizes to
+undesired/unintentional behavior. Using the layer activation for a spe-
+                                                                                            remove possible bias with respect to the contexts used in the appli-
+cific object instance, as shown in Snippet 10, for the case of activating
+                                                                                            cation, and the conditions in which they should take place. While
+the specialized behavior for a baby in a room, this behavior will only
+                                                                                            many different types of interactions are covered by the applications
+be visible for that specific object instance. All other rooms will behave                   showcased in the validation, we cannot claim that these are exhaus-
+according to their corresponding occupancy.                                                 tive. Therefore, EMA may not cover all possible interactions between
+                                                                                            adaptations. However, we argue that the flexibility of interfaces and
+       Snippet 10: Scoping adaptations to specific object instance
+                                                                                            the possibility to extend the activation language, can ease this problem
+  bedroom . babyInRoom ( ) ;                                                                by extending our proposal.
+  EMA. a c t i v a t e ( atMostOne ( BabyCondition ) , bedroom ) ;
+                                                                                                Threats to construct validity refer to the cases in which the evaluation
+                                                                                            is not exhaustive or selective enough. In this case, the modularity anal-
+                                                                                            ysis of the smart home application is restricted to the implementations
+5.2. Performance evaluation
+                                                                                            provided by the authors, experts in exploiting the modularity of the
+                                                                                            three application versions. A wider evaluation with users providing
+     The paper proposal focuses on defining an expressive modular                           their own implementations of the three application versions can pro-
+activation mechanism for COP; hence, we have not sacrificed any                             vide a more faithful evaluation of the modular capabilities of both COP
+potentially valuable feature on the basis of its expected cost. Even so,                    and EMA, as it would be used in the wild.
+it is valuable to have an outline of performance for programming lan-                           The proposed evaluation is successful in validating the objectives
+guage proposals. Therefore, we carried out a preliminary performance                        and contributions of EMA. However, we note that further empirical
+evaluation using EMAjs. We used Nodejs (v16) [21] on Macbook Pro                            evaluation could strengthen the arguments of the paper with the con-
+(2020), 2 GHz Quad-Core Intel Core i5 with 16 GB of RAM running                             tributions of practitioners. Moreover, this would help us in positing
+                                                                                            EMA as a viable and usable technology with benefits for developers.
+macOS Monterey, and EMAjs GitHub revision 903fdae (May 18, 2021).
+                                                                                            Furthermore, the application of EMA to more domains can help us in
+    Fig. 10 shows the three JavaScript programs executed to evalu-
+                                                                                            positioning its contributions within the software development industry.
+ate EMAjs performance. The first program creates up to 600 objects
+(Fig. 10a), the second one creates/deploys up to 600 objects/layers
+                                                                                            6. Related work
+with one interface (Fig. 10b), and the last one creates up to 600 ob-
+jects/interfaces with one layer (Fig. 10c). Using these three programs,                         Different proposals related to ideas behind EMA exist. In [61],
+Fig. 11 shows a preliminary performance evaluation of the current                           the author presents software development based on open implemen-
+EMAjs implementation. The figure shows the average time in ms (y-                           tations, which push software modularity through guidelines for the
+axis) of 100,000 executions vs the creation of objects/layers/interfaces                    construction of abstractions that can encapsulate customized behavior
+(x-axis), respectively for each of the programs. Although EMAjs does                        semantics. In this line, proposals for JavaScript can be found [62,63].
+not observe every statement trying to activate a layer or execute a                         Particularly in COP, for example, we can find ContextJS [31] as an open
+partial method (Figs. 10b and 10c), the current implementation is                           implementation for layer composition, which allows developers to use
+clearly slower than a program without EMAjs (Fig. 10a). Additionally,                       JavaScript to implement customized scope strategies. We next discuss
+an incremental use of interfaces affects performance. These results                         proposals related to the expressive declaration of scope strategies and
+could be due to the propagation of data stream in an unoptimized and                        decoupling between layers and the base code.
+naive reactive programming implementation [58]. In JavaScript, we                           Group behavior. Group behavior is proposed for COP [24,25] to enable
+can find proposals like Flapjax [59] and RxJS [60] that have also faced                     the activation of a group of layers, according to the satisfaction of
+performance issues to extend this language with reactive programming.                       a predicate associated to partial behavior definitions. Here, partial
+Note that in the two programs that use layers (Figs. 10b and 10c), we                       methods are associated with a predicate expressing conditions about
+can see that the scope strategy is only executed only once. This is so                      the internals of the system or its surrounding environment. Whenever
+because the scope strategy overhead is hidden compared to remaining                         a method is called, all predicates of all partial methods matching the
+statements executed.                                                                        method signature are evaluated. The behavior selected corresponds
+
+                                                                                       11
+P. Leger et al.                                                                                               Information and Software Technology 156 (2023) 107132
+
+
+
+
+                                                 Fig. 11. A preliminary performance evaluation about EMAjs.
+
+
+to valid predicates. The definition of group behavior is beneficial to           are becoming ever bigger and more complex. COP [2] provides abstrac-
+adapt the behavior of different program entities beyond their class              tions, like layers, to modularly implement these systems as a means to
+definition. Groups of objects can be defined explicitly by programmers           reduce their complexity. A layer is used to dynamically adapt method’s
+or implicitly by a specific shared property [64]. Although EMA does              behavior when the layer becomes active. In the literature, there is a
+not directly support the feature of group behavior, the expressive API           significant number of activation mechanisms, which have been tailored
+for scoping allows developers to emulate this feature because of two             to satisfy specific developers’ needs [2,5–14]. Therefore, when devel-
+reasons. First, the conditional to activate a layer might be shared among        opers face unforeseen needs, they end up tweaking layer declarations
+(several) objects, allowing to activate a set of layers (with specific           in contortive ways, or creating new specialized activation mechanisms.
+behaviors) when a certain conditional is satisfied. Second, the group            To address the previous issue, this paper proposes to complement two
+behavior activations can be accurate in different contexts using the             ideas [19,66] to present an Expressive and Modular Activation mecha-
+expressive API for scoping available in EMA.                                     nism (EMA), which allows developers to define customized mechanism
+Decoupling layers and base code. This challenge is not completely                scope strategy and decouple the implicit dependency between acti-
+new in the COP community. For example, the authors in [65] present               vation conditionals and base code. As a consequence, layers improve
+a software architecture to modularly integrate each abstraction and              their reuse, flexibility, and their modularity to be applied in different
+mechanism of COP into the software development process. However,                 scenarios of adaptive software systems.
+the architecture is particularly proposed for context-aware systems [1],             This paper shows the usability and effectiveness of EMA in devel-
+where dynamic behavior adaptations is part of main functionalities               oping expressive and modular context-aware systems. In the future, we
+of a system. Regarding the explicit decoupling between abstractions              strive to offer a more robust report on the benefits and disadvantages
+from different paradigms, we find different proposals [52,53,55] that            of EMA, by integrating EMA to current COP language implementations,
+decouple implicit dependencies between aspects of aspect-oriented pro-           exploring different base abstractions from those used in EMAjs, like
+gramming [16] and base code. For instance, in Join Point Interfaces              ServalCJ [11,14] or Subjective-C [5].
+(JPI) [53], base code developers must explicitly establish what join
+points are exhibited by objects of a class; allowing the modular reason-         CRediT authorship contribution statement
+ing of the application of an aspect. Inspired by JPI, EMA uses interfaces
+to decouple references of variables used in conditionals used to activate           Paul Leger: Conceptualization, Methodology, Software, Validation,
+layers and variables in base code. These interfaces additionally allow           Investigation, Resources, Writing – original draft, Writing – review &
+developers to exhibit expressions composed of variables or method exe-           editing, Project administration, Funding acquisition. Nicolás Cardozo:
+cutions that come from different objects. As a conclusion, to the best of        Software, Validation, Resources, Writing – original draft, Writing – re-
+our knowledge, EMA presents the first approach to explicitly decouple            view & editing. Hidehiko Masuhara: Conceptualization, Methodology,
+the layers and base code of an application in the COP community.                 Investigation, Visualization, Supervision.
+
+7. Conclusion and future work                                                    Declaration of competing interest
+
+    Our lives are being saturated with many computing devices, and                   The authors declare that they have no known competing finan-
+systems that dynamically adapt their behavior according to their sur-            cial interests or personal relationships that could have appeared to
+rounding execution environment (e.g., users’ preferences). Such systems          influence the work reported in this paper.
+
+                                                                            12
+P. Leger et al.                                                                                                                Information and Software Technology 156 (2023) 107132
+
+
+Data availability                                                                              [25] E. Bainomugisha, J. Vallejos, C. De Roover, A. Lombide Carreton, W. De Meuter,
+                                                                                                    Interruptible context-dependent executions: A fresh look at programming
+    No data was used for the research described in the article.                                     context-aware applications, in: Proceedings of the International Symposium on
+                                                                                                    New Ideas, New Paradigms, and Reflections on Programming and Software
+                                                                                                    Proceedings, Tucson, Arizona - USA, 2012.
+References
+                                                                                               [26] M. Appeltauer, R. Hirschfeld, H. Masuhara, M. Haupt, K. Kawauchi, Event-
+                                                                                                    specific software composition in context-oriented programming, in: Software
+ [1] M. Satyanarayanan, Pervasive computing: Vision and challenges, IEEE Pers.
+                                                                                                    Composition, Malaga, Spain, 2010, pp. 50–65.
+     Commun. 8 (4) (2001) 10–17.
+                                                                                               [27] É. Tanter, Beyond static and dynamic scope, in: Proceedings of the 5th ACM
+ [2] R. Hirschfeld, P. Costanza, O. Nierstrasz, Context-oriented programming, J.
+                                                                                                    Dynamic Languages Symposium, DLS, Orlando, FL, USA, 2009, pp. 3–14.
+     Object Technol. 7 (3) (2008) 125–151.
+ [3] A. Dey, G. Abowd, Towards a better understanding of context and context-                  [28] É. Tanter, Expressive scoping of dynamically-deployed aspects, in: Proceedings of
+     awareness, in: Proceedings of the Workshop on the What, Who, Where, When,                      the 7th ACM International Conference on Aspect-Oriented Software Development,
+     Why and How of Context-Awareness, Karlsruhe, Germany, 2000.                                    AOSD, Brussels, Belgium, 2008, pp. 168–179.
+ [4] P. Costanza, R. Hirschfeld, Language constructs for context-oriented program-             [29] É. Tanter, J. Fabry, R. Douence, J. Noyé, M. Südholt, Expressive scoping of
+     ming: An overview of ContextL, in: Proceedings of the Dynamic Languages                        distributed aspects, in: Proceedings of the 8th ACM International Conference on
+     Symposium, San Diego, California, 2005, pp. 1–10.                                              Aspect-Oriented Software Development, AOSD, Charlottesville, USA, 2009, pp.
+ [5] S. González, N. Cardozo, K. Mens, A. Cádiz, J.-C. Libbrecht, J. Goffaux,                       27–38.
+     Subjective-C: Bringing context to mobile platform programming, in: Proceed-               [30] R. Toledo, P. Leger, É. Tanter, AspectScript: Expressive aspects for the web,
+     ings of the Third International Conference on Software Language Engineering,                   in: Proceedings of the 9th ACM International Conference on Aspect-Oriented
+     Eindhoven, The Netherlands, 2011, pp. 246–265.                                                 Software Development, AOSD, Rennes and Saint Malo, France, 2010, pp. 13–24.
+ [6] S. González, K. Mens, M. Colacioiu, W. Cazzola, Context traits: Dynamic                   [31] J. Lincke, M. Appeltauer, B. Steinert, R. Hirschfeld, An open implementation for
+     behaviour adaptation through run-time trait recomposition, in: Proceedings of
+                                                                                                    context-oriented layer composition in contextjs, Sci. Comput. Programm. 76 (12)
+     International Conference on Aspect-Oriented Software Development, Fukuoka,
+                                                                                                    (2011) 1194–1209.
+     Japan, 2013, pp. 209–220.
+                                                                                               [32] R. Hirschfeld, P. Costanza, M. Haupt, An introduction to context-oriented
+ [7] N. Cardozo, S. González, K. Mens, Uniting global and local context behavior
+                                                                                                    programming with ContextS, in: Generative and Transformational Techniques
+     with context Petri nets, in: Proceedings of the International Workshop on
+     Context-Oriented Programming, Beijing, China, 2012, pp. 1–3.                                   in Software Engineering II: International Summer School, GTTSE 2007, Braga,
+ [8] S. Ramson, J. Lincke, R. Hirschfeld, The declarative nature of implicit layer                  Portugal, July 2-7, 2007. Revised Papers, Springer, Braga, Portugal, 2008, pp.
+     activation, in: Proceedings of the International Workshop on Context-Oriented                  396–407.
+     Programming, COP, London, UK, 2017, pp. 7–16.                                             [33] M. von Löwis, M. Denker, O. Nierstrasz, Context-oriented programming: Beyond
+ [9] T. Kamina, T. Aotani, H. Masuhara, EventCJ: A context-oriented programming                     layers, in: Proceedings of the International Conference on Dynamic Languages,
+     language with declarative event-based context transition, in: Proceedings of the               Lugano, Switzerland, 2007, pp. 143–156.
+     Tenth International Conference on Aspect-Oriented Software Development, Porto             [34] S. González, K. Mens, P. Heymans, Highly dynamic behaviour adaptability
+     de Galinhas, Brazil, 2011, pp. 253–264.                                                        through prototypes with subjective multimethods, in: Proceedings of the 2007
+[10] M. von Löwis, M. Denker, O. Nierstrasz, Context-oriented programming: Beyond                   Symposium on Dynamic Languages, DLS, Montreal, Quebec, Canada, 2007, pp.
+     layers, in: Proceedings of International Conference on Dynamic Languages,                      77–88.
+     Lugano, Switzerland, 2007, pp. 143–156.                                                   [35] T. Kamina, T. Tamai, Towards safe and flexible object adaptation, in: Interna-
+[11] T. Kamina, T. Aotani, H. Masuhara, Push-based reactive layer activation in                     tional Workshop on Context-Oriented Programming, ACM, Genova, Italy, 2009,
+     context-oriented programming, in: Proceedings of the 9th International Workshop
+                                                                                                    pp. 1–6.
+     on Context-Oriented Programming, COP, Barcelona, Spain, 2017, pp. 17–22.
+                                                                                               [36] G. Salvaneschi, C. Ghezzi, M. Pradella, ContextErlang: A language for distributed
+[12] T. Watanabe, A simple context-oriented programming extension to an FRP
+                                                                                                    context-aware self-adaptive applications, Sci. Comput. Program. 102 (2015)
+     language for small-scale embedded systems, in: Proceedings of the 10th Inter-
+                                                                                                    20–43.
+     national Workshop on Context-Oriented Programming: Advanced Modularity for
+     Run-Time Composition, Amsterdam, Netherlands, 2018, pp. 23–30.                            [37] R. Hirschfeld, M. Perscheid, C. Schubert, M. Appeltauer, Dynamic contract layers,
+[13] T. Aotani, T. Kamina, H. Masuhara, Unifying multiple layer activation mecha-                   in: 25th Symposium on Applied Computing, ACM, Lausanne, Switzerland, 2010,
+     nisms using one event sequence, in: Proceedings of 6th International Workshop                  pp. 2169–2175.
+     on Context-Oriented Programming, COP, Uppsala, Sweden, 2014, pp. 1–6.                     [38] B.H. Wasty, A. Semmo, M. Appeltauer, B. Steinert, R. Hirschfeld, ContextLua:
+[14] T. Kamina, T. Aotani, H. Masuhara, Generalized layer activation mechanism                      Dynamic behavioral variations in computer games, in: Proceedings of the 2nd
+     for context-oriented programming, LNCS Trans. Modul. Compos. 9800 (2016)                       International Workshop on Context-Oriented Programming, Maribor, Slovenia,
+     123–166.                                                                                       2010.
+[15] K. Mens, B. Duhoux, N. Cardozo, Managing the context interaction problem: A               [39] T. Kamina, T. Aotani, H. Masuhara, A unified context activation mecha-
+     classification of conflict resolution techniques in dynamically adaptive software              nism, in: Proceedings of the 5th International Workshop on Context-Oriented
+     systems, in: Proceedings of the International Workshop on Live Adaptation of                   Programming, Montpellier, France, 2013, pp. 1–6.
+     Software Systems, Brussels, Belgium, 2017, pp. 8:1–8:6.
+                                                                                               [40] R. Hirschfeld, H. Masuhara, A. Igarashi, L: Context-oriented programming
+[16] G. Kiczales, J. Irwin, J. Lamping, J. Loingtier, C. Lopes, C. Maeda, A. Mendhekar,
+                                                                                                    with only layers, in: Proceedings of the 5th International Workshop on
+     Aspect-oriented programming, in: M.M. (general editor), et al. (Eds.), Special
+                                                                                                    Context-Oriented Programming, ACM, Montpellier, France, 2013, pp. 1–5.
+     Issues in Object-Oriented Programming, 1996.
+                                                                                               [41] B. Maingret, F. Le Mouël, J. Ponge, N. Stouls, J. Cao, Y. Loiseau, To-
+[17] K. Gybels, J. Brichau, Arranging language features for more robust pattern-
+     based crosscuts, in: Proceedings of the 2nd ACM International Conference on                    wards a decoupled context-oriented programming language for the Internet of
+     Aspect-Oriented Software Development, AOSD, Boston, MA, USA, 2003, pp.                         Things, in: Proceedings of the 7th International Workshop on Context-Oriented
+     60–69.                                                                                         Programming, Prague, Czech Republic, 2015, pp. 1–7.
+[18] N. Cardozo, A declarative language for context activation, in: Proceedings of             [42] D.G. Bobrow, L.G. DeMichiel, R.P. Gabriel, S.E. Keene, G. Kiczales, D.A. Moon,
+     the International Workshop on Context-Oriented Programming, Amsterdam, The                     Common lisp object system specification, SIGPLAN Not. 23 (1988) 1–142.
+     Netherlands, 2018.                                                                        [43] S. González, K. Mens, A. Cádiz, Context-oriented programming with the ambient
+[19] P. Leger, H. Masuhara, I. Figueroa, Interfaces for modular reasoning in                        object system, J. UCS. 14 (20) (2008) 3307–3332.
+     context-oriented programming, in: International Workshop on Context-Oriented              [44] G. Kiczales, E. Hilsdale, J. Hugunin, M. Kersten, J. Palm, W. Griswold,
+     Programming and Advanced Modularity, Virtual Event, USA, 2020, pp. 1–7.                        An overview of AspectJ, in: Proceedings of the European Conference on
+[20] EMAjs Website, A JavaScript library of an expressive and modular activa-                       Object-Oriented Programming, Vol. 2072, 2001, pp. 327–354.
+     tion mechanism for context-oriented programming, 2022, https://github.com/
+                                                                                               [45] L.C. Kats, E. Visser, The spoofax language workbench: Rules for declarative
+     pragmaticslaboratory/EMAjs. Last visited: 11/08/2022.
+                                                                                                    specification of languages and IDEs, in: Proceedings of the ACM Interna-
+[21] NodeJS, A JavaScript runtime built for the server side, 2021, URL https://nodejs.
+                                                                                                    tional Conference on Object Oriented Programming Systems Languages and
+     org, (v16.0).
+                                                                                                    Applications, Reno/Tahoe, USA, 2010, pp. 444–463.
+[22] Google Chrome, A free and open-source web browser, 2022, URL https://www.
+     google.com/chrome, (v104.0).                                                              [46] J. Ponge, F. Le Mouël, N. Stouls, Golo, a dynamic, light and efficient language for
+[23] Firefox, A free and open-source web browser, 2021, URL https://www.mozilla.                    post-invokedynamic JVM, in: Proceedings of the 2013 International Conference
+     org, (v103.0).                                                                                 on Principles and Practices of Programming on the Java Platform: Virtual
+[24] J. Vallejos, S. González, P. Costanza, W. De Meuter, T. D’Hondt, K. Mens,                      Machines, Languages, and Tools, Stuttgart, Germany, 2013, pp. 153–158.
+     Predicated generic functions: Enabling context-dependent method dispatch, in:             [47] K. Sawada, T. Watanabe, Emfrp: A functional reactive programming language
+     Proceedings of the 9th International Conference on Software Composition, no.                   for small-scale embedded systems, in: International Conference on Modularity,
+     6144, Malaga, Spain, 2010, pp. 66–81.                                                          2016, pp. 36–44.
+
+
+                                                                                          13
+P. Leger et al.                                                                                                               Information and Software Technology 156 (2023) 107132
+
+
+[48] D. Ungar, H. Ossher, D. Kimelman, Korz: Simple, symmetric, subjective, context-          [58] E. Amsden, A Survey of Functional Reactive Programming Concepts, Imple-
+     oriented programming, in: Onward! 2014 - Proceedings of the 2014 ACM                          mentations, Optimizations, and Applications, Tech. Rep., Rochester Institute of
+     International Symposium on New Ideas, New Paradigms, and Reflections on                       Technology, 2011.
+     Programming and Software, Part of SPLASH 2014, Portland, USA, 2014, pp.                  [59] L. Meyerovich, A. Guha, J. Baskin, G. Cooper, M. Greenberg, A. Bromfield, S.
+     113–131.                                                                                      Krishnamurthi, Flapjax: A programming language for Ajax applications, in: Pro-
+[49] A. Elyasaf, Context-oriented behavioral programming, Inf. Softw. Technol. 133                 ceedings of the 24th ACM SIGPLAN Conference on Object Oriented Programming
+     (2021) 106504.                                                                                Systems Languages and Applications, Orlando, Florida, USA, 2009, pp. 1–20.
+[50] S. González, Programming in Ambience: Gearing Up for Dynamic Adaptation                  [60] Apache, RxJS: A reactive extensions for JavaScript (v7.5.6), 2018, URL https:
+     to Context (Ph.D. thesis), Université catholique de Louvain, 2008, Coll. EPL                  //rxjs.dev.
+     211/2008. Promoted by Prof. Kim Mens.                                                    [61] G. Kiczales, Towards a new model of abstraction in software engineering, in:
+[51] T. Kühn, M. Leuthäuser, S. Götz, C. Seidl, U.A. mann, A metamodel family for                  Proceedings of the IMSA 92 Workshop on Reflection and Metalevel Architectures,
+     role-based modeling and programming languages, in: International Conference                   Tokyo, Japan, 1992.
+     on Software Language Engineering, Västerås, Sweden, 2014, pp. 141–160.                   [62] P. Leger, É. Tanter, R. Douence, Modular and flexible causality control on the
+[52] J. Aldrich, Open modules: Modular reasoning about advice, in: European                        web, Sci. Comput. Program. 78 (9) (2013) 1538–1558.
+     Conference on Object-Oriented Programming, Glasgow, UK, 2005, pp. 144–168.               [63] P. Leger, É. Tanter, H. Fukuda, An expressive stateful aspect language, Sci.
+[53] E. Bodden, É. Tanter, M. Inostroza, Join point interfaces for safe and flexible               Comput. Program. 102 (2015) 108–141.
+     decoupling of aspects, 23 (1), 2014, pp. 1–41.                                           [64] P. Rein, S. Ramson, J. Lincke, T. Felgentreff, R. Hirschfeld, Group-based behavior
+[54] W.G. Griswold, K. Sullivan, Y. Song, M. Shonle, N. Tewari, Y. Cai, H. Rajan,
+                                                                                                   adaptation mechanisms in object-oriented systems, IEEE Softw. 34 (6) (2017)
+     Modular software design with crosscutting interfaces, 23 (1), 2006, pp. 51–60.
+                                                                                                   78–82.
+[55] F. Steimann, T. Pawlitzki, S. Apel, C. Kästner, Types and modularity for implicit
+                                                                                              [65] K. Mens, N. Cardozo, B. Duhoux, A context-oriented software architec-
+     invocation with implicit announcement, ACM Trans. Softw. Eng. Methodol. 20
+                                                                                                   ture, in: Proceedings of the 8th International Workshop on Context-Oriented
+     (1) (2010) 1–43.
+                                                                                                   Programming, COP, Rome, Italy, 2016, pp. 7–12.
+[56] M. Appeltauer, R. Hirschfeld, M. Haupt, J. Lincke, M. Perscheid, A comparison
+                                                                                              [66] N. Cardozo, Emergent software services, in: Proceedings of the 2016 ACM
+     of context-oriented programming languages, in: International Workshop on
+                                                                                                   International Symposium on New Ideas, New Paradigms, and Reflections on
+     Context-Oriented Programming, Genova, Italy, 2009, pp. 1–6.
+                                                                                                   Programming and Software, Amsterdam, Netherlands, 2016, pp. 15–28.
+[57] N. Cardozo, K. Mens, Programming language implementations for context-
+     oriented self-adaptive systems, Inf. Softw. Technol. 143 (2022) 106789.
+
+
+
+
+                                                                                         14
+

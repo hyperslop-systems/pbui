@@ -34,6 +34,7 @@ type ServeSettings struct {
 	Port           int    `glazed:"port"`
 	TimelineDB     string `glazed:"timeline-db"`
 	TurnsDB        string `glazed:"turns-db"`
+	SessionsDB     string `glazed:"sessions-db"`
 	ChunkDelay     string `glazed:"chunk-delay"`
 	UseRealRuntime bool   `glazed:"real-runtime"`
 	SystemPrompt   string `glazed:"system-prompt"`
@@ -67,6 +68,7 @@ and the generated system-prompt section.
 			fields.New("port", fields.TypeInteger, fields.WithDefault(8090), fields.WithHelp("Listen port")),
 			fields.New("timeline-db", fields.TypeString, fields.WithDefault(""), fields.WithHelp("SQLite path for the hydration store (empty = in-memory)")),
 			fields.New("turns-db", fields.TypeString, fields.WithDefault(""), fields.WithHelp("SQLite path for final-turn history (empty = in-memory)")),
+			fields.New("sessions-db", fields.TypeString, fields.WithDefault(""), fields.WithHelp("SQLite path for the session/title index (empty = in-memory)")),
 			fields.New("chunk-delay", fields.TypeString, fields.WithDefault("20ms"), fields.WithHelp("Pacing of the scripted engine's text stream")),
 			fields.New("real-runtime", fields.TypeBool, fields.WithDefault(false), fields.WithHelp("Use a pinocchio profile instead of the scripted engine")),
 			fields.New("system-prompt", fields.TypeString, fields.WithDefault(""), fields.WithHelp("Product system prompt for the real runtime; the PBUI section is appended")),
@@ -94,9 +96,15 @@ func (c *ServeCommand) Run(ctx context.Context, parsed *values.Values) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	ip := net.ParseIP(settings.Host)
+	if ip == nil || !ip.IsLoopback() {
+		return errors.Errorf("development authorization requires a loopback --host, got %q", settings.Host)
+	}
 	server, cleanup, err := chatserver.NewServer(ctx, chatserver.Options{
+		Authorizer:        chatserver.NewDevelopmentAuthorizer(),
 		TimelineDB:        settings.TimelineDB,
 		TurnsDB:           settings.TurnsDB,
+		SessionsDB:        settings.SessionsDB,
 		ChunkDelay:        chunkDelay,
 		RealRuntime:       settings.UseRealRuntime,
 		Profile:           profileSettings.Profile,

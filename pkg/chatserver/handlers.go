@@ -1,10 +1,13 @@
 package chatserver
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	chatapp "github.com/go-go-golems/pinocchio/pkg/chatapp"
 	"github.com/go-go-golems/pinocchio/pkg/chatapp/frontendtools"
@@ -39,22 +42,42 @@ type toolDescriptorRequest struct {
 }
 
 type toolManifestRequest struct {
-	Revision uint64                  `json:"revision,omitempty"`
-	Tools    []toolDescriptorRequest `json:"tools"`
+	ClientInstanceID string                  `json:"clientInstanceId"`
+	ConnectionID     string                  `json:"connectionId"`
+	Revision         uint64                  `json:"revision,omitempty"`
+	Tools            []toolDescriptorRequest `json:"tools"`
+}
+
+type frontendToolExecutor struct {
+	ClientInstanceID string `json:"clientInstanceId"`
+	ConnectionID     string `json:"connectionId"`
+	AssignmentID     string `json:"assignmentId"`
 }
 
 type toolResultRequest struct {
-	ToolCallID string         `json:"toolCallId"`
-	ToolName   string         `json:"toolName,omitempty"`
-	Result     map[string]any `json:"result,omitempty"`
-	Status     string         `json:"status,omitempty"`
-	Error      string         `json:"error,omitempty"`
+	ToolCallID string               `json:"toolCallId"`
+	ToolName   string               `json:"toolName,omitempty"`
+	Result     map[string]any       `json:"result,omitempty"`
+	Status     string               `json:"status,omitempty"`
+	Error      string               `json:"error,omitempty"`
+	Executor   frontendToolExecutor `json:"executor"`
+}
+
+type listSessionsResponse struct {
+	Sessions []SessionRecord `json:"sessions"`
+}
+
+type retitleSessionRequest struct {
+	Title            string `json:"title"`
+	ExpectedRevision uint64 `json:"expectedRevision"`
 }
 
 type acceptedResponse struct {
-	SessionID string `json:"sessionId"`
-	Accepted  bool   `json:"accepted"`
-	Status    string `json:"status"`
+	SessionID string                `json:"sessionId"`
+	Accepted  bool                  `json:"accepted"`
+	Status    string                `json:"status"`
+	Revision  uint64                `json:"revision,omitempty"`
+	Executor  *frontendToolExecutor `json:"executor,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -104,7 +127,74 @@ func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
-	writeJSON(w, http.StatusOK, serverkit.CreateSessionResponse{SessionID: uuid.NewString()})
+	id := uuid.NewString()
+	principal, _ := principalFromContext(r.Context())
+	if err := s.authorizer.ClaimSession(r.Context(), principal, sessionstream.SessionId(id)); err != nil {
+		writeError(w, http.StatusInternalServerError, "could not claim session")
+		return
+	}
+	// The index is a convenience: a session works whether or not it is
+	// remembered, so a failure here is logged and the id still goes back.
+	if err := s.sessions.Remember(r.Context(), id, time.Now()); err != nil {
+		log.Warn().Err(err).Str("session_id", id).Msg("pbui-chat: could not index the new session")
+	}
+	writeJSON(w, http.StatusOK, serverkit.CreateSessionResponse{SessionID: id})
+}
+
+// HandleListSessions returns what this server has seen, most recently active
+// first. The browser MERGES this into its own records rather than replacing
+// them: the index may be empty after a restart while the browser still knows
+// session ids that hydrate perfectly.
+func (s *Server) HandleListSessions(w http.ResponseWriter, r *http.Request) {
+	records, err := s.sessions.List(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	principal, _ := principalFromContext(r.Context())
+	authorized := make([]SessionRecord, 0, len(records))
+	for _, record := range records {
+		if s.authorizer.CanAccessSession(r.Context(), principal, sessionstream.SessionId(record.ID), SessionRead) {
+			authorized = append(authorized, record)
+		}
+	}
+	writeJSON(w, http.StatusOK, listSessionsResponse{Sessions: authorized})
+}
+
+// HandleRetitleSession stores a title for a session. Titles live in the
+// browser first; this is what lets a SECOND browser show something better
+// than a uuid.
+func (s *Server) HandleRetitleSession(w http.ResponseWriter, r *http.Request) {
+	sid := sessionIDFrom(r)
+	if sid == "" {
+		writeError(w, http.StatusBadRequest, "missing session id")
+		return
+	}
+	var in retitleSessionRequest
+	if err := decodeJSON(r, &in); err != nil {
+		writeError(w, http.StatusBadRequest, "bad request")
+		return
+	}
+	record, err := s.sessions.Retitle(r.Context(), string(sid), in.Title, in.ExpectedRevision)
+	if err != nil {
+		var conflict *TitleRevisionConflict
+		if errors.As(err, &conflict) {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"error":         conflict.Error(),
+				"id":            string(sid),
+				"title":         conflict.Current.Title,
+				"titleRevision": conflict.Current.TitleRevision,
+			})
+			return
+		}
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":            string(sid),
+		"title":         record.Title,
+		"titleRevision": record.TitleRevision,
+	})
 }
 
 // HandleSubmitMessage starts a run. With the scripted engine the refs travel
@@ -151,6 +241,7 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		s.touchAcceptedMessage(r.Context(), sid)
 		writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "running"})
 		return
 	}
@@ -162,7 +253,14 @@ func (s *Server) HandleSubmitMessage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	s.touchAcceptedMessage(r.Context(), sid)
 	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "running"})
+}
+
+func (s *Server) touchAcceptedMessage(ctx context.Context, sid sessionstream.SessionId) {
+	if err := s.sessions.Touch(ctx, string(sid), time.Now(), true); err != nil {
+		log.Warn().Err(err).Str("session_id", string(sid)).Msg("pbui-chat: could not index the message")
+	}
 }
 
 // HandleStopSession cancels the active run.
@@ -224,11 +322,24 @@ func (s *Server) HandleToolManifest(w http.ResponseWriter, r *http.Request) {
 		}
 		tools = append(tools, &toolv1.FrontendToolDescriptor{Name: name, Description: t.Description, InputSchema: schema, Mode: parseToolMode(t.Mode), Available: t.Available})
 	}
-	if err := s.hub.Submit(r.Context(), sid, frontendtools.CommandManifest, &toolv1.FrontendToolManifestCommand{Tools: tools, Revision: in.Revision}); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	updated, err := s.frontendTools.AcceptManifest(r.Context(), sid, s.hub, &toolv1.FrontendToolManifestCommand{
+		Tools:            tools,
+		Revision:         in.Revision,
+		ClientInstanceId: strings.TrimSpace(in.ClientInstanceID),
+		ConnectionId:     strings.TrimSpace(in.ConnectionID),
+	})
+	if err != nil {
+		writeError(w, toolManifestErrorStatus(err), err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "manifest_updated"})
+	executor := frontendToolExecutorFromProto(updated.GetExecutor())
+	writeJSON(w, http.StatusOK, acceptedResponse{
+		SessionID: string(sid),
+		Accepted:  true,
+		Status:    "manifest_updated",
+		Revision:  updated.GetRevision(),
+		Executor:  &executor,
+	})
 }
 
 // HandleToolResult delivers a browser tool result (accept, proposal, …).
@@ -256,11 +367,67 @@ func (s *Server) HandleToolResult(w http.ResponseWriter, r *http.Request) {
 	if status == "" {
 		status = "success"
 	}
-	if err := s.hub.Submit(r.Context(), sid, frontendtools.CommandResult, &toolv1.FrontendToolResultCommand{ToolCallId: strings.TrimSpace(in.ToolCallID), ToolName: strings.TrimSpace(in.ToolName), Result: result, Status: status, Error: in.Error}); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	if err := s.hub.Submit(r.Context(), sid, frontendtools.CommandResult, &toolv1.FrontendToolResultCommand{ToolCallId: strings.TrimSpace(in.ToolCallID), ToolName: strings.TrimSpace(in.ToolName), Result: result, Status: status, Error: in.Error, Executor: in.Executor.toProto()}); err != nil {
+		writeError(w, toolResultErrorStatus(err), err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "result_received"})
+}
+
+func toolManifestErrorStatus(err error) int {
+	code, ok := frontendtools.ManifestErrorCodeOf(err)
+	if !ok {
+		return http.StatusInternalServerError
+	}
+	switch code {
+	case frontendtools.ManifestErrorIdentityMissing, frontendtools.ManifestErrorIdentityTooLong:
+		return http.StatusBadRequest
+	case frontendtools.ManifestErrorRevisionRegression, frontendtools.ManifestErrorRevisionConflict:
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func toolResultErrorStatus(err error) int {
+	code, ok := frontendtools.InvocationErrorCodeOf(err)
+	if !ok {
+		return http.StatusInternalServerError
+	}
+	switch code {
+	case frontendtools.InvocationErrorInvalidStatus, frontendtools.InvocationErrorExecutorMissing:
+		return http.StatusBadRequest
+	case frontendtools.InvocationErrorUnknownResult:
+		return http.StatusNotFound
+	case frontendtools.InvocationErrorLateResult:
+		return http.StatusGone
+	case frontendtools.InvocationErrorDuplicatePending,
+		frontendtools.InvocationErrorSessionMismatch,
+		frontendtools.InvocationErrorToolMismatch,
+		frontendtools.InvocationErrorTerminalConflict,
+		frontendtools.InvocationErrorKeyReuse,
+		frontendtools.InvocationErrorExecutorMismatch,
+		frontendtools.InvocationErrorExecutorUnavailable:
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func (executor frontendToolExecutor) toProto() *toolv1.FrontendToolExecutor {
+	return &toolv1.FrontendToolExecutor{
+		ClientInstanceId: strings.TrimSpace(executor.ClientInstanceID),
+		ConnectionId:     strings.TrimSpace(executor.ConnectionID),
+		AssignmentId:     strings.TrimSpace(executor.AssignmentID),
+	}
+}
+
+func frontendToolExecutorFromProto(executor *toolv1.FrontendToolExecutor) frontendToolExecutor {
+	return frontendToolExecutor{
+		ClientInstanceID: executor.GetClientInstanceId(),
+		ConnectionID:     executor.GetConnectionId(),
+		AssignmentID:     executor.GetAssignmentId(),
+	}
 }
 
 // HandleVerbPerformed records a verb the browser performed.
@@ -285,6 +452,30 @@ func (s *Server) HandleVerbPerformed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "recorded"})
+}
+
+// HandleEffectPerformed records one canonical agent effect outcome.
+func (s *Server) HandleEffectPerformed(w http.ResponseWriter, r *http.Request) {
+	sid := sessionIDFrom(r)
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad request")
+		return
+	}
+	cmd, err := pbuichat.EffectCommandFromJSON(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if cmd.GetEffect().GetConversationId() != string(sid) {
+		writeError(w, http.StatusBadRequest, "effect conversation does not match session")
+		return
+	}
+	if err := s.hub.Submit(r.Context(), sid, pbuichat.CommandEffectPerformed, cmd); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, acceptedResponse{SessionID: string(sid), Accepted: true, Status: "effect_recorded"})
 }
 
 // HandleWS upgrades to the sessionstream websocket transport.

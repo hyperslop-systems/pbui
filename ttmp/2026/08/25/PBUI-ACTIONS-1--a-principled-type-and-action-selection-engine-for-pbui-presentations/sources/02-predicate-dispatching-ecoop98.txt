@@ -1,0 +1,1247 @@
+This paper appears in ECOOP '98, the 12th European Conference on Object-
+Oriented Programming, Brussels, Belgium, July 20-24, 1998, pp. 186-211.
+
+
+
+                                          Predicate Dispatching:
+                                       A Uni ed Theory of Dispatch
+                                     Michael Ernst, Craig Kaplan, and Craig Chambers
+                                        Department of Computer Science and Engineering
+                                                   University of Washington
+                                                Seattle, WA, USA 98195-2350
+                                                   ;   ;
+                                         fmernst csk chambersg@cs.washington.edu
+                                  http://www.cs.washington.edu/research/projects/cecil/
+
+
+
+
+                             Abstract. Predicate dispatching generalizes previous method dispatch
+                             mechanisms by permitting arbitrary predicates to control method ap-
+                             plicability and by using logical implication between predicates as the
+                             overriding relationship. The method selected to handle a message send
+                             can depend not just on the classes of the arguments, as in ordinary
+                             object-oriented dispatch, but also on the classes of subcomponents, on
+                             an argument's state, and on relationships between objects. This simple
+                             mechanism subsumes and extends object-oriented single and multiple
+                             dispatch, ML-style pattern matching, predicate classes, and classi ers,
+                             which can all be regarded as syntactic sugar for predicate dispatching.
+                             This paper introduces predicate dispatching, gives motivating examples,
+                             and presents its static and dynamic semantics. An implementation of
+                             predicate dispatching is available.
+
+                       1 Introduction
+                       Many programming languages support some mechanism for dividing the body
+                       of a procedure into a set of cases, with a declarative mechanism for selecting the
+                       right case for each dynamic invocation of the procedure. Case selection can be
+                       broken down into tests for applicability (a case is a candidate for invocation if
+                       its guard is satis ed) and overriding (which selects one of the applicable cases
+                       for invocation).
+                            Object-oriented languages use overloaded methods as the cases and generic
+                       functions (implicit or explicit) as the procedures. A method is applicable if the
+                       run-time class of the receiver argument is the same as or a subclass of the
+                       class on which the receiver is specialized. Multiple dispatching [BKK+ 86,Cha92]
+                       enables testing the classes of all of the arguments. One method overrides another
+                       if its specializer classes are subclasses of the other's, using either lexicographic
+                       (CLOS [Ste90]) or pointwise (Cecil [Cha93a]) ordering.
+                            Predicate classes [Cha93b] automatically classify an object of class A as an
+                       instance of virtual subclass B (a subclass of A) whenever B's predicate (an ar-
+                       bitrary expression typically testing the runtime state of an object) is true. This
+                       creation of virtual class hierarchies makes method dispatching applicable even
+
+                                                               186
+in cases where the e ective class of an object may change over time. Classi-
+  ers [HHM90b] and modes [Tai93] are similar mechanisms for reclassifying an
+object into one of a number of subclasses based on a case-statement-like test of
+arbitrary boolean conditions.
+    Pattern matching (as in ML [MTH90]) bases applicability tests on the run-
+time datatype constructor tags of the arguments and their subcomponents. As
+with classi ers and modes, textual ordering determines overriding. Some lan-
+guages, such as Haskell [HJW+ 92], allow arbitrary boolean guards to accom-
+pany patterns, restricting applicability. Views [Wad87] extend pattern matching
+to abstract data types by enabling them to o er interfaces like various concrete
+datatypes.
+    Predicate dispatching integrates, generalizes, and provides a uniform inter-
+face to these similar but previously incomparable mechanisms. A method dec-
+laration speci es its applicability via a predicate expression, which is a logical
+formula over class tests (i.e., tests that an object is of a particular class or one
+of its subclasses) and arbitrary boolean-valued expressions from the underlying
+programming language. A method is applicable when its predicate expression
+evaluates to true. Method m1 overrides method m2 when m1 's predicate logi-
+cally implies that of m2 ; this relationship is computed at compile time. Static
+typechecking veri es that, for all possible combinations of arguments to a generic
+function, there is always a single most-speci c applicable method. This ensures
+that there are no \message not understood" errors (called \match not exhaus-
+tive" in ML) or \message ambiguous" errors at run-time.
+    Predicate expressions capture the basic primitive mechanisms underlying a
+wide range of declarative dispatching mechanisms. Combining these primitives
+in an orthogonal and general manner enables new sorts of dispatching that are
+not expressible by previous dispatch mechanisms. Predicate dispatching pre-
+serves several desirable properties from its object-oriented heritage, including
+that methods can be declared in any order and that new methods can be added
+to existing generic functions without modifying the existing methods or clients;
+these properties are not shared by pattern-matching-based mechanisms.
+    Section 2 introduces the syntax, semantics, and use of predicate dispatching
+through a series of examples. Section 3 de nes its dynamic and static semantics
+formally. Section 4 discusses predicate tautology testing, which is the key mech-
+anism required by the dynamic and static semantics. Section 5 surveys related
+work. Section 6 concludes with a discussion of future directions for research.
+
+2 Overview
+This section demonstrates some of the capabilities of predicate dispatching by
+way of a series of examples. We incrementally present a high-level syntax which
+appears in full in Fig. 6; Fig. 1 lists supporting syntactic domains. Words and
+symbols in boldface represent terminals. Angle brackets denote zero or more
+comma-separated repetitions of an item. Square brackets contain optional ex-
+pressions.
+
+                                        187
+E    2 expr        The set of expressions in the underlying programming language
+Body 2 method-body The set of method bodies in the underlying programming language
+T 2 type           The set of types in the underlying programming language
+c 2 class-id       The namespace of classes
+m 2 method-id The namespace of methods and elds
+f 2 eld-id         The namespace of methods and elds
+p 2 pred-id        The namespace of predicate abstractions
+v; w 2 var-id      The namespace of variables
+
+Fig.1. Syntactic domains and variables. Method and eld names appear in the same
+namespace; the method-id or eld-id name is chosen for clarity in the text.
+
+   Predicate dispatching is parameterized by the syntax and semantics of the
+host programming language in which predicate dispatching is embedded. The
+ideas of predicate dispatching are independent of the host language; this paper
+speci es only a predicate dispatching sublanguage, with expr the generic nonter-
+minal for expressions in the host language. Types and signatures are used when
+the host language is statically typed and omitted when it is dynamically typed.
+
+2.1 Dynamic dispatch
+Each method implementation has a predicate expression which speci es when
+the method is applicable. Class tests are predicate expressions, as are negations,
+conjunctions, and disjunctions of predicate expressions.
+  method-sig ::= signature method-id ( h type i ) : type
+  method-decl ::= method method-id ( h formal-pattern i )
+                       [ when pred-expr ] method-body
+    formal-pattern ::= var-id
+    pred-expr      ::= expr @ class-id          succeeds if expr evaluates to an instance
+                                                  of class-id or one of its subclasses
+                    j   not pred-expr           negation
+                    j   pred-expr and pred-expr conjunction (short-circuited)
+                    j   pred-expr or pred-expr disjunction (short-circuited)
+    Predicate expressions are evaluated in an environment with the method's for-
+mal arguments bound (see Sect. 3 for details). An omitted when clause indicates
+that the method handles all (type-correct) arguments.
+    Method signature declarations give the type signature shared by a family
+of method implementations in a generic function. A message send expression
+need examine only the corresponding method signature declaration to determine
+its type-correctness, while a set of overloaded method implementations must
+completely and unambiguously implement the corresponding signature in order
+to be type-correct.
+    Predicate dispatching can simulate both singly- and multiply-dispatched meth-
+ods by specializing formal parameters on a class (via the \@class-id" syntax).
+
+                                           188
+Specialization limits the applicability of a method to objects that are instances
+of the given class or one of its subclasses. More generally, predicate dispatching
+supports the construction of arbitrary conjunctions, disjunctions, and negations
+of class tests. The following example uses predicate dispatching to implement
+the Zip function which converts a pair of lists into a list of pairs:1
+  type List;
+    class Cons subtypes List { head:Any, tail:List };
+    class Nil subtypes List;
+
+  signature Zip(List, List):List;
+  method Zip(l1, l2) when l1@Cons and l2@Cons {
+      return Cons(Pair(l1.head, l2.head), Zip(l1.tail, l2.tail)); }
+  method Zip(l1, l2) when l1@Nil or l2@Nil { return Nil; }
+
+    The rst Zip method applies when both of its arguments are instances of
+Cons   (or some subclass). The second Zip method uses disjunction to test whether
+either argument is an instance of Nil (or some subclass). The type checker can
+verify statically that the two implementations of Zip are mutually exclusive and
+exhaustive over all possible arguments that match the signature, ensuring that
+there will be no \message not understood" or \message ambiguous" errors at
+run-time, without requiring the cases to be put in any particular order.
+     There are several unsatisfactory alternatives to the use of implication to de-
+termine overriding relationships. ML-style pattern matching requires all cases to
+be written in one place and put in a particular total order, resolving ambiguities
+in favor of the rst successfully matching pattern. Likewise, a lexicographic or-
+dering for multimethods [Ste90] is error-prone and unnatural, and programmers
+are not warned of potential ambiguities. In a traditional (singly- or multiply-
+dispatched) object-oriented language without the ability to order cases, either
+the base case of Zip must be written as the default case for all pairs of List ob-
+jects (unnaturally, and unsafely in the face of future additions of new subclasses
+of List), or three separate but identical base methods must be written: one for
+Nil Any, one for Any Nil, and a third for Nil Nil to resolve the ambiguity
+                                                  
+
+between the rst two. In our experience with object-oriented languages (using a
+pointwise, not lexicographic, ordering), these triplicate base methods for binary
+messages occur frequently.
+     As a syntactic convenience, class tests can be written in the formal argument
+list:
+      formal-pattern ::= [ var-id ] [ @ class-id ] like var-id @ class-id in pred-expr
+The class name can be omitted if the argument is not dispatched upon, and
+the formal name can be omitted if the argument is not used elsewhere in the
+predicate or method body.
+    The rst Zip method above could then be rewritten as
+1 Any is the top class, subclassed by all other classes, and Pair returns an object
+  containing its two arguments.
+
+                                         189
+  method Zip(l1@Cons, l2@Cons) {
+    return Cons(Pair(l1.head, l2.head), Zip(l1.tail, l2.tail)); }
+
+This form uses an implicit conjunction of class tests, like a multimethod.
+
+2.2 Pattern matching
+Predicates can test the run-time classes of components of an argument, just as
+pattern matching can query substructures, by suxing the @class test with a
+record-like list of eld names and corresponding class tests; names can be bound
+to eld contents at the same time.
+    pred-expr ::= . . .
+                  j expr @ specializer
+    specializer ::= class-id [ f h eld-pat i g ]
+     eld-pat ::= eld-id [ = var-id ] [ @ specializer ]
+A specializer succeeds if all of the speci ed elds (or results of invoking methods
+named by eld-id) satisfy their own specializers, in which case the var-ids are
+bound to the eld values or method results. As with formal-pattern, the formal
+name or specializer may be omitted.
+    Our syntax for pattern matching on records is analogous to that for creating
+a record: { x := 7, y := 22 } creates a two-component record, binding the x
+ eld to 7 and the y eld to 22, while { x = xval } pattern-matches against a
+record containing an x eld, binding the new variable xval to the contents of that
+ eld and ignoring any other elds that might be present. The similarity between
+the record construction and matching syntaxes follows ML. Our presentation
+syntax also uses curly braces in two other places: for record type speci ers (as
+in the declaration of the Cons class, above) and to delimit code blocks (as in the
+de nitions of the Zip methods, above).
+    The following example, adapted from our implementation of an optimizing
+compiler, shows how a ConstantFold method can dispatch for binary operators
+whose arguments are constants and whose operator is integer addition:
+ type Expr;
+   signature ConstantFold(Expr):Expr;
+   -- default constant-fold optimization: do nothing
+   method ConstantFold(e) { return e; }
+
+   type AtomicExpr subtypes Expr;
+     class VarRef subtypes AtomicExpr { ... };
+     class IntConst subtypes AtomicExpr { value:int };
+     ... -- other atomic expressions here
+
+   type Binop;
+     class IntPlus subtypes Binop { ... };
+     class IntMul subtypes Binop { ... };
+     ... -- other binary operators here
+
+
+
+
+                                         190
+   class BinopExpr subtypes Expr { op:Binop, arg1:Expr, arg2:Expr, ... };
+     -- override default to constant-fold binops with constant arguments
+     method ConstantFold(e@BinopExpr{ op@IntPlus, arg1@IntConst, arg2@IntConst }) {
+       return new IntConst{ value := e.arg1.value + e.arg2.value }; }
+   ... -- more similarly expressed cases for other binary and unary operators here
+
+   The ability in pattern matching to test for constants of built-in types is a
+simple extension of class tests. In a prototype-based language, @ operates over
+objects as well as classes, as in \answer @ 42".
+   As with pattern matching, testing the representation of components of an
+object makes sense when the object and the tested components together imple-
+ment a single abstraction. We do not advocate using pattern matching to test
+components of objects in a way that crosses natural abstraction boundaries.
+
+2.3 Boolean expressions
+To increase the expressiveness of predicate dispatching, predicates may test arbi-
+trary boolean expressions from the underlying programming language. Addition-
+ally, names may be bound to values, for use later in the predicate expressions
+and in the method body. Expressions from the underlying programming lan-
+guage that appear in predicate expressions should have no externally observable
+side e ects.2
+    pred-expr ::= . . .
+                j   test expr          succeeds if expr evaluates to true
+                j   let var-id := expr evaluate expr and bind var-id to its value;
+                                          always succeeds
+    The following extension to the ConstantFold example illustrates these fea-
+tures. Recall that in { value=v }, the left-hand side is a eld name and the
+right-hand side is a variable being bound.
+  -- Handle case of adding zero to anything (but don't be ambiguous
+  -- with existing method for zero plus a constant).
+  method ConstantFold(
+            e@BinopExpr{ op@IntPlus, arg1@IntConst{ value=v }, arg2=a2 })
+    when test(v == 0) and not(a2@IntConst) {
+    return a2; }
+  method ConstantFold(
+            e@BinopExpr{ op@IntPlus, arg1=a1, arg2@IntConst{ value=v } })
+    when test(v == 0) and not(a1@IntConst) {
+    return a1; }
+
+  ... -- other special cases for operations on 0,1 here
+
+2 We do not presently enforce this restriction, but there is no guarantee regarding in
+  what order or how many times predicate expressions are evaluated.
+
+                                         191
+2.4 Predicate abstractions
+Named predicate abstractions can factor out recurring tests and give names to
+semantically meaningful concepts in the application domain. Named predicates
+abstract over both tests and variable bindings |the two capabilities of inline
+predicate expressions |by both succeeding or failing and returning a record-
+like set of bindings. These bindings resemble the elds of a record or class, and
+similar support is given to pattern matching against a subset of the results of
+a named predicate invocation. Predicate abstractions thus can act like views
+or virtual subclasses of some object (or tuple of objects), with the results of
+predicate abstractions acting like the virtual elds of the virtual class. If the
+properties of an object tested by a collection of predicates are mutable, the
+object may be given di erent virtual subclass bindings at di erent times in its
+life, providing the bene ts of using classes to organize code even in situations
+where an object's \class" is not xed.
+    pred-sig    ::= predsignature pred-id ( h type i )
+                       [ return f h eld-id : type i g ]
+    pred-decl ::= predicate pred-id ( h formal-pattern i )
+                       [ when pred-expr ] [ return f h eld-id := expr i g ]
+    pred-expr ::= . . .
+                  j pred-id ( h expr i ) [ => f h eld-pat i g ]
+                                           test predicate abstraction
+    specializer ::= class-spec [ f h eld-pat i g ]
+    class-spec ::= class-id                expr @ class-id is a class test
+                  j pred-id                expr @ pred-id [ f : : : g ] is alternate syntax
+                                             for pred-id (expr) [ =>f : : : g ]
+    A predicate abstraction takes a list of arguments and succeeds or fails as
+determined by its own predicate expression. A succeeding predicate abstraction
+invocation can expose bindings of names to values it computed during its evalu-
+ation, and the caller can retrieve any subset of the predicate abstraction's result
+bindings. Predicate signatures specify the type interface used in typechecking
+predicate abstraction callers and implementations. In this presentation, we pro-
+hibit recursive predicates.
+    Simple predicate abstractions can be used just like ordinary classes:
+  predicate on_x_axis(p@point)
+    when (p@cartesianPoint and test(p.y == 0))
+      or (p@polarPoint and (test(p.theta == 0) or test(p.theta == pi)));
+
+  method draw(p@point) { ... }               -- draw the point
+  method draw(p@on_x_axis) { ... }           -- use a contrasting color so point is visible
+    In the following example, taken from our compiler implementation, CFG_2succ
+is a control ow graph (CFG) node with two successors. Each successor is marked
+with whether it is a loop exit (information which, in our implementation, is dy-
+namically maintained when the CFG is modi ed) and the innermost loop it does
+
+                                           192
+not exit. It is advantageous for an iterative data ow algorithm to propagate val-
+ues along the loop exit only after reaching a xed point within the loop; such an
+algorithm would dispatch on the LoopExit predicate. Similarly, the algorithm
+could switch from iterative to non-iterative mode when exiting the outermost
+loop, as indicated by TopLevelLoopExit.
+  predsignature LoopExit(CFGnode)
+    return { loop:CFGloop };
+  predicate LoopExit(n@CFG_2succ{ next_true = t, next_false = f })
+    when test(t.is_loop_exit) or test(f.is_loop_exit)
+    return { loop := outermost(t.containing_loop, f.containing_loop) };
+  predicate TopLevelLoopExit(n@LoopExit{ loop@TopLevelScope });
+
+    Only one de nition per predicate abstraction is permitted; App. B relaxes
+this restriction.
+    Because object identity is not a ected by these di erent views on an object,
+named predicate abstractions are more exible than coercions in environments
+with side-e ects. Additionally, a single object can be classi ed in multiple in-
+dependent ways by di erent predicate abstractions without being forced to de-
+  ne all the possible conjunctions of independent predicates as explicit classes,
+relieving some of the problems associated with a mix-in style of class organiza-
+tion [HHM90b,HHM90a].
+2.5 Classi ers
+Classi ers [HHM90b] are a convenient syntax for imposing a linear ordering on a
+collection of predicates, ensuring mutual exclusion. They combine the state test-
+ing of predicate classes and the total ordering of pattern matching. An optional
+otherwise case, which executes if none of the predicates in the classi er eval-
+uates to true, adds the guarantee of complete coverage. Multiple independent
+classi cations of a particular class or object do not interfere with one another.
+classi er-decl ::= classify ( h formal-pattern i )
+                    h as pred-id when pred-expr [ return f h eld-id := expr i g ] i
+                    [ as pred-id otherwise [ return f h eld-id := expr i g ] ]
+    Here is an example of the use of classi ers:
+  class Window { ... }
+
+  classify(w@Window)
+    as Iconified when test(w.iconified)
+    as FullScreen when test(w.area() == RootWindow.area())
+    as Big when test(w.area() > RootWindow.area()/2)
+    as Small otherwise;
+
+  method move(w@FullScreen, x@int, y@int) { }           -- nothing to do
+  method move(w@Big, x@int, y@int) { ... }              -- move a wireframe outline
+  method move(w@Small, x@int, y@int) { ... }            -- move an opaque window
+  method move(w@Iconified, x@int, y@int) { ... }        -- modify icon coordinates
+  -- resize, maximize, and iconify similarly test these predicates
+
+                                       193
+ method-sig       ::= signature method-id ( h type i ) : type
+ method-decl      ::= method method-id ( h var-id i ) when pred-expr method-body
+ pred-sig         ::= predsignature pred-id ( h type i ) return f h eld-id : type i g
+ pred-decl        ::= predicate pred-id ( h var-id i ) when pred-expr
+                        return f h eld-id := expr i g
+ P; Q 2 pred-expr ::= var-id @ class-id            succeeds if var-id is an instance
+                                                      of class-id or a subclass
+                    j test var-id                  succeeds if var-id's value is true
+                    j let var-id := expr           evaluate expr and bind var-id
+                                                      to that value; always succeeds
+                    j pred-id ( h var-id i ) => f h eld-id = var-id i g
+                                                   test predicate abstraction
+                    j true                         always succeeds
+                    j not pred-expr                negation
+                    j pred-expr and pred-expr      conjunction (short-circuited)
+                    j pred-expr or pred-expr       disjunction (short-circuited)
+
+Fig.2. Abstract syntax of the core language. Words and symbols in boldface represent
+terminals. Angle brackets denote zero or more comma-separated repetitions of an item.
+Square brackets contain optional expressions. The text uses parentheses around pred-
+exprs to indicate order of operations. Each predicate may be de ned only once (App. B
+relaxes this restriction), and recursive predicates are forbidden.
+
+    Classi ers introduce no new primitives, but provide syntactic support for a
+common programming idiom. To force the classi cation to be mutually exclusive,
+each case is transformed into a predicate which includes the negation of the
+disjunction of all previous predicates (for details, see App. A). Therefore, an
+object is classi ed by some case only when it cannot be classi ed by any earlier
+case.
+
+3 Dynamic and static semantics
+The rest of this paper formalizes the dynamic and static semantics of a core
+predicate dispatching sublanguage. Figure 2 presents the abstract syntax of the
+core sublanguage which is used throughout this section. Appendix A de nes
+desugaring rules that translate the high-level syntax of Fig. 6 into the core
+syntax.
+    In the remainder of this paper, we assume that all variable names are distinct
+so that the semantic rules can ignore the details of avoiding variable capture.
+
+3.1 Dynamic semantics
+This section explains how to select the most-speci c applicable method at each
+message send. This selection relies on two key tests on predicated methods:
+whether a method is applicable to a call, and whether one method overrides
+another.
+
+                                        194
+ ; 2 value                           Values in the underlying programming language
+b 2 ftrue; falseg                    Mathematical booleans
+K 2 (var-id ! value)                 Environments mapping variables to values
+             [ (pred-id ! pred-decl)   and predicate names to predicate declarations
+lookup(v; K ) !      Look up variable v in environment K , returning the value .
+K [v := ] ! K 0      Bind name v to value in environment K , resulting in the new
+                     environment K 0. Any existing binding for v is overridden.
+eval(E; K ) !        Evaluate expression E in environment K , returning the value .
+instanceof( ; c) ! b Determine whether value is an instance of c or a subclass of c.
+accept( ) ! b        Coerce arbitrary program values to true or false, for use with test.
+Fig.3. Dynamic semantics domains and helper functions. Evaluation rules appear in
+Fig. 4. The host programming language supplies functions eval, instanceof, and accept.
+
+     A method is applicable if its predicate evaluates to true. Predicate evaluation
+also provides an extended environment in which the method's body is executed.
+Bindings created via let in a predicate may be used in a method body, predicate
+return clause, or the second conjunct of a conjunction whose rst conjunct
+created the binding. Such bindings permit reuse of values without recomputation,
+as well as simplifyingand clarifying the code. Figures 3 and 4 de ne the execution
+model of predicate evaluation.
+     Predicate dispatching considers one method m1 to override another method
+m2 exactly when m1 's predicate implies m2 's predicate and not vice versa. Sec-
+tion 4 describes how to compute the overriding relation, which can be performed
+at compile time.
+     Given the evaluation model for predicate expressions and the ability to com-
+pare predicate expressions for overriding, the execution of generic function invo-
+cations is straightforward. Suppose that generic function m is de ned with the
+following cases:
+                       method m(v1, : : : , vn ) when P1 Body 1
+                       method m(v1, : : : , vn ) when P2 Body 2
+                      ..
+                       .
+                       method m(v1, : : : , vn ) when Pk Body k
+To evaluate the invocation m(E1, : : : , En) in the environment K, rst obtain
+  i = eval(Ei ; K) for all i = 1; : : :; n. Then, for j = 1; : : :; k, obtain a truth
+value bj and a new environment Kj through Pj ; K[v1 := 1 ; : : :; vn := n]
+                                                   h                                i )
+
+hbj ; Kj , as in the predicate invocation rules of Fig. 4.3
+         i
+
+     Now let I be the set of integers i such that bi = true, and nd i0 I such  2
+
+that Pi0 overrides all others in Pi i2I . The result of evaluating m(E1 ; : : :; En)
+                                    f   g
+
+3 Since we assume that all variable names are distinct and disallow lexically nested
+    predicate abstractions, we can safely use the dynamic environment at the call site
+    instead of preserving the static environment at the predicate abstraction's de nition
+    point.
+
+                                            195
+                                       htrue; K i ) htrue; K i
+                            lookup(v; K ) =              instanceof( ; c) = b
+                                           hv   @ c; K i ) hb; K i
+                               lookup(v; K ) =              accept( ) = b
+                                       h   test v; K i ) hb; K i
+                               eval(E; K ) =                K [v := ] = K 0
+                                      hlet v := E; K i ) htrue; K 0i
+                                  8i 2 f1; : : : ; ng lookup(vi ; K ) = i
+ lookup(p; K ) = predicate p(v10 ; : : : ; vn0 ) when P return ff1 := w10 , : : : , fm := wm0 , : : : g
+                            hP;K [v10 := 1 ; : : : ; vn0 := n ]i ) hfalse; K 0 i
+               hp(v1 , : : : , vn ) => ff1 = w1 , : : : , fm = wmg; K i ) hfalse; K i
+                                  8i 2 f1; : : : ; ng lookup(vi ; K ) = i
+ lookup(p; K ) = predicate p(v10 ; : : : ; vn0 ) when P return ff1 := w10 , : : : , fm := wm0 , : : : g
+                            hP; K [v10 := 1 ; : : : ; vn0 := n ] i ) htrue; K 0i
+                                8i 2 f1; : : : ; mg lookup(wi0 ; K 0) = i
+                                   K [w1 := 1 ; : : : ; wm := m ] = K 00             ()
+               hp(v1 , : : : , vn ) => ff1 = w1 , : : : , fm = wm g; K i ) htrue; K 00i
+                                              hP;K i ) hb; K 0 i
+                                          hnot P; K i ) h:b; K i
+                                           hP;K i ) hfalse; K 0 i
+                                       hP and Q; K i ) hfalse; K i
+                          hP;K i ) htrue; K 0 i            hQ; K 0i ) hfalse; K 00 i
+                                       hP and Q; K i ) hfalse; K i
+                           hP; K i ) htrue; K 0i           hQ; K 0 i ) htrue; K 00i
+                                       hP and Q; K i ) htrue; K 00 i
+                                           hP; K i ) htrue; K 0i
+                                         hP or Q; K i ) htrue; K i
+                           hP; K i ) hfalse; K 0 i          hQ; K i ) htrue; K 00i
+                                         hP or Q; K i ) htrue; K i
+                           hP;K i ) hfalse; K 0i            hQ; K i ) hfalse; K 00 i
+                                        hP or Q; K i ) hfalse; K i
+
+
+Fig.4. Dynamic semantics evaluation
+                            0
+                                    rules. Domains and helper functions appear in
+Fig. 3. We say hP;K i ) hb; K i when the predicate P evaluates in the environment
+K to the boolean result b, producing the new environment K 0. If the result b is false,
+then the resulting environment K 0 is ignored. Bindings do not escape from not or or
+constructs; App. B relaxes the latter restriction. The starred hypothesis uses K , not
+K 0, to construct the result environment K 00 because only the bindings speci ed in the
+return clause, not all bindings in the predicate's when clause, are exposed at the call
+site.
+                                                   196
+is then the result of evaluating Body i0 in the environment Ki0 , so that variables
+bound in the predicate can be referred to in the body. If no such i0 exists, then
+an exception is raised: a \message not understood" error if I is empty, or a
+\message ambiguous" error if there is no unique most speci c element of I.
+    An implementation can make a number of improvements to this base algo-
+rithm. Here we brie y mention just a few such optimizations. First, common
+subexpression elimination over predicate expressions can limit the computation
+done in evaluating guards. Second, precomputed implication relationships can
+prevent the necessity for evaluating every predicate expression. If a more spe-
+ci c one is true, then the less speci c one is certain to be satis ed; however, such
+satisfaction is irrelevant since the more speci c predicate will be chosen. Third,
+clauses and methods can be reordered to succeed or fail more quickly, as in some
+Prolog implementations [Zel93].
+
+3.2 Static semantics and typechecking
+The operational model of predicate dispatch described in Sect. 3.1 can raise
+a run-time exception at a message send if no method is applicable or if no
+applicable method overrides all the others. We extend the typechecking rules of
+the underlying language to guarantee that no such exception occurs.
+    Figure 5 presents the static semantic domains, helper functions, and type-
+checking rules for the core predicate dispatching sublanguage. The return type
+for a predicate invocation is an unordered record. Bindings do not escape from
+not or or constructs (App. B makes bindings on both sides of a or disjunct
+visible outside the disjunct).
+    We can separate typechecking into two parts: client-side, which handles
+all checking of expressions in the underlying language and uses method sig-
+natures to typecheck message sends, and implementation-side, which checks
+method and predicate implementations against their corresponding signatures.
+Only implementation-side checking is a ected by predicate dispatching.
+    Implementation-side typechecking must guarantee completeness and unique-
+ness. Completeness guarantees that no \message not understood" error is raised:
+for every possible set of arguments at each call site, some method is applicable.
+Let Pm be the disjunction of the predicates of all of m's implementations, and
+let Ps be a predicate expressing the set of argument classes that conform to the
+types in the method signature. (See below for the details of predicate Ps; a class
+c conforms to a type T if every object which is an instance of that class has type
+T or a subtype of T .) If Ps implies Pm , then some method is always applicable.
+Uniqueness guarantees that no \message ambiguous" error is raised: for no pos-
+sible set of arguments at any call site are there multiple most-speci c methods.
+Uniqueness is guaranteed if, for each pair of predicates P and Q attached to two
+di erent implementations, either P and Q are disjoint (so their associated meth-
+ods can never be simultaneously applicable) or one of the predicates implies the
+other (so one of the methods overrides the other). Section 4 presents implication
+and disjointness tests over predicate expressions.
+
+                                        197
+T  T0                Type T is a subtype of T 0 .
+conformant-type(T; c) Return the most-speci c (with respect to the subtyping partial
+                      order) type T 0 such that every subclass c0 of c that conforms
+                      to T also conforms to T 0 . This helper function is supplied by
+                      the underlying programming language.
+  + 0 = 00            Overriding extension of typing environments. For each v 2
+                      dom( 0 ), if 0 j= v : T 0 , then 00 j= v : T 0 ; for each
+                      v 2 dom( ) n dom( 0 ), if j= v : T , then 00 j= v : T .
+
+             `   signature m(T1 , : : : , Tn ) : Tr ) + fm : (T1 ; : : : ; Tn ) ! Tr g
+                                       j= m : (T1 ; : : : ; Tn ) ! Tr
+            + fv1 : T1 ; : : : ; vn : Tn g ` P ) 0               0 j= Body : Tb             Tb  Tr
+                     ` method m(v1 , : : : , vn ) when P Body )
+
+
+           h ; predsignature p(T1 , : : : , Tn ) return ff1 : T1r , : : : , fm : Tmr gi
+              )                                    r            r
+                     + fp : (T1 ; : : : ; Tn ) ! ff1 : T1 ; : : : ; fm : Tm g g
+                        j= p : (T1 ; : : : ; Tn ) ! ff1 : T1r ; : : : ; fm : Tmr ; : : :g
+                                + fv1 : T1 ; : : : ; vn : Tn g ` P )         0
+                          8i 2 f1; : : : ; mg      0 j= vi0 : Ti0 ^ Ti0  Tir
+     `   predicate p(v1 , : : : , vn ) when P return ff1 := v10 , : : : , fm := vm0 g )
+                                                `      true )
+                             j= v : T       conformant-type(c; T ) = T 0
+                                        ` v @ c ) + fv : T 0 g
+                                              j= v : Bool
+                                              `    test v )
+                                                  j= expr : T
+                                   `   let v := expr ) + fv : T g
+                     j= p : (T1 ; : : : ; Tn ) ! ff1 : T1r ; : : : ; fm : Tm
+                                                                           r ; : : :g
+                        0
+               j= v1 : T1 : : :                    0
+                                          j= vn : Tn      T1  T1 : : : Tn0  Tn
+                                                            0
+           ( , , ) =>
+      ` p v1 : : : vn        ff1 v1 : : : fm vm g ) + fv10 : T1r ; : : : ; vm
+                                          0
+                                       = , ,            0 =                           0 : Tr g
+                                                                                           m
+                                                   `P )         0
+                                               `    not P )
+                                    ` P1 )         00 ` P2 ) 00
+                                         ` P1and P2 ) 00
+                                    ` P1 ) 0          ` P2 ) 00
+                                          ` P1 or P2 )
+
+Fig.5. Typechecking rules. The hypothesis j= E : T indicates that typechecking
+in typing environment assigns type T to expression E . The judgment ` P )
+  0 represents extension of typechecking environments: given type environment , P
+typechecks and produces new typechecking environment 0 .
+                                                       198
+    Completeness checking requires a predicate Ps that expresses the set of tuples
+of values v1; : : :; vn conforming to some signature's argument types T1 ; : : :; Tn;
+this predicate depends on the host language's model of classes and typing. If
+classes and types are the same, and all classes are concrete, then the corre-
+sponding predicate is simply v1 @ T1 and : : : and vn @ Tn . If abstract classes are
+allowed, then each vi @ Ti is replaced with vi @ Ti1 or : : : or vi @ Tim , where
+the Tij are the top concrete subclasses of Ti . If inheritance and subtyping are
+separate notions, then the predicates become more complex.
+    Our typechecking need not test that methods conform to signatures, unlike
+previous work on typechecking multimethods [CL95]. In predicate dispatching,
+a method's formal argument has two distinct types: the \external" type derived
+from the signature declaration, and the possibly ner \internal" type guaranteed
+by successful evaluation of the method's predicate. The individual @ tests narrow
+the type of the tested value to the most-speci c type to which all classes passing
+the test conform, in a host-language-speci c manner, using conformant-type.
+The conformant-type function replaces the more complicated conformance test
+of earlier work.
+
+4 Comparing predicate expressions
+The static and dynamic semantics of predicate dispatching require compile-time
+tests of implication between predicates to determine the method overriding re-
+lationship. The static semantics also requires tests of completeness and unique-
+ness to ensure the absence of \message not understood" errors and \message
+ambiguous" errors, respectively. All of these tests reduce to tautology tests over
+predicates. Method m1 with predicate p1 overrides method m2 with predicate p2
+i p1 implies p2 |that is, if (not p1) or p2 is true. A set of methods is complete
+if the disjunction of their predicates is true. Uniqueness for a set of methods re-
+quires that for any pair of methods, either one's predicate overrides the other's,
+or the two predicates are logically exclusive. Two formulas are mutually exclusive
+exactly if one implies the negation of the other.
+    Section 4.1 presents a tautology test over predicate expressions which is sim-
+ple, sound, and complete up to equivalence of arbitrary program expressions
+in test constructs, which we treat as black boxes. Because determining logi-
+cal tautology is NP-complete, in the worst case an algorithm takes exponential
+time in the size of the predicate expressions. For object-oriented dispatch, this
+is the number of arguments to a method (a small constant). Simple optimiza-
+tions (Sect. 4.2) make the tests fast in many practical situations. This cost is
+incurred only at compile time; at run time, precomputed overriding relations
+among methods are simply looked up.
+    We treat expressions from the underlying programming language as black
+boxes (but do identify those whose canonicalizations are structurally identical).
+Tests involving the run-time values of arbitrary host language expressions are
+undecidable. The algorithm presented here also does not address recursive pred-
+
+                                        199
+icates. While we have a set of heuristics that succeed in many common, practical
+cases, we do not yet have a complete, sound, and ecient algorithm.
+4.1 The base algorithm
+The base algorithm for testing predicate tautology has three components. First,
+the predicate expression is canonicalized to macro-expand predicate abstrac-
+tions, eliminate variable bindings, and use canonical names for formal arguments.
+This transformation prevents di erent names for the same value from being con-
+sidered distinct. Second, implication relations are computed among the atomic
+predicates (for instance, x @ int implies x @ num). Finally, the canonicalized
+predicate is tested for every assignment of atomic predicates to truth values
+which is consistent with the atomic predicate implications. The predicate is a
+tautology i evaluating it in every consistent truth assignment yields true.
+Canonicalization Canonicalization performs the following transformations:
+ { Expand predicate calls inline, replacing the => clause by a series of let
+   bindings.
+ { Replace let-bound variables by the expressions to which they are bound,
+   and replace let expressions by true.
+ { Canonically rename formal parameters according to their position in the
+     formal list.
+    After canonicalization, each predicate expression is a logical formula over the
+following atoms with connectives and, or, and not.
+     pred-atom ::= true
+                  j test expr
+                  j expr @ class-id
+Canonicalized predicates are a compile-time construct used only for predicate
+comparison; they are never executed. Canonicalized predicates bind no variables,
+and they use only global variables and formal parameters.
+    In the worst case, canonicalization exponentially blows up expression sizes.
+For instance, in
+let x1 = x+x andlet x2 = x1+x1 andlet x3 = x2+x2 and : : : andtest xn = y ;
+the nal xn is replaced by an expression containing 2n instances of x. Inline
+expansion of predicate abstractions similarly contributes to this blowup. As with
+ML typechecking [KM89], which is exponential in the worst case but linear in
+practice, we anticipate that predicates leading to exponential behavior will be
+rare.
+    In what follows, we consider two expressions identical if, after canonicaliza-
+tion, they have the same abstract syntax tree.
+    Omitting the canonicalization step prevents some equivalent expressions from
+being recognized as such, but does not prevent the remainder of the algorithm
+from succeeding when results are named and reused rather than the computation
+repeated.
+
+                                       200
+Truth assignment checking We present a simple exponential-time algorithm
+to check logical tautology; because the problem is NP-complete, any algorithm
+takes exponential time in the worst case. Let there be n distinct predicate atoms
+in the predicate; there are 2n di erent truth assignments for those atoms. Not
+all of those truth assignments are consistent with the implications over predicate
+atoms: for instance, it is not sensible to set a @ int to true but a @ num to
+false, because a @ int implies a @ num. If every consistent truth assignment
+satis es the predicate, then the predicate is a tautology. Each check of a single
+truth assignment takes time linear in the size of the predicate expression, for a
+total time of O(n2n).
+    The following rules specify implication over (possibly negated) canonical
+predicate atoms.
+           E1 @ c1 E2 @ c2 i (E1 E2 ) and (c1 is a subclass of c2 )
+                   )                      
+
+     E1 @ c1 not(E2 @ c2) i (E1 E2 ) and (c1 is disjoint from c2 )
+             )                            
+
+                       a1 a2 i not a2 not a1
+                        )                     )
+
+                   a1 not a2 i a2 not a1
+                    )                    )
+
+
+Two classes are disjoint if they have no common descendant, and notnot a = a.
+4.2 Optimizations
+The worst-case exponential-time cost to check predicate tautology need not pre-
+vent its use in practice. Satis ability is checked only at compile time. When
+computing overriding relationships, the predicates tend to be small (linear in
+the number of arguments to a method). We present heuristics that reduce the
+costs even further.
+    Logical simpli cation| such as eliminating uses of true, false, a andnot a,
+and a or not a, and replacing notnot a by a| can be performed as part of
+canonicalization to reduce the size of predicate expressions.
+    Unrelated atomic predicates can be treated separately. To determine whether
+method m1 (f1 @c1; f2@c2 ) ::: overrides method m1 (f1 @c3; f2@c4 ) ::: it is
+                            f   g                                       f   g
+
+sucient to independently determine the relationship between c1 and c3 and
+that between c2 and c4. Two tests with a smaller exponent replace one with a
+larger one, substantially reducing the overall cost. This technique always solves
+ordinary single and multiple dispatching overriding in time constant and linear
+in the number of formals, respectively, by examining each formal position inde-
+pendently. The technique also applies to more complicated cases, by examining
+subsets of formal parameters which appear together in tests from the underlying
+programming language.
+    It is not always necessary to completely expand predicate abstraction calls
+as part of canonicalization. If relations between predicate abstractions or other
+predicate expressions are known, then the tautology test can use them directly.
+As one example, di erent cases of a classi er are mutually exclusive by de nition.
+    The side conditions on atomic predicate values (their implication relation-
+ships) usually prevent the need to check all 2n di erent truth assignments for
+
+                                       201
+a predicate containing n atomic predicates. When a @ int is set to true, then
+all truth assignments which set a @ num to false can be skipped without further
+consideration.
+    Finally, it may be possible to achieve faster results in some cases by recasting
+the tautology test. Rather than attempting to prove that every truth assignment
+satis es a predicate expression, it may be advantageous to search for a single
+truth assignment that satis es its negation.
+
+5 Related work
+5.1 Object-oriented approaches
+In the model of predicate dispatching, traditional object-oriented dispatching
+translates to either a single class test on the receiver argument or, for multi-
+ple dispatching, a conjunction of class tests over several arguments. Full predi-
+cate dispatching additionally enables testing arbitrary boolean expressions from
+the underlying language, accessing and naming subcomponents of the argu-
+ments, performing tests over multiple arguments, and arbitrarily combining
+tests via conjunction, disjunction, and negation. Also, named predicate ab-
+stractions e ectively introduce new virtual classes and corresponding subclass-
+ing links into the program inheritance hierarchy. Predicate dispatching pre-
+serves the ability in object-oriented languages to statically determine when
+one method overrides another and when no message lookup error can occur.
+Singly-dispatched object-oriented languages have ecient method lookup algo-
+rithms and separate typechecking, which depend crucially on the absence of
+any separate modules that dispatch on other argument positions. Multiply-
+dispatched object-oriented languages have more challenging problems in imple-
+mentation [KR89,CTK94,AGS94] and typechecking [CL95], and predicate dis-
+patching in its unrestricted form shares these challenges.
+    Predicate classes [Cha93b] are an earlier extension of object-oriented dis-
+patching to include arbitrary boolean predicates. A predicate class which in-
+herits from class A and has an associated predicate expression guard would be
+modeled as a named predicate abstraction that tests @A and guard . Predicate
+dispatching is more general, for example by being able to de ne predicates over
+multiple arguments. Predicate dispatching exploits the structure of and, or, and
+not to automatically determine when no message lookup error can occur, while
+typechecking of predicate classes relies on uncheckable user assertions about the
+relations between the predicate classes' guard expressions.
+    Classi ers in Kea [HHM90b,HHM90a,MHH91] let an instance of a class be
+dynamically reclassi ed as being of a subclass. A classi er for a class is com-
+posed of a sequence of predicate/subclass pairs, with an object of the input class
+automatically classi ed as being of the subclass with the rst successful predi-
+cate. Because the sequence of predicates is totally ordered and the rst successful
+predicate takes precedence over all later predicates, a classi er provides a concise
+syntax for a set of mutually exclusive, exhaustive predicate abstractions. Predi-
+cate abstractions are more general than classi ers in many of the ways discussed
+
+                                        202
+above, but they also provide syntactic support for this important idiom. Kea is a
+purely functional language, so classi ers do not need to consider the semantics of
+reclassifying objects when the values of predicates change; predicate dispatching
+addresses this issue by (conceptually) performing reclassi cation as needed as
+part of message dispatching.
+    Modes [Tai93] are another mechanism for adding dynamic reclassi cation of a
+class into a subclass. Unlike predicate classes and classi ers, the modes of a class
+are not rst-class subclasses but rather internal components of a class that cannot
+be extended externally and that cannot exploit inheritance to factor shared code.
+Mode reselection can be done either explicitly at the end of each method or
+implicitly after each assignment using a declaratively speci ed classi cation.
+
+5.2 Pattern matching approaches
+Predicate dispatching supports many of the facilities found in pattern matching
+as in ML [MTH90] and Haskell [HJW+ 92], including tests over arbitrary nested
+structure, binding of names to subcomponents, and arbitrary boolean guard ex-
+pressions. Predicate dispatching additionally supports inheritance (its class tests
+are more general than datatype constructor patterns), disjunctions and negations
+of tests and conjunctions of tests on the same object, and named predicate ab-
+stractions to factor out common patterns of tests and to o er conditional views
+of objects extended with virtual elds. The patterns in a function are totally
+ordered, while predicate dispatching computes a partial order over predicates
+and warns when two patterns might be ambiguous. Finally, new methods can be
+added to existing generic functions without changing any existing code, while
+new patterns can be added to a function only by modifying it.
+    Views [Wad87] extend pattern matching to abstract data types by allowing
+an abstract data type to o er a number of views of itself as a concrete datatype,
+over which pattern matching is de ned. Predicate dispatching supports \pattern
+matching" over the results of methods (by let-binding their results to names and
+then testing those names, just as eld contents are bound and tested), and those
+methods can serve as accessor functions to a virtual view of the object, for
+instance rho and theta methods presenting a polar view of a cartesian point.
+Views must be isomorphisms, which enables equational reasoning over them; by
+contrast, named predicate abstractions provide conditional views of an object
+without requiring the presence of both in and out views.
+    Pizza [OW97] supports both algebraic datatypes (and associated pattern
+matching) and object-oriented dispatching, but the two mechanisms are largely
+distinct. The authors argue that datatypes are good for xed numbers of rep-
+resentations with extensible operations, while classes are good for a xed set of
+operations with extensible representations. By integrating pattern matching and
+dispatching, including multimethods, predicate dispatching achieves extensibility
+in both dimensions along with the syntactic convenience of pattern matching.
+Predicate dispatching faces more dicult implementation and separate type-
+checking challenges with the shift to multimethod-like dispatching.
+
+                                        203
+6 Conclusions
+Many language features express the concept of selecting a most-speci c applica-
+ble method from a collection of candidates, including object-oriented dispatch,
+pattern matching, views, predicate classes, and classi ers. Predicate dispatching
+integrates and generalizes these mechanisms in a single framework, based on a
+core language of boolean expressions over class tests and arbitrary expressions,
+explicit binding forms to generalize features of pattern matching, and named
+predicate abstractions with result bindings. By providing a single integrated
+mechanism, programs can take advantage of various styles of dispatch and even
+combine them to create applicability conditions that were previously either im-
+possible or inconvenient to express.
+    We have implemented predicate dispatching in the context of Dubious, a
+simple core multiply-dispatched object-oriented programming language. The
+implementation supports all the examples presented in this paper, although
+for clarity this paper uses a slightly di erent presentation syntax. The imple-
+mentation supports the full core language of Sect. 3 and many of the syn-
+tactic sugars of App. A. This implementation was helpful in verifying our
+base design. We expect that it will also provide insight into the advantages
+and disadvantages of programming with predicate dispatching, as well as help
+us to evaluate optimization strategies. The implementation is available from
+http://www.cs.washington.edu/research/projects/cecil/www/Gud/.
+    So far, we have focused on developing the static and dynamic semantics for
+predicate dispatching. Two unresolved practical issues that we will address in
+the future are ecient implementation techniques and separate typechecking
+support for predicate dispatching. We anticipate that ecient implementations
+of unrestricted predicate dispatching will build upon work on ecient implemen-
+tation of multimethod dispatching and on predicate classes. In addition, static
+analyses that factor a collection of predicates to avoid redundant tests and side-
+e ect analyses that determine when predicates need not be re-evaluated appear
+to be promising lines for future research. Similarly, separate typechecking of col-
+lections of predicated methods will build upon current work to develop modular
+and incremental methods for typechecking multimethods [CL95].
+
+Acknowledgments
+Todd Millstein, Vassily Litvinov, Wilson Hsieh, David Grove, and the anonymous
+referees made helpful comments on a draft of this paper. This research is sup-
+ported in part by an NSF grant (number CCR-9503741), an NSF Young Investi-
+gator Award (number CCR-9457767), a grant from the Oce of Naval Research
+(contract number N00014-94-1-1136), an IBM graduate fellowship, an FCAR
+graduate scholarship, and gifts from Sun Microsystems, IBM, Xerox PARC, Pure
+Software, and Edison Design Group.
+
+                                       204
+References
+[AGS94] Eric Amiel, Olivier Gruber, and Eric Simon. Optimizing multi-method dis-
+         patch using compressed dispatch tables. In Proceedings OOPSLA '94, pages
+         244{258, Portland, OR, October 1994.
+[BKK+86] Daniel G. Bobrow, Ken Kahn, Gregor Kiczales, Larry Masinter, Mark Ste-
+           k, and Frank Zdybel. Commonloops: Merging lisp and object-oriented
+         programming. In Proceedings OOPSLA '86, pages 17{29, November 1986.
+         Published as ACM SIGPLAN Notices, volume 21, number 11.
+[Cha92] Craig Chambers. Object-oriented multi-methods in Cecil. In O. Lehrmann
+         Madsen, editor, Proceedings ECOOP '92, LNCS 615, pages 33{56, Utrecht,
+         The Netherlands, June 1992. Springer-Verlag.
+[Cha93a] Craig Chambers. The Cecil language: Speci cation and rationale. Technical
+         Report UW-CSE-93-03-05, Department of Computer Science and Engineer-
+         ing. University of Washington, March 1993.
+[Cha93b] Craig Chambers. Predicate classes. In O. Nierstrasz, editor, Proceedings
+         ECOOP '93, LNCS 707, pages 268{296, Kaiserslautern, Germany, July
+         1993. Springer-Verlag.
+[CL95] Craig Chambers and Gary T. Leavens. Typechecking and modules for
+         multi-methods. ACM Transactions on Programming Languages and Sys-
+          tems, 17(6):805{843, November 1995.
+[CTK94] Weimin Chen, Volker Turau, and Wolfgang Klas. Ecient dynamic look-
+         up strategy for multi-methods. In M. Tokoro and R. Pareschi, editors,
+         Proceedings ECOOP '94, LNCS 821, pages 408{431, Bologna, Italy, July
+         1994. Springer-Verlag.
+[HHM90a] J. Hamer, J.G. Hosking, and W.B. Mugridge. A method for integrating clas-
+         si cation within an object-oriented environment. Technical Report Auck-
+         land Computer Science Report No. 48, Department of Computer Science,
+         University of Auckland, October 1990.
+[HHM90b] J.G. Hosking, J. Hamer, and W.B. Mugridge. Integrating functional and
+          object-oriented programming. In Technology of Object-Oriented Languages
+          and Systems TOOLS 3, pages 345{355, Sydney, 1990.
+[HJW+ 92] Paul Hudak, Simon Peyton Jones, Philip Wadler, Brian Boutel, Jon
+          Fairbairn, Joseph Fasel, Maria Guzman, Kevin Hammond, John Hughes,
+         Thomas Johnsson, Dick Kieburtz, Rishiyur Nikhil, Will Partain, and John
+         Peterson. Report on the programming language Haskell, version 1.2. SIG-
+          PLAN Notices, 27(5), May 1992.
+[KM89] Paris C. Kanellakis and John C. Mitchell. Polymorphic uni cation and ML
+          typing. In ACM-SIGPLAN ACM-SIGACT, editor, Conference Record of
+          the 16th Annual ACM Symposium on Principles of Programming Languages
+          (POPL '89), pages 105{115, Austin, TX, USA, January 1989. ACM Press.
+[KR89] Gregor Kiczales and Luis Rodriguez. Ecient method dispatch in PCL.
+          Technical Report SSL 89-95, Xerox PARC Systems Sciences Laboratory,
+          1989.
+[MHH91] Warwick B. Mugridge, John Hamer, and John G. Hosking. Multi-methods in
+          a statically-typed programming language. In P. America, editor, Proceedings
+          ECOOP '91, LNCS 512, pages 307{324, Geneva, Switzerland, July 15-19
+          1991. Springer-Verlag.
+[MTH90] Robin Milner, Mads Tofte, and Robert Harper. The De nition of Standard
+          ML. MIT Press, 1990.
+
+                                        205
+[OW97]  Martin Odersky and Philip Wadler. Pizza into Java: Translating theory into
+        practice. In Conference Record of the 24th ACM SIGPLAN-SIGACT Sym-
+        posium on Principles of Programming Languages, pages 146{159, January
+        1997.
+[Ste90] Guy L. Steele Jr. Common Lisp: The Language. Digital Press, Bedford,
+        MA, 1990. Second edition.
+[Tai93] Antero Taivalsaari. Object-oriented programming with modes. Journal of
+        Object-Oriented Programming, pages 25{32, June 1993.
+[Wad87] Philip Wadler. Views: A way for pattern matching to cohabit with data
+        abstraction. In Proceedings of the Fourteenth Annual ACM Symposium on
+        Principles of Programming Languages, pages 307{313, Munich, Germany,
+        January 1987.
+[Zel93] John M. Zelle. Learning search-control heuristics for logic programs: Ap-
+        plications tospeed-up learning and languageacquisitions. Technical Report
+        AI93-200, University of Texas, Austin, May 1, 1993.
+
+A Desugaring rules
+The following rewrite rules desugar the high-level syntax of Fig. 6 into the core
+abstract syntax of Fig. 2. The rules are grouped by their intention, such as
+providing names for arbitrary expressions or breaking down compound predicate
+abstractions.
+    For brevity, we omit the rewrite rules which introduce defaults for omitted
+optional program fragments: dummy variables for pattern variables, \@Any" spe-
+cializers, empty eld pattern sets in specializers, and \when true" and \return
+f g" clauses. Additional rules may be introduced to simplify the resulting for-
+mula, such as converting \v @ Any" to \true" and performing logical simpli ca-
+tion.                    V
+    For brevity, we use ni=1 Pi Vnto stand for the conjunction of the terms:
+                                f   g
+
+P1 and : : : and Pn. When n = 0, i=1 Pi stands for true. Variables v0 and vi0
+                                         f     g
+
+are new variables which do not appear elsewhere in the program. Ceiling braces
+de surround (potentially) sugared expressions; application of the rewrite rules
+eliminates those braces.
+
+A.1 Declarations
+These rules move specializers from formal lists into when clauses.
+ dmethod m(v1 @ S1 , : : : , vn @ Sn ) when P Body e
+                                           V
+    =) method m(v1 , : : : , vn) when ni=1 fdvi @ Si eg and dP e Body
+ dpredicate p(v1 @ S1 , : : : , vn @ Sn ) when P return ff1 := E1 , : : : , fm := Em ge
+    =) predicate p(v1 , : : : , vn )
+           when Vni=1 fdvi @ Si eg and dP e dreturn ff1 := E1 , : : : , fm := Em ge
+
+
+                                         206
+method-sig       ::= signature method-id ( h type i ) : type
+method-decl      ::= method method-id ( h formal-pattern i )
+                        [ when pred-expr ] method-body
+pred-sig         ::= predsignature pred-id ( h type i )
+                        [ return f h eld-id : type i g ]
+pred-decl        ::= predicate pred-id ( h formal-pattern i ) [ when pred-expr ]
+                        [ return f h eld-id := expr i g ]
+classi er-decl ::= classify ( h formal-pattern i )
+                        h as pred-id when pred-expr [ return f h eld-id := expr i g ] i
+                        [ as pred-id otherwise [ return f h eld-id := expr i g ] ]
+P; Q 2 pred-expr ::= expr @ specializer           succeeds if expr evaluates to a value
+                                                     that satis es specializer
+                   j test expr                    succeeds if expr evaluates to true
+                   j let var-id := expr           evaluate expr and bind var-id
+                                                     to its value; always succeeds
+                   j pred-id ( h expr i ) [ => f h eld-pat i g ]
+                                                  test predicate abstraction
+                   j true                         always succeeds
+                   j false                        never succeeds
+                   j not pred-expr                negation
+                   j pred-expr and pred-expr      conjunction (short-circuited)
+                   j pred-expr or pred-expr       disjunction (short-circuited)
+formal-pattern ::= [ var-id ] [ @ specializer ] like var-id @ specializer in pred-expr
+F 2 eld-pat      ::= eld-id [ = var-id ] [ @ specializer ]
+S 2 specializer ::= class-spec [ f h eld-pat i g ]
+C 2 class-spec ::= class-id                       expr @ class-id is a class test
+                   j pred-id                      expr @ pred-id [ f : : : g ] is sugar
+                                                     for pred-id(expr) [ =>f : : : g ]
+                   j not class-spec               succeeds if class-spec does not
+                   j class-spec & class-spec      succeeds if both class-specs do
+                   j class-spec j class-spec      succeeds if either class-spec does
+
+Fig.6. Full extended abstract syntax for predicate dispatching. The syntax is as pre-
+sented incrementally in Sect. 2, with the addition of the true and false predicate
+expressions and the not, &, and j class specializers. Words and symbols in boldface
+represent terminals. Angle brackets denote zero or more comma-separated repetitions
+of an item. Square brackets contain optional expressions. Each predicate may be de ned
+only once (App. B relaxes this restriction), and recursive predicates are forbidden.
+
+A.2 Naming of non-variable expressions
+The core language permits arbitrary expressions only in let bindings and uses
+variable references elsewhere. These rules introduce let bindings and are intended
+to re only once (alternately, only if one of the E expressions is not a mere
+variable reference), lest the @ and predicate application rules cause an in nite
+loop in desugaring.
+                                          
+      dE @ S e =) let v0 := E and v0 @ S
+
+
+                                         207
+     d test E e =) let v0 := E and test v0
+      dp(E1 , : : : , En ) => fF1 , : : : , Fm ge
+                         V
+                   =) ni=1 flet vi0 := Ei g and dp(v10 , : : : , vn0 ) => fF1 , : : : , Fm ge
+      dreturn ff1 := E1 , : : : , fm := Em ge
+                            V
+                   =) and m                 0                          0
+                              i=1 flet vi := Ei g return ff1 := v1 , : : : , fm := vm g
+                                                                                        0
+
+
+A.3 Compound predicate expressions
+These rules show how to desugar false and compound predicate expressions.
+                                     falsee =) not true
+                                     d
+                                   dnot P e =) not dP e
+                               dP1 and P2 e =) dP1 e and dP2 e
+                                 dP1 or P2 e =) dP1 e or dP2 e
+
+A.4 Field bindings
+Pattern matching permits arbitrarily nested tests and simultaneous matching
+on elds of objects, elds of predicate results, and results of arbitrary method
+invocations. These rules separate these varieties of record patterns and atten
+tests.
+    We introduce the concept of a class specializer generating a eld. A class
+name generates the elds in the class; a predicate name generates the elds in
+the predicate's return clause; a conjunction generates the elds generated by
+either of its conjuncts; and a disjunction generates the elds generated by both
+of its disjuncts.
+    If Fi is generated by C 6= c for 1  i  m < n:
+            dv @ C fF1 , : : : , Fm , : : : , Fn ge
+               =) dv @ C fF1 , : : : , Fm ge and dv @ Any fFm+1 , : : : , Fn ge
+           dv @ c ff1 = v1 @ V
+                             S1 , : : : , fn = vn @ Sn ge
+              =) v @ c and ni=1 flet vi := v:fi and dvi @ Si eg
+           dv @ p ff1 = v1 @ S1 , : : : , fn = vn @ Sn ge
+                                                          V
+              =) p(v) => ff1 = v1 , : : : , fn = vn g and ni=1 fdv0 @ Si eg
+
+A.5 Compound predicate abstractions
+These rules simplify compound predicate abstractions.
+                 dv @ not CfF1 , : : : , Fm ge =) not dv @ CfF1 , : : : , Fm ge
+   If Fi , m + 1  i  n, is generated by C2 (& rule only):
+      dv @ C1 & C2 fF1 , : : : , Fm , : : : , Fn ge =) dv @ C1 fF1 , : : : , Fm ge
+                                                          and dv @ C2 fFm+1 , : : : , Fn ge
+               dv @ C1 j C2 fF1 , : : : , Fm ge =) dv @ C1 fF1 , : : : , Fm ge
+                                                          or dv @ C2 fF1 , : : : , Fm ge
+
+                                               208
+A.6 Classi ers
+Sequential ordering over classi er cases is enforced by creating extra predicates
+di such that di is true if any cj , j i, is true. Each ci is true only if di 1 is not
+                                            
+(that is, no previous conjunct was true).
+ 2                                                                                                3
+   classify(v1 @ S1 , : : : , vm @ Sm )
+ 6 as c1 when P1 return ff1;1 := v10 ;1 , : : : , f1;m1 := v10 ;m1 g                          7
+ 6   ..                                                                                       7
+ 6                                                                                            7
+ 6    .                                                                                       7
+ 6
+ 6  as cn when Pn return ffn;1 := vn;0 1 , : :0 : , fn;mn := vn;m 0 g
+                                                                      n
+                                                                                              7
+                                                                                              7
+ 6  as cn+1 otherwise return ffn+1;1 := vn+1;1 , : : : , fn+1;mn+1 := vn0 +1;mn+1            g7
+                                                               
+  =) predicate   c1 (v1 @ S1 , : : : , vm @ Sm ) when P1
+           return ff1;1 := v10 ;1 , : : : , f1;m1 := v10 ;m1 g;
+     dpredicate d1 (v1 @ S1 , : : : , vm @ Sm ) when P1 ;e
+                                                                                           
+       predicate c2 (v1 @ S1 ,0: : : , vm @ Sm ) when       P2 and not d1 (v1, : : : , vm )
+           return ff2;1 := v2;1 , : : : , f2;m2 := v20 ;m2 g;
+     dpredicate d2 (v1 @ S1 , : : : , vm @ Sm ) when d1 (v1 , : : : , vm ) or P2 ;e
+          ..
+           .                                                                                     
+            predicate cn (v1 @ S1 ,0: : : , vm @ Sm ) when
+                                                         0 g;
+                                                             Pn and not dn 1 (v1 , : : : , vm )
+                return ffn;1 := vn;1 , : : : , fn;mn := vn;mn
+          dpredicate dn (v1 @ S1 , : : : , vm @ Sm ) when dn 1 (v1 , : : : , vm ) or Pn ;e
+                                                                                       
+            predicate cn+1 (v1 @ S1 ,0: : : , vm @ Sm ) when not0 dn (v1 , : : : , vm )
+                return ffn+1;1 := vn+1;1 , : : : , fn+1;mn+1 := vn+1;mn+1 g;
+
+
+B Bindings escaping \or"
+In the static and dynamic semantics presented in Sect. 3, bindings never escape
+from or predicate expressions. Relaxing this constraint provides extra conve-
+nience to the programmer and permits more values to be reused rather than
+recomputed. It is also equivalent to permitting overloaded predicates or mul-
+tiple predicate de nitions |so far we have permitted only a single de nition
+of each predicate. With appropriate variable renaming, multiple predicate def-
+initions that rely on a dispatching-like mechanism to select the most speci c
+applicable method can be converted into uses of or, and vice versa.
+    For example, the two ConstantFold methods of Sect. 2.3 can be combined
+into a single method. Eliminating code duplication is a prime goal of object-
+oriented programming, but the previous version repeated the body twice. Use of
+a helper method would unnecessarily separate the dispatching conditions from
+the code being executed, though a helper predicate could reduce code duplication
+in the predicate expression.
+
+                                                209
+  -- handle case of adding zero to a non-constant
+  method ConstantFold(e@BinopExpr{ op@IntPlus, arg1=a1, arg2=a2 })
+    when (a1@IntConst{ value=v } and test(v == 0)
+           and not(a2@IntConst) and let res := a2)
+      or (a2@IntConst{ value=v } and test(v == 0)
+           and not(a1@IntConst) and let res := a1) {
+    ... -- increment counter, or do other common work here
+    return res; }
+
+    As another example, the LoopExit example of Sect. 2.4 can be extended
+to present a view which indicates which branch of the CFG_2succ is the loop
+exit and which the backward branch. When performing iterative data ow, this
+is the only information of interest, and in our current implementation (which
+uses predicate classes [Cha93b]) we generally recompute this information after
+discovering that an object is a LoopExit. Presenting a view which includes this
+information directly would improve the code's readability and eciency.
+ predsignature LoopExit(CFGnode)
+   return { loop:CFGloop, next_loop:CFGedge, next_exit:CFGedge };
+ predicate LoopExit(n@CFG_2succ{ next_true: t, next_false: f })
+   when (test(t.is_loop_exit) and let nl := t and let ne := f)
+     or (test(f.is_loop_exit) and let nl := f and let ne := t)
+   return { loop := nl.containing_loop, next_loop := nl, next_exit := ne };
+
+   Permitting bindings which appear on both sides of or to escape requires
+the following changes to the dynamic semantics of Fig. 4. (The third rule is
+unchanged from Fig. 4 but included here for completeness.)
+                                 P; K
+                                   h   i ) htrue; K 0     i
+
+                              P or Q; K
+                               h               true; K 0
+                                           i ) h              i
+
+
+                  hP; K i ) h false; K 0
+                                       i      Q; K
+                                                 h         true; K 00
+                                                         i ) h    i
+
+                             P or Q; K
+                               h               true; K
+                                           i ) h
+                                                        00    i
+
+
+                 h P; Ki ) h false; K 0i      Q; K
+                                                 h         false; K 00
+                                                         i ) h    i
+
+                              P or Q; K
+                               h           i ) hfalse; K      i
+
+
+These execution rules do not re ect that only the bindings appearing on both
+sides, not all those appearing on the succeeding side, should escape; however,
+the typechecking rules below guarantee that only the appropriate variables are
+referenced.
+    The static semantics of Fig. 5 are modi ed to add two helper functions and
+replace a typechecking rule:
+     T T 0 = T 00
+        t               Least upper bound over types. T 00 is the least common
+                        supertype of T and T 0 .
+    t
+               0
+      env ( ; ) =    00 Pointwise lub over typing environments. For each v
+                                                                         2
+
+                        dom( 00) = dom( ) dom( 0), if = v : T and
+                                                     \            j
+                          0 = v : T 0, then 00 = v : T T 0 .
+                           j                         j        t
+
+
+
+
+                                           210
+                 `   P1   )
+                              0      `    P2 )
+                                                 00       tenv (
+                                                                 0; 00) = 000
+                                      `   P1 or P2    )
+                                                          000
+
+    Finally, canonicalization must account for the new semantics of or. In order
+to permit replacement of variables by their values, we introduce a new compile-
+time-only ternary conditional operator ?: for each variable bound on both sides
+of the predicate. The rst argument is the predicate expression on the left-hand
+side of the or expression; the second and third arguments are the variable's
+values on each side of the or.
+    Canonicalizing this new ?: expression requires ordering the tests canonically;
+any ordering will do. This may necessitate duplication of some expressions, such
+as transforming b ? e1 : (a ? e2 : e3 ) into a ? (b ? e1 : e2 ) : (b ? e1 : e3 ) so that those
+two expressions are not considered distinct. With these two modi cations, the
+tautology test is once again sound and complete.
+
+
+
+
+                                              211
+

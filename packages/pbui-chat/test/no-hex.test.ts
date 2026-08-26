@@ -8,7 +8,11 @@ import { describe, expect, test } from "vitest";
  * a literal anywhere else is a value that will drift from the tone it
  * imitates (pbui playbook §4).
  */
-const ROOTS = [resolve(import.meta.dirname, "../src"), resolve(import.meta.dirname, "../demo/src")];
+const ROOTS = [
+  resolve(import.meta.dirname, "../src"),
+  resolve(import.meta.dirname, "../demo/src"),
+  resolve(import.meta.dirname, "../../pbui-sandbox/src"),
+];
 const TOKEN_SHEETS = new Set(["styles/tokens.css"]);
 
 const HEX = /#[0-9a-fA-F]{3,8}\b/;

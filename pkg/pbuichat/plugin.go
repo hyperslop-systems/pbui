@@ -2,9 +2,12 @@ package pbuichat
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	gepevents "github.com/go-go-golems/geppetto/pkg/events"
 	chatapp "github.com/go-go-golems/pinocchio/pkg/chatapp"
@@ -12,6 +15,7 @@ import (
 	chatv1 "github.com/hyperslop-systems/pbui/gen/go/hyperslop/pbui/chat/v1"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Options configure the plugin.
@@ -94,6 +98,7 @@ func (p *Plugin) HydrateTrace(ctx context.Context, sid sessionstream.SessionId) 
 func (p *Plugin) RegisterSchemas(reg *sessionstream.SchemaRegistry) error {
 	for _, err := range []error{
 		reg.RegisterCommand(CommandVerbPerformed, &chatv1.VerbPerformedCommand{}),
+		reg.RegisterCommand(CommandEffectPerformed, &chatv1.EffectPerformedCommand{}),
 		reg.RegisterEvent(EventVerbRecorded, &chatv1.TraceEntry{}),
 		reg.RegisterUIEvent(UIEventTraceEntry, &chatv1.TraceEntry{}),
 		reg.RegisterTimelineEntity(TimelineEntityTrace, &chatv1.TraceEntry{}),
@@ -309,11 +314,14 @@ func buildVerbCommand(actor chatv1.Actor, verb map[string]any, target *Reference
 // {clientSeq, actor: "human"|"agent", verb, target?, outcome}.
 func VerbCommandFromJSON(data []byte) (*chatv1.VerbPerformedCommand, error) {
 	var body struct {
-		ClientSeq string         `json:"clientSeq"`
-		Actor     string         `json:"actor"`
-		Verb      map[string]any `json:"verb"`
-		Target    map[string]any `json:"target"`
-		Outcome   string         `json:"outcome"`
+		ClientSeq     string         `json:"clientSeq"`
+		Actor         string         `json:"actor"`
+		Verb          map[string]any `json:"verb"`
+		Target        map[string]any `json:"target"`
+		Outcome       string         `json:"outcome"`
+		EffectID      string         `json:"effectId"`
+		InvocationKey string         `json:"invocationKey"`
+		ApprovalID    string         `json:"approvalId"`
 	}
 	if err := json.Unmarshal(data, &body); err != nil {
 		return nil, errors.Wrap(err, "decode verb command")
@@ -325,5 +333,106 @@ func VerbCommandFromJSON(data []byte) (*chatv1.VerbPerformedCommand, error) {
 	if strings.EqualFold(body.Actor, "agent") {
 		actor = chatv1.Actor_ACTOR_AGENT
 	}
-	return buildVerbCommand(actor, body.Verb, ReferenceFromMap(body.Target), body.Outcome, body.ClientSeq)
+	cmd, err := buildVerbCommand(actor, body.Verb, ReferenceFromMap(body.Target), body.Outcome, body.ClientSeq)
+	if err != nil {
+		return nil, err
+	}
+	cmd.EffectId = strings.TrimSpace(body.EffectID)
+	cmd.InvocationKey = strings.TrimSpace(body.InvocationKey)
+	cmd.ApprovalId = strings.TrimSpace(body.ApprovalID)
+	return cmd, nil
+}
+
+// EffectCommandFromJSON validates and decodes the browser effect envelope.
+func EffectCommandFromJSON(data []byte) (*chatv1.EffectPerformedCommand, error) {
+	var body struct {
+		EffectID       string   `json:"effectId"`
+		InvocationKey  string   `json:"invocationKey"`
+		Actor          string   `json:"actor"`
+		ConversationID string   `json:"conversationId"`
+		EffectKind     string   `json:"effectKind"`
+		EffectScope    string   `json:"effectScope"`
+		CanonicalInput any      `json:"canonicalInput"`
+		InputDigest    string   `json:"inputDigest"`
+		TargetIDs      []string `json:"targetIds"`
+		ReferenceKeys  []string `json:"referenceKeys"`
+		ApprovalID     string   `json:"approvalId"`
+		BeforeRevision string   `json:"beforeRevision"`
+		AfterRevision  string   `json:"afterRevision"`
+		Outcome        string   `json:"outcome"`
+		OccurredAt     string   `json:"occurredAt"`
+	}
+	if err := json.Unmarshal(data, &body); err != nil {
+		return nil, errors.Wrap(err, "decode effect command")
+	}
+	body.EffectID = strings.TrimSpace(body.EffectID)
+	body.ConversationID = strings.TrimSpace(body.ConversationID)
+	body.EffectKind = strings.TrimSpace(body.EffectKind)
+	body.EffectScope = strings.TrimSpace(body.EffectScope)
+	body.InputDigest = strings.ToLower(strings.TrimSpace(body.InputDigest))
+	if body.EffectID == "" || body.ConversationID == "" || body.EffectKind == "" {
+		return nil, errors.New("effectId, conversationId, and effectKind are required")
+	}
+	if body.EffectScope != "workbench" && body.EffectScope != "sandbox" && body.EffectScope != "conversation" && body.EffectScope != "server" {
+		return nil, errors.New("invalid effectScope")
+	}
+	if body.Outcome != traceOutcomePerformed && !strings.HasPrefix(body.Outcome, "rejected:") {
+		return nil, errors.New("outcome must be performed or rejected:<reason>")
+	}
+	digestBytes, err := hex.DecodeString(body.InputDigest)
+	if err != nil || len(digestBytes) != sha256.Size {
+		return nil, errors.New("inputDigest must be a SHA-256 hex digest")
+	}
+	canonicalJSON, err := json.Marshal(body.CanonicalInput)
+	if err != nil {
+		return nil, errors.Wrap(err, "encode canonicalInput")
+	}
+	computed := sha256.Sum256(canonicalJSON)
+	if !strings.EqualFold(body.InputDigest, hex.EncodeToString(computed[:])) {
+		return nil, errors.New("inputDigest does not match canonicalInput")
+	}
+	input, err := structpb.NewValue(body.CanonicalInput)
+	if err != nil {
+		return nil, errors.Wrap(err, "encode canonicalInput")
+	}
+	occurredAt, err := time.Parse(time.RFC3339Nano, body.OccurredAt)
+	if err != nil {
+		return nil, errors.Wrap(err, "parse occurredAt")
+	}
+	if !strings.EqualFold(body.Actor, "agent") {
+		return nil, errors.New("effect actor must be agent")
+	}
+	actor := chatv1.Actor_ACTOR_AGENT
+	effect := &chatv1.EffectEnvelope{
+		EffectId:       body.EffectID,
+		InvocationKey:  strings.TrimSpace(body.InvocationKey),
+		Actor:          actor,
+		ConversationId: body.ConversationID,
+		EffectKind:     body.EffectKind,
+		EffectScope:    body.EffectScope,
+		CanonicalInput: input,
+		InputDigest:    body.InputDigest,
+		TargetIds:      cleanStrings(body.TargetIDs),
+		ReferenceKeys:  cleanStrings(body.ReferenceKeys),
+		ApprovalId:     strings.TrimSpace(body.ApprovalID),
+		BeforeRevision: strings.TrimSpace(body.BeforeRevision),
+		AfterRevision:  strings.TrimSpace(body.AfterRevision),
+		Outcome:        body.Outcome,
+		OccurredAt:     timestamppb.New(occurredAt.UTC()),
+	}
+	return &chatv1.EffectPerformedCommand{Effect: effect}, nil
+}
+
+func cleanStrings(values []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
 }

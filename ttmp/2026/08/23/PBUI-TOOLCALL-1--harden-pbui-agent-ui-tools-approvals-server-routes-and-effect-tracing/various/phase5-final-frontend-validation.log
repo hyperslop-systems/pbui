@@ -1,0 +1,162 @@
+$ root typecheck/test/build
+
+> @hyperslop-systems/pbui@0.5.0 typecheck /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui
+> tsc -p tsconfig.json --noEmit
+
+
+> @hyperslop-systems/pbui@0.5.0 test /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui
+> vitest run
+
+
+ RUN  v4.1.10 /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui
+
+
+ Test Files  12 passed (12)
+      Tests  102 passed (102)
+   Start at  16:32:54
+   Duration  10.96s (transform 6.08s, setup 0ms, import 11.46s, tests 9.84s, environment 21.42s)
+
+
+> @hyperslop-systems/pbui@0.5.0 build /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui
+> vite build && tsc -p tsconfig.build.json
+
+vite v8.1.5 building client environment for production...
+[2Ktransforming...✓ 135 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/pbui.css  28.53 kB │ gzip:  5.77 kB
+dist/vite.js    0.16 kB │ gzip:  0.15 kB │ map:   3.49 kB
+dist/index.js  63.73 kB │ gzip: 18.60 kB │ map: 266.17 kB
+
+✓ built in 324ms
+$ relevant workspace typecheck/test/build
+Scope: 5 of 7 workspace projects
+packages/workbench-protocol typecheck$ tsc -p tsconfig.json --noEmit
+packages/workbench-protocol typecheck: Done
+packages/pbui-workbench typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-workbench typecheck: Done
+packages/pbui-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-sandbox typecheck: Done
+packages/pbui-chat typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-chat typecheck: Done
+packages/pbui-chat/demo typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-chat/demo typecheck: Done
+Scope: 5 of 7 workspace projects
+packages/workbench-protocol test$ vitest run
+packages/workbench-protocol test:  RUN  v4.1.10 /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/workbench-protocol
+packages/workbench-protocol test:  Test Files  3 passed (3)
+packages/workbench-protocol test:       Tests  44 passed (44)
+packages/workbench-protocol test:    Start at  16:33:16
+packages/workbench-protocol test:    Duration  2.03s (transform 215ms, setup 0ms, import 679ms, tests 125ms, environment 4.08s)
+packages/workbench-protocol test: Done
+packages/pbui-workbench test$ vitest run
+packages/pbui-workbench test:  RUN  v4.1.10 /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-workbench
+packages/pbui-workbench test:  Test Files  9 passed (9)
+packages/pbui-workbench test:       Tests  125 passed (125)
+packages/pbui-workbench test:    Start at  16:33:19
+packages/pbui-workbench test:    Duration  5.61s (transform 7.91s, setup 0ms, import 12.26s, tests 4.17s, environment 13.44s)
+packages/pbui-workbench test: Done
+packages/pbui-sandbox test$ vitest run
+packages/pbui-sandbox test:  RUN  v4.1.10 /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-sandbox
+packages/pbui-sandbox test:  Test Files  15 passed (15)
+packages/pbui-sandbox test:       Tests  103 passed (103)
+packages/pbui-sandbox test:    Start at  16:33:25
+packages/pbui-sandbox test:    Duration  10.15s (transform 7.48s, setup 0ms, import 14.99s, tests 15.24s, environment 26.68s)
+packages/pbui-sandbox test: Done
+packages/pbui-chat test$ vitest run
+packages/pbui-chat test:  RUN  v4.1.10 /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat
+packages/pbui-chat test:  Test Files  24 passed (24)
+packages/pbui-chat test:       Tests  237 passed (237)
+packages/pbui-chat test:    Start at  16:33:36
+packages/pbui-chat test:    Duration  17.33s (transform 18.14s, setup 0ms, import 42.32s, tests 14.51s, environment 42.25s)
+packages/pbui-chat test: Done
+packages/pbui-chat/demo test$ vitest run
+packages/pbui-chat/demo test:  RUN  v4.1.10 /home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/packages/pbui-chat/demo
+packages/pbui-chat/demo test:  Test Files  1 passed (1)
+packages/pbui-chat/demo test:       Tests  2 passed (2)
+packages/pbui-chat/demo test:    Start at  16:33:54
+packages/pbui-chat/demo test:    Duration  1.99s (transform 1.21s, setup 0ms, import 1.70s, tests 13ms, environment 0ms)
+packages/pbui-chat/demo test: Done
+Scope: 5 of 7 workspace projects
+packages/workbench-protocol build$ tsc -p tsconfig.build.json
+packages/workbench-protocol build: Done
+packages/pbui-workbench build$ vite build && tsc -p tsconfig.build.json
+packages/pbui-workbench build: vite v8.1.5 building client environment for production...
+packages/pbui-workbench build: [2K
+packages/pbui-workbench build: transforming...✓ 26 modules transformed.
+packages/pbui-workbench build: rendering chunks...
+packages/pbui-workbench build: computing gzip size...
+packages/pbui-workbench build: dist/pbui-workbench.css   2.14 kB │ gzip:  0.64 kB
+packages/pbui-workbench build: dist/index.js            49.86 kB │ gzip: 14.81 kB │ map: 176.32 kB
+packages/pbui-workbench build: ✓ built in 202ms
+packages/pbui-workbench build: Done
+packages/pbui-sandbox build$ vite build && tsc -p tsconfig.build.json
+packages/pbui-sandbox build: vite v8.1.5 building client environment for production...
+packages/pbui-sandbox build: [2K
+packages/pbui-sandbox build: transforming...✓ 43 modules transformed.
+packages/pbui-sandbox build: rendering chunks...
+packages/pbui-sandbox build: computing gzip size...
+packages/pbui-sandbox build: dist/pbui-sandbox.css     6.67 kB │ gzip:  1.47 kB
+packages/pbui-sandbox build: dist/quickjs.js           7.71 kB │ gzip:  2.44 kB │ map:  23.19 kB
+packages/pbui-sandbox build: dist/engine-SQ3-wCJ4.js  14.43 kB │ gzip:  4.10 kB │ map:  35.45 kB
+packages/pbui-sandbox build: dist/index.js            86.93 kB │ gzip: 23.50 kB │ map: 220.30 kB
+packages/pbui-sandbox build: ✓ built in 190ms
+packages/pbui-sandbox build: Done
+packages/pbui-chat build$ vite build && tsc -p tsconfig.build.json
+packages/pbui-chat build: vite v8.1.5 building client environment for production...
+packages/pbui-chat build: [2K
+packages/pbui-chat build: transforming...✓ 124 modules transformed.
+packages/pbui-chat build: rendering chunks...
+packages/pbui-chat build: computing gzip size...
+packages/pbui-chat build: dist/pbui-chat.css   15.16 kB │ gzip:  2.84 kB
+packages/pbui-chat build: dist/index.js       208.59 kB │ gzip: 55.91 kB │ map: 594.64 kB
+packages/pbui-chat build: ✓ built in 383ms
+packages/pbui-chat build: Done
+packages/pbui-chat/demo build$ vite build
+packages/pbui-chat/demo build: vite v8.1.5 building client environment for production...
+packages/pbui-chat/demo build: [2K
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "fs" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_ASYNCIFY.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "path" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_ASYNCIFY.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "fs" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "path" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "crypto" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "fs" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "path" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "fs" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_ASYNCIFY.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "path" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_ASYNCIFY.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "fs" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_ASYNCIFY.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "path" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_ASYNCIFY.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "fs" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "path" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "fs" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "path" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "crypto" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "path" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_ASYNCIFY.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: [plugin rolldown:vite-resolve] Module "fs" has been externalized for browser compatibility, imported by "/home/manuel/workspaces/2026-08-20/add-pbui-agent/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_ASYNCIFY.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+packages/pbui-chat/demo build: transforming...✓ 290 modules transformed.
+packages/pbui-chat/demo build: rendering chunks...
+packages/pbui-chat/demo build: computing gzip size...
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/__vite-browser-external-CEs5Pb6S.js                      0.09 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/index.html                                                      0.46 kB │ gzip:   0.30 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/types-ffi-PNPnVvtS.js                                    0.56 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/rolldown-runtime-BHe-jwch.js                             0.95 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/module-asyncify-ChfGfT4L.js                              2.78 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/ffi.WASM_DEBUG_SYNC-_P4DDd3I.js                          4.89 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/ffi.WASM_RELEASE_SYNC-fEYSjonE.js                        4.89 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/ffi.WASM_RELEASE_ASYNCIFY-B053sSrB.js                    5.83 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/ffi.WASM_DEBUG_ASYNCIFY-DMxmsQcW.js                      5.90 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/module-Bp9oYr9H.js                                      20.07 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/sandbox.worker-Ug22bvZ1.js                              27.17 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/emscripten-module.WASM_DEBUG_ASYNCIFY-Y-TSIVKK.js       35.20 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/emscripten-module.WASM_DEBUG_SYNC-CWmrYv6w.js           74.84 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/emscripten-module.WASM_RELEASE_SYNC-79MCOgq0.js        624.34 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/emscripten-module.WASM_RELEASE_ASYNCIFY-DIJQM1qe.js  1,275.59 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/index-BA6aT_B7.css                                      57.66 kB │ gzip:  10.28 kB
+packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/index-CvVV5LIO.js                                      777.64 kB │ gzip: 231.44 kB
+packages/pbui-chat/demo build: ✓ built in 1.09s
+packages/pbui-chat/demo build: [plugin builtin:vite-reporter] 
+packages/pbui-chat/demo build: (!) Some chunks are larger than 500 kB after minification. Consider:
+packages/pbui-chat/demo build: - Using dynamic import() to code-split the application
+packages/pbui-chat/demo build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+packages/pbui-chat/demo build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+packages/pbui-chat/demo build: Done

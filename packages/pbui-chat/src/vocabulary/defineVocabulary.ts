@@ -1,7 +1,9 @@
+import { SANDBOX_INTENTS, SANDBOX_UI_KINDS } from "@hyperslop-systems/pbui-sandbox";
 import { z } from "zod";
 import { ReferenceSchema, VocabularySchema, WIDGET_LAYOUTS } from "./schemas";
 import type {
   Conversion,
+  SandboxVocabulary,
   TypeSpec,
   VerbFieldType,
   VerbSpec,
@@ -17,6 +19,8 @@ export interface DefineVocabularyOptions {
   widgetKinds: readonly WidgetKind[];
   layouts?: readonly WidgetLayout[];
   conversions?: readonly Conversion[];
+  /** Declare it to tell the model the program dialect; omit it for a product without a sandbox. */
+  sandbox?: { kinds: readonly string[]; intents: readonly string[] };
 }
 
 /**
@@ -37,6 +41,7 @@ export function defineVocabulary(options: DefineVocabularyOptions): Vocabulary {
       layouts: [...(options.layouts ?? WIDGET_LAYOUTS)],
     },
     conversions: [...(options.conversions ?? [])],
+    ...(options.sandbox ? { sandbox: { schema_version: 1 as const, kinds: [...options.sandbox.kinds], intents: [...options.sandbox.intents] } } : {}),
   };
   const problem = vocabularyProblem(vocabulary);
   if (problem) throw new Error(`defineVocabulary: ${problem}`);
@@ -62,6 +67,14 @@ export function vocabularyProblem(vocabulary: Vocabulary): string | null {
   for (const c of vocabulary.conversions ?? []) {
     if (!(c.from in vocabulary.types)) return `conversion from unknown type "${c.from}"`;
     if (!(c.to in vocabulary.types)) return `conversion to unknown type "${c.to}"`;
+  }
+  if (vocabulary.sandbox) {
+    for (const kind of vocabulary.sandbox.kinds) {
+      if (!(SANDBOX_UI_KINDS as readonly string[]).includes(kind)) return `sandbox kind "${kind}" is not known to this client`;
+    }
+    for (const intent of vocabulary.sandbox.intents) {
+      if (!(SANDBOX_INTENTS as readonly string[]).includes(intent)) return `sandbox intent "${intent}" is not known to this client`;
+    }
   }
   return null;
 }
@@ -107,6 +120,9 @@ export function exportVocabulary(vocabulary: Vocabulary): Vocabulary {
       vocabulary.conversions && vocabulary.conversions.length > 0
         ? vocabulary.conversions.map((c) => ({ from: c.from, to: c.to }))
         : undefined,
+    sandbox: vocabulary.sandbox
+      ? (compact({ schema_version: 1 as const, kinds: [...vocabulary.sandbox.kinds], intents: [...vocabulary.sandbox.intents] }) as SandboxVocabulary)
+      : undefined,
   }) as Vocabulary;
 }
 

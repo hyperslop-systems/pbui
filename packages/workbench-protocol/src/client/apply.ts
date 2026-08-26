@@ -30,18 +30,26 @@ import {
 } from "../index.js";
 
 /**
- * MutationError mirrors pkg/workbench's ValidationError: a stable `code`
- * (the same strings the Go applier uses) plus the offending field path.
+ * MutationError mirrors pkg/workbench's `ValidationError{Code, Path, Detail}`:
+ * a stable `code` (the same strings the Go applier uses), the offending field
+ * path, and the human-readable detail.
+ *
+ * `detail` is kept as a field and not only folded into `message` because a
+ * caller that reports a refusal onward — a store's `onRejected`, an
+ * agent-facing tool handing the reason back to whoever proposed the batch —
+ * wants the sentence without the `workbench: code at path:` prefix.
  */
 export class MutationError extends Error {
   readonly code: string;
   readonly path: string;
+  readonly detail: string;
 
   constructor(code: string, path: string, detail: string) {
     super(path === "" ? `workbench: ${code}: ${detail}` : `workbench: ${code} at ${path}: ${detail}`);
     this.name = "MutationError";
     this.code = code;
     this.path = path;
+    this.detail = detail;
   }
 }
 

@@ -1,8 +1,25 @@
+/*
+ * Masthead, canvas, status bar. The mouse-doc line is the page's — it
+ * documents whatever the pointer is over, wherever that is — so it is one
+ * row of the shell rather than a strip inside whichever tile happens to be
+ * a conversation.
+ */
 .shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100vh;
   background: var(--pbui-wash);
+}
+
+.status {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.status [data-part="mouse-doc-ambient"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .masthead {
@@ -17,18 +34,16 @@
   flex: 1;
 }
 
-.legend {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
 
-/* A one-cell grid, so the workbench surface gets a committed height and
- * every tile below it can size itself (pbui playbook §6a). */
+/* Two explicit rows: the workspace strip takes what it needs, the workbench
+ * surface takes the rest and so gets a committed height for its tiles (pbui
+ * playbook §6a). An implicit track here would be `auto`, which sizes to the
+ * widest/tallest child and lets a wide tile push the layout around. */
 .canvas {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: max-content minmax(0, 1fr);
+  gap: var(--pbui-space-2);
   padding: var(--pbui-space-4);
   min-height: 0;
 }

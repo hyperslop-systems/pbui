@@ -1,0 +1,83 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: var(--pbui-space-2);
+}
+
+.header {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+/* What is asked of the user sits above the log and is framed, because it is
+ * the one part of this tile that is a request rather than a record. */
+.waiting {
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+  padding: var(--pbui-space-1);
+  min-width: 0;
+}
+
+.waitingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.waitingRow {
+  display: flex;
+  gap: var(--pbui-space-2);
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  flex: 1 1 auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
+  align-items: baseline;
+  column-gap: var(--pbui-space-2);
+  min-width: 0;
+  padding: 2px var(--pbui-space-1);
+  border-bottom: var(--pbui-border-hair);
+}
+
+.row[data-danger="true"] {
+  background: var(--pbui-pane-alt);
+}
+
+.where {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 20ch;
+}
+
+.duration {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.error,
+.detail {
+  grid-column: 1 / -1;
+  min-width: 0;
+}

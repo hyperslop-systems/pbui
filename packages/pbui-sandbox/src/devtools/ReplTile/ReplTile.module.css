@@ -1,0 +1,65 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: var(--pbui-space-2);
+}
+
+.header {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  flex: 1 1 auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+  min-width: 0;
+  border-top: var(--pbui-border-hair);
+  padding-top: var(--pbui-space-1);
+}
+
+.echo {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  min-width: 0;
+}
+
+.mono {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.help {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+}
+
+.input {
+  flex: 0 0 auto;
+}

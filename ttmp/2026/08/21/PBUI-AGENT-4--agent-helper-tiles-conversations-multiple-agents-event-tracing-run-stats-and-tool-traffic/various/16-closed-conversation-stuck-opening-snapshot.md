@@ -1,0 +1,127 @@
+---
+Title: 'Closed conversation stuck in opening state accessibility snapshot'
+Ticket: PBUI-AGENT-4
+Status: active
+Topics: [pbui, chat, frontend, onboarding]
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: 'Playwright accessibility-tree evidence that explicit runtime close leaves mounted chat and trace scopes displaying opening conversation indefinitely.'
+WhatFor: Reproduce agent review finding A2.
+WhenToUse: Reviewing or testing conversation lifecycle fixes.
+---
+
+- generic [ref=e22] [box=10,66,1411,1084]:
+  - generic [ref=e273] [box=10,66,841,1084]:
+    - generic [ref=e276] [box=10,66,841,537]:
+      - generic [ref=e277] [box=12,68,837,25]:
+        - generic [ref=e278] [box=18,72,8,16]: ⠿
+        - generic "tile showing Show me the gold coin shop inventory and explain the curren…" [ref=e280] [cursor=pointer] [box=32,70,403,19]:
+          - generic [ref=e281] [box=39,73,389,13]: Show me the gold coin shop inventory and explain the curren…
+        - generic [ref=e282] [box=779,72,63,15]:
+          - button "split side by side" [ref=e283] [cursor=pointer] [box=779,72,20,15]: ⬌
+          - button "split top and bottom" [ref=e284] [cursor=pointer] [box=801,72,20,15]: ⬍
+          - button "close this pane" [ref=e285] [cursor=pointer] [box=823,72,20,15]: ✕
+      - generic [ref=e288] [box=12,93,837,508]:
+        - log "conversation" [ref=e290] [box=18,99,810,487]:
+          - article [ref=e292] [box=24,105,798,48]:
+            - button "<message> what you said" [ref=e295] [box=34,109,33,19]:
+              - generic [ref=e296] [cursor=pointer] [box=41,112,19,13]: you
+            - paragraph [ref=e298] [box=34,132,782,17]: Show me the gold coin shop inventory and explain the current stock.
+          - article [ref=e300] [box=24,159,798,117]:
+            - button "<message> what the agent said" [ref=e303] [box=34,163,46,19]:
+              - generic [ref=e304] [cursor=pointer] [box=41,166,32,13]: agent
+            - paragraph [ref=e306] [box=34,186,782,86]:
+              - text: "5 SKUs are at or below their reorder threshold:"
+              - button "a sellable coin SKU in the shop inventory" [ref=e308] [box=366,186,203,16]: 1oz American Gold Eagle 2024
+              - text: (qty 3, reorder at 5),
+              - button "a sellable coin SKU in the shop inventory" [ref=e310] [box=34,186,742,33]: 1/2oz American Gold Eagle 2024
+              - text: (qty 1, reorder at 4),
+              - button "a sellable coin SKU in the shop inventory" [ref=e312] [box=369,203,224,16]: 1/10oz American Gold Eagle 2024
+              - text: (qty 0, reorder at 10),
+              - button "a sellable coin SKU in the shop inventory" [ref=e314] [box=34,203,759,33]: 1oz Silver Maple 2024
+              - text: (qty 85, reorder at 100),
+              - button "a sellable coin SKU in the shop inventory" [ref=e316] [box=342,221,168,16]: 1oz Platinum Eagle 2024
+              - text: (qty 2, reorder at 3). Three of them are
+              - button "a product category" [ref=e318] [box=34,238,147,16]: American Gold Eagles
+              - text: ; the last sale was
+              - button "a customer order" [ref=e320] [box=320,238,85,16]: order 88213
+              - text: two days ago. Thresholds come from
+              - button "a piece of evidence the agent cited" [ref=e322] [box=654,238,127,16]: pricing policy §3
+              - text: ; quantities from
+              - button "a piece of evidence the agent cited" [ref=e324] [box=145,255,134,16]: inventory snapshot
+              - text: .
+          - region "Low stock" [ref=e326] [box=24,282,798,200]:
+            - button "a widget the agent published" [ref=e329] [box=34,289,71,20]:
+              - generic [ref=e330] [box=41,292,57,14]: Low stock
+            - generic [ref=e333] [box=34,319,781,155]:
+              - table [ref=e335] [box=34,319,781,139]:
+                - rowgroup [ref=e336] [box=34,319,781,24]
+                - rowgroup [ref=e369] [box=34,344,781,114]
+              - generic [ref=e426] [box=780,462,34,13]: 5 rows
+          - region "Next steps" [ref=e428] [box=24,488,798,86]:
+            - button "a widget the agent published" [ref=e431] [box=34,495,77,20]:
+              - generic [ref=e432] [box=41,498,63,14]: Next steps
+            - paragraph [ref=e436] [box=34,525,781,17]: "Suggested follow-ups — each chip performs a verb locally, no model round trip:"
+            - generic [ref=e437] [box=34,548,781,19]:
+              - button "Filter table to qty < 2" [ref=e438] [cursor=pointer] [box=34,552,146,15]
+              - button "Sort by price" [ref=e439] [cursor=pointer] [box=184,552,88,15]
+              - button "Watch 1oz American Gold Eagle 2024" [ref=e440] [cursor=pointer] [box=276,552,208,15]
+              - button "Draft a reorder" [ref=e441] [cursor=pointer] [box=488,552,100,15]
+        - generic [ref=e442] [box=12,514,837,88]:
+          - textbox "message to the agent" [ref=e443] [box=18,521,825,49]:
+            - /placeholder: ask the agent… (Enter sends, Shift+Enter for a newline)
+            - text: SECOND-ONLY-DRAFT-PROBE
+          - generic [ref=e444] [box=18,573,825,22]:
+            - button "insert object…" [ref=e445] [cursor=pointer] [box=24,576,103,16]
+            - button "send" [ref=e446] [cursor=pointer] [box=787,575,49,18]
+    - separator "resize vertically" [ref=e447] [box=10,604,841,10]
+    - generic [ref=e451] [box=10,614,841,537]:
+      - generic [ref=e452] [box=12,616,837,25]:
+        - generic [ref=e453] [box=18,619,8,16]: ⠿
+        - generic "tile showing new conversation" [ref=e455] [cursor=pointer] [box=32,618,118,19]:
+          - generic [ref=e456] [box=39,621,104,13]: new conversation
+        - generic [ref=e457] [box=779,619,63,15]:
+          - button "split side by side" [ref=e458] [cursor=pointer] [box=779,619,20,15]: ⬌
+          - button "split top and bottom" [ref=e459] [cursor=pointer] [box=801,619,20,15]: ⬍
+          - button "close this pane" [ref=e460] [cursor=pointer] [box=823,619,20,15]: ✕
+      - generic [ref=e478] [box=12,640,837,508]: opening conversation…
+  - separator "resize horizontally" [ref=e48] [box=851,66,10,1084]
+  - generic [ref=e51] [box=861,66,560,1084]:
+    - generic [ref=e54] [box=861,66,560,365]:
+      - generic [ref=e55] [box=863,68,556,25]:
+        - generic [ref=e56] [box=869,72,8,16]: ⠿
+        - generic "tile showing inspector" [ref=e58] [cursor=pointer] [box=883,70,72,19]:
+          - generic [ref=e59] [box=890,73,58,13]: inspector
+        - generic [ref=e60] [box=1350,72,63,15]:
+          - button "split side by side" [ref=e61] [cursor=pointer] [box=1350,72,20,15]: ⬌
+          - button "split top and bottom" [ref=e62] [cursor=pointer] [box=1372,72,20,15]: ⬍
+          - button "close this pane" [ref=e63] [cursor=pointer] [box=1393,72,20,15]: ✕
+      - generic [ref=e69] [box=885,115,512,16]: nothing inspected — choose Inspect from any object's menu
+    - separator "resize vertically" [ref=e70] [box=861,432,560,10]
+    - generic [ref=e73] [box=861,442,560,709]:
+      - generic [ref=e76] [box=861,442,560,350]:
+        - generic [ref=e77] [box=863,444,556,25]:
+          - generic [ref=e78] [box=869,447,8,16]: ⠿
+          - generic "tile showing watchlist" [ref=e80] [cursor=pointer] [box=883,446,72,19]:
+            - generic [ref=e81] [box=890,449,58,13]: watchlist
+          - generic [ref=e82] [box=1350,447,63,15]:
+            - button "split side by side" [ref=e83] [cursor=pointer] [box=1350,447,20,15]: ⬌
+            - button "split top and bottom" [ref=e84] [cursor=pointer] [box=1372,447,20,15]: ⬍
+            - button "close this pane" [ref=e85] [cursor=pointer] [box=1393,447,20,15]: ✕
+        - generic [ref=e89] [box=869,474,544,30]:
+          - generic [ref=e90] [box=869,474,544,14]: nothing watched
+          - generic [ref=e91] [box=869,491,544,14]: choose Watch from any object's menu
+      - separator "resize vertically" [ref=e92] [box=861,791,560,10]
+      - generic [ref=e96] [box=861,801,560,350]:
+        - generic [ref=e97] [box=863,803,556,25]:
+          - generic [ref=e98] [box=869,807,8,16]: ⠿
+          - generic "tile showing trace" [ref=e100] [cursor=pointer] [box=883,805,46,19]:
+            - generic [ref=e101] [box=890,808,32,13]: trace
+          - generic [ref=e102] [box=1350,807,63,15]:
+            - button "split side by side" [ref=e103] [cursor=pointer] [box=1350,807,20,15]: ⬌
+            - button "split top and bottom" [ref=e104] [cursor=pointer] [box=1372,807,20,15]: ⬍
+            - button "close this pane" [ref=e105] [cursor=pointer] [box=1393,807,20,15]: ✕
+        - generic [ref=e108] [box=863,828,556,321]: opening conversation…

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
 import { snapRatio } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
-import { clampRatio } from "../../verbs";
 import styles from "./SplitPane.module.css";
 
 export interface SplitPaneProps {
@@ -26,7 +25,27 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
   const row = split?.direction !== Direction.COLUMN;
   const committed = split?.ratio ?? 0.5;
   const [live, setLive] = useState<{ ratio: number; snapped: boolean } | null>(null);
+  const [bounds, setBounds] = useState<{ min: number; max: number } | null>(null);
   const ratio = live?.ratio ?? committed;
+
+  useLayoutEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const refresh = () => {
+      const next = workbench.verbs.ratioBounds(node.id);
+      setBounds((current) =>
+        current?.min === next?.min && current?.max === next?.max ? current : next,
+      );
+    };
+    refresh();
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(refresh) : null;
+    observer?.observe(element);
+    window.addEventListener("resize", refresh);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", refresh);
+    };
+  }, [node.id, workbench]);
 
   // A drag that outlives the component (the split closed under it) must not
   // leave window listeners behind.
@@ -39,16 +58,27 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
       teardown.current?.();
       const previous = document.body.style.userSelect;
       document.body.style.userSelect = "none";
+      const divider = event.currentTarget.getBoundingClientRect();
+      const dividerSize = row ? divider.width : divider.height;
       let last = committed;
 
       const move = (moveEvent: PointerEvent) => {
         const element = container.current;
         if (!element) return;
         const box = element.getBoundingClientRect();
-        const raw = row ? (moveEvent.clientX - box.left) / box.width : (moveEvent.clientY - box.top) / box.height;
-        const next = snapRatio(clampRatio(raw));
-        last = next.ratio;
-        setLive(next);
+        const total = row ? box.width : box.height;
+        const available = total - dividerSize;
+        if (!Number.isFinite(available) || available <= 0) return;
+        const pointer = row ? moveEvent.clientX - box.left : moveEvent.clientY - box.top;
+        const raw = (pointer - dividerSize / 2) / available;
+        if (!Number.isFinite(raw)) return;
+        const bounds = workbench.verbs.ratioBounds(node.id);
+        if (!bounds) return;
+        const constrained = Math.max(bounds.min, Math.min(bounds.max, raw));
+        const snapped = snapRatio(constrained);
+        const ratio = Math.max(bounds.min, Math.min(bounds.max, snapped.ratio));
+        last = ratio;
+        setLive({ ratio, snapped: snapped.snapped && ratio === snapped.ratio });
       };
       const finish = (commit: boolean) => {
         if (teardown.current !== stop) return;
@@ -74,14 +104,26 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
   );
 
   // Keyboard-operable, because a layout you cannot adjust without a mouse is
-  // a layout half the users are stuck with.
+  // a layout half the users are stuck with. Home/End go to the extremes,
+  // which is the shape every other `role="separator"` on the web has.
   const onKeyDown = (event: React.KeyboardEvent) => {
     const step = event.shiftKey ? 0.01 : 0.05;
     const decrease = row ? "ArrowLeft" : "ArrowUp";
     const increase = row ? "ArrowRight" : "ArrowDown";
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      workbench.verbs.resize(node.id, event.key === "Home" ? 0 : 1, { snap: false });
+      return;
+    }
     if (event.key !== decrease && event.key !== increase) return;
     event.preventDefault();
     workbench.verbs.resize(node.id, committed + (event.key === increase ? step : -step), { snap: false });
+  };
+
+  // Double-click is the conventional "even it out" and costs one handler.
+  const onDoubleClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    workbench.verbs.resize(node.id, 0.5);
   };
 
   if (!split?.a || !split.b) return null;
@@ -103,12 +145,15 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
         aria-orientation={row ? "vertical" : "horizontal"}
         aria-label={row ? "resize horizontally" : "resize vertically"}
         aria-valuenow={Math.round(ratio * 100)}
-        aria-valuemin={10}
-        aria-valuemax={90}
+        aria-valuemin={Math.round((bounds?.min ?? 0.1) * 100)}
+        aria-valuemax={Math.round((bounds?.max ?? 0.9) * 100)}
+        // A screen reader announcing "60" says nothing; the unit is the point.
+        aria-valuetext={`${Math.round(ratio * 100)} percent`}
         data-part="split-divider"
         data-state={live ? (live.snapped ? "snapped" : "dragging") : undefined}
         className={styles.divider}
         onPointerDown={onPointerDown}
+        onDoubleClick={onDoubleClick}
         onKeyDown={onKeyDown}
       >
         <span className={styles.grip} />

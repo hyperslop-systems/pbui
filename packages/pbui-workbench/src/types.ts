@@ -1,7 +1,8 @@
 import type { ComponentType, ReactNode } from "react";
 import type { ShortcutContext } from "@hyperslop-systems/pbui";
-import type { AppView, Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop-systems/workbench-protocol";
 import type { AppDescriptor, AppRegistry } from "./apps";
+import type { LauncherRow, LauncherRowsContext } from "./launcherRows";
 import type { WorkbenchState, WorkbenchStore } from "./store";
 import type { WorkbenchVerb, WorkbenchVerbHandlers } from "./verbs";
 
@@ -29,6 +30,26 @@ export interface SurfaceProps {
   dockLabel?: string;
 }
 
+/** What `renderWorkspace` learns about the workspace it is drawing. */
+export interface WorkspacePlacementInfo {
+  active: boolean;
+  /** Leaves in its tree; a linked view is counted once per tile. */
+  tileCount: number;
+  select(): boolean;
+}
+
+export interface WorkspaceStripProps {
+  /**
+   * Draw one workspace yourself — a product's `<workspace>` Presentation, so
+   * the strip and the object menu offer the same verbs. Returning `undefined`
+   * falls back to the default button.
+   */
+  renderWorkspace?(workspace: Workspace, placement: WorkspacePlacementInfo): ReactNode;
+  className?: string;
+  /** Show a "+" that creates a workspace with this name. Omitted: no button. */
+  addLabel?: string;
+}
+
 export interface LauncherProps {
   title?: string;
   /** Listen for Mod+K on the window; default true. */
@@ -40,7 +61,35 @@ export interface LauncherProps {
    * escape-surface stack.
    */
   shortcutContext?(): Partial<Pick<ShortcutContext, "objectMenuOpen" | "acceptingPresentation" | "renamingView">>;
+  /**
+   * The product's rows model, replacing the default one (what is on screen,
+   * then what could be). DR-U6: launcher POLICY stays with the product; the
+   * shell keeps the mechanics — Mod-K arbitration, the status line, the
+   * keyboard loop, the placement rule.
+   */
+  rows?(context: LauncherRowsContext): LauncherRow[];
+  /**
+   * Claim a row before the default meaning applies. Return true to say "I
+   * handled it"; false or nothing falls through, so a product may override
+   * one row without restating the rest.
+   */
+  choose?(row: LauncherRow, context: LauncherRowsContext): boolean;
+  /** Render a row's detail line; the default uses the row's own `detail`. */
+  renderDetail?(row: LauncherRow): ReactNode;
 }
+
+export interface WorkbenchPlan {
+  /** Exact immutable document identity the plan was derived from. */
+  baseDocument: WorkbenchDocument;
+  verbs: readonly WorkbenchVerb[];
+  /** One atomic protocol batch produced by running every verb against a shadow store. */
+  mutations: readonly Mutation[];
+  finalState: Pick<WorkbenchState, "workspaceId" | "activePlacementId" | "launcherOpen" | "launcherFrom">;
+}
+
+export type WorkbenchPlanResult =
+  | { ok: true; plan: WorkbenchPlan }
+  | { ok: false; index: number; verb: WorkbenchVerb; error: string };
 
 export interface Workbench {
   apps: AppRegistry;
@@ -50,8 +99,12 @@ export interface Workbench {
   useWorkbenchState<T>(selector: (state: WorkbenchState) => T): T;
   /** Apply raw protocol mutations; the verbs are the usual door. */
   mutate(mutations: Mutation[]): boolean;
-  /** The data door: one verb object in, the matching handler called. */
-  perform(verb: WorkbenchVerb): void;
+  /** The data door: one verb object in, with refusal represented explicitly. */
+  perform(verb: WorkbenchVerb): boolean;
+  /** Preflight a whole sequence against a shadow store without touching the real workbench. */
+  plan(verbs: readonly WorkbenchVerb[]): WorkbenchPlanResult;
+  /** Commit a fresh plan as one mutation batch plus its browser-local selection state. */
+  applyPlan(plan: WorkbenchPlan): boolean;
   serialize(): string;
   /** Replace the layout from `serialize()` output; false (and untouched) when it does not parse. */
   restore(json: string): boolean;
@@ -62,6 +115,14 @@ export interface Workbench {
   root(): HTMLElement | null;
   /** @internal set by the Surface */
   setRoot(element: HTMLElement | null): void;
+  /**
+   * Move DOM focus into a tile. Called after a placement so the keyboard does
+   * not stay in the dialog that has closed; a product calls it after its own
+   * placements. Deferred a frame, because the tile does not exist yet when
+   * the verb returns.
+   */
+  focusPlacement(placementId: string): void;
   Surface: ComponentType<SurfaceProps>;
   Launcher: ComponentType<LauncherProps>;
+  WorkspaceStrip: ComponentType<WorkspaceStripProps>;
 }

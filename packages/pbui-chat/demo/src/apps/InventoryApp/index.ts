@@ -1,0 +1,1 @@
+export { InventoryApp } from "./InventoryApp";

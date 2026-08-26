@@ -72,6 +72,20 @@ export const WidgetVocabularySchema = z.object({
 export const ConversionSchema = z.object({ from: z.string(), to: z.string() });
 export type Conversion = z.infer<typeof ConversionSchema>;
 
+/**
+ * What the product's sandbox renders and reduces: the UI node kinds a program
+ * may return and the intents a handler may emit. Declared here, beside
+ * `widget.kinds` and for the same reason, so the Go prompt that teaches the
+ * model the dialect is generated from the declaration the renderer is built
+ * against (guide D12).
+ */
+export const SandboxVocabularySchema = z.object({
+  schema_version: z.literal(1),
+  kinds: z.array(z.string()),
+  intents: z.array(z.string()),
+});
+export type SandboxVocabulary = z.infer<typeof SandboxVocabularySchema>;
+
 export const VocabularySchema = z.object({
   schema_version: z.literal(1),
   product: z.string().optional(),
@@ -79,6 +93,7 @@ export const VocabularySchema = z.object({
   verbs: z.record(z.string(), VerbSpecSchema),
   widget: WidgetVocabularySchema,
   conversions: z.array(ConversionSchema).optional(),
+  sandbox: SandboxVocabularySchema.optional(),
 });
 
 /** The JSON shape of `vocabulary.json`, exactly as Go's `pbuichat.Vocabulary` reads it. */

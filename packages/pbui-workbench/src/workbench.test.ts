@@ -1,10 +1,12 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
-import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
-import { leaves, SNAP_RATIOS } from "@hyperslop-systems/workbench-protocol/client";
+import { afterEach, describe, expect, it, test, vi } from "vitest";
+import { create } from "@bufbuild/protobuf";
+import { Direction, DocumentPayloadSchema, MutationSchema, type Node } from "@hyperslop-systems/workbench-protocol";
+import { leaves, SNAP_RATIOS, viewsOfApp, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "./createWorkbench";
-import { layout, parseDocument, serializeDocument, singleTile, split, tile } from "./document";
+import { layout, parseDocument, serializeDocument, singleTile, split, tile, workspaces } from "./document";
+import { createWorkbenchStore } from "./store";
 import { counterApp, demoApps, notesApp } from "./stories/demoApps";
-import { performWorkbenchVerb, workbenchVerbs } from "./verbs";
+import { isWorkbenchVerb, performWorkbenchVerb, workbenchVerbs } from "./verbs";
 
 function leafIds(tree: Node | undefined): string[] {
   return leaves(tree).map((leaf) => leaf.id);
@@ -13,6 +15,10 @@ function leafIds(tree: Node | undefined): string[] {
 function viewOf(tree: Node | undefined, placementId: string): string {
   const leaf = leaves(tree).find((node) => node.id === placementId);
   return leaf?.body.case === "leaf" ? leaf.body.value.viewId : "";
+}
+
+function box(width: number, height: number): DOMRect {
+  return { x: 0, y: 0, left: 0, top: 0, right: width, bottom: height, width, height, toJSON: () => ({}) } as DOMRect;
 }
 
 function threeTiles() {
@@ -28,6 +34,121 @@ function threeTiles() {
 afterEach(() => {
   document.body.innerHTML = "";
   vi.restoreAllMocks();
+});
+
+describe("workbench verb validation", () => {
+  test("requires the complete shape rather than accepting a kind prefix", () => {
+    expect(isWorkbenchVerb({ kind: "tile.split" })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "tile.split", placementId: "n1", direction: "diagonal" })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "split.resize", splitId: "s1", ratio: Number.NaN })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "view.rebind", viewId: "v1", documents: { source: 42 } })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "tile.split", placementId: "n1", direction: "row" })).toBe(true);
+    expect(isWorkbenchVerb({ kind: "launcher.close" })).toBe(true);
+  });
+});
+
+describe("atomic plans", () => {
+  test("preflights every verb without touching the real document", () => {
+    const onMutate = vi.fn();
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+      onMutate,
+    });
+    const before = wb.store.getState().document;
+    const first = leafIds(before.workspaces[0]?.tree)[0]!;
+
+    const result = wb.plan([workbenchVerbs.split(first, "row"), workbenchVerbs.close("missing")]);
+
+    expect(result).toMatchObject({ ok: false, index: 1, error: expect.stringContaining("refused") });
+    expect(wb.store.getState().document).toBe(before);
+    expect(onMutate).not.toHaveBeenCalled();
+  });
+
+  test("commits a successful multi-verb plan as one protocol batch", () => {
+    const onMutate = vi.fn();
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+      onMutate,
+    });
+    const before = wb.store.getState().document;
+    const [first, second] = leafIds(before.workspaces[0]?.tree);
+    const firstView = viewOf(before.workspaces[0]?.tree, first!);
+    const result = wb.plan([workbenchVerbs.setTitle(firstView, "renamed"), workbenchVerbs.close(second!)]);
+    if (!result.ok) throw new Error(result.error);
+
+    expect(wb.applyPlan(result.plan)).toBe(true);
+    expect(wb.store.getState().document.views[firstView]?.title).toBe("renamed");
+    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
+    expect(onMutate).toHaveBeenCalledTimes(1);
+    expect(onMutate.mock.calls[0]?.[0]).toHaveLength(result.plan.mutations.length);
+  });
+
+  test("refuses a stale plan and perform exposes handler refusal", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
+    const before = wb.store.getState().document;
+    const [first, second] = leafIds(before.workspaces[0]?.tree);
+    const result = wb.plan([workbenchVerbs.close(second!)]);
+    if (!result.ok) throw new Error(result.error);
+
+    expect(wb.perform(workbenchVerbs.setTitle(viewOf(before.workspaces[0]?.tree, first!), "changed"))).toBe(true);
+    expect(wb.applyPlan(result.plan)).toBe(false);
+    expect(wb.perform(workbenchVerbs.close("missing"))).toBe(false);
+  });
+});
+
+describe("rendered pane constraints", () => {
+  test("rejects a split that cannot leave both rendered panes usable", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const placementId = leafIds(wb.store.getState().document.workspaces[0]?.tree)[0]!;
+    const root = document.createElement("div");
+    const placement = document.createElement("div");
+    placement.dataset.placementId = placementId;
+    vi.spyOn(placement, "getBoundingClientRect").mockReturnValue(box(400, 300));
+    root.append(placement);
+    wb.setRoot(root);
+    const before = wb.store.getState().document;
+
+    expect(wb.verbs.canSplit(placementId, "row")).toBe(false);
+    expect(wb.verbs.split(placementId, "row")).toBeNull();
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  test("clamps resize to pixel-derived bounds shared with the separator", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+      paneConstraints: { minInlinePx: 240, minBlockPx: 120, minFraction: 0.1 },
+    });
+    const tree = wb.store.getState().document.workspaces[0]!.tree!;
+    const root = document.createElement("div");
+    const splitElement = document.createElement("div");
+    splitElement.dataset.splitId = tree.id;
+    vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue(box(600, 400));
+    root.append(splitElement);
+    wb.setRoot(root);
+
+    const minimum = 240 / (600 - 10);
+    expect(wb.verbs.ratioBounds(tree.id)?.min).toBeCloseTo(minimum);
+    expect(wb.verbs.ratioBounds(tree.id)?.max).toBeCloseTo(1 - minimum);
+    expect(wb.verbs.resize(tree.id, 0.95, { snap: false })).toBeCloseTo(1 - minimum);
+    expect(wb.verbs.resize(tree.id, 0.05, { snap: false })).toBeCloseTo(minimum);
+  });
+
+  test("rejects a nested workspace layout whose rendered allocation would be a sliver", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const root = document.createElement("div");
+    vi.spyOn(root, "getBoundingClientRect").mockReturnValue(box(800, 600));
+    wb.setRoot(root);
+    const tooNarrow = split("row", 0.2, tile("counter"), tile("notes"));
+    const usable = split("row", 0.4, tile("counter"), tile("notes"));
+
+    expect(wb.verbs.layoutFits(tooNarrow)).toBe(false);
+    expect(wb.verbs.createWorkspace("sliver", tooNarrow)).toBeNull();
+    expect(wb.verbs.layoutFits(usable)).toBe(true);
+    expect(wb.verbs.createWorkspace("usable", usable)).toMatch(/^ws-/);
+  });
 });
 
 describe("layout builders", () => {
@@ -264,5 +385,509 @@ describe("persistence", () => {
     stop();
     wb.verbs.split(a, "row");
     expect(seen).toHaveBeenCalledTimes(2);
+  });
+});
+
+/* ---- PBUI-WORKBENCH-2 Phase 1 ------------------------------------------ */
+
+describe("store hooks (5.A)", () => {
+  it("calls onMutate once per committed batch, after the document is in state", () => {
+    const seen: { count: number; names: string[] }[] = [];
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter"),
+      onMutate: (mutations, next) => {
+        seen.push({ count: mutations.length, names: next.workspaces.map((w) => w.name) });
+      },
+    });
+    wb.verbs.createWorkspace("second", tile("counter"));
+    expect(seen).toHaveLength(1);
+    // viewCreate + workspaceCreate, and the handler already sees the new name.
+    expect(seen[0]?.count).toBe(2);
+    expect(seen[0]?.names).toContain("second");
+  });
+
+  it("keeps a committed mutation successful when onMutate throws", () => {
+    const rejected = vi.fn();
+    const postCommit = vi.fn();
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter"),
+      onMutate: () => {
+        throw new Error("localStorage quota exceeded");
+      },
+      onRejected: rejected,
+      onPostCommitError: postCommit,
+    });
+
+    const created = wb.verbs.createWorkspace("landed", tile("counter"));
+    expect(created).toBeTruthy();
+    expect(wb.store.getState().document.workspaces.some((workspace) => workspace.name === "landed")).toBe(true);
+    expect(rejected).not.toHaveBeenCalled();
+    expect(postCommit).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "localStorage quota exceeded" }),
+      expect.any(Array),
+      wb.store.getState().document,
+    );
+  });
+
+  it("does not call onMutate for activation or launcher state", () => {
+    let calls = 0;
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter"), onMutate: () => (calls += 1) });
+    wb.verbs.activate("nope");
+    wb.verbs.openLauncher();
+    wb.verbs.closeLauncher();
+    expect(calls).toBe(0);
+  });
+
+  it("hands a refused batch to onRejected with the applier's code and path", () => {
+    const rejected: { code: string; path: string }[] = [];
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter"),
+      onRejected: (_mutations, error) => rejected.push({ code: error.code, path: error.path }),
+    });
+    // The last workspace cannot be deleted.
+    const workspaceId = wb.store.getState().workspaceId;
+    expect(wb.verbs.deleteWorkspace(workspaceId)).toBe(false);
+    expect(rejected).toEqual([{ code: "last_workspace", path: "workspaceDelete.workspaceId" }]);
+  });
+
+  it("uses an injected store instead of creating one", () => {
+    const own = createWorkbenchStore(singleTile("counter"));
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("notes"), store: own });
+    expect(wb.store).toBe(own);
+    // The shell renders the injected store's document, not `initial`.
+    const viewId = Object.values(own.getState().document.views)[0]?.id ?? "";
+    expect(own.getState().document.views[viewId]?.appId).toBe("counter");
+  });
+});
+
+describe("workspaces (5.B)", () => {
+  it("workspaces() seeds several, in order, with distinct ids", () => {
+    const doc = workspaces([
+      { name: "one", spec: tile("counter") },
+      { name: "two", spec: split("row", 0.5, tile("counter"), tile("notes")) },
+    ]);
+    expect(doc.workspaces.map((w) => w.name)).toEqual(["one", "two"]);
+    expect(new Set(doc.workspaces.map((w) => w.id)).size).toBe(2);
+    expect(leaves(doc.workspaces[1]!.tree).length).toBe(2);
+  });
+
+  it("refuses a seed that names one id twice", () => {
+    expect(() =>
+      workspaces([
+        { id: "a", name: "one", spec: tile("counter") },
+        { id: "a", name: "two", spec: tile("notes") },
+      ]),
+    ).toThrow(/used twice/);
+  });
+
+  it("creates a workspace from a spec and selects it", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const id = wb.verbs.createWorkspace("desk", split("row", 0.6, tile("counter"), tile("notes")));
+    expect(id).toBeTruthy();
+    expect(wb.store.getState().workspaceId).toBe(id);
+    expect(leaves(workspaceTree(wb.store.getState().document, id!)).length).toBe(2);
+  });
+
+  it("reuses one singleton view across existing and repeated workspace leaves", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+    });
+    const original = Object.values(wb.store.getState().document.views).find((view) => view.appId === "notes")!.id;
+
+    const id = wb.verbs.createWorkspace(
+      "shared singleton",
+      split("row", 0.5, tile("notes"), tile("notes")),
+    )!;
+    const doc = wb.store.getState().document;
+    const viewIds = leaves(workspaceTree(doc, id)).map((leaf) => (leaf.body.value as { viewId: string }).viewId);
+
+    expect(viewIds).toEqual([original, original]);
+    expect(Object.values(doc.views).filter((view) => view.appId === "notes")).toHaveLength(1);
+  });
+
+  it("shares a singleton first minted inside a repeated workspace layout", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const id = wb.verbs.createWorkspace(
+      "new singleton",
+      split("row", 0.5, tile("notes"), tile("notes")),
+    )!;
+    const doc = wb.store.getState().document;
+    const viewIds = leaves(workspaceTree(doc, id)).map((leaf) => (leaf.body.value as { viewId: string }).viewId);
+
+    expect(new Set(viewIds).size).toBe(1);
+    expect(Object.values(doc.views).filter((view) => view.appId === "notes")).toHaveLength(1);
+  });
+
+  it("creates a one-tile workspace of the first app when no spec is given", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("notes") });
+    const id = wb.verbs.createWorkspace("scratch");
+    const tree = workspaceTree(wb.store.getState().document, id!);
+    expect(leaves(tree).length).toBe(1);
+    const viewId = (leaves(tree)[0]!.body.value as { viewId: string }).viewId;
+    expect(wb.store.getState().document.views[viewId]?.appId).toBe(demoApps[0]!.id);
+  });
+
+  it("refuses a duplicate workspace id and leaves the document untouched", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const before = wb.store.getState().document;
+    expect(wb.verbs.createWorkspace("clash", tile("counter"), { workspaceId: "main" })).toBeNull();
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  it("select clears the active placement", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const first = wb.store.getState().workspaceId;
+    const id = wb.verbs.createWorkspace("second", tile("notes"), { select: false });
+    wb.verbs.activate(leaves(workspaceTree(wb.store.getState().document, first))[0]!.id);
+    expect(wb.store.getState().activePlacementId).not.toBeNull();
+    expect(wb.verbs.selectWorkspace(id!)).toBe(true);
+    expect(wb.store.getState().activePlacementId).toBeNull();
+  });
+
+  it("select refuses an unknown workspace", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    expect(wb.verbs.selectWorkspace("ws-nope")).toBe(false);
+  });
+
+  it("rename changes the name only", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const id = wb.store.getState().workspaceId;
+    expect(wb.verbs.renameWorkspace(id, "  Gold desk  ")).toBe(true);
+    expect(wb.store.getState().document.workspaces[0]?.name).toBe("Gold desk");
+  });
+
+  it("delete removes the workspace and its now-orphaned views", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const id = wb.verbs.createWorkspace("second", split("row", 0.5, tile("counter"), tile("notes")))!;
+    expect(Object.keys(wb.store.getState().document.views)).toHaveLength(3);
+    expect(wb.verbs.deleteWorkspace(id)).toBe(true);
+    // The notes view is a singleton and was referenced only there; both go.
+    expect(Object.keys(wb.store.getState().document.views)).toHaveLength(1);
+    expect(wb.store.getState().document.workspaces).toHaveLength(1);
+  });
+
+  it("delete falls back to the first survivor when the deleted one was on screen", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    const first = wb.store.getState().workspaceId;
+    const id = wb.verbs.createWorkspace("second", tile("counter"))!;
+    expect(wb.store.getState().workspaceId).toBe(id);
+    wb.verbs.deleteWorkspace(id);
+    expect(wb.store.getState().workspaceId).toBe(first);
+  });
+
+  it("refuses to delete the last workspace", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    expect(wb.verbs.deleteWorkspace(wb.store.getState().workspaceId)).toBe(false);
+    expect(wb.store.getState().document.workspaces).toHaveLength(1);
+  });
+
+  it("clone copies a duplicable view and references a singleton", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+    });
+    const source = wb.store.getState().workspaceId;
+    const copyId = wb.verbs.cloneWorkspace(source, { name: "copy" })!;
+    const doc = wb.store.getState().document;
+    const viewIdsOf = (workspaceId: string) =>
+      leaves(workspaceTree(doc, workspaceId)).map((leaf) => (leaf.body.value as { viewId: string }).viewId);
+    const [counterA, notesA] = viewIdsOf(source);
+    const [counterB, notesB] = viewIdsOf(copyId);
+    expect(counterB).not.toBe(counterA); // duplicable: cloned
+    expect(notesB).toBe(notesA); // singleton: referenced
+    expect(doc.views[counterB!]?.appId).toBe("counter");
+  });
+
+  it("place goes to a singleton that lives in another workspace", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
+    const first = wb.store.getState().workspaceId;
+    wb.verbs.createWorkspace("second", tile("counter"));
+    expect(wb.store.getState().workspaceId).not.toBe(first);
+    wb.verbs.place("notes");
+    expect(wb.store.getState().workspaceId).toBe(first);
+  });
+
+  it("place links a cross-workspace singleton when asked to", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
+    wb.verbs.createWorkspace("second", tile("counter"));
+    const here = wb.store.getState().workspaceId;
+    wb.verbs.place("notes", { crossWorkspace: "link" });
+    expect(wb.store.getState().workspaceId).toBe(here);
+    expect(leaves(workspaceTree(wb.store.getState().document, here)).length).toBe(2);
+  });
+});
+
+describe("replace, link, rebind, split policy (5.C)", () => {
+  function twoTiles() {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("counter"))) });
+    const ids = leafIds(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    return { wb, first: ids[0]!, second: ids[1]! };
+  }
+
+  it("replace retargets the view in place when the pane owns it", () => {
+    const { wb, first } = twoTiles();
+    const before = viewOf(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId), first);
+    expect(wb.verbs.replace(first, "notes")).toBe(true);
+    const doc = wb.store.getState().document;
+    const after = viewOf(workspaceTree(doc, wb.store.getState().workspaceId), first);
+    expect(after).toBe(before); // same view id: the pane kept its identity
+    expect(doc.views[after]?.appId).toBe("notes");
+  });
+
+  it("replace on a linked twin mints a view and leaves the sibling alone", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("notes"), tile("counter"))) });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    // notes is a singleton: splitting it links a second placement of one view.
+    const linked = wb.verbs.split(notesPlacement!, "col")!;
+    const tree = () => workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(viewOf(tree(), linked)).toBe(viewOf(tree(), notesPlacement!));
+    const sharedView = viewOf(tree(), notesPlacement!);
+
+    expect(wb.verbs.replace(linked, "counter")).toBe(true);
+    expect(viewOf(tree(), notesPlacement!)).toBe(sharedView); // the twin is untouched
+    expect(viewOf(tree(), linked)).not.toBe(sharedView);
+    expect(wb.store.getState().document.views[viewOf(tree(), linked)]?.appId).toBe("counter");
+  });
+
+  it("replace links a placed singleton rather than minting a second view of it", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("notes"), tile("counter"))) });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement, counterPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const notesView = viewOf(workspaceTree(wb.store.getState().document, workspaceId), notesPlacement!);
+    expect(wb.verbs.replace(counterPlacement!, "notes")).toBe(true);
+    const doc = wb.store.getState().document;
+    expect(viewOf(workspaceTree(doc, workspaceId), counterPlacement!)).toBe(notesView);
+    expect(viewsOfApp(doc, "notes")).toHaveLength(1);
+  });
+
+  it("replace clears bindings unless it is given some", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter", { documents: { source: "d1" } }) });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [only] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const viewId = viewOf(workspaceTree(wb.store.getState().document, workspaceId), only!);
+    // A `source` binding on a view now showing a different application is
+    // state nothing reads and everything can misread.
+    wb.verbs.replace(only!, "notes", undefined);
+    expect(wb.store.getState().document.views[viewId]?.documents).toEqual({});
+    wb.verbs.replace(only!, "counter", { source: "d2" });
+    expect(wb.store.getState().document.views[viewId]?.documents).toEqual({ source: "d2" });
+  });
+
+  it("replace with the application already shown and no bindings is a no-op", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter", { documents: { source: "d1" } }) });
+    const before = wb.store.getState().document;
+    const [only] = leafIds(workspaceTree(before, wb.store.getState().workspaceId));
+    expect(wb.verbs.replace(only!, "counter")).toBe(true);
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  it("link points a pane at an existing view and deletes the view it orphaned", () => {
+    const { wb, first, second } = twoTiles();
+    const tree = () => workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    const firstView = viewOf(tree(), first);
+    const secondView = viewOf(tree(), second);
+    expect(Object.keys(wb.store.getState().document.views)).toHaveLength(2);
+    expect(wb.verbs.link(second, firstView)).toBe(true);
+    expect(viewOf(tree(), second)).toBe(firstView);
+    expect(wb.store.getState().document.views[secondView]).toBeUndefined();
+  });
+
+  it("link to the view already shown is a no-op that reports success", () => {
+    const { wb, first } = twoTiles();
+    const view = viewOf(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId), first);
+    const before = wb.store.getState().document;
+    expect(wb.verbs.link(first, view)).toBe(true);
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  it("rebind replaces the whole binding map, never merges", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter", { documents: { source: "d1", extra: "e1" } }) });
+    const workspaceId = wb.store.getState().workspaceId;
+    const viewId = viewOf(workspaceTree(wb.store.getState().document, workspaceId), leafIds(workspaceTree(wb.store.getState().document, workspaceId))[0]!);
+    expect(wb.verbs.rebind(viewId, { source: "d2" })).toBe(true);
+    expect(wb.store.getState().document.views[viewId]?.documents).toEqual({ source: "d2" });
+  });
+
+  it("rebind refuses an unknown view", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    expect(wb.verbs.rebind("v-nope", { source: "d1" })).toBe(false);
+  });
+
+  it("splitPolicy {app} opens an empty pane instead of duplicating", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("counter"))),
+      splitPolicy: { app: "notes" },
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [first] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(first!, "col")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, created)]?.appId).toBe("notes");
+  });
+
+  it("splitPolicy can be a function of the view", () => {
+    const seen: string[] = [];
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("counter"))),
+      splitPolicy: (view) => {
+        seen.push(view.appId);
+        return "duplicate";
+      },
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    wb.verbs.split(leafIds(workspaceTree(wb.store.getState().document, workspaceId))[0]!, "col");
+    expect(seen).toEqual(["counter"]);
+  });
+
+  it("a singleton links regardless of the policy", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("notes"), tile("counter"))),
+      splitPolicy: "duplicate",
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(notesPlacement!, "col")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    expect(viewOf(tree, created)).toBe(viewOf(tree, notesPlacement!));
+    expect(viewsOfApp(wb.store.getState().document, "notes")).toHaveLength(1);
+  });
+
+  /** A workbench holding one real document payload, bound by its only view. */
+  function boundWorkbench(extra: Partial<Parameters<typeof createWorkbench>[0]> = {}) {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter", { documents: { source: "d7" } }),
+      binding: { source: "source" },
+      ...extra,
+    });
+    wb.mutate([
+      create(MutationSchema, {
+        body: {
+          case: "documentPut",
+          value: {
+            document: create(DocumentPayloadSchema, { id: "d7", format: "test.doc", schemaVersion: 1 }),
+          },
+        },
+      }),
+    ]);
+    return wb;
+  }
+
+  it("binding gives a newly opened tile the document everything else shows", () => {
+    const wb = boundWorkbench();
+    const placement = wb.verbs.openView("counter", {})!;
+    const tree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, placement)]?.documents).toEqual({ source: "d7" });
+  });
+
+  it("binding does not follow a view that names a document the workbench does not hold", () => {
+    // The view binds "d7" but no payload exists: binding to a document that is
+    // not in the workbench is meaningless, so the new tile stays unbound.
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter", { documents: { source: "d7" } }),
+      binding: { source: "source" },
+    });
+    const placement = wb.verbs.openView("counter", {})!;
+    const tree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, placement)]?.documents).toEqual({});
+  });
+
+  it("binding leaves an unbound application alone", () => {
+    const wb = boundWorkbench({ binding: { source: "source", unbound: ["notes"] } });
+    const placement = wb.verbs.openView("notes", {})!;
+    const tree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, placement)]?.documents).toEqual({});
+  });
+});
+
+/* ---- defects the C1 (agentlogic) migration found ----------------------- */
+
+describe("split policy and bindings, as C1 needed them", () => {
+  it("splitPolicy {app} wins over the singleton link rule", () => {
+    // The guard exists because a second VIEW of a singleton is
+    // duplicate_singleton — but `{app}` puts a DIFFERENT application in the
+    // new pane, so there is nothing to duplicate. Pre-empting the policy made
+    // 'every split opens an empty pane' silently inoperative for exactly the
+    // applications most likely to be split.
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("notes"), tile("counter"))),
+      splitPolicy: { app: "counter" },
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(notesPlacement!, "col")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    expect(viewOf(tree, created)).not.toBe(viewOf(tree, notesPlacement!));
+    expect(wb.store.getState().document.views[viewOf(tree, created)]?.appId).toBe("counter");
+  });
+
+  it("a singleton still links when the policy says duplicate", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("notes"), tile("counter"))),
+      splitPolicy: "duplicate",
+    });
+    const workspaceId = wb.store.getState().workspaceId;
+    const [notesPlacement] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(notesPlacement!, "col")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    expect(viewOf(tree, created)).toBe(viewOf(tree, notesPlacement!));
+    expect(viewsOfApp(wb.store.getState().document, "notes")).toHaveLength(1);
+  });
+
+  it("a tile placed by split with an appId is bound like one opened by openView", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter", { documents: { source: "d7" } }),
+      binding: { source: "source" },
+    });
+    wb.mutate([
+      create(MutationSchema, {
+        body: { case: "documentPut", value: { document: create(DocumentPayloadSchema, { id: "d7", format: "test.doc", schemaVersion: 1 }) } },
+      }),
+    ]);
+    const workspaceId = wb.store.getState().workspaceId;
+    const [only] = leafIds(workspaceTree(wb.store.getState().document, workspaceId));
+    const created = wb.verbs.split(only!, "row", "counter")!;
+    const tree = workspaceTree(wb.store.getState().document, workspaceId);
+    // Before the fix this went through the protocol's splitPlacement, which
+    // mints a view with no documents: the tile opened empty and read as broken.
+    expect(wb.store.getState().document.views[viewOf(tree, created)]?.documents).toEqual({ source: "d7" });
+  });
+
+  it("place() binds too, since the launcher routes through split", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: singleTile("counter", { documents: { source: "d7" } }),
+      binding: { source: "source" },
+    });
+    wb.mutate([
+      create(MutationSchema, {
+        body: { case: "documentPut", value: { document: create(DocumentPayloadSchema, { id: "d7", format: "test.doc", schemaVersion: 1 }) } },
+      }),
+    ]);
+    const created = wb.verbs.place("counter")!;
+    const tree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    expect(wb.store.getState().document.views[viewOf(tree, created)]?.documents).toEqual({ source: "d7" });
+  });
+
+  it("refuses a store together with the hooks it would silently ignore", () => {
+    const own = createWorkbenchStore(singleTile("counter"));
+    expect(() =>
+      createWorkbench({ apps: demoApps, initial: singleTile("counter"), store: own, onMutate: () => undefined }),
+    ).toThrow(/owns its own mutation hooks/);
+    // Either alone is fine.
+    expect(() => createWorkbench({ apps: demoApps, initial: singleTile("counter"), store: own })).not.toThrow();
+    expect(() => createWorkbench({ apps: demoApps, initial: singleTile("counter"), onMutate: () => undefined })).not.toThrow();
   });
 });

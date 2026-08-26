@@ -15,12 +15,50 @@ export interface WorkbenchState {
   /** The tile a global operation (the launcher's "place") acts on. */
   activePlacementId: string | null;
   launcherOpen: boolean;
+  /**
+   * The tile the launcher was invoked FROM, when it was invoked per-pane
+   * ("show something else in THIS tile"). Null means the global invocation,
+   * whose rows place a new tile instead of replacing one. Two modes, one
+   * dialog: the rows model reads this and changes what choosing means.
+   */
+  launcherFrom: string | null;
+}
+
+/**
+ * What a product may observe about the document without owning the store.
+ *
+ * `onMutate` fires once per COMMITTED batch, after the new document is in
+ * state, and is what a product's outbox or persistence layer subscribes to —
+ * a store subscription would also fire for activation and launcher toggles,
+ * which are this browser's business and must never reach a server.
+ *
+ * `onRejected` replaces the default `console.warn` for a batch the applier
+ * refused. It exists because the caller otherwise learns only `false`: the
+ * `MutationError`'s `code`/`path`/`detail` are the only actionable thing, and
+ * an agent-facing caller has to hand them back to whoever proposed the batch.
+ */
+export interface WorkbenchStoreOptions {
+  onMutate?(mutations: Mutation[], next: WorkbenchDocument): void;
+  onRejected?(mutations: Mutation[], error: MutationError): void;
+  /**
+   * A post-commit hook failed after the document was already installed.
+   * This is deliberately separate from `onRejected`: retrying this batch
+   * would duplicate a change that did commit.
+   */
+  onPostCommitError?(error: unknown, mutations: Mutation[], next: WorkbenchDocument): void;
 }
 
 /**
  * A `useSyncExternalStore` store rather than Redux or context: the verbs are
  * plain code a router can call before React exists, and a product's own
  * components read it with a selector.
+ *
+ * A product that already owns its document — a Redux slice, a server-backed
+ * controller — implements this interface as an adapter and passes it to
+ * `createWorkbench({ store })` rather than mirroring state into a second
+ * source of truth. `getState` must return a CACHED snapshot refreshed on each
+ * upstream notification; a fresh object per call makes `useSyncExternalStore`
+ * loop forever.
  */
 export interface WorkbenchStore {
   getState(): WorkbenchState;
@@ -37,12 +75,16 @@ export interface WorkbenchStore {
   replaceDocument(document: WorkbenchDocument): void;
 }
 
-export function createWorkbenchStore(initial: WorkbenchDocument): WorkbenchStore {
+export function createWorkbenchStore(
+  initial: WorkbenchDocument,
+  options: WorkbenchStoreOptions = {},
+): WorkbenchStore {
   let state: WorkbenchState = {
     document: initial,
     workspaceId: initial.workspaces[0]?.id ?? "",
     activePlacementId: null,
     launcherOpen: false,
+    launcherFrom: null,
   };
   const listeners = new Set<() => void>();
   const emit = () => {
@@ -66,17 +108,33 @@ export function createWorkbenchStore(initial: WorkbenchDocument): WorkbenchStore
     setState,
     mutate(mutations) {
       if (mutations.length === 0) return false;
+      let document: WorkbenchDocument;
       try {
-        const document = applyMutations(state.document, mutations);
-        setState({ document });
-        return true;
+        document = applyMutations(state.document, mutations);
       } catch (error) {
         if (error instanceof MutationError) {
-          console.warn(`pbui-workbench: dropped a mutation batch — ${error.message}`);
+          if (options.onRejected) options.onRejected(mutations, error);
+          else console.warn(`pbui-workbench: dropped a mutation batch — ${error.message}`);
           return false;
         }
         throw error;
       }
+
+      setState({ document });
+      // A persistence/outbox hook runs after commit. Its failure must never
+      // turn a committed batch into `false` or throw through the caller: an
+      // agent would retry and duplicate work that is already visible.
+      try {
+        options.onMutate?.(mutations, document);
+      } catch (error) {
+        try {
+          if (options.onPostCommitError) options.onPostCommitError(error, mutations, document);
+          else console.error("pbui-workbench: post-commit hook failed", error);
+        } catch (reportingError) {
+          console.error("pbui-workbench: post-commit error handler failed", reportingError);
+        }
+      }
+      return true;
     },
     replaceDocument(document) {
       setState((current) => ({

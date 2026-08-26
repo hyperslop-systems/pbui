@@ -1,0 +1,617 @@
+---
+Title: Diary
+Ticket: PBUI-SANDBOX-1
+Status: active
+Topics:
+    - pbui
+    - chat
+    - frontend
+    - onboarding
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles:
+    - Path: repo://packages/pbui-chat/demo/src/workbench.ts
+      Note: sandboxHost built once; createScriptApp(host) (commit 62bf01a)
+    - Path: repo://packages/pbui-chat/src/tools/sandboxTools.ts
+      Note: getInstances, running(), history count (commit 793f299)
+    - Path: repo://packages/pbui-chat/test/no-raw-controls.test.ts
+      Note: The structural rules every devtool must satisfy (TextArea, SelectInput, CheckboxRow from pbui)
+    - Path: repo://packages/pbui-sandbox/README.md
+      Note: Devtools section (commit 793f299)
+    - Path: repo://packages/pbui-sandbox/src/bootstrap.ts
+      Note: evaluate via direct eval; __describe (commit a57e818)
+    - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.tsx
+      Note: Inspector tile, chooseInstance (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/TreeOutline.tsx
+      Note: outlineRows/summariseNode, fire controls (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.tsx
+      Note: Playground tile, BindingsPicker (commit c2ad3cc)
+    - Path: repo://packages/pbui-sandbox/src/devtools/ReplTile/ReplTile.tsx
+      Note: The REPL tile (commit a57e818)
+    - Path: repo://packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx
+      Note: Source & Versions tile, versionsOf, seedPlaygroundFrom (commit 2bbd806)
+    - Path: repo://packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx
+      Note: Timeline tile, eventsForReplay, overLimit (commit c6b4529)
+    - Path: repo://packages/pbui-sandbox/src/devtools/createSandboxDevtools.tsx
+      Note: The devtools factory; sets host.devtools (commit 850089b)
+    - Path: repo://packages/pbui-sandbox/src/devtools/diffLines.ts
+      Note: LCS line diff shaped for DiffHunk (commit 2bbd806)
+    - Path: repo://packages/pbui-sandbox/src/devtools/playgroundStore.ts
+      Note: The persisted draft (commit c2ad3cc)
+    - Path: repo://packages/pbui-sandbox/src/engines/conformance.ts
+      Note: evaluate cases both engines must pass (commit a57e818)
+    - Path: repo://packages/pbui-sandbox/src/engines/evalEngine.ts
+      Note: The single-Function closure is why a direct eval in the bootstrap can reach the program (D3)
+    - Path: repo://packages/pbui-sandbox/src/host/hostOptions.ts
+      Note: SandboxHost — the one options object (commit 62bf01a)
+    - Path: repo://packages/pbui-sandbox/src/host/useProgramInstance.ts
+      Note: Read in full before the design; the log, effects and instance id rules shaped D1, D2 and D11
+    - Path: repo://packages/pbui-sandbox/src/instances.ts
+      Note: Registry, timeline ring, selection, formatEntry (commit 62bf01a)
+    - Path: repo://packages/pbui-sandbox/src/library.ts
+      Note: history and rollback (commit 2bbd806)
+    - Path: repo://packages/pbui-sandbox/src/quickjs/runtimeService.ts
+      Note: evalCode strings per call; the same pattern carries `evaluate`
+    - Path: repo://packages/pbui-workbench/src/apps.ts
+      Note: docBound/singleton semantics decided which tiles are which (D12)
+ExternalSources: []
+Summary: Chronological record of PBUI-SANDBOX-1 — the suggestion that became the ticket, the evidence gathered from the sandbox package and the workbench, the design decisions, and (as they happen) each implementation phase with its failures verbatim.
+LastUpdated: 2026-08-21T16:10:00-04:00
+WhatFor: Continuation and review; read this to know what was tried, what broke, and why the design is shaped as it is.
+WhenToUse: When resuming a phase, reviewing a commit, or wondering why something is the way it is.
+---
+
+
+
+
+
+
+
+
+# Diary
+
+## Goal
+
+Record how the sandbox devtools — the instance registry and the five tiles (Inspector, REPL, Timeline, Playground, Source & Versions) — were designed and built on top of `PBUI-AGENT-3`, including every failure and the reasoning behind each decision.
+
+## Step 1: From a suggestion list to a ticket and a guide
+
+The user asked, after the AGENT-3 close-out, for a suggestion of tiles that would support the generative-tile feature; I proposed eight, with ASCII mockups. They chose five — the Inspector, a REPL that injects into a selected sandbox, the Timeline, the Playground and Source & Versions — and asked for a new ticket with an intern-level guide, uploaded to the reMarkable, then an implementation with work slips per phase. This step is the ticket, the evidence pass, and the guide.
+
+The evidence pass re-read the whole of `useProgramInstance.ts`, `ScriptTile.tsx`, `library.ts`, `bootstrap.ts`, both engines, the worker protocol, `sandboxTools.ts`'s `check()` and `sandbox_describe`, the workbench's `apps.ts` and verbs, the demo's `sandbox.ts`/`workbench.ts`/`App.tsx`, the trace panel, the structural tests, and the pbui atoms available (`TextArea code`, `JsonBlock`, `DiffHunk`, `ResultLog`, `CodeLine`, `SelectInput`, `CheckboxRow`). Two facts from that pass decided the two non-obvious parts of the design: the eval engine keeps the bootstrap and the program in one `new Function` scope, and QuickJS evaluates every later `evalCode` in the same global lexical scope — so a direct `eval` *inside the bootstrap* gives both engines the same REPL scope without any engine-specific code (D3). And `ProgramRecord.putProgram` overwrites `source`, so versions need a `history` field on the record, with rollback as an ordinary update (D6).
+
+### Prompt Context
+
+**User prompt (verbatim):** "Create a new docmgr ticket and Create  a detailed analysis / design / implementation guide that is for a new intern, explaining all the parts of the system needed to understand what it is, with prose paragraphs and bullet point sand pseudocode and diagrams and api references and file references. It should be very clear and technical. Store in the ticket and the nupload to remarkable.
+
+
+We want 1, a REPL tile to inject into a selected sandbox, 2, 4, 5.
+
+SInce we are a greenfield projec,t you are welcome to modify anythiing you want to have cleaner and effective code. 
+
+commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)
+
+Once the design guide and the phases/tasks are written, print out an overview brutalist work slip, and then for each phase, print a slip up front, so I can track where you are at, and one at the end when you are done witha write up. Then do the same for the nex tphase"
+
+**Assistant interpretation:** Open `PBUI-SANDBOX-1`; write an intern guide covering the system as it is, the gap, the design (registry, `evaluate`, five tiles) and a phased plan; upload it; then implement phase by phase with a plan slip first and start/end slips per phase, committing and keeping this diary throughout. "Greenfield" licenses refactors (one `SandboxHost` options type, removing the hook's string log, moving the dry run if useful).
+
+**Inferred user intent:** Make agent-written programs debuggable and editable by a human from inside the workbench — see state, poke at it, replay events, draft by hand, diff versions — using the same tile model and atoms as everything else, and have a kanban-visible trail of the work.
+
+**Commit (code):** none yet — docs only in this step.
+
+### What I did
+
+- `docmgr ticket create-ticket --ticket PBUI-SANDBOX-1 …`; `docmgr doc add` for the guide (design-doc) and this diary (reference).
+- Read the files listed in RelatedFiles plus `contracts.ts`, `state.ts`, `createScriptApp.tsx`, `UINodeRenderer.tsx`, `protocol.ts`, `worker.ts`, `workerEngine.ts`, `directEngine.ts`, `createPbuiChat.tsx` (attachSandbox), `demo/src/chat.ts` (`program.open` handler), `demo/src/App.tsx` (launcher rows), `TracePanel.tsx`, vm-system's `redux-adapter/store.ts` (`DispatchTimelineEntry`), and the pbui atom signatures.
+- Wrote the guide: §1 five scenes, §2 the system with line anchors, §3 gap table, §4 design with D1–D12, §5 six phases with files/tests/acceptance, §6 sequences, §7 R1–R14, §8 testing, §9–§10 references, §11 open questions.
+- Wrote `index.md`; added eight tasks (phases 0–6 and the slips).
+
+### Why
+
+- The guide is the contract for the phases; the user wants an intern to be able to build from it, so every design choice names the file and line that motivated it.
+- The registry comes first because four of the five tiles cannot exist without it and the fifth (Source & Versions) wants it for "showing in N tiles".
+
+### What worked
+
+- The design fits the existing app model without touching `pbui-workbench`: doc-bound apps for "inspect prg-3" and "source of prg-3", singletons for the REPL, timeline and playground; de-dup and `titleFor` come free.
+- The REPL needs no engine-specific scope code once `evaluate` lives in the bootstrap.
+
+### What didn't work
+
+- N/A for this step (no code yet). One tooling note: `rg -l "no-raw-controls" --glob "*no-raw-controls*.test.ts"` returned nothing because the file name already is the pattern; `ls packages/pbui-chat/test` found it.
+
+### What I learned
+
+- `UINodeRenderer` already computes the per-node key `root.0.2` that the inspector's outline needs; paths cost one attribute (D10).
+- `ResultLog`, `DiffHunk`, `JsonBlock` and `TextArea code` exist in pbui, so no devtool needs a raw control or a new atom.
+- vm-system's `DispatchTimelineEntry` is `{dispatchId, timestamp, scope, actionType, instanceId, domain, outcome, reason}`; the registry's entry keeps its spirit (one global ordered ring with outcomes) and adds durations and the non-dispatch kinds (load, render, error, evaluate).
+
+### What was tricky to build
+
+- Choosing where the selection lives. A React context would have tied the REPL to being under the same provider as the tiles, which is true in the demo but not a property of the app model; putting `selectedViewId` in the registry store means any tile anywhere can read it (D1).
+- Deciding that the playground runs a live instance rather than calling the tools' `check()`. The dry run is the model's contract; a human wants to click. Running the draft under `useProgramInstance` with a synthetic record makes the draft appear in the registry, which gives REPL and timeline access for free (D4).
+
+### What warrants a second pair of eyes
+
+- D3: direct `eval` under `"use strict"` can read but not declare; confirm that is acceptable for the REPL (R4) and that `__describe`'s depth/length caps do not hide what a user needs.
+- D6/R9: `history` on the record against the 1 MiB library limit; `historyDepth: 10` default.
+- D9: rollback, state edits and injections are not verbs and do not reach the trace.
+
+### What should be done in the future
+
+- Upload the guide and this diary to the reMarkable; print the overview slip; start Phase 0 with its start slip.
+
+### Code review instructions
+
+- Read `design-doc/01-…md` §4.1, §4.3 and §4.12 first; then §5 Phase 0.
+- `docmgr doctor --ticket PBUI-SANDBOX-1 --stale-after 30` must be clean.
+
+### Technical details
+
+- Ticket path: `ttmp/2026/08/21/PBUI-SANDBOX-1--sandbox-devtools-inspector-repl-timeline-playground-and-versions-tiles/`.
+- Base commit of the evidence: `d2c5b2c` (AGENT-3 close-out).
+
+## Step 2: Phase 0 — the registry, the host object, the hook that publishes
+
+Phase 0 is the machinery every tile stands on. `createInstanceRegistry` keeps one snapshot per view (placements, program, version, instance id, status, meta, trees, error, timings, a control handle, a highlight path), one global timeline ring of structured entries, and the selected sandbox. `useProgramInstance` now takes the registry, measures each engine call with `performance.now()`, records load/render/event/intent/error/note entries, publishes after every effect, and registers a handle (`fire`, `reset`, `rerender`) once per mount through refs. Its string log is gone (D2); the script tile's details disclosure filters the timeline by view id and formats it with the same `formatEntry` the Timeline tile will use.
+
+The script tile takes one `SandboxHost` object instead of eight options, selects its view on focus or click, and shows *inspect*/*source* buttons only when `host.devtools` is set (so they never dangle in a product without devtools). The renderer stamps `data-node-path` on every node wrapper and marks the `highlightPath` with `data-highlighted`, which the CSS module outlines through the focus-ring tokens. The demo builds `sandboxHost` once in `workbench.ts`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build the prerequisite from guide §5 Phase 0, verify it in the browser, commit.
+
+**Inferred user intent:** A foundation the five tiles can be built on without touching the hook again.
+
+**Commit (code):** 62bf01a — "PBUI-SANDBOX-1 Phase 0: instance registry (timeline ring, selection, handles), SandboxHost, hook timings, renderer node paths + highlight"
+
+### What I did
+
+- New `src/instances.ts` (registry, `useInstances`, `formatEntry`, `EMPTY_TIMINGS`) and `src/host/hostOptions.ts` (`SandboxHost`).
+- Rewrote `useProgramInstance.ts`: `instances` option, timings, structured records, `rerender()` via a tick the render effect depends on, a handle effect, `treesRef` so an unchanged tree keeps its identity in both the hook state and the registry.
+- Rewrote `ScriptTile.tsx` (host object, `ProgramLog` and `DevtoolButtons` as separate components, `askToFix` through `host.askAgent`) and `createScriptApp(host, options)`.
+- Renderer: `wrap()` puts every node — root included — in the path-carrying span; `highlightPath` prop; `walkNodes` in `validate/uiSchema.ts`.
+- Tests: `instances.test.ts` (4 registry tests + 8 `formatEntry` cases), hook tests updated to assert registry contents and a new handle/unmount test, renderer paths/highlight test. `pnpm test`: 67 in pbui-sandbox; pbui-chat 110 (structural scans included).
+- Demo: `instances` exported from `sandbox.ts` and on `window.__pbuiDemo`; `sandboxHost` in `workbench.ts`.
+- Browser: rebuilt `pbui-chat` and the demo, restarted `make chat-serve` (the old tmux session was gone; started a new `pbui-chat` session), opened *Minimal Counter* from the launcher, clicked `+`: the registry showed `{status: "ready", timings: {loadMs: 51.6, renders: 2, events: 1}}`, selection = that view, paths `root, root.0, root.1, root.1.0, root.1.1`, timeline `load → render → event → intent applied → render`. From the console: `handle.fire` incremented, `publish({highlight: "root.1.0"})` marked the `+` button, `handle.reset()` returned the state to 0. Screenshot `various/01-p0-registry-and-highlight.png`.
+
+### Why
+
+- Every devtool needs the same facts; one store with one subscription model (`useSyncExternalStore`, like the library) is the smallest thing that gives them to tiles that are not each other's ancestors.
+- A registry that re-notified on unchanged trees would make the inspector re-render on every program render; hence `publish` compares by identity and the hook only hands it a new `trees` object when the content changed.
+
+### What worked
+
+- The busy-loop regression test from AGENT-3 still passes with the registry in the loop: publishing from effects and callbacks only, never during render, kept the settle property.
+- `data-node-path` cost one wrapper function; the existing React keys were already the paths.
+
+### What didn't work
+
+- `type TimelineEntryInput = Omit<TimelineEntry, "seq" | "at">` collapsed the union: every `record({kind: "render", …})` failed with `'durationMs' does not exist in type 'TimelineEntryInput'`. Spelled it as `{head} & TimelineEntryBody` instead.
+- A test asserted the timeline's last entry after a click was the `intent`; it is the `render` the applied intent caused. The assertion now checks the last two kinds are `["intent", "render"]`.
+- `formatEntry` for `evaluate` JSON-quoted the code (`"1 + 1" → 2`); code is shown verbatim, whitespace collapsed, truncated at 60.
+- The first `pnpm typecheck` also flagged `Cannot redeclare block-scoped variable 'instances'` in the update test, which already used that name for `engine.health().instances` — renamed to `engineInstances`.
+- `tmux send-keys -t pbui-chat` reported `can't find pane` / `can't find session` even though `tmux ls` had listed it moments before; a fresh `tmux new-session -d -s pbui-chat "make chat-serve"` worked.
+
+### What I learned
+
+- Two linked placements of one view run two engine instances (each `ScriptTile` mounts its own hook), sharing state through the view-keyed store. The registry is keyed by view, so its `instanceId` and `handle` are whichever placement published last — equivalent instances, so any handle drives the view's state correctly, but the inspector's "instance id" is one of two. Recorded as a known property rather than changed: making one hook serve two placements would need the hook to move out of the tile.
+- React 18 batches `setState` from async callbacks, so the earlier idea of reading a functional updater's result synchronously after `setTrees` was unsafe; a `treesRef` mirror is the honest version.
+
+### What was tricky to build
+
+- **Handle identity.** The handle must be stable (one `publish`) but call the latest `onEvent`/`reset`, which change with `meta` and `globalState`. Refs updated every render plus one effect keyed on `[instances, viewId, rerender]` does it; the cleanup only nulls the handle if it is still ours, so a second placement's handle survives the first's unmount.
+- **Unchanged trees, twice.** The hook previously compared inside a functional `setTrees` updater. The registry needs the same decision outside React's batching, so the comparison moved to `treesRef` and both the state and the registry receive the same object.
+
+### What warrants a second pair of eyes
+
+- `publish` compares patch fields with `Object.is`; a caller passing a fresh `timings` object every time (as `bumpTimings` does) always notifies — intended, since timings changed, but worth knowing when reading subscriber counts.
+- The timeline ring's `keep` of 500 with `intents` arrays and `args` kept by reference: a program that emits large payloads holds them alive until they scroll out.
+
+### What should be done in the future
+
+- Phase 1: the Inspector tile and `createSandboxDevtools`, which sets `host.devtools`.
+
+### Code review instructions
+
+- Start at `src/instances.ts` (`publish`, `record`, `unmount`), then `useProgramInstance.ts` (`bumpTimings`, the handle effect, `treesRef`), then `ScriptTile.tsx` (`ProgramLog`, `DevtoolButtons`).
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; `pnpm --filter @hyperslop-systems/pbui-chat test`; in the demo, `__pbuiDemo.instances.all()` after opening a program tile.
+
+### Technical details
+
+```ts
+// the registry's door for devtools, as published by the hook
+instances.get(viewId)?.handle?.fire("main", { handler: "increment" });
+instances.publish(viewId, { highlight: "root.1.0" });   // the tile outlines that node
+instances.timeline().filter((e) => e.viewId === viewId).map(formatEntry);
+```
+
+## Step 3: Phase 1 — the Program Inspector
+
+The inspector is the first tile on the registry. It is doc-bound to `program` with an optional `view` binding, chooses which instance to show by `chosen → wanted view → selected sandbox → latest` (`chooseInstance`, a pure function with its own test), and has four panes behind pressed buttons: *state* (a `JsonBlock` over a `TextArea code` editor with apply/discard/reset), *bindings* (every declared or bound key with the product's own `<Presentation>` for a resolved reference, `unresolved` in the danger tone otherwise, plus `env`), *tree* (one outline per widget from `walkNodes`, each row kind + summary + a *fire* control that sends what the renderer would — `{ value }` for a change — and hover publishing `highlight`), and *meta* (instance id, engine, placements, timings, the error, the loaded meta).
+
+The snapshot gained `globalState` (published by the render effect) because the bindings pane needs the resolved documents the program saw, and the REPL will need the same object for `$global`. `createSandboxDevtools(host)` registers the inspector (more tiles join it in later phases) and sets `host.devtools = true`, which is what makes the script tile's *inspect*/*source* buttons appear — the same host object must be passed to both factories, stated in the doc comment.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 1.
+
+**Inferred user intent:** Scene 1 — see and change a running program's state, see what it rendered, fire a handler, know what it was bound to.
+
+**Commit (code):** 850089b — "PBUI-SANDBOX-1 Phase 1: Program Inspector tile (state editor, bindings, tree outline with highlight and fire, meta/timings), createSandboxDevtools"
+
+### What I did
+
+- `src/devtools/InspectorTile/{InspectorTile,TreeOutline,StatePane}.tsx` + CSS module; `src/devtools/createSandboxDevtools.tsx`; `src/devtools/index.ts` re-exported from the package index.
+- `InstanceSnapshot.globalState`; the hook publishes it with the trees.
+- Tests: `InspectorTile.test.tsx` mounts a real `ScriptTile` and the inspector on one host — outline paths, fire, hover → highlight in the program tile, apply/invalid/reset state, bindings with a resolved `product`, meta facts, the not-running state, `chooseInstance` order. 71 tests in the package; chat 110; all builds.
+- Demo: `devtoolApps = createSandboxDevtools(sandboxHost)` registered after `scriptApp`.
+- Browser: from the counter tile's *inspect* button, an inspector opened beside it; the tree pane listed `root column · root.0 text "Count: 0" · root.1 row · root.1.0 button "-" onClick→decrement · root.1.1 button "+"`, hovering `root.1.0` outlined the `-` button in the program tile, *fire increment* set the state to 1. Screenshot `various/02-p1-inspector.png`.
+
+### Why
+
+- Panes rather than a stacked page: the inspector is opened *beside* a program tile, in a third of a column; four stacked sections would not fit.
+- `chooseInstance` as a pure function: the precedence is the one piece of policy in the tile and deserves a table test.
+
+### What worked
+
+- Everything the panes show was already in the registry after Phase 0 except `globalState`; the tile is mostly presentation.
+- The hover highlight crossed from the inspector to the program tile with no DOM queries: publish a path, the tile's renderer marks it.
+
+### What didn't work
+
+- The second test failed only when run after the first: `vitest` without `globals: true` does not auto-cleanup `@testing-library/react`, so the first test's tiles were still mounted and `getByRole("button", {name: "bindings"})` matched two. Fixed with `afterEach(cleanup)` and a comment; the other test files in the package query within their own `container`, which is why they never hit it.
+
+### What I learned
+
+- `Button` has a `selected` prop, which is what a pane switch needs; no segmented atom required.
+- `JSON.stringify(node.text)` as the summary makes whitespace and quotes visible in the outline — worth keeping over raw text.
+
+### What was tricky to build
+
+- **Editor that follows the live state until touched.** The state pane must show changes the program makes (a click in the tile) but must not overwrite what the user is typing. A `dirty` flag set when the draft differs from the live JSON, cleared on apply/discard, and an effect that copies the live JSON in only while not dirty.
+- **What "fire" sends.** The renderer sends `{ value }` for inputs and selects and `ref.args` for buttons; the outline's fire control mirrors that so a fired event is indistinguishable from a real one in the timeline.
+
+### What warrants a second pair of eyes
+
+- `host.devtools = true` mutates the caller's object inside a factory. It is documented, and the alternative (a second host object) would split what the script tile and the devtools see.
+- The bindings pane renders `reference.value` as JSON beside the presentation — a large value (an order with lines) is a long block; `maxHeight` caps it.
+
+### What should be done in the future
+
+- Phase 2: `evaluate` in the bootstrap, both engines, the worker protocol, conformance cases, and the REPL tile.
+
+### Code review instructions
+
+- `InspectorTile.tsx` top to bottom, then `TreeOutline.tsx` (`outlineRows`, `FireControl`), then the test.
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, open a program tile and press *inspect*.
+
+### Technical details
+
+- App id `program-inspector`, bindings `["program"]`, optional `view`; opened by the script tile with `openView(INSPECTOR_APP_ID, { program, view }, { near: placementId })`.
+
+## Step 4: Phase 2 — `evaluate`, and the REPL into the selected sandbox
+
+The REPL needed one new door through the engine boundary, and the guide's D3 put it in the bootstrap rather than in either engine: `__pluginHost.evaluate(code, pluginState, globalState)` binds `$plugin`, `$ui`, `$state`, `$global`, `$widget`, `$render`, `$event` as locals and runs a *direct* `eval(code)`, so the line sees those, the bootstrap's `__plugin`/`__ui`, and the program's own top-level declarations — under `new Function` (one closure) and under QuickJS (one global lexical scope) alike. The result goes through `__describe`, which passes JSON and replaces what JSON cannot carry with `{ $type }` markers (`undefined`, `function` with its text, `cyclic`, `deep`, non-finite numbers, `error` with name and message). Each engine's `evaluate` is a few lines: the eval engine clones in and out; QuickJS builds an `evalCode` string under a new `evaluateMs` limit (1 s), so the interrupt handler applies; the worker protocol gained one request.
+
+The REPL tile is a singleton that follows the selected sandbox (a checkbox unpins it, a select picks any running instance), runs a line on Enter, walks history with the arrow keys, and shows each result as `JsonBlock` — or, for a `UINode`, with a *render here* toggle that draws it with the real renderer. A plain-object result offers *set as state*; an intents array (from `$event`) offers *apply intents*, which runs the host's reducer and `perform` exactly as a real event would and records `intent` entries tagged "from the REPL". *re-render* calls the handle after an injection. Every line is an `evaluate` timeline entry with a one-line summary.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 2; "a REPL tile to inject into a selected sandbox".
+
+**Inferred user intent:** Poke at a running program's objects and patch them live, with the same reach under both engines and nothing new exposed to the model.
+
+**Commit (code):** a57e818 — "PBUI-SANDBOX-1 Phase 2: ProgramEngine.evaluate via the bootstrap (direct eval, $plugin/$ui/$state/$global/$render/$event, __describe), both engines + worker protocol, conformance cases; REPL tile"
+
+### What I did
+
+- `bootstrap.ts`: `__describe`, `evaluate`, `BOOTSTRAP_VERSION = 2`. `engine.ts`: `EvaluateInput`/`EvaluateResult`, `evaluate` on `ProgramEngine`. `limits.ts`: `evaluateMs`. `evalEngine.ts`, `quickjs/{runtimeService,protocol,worker,workerEngine,directEngine}.ts`: the method and the request.
+- `engines/conformance.ts`: five `evaluate` cases (helpers and state; `$render`/`$event`; an injection that changes a later `event`; the markers and copy semantics; thrown errors keep their names incl. `SyntaxError` and a `ReferenceError` for `fetch`). `quickjs/conformance.test.ts`: `while (true) {}` at the REPL rejects with `InternalError` under `evaluateMs: 50`.
+- `devtools/ReplTile/{ReplTile.tsx, ReplTile.module.css, ReplTile.test.tsx}`; registered as `sandbox-repl` (singleton) in `createSandboxDevtools`; exports.
+- 86 tests in the package (eval and QuickJS conformance both run the new cases); chat 110; all builds.
+- Browser, QuickJS worker: opened the REPL from the launcher, clicked the counter tile (selection), ran `$state` → `{value: 0}`, `$global.system` → `{engine: "quickjs", version: 1}`, injected `$plugin.widgets.main.handlers.increment = (c) => c.dispatchPluginAction("state/merge", { value: $state.value + 10 })`, clicked the tile's real `+` → state `10`; `$render({ value: 7 })` → `UINode column (5 nodes)`, *render here* drew it. Screenshot `various/03-p2-repl-quickjs.png`.
+
+### Why
+
+- One bootstrap function instead of two engine-specific scopes is what makes "the same REPL under both engines" a fact rather than a goal; the conformance suite is the proof, and it runs the cases against QuickJS in Node.
+- `__describe` inside the sandbox, not in the host: the host cannot inspect a QuickJS function handle cheaply, and doing it in the runtime means the eval engine gets the same markers for free.
+
+### What worked
+
+- The injection test passed first time on both engines: the handler table is a live object in both, and a direct eval reaches it.
+- The QuickJS interrupt covered `evaluate` with no extra code beyond passing `evaluateMs` to `withDeadline`.
+
+### What didn't work
+
+- `src/bootstrap.ts(188,30): error TS1005: ',' expected.` — my doc comment inside the `String.raw` template used backticks around `__plugin` and `__ui`, which ended the template literal. Backticks are forbidden anywhere in `BOOTSTRAP_SOURCE`, comments included; removed.
+- The patch script's `assert tail.endswith("});")` on `conformance.ts` failed: the file ends with `  });\n}` (the describe closes, then the exported function). Inserted before that pair instead.
+- `expect(el).toBeDisabled()` — `Property 'toBeDisabled' does not exist`: the package has no jest-dom matchers. Assert `el.disabled` directly.
+
+### What I learned
+
+- A closure injected from the REPL captures the REPL-time `$state` (the `+ 10` above read `{value: 0}` at injection time and always adds to 0 + 10 = 10). That is JavaScript, not a bug, and the helper text should say "read `ctx.pluginState` inside handlers, not `$state`". Added to the REPL help in Phase 6's pass.
+- Under `"use strict"` a direct eval's `let`/`const` stay in the eval; the help line says to use `$plugin.scratch = …` for anything that should persist.
+
+### What was tricky to build
+
+- **Enter versus history.** The textarea must run on Enter, insert a newline on Shift+Enter, and walk history on ↑/↓ only when the input is empty or already showing a history entry (so arrows inside a multi-line edit still move the caret). A `cursorRef` of `-1` means "not in history"; typing anything resets it.
+- **What counts as a tree or as intents.** `isUINode` checks `kind ∈ SANDBOX_UI_KINDS`; `isIntentList` requires a non-empty array whose items have a plugin/verb scope. `$event` returns intents without `instanceId` (the bootstrap adds none; the validator would), which the REPL's *apply intents* does not need.
+
+### What warrants a second pair of eyes
+
+- `evaluate` is the same trust as the program (guide §4.3): under eval it is a `new Function` closure with shadowed globals, nothing more. It is not offered as a tool (D7).
+- `__describe` caps depth at 8 and arrays at 200; a REPL user inspecting a deep object sees `{$type: "deep"}` and has to drill with a narrower expression.
+
+### What should be done in the future
+
+- Phase 3: the Dispatch Timeline tile over `instances.timeline()`.
+
+### Code review instructions
+
+- `bootstrap.ts` (`__describe`, `evaluate`), `engines/conformance.ts` ("evaluate — the REPL's door"), then `ReplTile.tsx` (`run`, `onKeyDown`, `applyIntents`, `ResultLine`).
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, launcher → REPL, click a program tile, type `$state`.
+
+### Technical details
+
+```ts
+engine.evaluate({ instanceId, code: "$render({ value: 7 })", pluginState, globalState })
+// → { value: { kind: "column", children: [ { kind: "text", text: "Count: 7" }, … ] } }
+engine.evaluate({ instanceId, code: "() => 1", … })   // → { value: { $type: "function", $text: "() => 1" } }
+```
+
+## Step 5: Phase 3 — the Dispatch Timeline
+
+The timeline tile is a view over the registry's ring: every entry newest first with its time to the millisecond, the program and version as a chip, the kind, and the `formatEntry` line the script tile's details also use. Event rows list the intents they produced under them. A row is marked when something went wrong or slow — an error, a rejected or ignored intent, a failed evaluation, or a duration past the engine's default limit for its phase (`overLimit`). Filters are an instance select (*all*, *selected sandbox*, or any instance that has entries) and per-kind toggle buttons. *pause* freezes the rendered list while the ring keeps filling; *clear* empties the ring. *copy as events* turns one instance's event entries, oldest first, into `[{handler, args?}]` — exactly the `events` argument of `sandbox_test` — and, when the clipboard is unavailable, shows the JSON in a read-only text area instead (guide R14). Event rows offer *fire again* while the same instance is still live; error rows offer *inspect* (devtools only) and *ask the agent*.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 3.
+
+**Inferred user intent:** Scene 3 — see what happened across instances, in order, with durations, and hand a reproduction to the agent.
+
+**Commit (code):** c6b4529 — "PBUI-SANDBOX-1 Phase 3: Dispatch Timeline tile (instance/kind filters, pause, clear, copy as sandbox_test events, fire again, inspect, ask the agent)"
+
+### What I did
+
+- `devtools/TimelineTile/{TimelineTile.tsx, TimelineTile.module.css, TimelineTile.test.tsx}`; registered as `sandbox-timeline` (singleton); exports `TIMELINE_KINDS`, `eventsForReplay`, `overLimit`.
+- Tests: order and content of rows after a click; kind filter down to `intent`; pause/resume; *fire again* increments through the live handle; *clear*; *copy as events* with a mocked clipboard (shape checked) and with a rejecting clipboard (text area appears); an error row from `BROKEN_RENDER_PROGRAM` is marked and *ask the agent* receives the template and the program reference; the helpers. 90 tests in the package; chat 110; builds.
+- Browser: launcher → timeline; clicked `+` and ran `$state` in the REPL; rows read `evaluate · render · intent · event · render · load` newest first with durations (`loaded in 86.0 ms` under the QuickJS worker); *fire again* on the event row set the counter to 2. Screenshot `various/04-p3-timeline.png`.
+
+### Why
+
+- One ring, one order: the tile is a filter over the same data the script tile's details show, so the two never disagree.
+- *copy as events* is the bridge to the agent's own test loop: a human reproduces what they saw by pasting the events into the chat.
+
+### What worked
+
+- `formatEntry` from Phase 0 carried the rows without changes.
+- `live` detection (the row's `instanceId` equals the snapshot's current `instanceId`) keeps *fire again* off rows from an instance that has since been reloaded.
+
+### What didn't work
+
+- `container.querySelector('[aria-label="kinds"]')` was null: pbui's `Toolbar` takes `children, bordered, tight, as, className` only and drops other props. Wrapped the toolbar in a `role="group" aria-label="kinds"` div.
+- A `vi.fn(async () => undefined)` clipboard mock typed `mock.calls[0][0]` as `undefined` (`Tuple type '[]' has no element at index '0'`); giving the mock a `(_text: string)` parameter fixed the inference.
+- First version read the library through `useInstances(host.library as unknown as InstanceRegistry, …)` — wrong store; `useLibrary(host.library, s => s.programs)` is the honest subscription.
+
+### What I learned
+
+- Timing from the worker engine includes the message round trip: the first render under QuickJS read 12.7 ms and a load 86 ms, where the eval engine shows ~1 ms and ~50 ms. The timeline is the place a product would notice that.
+
+### What was tricky to build
+
+- **Scope semantics.** *selected sandbox* with nothing selected must show nothing (and say "nothing matches"), not fall back to everything; the filter is `scope === ALL || entry.viewId === scopeViewId`, where `scopeViewId` is null in that case.
+- **Pause without losing data.** `paused` stores the array the ring held at the moment of pausing; the ring itself keeps recording, and `resume` simply drops the frozen copy.
+
+### What warrants a second pair of eyes
+
+- `overLimit` compares against `DEFAULT_LIMITS`, not the engine's configured limits (the engine does not expose them). A product with custom limits sees the defaults as thresholds; the doc comment says so.
+- Rendering caps at 300 rows of the 500-entry ring; the footer says `n of m entries` so the cap is visible.
+
+### What should be done in the future
+
+- Phase 4: the Playground with its persisted draft and live instance.
+
+### Code review instructions
+
+- `TimelineTile.tsx` (`rows`, `copyEvents`, `Row`), then the test's first case.
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, launcher → timeline, then click around a program tile.
+
+## Step 6: Phase 4 — the Playground
+
+The playground runs a draft as a live instance (D4) rather than calling the tools' dry run. `createPlaygroundStore({ key })` keeps `{ source, bindings, fromProgramId, updatedAt }` under its own `localStorage` key, debounced, with a template program as the empty state. The tile mirrors the store into the editor on every keystroke and, after a pause (`reloadMs`, 400 ms by default, 10 ms in tests), copies the source into a synthetic `ProgramRecord` (`id: "draft"`, version bumped) that `useProgramInstance` loads under `viewId: "playground"` — so the draft appears in the registry like any instance, the REPL can target it and the timeline records it. The right-hand side is the bindings picker (one row per declared or added key; a `SelectInput` when `host.bindingChoices(key)` returns choices, else a `TextInput`; the resolved reference rendered through the product) and the live preview with real events. The status line says `ok · main · 7 nodes · 1520 bytes` or the `{phase, code, message}` a failing draft produced, or the size-limit message.
+
+*save as new* stores the draft as a human's program with the loaded meta's title, bindings and `declaredId`, then performs `program.open` through the product so the new tile appears and the trace records it; *update prg-N* is a version bump of the program the draft came from; *load from…* seeds the draft with a library program and its declared binding keys, asking first (a pbui `Dialog`) when the editor holds something other than the untouched template; *ask the agent* sends the source with the failure, if any; *clear* goes back to the template.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 4.
+
+**Inferred user intent:** Scene 4 — write a tile by hand, see it run as you type, save it beside the agent's programs.
+
+**Commit (code):** c2ad3cc — "PBUI-SANDBOX-1 Phase 4: Playground tile (persisted draft store, live draft instance, bindings picker, save-as-new / update / load-from / ask the agent); demo bindingChoices"
+
+### What I did
+
+- `devtools/playgroundStore.ts` (`createPlaygroundStore`, `usePlayground`, `PLAYGROUND_TEMPLATE`); `devtools/PlaygroundTile/{PlaygroundTile.tsx, PlaygroundTile.module.css, PlaygroundTile.test.tsx}`; registered as `sandbox-playground` (singleton) with `playgroundKey`/`playground` options on `createSandboxDevtools`; exports.
+- Demo: `demoBindingChoices` (products, metals, categories, orders) in `sandbox.ts`, passed as `host.bindingChoices`; the devtools get `playgroundKey: "<library key>.playground"`.
+- Tests: the store persists/restores/resets and survives a corrupt entry; the tile runs the template, reloads after typing (version 2 in the registry), reports a render error and disables save, asks the agent with the failure; save-as-new stores `{by: "human", declaredId: "my-draft"}` and performs `program.open`, update bumps to v2; load-from seeds source and bindings, the picker resolves `2049` and the preview shows *Draft a reorder*, a second load over an edited draft asks first; an oversize source disables save with the limit message. 95 tests; chat 110; builds.
+- Browser: launcher → playground; the template ran (`n = 0`, `+1` → `n = 1`); *load from* Days of cover; the product select offered the 9 demo products; binding 2049 rendered the real days-of-cover UI; *save as new* produced `prg-3 Days of cover v1 human` and a second script tile. Screenshot `various/05-p4-playground.png`. Then removed `prg-3` and reset the draft so the demo's seed stays as shipped.
+
+### Why
+
+- Live instance over dry run: a human wants to click; the registry, REPL and timeline come free; the model keeps its own `check()`.
+- A separate store: the library is "programs that exist"; a draft is minutes of typing that a tile remount must not lose.
+
+### What worked
+
+- The synthetic record + `useProgramInstance` needed no special case in the hook: a version bump is a reload, as for a library update.
+- `host.bindingChoices` kept the picker product-agnostic; the demo's list is eight lines.
+
+### What didn't work
+
+- I first gave the synthetic record a `history: []` field from Phase 5's design; `ProgramRecord` does not have it yet — removed.
+- `container.querySelector('[data-part="playground-status"]')` was null: pbui's `Text` drops unknown props, as `Toolbar` did in Phase 3. Wrapped it in a `div`. Lesson written down once: pbui atoms take a fixed prop list; test hooks go on a wrapper element.
+
+### What I learned
+
+- `SelectInput` with `value=""` and a `placeholder` works as a "choose one" menu that resets itself, which is what *load from…* wants.
+- The registry's `select` does not follow the playground (the tile has no focus→select), so the REPL's "follow selection" never jumps to the draft by itself; the picker reaches it. Worth a line in the README.
+
+### What was tricky to build
+
+- **Two debounces.** The store debounces the *write* (300 ms) and the tile debounces the *reload* (400 ms); both read the same `draft.source`. The first-render guard (`firstRef`) stops the reload effect from bumping the version on mount, which would have loaded every draft twice.
+- **When save is allowed.** Only when the loaded source equals the editor's (`pending` false), the instance is `ready`, and the size is under the limit — otherwise the saved meta (title, bindings, widgets) would describe a different source than the one stored (guide R11).
+
+### What warrants a second pair of eyes
+
+- `save as new` performs `program.open`, a product verb the sandbox package assumes exists (the AGENT-3 vocabulary's five generic kinds). A product without it gets `rejected:unknown verb` in the trace and a stored program nonetheless.
+- The `untouched` heuristic (template id present, no `fromProgramId`) decides whether *load from* asks; an edited template that keeps `id: "my-draft"` is replaced without asking.
+
+### What should be done in the future
+
+- Phase 5: `history` on the record, `rollback`, `diffLines`, the Source & Versions tile; then the script tile's *edit in playground* can seed the store.
+
+### Code review instructions
+
+- `playgroundStore.ts`, then `PlaygroundTile.tsx` (`loaded`/`draftVersion`, `canSave`, `saveAsNew`, `loadFrom`, `BindingsPicker`), then the test file.
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, launcher → playground.
+
+## Step 7: Phase 5 — Source & Versions, and the bug the timeline found
+
+The library now keeps a program's past: `putProgram` on an existing record pushes the replaced version (`{version, source, title, bindings, meta, by, at}`) to the front of `history`, capped at `limits.historyDepth` (10); `rollback(id, version)` is `putProgram` with that entry's fields and `by: "human"`, so it is an ordinary update — a version bump, tiles reload, the history keeps the version that was rolled back from (D6). Records persisted before `history` existed restore with an empty one. `diffLines` is an LCS over lines that produces pbui's `Hunk`/`DiffRow` shape, with `trimContext` keeping only changes and three lines around them. The Source & Versions tile (doc-bound to `program`) has three panes: *source* (a `<pre>` listing with CSS-counter line numbers, copy, *edit in playground*, *ask the agent to improve it*), *versions* (current first, with *roll back to vN* and *edit vN in playground*; a pinned program asks through a `Dialog`), and *diff* (base and target selects, `+a −r`, changes-only or whole file).
+
+The more important outcome of this phase was a bug. The Phase 4 screenshot's timeline showed `draft v2 · error · render · RUNTIME_ERROR · Error: Program instance not found` on every reload of the draft. The cause is in the hook and predates this ticket: when `version` changes, the load effect's cleanup disposes the old instance and the new load effect points `instanceRef` at the next id, and in the same commit the render effect runs — its `meta` and the `status` in its closure still belong to the previous instance — and asks the engine to render an id that is not loaded yet. AGENT-3 never saw it because the error state was overwritten when the load finished; with a registry the error was recorded, counted, and written to the program's `lastError` through `onError`. The fix is one guard: the render effect returns unless `meta.instanceId === instanceRef.current`. A regression test updates a program and asserts no `error` entry and `timings.errors === 0`; in the browser three successive updates of the counter produced zero errors in the timeline.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Guide §5 Phase 5, plus the race the timeline exposed.
+
+**Inferred user intent:** Scene 5 — see what the agent changed between versions and undo a bad update without losing either version.
+
+**Commit (code):** 2bbd806 — "PBUI-SANDBOX-1 Phase 5: Source & Versions tile (ProgramRecord.history, library.rollback, diffLines/trimContext, DiffHunk, confirm on pinned); fix the hook's reload race that rendered the next instance before its load"
+
+### What I did
+
+- `library.ts`: `ProgramVersion`, `history` on `ProgramRecord`, the push in `putProgram`, `rollback`, the restore fill-in; `limits.ts`: `historyDepth`. Tests: history push and cap (depth 2), rollback creates v5 from v2's source by a human, errors for unknown version/program, restore without history.
+- `devtools/diffLines.ts` + test (identical/empty/insert/delete/replace, line numbers, `trimContext`).
+- `devtools/SourceTile/{SourceTile.tsx, SourceTile.module.css, SourceTile.test.tsx}`; registered as `program-source` (doc-bound, with the playground store for *edit in playground*); `versionsOf` and `seedPlaygroundFrom` exported and tested. The script tile's *source* button from Phase 0 now opens it.
+- `useProgramInstance.ts`: the `meta.instanceId !== instanceId` guard and a regression test. The playground's synthetic record and the hook test's record literal gained `history: []`.
+- 103 tests; chat 110; builds.
+- Browser: two `putProgram` updates of the seeded counter (→ v3, "Sum:"), *source* from the tile: 29 numbered lines, versions `v3 current · v2 · v1`, diff `+1 −1` showing `"Total: "` → `"Sum: "`, *roll back to v1* → the dialog "Roll back Minimal Counter to v1?" (the seed is pinned) → confirmed → `v4 · by human`, history `[3, 2, 1]`, the tile back to `Count: 0`, the note `rolled back to v1 (now v4)` on the timeline, and `errorsInTimeline: 0` across all the reloads. Screenshot `various/06-p5-versions-rollback.png`.
+
+### Why
+
+- History on the record (not a side table) keeps export/import and the 1 MiB limit honest: what the library persists is what it counts.
+- Rollback as an update keeps every invariant the tools and tiles already rely on; nothing special-cases "old source".
+
+### What worked
+
+- `DiffHunk` took the `Hunk` from `diffLines` without adaptation; the `trimContext` pass makes a one-line change in a 300-line program readable.
+
+### What didn't work
+
+- `diffLines` emitted `add` before `remove` on a replaced line (`["context", "add", "remove", "context"]`); the tie-break now prefers the removal so a replacement reads `- old / + new`.
+- `data-part="diff-summary"` on a `Text` vanished — the third time a pbui atom dropped a test hook; wrapped in a `span`.
+- The first browser rollback "did nothing": the seeded program is pinned, so the dialog appeared and my script had not clicked through it. Correct behaviour, wrong script.
+
+### What I learned
+
+- The registry turned a silent race into a recorded error; the timeline is a test instrument for the hook, not only a user tool.
+- Timestamps in the versions pane come from `updatedAt` at write time; the seed's `v1` shows its seed time (15:21) and the agent's versions their own — a history is readable without a separate log.
+
+### What was tricky to build
+
+- **Which `at` goes with a history entry.** The entry is the *replaced* version, so its time is that version's `updatedAt`, not the time of the update that replaced it; `rollback` then gives the rolled-back version a new `at` because it is a new write.
+- **The render guard.** The obvious guards (`status === "loading"`) do not work because `status` in the effect's closure is the previous render's; the instance id carried by `meta` is the only value that names which instance the effect's inputs belong to.
+
+### What warrants a second pair of eyes
+
+- `history` stores `meta` and `bindings` by reference from the replaced record; records are treated as immutable everywhere (`commit` replaces objects), so sharing is safe, but a future in-place edit would alias.
+- `rollback` ignores `pinned` at the library level; the tile asks. The agent's `sandbox_update_app` goes through the policy gate, so a model cannot roll back a pinned program without a proposal either way.
+
+### What should be done in the future
+
+- Phase 6: `attachSandbox(…, instances)` and `running` in `sandbox_describe`, the README, stories, a Playwright pass over the five scenes, the guide as built, close-out.
+
+### Code review instructions
+
+- `library.ts` (`putProgram`'s history block, `rollback`, `restore`), `useProgramInstance.ts` (the guard), `diffLines.ts`, then `SourceTile.tsx` (`DiffPane`, the confirm path).
+- `pnpm --filter @hyperslop-systems/pbui-sandbox test`; in the demo, update a program twice from the console (`__pbuiDemo.library.putProgram({ id: "prg-1", … })`) and press *source*.
+
+## Step 8: Phase 6 — the agent learns what is running; close-out
+
+The last phase connects the registry to the agent and closes the books. `attachSandbox(library, engine, instances)` now takes the registry; the tools get `getInstances()`; `sandbox_describe` reports, per program, `history` (how many versions are kept) and, when a registry is attached, `running: [{ viewId, version, status, tiles, lastRenderMs?, renders, events, errors, timeouts, error? }]` — so a model asked "why is my tile slow" or "is it erroring" can read the answer rather than guess, and a program with no registry attached simply has no `running` key. The README gained an engines section (the old text still called QuickJS "planned") and a devtools table; the REPL help gained the closure-capture line from step 4; the guide's §5 was rewritten as built, with R15 for the race and a list of the API additions.
+
+Two things in the plan were not done, and the guide says so: storybook stories (the package has storybook scripts but no `.storybook` configuration, so stories would not run) and a checked-in Playwright test over the five scenes (each scene was verified by hand through Playwright MCP with a screenshot). At the user's request, mid-phase, the demo's masthead legend of presentation-type counts was removed — it made the header grow vertically; the masthead is now one 30 px row.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1); and mid-turn: "also btw remove the "product / category / metal ..." legend from the header, it just makes it grow vertically"
+
+**Assistant interpretation:** Finish Phase 6 — agent-side integration, docs, verification — and remove the demo header's legend.
+
+**Inferred user intent:** A complete, documented feature with the agent aware of it, and a demo header that stays one line.
+
+**Commit (code):** 793f299 — "PBUI-SANDBOX-1 Phase 6: attachSandbox(…, instances) and running[]/history in sandbox_describe; README devtools section; REPL help on closure capture"; b8f69b5 — "demo: drop the presentation-type legend from the masthead (it grew the header vertically)"
+
+### What I did
+
+- `sandboxTools.ts`: `getInstances?()`, `running(programId)`, `history` in `summarise`; `createPbuiChat.tsx`: `instances` state, `getInstances`, `attachSandbox(…, nextInstances)`; demo: `chat.attachSandbox(library, engine, instances)`. Test: a registry with a mounted, erroring snapshot is reported as `{ viewId, version: 1, status: "error", tiles: 2, lastRenderMs: 101.3, renders: 3, events: 1, errors: 1, timeouts: 1, error: "render: RUNTIME_TIMEOUT: interrupted" }`, `[]` after unmount, and `undefined` without a registry. pbui-chat: 111 tests.
+- `App.tsx`/`App.module.css` in the demo: `Legend` component, its imports, `LEGEND_TYPES` and the `.legend` rule removed.
+- README rewritten; REPL help line; guide §5 as built, R15, §9 note; index status; tasks all checked; this step.
+- Browser: rebuilt and restarted; `legendPresent: false`, masthead 29.5 px; `sandbox-repl, sandbox-timeline, sandbox-playground, script-app, program-source, program-inspector` all mounted; instances `draft:ready, prg-1:ready`; `errors: 0`. Screenshot `various/07-p6-all-tiles.png`.
+
+### Why
+
+- `running` is the one thing the agent could not learn before: the tools knew the library and the layout, not the runtime.
+- Saying what was not built is part of closing out; an intern reading the plan must not go looking for stories that do not exist.
+
+### What worked
+
+- The registry's `publish` made the tools test trivial: no tile, no hook, just a snapshot written by hand.
+
+### What didn't work
+
+- N/A in this step.
+
+### What I learned
+
+- pbui atoms (`Text`, `Toolbar`) take a fixed prop list and drop the rest; `data-*` test hooks belong on a wrapper element. It cost three small fixes across the phases; it is now a rule in my head and in this diary.
+
+### What was tricky to build
+
+- Nothing in this step was tricky; the phase was integration and writing.
+
+### What warrants a second pair of eyes
+
+- `running` includes the playground's `draft` instance when the agent describes — no program record has id `draft`, so it never appears under a program's `running`; but if a product ever stores a program with that id, the two would merge. Reserving the id in `putProgram` would close that.
+- `sandbox_describe`'s output grew (`history`, `running`); the prompt's size is the model's context. Twenty programs with two instances each is still small.
+
+### What should be done in the future
+
+- Storybook stories once the package has a `.storybook` config; a Playwright test file over the five scenes (the MCP steps in steps 2–7 are the script).
+- Reserve `draft` as a program id in the library.
+- Guide Q3: a `program.rollback` verb if a product wants rollbacks in the trace.
+
+### Code review instructions
+
+- `packages/pbui-chat/src/tools/sandboxTools.ts` (`running`, `summarise`), `createPbuiChat.tsx` (`attachSandbox`), the new test in `sandboxTools.test.ts`; `packages/pbui-sandbox/README.md`.
+- `pnpm --filter @hyperslop-systems/pbui-chat test`; `pnpm --filter @hyperslop-systems/pbui-sandbox test`; `make chat-serve` and open the launcher's SANDBOX group.
+
+### Technical details
+
+- Commits, in order: `2c031a6` ticket + guide, `19ec9ad` guide fix, `62bf01a` P0, `b8d26a1` diary 2, `850089b` P1, `05bd651` diary 3, `a57e818` P2, `6056afa` diary 4, `c6b4529` P3, `80a4bcf` diary 5, `c2ad3cc` P4, `cc316a7` diary 6, `2bbd806` P5, `8afe1ea` diary 7, `b8f69b5` legend, `793f299` P6.

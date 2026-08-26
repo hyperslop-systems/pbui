@@ -1,0 +1,19 @@
+/* A single row that scrolls sideways rather than wrapping: a workspace strip
+ * that grows a second line pushes the tiles down and reflows every app. */
+.strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  grid-template-columns: max-content;
+  grid-template-rows: max-content;
+  align-items: center;
+  gap: var(--pbui-space-2);
+  overflow-x: auto;
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: max-content;
+  grid-template-rows: max-content;
+}

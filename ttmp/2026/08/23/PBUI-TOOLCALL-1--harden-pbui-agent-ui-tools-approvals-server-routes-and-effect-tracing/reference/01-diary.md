@@ -1,0 +1,1886 @@
+---
+Title: Diary
+Ticket: PBUI-TOOLCALL-1
+Status: active
+Topics:
+    - chat
+    - frontend
+    - backend
+    - onboarding
+DocType: reference
+Intent: long-term
+Owners:
+    - manuel
+RelatedFiles:
+    - Path: repo://cmd/pbui-chat/cmds/serve.go
+      Note: |-
+        Loopback-only development authorization (commit a982f98)
+        Persistent sessions/title index CLI flag (commit a34cc68)
+    - Path: repo://go.mod
+      Note: Pinocchio v0.11.14 release consumption (commit ac76a40)
+    - Path: repo://packages/pbui-chat/demo/src/approvalConsumption.ts
+      Note: Durable demo approval spent markers from PR review
+    - Path: repo://packages/pbui-chat/demo/src/pbui/vocabulary.test.ts
+      Note: Executable demo handoff and trace vocabulary contract (commit 7ecc676)
+    - Path: repo://packages/pbui-chat/package.json
+      Note: Exact chat-provider 0.6.0 consumer
+    - Path: repo://packages/pbui-chat/src/adapters/traceAdapter.ts
+      Note: Live/hydrated effect envelope decoding (commit 56a01b6)
+    - Path: repo://packages/pbui-chat/src/composer/Composer/Composer.tsx
+      Note: Exact conversation draft selection (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/conversations/ConversationScope.tsx
+      Note: Closed/opening/failed/closing UI and recovery actions (commit c5365e6)
+    - Path: repo://packages/pbui-chat/src/conversations/conversations.test.tsx
+      Note: Cross-conversation and failed-send context regressions (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/conversations/registry.ts
+      Note: Explicit lifecycle and durable versioned title outbox (commits c5365e6, 6a8d8c6)
+    - Path: repo://packages/pbui-chat/src/createPbuiChat.tsx
+      Note: |-
+        Request-identity send context and failure cleanup (commit 7b3ccd1)
+        One ledger injected into every conversation toolset (commit f320dfc)
+        Product-wide gateway and effect reporter wiring (commit 1d05677)
+    - Path: repo://packages/pbui-chat/src/router/createVerbRouter.ts
+      Note: Typed parent effect correlation on verb reports (commit 64b5f9d)
+    - Path: repo://packages/pbui-chat/src/store/chatStore.test.ts
+      Note: Draft isolation/clear/forget regressions (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/store/chatStore.ts
+      Note: Conversation-keyed draft ownership (commit 7b3ccd1)
+    - Path: repo://packages/pbui-chat/src/tools/agentEffectGateway.test.ts
+      Note: Race, retry, conflict, release and envelope regressions (commit 1d05677)
+    - Path: repo://packages/pbui-chat/src/tools/agentEffectGateway.ts
+      Note: |-
+        Unified effect identity, approval lifecycle, execution and report outbox (commit 1d05677)
+        Persistent retry outbox (commit 56a01b6)
+    - Path: repo://packages/pbui-chat/src/tools/approvalLedger.ts
+      Note: |-
+        Canonical shared approval authority (commit 69678a3)
+        Reservation/finalization/release state machine (commit 1d05677)
+    - Path: repo://packages/pbui-chat/src/tools/conversationTools.ts
+      Note: |-
+        Sender/target/prompt/reference-bound approvals (commit f320dfc)
+        Gateway-routed handoff effects (commit 1d05677)
+    - Path: repo://packages/pbui-chat/src/tools/sandboxTools.ts
+      Note: |-
+        Canonical sandbox approval subjects (commit f320dfc)
+        Gateway-routed library and program effects (commit 1d05677)
+    - Path: repo://packages/pbui-chat/src/tools/workbenchTools.ts
+      Note: |-
+        Canonical workbench and raw approval subjects (commit f320dfc)
+        Gateway-routed verbs and raw mutations (commit 1d05677)
+        Revision-bound atomic gateway batches (commit 27b0025)
+        Unsafe undo API/tokens removed during Phase 5 audit (commit 1d17631)
+    - Path: repo://packages/pbui-chat/src/types.ts
+      Note: Public effect correlation trace fields (commit 64b5f9d)
+    - Path: repo://packages/pbui-sandbox/src/host/useProgramInstance.ts
+      Note: Per-view serialized program event transitions
+    - Path: repo://packages/pbui-workbench/src/components/Launcher/Launcher.tsx
+      Note: Synchronous exact launcher invoker capture (commit 01452a8)
+    - Path: repo://packages/pbui-workbench/src/components/SplitPane/SplitPane.tsx
+      Note: Divider-aware pointer and accessible dynamic bounds (commit 01452a8)
+    - Path: repo://packages/pbui-workbench/src/createWorkbench.tsx
+      Note: Shadow preflight and atomic plan commit (commit 27b0025)
+    - Path: repo://packages/pbui-workbench/src/document.ts
+      Note: Singleton-safe declarative workspace layout
+    - Path: repo://packages/pbui-workbench/src/verbs.ts
+      Note: |-
+        Strict verbs and rendered pane constraints (commits 27b0025, ceaea2a)
+        Divider-aware pane geometry across all workbench paths (commit 01452a8)
+    - Path: repo://pkg/chatserver/authorization.go
+      Note: Required principal/session policy contract (commit a982f98)
+    - Path: repo://pkg/chatserver/authorization_test.go
+      Note: Cross-principal HTTP and WebSocket regressions (commit a982f98)
+    - Path: repo://pkg/chatserver/handlers.go
+      Note: |-
+        Ownership claim and list filtering (commit a982f98)
+        Authenticated effect submission handler (commit 56a01b6)
+        Version-aware title PATCH conflict response (commit 5916dc0)
+        Strict executor manifest acknowledgement and result validation
+        Count only accepted messages
+    - Path: repo://pkg/chatserver/scripted/scenarios.go
+      Note: Rendered revision-bound atomic workbench scenario (commit 01452a8)
+    - Path: repo://pkg/chatserver/server.go
+      Note: Authorized route and subscribe boundaries (commit a982f98)
+    - Path: repo://pkg/chatserver/sessions.go
+      Note: Atomic title revision CAS and SQLite migration (commit 5916dc0)
+    - Path: repo://pkg/pbuichat/plugin.go
+      Note: Strict browser effect decoding and digest validation (commit 56a01b6)
+    - Path: repo://pkg/pbuichat/trace.go
+      Note: |-
+        Idempotent effect recording and durable projection (commit 56a01b6)
+        Durable verb/effect correlation (commit 64b5f9d)
+    - Path: repo://proto/hyperslop/pbui/chat/v1/chat.proto
+      Note: |-
+        Durable effect envelope and command schema (commit 56a01b6)
+        Generated correlation wire fields (commit 64b5f9d)
+    - Path: repo://src/components/Dialog/Dialog.tsx
+      Note: Dialog focus restoration (commit ab2a629)
+    - Path: repo://src/focus.ts
+      Note: Shared transient-surface focus return ownership (commit ab2a629)
+    - Path: repo://src/presentation/createPbui.tsx
+      Note: ObjectMenu invoker capture and restoration (commit ab2a629)
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/reference/02-phase-2-5-requirement-to-evidence-audit.md
+      Note: Requirement map and exact Phase 5 blocker
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-correlated-verb-hydrated.png
+      Note: Hydrated parent effect correlation on high-level verb
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-hydrated.png
+      Note: Browser-reload effect hydration evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-live.png
+      Note: Rendered live canonical effect envelope inspection
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase2-effect-inspector-server-restart.png
+      Note: SQLite server-restart hydration evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-closed.png
+      Note: Rendered explicit closed state
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-open-failed.png
+      Note: Rendered bounded opening timeout and retry UI
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-reopened.png
+      Note: Rendered reopen with transcript
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-lifecycle-retry-recovered.png
+      Note: Rendered recovery after server restart
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-conflict-visible.png
+      Note: Rendered cross-client title conflict without local revert
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-human-synchronized.png
+      Note: Rendered human title at server revision 2
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-offline-queued.png
+      Note: Rendered local-first offline title and retry state
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-retry-synchronized.png
+      Note: Rendered outbox retry success
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase3-title-server-restart-persisted.png
+      Note: Rendered SQLite-backed title after server restart
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase4-agent-atomic-split-and-refusal.png
+      Note: Rendered agent atomic split and refusal evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase4-object-menu-action-focus.png
+      Note: Rendered ObjectMenu action and focus evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase4-rendered-pane-minimum.png
+      Note: Rendered pane minimum evidence
+    - Path: repo://ttmp/2026/08/23/PBUI-TOOLCALL-1--harden-pbui-agent-ui-tools-approvals-server-routes-and-effect-tracing/various/phase5-executor-acceptance-evidence.json
+      Note: Installed-package and real two-tab acceptance
+    - Path: ws://react-chat/ttmp/2026/08/23/REACT-CHAT-TOOL-RUNTIME-1--make-browser-tool-execution-idempotent-single-owner-and-manifest-safe/design-doc/02-concise-frontend-tool-executor-ownership-protocol.md
+      Note: Cross-repository design adopted in Diary Step 18
+ExternalSources: []
+Summary: Chronological investigation, design, validation, and delivery record for PBUI-owned agent-to-UI hardening work.
+LastUpdated: 2026-08-23T17:25:00-04:00
+WhatFor: Let implementers retrace route security, approval, effect tracing, conversation state, workbench, and accessibility design decisions.
+WhenToUse: When implementing, reviewing, resuming, or testing PBUI-TOOLCALL-1.
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Diary
+
+## Goal
+
+Record how PBUI-AGENT-4 findings were converted into a repository-owned architecture and implementation guide, with validation and delivery evidence.
+
+## Step 1: Partition PBUI-owned fixes and design shared primitives
+
+I separated PBUI responsibilities from the Pinocchio pending-call manager and react-chat browser runtime. The PBUI guide covers route authorization, unified approvals, effect tracing, drafts/lifecycle/title/send correctness, workbench semantics, focus, contracts, pane sizing, and dependency integration.
+
+The document preserves PBUI's typed object/verb architecture. It does not propose direct model-to-DOM control or three separate local patches for approval. Instead it introduces one approval ledger and one effect gateway so workbench, sandbox, and conversation tools share exact one-shot semantics and causal audit records.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Create a new docmgr ticket for each repo and write a detailed design doc for each.\n\nFor each repo:\nCreate  a detailed analysis / design / implementation guide that is for a new intern, explaining all the parts of the system needed to understand what it is, with prose paragraphs and bullet point sand pseudocode and diagrams and api references and file references. It should be very clear and technical. Store in the ticket and the nupload to remarkable.\n\n[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Create a new PBUI ticket with a standalone intern guide for every PBUI-owned fix, validate it, and upload it.
+
+**Inferred user intent:** Turn the review findings into an actionable repository-specific handoff instead of leaving implementation scattered across the broader PBUI-AGENT-4 review.
+
+### What I did
+
+- Created `PBUI-TOOLCALL-1` and tasks for writing, validation, and delivery.
+- Reused source- and browser-backed PBUI-AGENT-4 evidence while independently mapping the affected PBUI files.
+- Explained package layers, tool/verb/effect distinctions, server route matrix, factory policy paths, conversation/store ownership, workbench mutation paths, and UI primitives.
+- Wrote target APIs, diagrams, pseudocode, phased file-level changes, cross-repo rollout, test matrices, risks, and intern checklist.
+
+### Why
+
+- PBUI owns the product policy and actual UI state even when Pinocchio/chat-provider transport the call.
+- Local factory `spent` sets cannot enforce durable cross-factory approval.
+- Tool traffic alone cannot explain raw/sandbox effects; trace correlation needs a product effect envelope.
+- The shared draft/lifecycle/title/send defects are ownership mistakes adjacent to the tool path and should be fixed in the same PBUI implementation plan.
+
+### What worked
+
+- The existing per-conversation tool closure is correct and can carry invocation/effect context.
+- `VerbRouter` already centralizes validation, actor attribution, and ordered trace reporting.
+- Workbench/sandbox factories expose focused seams for replacing policy callbacks with a gateway.
+
+### What didn't work
+
+N/A during document authoring. No PBUI implementation behavior was changed.
+
+### What I learned
+
+- Server auth and Pinocchio invocation matching solve different problems and both are required.
+- Approval reservation/finalization must account for a local effect succeeding while result delivery fails.
+- Conversation drafts should be keyed narrowly; duplicating the full chat store would break intentionally shared watchlist/inspector state.
+
+### What was tricky to build
+
+The guide spans frontend, Go server, workbench, sandbox, and accessibility without becoming a second monolithic rewrite. The phased plan starts with three Critical containment changes, then introduces shared primitives before migrating individual effects. Cross-repo dependency work is explicit so PBUI does not reimplement Pinocchio/chat-provider state machines.
+
+### What warrants a second pair of eyes
+
+- Choice and persistence boundary for the approval ledger.
+- Effect envelope payload/redaction and relation to existing verb trace.
+- Workbench atomic-plan and revision format.
+- Secure development defaults and integration with `pkg/authkit`.
+
+### What should be done in the future
+
+- Implement route authorization and conversation-keyed drafts first alongside the Pinocchio containment bump.
+- Introduce approval/effect primitives before editing individual factory behavior.
+- Validate with live multi-conversation, multi-tab, double-response, reconnect, and keyboard browser tests.
+
+### Code review instructions
+
+- Start with `pkg/chatserver/server.go`, `packages/pbui-chat/src/createPbuiChat.tsx`, and the three tool factories.
+- Map each code change to one invariant and one targeted test from the design.
+- Run all PBUI JS/TS/Go/package/consumer checks after dependency bumps.
+
+### Technical details
+
+The two central product APIs are:
+
+```ts
+ApprovalLedger.consume(capability, canonicalSubject, effectId)
+AgentEffectGateway.execute({ invocation, effect, policy, approval, expectedRevision, perform })
+```
+
+## Step 2: Validate the guide and current PBUI baseline
+
+The finished guide is 873 lines and 4,360 words. Frontmatter and doctor pass, both Mermaid diagrams render, 208 pbui-chat tests pass, and focused Go chatserver/pbuichat packages pass.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 1)
+
+**Assistant interpretation:** Validate that the repository-specific guide is structurally sound, renderable, and based on a green current subsystem baseline.
+
+**Inferred user intent:** Deliver a trustworthy intern handoff with concrete review/validation commands.
+
+### What I did
+
+- Ran frontmatter validation and `docmgr doctor --ticket PBUI-TOOLCALL-1`.
+- Ran the complete pbui-chat test suite (21 files, 208 tests).
+- Ran `GOWORK=off go test ./pkg/chatserver ./pkg/pbuichat -count=1`.
+- Rendered both Mermaid diagrams with Mermaid CLI.
+- Related the guide to eight focused PBUI source files.
+
+### Why
+
+- The ticket spans TypeScript tool/runtime integration and Go server boundaries.
+- PDF delivery must not degrade diagrams into parser-error code blocks.
+
+### What worked
+
+```text
+pbui-chat: 21 files, 208 tests passed
+pkg/chatserver: ok
+pkg/pbuichat: ok
+Doctor: all checks passed
+Mermaid: 2/2 PASS
+```
+
+### What didn't work
+
+The first Mermaid command could not find `mmdc` on the active PATH:
+
+```text
+/bin/bash: mmdc: command not found
+```
+
+The rerun used `/home/manuel/.nvm/versions/node/v22.22.1/bin/mmdc` with a no-sandbox Puppeteer config and both diagrams passed.
+
+### What I learned
+
+- Existing green suites establish baseline but do not cover the new multi-principal/multi-tab/approval replay matrices.
+- The repository's current source boundaries align with the guide's phased ownership.
+
+### What was tricky to build
+
+The guide deliberately validates only affected package baselines now; broader CI/consumer tests belong to implementation dependency bumps. This avoids implying documentation-only changes prove future cross-repo behavior.
+
+### What warrants a second pair of eyes
+
+- Verify authkit integration and development defaults before any server implementation.
+- Review approval/effect persistence choices for privacy and atomicity.
+
+### What should be done in the future
+
+- Implement the phased design and run the complete PBUI CI/protocol/package/browser matrix.
+
+### Code review instructions
+
+- Use the invariant list and phase exit conditions as the review checklist.
+- Re-run doctor, focused tests, and Mermaid rendering after design edits.
+
+### Technical details
+
+Renderer evidence is `various/01-mermaid-render.txt`; focused validation commands and outcomes are recorded above.
+
+## Step 3: Deliver the guide to a canonical reMarkable path
+
+After a successful dry run, the guide uploaded and was verified under the unique `23-deliveries` root. The first parallel upload attempt exposed an rmapi directory-creation race, so canonical delivery was repeated sequentially rather than trusting success output alone.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 1)
+
+**Assistant interpretation:** Upload the validated PBUI guide and preserve verifiable delivery evidence.
+
+**Inferred user intent:** Make the design available for offline reading on reMarkable at a dependable path.
+
+### What I did
+
+- Dry-ran the exact final bundle destination.
+- Uploaded one design-document PDF with ToC depth 2.
+- Verified the exact remote listing.
+- Added `various/02-remarkable-delivery.md`.
+
+### Why
+
+- CLI success alone was insufficient after duplicate remote directory names appeared.
+- A unique parent avoids ambiguous rmapi path resolution without destructive remote cleanup.
+
+### What worked
+
+```text
+OK: uploaded PBUI-TOOLCALL-1 Agent UI Hardening Guide.pdf -> /ai/2026/08/23-deliveries/PBUI-TOOLCALL-1
+[f] PBUI-TOOLCALL-1 Agent UI Hardening Guide
+```
+
+### What didn't work
+
+Parallel uploads reported repeated warnings:
+
+```text
+remote tree has changed, refresh the file tree
+```
+
+and created three collections named `23`. Pinocchio/react-chat exact-path listings initially failed. No remote deletion was attempted because duplicate-name cleanup by path is unsafe.
+
+### What I learned
+
+- reMarkable directory creation must be serialized when several uploads share a missing parent.
+- Verification must use an unambiguous exact path.
+
+### What was tricky to build
+
+The first PBUI file itself was visible, but the shared parent was ambiguous. A new unique `23-deliveries` root allowed sequential, verifiable delivery while preserving unknown remote content.
+
+### What warrants a second pair of eyes
+
+- Optional manual cleanup of duplicate `23` collections should use remote object IDs, not names.
+
+### What should be done in the future
+
+- Use the canonical delivery path recorded in `various/02-remarkable-delivery.md`.
+
+### Code review instructions
+
+- Open the PDF and inspect both Mermaid diagrams and the ToC.
+
+### Technical details
+
+Canonical path: `/ai/2026/08/23-deliveries/PBUI-TOOLCALL-1`.
+
+## Step 4: Isolate conversation drafts and send operations
+
+I began Phase 0 with the two browser-state containment defects that can land independently of server authorization. Composer text and inserted references now belong to explicit conversation ids, while intentionally product-wide inspector, focus, watchlist, table, and tile state remain shared.
+
+Send context is now keyed by the exact `SendMessageRequest` object using a `WeakMap`, not by conversation id. This gives concurrent same-conversation sends distinct identity and guarantees `finally` cleanup when WebSocket or manifest preflight fails before `sendMessageBody` executes.
+
+### Prompt Context
+
+**User prompt (verbatim):** "I guess it's time now to address PBUI-TOOLCALL-1
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Resume the PBUI remediation ticket, account for landed cross-repository prerequisites, and implement its phases in tested commits.
+
+**Inferred user intent:** Move from architecture review into concrete PBUI security and correctness remediation.
+
+**Commit (code):** `7b3ccd1ec5ac647a396f9ae6408fb7338ff2a465` — "fix(pbui-chat): isolate conversation send state"
+
+### What I did
+
+- Replaced the singleton `draft` with `drafts[conversationId]` and explicit draft APIs.
+- Updated Composer and stories to resolve an exact conversation before reading/writing/sending.
+- Added clear/forget semantics scoped to one conversation.
+- Replaced conversation-keyed pending send context with request-identity `WeakMap` state and `try/finally` cleanup.
+- Added draft isolation and failed-preflight regression coverage.
+- Confirmed chat-provider 0.5.0 is already published under npm's `next` tag and PBUI pins that exact version.
+
+### Why
+
+- Two open tiles must never mirror text/reference chips.
+- A failed or concurrent send must not attach one operation's references to another message.
+
+### What worked
+
+```text
+pbui-chat typecheck                 # PASS
+pbui-chat tests                     # 22 files, 211 PASS
+```
+
+### What didn't work
+
+The first typecheck inferred the constant empty draft's `refs` as `{}` and rejected dynamic reference indexing:
+
+```text
+TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'Record<string, Reference<...>> | {}'.
+```
+
+Typing the stable empty value as `ComposerDraft` fixed the selector without a cast or widened store state.
+
+### What I learned
+
+- `sendMessageBody` receives the same request object passed to chat-provider `send`, so object identity provides an operation key without a protocol/API change.
+- npm `latest` remains chat-provider 0.4.2, but exact 0.5.0 is published under `next`; PBUI's exact dependency therefore resolves the hardened runtime.
+
+### What was tricky to build
+
+A per-conversation queue still cannot distinguish two identical concurrent prompts. Request-object identity does, and a `WeakMap` avoids retention after operation completion. The test blocks the mocked send long enough to invoke body construction with that exact object, proving isolation through the real callback seam.
+
+### What warrants a second pair of eyes
+
+- Decide draft persistence/eviction policy before adding durable storage.
+- Review whether forgetting a conversation should call `forgetDraft` directly in the registry integration.
+
+### What should be done in the future
+
+- Implement explicit chatserver principal/session authorization under task `k5uo`.
+- Continue unified approval/effect gateway phases after the security boundary.
+
+### Code review instructions
+
+- Start in `chatStore.ts`, then trace conversation resolution in `Composer.tsx`.
+- Review `sendTo` and `sendMessageBodyFor` together; their shared request object is the invariant.
+- Run `pnpm --filter @hyperslop-systems/pbui-chat typecheck` and `pnpm --filter @hyperslop-systems/pbui-chat test`.
+
+### Technical details
+
+The react-chat Go release failure was diagnosed separately: the repository is `github.com/go-go-golems/react-chat`, but its module declared nonexistent `github.com/go-go-golems/chat-overlay`. Commit `4c7ffae` fixes the module path and PR 13 carries it; the already-pushed invalid v0.0.2 tag should not be moved, so the next valid Go release is v0.0.3.
+
+## Step 5: Fail closed at every chat session boundary
+
+I added a required chatserver authorization contract and applied it before every session operation. HTTP routes now authenticate once and authorize explicit actions, lists are filtered through read policy, creation claims ownership before returning an id, and WebSocket subscriptions reuse the authenticated HTTP principal inside sessionstream's subscribe authorizer.
+
+The built-in permissive policy is explicitly named `DevelopmentAuthorizer`; callers must opt into it, and the demo CLI refuses non-loopback binding while using it. There is no silent unauthenticated server default.
+
+### Prompt Context
+
+**User prompt (verbatim):** "continue
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Continue implementing the next PBUI-TOOLCALL-1 phase without stopping at the browser-state commit.
+
+**Inferred user intent:** Complete the server security boundary and proceed through the remediation plan with tests and bookkeeping.
+
+**Commit (code):** `a982f980a24d88661280a30aff9d5b0efb02448e` — "feat(chatserver): authorize session routes"
+
+### What I did
+
+- Added principal, action, authentication, ownership-claim, list, and session-access contracts.
+- Made `Options.Authorizer` mandatory and fail-closed during construction.
+- Wrapped create/list/read/retitle/send/stop/manifest/result/verb/WS routes.
+- Filtered session lists and installed sessionstream's subscription authorizer.
+- Restricted the development-authorized CLI to loopback hosts.
+- Added unauthenticated, cross-principal, existence-nondisclosure, list-filtering, and WebSocket-denial tests.
+
+### Why
+
+A caller knowing a session UUID must not gain snapshot, mutation, tool-result, trace, or streaming access. Authorization must precede body parsing and domain side effects.
+
+### What worked
+
+- `go test ./... -count=1`: passed.
+- `make lint`: passed with zero issues.
+- `make gosec`: passed with zero issues.
+- PBUI chat typecheck and all 211 tests: passed.
+
+### What didn't work
+
+The first focused Go test invocation failed because `go test`/vet rejected formatting a cleanup function with `%v`:
+
+```text
+pkg/chatserver/authorization_test.go:109:49: (*testing.common).Fatalf format %v arg cleanup is a func value, not called
+```
+
+The assertion now reports boolean presence for the server and cleanup function.
+
+### What I learned
+
+Sessionstream already exposes `WithSubscribeAuthorizer`; the upgraded request context survives into subscribe handling, so PBUI can enforce the same principal without parsing protocol frames itself.
+
+### What was tricky to build
+
+Authorization has two moments for a newly minted UUID: permission to create and atomic policy ownership claim. Claiming before indexing/responding avoids returning an unowned capability. For WebSockets, authenticating only the upgrade is insufficient because each subscribe names a session; both layers are now enforced.
+
+### What warrants a second pair of eyes
+
+- Production authorizers must persist ownership consistently with their identity store; the development implementation intentionally does not model tenancy.
+- Manifest/result policy has explicit actions but executor `ClientID` binding remains a coordinated protocol-v2 task.
+
+### What should be done in the future
+
+Implement the canonical approval ledger and effect gateway, then lifecycle/workbench/focus phases.
+
+### Code review instructions
+
+- Start at `authorization.go`, then inspect wrappers and route matrix in `server.go`.
+- Verify create/list handling in `handlers.go` and subscribe policy in `NewServer`.
+- Run `go test ./... -count=1`, `make lint`, and `make gosec`.
+
+### Technical details
+
+Foreign existing and missing session ids both return `403 forbidden` after successful authentication. Public health and vocabulary endpoints remain outside session authorization by design.
+
+## Step 6: Establish the canonical approval authority
+
+I printed both the remaining ticket plan and a dedicated Phase 1 start slip before changing code. I then introduced the shared approval vocabulary and an offline ledger implementation as the first independently reviewable Phase 1 commit; tool-factory migration follows in the next step rather than mixing representation, authority, and call-site changes in one diff.
+
+Subjects now canonicalize domain inputs, sender, scope, targets, and reference keys before SHA-256 digesting. Capabilities are immutable, expiring, bounded, cannot be rebound to a different subject, and atomically move from available to consumed once across every caller sharing the ledger.
+
+### Prompt Context
+
+**User prompt (verbatim):** "continue. Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done.
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Continue the ticket, print its overall plan, and use thermal start/completion gates around every subsequent implementation phase.
+
+**Inferred user intent:** Keep the long remediation sequence physically visible and make phase boundaries explicit before code starts and after validation succeeds.
+
+**Commit (code):** `69678a32e7620aaa297c9db8e8ae94ec99d003e3` — "feat(pbui-chat): add canonical approval ledger"
+
+### What I did
+
+- Printed the overall six-phase ticket work slip and Phase 1 start slip successfully.
+- Added canonical approval subjects, capabilities, consume results, and ledger interface.
+- Added deterministic JSON normalization and SHA-256 subject digests.
+- Added bounded, expiring `InMemoryApprovalLedger` for offline products/tests.
+- Added grant, lookup, exact-capability validation, mismatch, expiry, and global consume-once tests.
+- Committed the ledger core separately before factory integration.
+
+### Why
+
+Factory-local callback signatures and `spent` sets cannot enforce one authority across workbench, sandbox, conversation, and raw effects. A canonical subject and shared CAS-like consume operation are the minimum safe seam.
+
+### What worked
+
+```text
+pbui-chat typecheck                     PASS
+pbui-chat tests                         23 files, 216 PASS
+thermal overall plan                    printed
+thermal Phase 1 start                   printed
+```
+
+### What didn't work
+
+N/A
+
+### What I learned
+
+- Browser and current Node test runtimes both expose Web Crypto SHA-256, avoiding a Node-only hashing dependency.
+- Treating target/reference collections as sorted sets prevents ordering differences from changing authority while argument arrays preserve semantic order.
+
+### What was tricky to build
+
+Canonical JSON must reject non-finite numbers, normalize negative zero, sort object keys recursively, omit undefined object fields, and preserve array order. The ledger also compares the complete immutable capability returned by lookup, so a caller cannot extend expiry by forging a new object with the same id and digest.
+
+### What warrants a second pair of eyes
+
+- Confirm whether a production server-backed ledger should retain consumed records beyond capability expiry for audit/replay diagnostics.
+- The current consume operation intentionally fails closed by burning authority before a later effect; the Phase 2 gateway should add reservation/finalization semantics for revision-rejected local effects.
+
+### What should be done in the future
+
+- Replace every factory-local approval callback/set with this shared ledger.
+- Expose product-level grant/lookup integration for approved `pbui_propose` results.
+
+### Code review instructions
+
+- Review `approvalLedger.ts` from `createApprovalSubject` through `consume` invariants.
+- Run `pnpm --filter @hyperslop-systems/pbui-chat typecheck` and `pnpm --filter @hyperslop-systems/pbui-chat test`.
+
+### Technical details
+
+Default local retention is 1,000 entries with a five-minute TTL. Unconsumed expired entries are pruned; consumed entries remain bounded so replay reports `already-used` until eviction.
+
+## Step 7: Replace every local approval island
+
+I migrated workbench, raw mutation, sandbox, and cross-conversation tools to the product-wide ledger and removed the four incompatible callback APIs plus both factory-local `spent` sets. `createPbuiChat` now injects one ledger into every per-conversation toolset while each factory constructs a domain-specific canonical subject with the exact sender and tool-call effect identity.
+
+The demo now uses one timeline-backed ledger adapter: it still treats hydrated `pbui_propose` results as the human-decision source of truth, but consumption is shared globally instead of living independently in tool closures. I validated the public package and printed the Phase 1 completion slip with the integration commit QR.
+
+### Prompt Context
+
+**User prompt (verbatim):** "commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Finish Phase 1 in focused increments, preserving a detailed implementation and validation trail.
+
+**Inferred user intent:** Make approval replay prevention an actual shared runtime invariant, not merely a new unused abstraction.
+
+**Commit (code):** `f320dfc55973fc4c5518b872cba5f92da76b8377` — "feat(pbui-chat): unify consequential approvals"
+
+### What I did
+
+- Added `approvalLedger` as one top-level `createPbuiChat` dependency.
+- Injected exact `senderConversationId` and the same ledger into every per-session factory.
+- Canonicalized workbench verbs, raw mutation batches, full sandbox writes, and conversation target/prompt/reference subjects.
+- Correlated consumption with conversation id + provider tool-call id.
+- Removed public `isApproved` and `isRawApproved` callback seams and local spent sets.
+- Migrated demo timeline approval lookup and all affected tests.
+- Added a real-ledger conversation regression proving target/prompt/reference mismatch does not consume the capability.
+- Printed the Phase 1 completion status slip.
+
+### Why
+
+An approval spent in one factory must not remain usable in another factory, recreated closure, or neighboring conversation. Domain callbacks also made it impossible to audit one canonical authority contract.
+
+### What worked
+
+```text
+pbui-chat typecheck                     PASS
+pbui-chat tests                         23 files, 217 PASS
+pbui-chat production build              PASS
+Phase 1 completion work slip            printed
+```
+
+### What didn't work
+
+The first migration typecheck correctly failed at every old callback and every direct factory test that did not yet provide `senderConversationId`. This was expected compiler evidence that no hidden compatibility path remained. The concrete failures included:
+
+```text
+'isApproved' does not exist in type ...
+'isRawApproved' does not exist in type ...
+Property 'senderConversationId' is missing ...
+```
+
+Tests were migrated to small `ApprovalLedger` fakes that inspect canonical subjects, plus real-ledger integration coverage; no callback shim was added to production.
+
+### What I learned
+
+- Provider `toolCallId` is already available at every mutating execute seam and composes cleanly with the immutable conversation id for effect correlation.
+- Full sandbox authority must include source, bindings, behavior, documents, and open options rather than only `kind` and a display label.
+- Raw protobuf JSON should be authorized in its original canonical input form, not by inventing a lossy stand-in verb.
+
+### What was tricky to build
+
+Each tool dialect identifies targets differently. Workbench subjects extract placement/workspace/view/split/app ids; sandbox subjects retain the full write verb and program/action ids; conversation subjects separate prompt arguments, target conversation, and sorted reference keys. The test harnesses had to inspect this common representation while retaining consume-once behavior, otherwise tests would accidentally reintroduce callback semantics under another name.
+
+### What warrants a second pair of eyes
+
+- The demo timeline adapter validates the approved target and message but does not yet encode references into its human proposal fields; production ledgers must compare the complete canonical digest.
+- Current ledger `consume` burns before the domain effect executes. Phase 2 needs reservation/finalization/release so validation or revision rejection before a side effect does not waste authority while post-effect transport failure never restores it.
+
+### What should be done in the future
+
+Implement the AgentEffectGateway with approval reservation, effect envelopes, causal tracing, and outcome-aware finalization.
+
+### Code review instructions
+
+- Start with top-level injection in `createPbuiChat.tsx`.
+- Compare canonical construction in `conversationTools.ts`, `workbenchTools.ts`, and `sandboxTools.ts`.
+- Verify there are no production `isApproved`, `isRawApproved`, or approval-local `spent` sets.
+- Run package typecheck, tests, and build.
+
+### Technical details
+
+Confirm-policy tools fail closed when no ledger exists. Allow-policy tools remain usable. One capability is consumed before the routed/local side effect; the next phase replaces this conservative ordering with a reservation state machine tied to a durable effect id.
+
+## Step 8: Put agent effects behind one execution state machine
+
+I replaced the Phase 1 consume-before-perform seam with an `AgentEffectGateway` that owns exact effect identity, concurrent/terminal idempotency, approval reservation/finalization/release, revision evidence, canonical envelopes, and retryable trace reporting. Every high-level workbench verb, raw protobuf mutation batch, sandbox write/open/remove, and cross-conversation send now enters this gateway rather than implementing policy and approval ordering independently.
+
+This is the first Phase 2 implementation interval. The browser now POSTs envelopes to an authenticated session effect route and retains failed reports in a bounded runtime outbox; the next interval adds the server command/schema/timeline projection that durably accepts that route.
+
+### Prompt Context
+
+**User prompt (verbatim):** "phase 2 - 4, budget 500k, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill) [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Complete ticket phases 2–4 under a durable 500K-token goal, committing reviewable increments and maintaining the strict implementation diary throughout.
+
+**Inferred user intent:** Finish the remaining runtime, lifecycle, workbench, and focus hardening comprehensively with enough evidence and history to audit every phase.
+
+**Commit (code):** `1d05677998a21ce88deadf2f641dcf1248739554` — "feat(pbui-chat): route agent effects through gateway"
+
+### What I did
+
+- Extended `ApprovalLedger` from immediate consume to atomic reserve/finalize/release operations.
+- Added bounded running/terminal effect identity and conflict detection.
+- Added canonical `EffectEnvelope` creation with input digest, actor, conversation, scope, targets, references, approval, revisions, outcome, and timestamp.
+- Added report retry/outbox behavior and opportunistic flushing.
+- Routed conversation sends, workbench verbs, raw batches, and sandbox writes through one gateway.
+- Added whole-document SHA-256 revision evidence for local workbench operations and version/timestamp evidence for sandbox records.
+- Removed the superseded per-factory policy/consume implementation rather than retaining a compatibility path.
+- Added gateway race, retry, conflict, approval release, denial, and envelope tests.
+
+### Why
+
+Approval authority must be reserved before an effect, finalized only after a performed outcome, and released after a pre-side-effect rejection. The same effect id must never execute twice after provider retries or concurrent duplicate delivery, and every outcome needs one canonical correlation envelope.
+
+### What worked
+
+```text
+pnpm --filter @hyperslop-systems/pbui-chat typecheck   PASS
+pnpm --filter @hyperslop-systems/pbui-chat test        24 files, 224 PASS
+pnpm --filter @hyperslop-systems/pbui-chat build       PASS
+```
+
+### What didn't work
+
+The first typecheck exposed that the local workbench document has no persisted `revision` field:
+
+```text
+Property 'revision' does not exist on type 'WorkbenchDocument'.
+```
+
+I replaced the false assumption with a deterministic SHA-256 digest of generated protobuf JSON. The first full test run then reported 10 failures because all three old test harnesses reused the literal provider id `t1` for distinct calls:
+
+```text
+EffectConflictError: effect agent-a:t1 was reused with different input
+Test Files  4 failed | 20 passed
+Tests  10 failed | 214 passed
+```
+
+That was valid production behavior and invalid test identity. Each harness now generates a fresh tool-call id per invocation; explicit gateway replay tests retain a fixed id and prove deduplication/conflict behavior.
+
+### What I learned
+
+- Provider tool-call identity is a usable idempotency key only when tests preserve its real uniqueness contract.
+- The local workbench protocol separates mutable documents from server resources, so local revision evidence must be content-derived rather than fabricated from the remote resource schema.
+- Validation should happen before gateway entry when possible; sandbox source/schema checks now run before approval reservation, while router/domain rejection releases the reservation.
+
+### What was tricky to build
+
+The gateway must distinguish four timing zones: validation before reservation, atomic reservation, potentially side-effecting execution, and durable report publication after outcome. A rejected domain result releases authority; a performed result finalizes it before reporting; a failed report never rolls back either the effect or approval and instead remains pending for retry. Concurrent identical requests share one promise, while the same key with a different canonical fingerprint throws before any side effect.
+
+### What warrants a second pair of eyes
+
+- The runtime outbox is bounded by effect terminal retention but is not yet persisted across page reload; server acceptance and any required browser persistence are reviewed in the next interval.
+- If a remote ledger reports an impossible finalize/release state after the domain callback, the gateway throws loudly because silently claiming a safe outcome would hide an authority inconsistency.
+- Sandbox create-and-open intentionally produces a parent library effect and a child workbench/router effect with related tool-call-derived ids.
+
+### What should be done in the future
+
+- Add the authenticated `/effects` route, protobuf command/event, durable timeline projection, and browser adapter.
+- Add explicit router effect correlation fields and server/client end-to-end tests.
+- Decide whether failed effect report outbox entries need durable browser storage beyond server retry semantics.
+
+### Code review instructions
+
+- Start with `agentEffectGateway.ts`, especially `execute`, `#executeOnce`, approval transitions, and `#record`.
+- Review the ledger state transitions in `approvalLedger.ts` next.
+- Trace one operation through each factory and `createPbuiChat.tsx` to confirm one shared gateway.
+- Run package typecheck, all tests, and the production build.
+
+### Technical details
+
+Terminal effect retention defaults to 1,000 entries for 30 minutes. Approval retention remains 1,000 entries for five minutes. Effect fingerprints cover conversation, kind, scope, canonical input, policy, confirmation id, and before-revision so key reuse cannot silently return an unrelated cached result.
+
+## Step 9: Persist and hydrate causal effect outcomes
+
+I added the server half of the gateway contract: an authenticated `effect-write` route, generated protobuf envelope/command fields, strict digest and session validation, idempotent server recording, and reuse of the existing durable trace projection. Effect rows now hydrate and stream with the complete canonical envelope rather than hiding correlation in a free-form verb field.
+
+I also made the browser report outbox durable across reloads through product-keyed storage. A failed effect POST survives gateway recreation and retries against the idempotent server endpoint; an outbox at its configured bound fails closed before another untraceable side effect begins.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 8)
+
+**Assistant interpretation:** Continue Phase 2 through a durable server and hydration boundary, keeping the change independently committed and fully tested.
+
+**Inferred user intent:** Ensure effect tracing is actual persisted evidence, not a best-effort browser diagnostic that disappears offline or after reload.
+
+**Commit (code):** `56a01b61108f5761f0e8442c9ebf8aab2076a62b` — "feat(chatserver): persist causal effect traces"
+
+### What I did
+
+- Added generated `EffectEnvelope` and `EffectPerformedCommand` protobuf contracts and attached envelopes to durable `TraceEntry` records.
+- Added authenticated `POST /api/chat/sessions/{id}/effects` with its own action policy.
+- Validated actor, scope, outcome, RFC3339 timestamp, session binding, SHA-256 shape, and recomputed canonical-input digest.
+- Added idempotent effect-id recording and exact-envelope conflict rejection in the trace store.
+- Reused existing UI-event and timeline projections so effect rows are live and hydrated under one ordered trace sequence.
+- Extended the TypeScript adapter and public trace types to retain every effect correlation field.
+- Added persistent browser outbox restore/flush behavior and fail-closed capacity handling.
+- Added Go parser, conflict, digest, session, persistence, authorization, route, and duplicate-delivery tests plus frontend hydration/outbox tests.
+
+### Why
+
+A performed local effect cannot be undone merely because its trace POST failed. The report therefore needs durable retry on the browser and idempotent acceptance on the server, while the server must independently reject forged digests and cross-session envelopes.
+
+### What worked
+
+```text
+go test ./pkg/pbuichat ./pkg/chatserver -count=1       PASS
+pnpm pbui-chat typecheck                                PASS
+pnpm pbui-chat tests                                    24 files, 225 PASS
+pnpm pbui-chat production build                         PASS
+buf lint                                                PASS
+pre-commit GOWORK=off go test ./...                     PASS
+pre-commit golangci-lint + logcopter + glazed-lint      PASS, 0 issues
+```
+
+### What didn't work
+
+N/A
+
+### What I learned
+
+- The existing trace command/event/UI/timeline projection is the correct durable ordering substrate; a distinct effect timeline would duplicate retention and hydration logic.
+- Server idempotency must compare the complete protobuf envelope, not only input digest and outcome, because a reused id could otherwise alter kind, approval, revision, or correlation fields silently.
+- Trace entry time should remain server receipt time for trustworthy ordering; the client occurrence time belongs inside the envelope.
+
+### What was tricky to build
+
+Browser canonical JSON and Go `encoding/json` must hash the same bytes. Both recursively order object/map keys and preserve array order, allowing the server to recompute SHA-256 over `canonicalInput` rather than trusting the browser. Duplicate retries must publish no second event, while a same-id envelope difference must fail rather than overwrite or acknowledge ambiguous history. Hydration rebuilds the bounded effect-id index from persisted trace entries so idempotency survives process restart.
+
+### What warrants a second pair of eyes
+
+- Confirm cross-language canonical number formatting for any future non-integer numeric effect arguments; current workbench ratios and finite JSON numbers are covered by standard JSON behavior but deserve explicit vectors.
+- Browser storage quota failure remains observable through `outboxError()` and retains the in-memory envelope, but cannot manufacture persistence when the platform storage itself is unavailable.
+- The shared trace retention limit bounds the in-memory/persisted replay window; effect ids older than retention may be accepted again, while browser terminal retention is also bounded by design.
+
+### What should be done in the future
+
+- Add explicit router effect/invocation correlation to high-level verb trace rows rather than relying only on adjacent effect envelopes.
+- Exercise the complete browser → authenticated route → snapshot hydration path in a rendered smoke scenario.
+- Complete Phase 2 final validation and print its completion slip only after those checks.
+
+### Code review instructions
+
+- Review the proto contract, then `EffectCommandFromJSON`, `HandleEffectPerformed`, and `traceStore.addEffect`.
+- Review `traceAdapter.ts` for generated-proto and loose-json parity.
+- Review gateway outbox restore/persist/full behavior.
+- Regenerate protocols, run Go tests, frontend typecheck/tests/build, and `buf lint`.
+
+### Technical details
+
+Effect routes accept only `actor=agent`, and route authorization occurs before body parsing. Existing and duplicate identical envelopes produce one durable trace entity. Foreign-session envelopes return `400`; foreign principals are rejected by session authorization before reaching the handler.
+
+## Step 10: Correlate high-level verbs with parent effects
+
+I added typed effect, invocation, and approval correlation to the existing high-level verb trace rather than embedding hidden provenance into the verb payload. Tool factories now pass the gateway identity through their router callback, and generated wire fields survive server recording and browser hydration.
+
+This closes the structural correlation gap between the durable effect envelope and the user-facing verb row. Phase 2 still requires final end-to-end rendered smoke evidence and a complete validation sweep before its completion slip may be printed.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 8)
+
+**Assistant interpretation:** Continue Phase 2 with explicit trace correlation and commit the next coherent interval.
+
+**Inferred user intent:** Make effect causality directly queryable and reviewable without conventions hidden inside arbitrary verb JSON.
+
+**Commit (code):** `64b5f9d91adfcea17f00a58c445c03894a1747ff` — "feat(pbui-chat): correlate verb and effect traces"
+
+### What I did
+
+- Added typed `effectId`, `invocationKey`, and `approvalId` fields to verb commands and trace entries.
+- Extended router `PerformOptions` and report bodies with those fields.
+- Propagated correlation through conversation, workbench, and sandbox router effects.
+- Recorded and hydrated correlation through generated Go/TypeScript schemas.
+- Added browser router and Go trace regression coverage.
+
+### Why
+
+A nearby effect row is not sufficient causal evidence when traces interleave. Both the parent effect and child high-level verb need the same stable identifiers.
+
+### What worked
+
+```text
+go test ./pkg/pbuichat ./pkg/chatserver -count=1       PASS
+pbui-chat typecheck                                     PASS
+pbui-chat tests                                         24 files, 226 PASS
+buf lint                                                PASS
+pre-commit full Go tests and quality checks             PASS, 0 issues
+```
+
+### What didn't work
+
+N/A
+
+### What I learned
+
+Typed optional fields preserve existing human/router traces while making gateway-caused rows explicitly joinable.
+
+### What was tricky to build
+
+Correlation had to flow through the factory callback type, `createPbuiChat`'s session-bound closure, router report serialization, protobuf decoding, durable trace entry, and hydration adapter. Missing any one layer would produce correlation that appeared live but vanished after reload.
+
+### What warrants a second pair of eyes
+
+- Verify rendered trace tooling exposes these fields intelligibly rather than only retaining them in entity props.
+- Confirm parent/child effect conventions for compound sandbox create-and-open operations.
+
+### What should be done in the future
+
+- Run browser-level effect execution and hydration smoke inspection.
+- Run final Phase 2 protocol-generation, CI, security, package, and repository audit.
+- Only then mark the task and print the Phase 2 completion slip.
+
+### Code review instructions
+
+- Trace `EffectCorrelation` from each factory through `createVerbRouter.report`, Go decoding, `TraceEntry`, and `traceAdapter`.
+- Validate with Go tests, PBUI chat typecheck/tests, protocol generation, and `buf lint`.
+
+### Technical details
+
+Correlation remains optional for ordinary human actions. Gateway-originated high-level verbs use the immutable conversation/tool-call effect id and carry approval id only when a capability participated.
+
+## Step 11: Validate Phase 2 through the rendered and durable boundaries
+
+I built the full embedded application, ran the deterministic two-conversation handoff in Chromium, approved the exact proposal, and observed the real browser POST a canonical `conversation.send` effect envelope. The server accepted it, the trace pane rendered both the correlated high-level verb and durable effect row, and the inspector exposed the full identity, digest, target, approval, and occurrence fields. I then reloaded the browser and restarted the Go server against the same SQLite database; the exact digest and correlation fields hydrated after both boundaries.
+
+The full validation sweep found that the demo package advertised a `test` script but had no test files, causing Vitest to exit 1. I did not suppress the failure with `--passWithNoTests`; I added a focused demo vocabulary contract test and committed it as `7ecc676dcd084957ecf2a281ad8e0af4129cdbf8`.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+> phase 2 - 4, budget 1M, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill) [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory.
+
+**Assistant interpretation:** Resume the budget-limited ticket, finish Phase 2 with fresh rendered/durable evidence, and continue through lifecycle/title and workbench/focus phases without repeating completed implementation.
+
+**Inferred user intent:** Complete every remaining hard acceptance criterion with auditable commits, failures, UI evidence, and phase slips rather than treating previously green unit tests as sufficient.
+
+**Commit (validation regression):** `7ecc676dcd084957ecf2a281ad8e0af4129cdbf8` — "test(pbui-chat-demo): cover handoff vocabulary"
+
+### What I did
+
+- Rebuilt all PBUI/chat/workbench/sandbox/demo packages and the embedded Go binary.
+- Ran a real Chromium handoff between two live conversation runtimes.
+- Captured the successful `/effects` request and response, including effect id, invocation key, SHA-256 input digest, approval id, exact target, and `effect_recorded` acknowledgement.
+- Inspected the live effect row and its correlated verb row in the rendered trace panel.
+- Reloaded the browser and verified hydration from the server snapshot.
+- Restarted the server against `/tmp/pbui-phase2-timeline.db` and verified the same trace after process recovery.
+- Captured five rendered screenshots under the ticket `various/` directory.
+- Ran protocol generation/diff checks, local CI, GoSec, every affected package typecheck/test/build, and embedded binary build.
+- Added two demo vocabulary tests rather than allowing an empty test suite.
+
+### Why
+
+Phase 2 promises durable causal evidence. That is not demonstrated by an adapter unit test alone: the browser, authenticated route, command bus, SQLite trace, snapshot hydration, React trace panel, and inspector all have to preserve the same identity across reload and restart.
+
+### What worked
+
+```text
+make protocol-check                                      PASS, generated diff clean
+make ci-check                                            PASS
+make gosec                                               PASS, 0 issues / 41 files
+@hyperslop-systems/pbui typecheck                        PASS
+@hyperslop-systems/pbui tests                            12 files / 96 PASS
+pbui-workbench typecheck/tests                           9 files / 115 PASS
+pbui-sandbox typecheck/tests                             15 files / 103 PASS
+pbui-chat typecheck/tests                                24 files / 226 PASS
+pbui-chat-demo typecheck                                 PASS
+pbui-chat-demo tests after repair                        1 file / 2 PASS
+make chat-build                                          PASS
+Chromium console errors                                  0
+POST /effects                                            200 effect_recorded
+browser reload hydration                                 PASS
+Go server restart + SQLite hydration                     PASS
+```
+
+### What didn't work
+
+1. The first readiness loop probed `/health`, which is not a registered public path. The server had started successfully but the probe received `404`, so the loop reported failure. I inspected the process and responses, switched the readiness probe to `/`, and retained the server log evidence.
+2. `pnpm --filter @hyperslop-systems/pbui-chat-demo test` failed with `No test files found, exiting with code 1`. I added a real vocabulary contract test.
+3. The first new assertion expected `vocabulary.verbs["conversation.send"].danger === true`; `danger` is product UI metadata and is intentionally not part of the exported model vocabulary. The test failed with `expected undefined to be true`. I inspected the generated Go vocabulary JSON and corrected the test to assert the exported operation documentation and typed fields instead.
+4. The first root-package filters omitted `--include-workspace-root`, producing `No projects matched`. I reran the root PBUI typecheck and 96 tests with the required flag.
+
+### What I learned
+
+- The rendered trace intentionally shows two `conversation.send` rows: one is the high-level routed verb with typed parent correlation and one is the durable effect envelope. Inspecting each proves the join explicitly.
+- SQLite-backed timeline hydration reconstructs effect idempotency and UI projection after process restart; browser local storage is not the source of the recovered effect row.
+- The demo's model vocabulary omits UI-only danger metadata, while the approval enforcement remains in the shared gateway/ledger.
+
+### What was tricky to build
+
+Rendered inspection itself emits human `inspect` verbs, so sequence numbers advance while collecting evidence. The durable effect retained sequence `#3`, and the correlated high-level verb retained `#2`; later inspect rows are expected evidence of user actions, not duplicate gateway execution. The trace had to be selected by its original sequence and digest after reload and restart rather than assuming it remained the newest row.
+
+### What warrants a second pair of eyes
+
+- Review the deliberate two-row rendered representation (verb plus effect) for clarity; it is causally sound but may benefit from a visual parent/child affordance in future product design.
+- Confirm that retaining full canonical inputs in the inspector is acceptable for every future effect kind; current diagnostics are redacted only by canonical subject construction policy.
+- Review storage quota observability through `outboxError()` for product-level user messaging.
+
+### What should be done in the future
+
+- Begin Phase 3 only after printing the Phase 2 completion slip and Phase 3 start slip.
+- Implement explicit conversation lifecycle and versioned durable title synchronization next.
+- Keep the rendered SQLite smoke procedure available for the final cross-phase audit.
+
+### Code review instructions
+
+1. Review commits `1d05677`, `56a01b6`, and `64b5f9d` in order.
+2. Inspect `phase2-effect-inspector-live.png`, `phase2-effect-inspector-hydrated.png`, `phase2-effect-inspector-server-restart.png`, and `phase2-correlated-verb-hydrated.png`.
+3. Re-run `make protocol-check`, `make ci-check`, `make gosec`, affected package checks, and `make chat-build`.
+4. Start the embedded binary with SQLite stores, complete the scripted handoff, restart it, and inspect trace sequences `#2` and `#3`.
+
+### Technical details
+
+The observed envelope used effect id `720c0e04-62cd-4903-8d3b-63b4eb3160bf:msg-1:tool:conversation_send:3`, digest `b800c25ca0dc53f40bbffefa089b299cccaf48940129fcb413afb331cd27c2e0`, approval `handoff-msg-1`, and target `1490cfcb-9f92-4626-9b01-b2fdd1ed2be8`. The browser received HTTP 200 with `status=effect_recorded`. No console errors were observed.
+
+## Step 12: Start Phase 3 with explicit lifecycle and versioned title truth
+
+After Phase 2 validation and documentation were committed as `77063a8`, I printed the Phase 2 completion slip and the Phase 3 start slip. I then separated conversation lifecycle from the presence or absence of a captured runtime, and implemented local-first, versioned, durable title synchronization across browser and server.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 11)
+
+**Assistant interpretation:** Move through the thermal phase gate and implement conversation correctness in independently reviewable lifecycle, server-CAS, and browser-outbox commits.
+
+**Inferred user intent:** Closed/failed conversations must tell the truth and recover intentionally; names must remain immediate locally while stale/offline writes can neither disappear nor overwrite newer server state.
+
+**Commits:**
+
+- `c5365e60a5c513f355eb03099b757e9e4efc6299` — "fix(pbui-chat): model conversation runtime lifecycle"
+- `5916dc018534894bd55d551c507157db7fbe0d14` — "feat(chatserver): version conversation titles"
+- `6a8d8c61e15a24eb845f6b9b73624f311173d68d` — "feat(pbui-chat): synchronize versioned titles"
+
+### What I did
+
+- Added explicit `closed`, `opening`, `open`, `failed`, and `closing` lifecycle snapshots with monotonic opening-attempt identities.
+- Routed provider connection success/failure through the registry instead of swallowing failure in `ConversationHost`.
+- Added cancel, close, open, and retry states/actions to `ConversationScope` and lifecycle-aware list status.
+- Kept failed retries on the existing runtime rather than creating duplicate clients.
+- Added server-side `title_revision`, SQLite migration, and atomic compare-and-swap PATCH behavior with HTTP 409 conflicts.
+- Added local-first browser renames, per-conversation serialized PATCHes, durable storage outbox, automatic reload retry, conflict preservation, explicit retry, and visible queued/failed state.
+- Synchronized auto-derived titles as well as explicit human/agent names.
+- Preserved human-title ownership when reconciling another browser's server index.
+
+### Why
+
+The old `!runtime => opening` inference mislabeled a deliberately closed conversation forever. The old rename changed only browser storage, so another browser never reliably learned it. A plain optimistic PATCH would add a worse race: an old offline retry could overwrite a newer name. Explicit lifecycle and revision CAS address those as separate state machines.
+
+### What worked
+
+```text
+pbui-chat typecheck                                    PASS
+pbui-chat tests after lifecycle interval               24 files / 229 PASS
+pbui-chat tests after title interval                   24 files / 233 PASS
+pbui-chat production build                             PASS
+go test ./pkg/chatserver -count=1                      PASS
+pre-commit full Go tests + Go quality                  PASS, 0 issues
+```
+
+### What didn't work
+
+1. Adding required lifecycle fields exposed an old test fixture that inferred closed state solely from `open:false`; TypeScript and one status assertion failed. I made the fixture explicit and changed the assertion to pass `{ lifecycle: { phase: "closed" } }`.
+2. The registry-level empty rename test caused an unhandled rejected promise after `rename` became asynchronous. The public registry previously treated whitespace as a no-op, while the verb layer already rejects it. I preserved that existing low-level behavior with a resolved no-op and retained strict user/tool validation in `performConversationVerb`.
+3. The first typecheck after adding title status found the shared `ConversationSnapshot` fixture could spread an optional `titleSync: undefined` over a required field. I normalized required lifecycle/title fields after the patch spread.
+
+### What I learned
+
+- Runtime attachment and transport readiness are distinct. With auto-connect disabled, attachment is enough for the test/story runtime to be open; production remains opening until `client.connect()` resolves.
+- Serializing title writes per conversation is still necessary even with server CAS: it gives every newer local write the revision acknowledged by its predecessor and avoids a preventable 409.
+- A 409 is not a reason to revert local UI. It advances the known server revision, retains the newest local write, and exposes a retry decision.
+
+### What was tricky to build
+
+A newer rename may arrive while an older PATCH is in flight. The outbox replaces only the pending value, while the drain loop keeps the in-flight write identity. When the older response arrives, it advances only `titleRevision`; it cannot delete the newer outbox entry or replace the local title. The loop then sends the newer title against the newly acknowledged revision. SQLite migration also had to preserve existing title rows by adding `title_revision DEFAULT 0` after inspecting `PRAGMA table_info`.
+
+### What warrants a second pair of eyes
+
+- Review whether product copy should distinguish network-queued title writes from explicit revision conflicts more strongly than the current `title queued` / `title failed` labels.
+- Review the policy that a human-owned local title remains visible after another browser renames it; retry explicitly reasserts the local choice and avoids automatic cross-browser ping-pong.
+- Verify StrictMode provider detach/reattach continues to move through a new opening attempt without showing closed.
+
+### What should be done in the future
+
+- Add rendered Chromium evidence for close/reopen/failure copy and title PATCH/reload/conflict behavior.
+- Run the full Phase 3 validation sweep and print its completion slip only after rendered evidence is committed.
+- Then print the Phase 4 start slip before workbench/focus implementation.
+
+### Code review instructions
+
+1. Review lifecycle transitions in `registry.ts`, then `ConversationHost` and `ConversationScope`.
+2. Review server memory and SQLite CAS implementations and legacy migration test.
+3. Trace `rename -> queueTitle -> processTitle -> drainTitle`, including concurrent-write identity and 409 handling.
+4. Run PBUI chat typecheck/tests/build and focused/full Go tests.
+
+### Technical details
+
+Title PATCH bodies carry `{ title, expectedRevision }`; success increments the server revision, and conflict returns the current title/revision with HTTP 409. Outbox entries carry conversation id, newest title, owner, local monotonic version, and update timestamp. A persisted write is retried automatically after registry restoration.
+
+## Step 13: Exercise lifecycle and title recovery in Chromium
+
+I exercised every user-visible lifecycle/title branch in the embedded Chromium application: synchronized auto and human titles, explicit closed state, reopen with transcript preservation, injected offline rename with persistent queued status, reload retry, cross-client revision conflict, opening timeout while the server was down, and retry after server recovery. This rendered work found three integration defects that unit coverage had not exposed: opening could wait forever, the CLI could not configure the existing SQLite session index, and a rebuilt index could legitimately report a lower title revision than the browser cached.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 11)
+
+**Assistant interpretation:** Treat rendered smoke as an implementation probe: fix any lifecycle/title defect it reveals, add executable regression coverage, rebuild, and repeat until every state recovers correctly.
+
+**Inferred user intent:** User-visible conversation truth must survive real transport failure, offline storage, conflicting clients, page reload, and server restart—not merely mocked fetch responses.
+
+**Additional commits:**
+
+- `53905069ef1ef8015472c7a72e7a89a6bda96b4c` — "fix(pbui-chat): bound conversation opening attempts"
+- `b7ca909ce651ef9deea3e891c5f20a06a0367dc2` — "test(pbui-chat): cover lifecycle opening timeout"
+- `a34cc68daf8133b5e3b3f8b449e7afc373b51c52` — "fix(pbui-chat): expose persistent session index"
+- `13dd824cc4a1fab9d6ed97b77940acd6b58e0465` — "fix(pbui-chat): recover title revisions after index reset"
+
+### What I did
+
+- Observed auto title PATCH `{ title: "inventory overview", expectedRevision: 0 } -> titleRevision: 1`.
+- Renamed through the real conversation object menu and observed revision 1 -> 2.
+- Disconnected the conversation and verified both the tile and conversation list said `closed`, never `opening`.
+- Reopened it and verified the same two-message transcript and title.
+- Aborted PATCH requests in Playwright, renamed locally, and verified `title queued`, `retry title`, and the exact durable localStorage outbox entry.
+- Reloaded while still offline and verified the local title/outbox/status survived.
+- Restored the network, retried, and verified expected revision 2 -> 3 and outbox deletion.
+- Simulated another tab with a direct server PATCH, observed a 409 while local title remained visible, then retried revision 4 -> 5.
+- Stopped the actual server, opened a closed conversation, observed a bounded 10-second failure with Retry/Close, restarted the server, and recovered the existing runtime/transcript.
+- Exposed `--sessions-db` through the demo CLI, ran against SQLite, and verified `persistent desk` at revision 1 before and after process restart.
+- Added timeout and index-reset regression tests and reran full Phase 3 validation.
+
+### Why
+
+A transport library's `connect()` may remain pending while it retries. Without an application deadline, explicit `opening` is still an infinite euphemism. Likewise, server CAS is not durable if the shipped CLI cannot select its SQLite index. Finally, this index is intentionally rebuildable; the browser must treat a 409's current revision as authoritative even when it decreased after index loss.
+
+### What worked
+
+```text
+Rendered closed -> reopened                               PASS
+Rendered server-down opening -> failed after 10000ms      PASS
+Rendered failed -> retry after restart                    PASS
+Rendered offline title + localStorage outbox              PASS
+Rendered reload while offline                             PASS
+Rendered retry -> outbox removed                          PASS
+Rendered cross-client 409 -> local title retained         PASS
+Rendered conflict retry with current revision             PASS
+SQLite sessions/title list before process restart         persistent desk / rev 1
+SQLite sessions/title list after process restart          persistent desk / rev 1
+make protocol-check                                       PASS
+make ci-check                                             PASS
+make gosec                                                PASS, 0 issues / 41 files
+root PBUI typecheck/tests                                  PASS, 12 files / 96
+pbui-chat typecheck/tests/build                            PASS, 24 files / 235
+pbui-chat-demo typecheck/tests/build                       PASS, 1 file / 2
+```
+
+### What didn't work
+
+1. My first server-stop attempt killed the PID captured from a background shell compound command, not the child `pbui-chat` process. `curl` still returned 200, so the apparent successful reopen was invalid evidence. I checked the process table, killed the actual command by exact port arguments, and repeated the test. The real outage then exposed the infinite-opening defect.
+2. `client.connect()` did not reject while reconnecting to an unavailable endpoint; lifecycle remained `opening`. I added a configurable positive `connectTimeoutMs` (10 seconds default), stale-attempt guards, rendered the failure, and added a fake-timer regression.
+3. The first timeout regression attached its rejection assertion only after advancing fake timers. Vitest reported `PromiseRejectionHandledWarning` and an unhandled rejection despite the assertion later passing. I attached `expect(pending).rejects` before advancing time; all 234 tests then passed cleanly.
+4. After a process restart, `/api/chat/sessions` was empty despite SQLite timeline/turn stores. `Options.SessionsDB` already existed, but `pbui-chat serve` had no setting/flag/wiring for it. I added `--sessions-db`, rebuilt, and verified durable title revision across restart.
+5. Testing recovery from a reset in-memory index revealed repeated 409s: the browser only accepted a conflict revision when it was greater than its cached value. Because the session index is rebuildable, revision zero can be authoritative after loss. I changed conflict handling to accept any different server revision and added a 5 -> 0 -> 1 regression. The rendered retry then succeeded.
+6. Playwright's intentionally injected offline and HTTP 409 cases appear as browser resource errors. There were no uncaught application exceptions; the UI surfaced each expected failure and recovered.
+
+### What I learned
+
+- Readiness evidence must include a direct endpoint probe and process identity; a printed PID from a shell grouping is not enough.
+- Application lifecycle deadlines cannot be delegated to a reconnecting transport promise.
+- Revisions are monotonic only within one persisted index lineage. A rebuildable index requires epoch-aware behavior or acceptance of an authoritative lower CAS revision; current behavior safely chooses the latter after an explicit conflict.
+- Durable server configuration has to be reachable from the shipped executable, not merely present in an internal Go options struct.
+
+### What was tricky to build
+
+The rendered sequence intentionally accumulated expected network console errors while testing offline, 409, and server-down behavior. Evidence had to distinguish browser resource failures from uncaught app errors by matching each to an injected condition and confirming the visible queued/failed/retry state. Recovering from index reset also required preserving the local title/outbox while moving only the cached server revision backward.
+
+### What warrants a second pair of eyes
+
+- Consider adding an explicit server-index epoch in a future wire revision; current 409 recovery is safe but infers reset from an authoritative lower revision.
+- Confirm 10 seconds is the desired product opening deadline; it is configurable through registry options.
+- Review whether repeated transport resource errors should be rate-limited by chat-provider during a known server outage.
+
+### What should be done in the future
+
+- Commit and relate the rendered evidence, run `docmgr doctor`, and print the Phase 3 completion slip.
+- Print the Phase 4 start slip before changing workbench or focus code.
+- Begin with a fresh semantic audit of workbench planning/revisions/minimum pane constraints and transient-surface focus paths.
+
+### Code review instructions
+
+1. Compare the closed, failed, retried, offline-title, conflict, and server-restart screenshots.
+2. Review `connectRuntime` deadline/stale-attempt handling and its fake-timer regression.
+3. Run the binary with all three SQLite flags, rename, restart, and compare `/api/chat/sessions` JSON.
+4. Exercise an index reset and verify the retry sends expected revision zero after the 409.
+5. Re-run protocol, CI, GoSec, root/PBUI-chat/demo checks.
+
+### Technical details
+
+The real rendered title sequence was 0 -> 1 (auto), 1 -> 2 (human), 2 -> 3 (offline retry), 3 -> 4 (simulated remote tab), 4 -> 5 (local conflict retry). A deliberately reset session index then returned revision 0 to a browser caching 5; the repaired client retried 0 -> 1. The final SQLite-backed list preserved `persistent desk`, revision 1, and message count 1 across the Go process restart.
+
+## Step 14: Start Phase 4 with atomic workbench semantics and focus ownership
+
+I printed the Phase 3 completion slip and Phase 4 start slip, then hardened the workbench data door before touching rendered focus. High-level agent batches now preflight against a shadow store, bind to a SHA-256 document revision, reserve one approval for the complete batch, commit one protocol mutation batch, and create undo history only when something lands. Raw mutation batches and specialized tools use the same revision discipline. I then added rendered pane minima shared by pointer, keyboard, human, and agent paths, and focus-return ownership shared by Dialog and ObjectMenu.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 11)
+
+**Assistant interpretation:** Implement the complete Phase 4 semantics in coherent workbench-plan, pane-constraint, and focus-restoration intervals, testing every refusal and close path rather than preserving partial legacy behavior.
+
+**Inferred user intent:** Agent layout operations must be atomic, based on the screen they actually described, unable to create unusable slivers, honest about refusal, and unable to strand keyboard focus after transient UI closes.
+
+**Commits:**
+
+- `27b00258f883de94c9d2943561a569c19744dde0` — "feat(pbui-chat): apply revision-bound workbench plans"
+- `ceaea2ae9cd9672dc3190f5cee6fd16df34590dd` — "fix(pbui-workbench): enforce rendered pane minima"
+- `ab2a629d0895b670ac170d34945e5b7d0befdcd1` — "fix(pbui): restore focus after transient surfaces"
+
+### What I did
+
+- Corrected public `Workbench.perform` from `void` to `boolean`.
+- Strengthened `isWorkbenchVerb` from kind-prefix detection to complete per-kind runtime shape validation.
+- Added `Workbench.plan` with a shadow store and `applyPlan` with immutable base-document CAS.
+- Aggregated planned mutations into one store commit and one persistence callback.
+- Made `workbench_describe` return canonical document revision.
+- Required expected revision on specialized, high-level batch, and raw mutation tools.
+- Changed `workbench_perform` to all-or-nothing preflight and one canonical `workbench.verb_batch` gateway effect/approval.
+- Prevented stale approval waits from committing by checking plan document identity inside the gateway perform callback.
+- Created undo snapshots only immediately before a fresh plan/batch commits.
+- Added configurable inline/block/fraction pane minima and shared ratio bounds.
+- Applied pane bounds to split, dock, open/place, workspace layouts, pointer drag, keyboard Home/End/arrows, and agent preflight.
+- Added actionable too-small errors to agent results.
+- Added shared invoker/fallback capture and deferred focus restoration.
+- Restored Dialog focus on Escape, close button, programmatic unmount, and nested close.
+- Restored ObjectMenu focus on Escape, click-away, selection, and invoker removal, without stealing focus from a newly opened transient surface.
+
+### Why
+
+The previous high-level batch snapshotted before validation and sequentially applied whatever happened to be valid. A later error could leave partial layout and an undo entry for a call reported as mixed success. Ratios alone also allowed repeated nested splits to produce panes too small to operate. Dialog and ObjectMenu moved focus in but never owned the return journey.
+
+### What worked
+
+```text
+pbui-workbench plan/type checks                         PASS
+pbui-workbench tests after atomic plans                 9 files / 119 PASS
+pbui-workbench tests after pane constraints             9 files / 124 PASS
+pbui-chat tests after atomic/revision/pane changes       24 files / 239 PASS
+root PBUI focus tests                                    12 files / 102 PASS
+PBUI, workbench and chat production builds              PASS
+```
+
+### What didn't work
+
+1. The first PBUI-chat typecheck/tests after adding `Workbench.plan` still resolved the last built `pbui-workbench/dist`; TypeScript reported `plan/applyPlan` missing and runtime tests reported `wb.plan is not a function`. I built the dependency package first, then reran consumers.
+2. Nineteen workbench-tool tests initially failed because they encoded the old partial-batch and per-verb-router semantics, and raw-test helpers bypassed expected-revision injection. I preserved useful result detail while changing valid siblings to explicit atomic rejection, updated canonical approval subjects to the whole batch, and made raw helpers describe before mutation.
+3. The first pointer constraint test produced `NaN percent`: jsdom's synthetic pointer event did not populate coordinates. This also revealed the component lacked a finite-coordinate/zero-box guard. I added production guards and dispatched a coordinate-bearing test event; pointer, keyboard, and agent constraints then agreed.
+4. The first Dialog focus tests captured `document.body` because testing-library's synthetic click does not perform the browser's native focus step. I explicitly focused test invokers before clicking.
+5. Opening a nested Dialog caused the outer Dialog's effect to rerun and steal focus back because `onClose` identity changed. I separated one-time initial focus from the key-listener effect; the inner dialog then retained focus and restored it to its immediate parent invoker.
+
+### What I learned
+
+- A package's source typecheck is insufficient in a workspace whose consumers import its built export; dependency builds must precede consumer validation.
+- Atomicity changes the approval subject: the authority must bind the entire ordered batch and expected revision, not one child verb.
+- A shadow store is a practical plan compiler because existing handlers already emit protocol mutations and local selection state; applying the aggregated mutations once preserves persistence hooks.
+- Focus restoration is an ownership lifecycle, not a close-handler feature. Capturing at mount/open and restoring on unmount covers every close path, including programmatic state changes.
+
+### What was tricky to build
+
+The workbench plan has two classes of state: durable protobuf document mutations and browser-local workspace/active/launcher selection. The shadow store must preflight both in order, aggregate only durable mutations, and apply local final state only after the atomic batch commits. Focus restoration similarly must prefer an exact connected invoker, fall back through surviving owners without ever choosing body, and yield when another dialog/menu has already taken focus.
+
+### What warrants a second pair of eyes
+
+- Review the decision to trace one canonical batch effect rather than N misleading independently performed child verbs.
+- Review default pane minima (240 px inline, 160 px block, 0.1 fraction) against all product layouts.
+- Review direct consumers that may have relied on the incorrect `Workbench.perform(): void` declaration.
+- Verify ObjectMenu action flows that synchronously open another dialog do not have focus stolen back; the shared utility intentionally detects a newly focused transient surface.
+
+### What should be done in the future
+
+- Build the embedded demo and run rendered keyboard/pointer/agent workbench smoke checks.
+- Run rendered Dialog launcher and ObjectMenu Escape/selection/click-away focus checks.
+- Fix any integration failures, then run complete Phase 4 validation and print its completion slip.
+
+### Code review instructions
+
+1. Review `Workbench.plan/applyPlan`, then the agent batch gateway path and stale-revision tests.
+2. Review pure pane bounds, DOM geometry lookup, and SplitPane pointer/keyboard use.
+3. Review `focus.ts`, Dialog mount/unmount ownership, and ObjectMenu invoker propagation.
+4. Run root PBUI, workbench, and chat tests/builds in dependency order.
+
+### Technical details
+
+A plan stores the exact immutable base document, ordered verbs, aggregated protocol mutations, and final browser-local shell state. `applyPlan` refuses if document identity changed. Pane ratio bounds are `max(minFraction, minPx/renderedAxis)` through `1-min`; a split is refused when the lower bound exceeds 0.5. Focus return queues one microtask after unmount, ignores body, and yields to an already-focused transient surface.
+
+## Step 15: Let rendered evidence correct focus and pane geometry
+
+The first Phase 4 Chromium pass did what it was supposed to do: it disproved two unit-green assumptions. Launcher Escape returned focus to `<main>` rather than the toolbar button, because Dialog mounted after another shell update had already moved focus. Keyboard Home on a 618 px split produced a 236 px pane despite a 240 px minimum, because the ratio used the full container width while CSS fractions divide only the 608 px remaining after the 10 px divider. I fixed both, reran package tests, rebuilt the embedded app, and repeated the checks with actual browser geometry.
+
+### Prompt Context
+
+**User prompt (verbatim):** `phase 4-5, budget 1M, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill) [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory.`
+
+**Continuation prompt (verbatim):** `Continue working toward the active thread goal. ... Avoid repeating work that is already done. Choose the next concrete action toward the objective.`
+
+**Assistant interpretation:** Resume at the exact unfinished rendered Phase 4 gate, treat browser measurements as acceptance evidence rather than ceremony, fix every discrepancy, and preserve coherent implementation/diary commits before moving to Phase 5.
+
+**Inferred user intent:** Phase 4 is complete only if real controls return to their real invokers and real CSS tracks honor the declared pane minimum; tests that merely model those claims are insufficient.
+
+**Commit:** `01452a84be5feb2a3a89fbb619dd8bab1e497516` — "fix(pbui-workbench): honor rendered divider and launcher focus"
+
+### What I did
+
+- Captured the launcher invoker synchronously from the workbench store's closed-to-open transition, before React mounts Dialog or another shell effect can move focus.
+- Passed the exact invoker through `WorkbenchLauncher -> LauncherModal -> LauncherShell -> Dialog`.
+- Added a launcher integration regression proving Escape restores the exact opening control.
+- Changed pane calculations to use the distributable axis after subtracting the measured divider track.
+- Measured an existing divider directly and otherwise read the inherited `--pbui-space-4` token, with a documented 10 px headless fallback.
+- Applied divider-aware geometry to prospective splits, resize bounds, nested layout validation, and workspace construction.
+- Corrected pointer coordinates to account for the divider center and distributable axis.
+- Added ResizeObserver/window-resize refresh of separator bounds and exposed the actual pixel-derived limits through `aria-valuemin`/`aria-valuemax`.
+- Added the discoverable scripted `arrange workbench` scenario: it calls `workbench_describe`, reuses its revision/placement id, calls one atomic `workbench_perform`, and says the browser's exact refusal aloud.
+- Exercised one successful agent split followed by the same request on a 304 px pane; the second request visibly reported zero applied changes and `too small to split side by side`.
+- Captured rendered evidence:
+  - `various/phase4-object-menu-action-focus.png`
+  - `various/phase4-rendered-pane-minimum.png`
+  - `various/phase4-agent-atomic-split-and-refusal.png`
+
+### Commands run
+
+```text
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui typecheck
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui test
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui build
+pnpm --filter @hyperslop-systems/pbui-workbench typecheck
+pnpm --filter @hyperslop-systems/pbui-workbench test
+pnpm --filter @hyperslop-systems/pbui-workbench build
+pnpm --filter @hyperslop-systems/pbui-chat typecheck
+pnpm --filter @hyperslop-systems/pbui-chat test
+GOWORK=off go test ./pkg/chatserver/... ./pkg/pbuichat -count=1
+make chat-build
+./bin/pbui-chat serve --port 18092 --timeline-db /tmp/pbui-phase4-timeline.db --turns-db /tmp/pbui-phase4-turns.db --sessions-db /tmp/pbui-phase4-sessions.db
+git diff --check
+```
+
+The browser sequence used launcher click/Escape/close, composer Ctrl+K/Escape, product right-click/Escape/click-away/Inspect, chrome split, separator Home, real pointer drag, and two real `arrange workbench` turns through the frontend-tool bridge.
+
+### What worked
+
+```text
+root PBUI typecheck/tests/build                 12 files / 102 PASS
+pbui-workbench typecheck/tests/build            9 files / 125 PASS
+pbui-chat typecheck/tests                       24 files / 239 PASS
+focused Go tests                                PASS
+pre-commit GOWORK=off go test ./...              PASS
+pre-commit golangci-lint/logcopter/glazed-lint  PASS / zero issues
+launcher toolbar click -> Escape                search input -> exact toolbar button
+composer Ctrl+K -> Escape                       search input -> exact composer textarea
+ObjectMenu Escape/click-away/Inspect             exact product invoker restored
+keyboard Home on 618 px split                   aria 39; panes 239.98 / 368.00 px
+pointer drag to far edge                        aria max 61; panes 367.99 / 240.00 px
+agent first arrange request                     one atomic batch, five tiles, one agent trace
+agent repeated request on 304 px tile           zero changes; actionable too-small refusal
+```
+
+### What didn't work
+
+1. Initial rendered launcher Escape focused `<main>`, not `Ctrl+K · launcher`. Generic Dialog capture at mount was too late for this external-store transition. Capturing in the synchronous launcher-open store notification fixed click and keyboard invokers without putting DOM nodes into serializable workbench state.
+2. Initial rendered keyboard Home produced pane widths `236 / 372` for a declared 240 px minimum. CSS grid allocates fractional tracks after subtracting its auto divider, while JavaScript divided by the full 618 px. Subtracting the measured 10 px divider produced `239.98 / 368.00` (subpixel rendering of the exact 240 px bound).
+3. The first launcher regression used a raw `<button>` and `test/no-raw-controls.test.ts` rejected it: `components/Launcher/Launcher.test.tsx:46 — use Button or IconButton from @hyperslop-systems/pbui`. I changed the fixture to the design-system `Button`.
+4. After making divider geometry honest, three old expectations failed (`0.4/0.6`, `40/60`, pointer `60`). The correct limits over 590 distributable pixels are `240/590 = 0.406779...` and `0.593220...`, announced as 41/59. I changed the tests to assert that calculation and the divider-aware pointer geometry.
+5. The keyboard ARIA-bound test initially still read 10/90 because it mocked geometry after the layout effect. Dispatching the same resize notification production listens for refreshed the derived bounds and proved 41/59.
+6. The accumulated browser console contained expected WebSocket 1006 errors from deliberately killing and rebuilding the server during earlier lifecycle and bundle passes. A fresh stable-tab console audit remains part of final validation; these historical messages are not treated as a clean-console result.
+
+### What I learned
+
+- Focus capture belongs at the state transition that opens a transient surface when an external store participates; mount-time capture is the generic fallback, not always the earliest truthful point.
+- A CSS grid ratio applies to free track space, not necessarily the element's border-box axis. The separator is geometry, not decoration.
+- Accessibility range metadata must report the same dynamic constraints keyboard and pointer handlers enforce; fixed 10/90 values became false once pixel minima existed.
+- A scripted product scenario is valuable executable documentation: one phrase now proves description-before-mutation, revision binding, one atomic effect trace, and actionable refusal in the shipped demo.
+
+### What was tricky to build
+
+The launcher return target must remain ephemeral and exact without contaminating workbench state with an `HTMLElement`; a ref populated by the synchronous subscription is early enough and remains outside serialization/shadow planning. Divider geometry has three contexts: a rendered existing split with a measurable divider, a prospective split whose divider does not exist yet, and headless planning with no geometry. Direct measurement, the inherited CSS token, and a documented fallback cover those contexts in that order.
+
+### What warrants a second pair of eyes
+
+- Confirm that custom themes always leave `--pbui-space-4` parseable as a pixel value; rendered existing splits do not depend on it, but prospective splits do.
+- Review whether `aria-valuemin/max` should expose rounded whole percentages or a more precise value; current values match `aria-valuenow` granularity.
+- Review the demo scenario's choice of the first described tile; it is deterministic and intentionally small, but it is demonstration policy rather than core runtime policy.
+
+### What should be done next
+
+- Commit and relate the rendered screenshots and this diary interval.
+- Run a fresh stable-tab console/network audit and any remaining focus nesting smoke.
+- Run the complete Phase 4 validation matrix, inspect repository/generated/artifact state, update task `biq3`, and print the Phase 4 completion slip only if all evidence is green.
+- Print the Phase 5 start slip, then perform the cross-phase release-readiness and requirement-to-evidence audit.
+
+### Code review instructions
+
+1. Reproduce the 618 px nested split and compare the first separator's ARIA 39/61 range to pane widths at Home/End.
+2. Open launcher from both toolbar and composer, then close by Escape and X.
+3. Right-click a product and close via Escape, click-away, and Inspect.
+4. Reset layout, send `arrange workbench` twice, and confirm tile count changes only once and the trace contains one `agent workbench.verb_batch`.
+5. Review `dividerSize`, `distributableSize`, nested `layoutFits`, and pointer-center math together.
+
+### Technical details
+
+At 618 px total with a 10 px divider, CSS fractions divide 608 px. The exact inline lower bound is `240/608 = 0.3947368421`; Home renders 239.98265 px because Chromium distributes subpixels. The matching upper bound is 0.6052631579. In the 600 px mocked unit geometry, the distributable axis is 590 px and bounds are 0.4067796610/0.5932203390. The successful scripted call persisted one canonical `workbench.verb_batch` trace; the preflight-rejected repeat produced no second effect or mutation.
+
+## Step 16: Begin Phase 5, remove unsafe undo, and expose the executor blocker
+
+After the complete Phase 4 validation matrix passed, I printed its completion slip (and immediately reprinted it with the corrected frontend test total, 615 rather than 813), then printed the Phase 5 start plan. The first requirement audit found one PBUI-owned gap: `WorkbenchTools.undo` still restored a whole immutable document snapshot without revision checking, persistence, gateway tracing, or a safe inverse. The architecture guide explicitly says to remove returned tokens until inverse operations are real, so I removed the ring, public API, and every returned `undoToken`. I also upgraded the Go consumer from Pinocchio `v0.11.12` to the hardened `v0.11.14` release.
+
+The next audit gate deliberately opened two tabs on one session. That exposed the known but still unresolved upstream executor-ownership boundary: exact npm chat-provider `0.5.0` executes the same request in both tabs and re-executes a terminal request. Pinocchio and the effect endpoint correctly reject divergent duplicate results/envelopes, but rejection occurs after both browser effects have run. This blocks the Phase 5 `two tabs, one frontend executor` acceptance criterion.
+
+### Prompt Context
+
+**User prompt (verbatim):** `phase 4-5, budget 1M, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill) [REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory.`
+
+**Continuation prompt (verbatim):** `Continue working toward the active thread goal. ... Before marking the goal complete, audit progress against the objective ... only when every requirement is verified.`
+
+**Assistant interpretation:** Treat Phase 5 as a hostile completion audit: remove any unsafe promise the implementation still exposes, consume the released server hardening, then test the exact installed browser package and multi-tab topology rather than inferring readiness from sibling source.
+
+**Inferred user intent:** Do not call Phase 4–5 complete merely because PBUI's local suites pass; prove the actual released dependency chain and stop honestly if an immutable dependency constraint prevents the required runtime behavior.
+
+**Commits:**
+
+- `1d17631e555d9068e2fe6d5c48db6a5e122d16f7` — "fix(pbui-chat): remove unsafe workbench undo tokens"
+- `ac76a40fc6a6f2b854a7bfae239f406135ee7ec5` — "build(pbui-chat): consume pinocchio v0.11.14"
+
+### What I did
+
+- Ran protocol generation/lint reproducibility, all relevant frontend typechecks/tests/builds, root consumer smoke/pack inspection, full uncached Go tests, focused Go race tests, local CI, GoSec, and artifact hashes.
+- Removed the per-conversation whole-document undo ring and exported `UndoEntry` surface.
+- Removed `undoToken` from specialized, atomic batch, and raw mutation results.
+- Added regressions proving no unsafe undo API or token is advertised.
+- Upgraded and tidied Pinocchio to `v0.11.14`; full/race/security checks pass.
+- Added `scripts/01-phase5-contract-audit.py`; it currently reports 20/20 PBUI-owned static contracts passing.
+- Added `scripts/02-probe-installed-chat-provider-multitab.mjs`; it imports the exact installed package and exits 1 when replay/two-runtime ownership executes more than once.
+- Opened two real Chromium tabs on the same session and ran one workbench tool sequence.
+- Captured exact network, durable SQLite, and installed-package evidence in `various/03-phase5-multitab-executor-blocker.md` and `various/phase5-installed-provider-multitab-probe.json`.
+
+### Commands run
+
+```text
+make protocol-check
+pnpm -r --if-present typecheck
+pnpm --filter '!@hyperslop-systems/datalab-ui' -r --if-present typecheck
+pnpm --filter '!@hyperslop-systems/datalab-ui' -r --if-present test
+pnpm --filter '!@hyperslop-systems/datalab-ui' -r --if-present build
+make ci-check
+make gosec
+GOWORK=off go test ./... -count=1
+GOWORK=off go test -race ./pkg/chatserver ./pkg/pbuichat ./pkg/workbench ./pkg/workbenchapi -count=1
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui typecheck
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui test
+pnpm --include-workspace-root --filter @hyperslop-systems/pbui build
+pnpm consumer:smoke
+pnpm pack:check
+GOWORK=off go list -m -versions github.com/go-go-golems/pinocchio
+GOWORK=off go get github.com/go-go-golems/pinocchio@v0.11.14
+GOWORK=off go mod tidy
+npm view @go-go-golems/chat-provider@0.5.0 version dist.integrity dist.tarball --json
+npm view @go-go-golems/chat-provider dist-tags --json
+./scripts/01-phase5-contract-audit.py
+./scripts/02-probe-installed-chat-provider-multitab.mjs
+```
+
+### What worked
+
+```text
+protocol-check / generated diff                         PASS
+relevant package typechecks                             PASS
+workbench-protocol                                      44 PASS
+PBUI                                                     102 PASS
+pbui-workbench                                           125 PASS
+pbui-sandbox                                             103 PASS
+pbui-chat before final undo removal                      239 PASS
+pbui-chat after unsafe undo removal                      237 PASS
+pbui-chat demo                                           2 PASS
+current final frontend total                             613 PASS
+full GOWORK=off Go tests -count=1                        PASS
+chatserver/pbuichat/workbench/workbenchapi race          PASS
+make ci-check                                            PASS
+GoSec                                                    0 issues
+root clean consumer smoke                                PASS
+root npm tarball inspection                              PASS
+static cross-file contract audit                         20/20 PASS
+fresh one-tab stable console                             0 errors / 0 warnings
+```
+
+The Phase 4 completion print succeeded twice; the first paper says the wrong `JS=813 PASS`, so it is superseded by the second print at `2026-08-25T20:07:50Z`, which correctly says `JS=615 PASS`. The Phase 5 start plan printed at `2026-08-25T20:08:01Z`.
+
+### What didn't work
+
+1. `pnpm -r --if-present typecheck` included `packages/datalab-ui`, whose intentionally uninstalled dependency tree produced many `TS2307` errors and the explicit warning `Local package.json exists, but node_modules missing`. The repository Makefile itself documents installation with `--filter '!@hyperslop-systems/datalab-ui'`; rerunning the complete installed/relevant workspace with that filter passed typecheck, 513 package tests, and all builds. Root PBUI's 102 tests were run separately, totaling 615.
+2. The first completion slip used my incorrect arithmetic (`813`). I did not treat it as evidence; I printed a corrected slip with the actual 615-test total and recorded both.
+3. The Phase 5 audit found the old undo API could overwrite later work and bypass persistence/effect tracing. Rather than add a last-writer-wins revision check or compatibility shim, I followed the guide's explicit safe option and removed the unusable tokens/API.
+4. The first static-audit script run referenced a removed `conversations/types.ts` path and used stale marker names for outbox/auth/title code. I changed it to inspect the actual `registry.ts`, route registration, handler parser/submission markers, and real title CAS names; the rerun passes 20/20.
+5. The first installed-package probe could not resolve a package from the nested ticket directory. I changed it to locate the repository root and create a resolver from `packages/pbui-chat/package.json`; the rerun imports the exact installed package and fails for the intended behavioral reason.
+6. The two-tab browser test failed the required ownership invariant. Both tabs changed from four to five tiles. The losing tab received repeated HTTP 500s: Pinocchio `terminal_conflict` for `workbench_describe` and `effect id ... was reused with a different envelope` for `workbench_perform`.
+7. The exact installed npm package probe reports terminal replay `executions: 2, submissions: 2` and two independent tabs `executions: 2, submissions: 2`, where each required value is 1.
+
+### What I learned
+
+- A completion audit must test immutable release artifacts, not a sibling repository's green source tree. React-chat's hardened source is merged, but npm `0.5.0` predates it and cannot be overwritten.
+- Pinocchio's strict terminal ledger and PBUI's complete-envelope comparison are functioning: they reject the second divergent result. They cannot retroactively prevent a second browser from performing the effect.
+- Random ids make independently executed local workbench plans semantically equivalent but bytewise different; strict envelope conflict is therefore the correct alarm, not something to weaken.
+- Removing a false undo promise is safer and smaller than inventing a snapshot compatibility layer that silently erases concurrent changes.
+
+### What was tricky to build
+
+The multi-tab defect crosses all three ownership layers. A PBUI-only localStorage lock could suppress one mutation, but it could not suppress duplicate read results, human prompts, manifest writes, or return the winning result consistently. Relaxing server envelope equality would only hide two executions. Correctness needs protocol-level executor identity/assignment and a published browser runtime that obeys it.
+
+### What warrants a second pair of eyes
+
+- Confirm that the explicit requirement to keep npm `@go-go-golems/chat-provider@0.5.0` still overrides the Phase 5 requirement to consume the hardened browser terminal ledger. Both cannot be true because npm versions are immutable.
+- Review the safe removal of `WorkbenchTools.undo/history` and `undoToken`; no production caller existed, but it is an intentional public API contraction.
+- Review the exact two-tab network and SQLite evidence before deciding the coordinated release path.
+
+### What should be done next
+
+- Commit and relate the audit scripts, outputs, blocker report, and diary.
+- Produce the full requirement-to-evidence table with every PBUI-owned requirement marked and the executor criterion explicitly blocked.
+- Do not print the Phase 5 completion slip and do not complete the durable goal unless a release owner authorizes a new chat-provider version/protocol-v2 integration and the two-tab probe becomes one execution with no conflicts.
+
+### Code review instructions
+
+1. Review `1d17631` against guide §§7.5, 12, and Phase 3 item 4; confirm no `undoToken`, ring, or whole-document agent restore remains.
+2. Review `ac76a40` and `go.sum`; run with `GOWORK=off` to prove release consumption.
+3. Run `01-phase5-contract-audit.py` and inspect all 20 lines.
+4. Run `02-probe-installed-chat-provider-multitab.mjs`; the nonzero exit is the exact release blocker.
+5. Follow the browser reproduction in `03-phase5-multitab-executor-blocker.md` and compare both tabs plus `/tools/results`, `/effects`, and SQLite events.
+
+### Technical details
+
+The accepted workbench effect used before revision `723d2475...` and after revision `e73dcfbf...`. The second tab used the same effect id/input digest but independently minted ids and produced after revision `24fd427b...`; its occurrence timestamp also differed. The server retained exactly one `PbuiVerbRecorded` and one accepted terminal result. npm reports `0.5.0` integrity `sha512-HztFHJUM48LMheN/4qi7QAa6piGCjcgztCDXwea+v3sQwB2wok3VUEknH6L036PsBO7f0tsNpazyq7quA58lIw==`, `next: 0.5.0`, `latest: 0.4.2`.
+
+## Step 17: Recheck the external release gate after continuation
+
+### Prompt Context
+
+**User prompt (verbatim):** `Continue working toward the active thread goal. Inspect the current objective and status with get_goal (or the exposed namespaced equivalent, such as pi__get_goal) if needed. Budget: - Time spent pursuing goal: 51m - Tokens used: 844K (843,606) - Token budget: 1M (1,000,000) - Tokens remaining: 156K (156,394) Avoid repeating work that is already done. Choose the next concrete action toward the objective. Before marking the goal complete, audit progress against the objective and call update_goal (or the exposed namespaced equivalent, such as pi__update_goal) with status "complete" only when every requirement is verified.`
+
+**Assistant interpretation:** Reinspect the only unresolved external prerequisite rather than rerun already-green PBUI implementation work or silently relax the exact-version/release constraint.
+
+**Inferred user intent:** Continue only through evidence-backed, authorized actions and keep the durable goal active while one explicit acceptance criterion remains false.
+
+### What I did
+
+- Read active goal `f18ad5e2-b038-4d05-9030-8d53da9aae25`; it remains active and still requires every Phase 5 criterion plus a completion slip.
+- Queried the live npm registry for all chat-provider versions and distribution tags.
+- Inspected PBUI, react-chat, and Pinocchio worktree/branch state.
+- Re-read the react-chat executor-ownership design before considering an upstream workaround.
+
+### Commands run
+
+```text
+npm view @go-go-golems/chat-provider versions --json
+npm view @go-go-golems/chat-provider dist-tags --json
+git -C pbui status --short --branch
+git -C react-chat status --short --branch
+git -C pinocchio status --short --branch
+rg -n -C 5 "multi-tab|executor|lease|Web Locks|localStorage|BroadcastChannel|protocol v2" react-chat/ttmp/.../design-doc/*.md
+```
+
+### What worked
+
+- The registry query completed and showed the complete version set through `0.5.0` only.
+- All three relevant source worktrees were clean.
+- The design evidence remains unambiguous: a PBUI-only or browser-storage election is explicitly rejected; assignment belongs to the authenticated server/session protocol.
+
+### What didn't work
+
+- No hardened npm release appeared. At `2026-08-25T16:39:24-04:00`, npm still reports `next: 0.5.0`, `latest: 0.4.2`, and no version newer than `0.5.0`.
+- The continuation did not authorize publishing a new package, changing PBUI's exact `0.5.0` requirement, or selecting the coordinated protocol-v2 lease policy. Therefore there is no safe code or release mutation available that can make the failing installed-package/two-tab criterion true.
+
+### What I learned
+
+The blocker is current rather than stale registry evidence. Re-running local PBUI tests cannot change it, and introducing the previously rejected localStorage/Web Locks election would violate the documented architecture and the no-compatibility-shim constraint.
+
+### What was tricky to build
+
+No implementation was attempted in this interval. The important distinction was between legitimate upstream protocol work and an unauthorized client-only suppression mechanism that would make one demo appear green without providing authenticated ownership.
+
+### What warrants a second pair of eyes
+
+- Release ownership must explicitly approve a new npm version and replacement of the exact `0.5.0` PBUI pin.
+- Protocol owners must choose and authenticate executor assignment/lease identity before implementation begins.
+
+### What should be done next
+
+- Obtain the two decisions above.
+- Then implement and publish the coordinated Pinocchio/react-chat protocol, consume the immutable release in PBUI, and rerun the exact installed-package plus real two-tab tests.
+- Until then, keep task `cppg` open, do not print the Phase 5 completion slip, and do not complete the durable goal.
+
+### Code review instructions
+
+1. Run both npm queries and confirm there is still no version after `0.5.0`.
+2. Read react-chat guide §8 and the rejected localStorage alternative in §16.
+3. Confirm this interval changes evidence only and does not add a hidden executor shim.
+
+### Technical details
+
+The clean react-chat worktree is on `task/add-pbui-agent` at `4c7ffae`; hardened runtime commit `e341aae` is in its history, but no corresponding npm release exists. PBUI remains clean at `b44f413` before this diary-only interval.
+
+## Step 18: Adopt the concise executor design and update release status
+
+This documentation interval replaces the previously open-ended lease requirement with a concrete first-release integration contract. PBUI remains the HTTP/security adapter and acceptance-test owner; it does not elect executors or add a local lock. The new upstream contract carries a client, connection, and server assignment epoch end to end.
+
+The guide also records that chat-provider `0.5.1` is now published and locally selected. That release supplies per-runtime replay prevention, while the next coordinated release will supply cross-tab assignment.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as react-chat Diary Step 10)
+
+**Assistant interpretation:** Keep PBUI's guide and Phase 5 blocker language aligned with the concise authoritative design and current package-release state.
+
+**Inferred user intent:** Ensure the implementation and acceptance owner has an exact, non-lease-heavy contract to consume and test.
+
+**Commit (docs):** `a2227f5e7916f87665aaccbea79c5f4aecf25f49` — "PBUI-TOOLCALL-1: adopt concise executor protocol"
+
+### What I did
+
+- Updated PBUI's architecture guide to reference the authoritative concise design.
+- Corrected stale `0.5.0` release language: `0.5.1` now contains the per-runtime terminal ledger.
+- Kept the two-tab acceptance item open because `0.5.1` does not assign one executor.
+- Mapped PBUI work to strict manifest/result DTOs, exact acknowledgement, error handling, package consumption, and browser evidence.
+
+### Why
+
+- A PBUI-only lock would hide rather than solve cross-repository ownership.
+- Release status and acceptance checklists must distinguish per-runtime idempotency from cross-tab ownership.
+
+### What worked
+
+- PBUI's Server already owns the Pinocchio Manager and Hub needed for an atomic acknowledgement adapter.
+- Existing two-tab evidence is directly reusable as the regression acceptance case.
+
+### What didn't work
+
+- No implementation or two-tab rerun was attempted; the concise upstream protocol is not yet published.
+
+### What I learned
+
+- Assignment identity is concurrency provenance, while PBUI's existing route authorizer remains the security boundary.
+
+### What was tricky to build
+
+The HTTP manifest response must return the exact assignment created by that acceptance operation. A generic Hub submit followed by manager lookup can acknowledge a different tab's racing assignment.
+
+### What warrants a second pair of eyes
+
+- Review whether PBUI should map executor mismatches to 409 without leaking session ownership information.
+- Review the local uncommitted `0.5.1` dependency update separately from these docs.
+
+### What should be done in the future
+
+- Consume released Pinocchio/react-chat executor versions and rerun the two-tab, human-tool, reconnect, network, console, and durable event audit.
+
+### Code review instructions
+
+1. Read react-chat design 02.
+2. Review PBUI `toolManifestRequest`, `toolResultRequest`, and handlers against its API sketches.
+3. Re-run the existing Phase 5 multi-tab reproduction after integration.
+
+### Technical details
+
+PBUI must not generate `assignment_id`. It serializes the assignment returned by Pinocchio and rejects missing identity after the coordinated migration.
+
+## Step 19: Close Phase 5 with immutable releases and real two-tab evidence
+
+The maintainer merged react-chat release PR 17. I ran the upstream trusted-publishing dry run and real npm publication from authoritative `main`, verified registry integrity, installed exact chat-provider `0.6.0` and Pinocchio `v0.11.16` in PBUI, migrated PBUI's strict HTTP adapter, and reran package/server/browser validation.
+
+The installed-package probe and real Chromium tabs now prove one owner. Automatic execution produced owner-only result submissions and one durable effect envelope. Human-tool controls appeared only in the assigned tab. Reload preserved the tab client identity, rotated connection/assignment, left the old pending call unassigned, and made a new call actionable only in the reconnected owner.
+
+### Prompt Context
+
+**User prompt (verbatim):** `good, i merged it`
+
+**Assistant interpretation:** Publish chat-provider `0.6.0` through trusted publishing, verify it, consume exact corrected releases in PBUI, and complete the blocked Phase 5 acceptance matrix.
+
+**Inferred user intent:** Finish the cross-repository executor rollout and replace the historical two-tab blocker with immutable installed-package and browser evidence.
+
+**Commit (code):** `98d3156` — "feat(pbui-chat): adopt executor-aware tool runtime"
+
+### What I did
+
+- Verified PR 17 merge commit `09597c5653f750c7f392cf76ea4343b548c0393e`.
+- Ran trusted-publishing dry-run workflow `32912825633` and real publish workflow `32912868721`.
+- Verified npm `0.6.0`, `next=0.6.0`, integrity and shasum.
+- Pinned PBUI and demo to exact chat-provider `0.6.0` and Pinocchio `v0.11.16`.
+- Migrated manifest/result handlers to exact assignment acknowledgement and executor validation/error mapping.
+- Updated Go integration tests to echo request executor provenance.
+- Updated strict frontend tests for fail-closed executor identity and pre-connect synchronization.
+- Rewrote the exact installed-package probe for executor-aware replay/two-runtime assertions.
+- Ran two Chromium tabs on one session through automatic, human, and reconnect flows.
+- Captured JSON and screenshot evidence and superseded the blocker documentation.
+
+### Why
+
+- PBUI Phase 5 required proof from immutable installed releases and real independent tabs, not sibling source or one runtime.
+
+### What worked
+
+- npm dry-run and real trusted publish passed all workflow stages.
+- Registry metadata: integrity `sha512-dMJsObneOmksPkAfxdd+ZrHdGclAPSDmDh3MczqdYRNRWSXv1TLiAQRmFnlui1B39WLi05tkFXNHnkUuMSm2sQ==`; shasum `0569a3853d205662823f5ddcf84db84da58bfa6e`.
+- Installed-package probe: one execution/one submission for terminal replay and two runtimes.
+- PBUI Chat: 237 tests; root: 102; protocol: 44; workbench: 125; sandbox: 103; demo: 2 — 613 total.
+- Relevant typechecks/builds and full Go tests/vet passed.
+- Focused Go race tests passed.
+- Static contract audit returned 20/20.
+- Automatic browser call `sandbox_create_app` completed with one owner and one durable `program.open` effect envelope; non-owner submitted no result/effect.
+- Human `pbui_accept` entered ACCEPT MODE only in the owner; the non-owner retained read-only history and submitted nothing.
+- Reload kept client `1c57427a...`, rotated connection `8dac146c...` -> `1c216dcf...`, and assignment `f529b7b0...` -> `cc15bb04...`.
+
+### What didn't work
+
+1. The first full `pnpm install --frozen-lockfile` failed because an existing GitHub Packages token could not fetch private plot `0.2.0`:
+
+   ```text
+   ERR_PNPM_FETCH_403 ... @hyperslop-systems/plot/0.2.0 ... Forbidden - 403
+   ```
+
+   A filtered offline install restored the six relevant PBUI workspaces and installed exact chat-provider `0.6.0` without touching the intentionally excluded datalab package.
+
+2. The first package test run had three strict-migration failures: a human fixture lacked executor identity, and two direct pre-connect manifest sync tests timed out. Fixtures now install matching executor provenance; offline ContextTile tests assert that unsent pre-connect sync stays pending rather than falsely stamping advertisement.
+
+3. The first probe invocation used the obsolete root `scripts/` path and failed `MODULE_NOT_FOUND`. The probe lives in the ticket `scripts/` directory.
+
+4. The rewritten probe initially resolved `package.json` through an unexported subpath, then ascended one directory too far. It now derives package root from the exported package entry.
+
+5. The first recursive workspace validation included intentionally uninstalled `datalab-ui` after the failed full install and produced missing-module errors. Reinstalling and validating the six relevant workspaces restored the documented matrix; root PBUI was run separately.
+
+6. The first static contract audit still hard-coded chat-provider `0.5.0` and Pinocchio `v0.11.14`, yielding 18/20. Updating the release contract expectations produced 20/20.
+
+7. The automatic program scenario attempted two `program.create` effect reports whose client digest disagreed with server canonicalization and received HTTP 400. The actual canonical `program.open` consequential effect was accepted once and persisted once. This pre-existing create-report canonicalization issue did not cause duplicate execution or envelope conflict and warrants a separate follow-up.
+
+### What I learned
+
+- Exact installed-package probing catches export-map and strict-identity behavior that source tests do not.
+- Human actionability must be observed separately from timeline visibility: both tabs display requested history, but only the assigned runtime enters ACCEPT MODE.
+- Reconnect evidence needs both old and new calls to prove no in-flight reassignment and new-assignment liveness.
+
+### What was tricky to build
+
+The browser had multiple conversation panes. Network evidence identified authoritative session `99e6c8a0...`; durable snapshots then tied every tool call to exact executor tuples. Tab-specific Playwright request logs proved the owner submitted results while the non-owner had zero result/effect requests. The human call was stopped after reload to terminalize its old assignment, then a new call proved controls on the rotated assignment.
+
+### What warrants a second pair of eyes
+
+- Investigate the `program.create` client/server digest disagreement that generated two HTTP 400 reports before the accepted `program.open` envelope.
+- Review whether ContextTile should disable/reject manual manifest sync visibly while a runtime is disconnected rather than leave it pending.
+- Confirm the datalab private-registry token should be repaired independently of this ticket.
+
+### What should be done in the future
+
+- Track turn-scoped executor capture in react-chat issue 16.
+- Track effect canonicalization parity on `program.create` in `hyperslop-systems/pbui#12`.
+
+### Code review instructions
+
+1. Review exact dependency pins and PBUI handler DTOs first.
+2. Run the installed-package probe and 20/20 static audit.
+3. Run relevant six-workspace tests/typechecks/builds plus root PBUI and full Go/race tests.
+4. Inspect `phase5-executor-acceptance-evidence.json` and both screenshots.
+
+### Technical details
+
+The browser acceptance session was `99e6c8a0-b310-4be6-a504-e3860f21e2eb`. Automatic tool executor assignment was `f529b7b0-a445-462b-a5aa-86c6d90d59a7`; reconnect assignment was `cc15bb04-0c33-4abd-95f2-2ce12dd68543`. Server logs contained no terminal, executor-mismatch, duplicate, or effect-envelope conflict.
+
+## Step 20: Resolve the final PBUI pull-request review
+
+The newest Codex review found three post-acceptance correctness gaps: demo approval consumption did not survive reload, program events could race on stale plugin state, and failed message submissions advanced the conversation index. I fixed each at its owning boundary and added focused regressions. I also audited the older review threads and closed the one remaining gap: workspace creation now shares singleton views across existing workspaces and repeated leaves.
+
+The fixes preserve the Phase 5 executor protocol and do not introduce a second authority. Approval decisions still come from hydrated timeline evidence; only the spent marker is persisted. Program events remain fire-and-forget to React but execute serially per mounted view. Session counts now advance only after the hub/service accepts a message.
+
+### Prompt Context
+
+**User prompt (verbatim):** `Address code review comments on https://github.com/hyperslop-systems/pbui/pull/11`
+
+**Additional user instruction (verbatim):** `request new review with "@codex review" when done`
+
+**Assistant interpretation:** Audit every open PR review comment against the current branch, implement the still-valid fixes with regressions, push them, reply to the review threads, and trigger a fresh Codex review.
+
+**Inferred user intent:** Make PR 11 review-ready with concrete evidence that the reported correctness and authorization gaps are closed.
+
+**Commit (code):** `ef6ad86` — "fix: address PBUI pull request review"
+
+### What I did
+
+- Added `ConsumedApprovalStore`, backed by demo `localStorage`, so a newly constructed ledger rejects proposal IDs spent before reload.
+- Added reload, multi-instance merge, and malformed-storage tests.
+- Serialized sandbox program events per view and dropped queued work from disposed instances.
+- Added a delayed-engine rapid-double-event regression proving counter state reaches 2 rather than losing one increment.
+- Moved session `Touch(..., counted=true)` after successful real or scripted submission.
+- Added a missing-profile submission regression proving HTTP 500 leaves `message_count` at zero.
+- Extended `buildLayout` with explicit singleton knowledge and made `createWorkspace` seed it from current views.
+- Added tests for existing and repeated newly-created singleton leaves.
+- Re-audited prior comments covering operation-bound approvals, generic ID validation, app availability, raw mutation support/policy, specialized open policy, refused outcomes, cross-workspace go-to, and post-commit hook isolation.
+- Ran focused, full, race, typecheck, build, static-audit, lint, and pre-commit validation.
+
+### Why
+
+- A user approval is a single-use capability; process-local consumption can be reset by reload.
+- Event handlers are state transitions and must observe the previous transition's output.
+- An index must describe accepted messages, not attempted requests.
+- Singleton identity is document-wide, including declarative workspace creation.
+
+### What worked
+
+- Root PBUI: 102 tests.
+- Protocol: 44 tests.
+- Workbench: 127 tests.
+- Sandbox: 104 tests.
+- PBUI Chat: 237 tests.
+- Demo: 5 tests.
+- Total frontend tests: 619 passing.
+- All relevant typechecks and sequential builds passed.
+- Full Go tests/vet, focused chatserver race tests, golangci-lint, logcopter, and glazed-lint passed.
+- Static contract audit remained 20/20.
+
+### What didn't work
+
+- I initially ran the root build and dependent workspace build matrix concurrently. The root Vite build temporarily cleared `dist/` while `pbui-workbench` resolved `@hyperslop-systems/pbui`, producing transient `TS7016: Could not find a declaration file for module '@hyperslop-systems/pbui'` and follow-on implicit-any errors. Rerunning dependent builds sequentially after the root declarations existed passed. This was a validation-command race, not a source failure.
+
+### What I learned
+
+- Build order is part of validation when workspace packages consume generated declarations from a sibling's `dist` directory.
+- Persisting approval decisions and persisting capability consumption are separate responsibilities; timeline hydration answers the former, a durable spent marker answers the latter.
+- A Promise chain is a small, explicit per-view event sequencer and can reject stale queued events by captured instance identity.
+
+### What was tricky to build
+
+The event API intentionally returns `void`, so callers cannot serialize by awaiting it. The hook now captures the exact instance and appends an async transition to a private Promise chain. Each transition reads plugin state only when it reaches the head of the queue. A program reload changes `instanceRef`; queued old transitions then no-op instead of touching replacement state. The chain recovers before every append so an unexpected rejection cannot wedge all future interaction.
+
+Singleton layout construction was also subtle because the generic `LayoutSpec` has no application registry. `buildLayout` therefore accepts optional, explicit singleton metadata from the workbench verb layer rather than guessing globally. Bare document builders retain their old behavior.
+
+### What warrants a second pair of eyes
+
+- Confirm demo `localStorage` is an acceptable persistence boundary; production consumers should provide a server-backed approval ledger.
+- Confirm dropping queued events from a disposed program instance is preferable to recording an explicit ignored-event timeline note.
+- Review singleton title/document semantics when a layout references an already-existing singleton; identity currently wins, matching split/replace behavior.
+
+### What should be done in the future
+
+- Consider a first-class durable server approval ledger for production deployments rather than the demo adapter.
+- Consider a repository build orchestration target that encodes package declaration dependency order.
+
+### Code review instructions
+
+1. Start with `approvalConsumption.ts`, `useProgramInstance.ts`, `document.ts`/`verbs.ts`, and `HandleSubmitMessage`.
+2. Read each adjacent regression before implementation details.
+3. Run the six relevant workspace test/typecheck matrix sequentially, then full Go tests and focused race tests.
+4. Verify the PR review replies point to `ef6ad86` and request a new `@codex review` after the final documentation commit is pushed.
+
+### Technical details
+
+The delayed sandbox-engine test evaluates the first increment against zero and blocks its result. A non-serialized second invocation would also evaluate against zero; the queue prevents that invocation until state one is committed, so the second result deterministically produces state two.

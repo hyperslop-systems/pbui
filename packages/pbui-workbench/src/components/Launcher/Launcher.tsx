@@ -1,18 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   LauncherShell,
   isEditableTarget,
   routeWorkbenchKey,
   splitDirectionFor,
   useAnyEscapeSurface,
-  type LauncherShellGroup,
 } from "@hyperslop-systems/pbui";
-import { leaves, viewsOfApp, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
+import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
+import { defaultLauncherRows, groupLauncherRows, rowOf, type LauncherInvocation } from "../../launcherRows";
 import type { LauncherProps } from "../../types";
-
-const GOTO = "goto:";
-const PLACE = "place:";
 
 /**
  * pbui's `LauncherShell` over the app registry. Two groups: applications
@@ -24,10 +21,35 @@ const PLACE = "place:";
  * Escape is owned by the Dialog inside the shell; nothing here registers a
  * second escape surface (see LauncherShell.tsx, invariant 1).
  */
-export function WorkbenchLauncher({ title = "Open an application", shortcut = true, shortcutContext }: LauncherProps) {
+export function WorkbenchLauncher({
+  title = "Open an application",
+  shortcut = true,
+  shortcutContext,
+  rows,
+  choose,
+  renderDetail,
+}: LauncherProps) {
   const workbench = useWorkbench();
   const open = workbench.useWorkbenchState((state) => state.launcherOpen);
   const anySurfaceOpen = useAnyEscapeSurface();
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const previousOpenRef = useRef(workbench.store.getState().launcherOpen);
+
+  // The store changes synchronously inside the click/key handler, before React
+  // mounts Dialog. Capture there: another shell effect may move focus while
+  // rendering, which is too late to identify the actual launcher invoker.
+  useLayoutEffect(
+    () =>
+      workbench.store.subscribe(() => {
+        const next = workbench.store.getState().launcherOpen;
+        if (next && !previousOpenRef.current) {
+          const active = globalThis.document?.activeElement;
+          returnFocusRef.current = active instanceof HTMLElement ? active : null;
+        }
+        previousOpenRef.current = next;
+      }),
+    [workbench],
+  );
 
   useEffect(() => {
     if (!shortcut) return;
@@ -63,69 +85,125 @@ export function WorkbenchLauncher({ title = "Open an application", shortcut = tr
     return () => window.removeEventListener("keydown", onKey, true);
   }, [shortcut, shortcutContext, anySurfaceOpen, workbench]);
 
-  return open ? <LauncherModal title={title} /> : null;
+  return open ? (
+    <LauncherModal
+      title={title}
+      rows={rows}
+      choose={choose}
+      renderDetail={renderDetail}
+      returnFocusTo={returnFocusRef.current}
+    />
+  ) : null;
 }
 
 /** Remounted per opening, so the query and the highlight start fresh. */
-function LauncherModal({ title }: { title: string }) {
+function LauncherModal({
+  title,
+  rows,
+  choose,
+  renderDetail,
+  returnFocusTo,
+}: Required<Pick<LauncherProps, "title">> &
+  Pick<LauncherProps, "rows" | "choose" | "renderDetail"> & { returnFocusTo: HTMLElement | null }) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
   const active = workbench.useWorkbenchState((state) => state.activePlacementId);
+  const from = workbench.useWorkbenchState((state) => state.launcherFrom);
   const [query, setQuery] = useState("");
 
-  const target = useMemo(() => {
-    const tree = workspaceTree(document, workspaceId);
-    const all = leaves(tree);
-    const placement = all.find((leaf) => leaf.id === active) ?? all[0];
-    if (!placement || placement.body.case !== "leaf") return null;
-    const view = document.views[placement.body.value.viewId];
+  const labelOf = (placementId: string | null): string => {
+    if (!placementId) return "";
+    const leaf = leaves(workspaceTree(document, workspaceId)).find((node) => node.id === placementId);
+    if (leaf?.body.case !== "leaf") return placementId;
+    const view = document.views[leaf.body.value.viewId];
     const app = view ? workbench.apps.get(view.appId) : null;
-    return { placementId: placement.id, label: view?.title || app?.title || view?.appId || placement.id };
-  }, [document, workspaceId, active, workbench]);
+    return view?.title || app?.titleFor?.(view) || app?.title || view?.appId || placementId;
+  };
 
-  const direction = target ? splitDirectionFor(target.placementId, workbench.root()) : "row";
+  const invocation = useMemo<LauncherInvocation>(() => {
+    const all = leaves(workspaceTree(document, workspaceId));
+    // Per-pane mode aims at the tile it was invoked from; the global one at
+    // the active tile, falling back to the first so Enter always does
+    // something rather than silently nothing.
+    const target = from ?? (all.some((leaf) => leaf.id === active) ? active : (all[0]?.id ?? null));
+    return { from, target, targetLabel: labelOf(target) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [document, workspaceId, active, from, workbench]);
 
-  const groups = useMemo<LauncherShellGroup[]>(() => {
-    const needle = query.trim().toLowerCase();
-    const matches = (text: string) => needle === "" || text.toLowerCase().includes(needle);
-    const goto: LauncherShellGroup = { label: "ON SCREEN", rows: [] };
-    const place: LauncherShellGroup = { label: "NEW TILE", rows: [] };
-    for (const app of workbench.apps.list()) {
-      if (!matches(app.title) && !matches(app.id)) continue;
-      const placed = app.singleton && viewsOfApp(document, app.id).length > 0;
-      if (placed) goto.rows.push({ id: `${GOTO}${app.id}`, title: app.title, detail: "already open · go to it" });
-      // A doc-bound application is a view OF something; without a document
-      // to bind it would open empty. Those arrive through `openView`.
-      else if (!app.docBound) place.rows.push({ id: `${PLACE}${app.id}`, title: app.title, detail: app.singleton ? "one tile" : "a new tile" });
-    }
-    return [goto, place];
-  }, [document, query, workbench]);
+  const perPane = invocation.from !== null;
+  const direction = invocation.target ? splitDirectionFor(invocation.target, workbench.root()) : "row";
+
+  const model = useMemo(() => {
+    const context = { document, apps: workbench.apps, workspaceId, invocation, query: query.trim().toLowerCase() };
+    return rows ? rows(context) : defaultLauncherRows(context);
+  }, [document, workbench, workspaceId, invocation, query, rows]);
+
+  const groups = useMemo(
+    () => groupLauncherRows(model, workbench.apps, perPane, renderDetail),
+    [model, workbench, perPane, renderDetail],
+  );
 
   const close = () => workbench.verbs.closeLauncher();
-  const choose = (rowId: string) => {
-    const appId = rowId.slice(rowId.indexOf(":") + 1);
-    workbench.verbs.place(appId, target ? { from: target.placementId } : {});
+
+  /**
+   * Four meanings over two row kinds and two modes:
+   *
+   *              global                     per-pane
+   *   view       go to it                   link this pane to it
+   *   app        place a new tile           show it in this pane
+   *
+   * A product's `choose` runs first and returning true claims the row; false
+   * (or no handler) falls through to this table, so a product may override
+   * one row without restating the rest.
+   */
+  const onChoose = (rowId: string) => {
+    const row = rowOf(rowId, model);
+    if (!row) return;
+    const claimed = choose?.(row, { document, apps: workbench.apps, workspaceId, invocation, query: query.trim().toLowerCase() });
+    if (claimed) {
+      close();
+      return;
+    }
+    if (perPane && invocation.from) {
+      if (row.kind === "view") workbench.verbs.link(invocation.from, row.viewId);
+      else workbench.verbs.replace(invocation.from, row.appId);
+      workbench.focusPlacement(invocation.from);
+    } else if (row.kind === "view") {
+      workbench.verbs.goToView(row.viewId);
+      const placement = workbench.activePlacementId();
+      if (placement) workbench.focusPlacement(placement);
+    } else {
+      const placement = workbench.verbs.place(row.appId, invocation.target ? { from: invocation.target } : {});
+      if (placement) workbench.focusPlacement(placement);
+    }
     close();
   };
 
+  const status = perPane
+    ? `“${invocation.targetLabel}” shows it instead`
+    : invocation.target
+      ? `a new tile opens ${direction === "row" ? "beside" : "below"} “${invocation.targetLabel}”`
+      : "a new tile opens in the workspace";
+
   return (
     <LauncherShell
-      title={title}
+      title={perPane ? `Show in “${invocation.targetLabel}”` : title}
       groups={groups}
       query={query}
       onQueryChange={setQuery}
-      onChoose={choose}
+      onChoose={onChoose}
       onClose={close}
-      status={
-        target
-          ? `a new tile opens ${direction === "row" ? "beside" : "below"} “${target.label}”`
-          : "a new tile opens in the workspace"
-      }
-      enterVerb={(rowId) => (rowId?.startsWith(GOTO) ? "go to" : "place")}
-      searchLabel="search applications"
-      placeholder="search applications…"
-      emptyText="No application matches."
+      returnFocusTo={returnFocusTo}
+      status={status}
+      enterVerb={(rowId) => {
+        const row = rowId ? rowOf(rowId, model) : null;
+        if (perPane) return row?.kind === "view" ? "link" : "replace";
+        return row?.kind === "view" ? "go to" : "place";
+      }}
+      searchLabel="search views and applications"
+      placeholder="search views and applications…"
+      emptyText="Nothing matches."
     />
   );
 }

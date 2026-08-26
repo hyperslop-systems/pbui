@@ -3,6 +3,9 @@ package chatserver
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +28,7 @@ type snapshotBody struct {
 
 func newTestServer(t *testing.T) (*Server, *httptest.Server) {
 	t.Helper()
-	server, cleanup, err := NewServer(context.Background(), Options{ChunkDelay: time.Millisecond})
+	server, cleanup, err := NewServer(context.Background(), Options{Authorizer: NewDevelopmentAuthorizer(), ChunkDelay: time.Millisecond})
 	if err != nil {
 		t.Fatalf("new server: %v", err)
 	}
@@ -133,6 +136,35 @@ func TestLowStockProducesRefsAndWidgets(t *testing.T) {
 	}
 }
 
+func TestFailedMessageSubmissionDoesNotAdvanceSessionIndex(t *testing.T) {
+	server, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	// Force the real-runtime request builder down a deterministic missing
+	// profile path. The request must fail before the chat service accepts it.
+	server.real = &realRuntimeFactory{profile: "pbui-test-profile-that-does-not-exist"}
+
+	raw, err := json.Marshal(map[string]any{"prompt": "must not count"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.Post(ts.URL+"/api/chat/sessions/"+sid+"/messages", "application/json", bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusInternalServerError)
+	}
+
+	records, err := server.sessions.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].MessageCount != 0 {
+		t.Fatalf("records = %+v, want one session with message_count 0", records)
+	}
+}
+
 func TestAttachmentsArePreservedInScriptedMessages(t *testing.T) {
 	server, ts := newTestServer(t)
 	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
@@ -148,6 +180,43 @@ func TestAttachmentsArePreservedInScriptedMessages(t *testing.T) {
 		}
 	}
 	t.Fatal("user message did not retain attachment image-1")
+}
+
+func TestEffectTraceIsRecordedDurablyAndIdempotently(t *testing.T) {
+	_, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	canonical := []byte(`{"placementId":"n1"}`)
+	digest := sha256.Sum256(canonical)
+	body := map[string]any{
+		"effectId": "effect-1", "invocationKey": sid + "/tool-1", "actor": "agent", "conversationId": sid,
+		"effectKind": "tile.close", "effectScope": "workbench", "canonicalInput": map[string]any{"placementId": "n1"},
+		"inputDigest": hex.EncodeToString(digest[:]), "targetIds": []string{"n1"}, "referenceKeys": []string{},
+		"beforeRevision": "r1", "afterRevision": "r2", "outcome": "performed", "occurredAt": "2026-08-25T17:00:00.000Z",
+	}
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/effects", body)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/effects", body)
+	time.Sleep(20 * time.Millisecond)
+
+	var effectEntries int
+	for _, entity := range snapshot(t, ts, sid).Entities {
+		if entity.Kind == pbuichat.TimelineEntityTrace && strings.Contains(string(entity.Payload), `"effectId":"effect-1"`) {
+			effectEntries++
+		}
+	}
+	if effectEntries != 1 {
+		t.Fatalf("effect trace entries = %d, want 1", effectEntries)
+	}
+
+	body["conversationId"] = "other-session"
+	raw, _ := json.Marshal(body)
+	response, err := http.Post(ts.URL+"/api/chat/sessions/"+sid+"/effects", "application/json", bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("mismatched effect status = %d", response.StatusCode)
+	}
 }
 
 func TestVerbTraceIsRecordedAndReadable(t *testing.T) {
@@ -194,7 +263,7 @@ func TestVerbTraceIsRecordedAndReadable(t *testing.T) {
 func TestTraceRehydratesBeforeAllocatingAfterRestart(t *testing.T) {
 	db := filepath.Join(t.TempDir(), "timeline.sqlite")
 	start := func() (*Server, *httptest.Server, func()) {
-		server, cleanup, err := NewServer(context.Background(), Options{TimelineDB: db, ChunkDelay: time.Millisecond})
+		server, cleanup, err := NewServer(context.Background(), Options{Authorizer: NewDevelopmentAuthorizer(), TimelineDB: db, ChunkDelay: time.Millisecond})
 		if err != nil {
 			t.Fatalf("new persistent server: %v", err)
 		}
@@ -235,7 +304,9 @@ func TestReorderRoundTripsThroughHumanTools(t *testing.T) {
 	server, ts := newTestServer(t)
 	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
 	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
-		"revision": 1,
+		"clientInstanceId": "reorder-test-client",
+		"connectionId":     "reorder-test-connection",
+		"revision":         1,
 		"tools": []any{
 			map[string]any{"name": pbuichat.ToolAccept, "mode": "human", "available": true, "inputSchema": map[string]any{"type": "object"}},
 			map[string]any{"name": pbuichat.ToolPropose, "mode": "human", "available": true, "inputSchema": map[string]any{"type": "object"}},
@@ -253,10 +324,11 @@ func TestReorderRoundTripsThroughHumanTools(t *testing.T) {
 					continue
 				}
 				var p struct {
-					ToolCallID string `json:"toolCallId"`
+					ToolCallID string               `json:"toolCallId"`
+					Executor   frontendToolExecutor `json:"executor"`
 				}
 				_ = json.Unmarshal(e.Payload, &p)
-				postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/results", map[string]any{"toolCallId": p.ToolCallID, "toolName": toolName, "result": result, "status": "success"})
+				postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/results", map[string]any{"toolCallId": p.ToolCallID, "toolName": toolName, "result": result, "status": "success", "executor": p.Executor})
 				return
 			}
 			time.Sleep(20 * time.Millisecond)
@@ -310,4 +382,301 @@ func TestVocabularyEndpoint(t *testing.T) {
 	if !v.KnowsType("product") || len(v.Verbs) == 0 {
 		t.Errorf("vocabulary incomplete: %+v", v)
 	}
+}
+
+// answerFrontendTool waits for a bridged call to the named tool and answers
+// it as the browser would — the fake-browser half of a sandbox round trip.
+func answerFrontendTool(t *testing.T, ts *httptest.Server, sid, toolName string, result map[string]any) map[string]any {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		snap := snapshot(t, ts, sid)
+		for _, e := range snap.Entities {
+			if e.Kind != "ChatFrontendToolCall" || !strings.Contains(string(e.Payload), `"toolName":"`+toolName+`"`) || !strings.Contains(string(e.Payload), `"status":"requested"`) {
+				continue
+			}
+			var p struct {
+				ToolCallID string               `json:"toolCallId"`
+				Input      map[string]any       `json:"input"`
+				Executor   frontendToolExecutor `json:"executor"`
+			}
+			_ = json.Unmarshal(e.Payload, &p)
+			postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/results", map[string]any{"toolCallId": p.ToolCallID, "toolName": toolName, "result": result, "status": "success", "executor": p.Executor})
+			return p.Input
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("no %s request appeared", toolName)
+	return nil
+}
+
+func TestProgramScenarioBridgesTheSandboxTools(t *testing.T) {
+	server, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
+		"clientInstanceId": "program-test-client",
+		"connectionId":     "program-test-connection",
+		"revision":         1,
+		"tools": []any{
+			map[string]any{"name": pbuichat.ToolSandboxTest, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+			map[string]any{"name": pbuichat.ToolSandboxCreateApp, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+			map[string]any{"name": pbuichat.ToolSandboxDefineAction, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+		},
+	})
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/messages", map[string]any{
+		"prompt": "make me a days of cover tile and add an action for it",
+		"refs":   []any{map[string]any{"type": "product", "id": "2051"}},
+	})
+
+	// The scenario tests first, then creates, then defines — and each input is
+	// what a real tool would receive: the prompt's own worked program, bound to
+	// the product the user pointed at.
+	tested := answerFrontendTool(t, ts, sid, pbuichat.ToolSandboxTest, map[string]any{"ok": true, "nodeCount": 7, "meta": map[string]any{"widgets": []any{"main"}}})
+	if src, _ := tested["source"].(string); !strings.Contains(src, `definePlugin(`) || !strings.Contains(src, `bindings: ["product"]`) {
+		t.Errorf("sandbox_test did not receive the worked program: %.80s", src)
+	}
+	if docs, _ := tested["documents"].(map[string]any); docs["product"] != "2051" {
+		t.Errorf("sandbox_test documents = %v", tested["documents"])
+	}
+	created := answerFrontendTool(t, ts, sid, pbuichat.ToolSandboxCreateApp, map[string]any{"ok": true, "programId": "prg-3", "version": 1, "placementId": "n-9", "warnings": []any{}})
+	if created["title"] != "Days of cover · 2051" || created["open"] != true {
+		t.Errorf("sandbox_create_app input = %v", created)
+	}
+	defined := answerFrontendTool(t, ts, sid, pbuichat.ToolSandboxDefineAction, map[string]any{"ok": true, "actionId": "act-1"})
+	if b, _ := defined["behaviour"].(map[string]any); b["kind"] != "openProgram" || b["programId"] != "prg-3" {
+		t.Errorf("sandbox_define_action behaviour = %v", defined["behaviour"])
+	}
+	waitIdle(t, server, sid)
+
+	snap := snapshot(t, ts, sid)
+	var programMention, actionMention bool
+	for _, e := range snap.Entities {
+		if e.Kind != "ChatMessage" {
+			continue
+		}
+		if strings.Contains(string(e.Payload), "[[program:prg-3|Days of cover · 2051]]") && strings.Contains(string(e.Payload), "[[tile:n-9|") {
+			programMention = true
+		}
+		if strings.Contains(string(e.Payload), "[[action:act-1|Days of cover]]") {
+			actionMention = true
+		}
+	}
+	if !programMention || !actionMention {
+		t.Errorf("programMention=%v actionMention=%v", programMention, actionMention)
+	}
+}
+
+func TestProgramScenarioStopsOnAFailedTest(t *testing.T) {
+	server, ts := newTestServer(t)
+	sid := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/tools/manifest", map[string]any{
+		"clientInstanceId": "failed-program-test-client",
+		"connectionId":     "failed-program-test-connection",
+		"revision":         1,
+		"tools": []any{
+			map[string]any{"name": pbuichat.ToolSandboxTest, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+			map[string]any{"name": pbuichat.ToolSandboxCreateApp, "mode": "frontend", "available": true, "inputSchema": map[string]any{"type": "object"}},
+		},
+	})
+	postJSON(t, ts.URL+"/api/chat/sessions/"+sid+"/messages", map[string]any{"prompt": "make me a counter tile"})
+	answerFrontendTool(t, ts, sid, pbuichat.ToolSandboxTest, map[string]any{"ok": false, "phase": "render", "error": "TypeError: boom"})
+	waitIdle(t, server, sid)
+	snap := snapshot(t, ts, sid)
+	for _, e := range snap.Entities {
+		if e.Kind == "ChatFrontendToolCall" && strings.Contains(string(e.Payload), pbuichat.ToolSandboxCreateApp) {
+			t.Fatal("a failed test must not be followed by sandbox_create_app")
+		}
+		if e.Kind == "ChatMessage" && strings.Contains(string(e.Payload), "TypeError: boom") && strings.Contains(string(e.Payload), "phase render") {
+			return
+		}
+	}
+	t.Error("the failure was not reported to the user")
+}
+
+func TestSessionIndexListsWhatItHasSeen(t *testing.T) {
+	_, ts := newTestServer(t)
+
+	first := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	second := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+
+	listed := listSessions(t, ts)
+	if len(listed) != 2 {
+		t.Fatalf("expected 2 sessions, got %d", len(listed))
+	}
+	// Most recently active first; the second was created last.
+	if listed[0].ID != second || listed[1].ID != first {
+		t.Errorf("expected %s before %s, got %v", second, first, []string{listed[0].ID, listed[1].ID})
+	}
+	if listed[0].MessageCount != 0 {
+		t.Errorf("a session with no messages should count 0, got %d", listed[0].MessageCount)
+	}
+}
+
+func TestSessionIndexCountsMessagesAndReordersByActivity(t *testing.T) {
+	_, ts := newTestServer(t)
+
+	first := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	second := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+first+"/messages", map[string]any{"prompt": "hello"})
+
+	listed := listSessions(t, ts)
+	// Sending moved `first` to the top and counted the message.
+	if listed[0].ID != first {
+		t.Fatalf("expected the session that just spoke first, got %s (second is %s)", listed[0].ID, second)
+	}
+	if listed[0].MessageCount != 1 {
+		t.Errorf("expected 1 message, got %d", listed[0].MessageCount)
+	}
+}
+
+func TestSessionTitleIsStoredAndRefusedForUnknownSessions(t *testing.T) {
+	_, ts := newTestServer(t)
+	id := postJSON(t, ts.URL+"/api/chat/sessions", map[string]any{})["sessionId"].(string)
+
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/"+id, map[string]any{"title": "  reorder desk  ", "expectedRevision": 0}); status != http.StatusOK {
+		t.Fatalf("PATCH title: status %d", status)
+	}
+	listed := listSessions(t, ts)
+	if listed[0].Title != "reorder desk" || listed[0].TitleRevision != 1 {
+		t.Errorf("expected the trimmed title at revision 1, got %+v", listed[0])
+	}
+
+	// A stale retry cannot overwrite the newer title.
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/"+id, map[string]any{"title": "stale", "expectedRevision": 0}); status != http.StatusConflict {
+		t.Fatalf("expected 409 for stale title revision, got %d", status)
+	}
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/"+id, map[string]any{"title": "latest", "expectedRevision": 1}); status != http.StatusOK {
+		t.Fatalf("expected current revision to update, got %d", status)
+	}
+	listed = listSessions(t, ts)
+	if listed[0].Title != "latest" || listed[0].TitleRevision != 2 {
+		t.Errorf("expected latest title at revision 2, got %+v", listed[0])
+	}
+
+	// A session this server never minted is not silently created by a rename.
+	if status := patchJSON(t, ts.URL+"/api/chat/sessions/ghost", map[string]any{"title": "nope"}); status != http.StatusNotFound {
+		t.Errorf("expected 404 for an unknown session, got %d", status)
+	}
+}
+
+func TestSubmittingToAnUnindexedSessionStillWorks(t *testing.T) {
+	// The index is a convenience, not a gate: a browser holding an id from
+	// before a restart must still be able to use it. Nothing here creates the
+	// session first.
+	_, ts := newTestServer(t)
+	postJSON(t, ts.URL+"/api/chat/sessions/"+string(sessionstream.SessionId("recovered"))+"/messages", map[string]any{"prompt": "hello"})
+
+	listed := listSessions(t, ts)
+	if len(listed) != 1 || listed[0].ID != "recovered" {
+		t.Fatalf("expected the session to be indexed on first use, got %v", listed)
+	}
+	if listed[0].MessageCount != 1 {
+		t.Errorf("expected 1 message, got %d", listed[0].MessageCount)
+	}
+}
+
+func TestSQLiteSessionIndexSurvivesReopening(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sessions.sqlite")
+	ctx := context.Background()
+
+	index, err := NewSQLiteSessionIndex(ctx, path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	at := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	if err := index.Remember(ctx, "s1", at); err != nil {
+		t.Fatalf("remember: %v", err)
+	}
+	if err := index.Touch(ctx, "s1", at.Add(time.Minute), true); err != nil {
+		t.Fatalf("touch: %v", err)
+	}
+	if _, err := index.Retitle(ctx, "s1", "kept", 0); err != nil {
+		t.Fatalf("retitle: %v", err)
+	}
+	if err := index.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	reopened, err := NewSQLiteSessionIndex(ctx, path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	records, err := reopened.List(ctx)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(records) != 1 || records[0].Title != "kept" || records[0].TitleRevision != 1 || records[0].MessageCount != 1 {
+		t.Fatalf("expected the record to survive, got %+v", records)
+	}
+	if !records[0].LastActivityAt.Equal(at.Add(time.Minute)) {
+		t.Errorf("expected the touched time, got %s", records[0].LastActivityAt)
+	}
+}
+
+func TestSQLiteSessionIndexMigratesLegacyTitleRows(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-sessions.sqlite")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open legacy database: %v", err)
+	}
+	_, err = db.Exec(`CREATE TABLE sessions (
+		id TEXT PRIMARY KEY,
+		created_at TEXT NOT NULL,
+		last_activity_at TEXT NOT NULL,
+		message_count INTEGER NOT NULL DEFAULT 0,
+		title TEXT NOT NULL DEFAULT ''
+	); INSERT INTO sessions (id, created_at, last_activity_at, title) VALUES ('s1', '2026-08-21T00:00:00Z', '2026-08-21T00:00:00Z', 'legacy');`)
+	if err != nil {
+		t.Fatalf("seed legacy database: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	index, err := NewSQLiteSessionIndex(context.Background(), path)
+	if err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	defer func() { _ = index.Close() }()
+	record, err := index.Retitle(context.Background(), "s1", "migrated", 0)
+	if err != nil {
+		t.Fatalf("retitle migrated row: %v", err)
+	}
+	if record.Title != "migrated" || record.TitleRevision != 1 {
+		t.Fatalf("unexpected migrated row: %+v", record)
+	}
+}
+
+func listSessions(t *testing.T, ts *httptest.Server) []SessionRecord {
+	t.Helper()
+	resp, err := http.Get(ts.URL + "/api/chat/sessions")
+	if err != nil {
+		t.Fatalf("GET sessions: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET sessions: status %d", resp.StatusCode)
+	}
+	var out listSessionsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode sessions: %v", err)
+	}
+	return out.Sessions
+}
+
+func patchJSON(t *testing.T, url string, body any) int {
+	t.Helper()
+	raw, _ := json.Marshal(body)
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("build PATCH: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH %s: %v", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	return resp.StatusCode
 }

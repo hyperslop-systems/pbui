@@ -13,13 +13,23 @@ func frontendHumanMode() toolv1.ToolExecutionMode {
 	return toolv1.ToolExecutionMode_TOOL_EXECUTION_MODE_FRONTEND_HUMAN
 }
 
+func frontendAutoMode() toolv1.ToolExecutionMode {
+	return toolv1.ToolExecutionMode_TOOL_EXECUTION_MODE_FRONTEND_AUTO
+}
+
 // respond picks a scenario by keyword. The order matters: more specific
 // intents first.
 func (e *Engine) respond(t *turn) error {
 	p := strings.ToLower(t.prompt)
 	switch {
+	case has(p, "hand this", "hand it", "other agent", "another agent", "ask the other"):
+		return e.handoffScenario(t)
 	case has(p, "what did i", "trace", "summar", "undo"):
 		return e.traceScenario(t)
+	case has(p, "arrange workbench", "split my workspace", "split the workbench"):
+		return e.workbenchScenario(t)
+	case has(p, "program", "counter", "make me a", "build me", "tile that", "tile for", "days of cover", "define an action", "add an action"):
+		return e.programScenario(t)
 	case has(p, "reorder", "draft"):
 		return e.reorderScenario(t)
 	case has(p, "compare"):
@@ -63,6 +73,7 @@ func (e *Engine) helpScenario(t *turn) error {
 		"- \"top sellers\" — a tool result projected into a table\n" +
 		"- \"reorder details form\" — a form whose fields accept objects\n" +
 		"- \"what did I do?\" — I read the verb trace\n" +
+		"- \"arrange workbench\" — I describe the current screen, then try one revision-bound atomic split\n" +
 		"- \"show an error\" — what a rejected widget looks like\n\n" +
 		"For example, " + productMention(demo.Products[0]) + " sits in " + mention("category", "7", "American Gold Eagles") + " and is made of " + mention("metal", "gold", "gold") + ". Right-click either to see its verbs."
 	if len(t.refs) > 0 {
@@ -446,4 +457,155 @@ func toAny(in []int) []any {
 		out[i] = v
 	}
 	return out
+}
+
+// workbenchScenario is the smallest visible agent-layout round trip: discover
+// the current ids/revision, then ask the browser to atomically split the first
+// tile. Repeating it on the resulting narrow tile demonstrates the same
+// rendered minimum refusing an agent call with an actionable explanation.
+func (e *Engine) workbenchScenario(t *turn) error {
+	if !t.hasTool(pbuichat.ToolWorkbenchDescribe) || !t.hasTool(pbuichat.ToolWorkbenchPerform) {
+		return t.say("This client did not advertise the workbench tools, so I left the layout untouched.")
+	}
+
+	described, status, err := t.frontendTool(pbuichat.ToolWorkbenchDescribe, map[string]any{"geometry": true})
+	if err != nil {
+		return err
+	}
+	if status != "success" {
+		return t.say("I could not describe the workbench, so I left it untouched.")
+	}
+	revision, _ := described["revision"].(string)
+	workspaces, _ := described["workspaces"].([]any)
+	if revision == "" || len(workspaces) == 0 {
+		return t.say("The workbench description had no revision or active workspace, so I left it untouched.")
+	}
+	workspace := asMap(workspaces[0])
+	tiles, _ := workspace["tiles"].([]any)
+	if len(tiles) == 0 {
+		return t.say("The active workspace has no tile to split, so I left it untouched.")
+	}
+	tile := asMap(tiles[0])
+	placementID, _ := tile["placementId"].(string)
+	title, _ := tile["title"].(string)
+	if placementID == "" {
+		return t.say("The first tile had no placement id, so I left it untouched.")
+	}
+
+	result, status, err := t.frontendTool(pbuichat.ToolWorkbenchPerform, map[string]any{
+		"expectedRevision": revision,
+		"verbs": []any{map[string]any{
+			"kind":        "tile.split",
+			"placementId": placementID,
+			"direction":   "row",
+		}},
+	})
+	if err != nil {
+		return err
+	}
+	if status != "success" {
+		return t.say("The workbench tool did not complete, so the atomic split was not applied.")
+	}
+	if ok, _ := result["ok"].(bool); ok {
+		shortRevision := revision
+		if len(shortRevision) > 8 {
+			shortRevision = shortRevision[:8]
+		}
+		return t.say(fmt.Sprintf("I described revision %s, then atomically split %q side by side. The result reports one applied change and a new revision.", shortRevision, title))
+	}
+	reason, _ := result["error"].(string)
+	if reason == "" {
+		if entries, _ := result["errors"].([]any); len(entries) > 0 {
+			reason, _ = asMap(entries[0])["error"].(string)
+		}
+	}
+	if reason == "" {
+		reason = "the browser rejected the atomic plan"
+	}
+	return t.say("I described the current revision, but applied zero changes: " + reason + ".")
+}
+
+// handoffScenario is the agent-to-agent gesture end to end: find out who else
+// is on this workbench, ask the user to approve the exact message, then send
+// it. Every refusal along the way is said out loud rather than retried
+// silently, because the point of the scenario is to show what the gate does.
+func (e *Engine) handoffScenario(t *turn) error {
+	if !t.hasTool(pbuichat.ToolConversationList) {
+		return t.say("This client has only one conversation — it did not advertise " + pbuichat.ToolConversationList + " — so there is nobody to hand this to.")
+	}
+
+	listed, status, err := t.frontendTool(pbuichat.ToolConversationList, map[string]any{})
+	if err != nil {
+		return err
+	}
+	if status != "success" {
+		return t.say("I could not read the list of conversations.")
+	}
+
+	you, _ := listed["you"].(string)
+	rows, _ := listed["conversations"].([]any)
+	var target map[string]any
+	for _, row := range rows {
+		entry := asMap(row)
+		id, _ := entry["conversationId"].(string)
+		connected, _ := entry["connected"].(bool)
+		if id == you || !connected {
+			continue
+		}
+		target = entry
+		break
+	}
+	if target == nil {
+		return t.say("You only have this conversation open. Start another one — the launcher has a “new conversation” row — and ask me again.")
+	}
+
+	targetID, _ := target["conversationId"].(string)
+	targetTitle, _ := target["title"].(string)
+	message := t.prompt
+	if err := t.say(fmt.Sprintf("I can hand this to %s. Sending a message there starts a run, so I will ask you first.",
+		mention("conversation", targetID, targetTitle))); err != nil {
+		return err
+	}
+
+	if !t.hasHumanTool(pbuichat.ToolPropose) {
+		return t.say("This client cannot show proposals (" + pbuichat.ToolPropose + " not advertised), so I stop here.")
+	}
+	proposalID := "handoff-" + t.messageID
+	result, status, err := t.humanTool(pbuichat.ToolPropose, map[string]any{
+		"id":    proposalID,
+		"title": "Hand this to " + targetTitle,
+		"body":  "That agent will start a run and answer in its own conversation, not here.",
+		"fields": []any{
+			// The labels are not decoration: the browser's approval check
+			// compares these against what is actually sent, so an approval
+			// cannot be reused for a different message or a different agent.
+			map[string]any{"label": "to", "value": targetID},
+			map[string]any{"label": "message", "value": message},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	decision, _ := result["decision"].(string)
+	if status != "success" || decision != "approve" {
+		return t.say("Not approved — nothing was sent. The decision is in the trace.")
+	}
+
+	sent, status, err := t.frontendTool(pbuichat.ToolConversationSend, map[string]any{
+		"conversationId": targetID,
+		"prompt":         message,
+		"confirmationId": proposalID,
+	})
+	if err != nil {
+		return err
+	}
+	if ok, _ := sent["ok"].(bool); !ok || status != "success" {
+		reason, _ := sent["error"].(string)
+		if reason == "" {
+			reason = "the send was refused"
+		}
+		return t.say("I could not send it: " + reason)
+	}
+	return t.say(fmt.Sprintf("Sent to %s. Its answer lands in that conversation — open it to read the reply.",
+		mention("conversation", targetID, targetTitle)))
 }

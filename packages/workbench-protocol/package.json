@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/workbench-protocol",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Generated PBUI workbench protocol types",
   "private": false,
   "type": "module",

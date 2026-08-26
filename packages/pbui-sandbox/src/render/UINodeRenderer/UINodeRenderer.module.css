@@ -1,0 +1,72 @@
+/*
+ * Every container carries `min-width: 0` and the horizontal scroll belongs to
+ * `.scroll` alone — the tile-overflow rule (PBUI-WORKBENCH-1 §7.5, AGENT-2
+ * diary step 1): a tile body is a flex/grid child whose default `min-width`
+ * is `auto`, so a wide table would push the tile past its splitter instead
+ * of scrolling inside it.
+ */
+.panel {
+  min-width: 0;
+}
+
+.row {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.column {
+  min-width: 0;
+}
+
+.child {
+  display: contents;
+}
+
+/* The wrapper paints nothing (display: contents), so the mark goes on what it contains. */
+.child[data-highlighted="true"] > * {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}
+
+.labelled {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+  min-width: 0;
+}
+
+.scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border: var(--pbui-border-hair);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--pbui-fs-small);
+}
+
+.table th,
+.table td {
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-bottom: var(--pbui-border-hair);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--pbui-pane-alt);
+  font-weight: 600;
+  font-size: var(--pbui-fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table td[data-numeric="true"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

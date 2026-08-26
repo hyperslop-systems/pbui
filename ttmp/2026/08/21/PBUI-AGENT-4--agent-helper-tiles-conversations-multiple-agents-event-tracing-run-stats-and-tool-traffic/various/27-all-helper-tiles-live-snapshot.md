@@ -1,0 +1,149 @@
+---
+Title: 'All multi-agent helper tiles live accessibility snapshot'
+Ticket: PBUI-AGENT-4
+Status: active
+Topics: [pbui, chat, frontend, onboarding]
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: 'Playwright accessibility-tree snapshot after placing Conversations, Events, Runs and Tools beside live conversations.'
+WhatFor: Rendered helper-tile and narrow-layout evidence.
+WhenToUse: Reviewing helper tile semantics, coverage or responsive layout.
+---
+
+- generic [ref=e22]:
+  - generic [ref=e24]:
+    - generic [ref=e148]:
+      - generic [ref=e151]:
+        - generic [ref=e152]:
+          - generic [ref=e153]: ⠿
+          - generic "tile showing Show me the gold coin shop inventory and explain the curren…" [ref=e155] [cursor=pointer]:
+            - generic [ref=e156]: Show me the gold coin shop inventory and explain the curren…
+          - generic [ref=e157]:
+            - button "split side by side" [ref=e158] [cursor=pointer]: ⬌
+            - button "split top and bottom" [ref=e159] [cursor=pointer]: ⬍
+            - button "close this pane" [ref=e160] [cursor=pointer]: ✕
+        - generic [ref=e163]:
+          - log "conversation" [ref=e165]:
+            - article [ref=e167]:
+              - button "<message> what you said" [ref=e170]
+              - paragraph [ref=e173]: Show me the gold coin shop inventory and explain the current stock.
+            - article [ref=e175]:
+              - button "<message> what the agent said" [ref=e178]
+              - paragraph [ref=e181]
+            - region "Low stock" [ref=e201]:
+              - button "a widget the agent published" [ref=e204]
+              - generic [ref=e208]
+            - region "Next steps" [ref=e303]:
+              - button "a widget the agent published" [ref=e306]
+              - paragraph [ref=e311]: "Suggested follow-ups — each chip performs a verb locally, no model round trip:"
+              - generic [ref=e312]
+          - generic [ref=e317]:
+            - textbox "message to the agent" [ref=e318]:
+              - /placeholder: ask the agent… (Enter sends, Shift+Enter for a newline)
+            - generic [ref=e319]:
+              - button "insert object…" [ref=e320] [cursor=pointer]
+              - button "send" [disabled] [ref=e321]
+      - separator "resize horizontally" [ref=e322]
+      - generic [ref=e325]:
+        - generic [ref=e328]:
+          - generic [ref=e329]:
+            - generic [ref=e330]: ⠿
+            - generic "tile showing conversations" [ref=e332] [cursor=pointer]:
+              - generic [ref=e333]: conversations
+            - generic [ref=e334]:
+              - button "split side by side" [ref=e335] [cursor=pointer]: ⬌
+              - button "split top and bottom" [ref=e336] [cursor=pointer]: ⬍
+              - button "close this pane" [ref=e337] [cursor=pointer]: ✕
+          - generic [ref=e341]:
+            - generic [ref=e342]:
+              - button "new conversation" [ref=e343] [cursor=pointer]
+              - button "sync" [ref=e344] [cursor=pointer]
+              - textbox "filter conversations by name" [ref=e345]:
+                - /placeholder: filter
+            - list "conversations" [ref=e346]:
+              - listitem [ref=e347]
+              - listitem [ref=e355]
+            - generic [ref=e363]: right-click a conversation for what you can do to it
+        - separator "resize horizontally" [ref=e364]
+        - generic [ref=e367]:
+          - generic [ref=e370]:
+            - generic [ref=e371]:
+              - generic [ref=e372]: ⠿
+              - generic "tile showing events" [ref=e373] [cursor=pointer]
+              - generic [ref=e375]
+            - generic [ref=e382]:
+              - generic [ref=e383]
+              - group "families" [ref=e389]
+              - list "chat events" [ref=e397]
+              - generic [ref=e481]: 10 of 10 events · right-click one for what you can do with it
+          - separator "resize horizontally" [ref=e482]
+          - generic [ref=e485]:
+            - generic [ref=e488]:
+              - generic [ref=e489]
+              - generic [ref=e500]
+            - separator "resize horizontally" [ref=e515]
+            - generic [ref=e519]:
+              - generic [ref=e520]
+              - generic [ref=e531]
+    - separator "resize vertically" [ref=e50]
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - generic [ref=e56]: ⠿
+        - generic "tile showing BROWSER-TITLE-SYNC-PROBE" [ref=e58] [cursor=pointer]:
+          - generic [ref=e59]: BROWSER-TITLE-SYNC-PROBE
+        - generic [ref=e60]:
+          - button "split side by side" [ref=e61] [cursor=pointer]: ⬌
+          - button "split top and bottom" [ref=e62] [cursor=pointer]: ⬍
+          - button "close this pane" [ref=e63] [cursor=pointer]: ✕
+      - generic [ref=e66]:
+        - generic [ref=e69]:
+          - generic [ref=e70]: no messages yet
+          - generic [ref=e71]: ask about the shop, or mention an object with the insert button
+        - generic [ref=e72]:
+          - textbox "message to the agent" [ref=e73]:
+            - /placeholder: ask the agent… (Enter sends, Shift+Enter for a newline)
+          - generic [ref=e74]:
+            - button "insert object…" [ref=e75] [cursor=pointer]
+            - button "send" [disabled] [ref=e76]
+  - separator "resize horizontally" [ref=e77]
+  - generic [ref=e80]:
+    - generic [ref=e83]:
+      - generic [ref=e84]:
+        - generic [ref=e85]: ⠿
+        - generic "tile showing inspector" [ref=e87] [cursor=pointer]:
+          - generic [ref=e88]: inspector
+        - generic [ref=e89]:
+          - button "split side by side" [ref=e90] [cursor=pointer]: ⬌
+          - button "split top and bottom" [ref=e91] [cursor=pointer]: ⬍
+          - button "close this pane" [ref=e92] [cursor=pointer]: ✕
+      - generic [ref=e98]: nothing inspected — choose Inspect from any object's menu
+    - separator "resize vertically" [ref=e99]
+    - generic [ref=e102]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e107]: ⠿
+          - generic "tile showing watchlist" [ref=e109] [cursor=pointer]:
+            - generic [ref=e110]: watchlist
+          - generic [ref=e111]:
+            - button "split side by side" [ref=e112] [cursor=pointer]: ⬌
+            - button "split top and bottom" [ref=e113] [cursor=pointer]: ⬍
+            - button "close this pane" [ref=e114] [cursor=pointer]: ✕
+        - generic [ref=e118]:
+          - generic [ref=e119]: nothing watched
+          - generic [ref=e120]: choose Watch from any object's menu
+      - separator "resize vertically" [ref=e121]
+      - generic [ref=e125]:
+        - generic [ref=e126]:
+          - generic [ref=e127]: ⠿
+          - generic "tile showing trace" [ref=e129] [cursor=pointer]:
+            - generic [ref=e130]: trace
+          - generic [ref=e131]:
+            - button "split side by side" [ref=e132] [cursor=pointer]: ⬌
+            - button "split top and bottom" [ref=e133] [cursor=pointer]: ⬍
+            - button "close this pane" [ref=e134] [cursor=pointer]: ✕
+        - generic [ref=e138]:
+          - generic [ref=e139]: no verbs performed yet
+          - generic [ref=e140]: menu entries and widget chips land here

@@ -1,0 +1,47 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: var(--pbui-space-2);
+}
+
+.header {
+  min-width: 0;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-3);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  flex: 1 1 auto;
+}
+
+.widget {
+  min-width: 0;
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+  min-width: 0;
+  max-height: 10rem;
+  overflow: auto;
+  border-top: var(--pbui-border-hair);
+  padding-top: var(--pbui-space-2);
+}
+
+.logLine {
+  font-variant-numeric: tabular-nums;
+  white-space: pre-wrap;
+}

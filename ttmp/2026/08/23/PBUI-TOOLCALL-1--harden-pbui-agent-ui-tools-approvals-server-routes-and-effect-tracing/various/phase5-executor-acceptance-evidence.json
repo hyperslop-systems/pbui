@@ -1,0 +1,62 @@
+{
+  "recordedAt": "2026-08-26T00:11:20Z",
+  "releases": {
+    "pinocchio": {
+      "version": "v0.11.16",
+      "commit": "d0fb2e485bb21a14d0b43968276ab876443b28c0"
+    },
+    "chatProvider": {
+      "version": "0.6.0",
+      "npmTag": "next",
+      "releaseCommit": "09597c5653f750c7f392cf76ea4343b548c0393e",
+      "dryRunWorkflow": "https://github.com/go-go-golems/react-chat/actions/runs/32912825633",
+      "publishWorkflow": "https://github.com/go-go-golems/react-chat/actions/runs/32912868721",
+      "integrity": "sha512-dMJsObneOmksPkAfxdd+ZrHdGclAPSDmDh3MczqdYRNRWSXv1TLiAQRmFnlui1B39WLi05tkFXNHnkUuMSm2sQ==",
+      "shasum": "0569a3853d205662823f5ddcf84db84da58bfa6e"
+    }
+  },
+  "installedPackageProbe": {
+    "package": "@go-go-golems/chat-provider@0.6.0",
+    "terminalReplay": { "executions": 1, "submissions": 1 },
+    "twoIndependentRuntimes": { "executions": 1, "submissions": 1, "executorMatched": true }
+  },
+  "browserAcceptance": {
+    "sessionId": "99e6c8a0-b310-4be6-a504-e3860f21e2eb",
+    "automaticTool": {
+      "toolCallId": "msg-2:tool:sandbox_create_app:2",
+      "status": "success",
+      "executor": {
+        "clientInstanceId": "1c57427a-17a8-4bd1-9ed9-e3c91e31167a",
+        "connectionId": "8dac146c-782c-49a5-805b-215e127fffda",
+        "assignmentId": "f529b7b0-a445-462b-a5aa-86c6d90d59a7"
+      },
+      "ownerResultSubmissions": 1,
+      "nonOwnerResultSubmissions": 0,
+      "durableEffectEnvelopes": 1,
+      "effectId": "99e6c8a0-b310-4be6-a504-e3860f21e2eb:msg-2:tool:sandbox_create_app:2:open",
+      "terminalConflicts": 0,
+      "effectEnvelopeConflicts": 0
+    },
+    "humanTool": {
+      "toolCallId": "msg-4:tool:pbui_accept:1",
+      "ownerDisplayedActionableAcceptMode": true,
+      "nonOwnerDisplayedActionableAcceptMode": false,
+      "ownerResultSubmissions": 1,
+      "nonOwnerResultSubmissions": 0,
+      "completion": "cancelled"
+    },
+    "reconnect": {
+      "clientInstanceStable": true,
+      "oldConnectionId": "8dac146c-782c-49a5-805b-215e127fffda",
+      "newConnectionId": "1c216dcf-3968-4d90-b299-c92a48640f03",
+      "oldAssignmentId": "f529b7b0-a445-462b-a5aa-86c6d90d59a7",
+      "newAssignmentId": "cc15bb04-0c33-4abd-95f2-2ce12dd68543",
+      "oldPendingCallAutomaticallyReassigned": false,
+      "newHumanCallActionableOnlyInReconnectedOwner": true
+    }
+  },
+  "screenshots": [
+    "various/phase5-owner-human-tool.png",
+    "various/phase5-non-owner-read-only.png"
+  ]
+}

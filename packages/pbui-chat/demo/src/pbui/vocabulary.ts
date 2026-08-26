@@ -1,4 +1,5 @@
 import { defineVocabulary, verbSpecsFromSchema, type TypeSpec } from "@hyperslop-systems/pbui-chat";
+import { SANDBOX_INTENTS, SANDBOX_UI_KINDS } from "@hyperslop-systems/pbui-sandbox";
 import { TONES, type PresentationType } from "./types";
 import { VERB_DOCS, VerbSchema } from "./verbs";
 
@@ -35,6 +36,65 @@ const types: Record<PresentationType, TypeSpec> = {
     tone: TONES.order,
     verbs: ["inspect", "watch", "askAgent"],
     example: "[[order:88213|order 88213]]",
+  },
+  tile: {
+    doc: "one pane of the user's screen, showing one application",
+    idHint: "placementId, from workbench_describe",
+    tone: TONES.tile,
+    verbs: ["tile.split", "tile.close", "tile.replace", "tile.link", "view.setTitle", "view.goTo", "askAgent"],
+    example: "[[tile:n-7|inventory]]",
+  },
+  workspace: {
+    doc: "a named tree of tiles; the user sees one at a time",
+    idHint: "workspaceId, from workbench_describe",
+    tone: TONES.workspace,
+    verbs: ["workspace.select", "workspace.rename", "workspace.delete", "workspace.clone", "askAgent"],
+    example: "[[workspace:ws-2|Gold desk]]",
+  },
+  app: {
+    doc: "an application that can be placed in a tile",
+    idHint: "appId, from workbench_describe",
+    tone: TONES.app,
+    verbs: ["app.place", "askAgent"],
+    example: "[[app:inventory|inventory]]",
+  },
+  program: {
+    doc: "a small program written in the sandbox dialect, running in a tile",
+    idHint: "programId, from sandbox_describe or the tool that created it",
+    tone: TONES.program,
+    verbs: ["program.open", "inspect", "program.pin", "program.remove", "askAgent"],
+    example: "[[program:prg-7|Days of cover]]",
+  },
+  action: {
+    doc: "a generated action in the menu of some presentation types",
+    idHint: "actionId, from sandbox_describe",
+    tone: TONES.action,
+    verbs: ["inspect", "action.remove", "askAgent"],
+    example: "[[action:act-3|Days of cover]]",
+  },
+  conversation: {
+    doc: "one conversation with an agent; the id is its chat session id",
+    idHint: "conversationId, from conversation_list",
+    tone: TONES.conversation,
+    verbs: [
+      "conversation.open",
+      "conversation.select",
+      "conversation.rename",
+      "conversation.pin",
+      "conversation.archive",
+      "conversation.close",
+      "conversation.forget",
+      "conversation.send",
+      "inspect",
+      "askAgent",
+    ],
+    example: "[[conversation:3f0a…|reorder desk]]",
+  },
+  chatEvent: {
+    doc: "one entry of a conversation's wire log: a frame, a connection change, a projected UI event",
+    idHint: "<conversationId>:<entryId>, from the events tile",
+    tone: TONES.chatEvent,
+    verbs: ["inspect", "conversation.select", "askAgent"],
   },
   field: {
     doc: "a column of a table the agent produced",
@@ -95,4 +155,7 @@ export const vocabulary = defineVocabulary({
   widgetKinds: ["text", "refs", "meter", "sparkline", "segmented", "stat", "callout", "table", "log", "form", "widget"],
   layouts: ["stack", "row", "grid"],
   conversions: [{ from: "row", to: "product" }],
+  // The program dialect the model is taught; the same lists the renderer and
+  // the reducer are built against (PBUI-AGENT-3 D12).
+  sandbox: { kinds: SANDBOX_UI_KINDS, intents: SANDBOX_INTENTS },
 });

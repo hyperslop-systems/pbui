@@ -1,0 +1,22 @@
+{
+  "placed": [
+    {
+      "id": "conversations",
+      "placement": "n-ec51aa14-d6f7"
+    },
+    {
+      "id": "chat-events",
+      "placement": "n-6c259962-f876"
+    },
+    {
+      "id": "chat-runs",
+      "placement": "n-fc6766cd-01b7"
+    },
+    {
+      "id": "chat-tools",
+      "placement": "n-afd50dc7-3f67"
+    }
+  ],
+  "active": "n-afd50dc7-3f67",
+  "workspace": "main"
+}

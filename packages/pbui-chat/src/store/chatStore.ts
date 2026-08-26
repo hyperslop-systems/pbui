@@ -37,7 +37,8 @@ export interface PbuiChatState {
   tiles: string[];
   /** The last presentation the pointer or focus rested on. */
   focus: Reference | null;
-  draft: ComposerDraft;
+  /** Composer-owned state, isolated by conversation id. */
+  drafts: Record<string, ComposerDraft>;
 }
 
 export const EMPTY_TABLE_STATE: TableState = { filters: [], sort: null };
@@ -48,7 +49,7 @@ const initialState: PbuiChatState = {
   tables: {},
   tiles: [],
   focus: null,
-  draft: { text: "", refs: {} },
+  drafts: {},
 };
 
 /**
@@ -80,11 +81,13 @@ export interface PbuiChatStore {
 
   setFocus(reference: Reference | null): void;
 
-  setDraftText(text: string): void;
-  /** Append `[[type:id|label]]` to the draft and remember the reference. */
-  insertReference(reference: Reference, label: string): void;
-  removeDraftReference(reference: Pick<Reference, "type" | "id">): void;
-  clearDraft(): void;
+  draftFor(conversationId: string): ComposerDraft;
+  setDraftText(conversationId: string, text: string): void;
+  /** Append `[[type:id|label]]` to one conversation's draft and remember the reference. */
+  insertReference(conversationId: string, reference: Reference, label: string): void;
+  removeDraftReference(conversationId: string, reference: Pick<Reference, "type" | "id">): void;
+  clearDraft(conversationId: string): void;
+  forgetDraft(conversationId: string): void;
 }
 
 export function createPbuiChatStore(): PbuiChatStore {
@@ -137,23 +140,39 @@ export function createPbuiChatStore(): PbuiChatStore {
 
     setFocus: (reference) => setState({ focus: reference }),
 
-    setDraftText: (text) => setState((s) => ({ draft: { ...s.draft, text } })),
-    insertReference: (reference, label) =>
+    draftFor: (conversationId) => state.drafts[conversationId] ?? { text: "", refs: {} },
+    setDraftText: (conversationId, text) =>
+      setState((s) => ({ drafts: { ...s.drafts, [conversationId]: { ...(s.drafts[conversationId] ?? { text: "", refs: {} }), text } } })),
+    insertReference: (conversationId, reference, label) =>
       setState((s) => {
+        const draft = s.drafts[conversationId] ?? { text: "", refs: {} };
         const mention = `[[${reference.type}:${reference.id}|${label.replace(/[\]\n]/g, " ").trim() || reference.id}]]`;
-        const text = s.draft.text.length === 0 || /\s$/.test(s.draft.text) ? `${s.draft.text}${mention} ` : `${s.draft.text} ${mention} `;
+        const text = draft.text.length === 0 || /\s$/.test(draft.text) ? `${draft.text}${mention} ` : `${draft.text} ${mention} `;
         return {
-          draft: { text, refs: { ...s.draft.refs, [referenceKey(reference.type, reference.id)]: reference } },
+          drafts: {
+            ...s.drafts,
+            [conversationId]: { text, refs: { ...draft.refs, [referenceKey(reference.type, reference.id)]: reference } },
+          },
         };
       }),
-    removeDraftReference: (reference) =>
+    removeDraftReference: (conversationId, reference) =>
       setState((s) => {
+        const draft = s.drafts[conversationId];
+        if (!draft) return {};
         const key = referenceKey(reference.type, reference.id);
-        const refs = { ...s.draft.refs };
+        const refs = { ...draft.refs };
         delete refs[key];
-        return { draft: { ...s.draft, refs } };
+        return { drafts: { ...s.drafts, [conversationId]: { ...draft, refs } } };
       }),
-    clearDraft: () => setState({ draft: { text: "", refs: {} } }),
+    clearDraft: (conversationId) =>
+      setState((s) => ({ drafts: { ...s.drafts, [conversationId]: { text: "", refs: {} } } })),
+    forgetDraft: (conversationId) =>
+      setState((s) => {
+        if (!(conversationId in s.drafts)) return {};
+        const drafts = { ...s.drafts };
+        delete drafts[conversationId];
+        return { drafts };
+      }),
   };
 }
 

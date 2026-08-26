@@ -40,6 +40,33 @@ message VerbPerformedCommand {
   google.protobuf.Struct verb = 3;
   Reference target = 4;
   string outcome = 5;
+  string effect_id = 6;
+  string invocation_key = 7;
+  string approval_id = 8;
+}
+
+// EffectEnvelope correlates one validated agent invocation with the exact
+// product effect, approval, revisions, and outcome it caused.
+message EffectEnvelope {
+  string effect_id = 1;
+  string invocation_key = 2;
+  Actor actor = 3;
+  string conversation_id = 4;
+  string effect_kind = 5;
+  string effect_scope = 6;
+  google.protobuf.Value canonical_input = 7;
+  string input_digest = 8;
+  repeated string target_ids = 9;
+  repeated string reference_keys = 10;
+  string approval_id = 11;
+  string before_revision = 12;
+  string after_revision = 13;
+  string outcome = 14;
+  google.protobuf.Timestamp occurred_at = 15;
+}
+
+message EffectPerformedCommand {
+  EffectEnvelope effect = 1;
 }
 
 // TraceEntry is the backend event and the durable timeline entity recording
@@ -52,6 +79,10 @@ message TraceEntry {
   string outcome = 5;
   google.protobuf.Timestamp at = 6;
   string client_seq = 7;
+  EffectEnvelope effect = 8;
+  string effect_id = 9;
+  string invocation_key = 10;
+  string approval_id = 11;
 }
 
 // WidgetRequestedEvent is the geppetto-side event a backend tool publishes

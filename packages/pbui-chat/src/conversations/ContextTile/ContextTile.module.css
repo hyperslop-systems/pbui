@@ -1,0 +1,90 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding: var(--pbui-space-2);
+}
+
+.header {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.section {
+  min-width: 0;
+  border-top: var(--pbui-border-hair);
+  padding-top: var(--pbui-space-1);
+}
+
+.sectionHead {
+  display: flex;
+  gap: var(--pbui-space-2);
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Label beside value; the value takes what is left and wraps rather than
+ * pushing the tile wide — a session id is longer than any tile. */
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--pbui-space-2);
+  margin: 0;
+  min-width: 0;
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tools {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.tool {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  column-gap: var(--pbui-space-2);
+  align-items: baseline;
+  min-width: 0;
+  padding: 1px 0;
+}
+
+.tool[data-available="false"] {
+  background: var(--pbui-pane-alt);
+}
+
+.toolNote {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.refs {
+  display: flex;
+  margin-top: 2px;
+  gap: var(--pbui-space-1);
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+}

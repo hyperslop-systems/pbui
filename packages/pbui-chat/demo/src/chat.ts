@@ -1,9 +1,31 @@
-import { createPbuiChat, createVerbRouter, type VerbFamily } from "@hyperslop-systems/pbui-chat";
+import {
+  createPbuiChat,
+  createVerbRouter,
+  isConversationVerb,
+  performConversationVerb,
+  type ApprovalLedger,
+  type ApprovalSubject,
+  type ConversationVerb,
+  type Reference,
+  type VerbFamily,
+} from "@hyperslop-systems/pbui-chat";
+import { substituteVerbRef, type UIReference } from "@hyperslop-systems/pbui-sandbox";
+import {
+  describeWorkbench,
+  describeWorkbenchVerb,
+  isWorkbenchVerb,
+  performWorkbenchVerb,
+  type Workbench,
+  type WorkbenchVerb,
+} from "@hyperslop-systems/pbui-workbench";
+import { selectTimelineEntities } from "@go-go-golems/chat-provider";
+import { ConsumedApprovalStore } from "./approvalConsumption";
 import { pbui } from "./pbui/runtime";
 import { registry } from "./pbui/registry";
 import type { Environment, Values } from "./pbui/types";
 import type { Verb, VerbKind } from "./pbui/verbs";
 import { vocabulary } from "./pbui/vocabulary";
+import { library, resolveDemoBinding } from "./sandbox";
 
 /**
  * Which family performs each verb. `local` never talks to the model,
@@ -20,12 +42,180 @@ const FAMILIES: Record<VerbKind, VerbFamily> = {
   rerunTool: "agent",
   reorder: "agent",
   resolveProposal: "tool",
+
+  /*
+   * Every workbench verb is LOCAL: it changes this browser's layout and
+   * nothing else. Routing them through the router rather than calling
+   * `wb.verbs.*` directly is what puts an agent's rearrangement in the trace
+   * beside a human's, with the same validation and the same rejection
+   * strings — the price is this one indirection.
+   */
+  "tile.split": "local",
+  "tile.close": "local",
+  "tile.swap": "local",
+  "tile.dock": "local",
+  "tile.activate": "local",
+  "tile.replace": "local",
+  "tile.link": "local",
+  "split.resize": "local",
+  "app.place": "local",
+  "view.setTitle": "local",
+  "view.open": "local",
+  "view.rebind": "local",
+  "view.goTo": "local",
+  "workspace.select": "local",
+  "workspace.create": "local",
+  "workspace.rename": "local",
+  "workspace.delete": "local",
+  "workspace.clone": "local",
+  "launcher.open": "local",
+  "launcher.close": "local",
+
+  // The sandbox verbs are local too: they change this browser's library and
+  // layout. `action.run` may EXPAND into an agent verb, through ctx.perform,
+  // so the trace records both the action and what it became.
+  "program.open": "local",
+  "program.remove": "local",
+  "program.pin": "local",
+  "action.run": "local",
+  "action.remove": "local",
+
+  /*
+   * Conversations: four are local — they change this browser's list and
+   * layout — and `conversation.send` is an AGENT verb whose target is a
+   * conversation other than the one performing it. That asymmetry is the
+   * handoff, and it is the only place `sendToAgent`'s target argument is
+   * used by the shop.
+   */
+  "conversation.new": "local",
+  "conversation.open": "local",
+  "conversation.select": "local",
+  "conversation.rename": "local",
+  "conversation.pin": "local",
+  "conversation.archive": "local",
+  "conversation.close": "local",
+  "conversation.forget": "local",
+  "conversation.send": "agent",
 };
+
+/**
+ * Was `confirmationId` approved by the user for exactly this handoff?
+ *
+ * Read from the timeline rather than from state of its own: the proposal is a
+ * `pbui_propose` tool call, its decision is that call's result, and both
+ * survive a reload because the session hydrates them. A separate record of
+ * "approved ids" would be a second copy of the truth, and the first thing to
+ * go stale.
+ */
+function approvedSend(confirmationId: string, target: string, prompt: string): boolean {
+  for (const snapshot of chat.conversations.all()) {
+    const runtime = snapshot.runtime;
+    if (!runtime) continue;
+    for (const entity of selectTimelineEntities(runtime.store.getState())) {
+      if (entity.kind !== "tool_call" || String(entity.props.toolName ?? "") !== "pbui_propose") continue;
+      const input = (entity.props.input ?? {}) as { id?: string; fields?: { label?: string; value?: string }[] };
+      if (String(input.id ?? "") !== confirmationId) continue;
+      const result = entity.props.result as { decision?: string } | undefined;
+      if (result?.decision !== "approve") return false;
+      const fields = Array.isArray(input.fields) ? input.fields : [];
+      const to = fields.find((field) => field.label === "to")?.value;
+      const message = fields.find((field) => field.label === "message")?.value;
+      // The id alone is not the approval; what the user read is.
+      return to === target && message === prompt;
+    }
+  }
+  return false;
+}
+
+const consumedApprovals = new ConsumedApprovalStore();
+const reservedApprovals = new Map<string, string>();
+const demoApprovalLedger: ApprovalLedger = {
+  async lookup(id) {
+    const approved = chat.conversations.all().some((snapshot) =>
+      snapshot.runtime
+        ? selectTimelineEntities(snapshot.runtime.store.getState()).some(
+            (entity) =>
+              entity.kind === "tool_call" &&
+              String(entity.props.toolName ?? "") === "pbui_propose" &&
+              String((entity.props.input as { id?: string } | undefined)?.id ?? "") === id &&
+              (entity.props.result as { decision?: string } | undefined)?.decision === "approve",
+          )
+        : false,
+    );
+    return approved
+      ? { id, subjectDigest: "timeline-verified", issuedAt: "1970-01-01T00:00:00.000Z", expiresAt: "9999-12-31T23:59:59.999Z" }
+      : null;
+  },
+  async reserve(capability, subject: ApprovalSubject, effectId) {
+    if (consumedApprovals.has(capability.id)) return "already-used";
+    const current = reservedApprovals.get(capability.id);
+    if (current) return current === effectId ? "already-reserved" : "already-used";
+    const args = subject.arguments as { prompt?: string };
+    const target = subject.targetIds[0];
+    if (subject.operation !== "conversation.send" || !target || !approvedSend(capability.id, target, String(args.prompt ?? ""))) {
+      return "mismatch";
+    }
+    reservedApprovals.set(capability.id, effectId);
+    return "reserved";
+  },
+  async finalize(capability, effectId) {
+    if (consumedApprovals.has(capability.id)) return "already-finalized";
+    if (reservedApprovals.get(capability.id) !== effectId) return "wrong-effect";
+    reservedApprovals.delete(capability.id);
+    try {
+      consumedApprovals.add(capability.id);
+    } catch (error) {
+      // The in-memory mark is installed before persistence. A committed effect
+      // remains non-reusable in this page even when storage quota is exhausted.
+      console.error("pbui-chat demo: could not persist consumed approval", error);
+    }
+    return "finalized";
+  },
+  async release(capability, effectId) {
+    if (consumedApprovals.has(capability.id)) return "already-used";
+    if (reservedApprovals.get(capability.id) !== effectId) return "wrong-effect";
+    reservedApprovals.delete(capability.id);
+    return "released";
+  },
+};
+
+/** Every tile showing a program, across workspaces, by placement id. */
+function tilesShowing(wb: Workbench, programId: string): string[] {
+  return describeWorkbench(wb).workspaces.flatMap((workspace) =>
+    workspace.tiles.filter((tile) => tile.appId === "script" && tile.documents.program === programId).map((tile) => tile.placementId),
+  );
+}
 
 export const router = createVerbRouter<Verb>({
   families: (verb) => FAMILIES[verb.kind],
 
-  local: (verb, ctx) => {
+  local: async (verb, ctx) => {
+    // pbui-chat owns the conversation verbs for the same reason the workbench
+    // owns its own: one dispatcher, one set of refusal strings, one wording
+    // across every product in the family.
+    if (isConversationVerb(verb)) {
+      await performConversationVerb(verb as ConversationVerb, {
+        actor: ctx.actor,
+        conversations: chat.conversations,
+        workbench: chat.workbench(),
+        send: (conversationId, template, refs) => ctx.sendToAgent(template, refs, { conversationId }),
+      });
+      return;
+    }
+    // The workbench owns its own verbs; `performWorkbenchVerb` is the single
+    // dispatcher, so a verb added to the package needs no case here.
+    if (isWorkbenchVerb(verb)) {
+      const wb = chat.workbench();
+      if (!wb) throw new Error("no workbench is attached");
+      const workbenchVerb = verb as unknown as WorkbenchVerb;
+      // Throwing on a refusal is what turns it into `rejected:…` in the trace
+      // and in the tool result. Swallowing it told the agent that a close of a
+      // stale placement, or of the last tile, had landed.
+      if (!performWorkbenchVerb(wb.verbs, workbenchVerb)) {
+        throw new Error(`the workbench refused to ${describeWorkbenchVerb(workbenchVerb)}`);
+      }
+      return;
+    }
     switch (verb.kind) {
       case "inspect":
         ctx.store.inspect(verb.ref, `<${verb.ref.type}> ${ctx.labelFor(verb.ref)}`);
@@ -45,12 +235,68 @@ export const router = createVerbRouter<Verb>({
         // TilesPanel list; the binding decides.
         ctx.openTile(verb.widgetId);
         return;
+
+      case "program.open": {
+        const wb = chat.workbench();
+        if (!wb) throw new Error("no workbench is attached");
+        const program = library.getState().programs[verb.programId];
+        if (!program) throw new Error(`no program ${verb.programId} in the library`);
+        const near = verb.near ?? wb.activePlacementId() ?? undefined;
+        const placed = wb.verbs.openView("script", { program: program.id, ...(verb.documents ?? {}) }, { ...(near ? { near } : {}), ...(verb.title ? { title: verb.title } : {}) });
+        if (!placed) throw new Error(`the workbench refused to open ${program.title}`);
+        return;
+      }
+      case "program.remove": {
+        const wb = chat.workbench();
+        if (!library.getState().programs[verb.programId]) throw new Error(`no program ${verb.programId} in the library`);
+        // Close its tiles first: a tile bound to a program that is gone shows
+        // an empty state, which is honest but not what "remove" means.
+        if (wb) for (const placementId of tilesShowing(wb, verb.programId)) wb.verbs.close(placementId);
+        library.removeProgram(verb.programId);
+        return;
+      }
+      case "program.pin":
+        if (!library.setPinned("program", verb.programId, verb.pinned)) throw new Error(`no program ${verb.programId} in the library`);
+        return;
+      case "action.remove":
+        if (!library.removeAction(verb.actionId)) throw new Error(`no action ${verb.actionId} in the library`);
+        return;
+      case "action.run": {
+        const action = library.getState().actions[verb.actionId];
+        if (!action) throw new Error(`no action ${verb.actionId} in the library`);
+        const ref = verb.ref;
+        switch (action.behaviour.kind) {
+          case "openProgram":
+            await ctx.perform(
+              {
+                kind: "program.open",
+                programId: action.behaviour.programId,
+                documents: { [action.behaviour.bind ?? ref.type]: ref.id },
+              },
+              ref as Reference,
+            );
+            return;
+          case "verb":
+            await ctx.perform(substituteVerbRef(action.behaviour.verb, ref as UIReference), ref as Reference);
+            return;
+          case "askAgent":
+            await ctx.sendToAgent(action.behaviour.template, [ref as Reference]);
+            return;
+        }
+        return;
+      }
       default:
         throw new Error(`${verb.kind} is not a local verb`);
     }
   },
 
   agent: async (verb, ctx) => {
+    // The handoff: a message to a conversation OTHER than the one this verb
+    // came from. Everything below sends to the verb's own conversation.
+    if (verb.kind === "conversation.send") {
+      await ctx.sendToAgent(verb.template, verb.refs ?? [], { conversationId: verb.conversationId });
+      return;
+    }
     switch (verb.kind) {
       case "compareWith": {
         const right =
@@ -82,10 +328,34 @@ export const router = createVerbRouter<Verb>({
   tool: () => {},
 });
 
+/** Where the demo keeps the conversation records; the layout is a separate key. */
+export const CONVERSATIONS_STORAGE_KEY = "pbui-chat-demo.conversations";
+/** What the one-session build persisted, and what a returning browser is migrated from. */
+export const LEGACY_SESSION_KEY = "pbui-chat-demo.session";
+
+/** The demo's handoff approval check, exposed so tests exercise the real rule. */
+export const conversationApproval = approvedSend;
+
 export const chat = createPbuiChat<Values, Environment, Verb>({
   pbui,
   registry,
   vocabulary,
   router,
+  approvalLedger: demoApprovalLedger,
   basePrefix: "",
+  conversations: { key: CONVERSATIONS_STORAGE_KEY },
+  /*
+   * Handing work to another agent starts a run there, so it is `confirm`:
+   * the model must first put the exact message in front of the user with
+   * `pbui_propose`, and `approvedSend` checks that what was approved is what
+   * is being sent. An approval that named only an id would authorise every
+   * later send equally.
+   */
+  conversationTools: {
+    confirmationHint:
+      'The proposal must carry fields [{"label":"to","value":"<conversationId>"},{"label":"message","value":"<the exact message>"}], or the approval will not match.',
+  },
+  // The library and the engine are attached by workbench.ts, which owns them;
+  // the dry-run resolver is the same one the tiles use.
+  sandbox: { resolve: resolveDemoBinding },
 });

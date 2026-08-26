@@ -17,6 +17,11 @@ const NOT_COMPONENTS = new Set([
   "tools/acceptTool.tsx",
   "tools/proposeTool.tsx",
   "apps/createChatApps.tsx",
+  "apps/createConversationApps.tsx",
+  // Providers and hosts, not components: they render contexts, not pixels.
+  "conversations/ActiveConversationScope.tsx",
+  "conversations/ConversationHost.tsx",
+  "conversations/ConversationScope.tsx",
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -49,7 +54,7 @@ describe("one folder per component", () => {
   });
 
   test("every component story folder has a story or is listed as story-free", () => {
-    const STORY_FREE = new Set(["RefPresentation", "WidgetChild", "MessageRow", "ToolCard", "AcceptStatus", "StatChild", "LogChild", "TableChild", "FormChild", "VerbChips", "ChatInspectorPanel", "WatchlistPanel", "TilesPanel", "TracePanel", "Messages"]);
+    const STORY_FREE = new Set(["RefPresentation", "WidgetChild", "MessageRow", "ToolCard", "AcceptStatus", "StatChild", "LogChild", "TableChild", "FormChild", "VerbChips", "ChatInspectorPanel", "WatchlistPanel", "TilesPanel", "TracePanel", "Messages", "ConversationsTile", "EventsTile", "RunsTile", "ToolsTile", "ContextTile"]);
     const missing: string[] = [];
     for (const file of TSX) {
       const rel = relative(SRC, file);
