@@ -1,0 +1,97 @@
+almanach_studio_version: 1
+theme: brutalist
+paperWidth: 384
+bodyScale: 1
+feedLines: 8
+blocks:
+- id: head
+  type: row
+  data:
+    cols:
+    - w: 1fr
+      text: PBUI-ACTIONS-2
+      preset: micro
+    - w: 1fr
+      text: P6 DONE
+      preset: micro
+      align: right
+- id: r1
+  type: rule
+  data:
+    weight: heavy
+- id: gap1
+  type: space
+  data:
+    size: s
+- id: title
+  type: text
+  data:
+    text: Accept Is Typed and Explained
+    preset: h1
+    lines: 3
+- id: gap2
+  type: space
+  data:
+    size: s
+- id: summary
+  type: text
+  data:
+    text: Subtypes settle with the original reference; edges declare their types; ties open a chooser that Escape dismisses
+      while accept stays pending.
+    preset: body
+- id: gap3
+  type: space
+  data:
+    size: m
+- id: did
+  type: list
+  data:
+    marker: —
+    lines: 2
+    items:
+    - translator registry + resolution
+    - AcceptChooser transient surface
+    - both products on translators
+- id: gap4
+  type: space
+  data:
+    size: s
+- id: tricky
+  type: list
+  data:
+    marker: '!'
+    lines: 2
+    items:
+    - descriptor-to-chat module cycle
+- id: r2
+  type: rule
+  data:
+    weight: hair
+- id: facts
+  type: kv
+  data:
+    items:
+    - - COMMIT
+      - ae29000
+    - - NEXT
+      - P7 cleanup + stabilize
+    - - TESTS
+      - 1240 PASS
+- id: r3
+  type: rule
+  data:
+    weight: hair
+- id: decide
+  type: row
+  data:
+    cols:
+    - w: 1fr
+      text: SCAN FOR COMMIT
+      preset: caption
+    - w: 120
+      blocks:
+      - id: qr
+        type: qr
+        data:
+          value: https://github.com/hyperslop-systems/pbui/commit/ae29000
+          size: 110

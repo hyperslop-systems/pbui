@@ -1,0 +1,65 @@
+almanach_studio_version: 1
+theme: brutalist
+paperWidth: 384
+bodyScale: 1
+feedLines: 8
+blocks:
+- id: head
+  type: row
+  data:
+    cols:
+    - w: 1fr
+      text: PBUI-ACTIONS-2
+      preset: micro
+    - w: 1fr
+      text: P6 START
+      preset: micro
+      align: right
+- id: r1
+  type: rule
+  data:
+    weight: heavy
+- id: gap1
+  type: space
+  data:
+    size: s
+- id: title
+  type: text
+  data:
+    text: Accept Gets a Type System
+    preset: h1
+    lines: 3
+- id: gap2
+  type: space
+  data:
+    size: s
+- id: summary
+  type: text
+  data:
+    text: Subtype satisfaction preserves the concrete reference; direct translator edges replace ordered conversion callbacks;
+      ties open a chooser, never pick by registration order.
+    preset: body
+- id: gap3
+  type: space
+  data:
+    size: m
+- id: did
+  type: list
+  data:
+    marker: —
+    lines: 2
+    items:
+    - translator registry + resolution
+    - subtype accept via the graph
+    - chooser as Escape/focus surface
+    - cat-to-field, row-to-product ported
+- id: r2
+  type: rule
+  data:
+    weight: hair
+- id: facts
+  type: kv
+  data:
+    items:
+    - - NEXT
+      - P7 cleanup + stabilize
