@@ -36,6 +36,34 @@ export interface PresentationDescriptor<Type extends PresentationType> {
   actions(value: Values[Type], env: Environment): Action[];
 }
 
+/**
+ * PBUI-ACTIONS-2 P0: ids are derived from verb content, not `${index}:${label}`
+ * — labels change, rows get inserted, and the kernel migration needs identity
+ * that survives both (overrides, traces, fresh revalidation). Where one menu
+ * can emit the same verb kind twice, the discriminant tells the entries apart.
+ */
+function verbDiscriminant(verb: Verb): string | null {
+  switch (verb.kind) {
+    case "sortBy":
+      return verb.dir;
+    case "resolveProposal":
+      return verb.decision;
+    case "tile.split":
+      return verb.direction;
+    case "tile.dock":
+      return verb.zone;
+    case "addFilter":
+      return `${verb.field}.${verb.op}`;
+    case "view.open":
+      // A conversation offers one open-tile entry per app.
+      return verb.appId;
+    case "program.open":
+      return verb.programId;
+    default:
+      return null;
+  }
+}
+
 function bind<Type extends PresentationType>(
   descriptor: PresentationDescriptor<Type>,
 ): GenericPresentationDescriptor<Values[Type], Environment, Verb> {
@@ -43,15 +71,30 @@ function bind<Type extends PresentationType>(
     label: descriptor.label,
     describe: descriptor.describe,
     tone: descriptor.tone,
-    actions: (value, environment) =>
-      descriptor.actions(value, environment).map((action, index) => ({
-        id: `${descriptor.ptype}:${index}:${action.label}`,
-        label: action.label,
-        verb: action.verb,
-        danger: action.danger,
-        description: action.description,
-        disabledBecause: action.disabledBecause,
-      })),
+    actions: (value, environment) => {
+      const seen = new Set<string>();
+      return descriptor.actions(value, environment).map((action) => {
+        const discriminant = verbDiscriminant(action.verb);
+        const id = discriminant
+          ? `${descriptor.ptype}.${action.verb.kind}.${discriminant}`
+          : `${descriptor.ptype}.${action.verb.kind}`;
+        if (seen.has(id)) {
+          throw new Error(
+            `duplicate action id "${id}" in the <${descriptor.ptype}> menu — ` +
+              `add a case to verbDiscriminant() for this verb kind`,
+          );
+        }
+        seen.add(id);
+        return {
+          id,
+          label: action.label,
+          verb: action.verb,
+          danger: action.danger,
+          description: action.description,
+          disabledBecause: action.disabledBecause,
+        };
+      });
+    },
   };
 }
 

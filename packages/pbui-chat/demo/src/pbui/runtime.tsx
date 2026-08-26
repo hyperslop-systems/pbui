@@ -7,7 +7,7 @@ import type { Verb } from "./verbs";
  * A table row that carries a product id may stand in for the product during
  * accept mode — the conversion the vocabulary declares as `row → product`.
  */
-function rowToProduct(reference: PresentationReference<Values>): PresentationReference<Values> | undefined {
+export function rowToProduct(reference: PresentationReference<Values>): PresentationReference<Values> | undefined {
   if (reference.type !== "row") return undefined;
   const row = reference.value.value as RowValue | undefined;
   const cells = row?.cells ?? {};
@@ -25,10 +25,13 @@ function rowToProduct(reference: PresentationReference<Values>): PresentationRef
   };
 }
 
+/** Frozen by tests (PBUI-ACTIONS-2 P0) before typed translators replace this. */
+export const demoConversions = [rowToProduct] as const;
+
 export const pbui = createPbui<Values, Environment, Verb>({
   registry,
   defaultEnvironment: DEFAULT_ENVIRONMENT,
-  conversions: [rowToProduct],
+  conversions: demoConversions,
   renderMenuHeader: (reference, _environment, label) => (
     <>
       &lt;{reference.type}&gt; {label}

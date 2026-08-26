@@ -16,20 +16,30 @@ const EMPTY_ENVIRONMENT: PbuiEnvironment = {
   nameOf: () => "α",
 };
 
+/**
+ * A categorical value may stand in for its field during accept mode.
+ *
+ * Exported (PBUI-ACTIONS-2 P0) so the conversion's behavior and the array's
+ * order are frozen by tests before typed translators replace this mechanism.
+ */
+export function catToField(
+  reference: PresentationReference<PresentationValues>,
+): PresentationReference<PresentationValues> | undefined {
+  if (reference.type !== "cat") return undefined;
+  const cat = reference.value as CatRef;
+  if (!cat.field) return undefined;
+  return {
+    type: "field",
+    value: { docId: cat.docId, name: cat.field } satisfies FieldRef,
+  };
+}
+
+export const datadropConversions = [catToField] as const;
+
 const datadropPbui = createPbui<PresentationValues, PbuiEnvironment, Verb>({
   registry: datadropRegistry,
   defaultEnvironment: EMPTY_ENVIRONMENT,
-  conversions: [
-    (reference) => {
-      if (reference.type !== "cat") return undefined;
-      const cat = reference.value as CatRef;
-      if (!cat.field) return undefined;
-      return {
-        type: "field",
-        value: { docId: cat.docId, name: cat.field } satisfies FieldRef,
-      };
-    },
-  ],
+  conversions: datadropConversions,
   renderMenuHeader: (reference, environment, label: ReactNode) => {
     const ambient = ["field", "source", "geom"].includes(reference.type);
     return (

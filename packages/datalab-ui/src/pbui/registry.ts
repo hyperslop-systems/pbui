@@ -56,6 +56,45 @@ export interface PresentationDescriptor<V = unknown> {
   tone: string;
 }
 
+/**
+ * The extra segment that keeps two same-kind verbs in one menu apart.
+ *
+ * PBUI-ACTIONS-2 P0: action ids used to be `${ptype}:${index}:${label}` —
+ * a label edit changed identity, and inserting a row renumbered every later
+ * one. The kernel migration needs ids that survive both, because they feed
+ * overrides, traces, and fresh revalidation. The id is now derived from the
+ * verb's semantic content: `${ptype}.${kind}` plus, where one menu can emit
+ * the same kind twice, the field that tells the entries apart.
+ */
+const FILTER_OP_SLUGS: Record<string, string> = { "=": "eq", "!=": "ne", ">": "gt", "<": "lt" };
+
+function verbDiscriminant(verb: Action["verb"]): string | null {
+  switch (verb.kind) {
+    case "setMapping":
+      return verb.channel;
+    case "addFilter":
+      return `${verb.field}.${FILTER_OP_SLUGS[verb.op] ?? verb.op}`;
+    case "addSort":
+      return verb.dir;
+    case "setGeom":
+      return verb.geom;
+    case "setYScale":
+      return verb.scale;
+    case "moveStep":
+      return verb.by === -1 ? "up" : "down";
+    case "pinSnapshot":
+      return `slot-${verb.slot}`;
+    case "splitTile":
+      return verb.dir;
+    case "signIn":
+      return verb.intent;
+    case "setMemberRole":
+      return verb.role;
+    default:
+      return null;
+  }
+}
+
 function bindProductDescriptor<Value>(
   descriptor: PresentationDescriptor<Value>,
 ): GenericPresentationDescriptor<Value, PbuiEnvironment, Action["verb"]> {
@@ -63,7 +102,7 @@ function bindProductDescriptor<Value>(
     label: descriptor.label,
     describe: descriptor.describe,
     tone: descriptor.tone,
-    actions: (value, environment) =>
+    actions: (value, environment) => {
       /*
        * `disabledBecause` passes straight through since pbui 0.4.0.
        *
@@ -80,12 +119,29 @@ function bindProductDescriptor<Value>(
        * here (PBUI-HARDEN-1 P3.1), so the translation is gone and not one
        * descriptor changed.
        */
-      descriptor.actions(value, environment).map((action, index) => ({
-        id: `${descriptor.ptype}:${index}:${action.label}`,
-        label: action.label,
-        verb: action.verb,
-        disabledBecause: action.disabledBecause,
-      })),
+      const seen = new Set<string>();
+      return descriptor.actions(value, environment).map((action) => {
+        const discriminant = verbDiscriminant(action.verb);
+        const id = discriminant
+          ? `${descriptor.ptype}.${action.verb.kind}.${discriminant}`
+          : `${descriptor.ptype}.${action.verb.kind}`;
+        // A collision means two menu entries would be indistinguishable to
+        // overrides and revalidation — loud now beats subtly wrong later.
+        if (seen.has(id)) {
+          throw new Error(
+            `duplicate action id "${id}" in the <${descriptor.ptype}> menu — ` +
+              `add a case to verbDiscriminant() for this verb kind`,
+          );
+        }
+        seen.add(id);
+        return {
+          id,
+          label: action.label,
+          verb: action.verb,
+          disabledBecause: action.disabledBecause,
+        };
+      });
+    },
   };
 }
 
