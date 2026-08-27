@@ -232,3 +232,91 @@ on a mechanism scheduled to die.
 ### Technical details
 - Suite counts after: root 165, workbench-protocol 44, pbui-workbench 125,
   datalab-ui 533, pbui-sandbox 104, pbui-chat 237, demo 13 = 1221.
+
+## Step 3: Phase B — Envelope and Vocabulary, the 0.9.0 Release (commits f455702, 9ee436c)
+
+The two items OPTKIT-024 pulls landed as one small release. The envelope
+gives every delegated verb its provenance natively — resolved action id,
+candidate, invocation, subject, and the Provider's actor — built from the
+FRESH resolution so the verb log records post-revalidation truth. The
+vocabulary stops being a thing a product could hand-maintain into a lie:
+`registry.vocabulary()` derives it from the graph and contributions, so a
+rule rename IS the vocabulary bump.
+
+### Prompt Context
+
+**User prompt (verbatim):** "4. PBUI-ACTIONS-3 Phase B, then OPTKIT-024.
+The perform envelope (onPerform(verb, {action, candidateId, actor…})) and
+the registry-generated vocabulary export land as one small pbui release —
+both are pulled directly by 024's task list — and then the agent seat is
+implementable: the agent principal is just a snapshot without the seal
+capability, and the approval flow is a" (queue item pasted back as the
+go-ahead)
+
+**Assistant interpretation:** Ship Phase B now as pbui 0.9.0, then start
+OPTKIT-024.
+
+**Inferred user intent:** Clear the library prerequisite so the agent seat
+builds on real pbui surface instead of product-local reconstructions.
+
+**Commit (code):** f455702 (B1), 9ee436c (B2 + 0.9.0)
+
+### What I did
+- B1: `PerformEnvelope` type; `onPerform(verb, envelope)`;
+  `evaluateFresh` proceed arm carries the fresh ResolvedAction; menu/
+  primary envelopes built from it; `pbui.perform` reports
+  `invocation: "direct"`; Provider `actor` prop threaded verbatim; 3 tests.
+- B2: `vocabulary.ts` (`vocabularyOf` + `registry.vocabulary()`): types
+  (abstract flag, direct parents), contributions (ids, kind, subject,
+  scopes, invocations, static-only label, description/group/order,
+  danger/primary). 4 tests incl. the golden JSON shape and
+  vocabulary/listReachable agreement.
+- Swept two pre-existing strays the workspace typecheck surfaced: datalab-ui
+  unused goldens import; chat demo's 0.7-era descriptor adapter (dead
+  actions() branch, 3-generic calls).
+- Version 0.7.0→0.8.0 was Phase A; this is 0.8.0→0.9.0. Built dist.
+
+### Why
+- OPTKIT-024's task list names both ("vocabulary export build step with
+  golden JSON test"; "verb router delegation with actor attribution").
+
+### What worked
+- The signature change broke nobody: a single-parameter router is
+  assignable to the two-parameter type, so all six workspace packages
+  passed unchanged (172 core + 1056 workspace tests).
+- The vocabulary golden passed on first run — the contribution shapes
+  already carried everything the export needs.
+
+### What didn't work
+- `toHaveBeenCalledWith(verb)` assertions in two existing tests failed once
+  the mock started receiving the envelope — updated to expect the envelope
+  explicitly. Expected breakage, listed in the backlog as such.
+
+### What I learned
+- TS variance does the consumer-adaptation work for B1: adding a parameter
+  to a callback TYPE is non-breaking for implementers, only for callers
+  who spread arguments.
+
+### What was tricky to build
+- Deciding what the vocabulary must NOT contain: verbs (need snapshots),
+  dynamic labels (would be lies), family instances (resolution-time). The
+  docstring pins these so the export never grows a fabricating field.
+
+### What warrants a second pair of eyes
+- The envelope exposes the subject reference wholesale; if a product logs
+  envelopes verbatim, subject values with sensitive fields land in the log
+  — products own redaction at the router.
+- `invocation: "direct"` is a new literal on the envelope union, not in
+  ActionInvocation — deliberate (it is not a resolution invocation), but
+  worth a look.
+
+### What should be done in the future
+- OPTKIT-024 consumes both: actor="agent:…" seats and the vocabulary build
+  step with its golden.
+
+### Code review instructions
+- Start at src/presentation/actions/vocabulary.ts and the performAction
+  envelope construction in createPbui.tsx; then the new suites
+  (vocabulary.test.ts, the envelope describe block in
+  createPbui.actions.test.tsx).
+- Validate: `pnpm test` and `pnpm -r test` + `pnpm -r typecheck` in pbui.

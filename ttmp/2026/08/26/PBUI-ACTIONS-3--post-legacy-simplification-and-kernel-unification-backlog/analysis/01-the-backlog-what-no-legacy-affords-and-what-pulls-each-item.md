@@ -68,7 +68,23 @@ open the menu); `activate` stays as the instance-level override and wins
 over the kernel primary when present. Pulled by OPTKIT-022: its
 click-to-open behavior is declared as primary rules from day one.
 
-## Phase B — just before OPTKIT-024 (small release)
+## Phase B — SHIPPED as pbui 0.9.0 (commits f455702, 9ee436c)
+
+Both items landed as specified; deviations and additions:
+
+- B1's envelope is built from the FRESH resolved action (evaluateFresh's
+  proceed arm now carries it), so provenance is post-revalidation truth.
+  `invocation: "direct"` marks chrome-owned `pbui.perform` delegation, the
+  one path with no resolved action behind it. The Provider `actor` prop is
+  attribution, not authorization. Existing single-parameter routers keep
+  typechecking — the adaptation really is a parameter addition.
+- B2 ships as `registry.vocabulary()` plus the pure `vocabularyOf`. Entries
+  carry a label only when statically declared (a dynamic label yields no
+  label rather than a lie); families appear without instances; verbs are
+  absent by design (binding needs a snapshot). A test pins that the
+  vocabulary and `listReachable` agree over every type.
+
+### Original Phase B text (for the record)
 
 Pulled directly by OPTKIT-024's task list ("vocabulary export build step with
 golden JSON test"; "verb router delegation with actor attribution and verb
