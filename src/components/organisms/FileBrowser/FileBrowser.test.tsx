@@ -2,6 +2,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { FileBrowser, type FileNode, type RootState } from "./FileBrowser";
+import {
+  createActionRegistry,
+  createPresentationTypeGraph,
+} from "../../../presentation/actions";
 import { createPbui } from "../../../presentation/createPbui";
 import { createPresentationRegistry } from "../../../presentation/registry";
 
@@ -420,11 +424,23 @@ describe("FileBrowser presentation seam", () => {
    * That is the assertion below that would not have been fixable from outside
    * this file, and it is why the fix belonged in pbui rather than in a product.
    */
-  const filePbui = createPbui<{ "file.entry": string }, object, { kind: "noop" }>({
-    registry: createPresentationRegistry<{ "file.entry": string }, object, { kind: "noop" }>({
+  const filePbui = createPbui<{ "file.entry": string }, object, { kind: "noop" }, object>({
+    registry: createPresentationRegistry<{ "file.entry": string }, object>({
       "file.entry": { label: (id) => id },
     }),
     defaultEnvironment: {},
+    actions: createActionRegistry<{ "file.entry": string }, object, { kind: "noop" }>({
+      graph: createPresentationTypeGraph([{ id: "file.entry" }]),
+      scopes: ["global"],
+      contributions: [],
+    }),
+    snapshotFor: () => ({
+      revision: 0,
+      scopes: ["global"],
+      modes: new Set<string>(),
+      capabilities: new Set<string>(),
+      product: {},
+    }),
   });
 
   describe("a row wrapped in a Presentation keeps the row's own gesture", () => {

@@ -22,116 +22,27 @@ export type PresentationTone =
   | "danger"
   | (string & {});
 
-export interface PresentationAction<Verb> {
-  id: string;
-  label: string;
-  verb: Verb;
-  description?: string;
-  group?: string;
-  danger?: boolean;
-  /**
-   * Present ⇔ the action is unavailable, and the string is why.
-   *
-   * # Why this is one field
-   *
-   * It used to be two — `disabled?: boolean` and `disabledReason?: string` —
-   * and the pair produced the same defect in every product that used it. An
-   * author knows the rule and writes it twice, once as a predicate and once as
-   * prose:
-   *
-   *     disabled: environment.cursorTerm === ref.id,
-   *     disabledReason: "the cursor is already here",
-   *
-   * Two adjacent lines that read as one unit and evaluate as two. The renderer
-   * guarded the reason on the reason being SET, so every usable action
-   * displayed an explanation of why it could not be used. Fifteen live sites
-   * across three products, plus this library's own story.
-   *
-   * The guard was the bug and P2 fixed it. This field is the reason the bug
-   * was WRITABLE. With one field there is nothing for a predicate to disagree
-   * with, and both illegal states stop existing:
-   *
-   *   - a reason on an available action — previously the live defect
-   *   - a disabled action with no explanation — previously silent, and its own
-   *     small usability defect. `presentation-parts.css` states the policy in
-   *     prose ("Disabled entries are shown, not hidden: hiding a verb hides
-   *     the rule that makes it unavailable"); this makes the type carry it.
-   *
-   * # The name
-   *
-   * Taken from datalab-ui rather than invented. That product merged the pair
-   * into `disabledBecause` on its own, wrote it twice, and got it right both
-   * times — the only one of four products that never had the bug, and it paid
-   * a translation layer to escape this type. Adopting its name upstream let
-   * that adapter collapse to a passthrough with no descriptor changing.
-   *
-   * # Writing it
-   *
-   *     disabledBecause: tile.canClose ? undefined : "the last tile cannot close",
-   *
-   * One expression over one field, predicate and prose adjacent. A conditional
-   * spread (`...(cond ? {} : { disabledBecause })`) also works and is what a
-   * discriminated union would have FORCED at every call site — which is why
-   * the merge is better than the union.
-   */
-  disabledBecause?: string;
-
-  /**
-   * TOMBSTONES. Removed in 0.4.0; typed rather than deleted so that migrating
-   * is a compile error instead of a silent behaviour change.
-   *
-   * Deleting a field is not enough here, and the reason is worth knowing
-   * because it applies to every future rename in this interface. Actions are
-   * returned from a descriptor's `actions()` function, whose return type is
-   * INFERRED and then checked for assignability — and assignability is
-   * structural, so it permits extra properties. TypeScript's excess-property
-   * check only fires on a fresh literal assigned directly to a target, and
-   * freshness is lost the moment the literal is widened into an inferred
-   * return type. Verified against a minimal repro rather than assumed: a
-   * property called `totallyBogusProperty` in a descriptor action produces no
-   * diagnostic at all.
-   *
-   * So a product left on the old shape would have compiled cleanly, had both
-   * of its fields ignored, and rendered `disabled={undefined}` — turning every
-   * unavailable action, including destructive ones, into a clickable one. A
-   * worse defect than the one this merge fixes, introduced by fixing it.
-   *
-   * Declaring them `never` makes it an ordinary type mismatch, which the
-   * inference path DOES report:
-   *
-   *     Types of property 'disabled' are incompatible.
-   *       Type 'boolean' is not assignable to type 'undefined'.
-   *
-   * Safe to delete once every consumer is on 0.4.0.
-   *
-   * @deprecated merged into `disabledBecause`
-   */
-  disabled?: never;
-  /** @deprecated merged into `disabledBecause` — see the note above. */
-  disabledReason?: never;
-}
-
-export interface PresentationDescriptor<Value, Environment, Verb> {
+/**
+ * A descriptor is REPRESENTATION policy only: how one concrete type renders
+ * (`label`), narrates itself to agents and inspectors (`describe`), and is
+ * toned. Action discovery lives entirely in the action kernel
+ * (`createActionRegistry`); the pre-kernel `actions()` callback and its
+ * `PresentationAction` row shape were deleted in 0.8.0 (PBUI-ACTIONS-3 A1).
+ * The one-field unavailability argument that shape carried
+ * (`disabledBecause`: present ⇔ unavailable, the string is why) lives on in
+ * the kernel's `Availability` — see `actions/availability.ts`.
+ */
+export interface PresentationDescriptor<Value, Environment> {
   label(value: Value, environment: Environment): ReactNode;
   describe?(value: Value, environment: Environment): unknown;
-  /**
-   * @deprecated PBUI-ACTIONS-2: declare actions as kernel rules/families in
-   * an action registry (`createActionRegistry`) and pass it to `createPbui`.
-   * A descriptor with this callback still works through the automatic legacy
-   * engine — the one-migration-window compatibility path for products still
-   * on 0.6.x shapes — and both are deleted together at the next major.
-   * No in-repository product uses this callback any more.
-   */
-  actions?(value: Value, environment: Environment): readonly PresentationAction<Verb>[];
   tone?: PresentationTone;
 }
 
 export type PresentationDescriptorMap<
   Values extends PresentationValues,
   Environment,
-  Verb,
 > = Partial<{
-  [Type in PresentationType<Values>]: PresentationDescriptor<Values[Type], Environment, Verb>;
+  [Type in PresentationType<Values>]: PresentationDescriptor<Values[Type], Environment>;
 }>;
 
 export interface AcceptRequest<Values extends PresentationValues> {
@@ -147,6 +58,3 @@ export interface MenuState<Values extends PresentationValues> {
   returnFocus: FocusReturnTarget;
 }
 
-export type PresentationConversion<Values extends PresentationValues> = (
-  reference: PresentationReference<Values>,
-) => PresentationReference<Values> | undefined;

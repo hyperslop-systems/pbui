@@ -1,4 +1,4 @@
-import type { PbuiInstance, PresentationRegistry } from "@hyperslop-systems/pbui";
+import type { PbuiInstance, PresentationDescriptorRegistry } from "@hyperslop-systems/pbui";
 import { createContext, useContext } from "react";
 import type { ChatDebugEventStore } from "@go-go-golems/chat-provider";
 import type { ConversationRegistry } from "./conversations/registry";
@@ -10,7 +10,7 @@ import type { Vocabulary } from "./vocabulary/schemas";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type AnyPbui = PbuiInstance<any, any, any>;
-export type AnyRegistry = PresentationRegistry<any, any, any>;
+export type AnyRegistry = PresentationDescriptorRegistry<any, any>;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**

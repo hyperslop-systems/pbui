@@ -3,7 +3,6 @@ import {
   type PresentationDescriptor as GenericPresentationDescriptor,
 } from "@hyperslop-systems/pbui";
 import type { PbuiEnvironment, PresentationType, PresentationValues } from "./types";
-import type { Action } from "./verbs";
 import { catDescriptor } from "./descriptors/cat";
 import { datumDescriptor } from "./descriptors/datum";
 import { docDescriptor } from "./descriptors/doc";
@@ -44,23 +43,13 @@ export interface PresentationDescriptor<V = unknown> {
   label(value: V, env: PbuiEnvironment): string;
   /** The full object, for the inspector. Must be JSON-serialisable. */
   describe(value: V, env: PbuiEnvironment): unknown;
-  /**
-   * TOMBSTONE (PBUI-ACTIONS-2 P7). Menus are declared as kernel rules in
-   * `./actions.ts`; a descriptor is representation only. Typed `never`
-   * rather than deleted so a revived callback is a compile error instead of
-   * a silently ignored menu — the same trick `PresentationAction`'s removed
-   * fields use, and for the same structural-assignability reason.
-   *
-   * @deprecated declare rules in ./actions.ts
-   */
-  actions?: never;
   /** The token naming this type's accent colour. */
   tone: string;
 }
 
 function bindProductDescriptor<Value>(
   descriptor: PresentationDescriptor<Value>,
-): GenericPresentationDescriptor<Value, PbuiEnvironment, Action["verb"]> {
+): GenericPresentationDescriptor<Value, PbuiEnvironment> {
   return {
     label: descriptor.label,
     describe: descriptor.describe,
@@ -83,8 +72,7 @@ function bindProductDescriptor<Value>(
  */
 export const datadropRegistry = createPresentationRegistry<
   PresentationValues,
-  PbuiEnvironment,
-  Action["verb"]
+  PbuiEnvironment
 >({
   field: bindProductDescriptor(fieldDescriptor),
   source: bindProductDescriptor(sourceDescriptor),

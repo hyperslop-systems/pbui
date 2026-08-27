@@ -13,12 +13,8 @@ import {
 import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
-import { createActionRegistry } from "./actions/registry";
 import type { ActionRegistry } from "./actions/registry";
-import { legacyDescriptorFamily } from "./actions/legacy";
-import type { LegacyFacts } from "./actions/legacy";
 import { evaluateFresh } from "./actions/perform";
-import { createPresentationTypeGraph } from "./actions/typeGraph";
 import type {
   ActionQuery,
   PerformResult,
@@ -32,11 +28,10 @@ import type {
   AcceptanceResolution,
   PresentationTranslator,
 } from "./translators/types";
-import type { PresentationRegistry } from "./registry";
+import type { PresentationDescriptorRegistry } from "./registry";
 import type {
   AcceptRequest,
   MenuState,
-  PresentationConversion,
   PresentationReference,
   PresentationType,
   PresentationValues,
@@ -46,45 +41,35 @@ export interface CreatePbuiOptions<
   Values extends PresentationValues,
   Environment,
   Verb,
-  ProductFacts = LegacyFacts<Environment>,
+  ProductFacts,
 > {
-  registry: PresentationRegistry<Values, Environment, Verb>;
+  registry: PresentationDescriptorRegistry<Values, Environment>;
   defaultEnvironment: Environment;
-  /**
-   * @deprecated PBUI-ACTIONS-2: use `translators`. Conversions remain exact,
-   * ordered, first-wins callbacks for products that have not migrated; they
-   * are deleted with descriptor actions in the final cleanup.
-   */
-  conversions?: readonly PresentationConversion<Values>[];
   renderMenuHeader?: (
     reference: PresentationReference<Values>,
     environment: Environment,
     label: ReactNode,
   ) => ReactNode;
   /**
-   * The action-selection kernel (PBUI-ACTIONS-2). OPTIONAL, and absence is
-   * not a second engine: when a product passes no registry, `createPbui`
-   * builds one internally around `legacyDescriptorFamily`, which routes the
-   * descriptor `actions()` callbacks through the same resolver. One live
-   * selection engine either way; the legacy path exists for one migration
-   * window and is deleted with descriptor actions in the final cleanup.
+   * The action-selection kernel (PBUI-ACTIONS-2). REQUIRED since 0.8.0:
+   * there is exactly one selection engine, and every menu row, primary
+   * click, and agent-visible action resolves through it.
    *
    * `actions` and `snapshotFor` come together: the kernel never reads live
-   * stores, so a product supplying its own registry must also say how a
-   * query's immutable fact snapshot is built from the environment.
+   * stores, so the product must say how a query's immutable fact snapshot
+   * is built from the environment.
    */
-  actions?: ActionRegistry<Values, ProductFacts, Verb>;
-  snapshotFor?(
+  actions: ActionRegistry<Values, ProductFacts, Verb>;
+  snapshotFor(
     query: ActionQuery<Values>,
     environment: Environment,
   ): SelectionSnapshot<ProductFacts>;
   /**
-   * Typed accept translators (PBUI-ACTIONS-2 P6). When present they replace
-   * the `conversions` array: acceptance gains graph-subtype satisfaction
-   * (the ORIGINAL reference settles the request), declared source/target/
-   * scope edges instead of ordered callbacks, and explicit chooser ambiguity
-   * instead of first-registered-wins. Requires `actions`/`snapshotFor` (the
-   * graph and snapshots come from them). Mount `AcceptChooser` alongside
+   * Typed accept translators (PBUI-ACTIONS-2 P6): declared source/target/
+   * scope edges resolved by the nearest-scope-then-priority ladder, with a
+   * genuine remainder opening the chooser. Acceptance always has
+   * graph-subtype satisfaction (the ORIGINAL reference settles the request)
+   * whether or not translators are declared. Mount `AcceptChooser` alongside
    * `AcceptBanner` — a product whose translators can tie needs the chooser
    * on screen.
    */
@@ -126,8 +111,12 @@ export interface PresentationProps<Values extends PresentationValues> {
   /**
    * What a left click does, and what to call it in the mouse-doc strip.
    *
-   * Present ⇔ this presentation has a default verb. Absent ⇔ a left click
-   * opens the object menu, like a right click.
+   * Present ⇔ the HOST INSTANCE owns this click. Absent ⇔ a left click
+   * resolves the kernel's `primary` invocation: the unique available action
+   * marked `metadata.primary` performs; otherwise the menu opens, like a
+   * right click. `activate` is the instance-level override for behavior the
+   * kernel cannot express — selection, expansion, anything owned by the
+   * surrounding organism rather than by the object's type.
    *
    *     activate={{ run: () => onGeom(option), doc: "use this geom" }}
    *
@@ -196,18 +185,6 @@ export interface PresentationProps<Values extends PresentationValues> {
    */
   inComposite?: boolean;
   testId?: string;
-
-  /**
-   * TOMBSTONES — merged into `activate` in 0.4.0. JSX props are excess-property
-   * checked, so these would already error if deleted; they are typed `never`
-   * for a message that names the replacement rather than one that says the prop
-   * does not exist.
-   *
-   * @deprecated use `activate={{ run, doc }}`
-   */
-  onActivate?: never;
-  /** @deprecated use `activate={{ run, doc }}` */
-  activateDoc?: never;
 }
 
 export interface PbuiContextValue<
@@ -253,107 +230,39 @@ export function createPbui<
   Values extends PresentationValues,
   Environment,
   Verb,
-  ProductFacts = LegacyFacts<Environment>,
+  ProductFacts,
 >({
   registry,
   defaultEnvironment,
-  conversions = [],
   renderMenuHeader,
   actions,
   snapshotFor,
-  translators,
+  translators = [],
 }: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
 
-  if (actions !== undefined && snapshotFor === undefined) {
-    throw new Error(
-      "createPbui: `actions` requires `snapshotFor` — the kernel never reads " +
-        "live stores, so the product must build the query's fact snapshot",
-    );
-  }
-  if (translators !== undefined && actions === undefined) {
-    throw new Error(
-      "createPbui: `translators` requires `actions` — subtype acceptance " +
-        "resolves against the action registry's type graph",
-    );
-  }
-
-  const EMPTY_MODES: ReadonlySet<string> = new Set();
-  const EMPTY_CAPABILITIES: ReadonlySet<string> = new Set();
-
-  // One live selection engine. Absent product options mean the internal
-  // legacy pair, whose ProductFacts is LegacyFacts<Environment> — which is
-  // exactly what the default type parameter says, making the casts honest.
-  const actionEngine: ActionRegistry<Values, ProductFacts, Verb> =
-    actions ??
-    (createActionRegistry<Values, LegacyFacts<Environment>, Verb>({
-      graph: createPresentationTypeGraph([]),
-      scopes: ["global"],
-      contributions: [
-        legacyDescriptorFamily<Values, Environment, Verb>({
-          id: "legacy.descriptor-actions",
-          descriptors: registry,
-        }),
-      ],
-    }) as unknown as ActionRegistry<Values, ProductFacts, Verb>);
-
-  const snapshotOf: (
-    query: ActionQuery<Values>,
-    environment: Environment,
-  ) => SelectionSnapshot<ProductFacts> =
-    snapshotFor ??
-    ((_query, environment) =>
-      ({
-        revision: 0,
-        scopes: ["global"],
-        modes: EMPTY_MODES,
-        capabilities: EMPTY_CAPABILITIES,
-        product: { environment },
-      }) as SelectionSnapshot<LegacyFacts<Environment>> as SelectionSnapshot<ProductFacts>);
-
-  function acceptedReference(
-    request: AcceptRequest<Values>,
-    reference: PresentationReference<Values>,
-  ): PresentationReference<Values> | undefined {
-    const wanted = Array.isArray(request.types) ? request.types : [request.types];
-    if (wanted.includes(reference.type)) {
-      return !request.filter || request.filter(reference) ? reference : undefined;
-    }
-
-    for (const convert of conversions) {
-      const converted = convert(reference);
-      if (!converted || !wanted.includes(converted.type)) continue;
-      if (!request.filter || request.filter(converted)) return converted;
-    }
-    return undefined;
-  }
+  const actionEngine = actions;
+  const snapshotOf = snapshotFor;
 
   const EMPTY_PREDICATES = new Map<string, never>();
 
   /**
-   * One resolution for highlighting AND clicking. Products with translators
-   * get the typed path (graph subtyping, declared edges, chooser ambiguity);
-   * products still on `conversions` keep today's exact-then-ordered behavior
-   * wrapped in the same result shape.
+   * One resolution for highlighting AND clicking: graph subtyping (the
+   * ORIGINAL reference settles the request), declared translator edges, and
+   * chooser ambiguity for a genuine tie.
    */
   function acceptanceFor(
     request: AcceptRequest<Values>,
     reference: PresentationReference<Values>,
     environment: Environment,
   ): AcceptanceResolution<Values> {
-    if (translators !== undefined) {
-      const snapshot = snapshotOf({ subject: reference, invocation: "accept" }, environment);
-      return resolveAcceptance(
-        { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
-        request,
-        reference,
-        snapshot,
-      );
-    }
-    const converted = acceptedReference(request, reference);
-    return converted
-      ? { kind: "accepted", option: { translator: null, result: converted } }
-      : { kind: "none" };
+    const snapshot = snapshotOf({ subject: reference, invocation: "accept" }, environment);
+    return resolveAcceptance(
+      { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
+      request,
+      reference,
+      snapshot,
+    );
   }
 
   function Provider({
@@ -497,12 +406,33 @@ export function createPbui<
       typeof label === "string" || typeof label === "number" ? String(label) : reference.type;
     const Tag = svg ? "g" : block ? "div" : "span";
 
-    const clickDoc = acceptable
-      ? "L: ACCEPT   R: menu"
-      : activate
-        ? `L: ${activate.doc ?? "activate"}   R: menu`
-        : "L/R: menu";
-    const describe = () => `${doc ?? `<${reference.type}>`}   —   ${clickDoc}`;
+    /**
+     * The unique available PRIMARY action for this subject, or null. Lazy —
+     * computed on hover, focus, and click, never per render — because a
+     * resolution per rendered presentation would put menu-time work on the
+     * render path of every grid cell (the datalab cost boundary).
+     * Zero primaries or several fall back to the menu: guessing among
+     * primaries would reintroduce registration-order semantics.
+     */
+    const primaryFor = (): ResolvedAction<Values, Verb> | null => {
+      const resolution = pbui.resolve({ subject: reference, invocation: "primary" });
+      const primaries = resolution.actions.filter(
+        (action) => action.primary && action.status.kind === "available",
+      );
+      return primaries.length === 1 ? (primaries[0] ?? null) : null;
+    };
+
+    const clickDoc = () => {
+      if (acceptable) return "L: ACCEPT   R: menu";
+      if (activate) return `L: ${activate.doc ?? "activate"}   R: menu`;
+      const primary = primaryFor();
+      if (primary) {
+        const name = typeof primary.label === "string" ? primary.label : primary.action;
+        return `L: ${name}   R: menu`;
+      }
+      return "L/R: menu";
+    };
+    const describe = () => `${doc ?? `<${reference.type}>`}   —   ${clickDoc()}`;
     const open = (x: number, y: number, invoker: HTMLElement) => pbui.openMenu(reference, x, y, invoker);
 
     const handleContextMenu = (event: MouseEvent) => {
@@ -571,6 +501,16 @@ export function createPbui<
         activate.run?.();
         return;
       }
+      const primary = primaryFor();
+      if (primary) {
+        // The kernel's primary action acts like a menu row, not like
+        // `activate`: this element acts, so the click stops here, and the
+        // verb goes through fresh revalidation like every kernel action.
+        event.preventDefault();
+        event.stopPropagation();
+        void pbui.performAction(primary);
+        return;
+      }
       event.stopPropagation();
       open(event.clientX, event.clientY, event.currentTarget as HTMLElement);
     };
@@ -611,6 +551,11 @@ export function createPbui<
            * to be kept in step. Caught in review on PR #9.
            */
           (event.currentTarget as HTMLElement).click();
+          return;
+        }
+        const primary = primaryFor();
+        if (primary) {
+          void pbui.performAction(primary);
           return;
         }
         const box = (event.target as HTMLElement).getBoundingClientRect();
@@ -941,7 +886,8 @@ export type PbuiInstance<
   Values extends PresentationValues,
   Environment,
   Verb,
-> = ReturnType<typeof createPbui<Values, Environment, Verb>>;
+  ProductFacts = unknown,
+> = ReturnType<typeof createPbui<Values, Environment, Verb, ProductFacts>>;
 
 export function presentationTypes<Values extends PresentationValues>(
   ...types: readonly PresentationType<Values>[]

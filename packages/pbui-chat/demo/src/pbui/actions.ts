@@ -9,7 +9,6 @@ import type {
   ActionContribution,
   ActionQuery,
   Availability,
-  LegacyFacts,
   SelectionSnapshot,
 } from "@hyperslop-systems/pbui";
 import type { TileRef } from "@hyperslop-systems/pbui-workbench";
@@ -55,7 +54,9 @@ interface ProgramFacts {
   pinned: boolean;
 }
 
-export interface DemoFacts extends LegacyFacts<Environment>, GeneratedActionFacts {
+export interface DemoFacts extends GeneratedActionFacts {
+  /** For rules that need ambient product state beyond the derived facts. */
+  environment: Environment;
   canApprove: boolean;
   /** conversation and chatEvent subjects: the referenced conversation. */
   conversation: ConversationFacts | null;

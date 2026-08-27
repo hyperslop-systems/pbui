@@ -23,7 +23,7 @@ type Values = { file: { id: string } };
 type Facts = { canOpen: boolean; version: number };
 type Verb = { kind: string; version?: number };
 
-const descriptors = createPresentationRegistry<Values, { name: string }, Verb>({
+const descriptors = createPresentationRegistry<Values, { name: string }>({
   file: { label: (value) => value.id },
 });
 
@@ -138,50 +138,61 @@ describe("ambiguity is data in the menu", () => {
   });
 });
 
-describe("the automatic legacy engine", () => {
-  test("without actions/snapshotFor, descriptor actions() still drives the menu — one engine", () => {
-    const legacyDescriptors = createPresentationRegistry<Values, { name: string }, Verb>({
-      file: {
-        label: (value) => value.id,
-        actions: (value, environment) => [
-          {
-            id: "file.open",
-            label: `Open in ${environment.name}`,
-            verb: { kind: "open.legacy", version: value.id.length },
-          },
-        ],
-      },
-    });
-    const pbui = createPbui<Values, { name: string }, Verb>({
-      registry: legacyDescriptors,
-      defaultEnvironment: { name: "α" },
-    });
-    const onPerform = vi.fn();
-    render(
-      <pbui.Provider onPerform={onPerform}>
-        <pbui.Presentation reference={{ type: "file", value: { id: "f1" } }}>
-          f1
-        </pbui.Presentation>
-        <pbui.ObjectMenu />
-      </pbui.Provider>,
-    );
-    fireEvent.contextMenu(screen.getByText("f1"));
-    fireEvent.click(screen.getByRole("menuitem", { name: /Open in α/ }));
-    expect(onPerform).toHaveBeenCalledWith({ kind: "open.legacy", version: 2 });
+describe("the primary invocation (PBUI-ACTIONS-3 A4)", () => {
+  const primaryOpen = define.exact("file", {
+    id: "files.primary-open",
+    action: "presentation.open",
+    scopes: ["global"],
+    test: ({ snapshot }) =>
+      snapshot.product.canOpen ? available() : unavailable("locked now"),
+    metadata: { label: "Open", primary: true },
+    bind: ({ snapshot }) => ({ kind: "open", version: snapshot.product.version }),
   });
 
-  test("actions without snapshotFor is a construction error", () => {
-    expect(() =>
-      createPbui<Values, { name: string }, Verb, Facts>({
-        registry: descriptors,
-        defaultEnvironment: { name: "α" },
-        actions: createActionRegistry<Values, Facts, Verb>({
-          graph,
-          scopes: ["global"],
-          contributions: [],
-        }),
-      }),
-    ).toThrow(/requires `snapshotFor`/);
+  test("a left click performs the unique available primary action with the fresh verb", () => {
+    const registry = createActionRegistry<Values, Facts, Verb>({
+      graph,
+      scopes: ["global"],
+      contributions: [primaryOpen],
+    });
+    const facts = { canOpen: true, version: 1 };
+    const { onPerform } = mount(registry, () => ({ ...facts }));
+    facts.version = 2;
+    fireEvent.click(screen.getByText("f1"));
+    expect(onPerform).toHaveBeenCalledWith({ kind: "open", version: 2 });
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  test("an unavailable primary falls back to opening the menu", () => {
+    const registry = createActionRegistry<Values, Facts, Verb>({
+      graph,
+      scopes: ["global"],
+      contributions: [primaryOpen],
+    });
+    const { onPerform } = mount(registry, () => ({ canOpen: false, version: 1 }));
+    fireEvent.click(screen.getByText("f1"));
+    expect(onPerform).not.toHaveBeenCalled();
+    expect(screen.queryByRole("menu")).not.toBeNull();
+  });
+
+  test("two available primaries open the menu — nothing guesses", () => {
+    const second = define.exact("file", {
+      id: "files.primary-preview",
+      action: "presentation.preview",
+      scopes: ["global"],
+      test: () => available(),
+      metadata: { label: "Preview", primary: true },
+      bind: () => ({ kind: "preview" }),
+    });
+    const registry = createActionRegistry<Values, Facts, Verb>({
+      graph,
+      scopes: ["global"],
+      contributions: [primaryOpen, second],
+    });
+    const { onPerform } = mount(registry, () => ({ canOpen: true, version: 1 }));
+    fireEvent.click(screen.getByText("f1"));
+    expect(onPerform).not.toHaveBeenCalled();
+    expect(screen.queryByRole("menu")).not.toBeNull();
   });
 });
 
@@ -194,7 +205,7 @@ describe("typed accept and the chooser (PBUI-ACTIONS-2 P6)", () => {
   type AFacts = Record<string, never>;
   type AVerb = { kind: string };
 
-  const aDescriptors = createPresentationRegistry<AValues, Record<string, never>, AVerb>({
+  const aDescriptors = createPresentationRegistry<AValues, Record<string, never>>({
     doc: { label: (value) => value.id },
     "image-doc": { label: (value) => value.id },
     tag: { label: (value) => value.name },

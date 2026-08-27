@@ -1,4 +1,4 @@
-import type { PbuiInstance, PresentationRegistry, PresentationValues } from "@hyperslop-systems/pbui";
+import type { PbuiInstance, PresentationDescriptorRegistry, PresentationValues } from "@hyperslop-systems/pbui";
 import {
   createChatDebugEventStore,
   createDefaultChatDebugClassifier,
@@ -50,7 +50,7 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
   /** The product's `createPbui()` instance. */
   pbui: PbuiInstance<Values, Environment, Verb>;
   /** Defaults to `pbui.registry`. */
-  registry?: PresentationRegistry<Values, Environment, Verb>;
+  registry?: PresentationDescriptorRegistry<Values, Environment>;
   vocabulary: Vocabulary;
   router: VerbRouter<Verb>;
   /** One product-wide authority shared by every conversation and tool factory. */

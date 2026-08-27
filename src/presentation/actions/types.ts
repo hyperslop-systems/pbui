@@ -98,6 +98,17 @@ export interface ActionMetadata<Values extends PresentationValues, ProductFacts>
    * imply a capability, permission, or authorization rule.
    */
   danger?: boolean;
+  /**
+   * Marks this action as its subject's PRIMARY action: the one a left click
+   * on the bare presentation performs. `Presentation` resolves the click with
+   * `invocation: "primary"` and performs the action only when it is the
+   * UNIQUE available primary for that subject — zero or several available
+   * primaries fall back to opening the menu, because guessing among
+   * primaries would reintroduce registration-order semantics. Pair with
+   * `invocations` to keep a primary-only action out of the menu, or omit
+   * `invocations` to have it appear in both.
+   */
+  primary?: boolean;
 }
 
 /* ---------------------------------------------------------- contributions -- */
@@ -194,6 +205,7 @@ export interface ResolvedAction<Values extends PresentationValues, Verb> {
   group?: string;
   order: number;
   danger: boolean;
+  primary: boolean;
 
   status:
     | { kind: "available" }

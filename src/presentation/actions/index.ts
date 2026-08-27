@@ -31,8 +31,6 @@ export type {
   RuntimeTypeId,
   ScopeId,
 } from "./ids";
-export { legacyDescriptorFamily } from "./legacy";
-export type { LegacyFacts } from "./legacy";
 export { evaluateFresh } from "./perform";
 export type { FreshDecision } from "./perform";
 export { createActionRegistry } from "./registry";

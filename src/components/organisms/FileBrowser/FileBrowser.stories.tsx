@@ -204,9 +204,13 @@ export const DeepNesting: Story = {
 /* ------------------------------------------------------------------ */
 /* The presentation-protocol seam: file rows as PRESENTATIONS.        */
 /* ------------------------------------------------------------------ */
+import {
+  createActionRegistry,
+  createPresentationTypeGraph,
+} from "../../../presentation/actions";
+import type { ActionFamilyInstance } from "../../../presentation/actions";
 import { createPbui } from "../../../presentation/createPbui";
 import { createPresentationRegistry } from "../../../presentation/registry";
-import type { PresentationAction } from "../../../presentation/types";
 
 interface FileEntryValues {
   "file.entry": FileNode;
@@ -217,25 +221,85 @@ type FileVerb =
   | { type: "delete"; id: string }
   | { type: "create"; parentId: string; kind: "file" | "directory" };
 
-const fileEntryRegistry = createPresentationRegistry<FileEntryValues, Record<string, never>, FileVerb>({
+const fileEntryRegistry = createPresentationRegistry<FileEntryValues, Record<string, never>>({
   "file.entry": {
     label: (node) => node.name,
     describe: (node) => ({ id: node.id, kind: node.kind }),
     tone: "neutral",
-    actions: (node): readonly PresentationAction<FileVerb>[] => [
-      ...(node.kind === "file"
-        ? [{ id: "open", label: "Open", verb: { type: "open", id: node.id } as FileVerb, group: "file" }]
-        : [
-            { id: "new-file", label: "New file here", verb: { type: "create", parentId: node.id, kind: "file" } as FileVerb, group: "file" },
-            { id: "new-folder", label: "New folder here", verb: { type: "create", parentId: node.id, kind: "directory" } as FileVerb, group: "file" },
-          ]),
-      { id: "rename", label: "Rename…", verb: { type: "rename", id: node.id }, group: "edit" },
-      { id: "delete", label: "Delete", verb: { type: "delete", id: node.id }, group: "edit", danger: true },
-    ],
   },
 });
 
-const filePbui = createPbui({ registry: fileEntryRegistry, defaultEnvironment: {} });
+/* One bounded family: the row set differs per node kind, which is exactly the
+ * dynamic-membership case families exist for. */
+const fileEntryActions = createActionRegistry<FileEntryValues, Record<string, never>, FileVerb>({
+  graph: createPresentationTypeGraph([{ id: "file.entry" }]),
+  scopes: ["global"],
+  contributions: [
+    {
+      kind: "family",
+      id: "story.file-entry.menu",
+      subject: "file.entry",
+      match: "exact",
+      scopes: ["global"],
+      expand: ({ subject }) => {
+        const node = subject.value as FileNode;
+        type Row = ActionFamilyInstance<FileEntryValues, Record<string, never>, FileVerb>;
+        const rows: Row[] = [];
+        if (node.kind === "file") {
+          rows.push({
+            key: "open",
+            action: "file.open",
+            metadata: { label: "Open", group: "file", order: 0 },
+            bind: () => ({ type: "open", id: node.id }),
+          });
+        } else {
+          rows.push(
+            {
+              key: "new-file",
+              action: "file.create-file",
+              metadata: { label: "New file here", group: "file", order: 0 },
+              bind: () => ({ type: "create", parentId: node.id, kind: "file" }),
+            },
+            {
+              key: "new-folder",
+              action: "file.create-folder",
+              metadata: { label: "New folder here", group: "file", order: 1 },
+              bind: () => ({ type: "create", parentId: node.id, kind: "directory" }),
+            },
+          );
+        }
+        rows.push(
+          {
+            key: "rename",
+            action: "file.rename",
+            metadata: { label: "Rename…", group: "edit", order: 2 },
+            bind: () => ({ type: "rename", id: node.id }),
+          },
+          {
+            key: "delete",
+            action: "file.delete",
+            metadata: { label: "Delete", group: "edit", order: 3, danger: true },
+            bind: () => ({ type: "delete", id: node.id }),
+          },
+        );
+        return rows;
+      },
+    },
+  ],
+});
+
+const filePbui = createPbui({
+  registry: fileEntryRegistry,
+  defaultEnvironment: {},
+  actions: fileEntryActions,
+  snapshotFor: () => ({
+    revision: 0,
+    scopes: ["global"],
+    modes: new Set<string>(),
+    capabilities: new Set<string>(),
+    product: {},
+  }),
+});
 
 /**
  * Files have ACTIONS: right-click any row for its object menu (open, new

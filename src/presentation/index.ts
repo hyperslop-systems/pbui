@@ -19,15 +19,10 @@ export type {
   PbuiProviderProps,
   PresentationProps,
 } from "./createPbui";
-export type {
-  PresentationDescriptorRegistry,
-  PresentationRegistry,
-} from "./registry";
+export type { PresentationDescriptorRegistry } from "./registry";
 export type {
   AcceptRequest,
   MenuState,
-  PresentationAction,
-  PresentationConversion,
   PresentationDescriptor,
   PresentationDescriptorMap,
   PresentationReference,

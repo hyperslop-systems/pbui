@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type {
-  PresentationAction,
   PresentationDescriptor,
   PresentationDescriptorMap,
   PresentationReference,
@@ -9,28 +8,20 @@ import type {
   PresentationValues,
 } from "./types";
 
-export interface PresentationRegistry<
+/**
+ * The DESCRIPTOR registry: representation policy (label/describe/tone) per
+ * exact concrete type. Action discovery lives entirely in the action kernel
+ * — this registry knows nothing about verbs, availability, or menus.
+ */
+export interface PresentationDescriptorRegistry<
   Values extends PresentationValues,
   Environment,
-  Verb,
 > {
-  /*
-   * NAMING NOTE (PBUI-ACTIONS-2 P7): this is the DESCRIPTOR registry —
-   * representation policy (label/describe/tone) per exact concrete type.
-   * Action discovery lives in the action kernel; `actionsFor` below exists
-   * only for the deprecated legacy engine. `PresentationDescriptorRegistry`
-   * is the forward-looking alias.
-   */
   descriptorFor<Type extends PresentationType<Values>>(
     type: Type,
-  ): PresentationDescriptor<Values[Type], Environment, Verb> | null;
+  ): PresentationDescriptor<Values[Type], Environment> | null;
   labelFor(reference: PresentationReference<Values>, environment: Environment): ReactNode;
   describeFor(reference: PresentationReference<Values>, environment: Environment): unknown;
-  /** @deprecated PBUI-ACTIONS-2: menus resolve through the action kernel; this feeds only the legacy engine. */
-  actionsFor(
-    reference: PresentationReference<Values>,
-    environment: Environment,
-  ): readonly PresentationAction<Verb>[];
   toneFor(reference: PresentationReference<Values>): PresentationTone;
   has(type: string): type is PresentationType<Values>;
 }
@@ -38,13 +29,12 @@ export interface PresentationRegistry<
 export function createPresentationRegistry<
   Values extends PresentationValues,
   Environment,
-  Verb,
 >(
-  descriptors: PresentationDescriptorMap<Values, Environment, Verb>,
-): PresentationRegistry<Values, Environment, Verb> {
+  descriptors: PresentationDescriptorMap<Values, Environment>,
+): PresentationDescriptorRegistry<Values, Environment> {
   function descriptorFor<Type extends PresentationType<Values>>(
     type: Type,
-  ): PresentationDescriptor<Values[Type], Environment, Verb> | null {
+  ): PresentationDescriptor<Values[Type], Environment> | null {
     return descriptors[type] ?? null;
   }
 
@@ -74,10 +64,6 @@ export function createPresentationRegistry<
         value: reference.value,
       };
     },
-    actionsFor(reference, environment) {
-      const descriptor = descriptorFor(reference.type);
-      return descriptor?.actions?.(reference.value, environment) ?? [];
-    },
     toneFor(reference) {
       return descriptorFor(reference.type)?.tone ?? "neutral";
     },
@@ -86,12 +72,3 @@ export function createPresentationRegistry<
     },
   };
 }
-
-/** The forward-looking name (PBUI-ACTIONS-2 P7): a registry of representation
- * descriptors, distinct from the action registry. Same type; new code should
- * spell it this way. */
-export type PresentationDescriptorRegistry<
-  Values extends PresentationValues,
-  Environment,
-  Verb,
-> = PresentationRegistry<Values, Environment, Verb>;
