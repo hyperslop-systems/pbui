@@ -3,7 +3,6 @@ import { useEffect, useRef } from "react";
 import { z } from "zod";
 import { usePbuiChat } from "../context";
 import type { Reference } from "../types";
-import { fromPresentationReference } from "../types";
 import { ReferenceSchema } from "../vocabulary/schemas";
 import { AcceptStatus } from "./AcceptStatus";
 
@@ -34,7 +33,7 @@ function AcceptToolCard({ input, respond }: { input: AcceptInput; respond(result
     void pbui
       .accept({ types: input.types, prompt: input.prompt })
       .then((picked) => {
-        if (picked) respondRef.current({ reference: fromPresentationReference(picked) });
+        if (picked) respondRef.current({ reference: chat.refs.fromProduct(picked) });
         else respondRef.current({ cancelled: true });
       });
     // The request is issued once per tool call; `input` is fixed for its lifetime.

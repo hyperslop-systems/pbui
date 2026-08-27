@@ -8,7 +8,7 @@ import { resolveMention, useReferenceIndex } from "../../refs/referenceIndex";
 import { usePbuiChatStore, type ComposerDraft } from "../../store/chatStore";
 import { toneVar } from "../../tone";
 import type { Reference } from "../../types";
-import { fromPresentationReference, referenceKey } from "../../types";
+import { referenceKey } from "../../types";
 import styles from "./Composer.module.css";
 
 const EMPTY_DRAFT: ComposerDraft = { text: "", refs: {} };
@@ -68,7 +68,7 @@ export function Composer({ placeholder = "ask the agent… (Enter sends, Shift+E
     const types = Object.keys(chat.vocabulary.types).filter((t) => t !== "unresolved");
     const picked = await pbui.accept({ types, prompt: "pick an object to mention" });
     if (!picked) return;
-    const reference = fromPresentationReference(picked);
+    const reference = chat.refs.fromProduct(picked);
     if (conversationId) chat.store.insertReference(conversationId, reference, chat.labelFor(reference));
   };
 

@@ -39,7 +39,8 @@ import { createSandboxTools, type SandboxTools, type SandboxToolsOptions } from 
 import { createWorkbenchTools, type WorkbenchTools, type WorkbenchToolsOptions } from "./tools/workbenchTools";
 import type { InstanceRegistry, ProgramEngine, ProgramLibrary } from "@hyperslop-systems/pbui-sandbox";
 import type { ChatMessageBody, EffectCorrelation, Reference, VerbLike } from "./types";
-import { fromPresentationReference, toPresentationReference } from "./types";
+import { identityReferenceAdapter } from "./types";
+import type { ReferenceAdapter } from "./types";
 import { exportVocabulary } from "./vocabulary/defineVocabulary";
 import type { Vocabulary } from "./vocabulary/schemas";
 import { pbuiWidgets } from "./widget/definitions";
@@ -53,6 +54,12 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
   registry?: PresentationDescriptorRegistry<Values, Environment>;
   vocabulary: Vocabulary;
   router: VerbRouter<Verb>;
+  /**
+   * The wire↔product reference codec. Default: the identity convention
+   * (the presentation value IS the wire reference). Products with
+   * structured values supply their own — see ReferenceAdapter in types.ts.
+   */
+  referenceAdapter?: ReferenceAdapter<Values>;
   /** One product-wide authority shared by every conversation and tool factory. */
   approvalLedger?: ApprovalLedger;
   /** Override the product-wide effect gateway (primarily for offline products/tests). */
@@ -146,6 +153,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
 ) {
   const { pbui, vocabulary } = options;
   const registry = options.registry ?? pbui.registry;
+  const referenceAdapter = options.referenceAdapter ?? identityReferenceAdapter<Values>();
   const router = options.router as unknown as VerbRouter<VerbLike>;
   const store = options.store ?? createPbuiChatStore();
   const basePrefix = options.basePrefix ?? "";
@@ -353,7 +361,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
 
   function labelWith(environment: Environment) {
     return (reference: Reference): string => {
-      const label = registry.labelFor(toPresentationReference<Values>(reference), environment);
+      const label = registry.labelFor(referenceAdapter.toProduct(reference), environment);
       if (typeof label === "string" || typeof label === "number") return String(label);
       const value = reference.value;
       if (value && typeof value === "object") {
@@ -388,6 +396,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
         runtime: null,
         send: (body) => sendTo(null, body),
         sendTo,
+        refs: referenceAdapter,
         labelFor,
         docFor: (type) => vocabulary.types[type]?.doc,
         toneFor: (type) => vocabulary.types[type]?.tone,
@@ -415,7 +424,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
         runtimeFor: (conversationId) => conversations.runtimeFor(conversationId),
         accept: async ({ types, prompt }) => {
           const picked = await accept({ types: types as never, prompt });
-          return picked ? fromPresentationReference(picked) : null;
+          return picked ? referenceAdapter.fromProduct(picked) : null;
         },
         labelFor,
         openTile: openTileWith(() => {

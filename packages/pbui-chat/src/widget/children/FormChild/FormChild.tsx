@@ -4,7 +4,7 @@ import { RefPresentation } from "../../../components/RefPresentation";
 import { usePbuiChat } from "../../../context";
 import { formatMention } from "../../../mentions/mentions";
 import type { Reference } from "../../../types";
-import { fromPresentationReference } from "../../../types";
+
 import type { FormChild as FormChildDocument, FormField } from "../../../vocabulary/schemas";
 import styles from "./FormChild.module.css";
 
@@ -46,7 +46,7 @@ export function FormChild({ child }: FormChildProps) {
   const pick = async (field: FormField) => {
     const types = field.accepts && field.accepts.length > 0 ? field.accepts : Object.keys(chat.vocabulary.types);
     const picked = await pbui.accept({ types, prompt: `pick ${field.label}` });
-    if (picked) set(field.name, fromPresentationReference(picked));
+    if (picked) set(field.name, chat.refs.fromProduct(picked));
   };
 
   const submit = async () => {

@@ -76,6 +76,36 @@ export function fromPresentationReference(reference: {
   };
 }
 
+/**
+ * The codec between wire references and the product's presentation values
+ * (OPTKIT-024 / PBUI-ACTIONS-3). The DEFAULT is the identity convention
+ * this package has always used — the presentation value IS the wire
+ * reference (`toPresentationReference`/`fromPresentationReference` above).
+ * A product whose `Values` predate that convention (structured values with
+ * composite identity, like the rag-ttc workbench) supplies its own codec in
+ * `createPbuiChat({ referenceAdapter })` instead of rewriting its
+ * presentation layer: `toProduct` turns a wire reference into the reference
+ * its descriptors and rules actually read, `fromProduct` mints the wire
+ * id (the product's canonical key) going the other way.
+ *
+ * Every chat-layer crossing goes through the adapter — mention chips,
+ * accept picks, composer refs, label lookups — so a product plugs in ONE
+ * codec, never per-type or per-surface shims.
+ */
+export interface ReferenceAdapter<Values extends PresentationValues = PresentationValues> {
+  toProduct(reference: Reference): PresentationReference<Values>;
+  fromProduct(reference: PresentationReference<Values>): Reference;
+}
+
+export function identityReferenceAdapter<
+  Values extends PresentationValues = PresentationValues,
+>(): ReferenceAdapter<Values> {
+  return {
+    toProduct: (reference) => toPresentationReference<Values>(reference),
+    fromProduct: (reference) => fromPresentationReference(reference),
+  };
+}
+
 /** A serialisable verb. Products narrow this with their own union. */
 export type VerbLike = { kind: string } & Record<string, unknown>;
 
