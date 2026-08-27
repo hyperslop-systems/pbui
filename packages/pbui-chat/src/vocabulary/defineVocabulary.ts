@@ -207,9 +207,10 @@ function coarseType(schema: z.ZodType): { optional: boolean; type: VerbFieldType
       return { optional: false, type: isReferenceSchema(schema) ? "ref" : "object" };
     case "record":
     case "map":
+      return { optional: false, type: "object" };
     case "any":
     case "unknown":
-      return { optional: false, type: "object" };
+      return { optional: false, type: "any" };
     case "union":
       return { optional: false, type: "string" };
     default:

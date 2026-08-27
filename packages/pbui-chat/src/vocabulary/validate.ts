@@ -72,6 +72,9 @@ function checkCoarseType(value: unknown, type: VerbFieldType): string | null {
     }
     case "object":
       return isRecord(value) ? null : `expected object, got ${goType(value)}`;
+    case "any":
+      // Product-typed: the receiving domain validates; the vocabulary names it.
+      return null;
   }
 }
 
