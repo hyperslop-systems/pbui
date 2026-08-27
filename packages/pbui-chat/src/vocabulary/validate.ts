@@ -71,7 +71,10 @@ function checkCoarseType(value: unknown, type: VerbFieldType): string | null {
       return null;
     }
     case "object":
-      return isRecord(value) ? null : `expected object, got ${goType(value)}`;
+      // A structured JSON value: a map or an array. The zod deriver
+      // coarsens non-ref arrays here, so rejecting arrays would refuse
+      // fields the schema itself declared (a string list, say).
+      return isRecord(value) || Array.isArray(value) ? null : `expected object, got ${goType(value)}`;
     case "any":
       // Product-typed: the receiving domain validates; the vocabulary names it.
       return null;

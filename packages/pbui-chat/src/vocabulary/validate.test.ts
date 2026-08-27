@@ -38,8 +38,12 @@ describe("validateVerb (mirrors Go's Vocabulary.ValidateVerb)", () => {
     expect(validateVerb(vocabulary, { kind: "sortBy", tableId: "t3", field: 3, dir: "asc" })).toBe(
       "verb sortBy field field: expected string, got float64",
     );
-    expect(validateVerb(vocabulary, { kind: "rerunTool", toolCallId: "tc", args: [] })).toBe(
-      "verb rerunTool field args: expected object, got []interface {}",
+    // "object" means a STRUCTURED value — map or array — because the zod
+    // deriver coarsens non-reference arrays (string lists) to it; a scalar
+    // still fails.
+    expect(validateVerb(vocabulary, { kind: "rerunTool", toolCallId: "tc", args: [] })).toBeNull();
+    expect(validateVerb(vocabulary, { kind: "rerunTool", toolCallId: "tc", args: 7 })).toBe(
+      "verb rerunTool field args: expected object, got float64",
     );
   });
 });

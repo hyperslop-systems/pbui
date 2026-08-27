@@ -313,7 +313,11 @@ func checkCoarseType(value any, typ string) error {
 			}
 		}
 	case "object":
-		if _, ok := value.(map[string]any); !ok {
+		// A structured JSON value: a map or an array (the schema deriver
+		// coarsens non-reference arrays to "object").
+		switch value.(type) {
+		case map[string]any, []any:
+		default:
 			return fmt.Errorf("expected object, got %T", value)
 		}
 	case "any":
