@@ -58,6 +58,7 @@ export type {
   FamilyContext,
   InheritedActionRule,
   InheritedRuleContext,
+  PerformEnvelope,
   PerformResult,
   ResolutionResult,
   ResolutionTraceEntry,

@@ -64,7 +64,10 @@ describe("evaluateFresh", () => {
 
   test("unchanged state proceeds — with the FRESH verb, never the stale one", () => {
     const decision = evaluateFresh(stale, resolveWith([baseRule], { version: 2 }));
-    expect(decision).toEqual({ kind: "proceed", verb: { kind: "open", version: 2 } });
+    expect(decision).toMatchObject({ kind: "proceed", verb: { kind: "open", version: 2 } });
+    // The decision also carries the FRESH resolved action (PBUI-ACTIONS-3
+    // B1) so the perform envelope is built from post-revalidation truth.
+    expect(decision.kind === "proceed" && decision.action.candidateId).toBe("files.open");
     // The stale row still carries version 1; delegating it would replay old state.
     expect(stale.verb).toEqual({ kind: "open", version: 1 });
   });

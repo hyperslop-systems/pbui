@@ -17,6 +17,7 @@ import type { ActionRegistry } from "./actions/registry";
 import { evaluateFresh } from "./actions/perform";
 import type {
   ActionQuery,
+  PerformEnvelope,
   PerformResult,
   ResolutionResult,
   ResolvedAction,
@@ -87,9 +88,22 @@ export interface PbuiProviderProps<
    * The product boundary where serialisable presentation verbs become effects.
    * Required because a provider with no router renders working menus whose
    * commands silently disappear.
+   *
+   * The envelope (PBUI-ACTIONS-3 B1) carries the verb's provenance: the
+   * resolved action and candidate ids, the invocation, the subject, and the
+   * Provider's `actor`. Existing single-parameter routers keep typechecking —
+   * adaptation is a parameter addition, not a rewrite.
    */
-  onPerform: (verb: Verb) => void | Promise<void>;
+  onPerform: (verb: Verb, envelope: PerformEnvelope<Values>) => void | Promise<void>;
   onAccept?: (result: PresentationReference<Values> | null) => void;
+  /**
+   * Principal attribution for every verb this Provider delegates — "human",
+   * "agent:reviewer", whatever the product's seats are called. Threaded
+   * verbatim into each envelope's `actor`; absent means the product has one
+   * undifferentiated seat. Attribution, not authorization: routers and
+   * gateways stay the security boundary.
+   */
+  actor?: string;
 }
 
 /**
@@ -270,6 +284,7 @@ export function createPbui<
     environment = defaultEnvironment,
     onPerform,
     onAccept,
+    actor,
   }: PbuiProviderProps<Values, Environment, Verb>) {
     const [accepting, setAccepting] = useState<AcceptRequest<Values> | null>(null);
     const [acceptChooser, setAcceptChooser] = useState<readonly AcceptanceOption<Values>[] | null>(
@@ -346,7 +361,9 @@ export function createPbui<
         setMouseDoc,
         perform: (verb) => {
           setMenu(null);
-          return onPerform(verb);
+          // Chrome-owned delegation: no resolved action stands behind the
+          // verb, so the envelope carries only invocation and attribution.
+          return onPerform(verb, { invocation: "direct", ...(actor !== undefined ? { actor } : {}) });
         },
         resolve: (query) => actionEngine.resolve(query, snapshotOf(query, environment)),
         performAction: async (stale) => {
@@ -356,8 +373,15 @@ export function createPbui<
           if (decision.kind !== "proceed") return decision;
           try {
             // Called synchronously within the click segment; the fresh verb,
-            // never the stale one.
-            await onPerform(decision.verb);
+            // never the stale one — and the envelope is built from the FRESH
+            // resolution for the same reason.
+            await onPerform(decision.verb, {
+              invocation: decision.action.query.invocation,
+              action: decision.action.action,
+              candidateId: decision.action.candidateId,
+              subject: decision.action.query.subject,
+              ...(actor !== undefined ? { actor } : {}),
+            });
             return { kind: "delegated" };
           } catch (error) {
             return { kind: "failed", error };
@@ -375,6 +399,7 @@ export function createPbui<
         mouseDoc,
         settle,
         onPerform,
+        actor,
       ],
     );
 

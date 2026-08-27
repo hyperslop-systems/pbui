@@ -226,6 +226,27 @@ export interface ResolvedAction<Values extends PresentationValues, Verb> {
   };
 }
 
+/**
+ * The provenance handed to `onPerform` beside the verb (PBUI-ACTIONS-3 B1):
+ * which action produced it, through which invocation, on which subject, and
+ * as whom. Verb logs and trace records read this envelope instead of
+ * reconstructing provenance from the verb's own fields.
+ *
+ * `invocation: "direct"` marks chrome-owned delegation (`pbui.perform`) —
+ * verbs built at click time from live props, with no resolved action behind
+ * them; `action`/`candidateId`/`subject` are absent there and ONLY there.
+ * `actor` is the Provider's `actor` prop verbatim: principal attribution for
+ * multi-seat products (the OPTKIT-024 agent seat), absent when the Provider
+ * does not declare one.
+ */
+export interface PerformEnvelope<Values extends PresentationValues> {
+  invocation: ActionInvocation | "direct";
+  action?: ActionId;
+  candidateId?: CandidateId;
+  subject?: PresentationReference<Values>;
+  actor?: string;
+}
+
 export interface SelectionAmbiguity {
   action: ActionId;
   candidates: readonly CandidateId[];

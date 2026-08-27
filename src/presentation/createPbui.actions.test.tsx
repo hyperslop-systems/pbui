@@ -88,7 +88,7 @@ describe("a product-supplied kernel drives the menu", () => {
     // State moves between menu render and click; the fresh verb carries it.
     facts.version = 2;
     fireEvent.click(screen.getByRole("menuitem", { name: /Open/ }));
-    expect(onPerform).toHaveBeenCalledWith({ kind: "open", version: 2 });
+    expect(onPerform).toHaveBeenCalledWith({ kind: "open", version: 2 }, expect.objectContaining({ invocation: "menu" }));
   });
 
   test("a row that became unavailable after render is refused — onPerform never runs", () => {
@@ -159,7 +159,7 @@ describe("the primary invocation (PBUI-ACTIONS-3 A4)", () => {
     const { onPerform } = mount(registry, () => ({ ...facts }));
     facts.version = 2;
     fireEvent.click(screen.getByText("f1"));
-    expect(onPerform).toHaveBeenCalledWith({ kind: "open", version: 2 });
+    expect(onPerform).toHaveBeenCalledWith({ kind: "open", version: 2 }, expect.objectContaining({ invocation: "primary" }));
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
@@ -333,5 +333,86 @@ describe("typed accept and the chooser (PBUI-ACTIONS-2 P6)", () => {
     expect(options).toHaveLength(2);
     fireEvent.click(options[1] as Element);
     expect(onAccept).toHaveBeenCalledWith({ type: "doc", value: { id: "d9-b" } });
+  });
+});
+
+describe("the perform envelope (PBUI-ACTIONS-3 B1)", () => {
+  const open = define.exact("file", {
+    id: "files.open-enveloped",
+    action: "presentation.open",
+    scopes: ["global"],
+    test: () => available(),
+    metadata: { label: "Open", primary: true },
+    bind: ({ snapshot }) => ({ kind: "open", version: snapshot.product.version }),
+  });
+  const registry = () =>
+    createActionRegistry<Values, Facts, Verb>({
+      graph,
+      scopes: ["global"],
+      contributions: [open],
+    });
+
+  function mountWithActor(actor?: string) {
+    const onPerform = vi.fn();
+    const pbui = createPbui<Values, { name: string }, Verb, Facts>({
+      registry: descriptors,
+      defaultEnvironment: { name: "α" },
+      actions: registry(),
+      snapshotFor: snapshotFrom(() => ({ canOpen: true, version: 7 })),
+    });
+    render(
+      <pbui.Provider onPerform={onPerform} actor={actor}>
+        <pbui.Presentation reference={{ type: "file", value: { id: "f1" } }}>
+          f1
+        </pbui.Presentation>
+        <ChromeButton pbui={pbui} />
+        <pbui.ObjectMenu />
+      </pbui.Provider>,
+    );
+    return onPerform;
+  }
+
+  function ChromeButton({ pbui }: { pbui: { usePbui(): { perform(verb: Verb): unknown } } }) {
+    const context = pbui.usePbui();
+    return (
+      <button type="button" onClick={() => void context.perform({ kind: "chrome" })}>
+        chrome
+      </button>
+    );
+  }
+
+  test("a menu click delivers the FRESH provenance beside the verb", () => {
+    const onPerform = mountWithActor("human");
+    fireEvent.contextMenu(screen.getByText("f1"));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Open/ }));
+    expect(onPerform).toHaveBeenCalledWith(
+      { kind: "open", version: 7 },
+      {
+        invocation: "menu",
+        action: "presentation.open",
+        candidateId: "files.open-enveloped",
+        subject: { type: "file", value: { id: "f1" } },
+        actor: "human",
+      },
+    );
+  });
+
+  test("a primary left click reports invocation 'primary'", () => {
+    const onPerform = mountWithActor();
+    fireEvent.click(screen.getByText("f1"));
+    expect(onPerform).toHaveBeenCalledTimes(1);
+    const [, envelope] = onPerform.mock.calls[0]!;
+    expect(envelope.invocation).toBe("primary");
+    expect(envelope.action).toBe("presentation.open");
+    expect(envelope.actor).toBeUndefined();
+  });
+
+  test("chrome delegation is 'direct': no action, no subject, actor kept", () => {
+    const onPerform = mountWithActor("agent:reviewer");
+    fireEvent.click(screen.getByText("chrome"));
+    expect(onPerform).toHaveBeenCalledWith(
+      { kind: "chrome" },
+      { invocation: "direct", actor: "agent:reviewer" },
+    );
   });
 });

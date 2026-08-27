@@ -22,86 +22,28 @@ import { unresolvedDescriptor } from "./descriptors/unresolved";
 import { widgetDescriptor } from "./descriptors/widget";
 import { workspaceDescriptor } from "./descriptors/workspace";
 import type { Environment, PresentationType, Values } from "./types";
-import type { Action, Verb } from "./verbs";
 
-/** The product's descriptor shape: one file per type, verbs as data. */
+/** The product's descriptor shape: one file per type. Verbs live in the
+ * kernel rules (`./actions.ts`) since PBUI-ACTIONS-2 P4; descriptors are
+ * representation only (pbui 0.8.0 removed the `actions` callback). */
 export interface PresentationDescriptor<Type extends PresentationType> {
   ptype: Type;
   tone: string;
   label(value: Values[Type], env: Environment): string;
   describe(value: Values[Type], env: Environment): unknown;
-  /**
-   * OPTIONAL since PBUI-ACTIONS-2 P4 — every type now declares its menu as
-   * kernel rules in `./actions.ts`, so no descriptor carries this callback
-   * any more. It remains in the interface only until the final cleanup
-   * removes the adapter below.
-   */
-  actions?(value: Values[Type], env: Environment): Action[];
-}
-
-/**
- * PBUI-ACTIONS-2 P0: ids are derived from verb content, not `${index}:${label}`
- * — labels change, rows get inserted, and the kernel migration needs identity
- * that survives both (overrides, traces, fresh revalidation). Where one menu
- * can emit the same verb kind twice, the discriminant tells the entries apart.
- */
-function verbDiscriminant(verb: Verb): string | null {
-  switch (verb.kind) {
-    case "sortBy":
-      return verb.dir;
-    case "resolveProposal":
-      return verb.decision;
-    case "tile.split":
-      return verb.direction;
-    case "tile.dock":
-      return verb.zone;
-    case "addFilter":
-      return `${verb.field}.${verb.op}`;
-    case "view.open":
-      // A conversation offers one open-tile entry per app.
-      return verb.appId;
-    case "program.open":
-      return verb.programId;
-    default:
-      return null;
-  }
 }
 
 function bind<Type extends PresentationType>(
   descriptor: PresentationDescriptor<Type>,
-): GenericPresentationDescriptor<Values[Type], Environment, Verb> {
+): GenericPresentationDescriptor<Values[Type], Environment> {
   return {
     label: descriptor.label,
     describe: descriptor.describe,
     tone: descriptor.tone,
-    actions: (value, environment) => {
-      const seen = new Set<string>();
-      return (descriptor.actions?.(value, environment) ?? []).map((action) => {
-        const discriminant = verbDiscriminant(action.verb);
-        const id = discriminant
-          ? `${descriptor.ptype}.${action.verb.kind}.${discriminant}`
-          : `${descriptor.ptype}.${action.verb.kind}`;
-        if (seen.has(id)) {
-          throw new Error(
-            `duplicate action id "${id}" in the <${descriptor.ptype}> menu — ` +
-              `add a case to verbDiscriminant() for this verb kind`,
-          );
-        }
-        seen.add(id);
-        return {
-          id,
-          label: action.label,
-          verb: action.verb,
-          danger: action.danger,
-          description: action.description,
-          disabledBecause: action.disabledBecause,
-        };
-      });
-    },
   };
 }
 
-export const registry = createPresentationRegistry<Values, Environment, Verb>({
+export const registry = createPresentationRegistry<Values, Environment>({
   product: bind(productDescriptor),
   category: bind(categoryDescriptor),
   metal: bind(metalDescriptor),
