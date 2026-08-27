@@ -1,6 +1,5 @@
 import type { PresentationDescriptor } from "../registry";
 import type { TokenRef } from "../types";
-import type { Action } from "../verbs";
 
 /**
  * `<token>` — an API credential, by id.
@@ -27,14 +26,4 @@ export const tokenDescriptor: PresentationDescriptor<TokenRef> = {
     note: "scopes narrow what this token may do; they never grant more than its owner has",
   }),
 
-  actions: (token): Action[] => [
-    {
-      label: "Revoke",
-      verb: { kind: "revokeToken", tokenId: token.id },
-      // Greyed with a reason rather than hidden: a user who never sees the
-      // entry never learns the token is already dead.
-      disabledBecause: token.revokedAt ? "this token is already revoked" : undefined,
-    },
-    { label: "Inspect", verb: { kind: "inspect", ptype: "token", value: token } },
-  ],
 };

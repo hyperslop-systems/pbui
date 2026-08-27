@@ -13,12 +13,4 @@ export const rowDescriptor: PresentationDescriptor<"row"> = {
 
   describe: (ref) => ({ presentationType: "row", id: ref.id, ...ref.value }),
 
-  actions: (ref) => [
-    { label: "Inspect", verb: { kind: "inspect", ref } },
-    { label: "Add to watchlist", verb: { kind: "watch", ref } },
-    {
-      label: "Ask about this row",
-      verb: { kind: "askAgent", template: "tell me more about {0}", refs: [ref] },
-    },
-  ],
 };

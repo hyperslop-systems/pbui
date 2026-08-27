@@ -693,3 +693,85 @@ built as panels with the interaction model missing entirely.
 **State acceptance as a gesture** wherever a checkbox could be true while the
 work is half done. "Right-click every kind of object a tile draws and get its
 verbs" cannot be ticked by a tile that merely renders.
+
+## The action kernel (PBUI-ACTIONS-2)
+
+Menus are no longer declared on descriptors. A descriptor is representation
+only — `label`, `describe`, `tone` — and every action is a declaration in the
+product's ACTION REGISTRY, resolved by a pure kernel with override,
+ambiguity, trace, and fresh-revalidation semantics.
+
+The shape of a product's action setup:
+
+```ts
+import {
+  available, unavailable, inapplicable, hidden,
+  createActionRegistry, createPresentationTypeGraph, defineActions,
+} from "@hyperslop-systems/pbui";
+
+const graph = createPresentationTypeGraph([
+  { id: "inspectable", abstract: true },
+  { id: "invoice", parents: ["inspectable"] },
+]);
+
+const define = defineActions<Values, ProductFacts, Verb>();
+
+const registry = createActionRegistry<Values, ProductFacts, Verb>({
+  graph,
+  scopes: ["billing", "global"],
+  contributions: [
+    define.exact("invoice", {
+      id: "billing.invoice.send",          // rule id: names THIS declaration
+      action: "invoice.send",              // action id: the conceptual operation
+      scopes: ["billing"],
+      test: ({ subject }) =>
+        subject.value.draft ? unavailable("finish the draft first") : available(),
+      metadata: { label: "Send", order: 0, danger: true },
+      bind: ({ subject }) => ({ kind: "invoice.send", id: subject.value.id }),
+    }),
+    define.inherited("inspectable", {      // one declaration, every subtype
+      id: "billing.inspect",
+      action: "object.inspect",
+      scopes: ["global"],
+      metadata: { label: "Inspect", order: 90 },
+      bind: ({ subject }) => ({ kind: "inspect", ref: subject }),
+    }),
+  ],
+});
+
+const pbui = createPbui<Values, Environment, Verb, ProductFacts>({
+  registry: descriptors,        // representation only
+  actions: registry,
+  snapshotFor,                  // (query, environment) -> immutable facts + revision
+  translators,                  // typed accept edges; mount <AcceptChooser/> if edges can tie
+  defaultEnvironment,
+});
+```
+
+The rules that keep a product honest:
+
+- **Availability has four states.** `unavailable(reason)` renders greyed with
+  the reason; `inapplicable()` is absent and PERMITS a less-specific rule to
+  win; `hidden()` is absent and SUPPRESSES it. Never hide a rule to express
+  "not now" — that is `unavailable`.
+- **Ids are identity.** Rule ids (`billing.invoice.send`) name declarations;
+  action ids (`invoice.send`) name operations that compete. Never derive
+  either from labels or positions.
+- **The snapshot is the only state a rule reads.** `snapshotFor` copies
+  query-local facts and stamps a revision that moves iff they move. No store
+  reads in `test`/`bind`.
+- **Menu order is metadata.** `order` places rows; the ladder
+  (type distance → scope → priority → ambiguity) picks winners; the two never
+  interact.
+- **Chrome buttons keep calling `pbui.perform(verb)`** with verbs built at
+  click time; menu rows go through `performAction`, which re-resolves and
+  delegates the FRESH verb or refuses.
+- **Tiles:** spread `workbenchTileContributions()` (with `project` when your
+  tile value is not a `TileRef`) instead of writing tile rules by hand, and
+  add product rules for subject `"tile"` for your own entries.
+- **Live/generated actions:** `createGeneratedActionsFamily` from
+  pbui-sandbox; put the records and program ids in your snapshot facts.
+
+Descriptor `actions()` callbacks and the `conversions` array still function
+through a deprecated legacy engine so 0.6.x products keep working; both are
+removed at the next major. New code never uses them.

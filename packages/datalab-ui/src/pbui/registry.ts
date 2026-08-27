@@ -45,13 +45,15 @@ export interface PresentationDescriptor<V = unknown> {
   /** The full object, for the inspector. Must be JSON-serialisable. */
   describe(value: V, env: PbuiEnvironment): unknown;
   /**
-   * The menu, most likely entry first.
+   * TOMBSTONE (PBUI-ACTIONS-2 P7). Menus are declared as kernel rules in
+   * `./actions.ts`; a descriptor is representation only. Typed `never`
+   * rather than deleted so a revived callback is a compile error instead of
+   * a silently ignored menu — the same trick `PresentationAction`'s removed
+   * fields use, and for the same structural-assignability reason.
    *
-   * Pure: (value, environment) in, serialisable verbs out. A test can assert
-   * the exact verb a menu entry produces with a literal environment and no
-   * store, no Provider, no DOM.
+   * @deprecated declare rules in ./actions.ts
    */
-  actions(value: V, env: PbuiEnvironment): Action[];
+  actions?: never;
   /** The token naming this type's accent colour. */
   tone: string;
 }
@@ -63,29 +65,11 @@ function bindProductDescriptor<Value>(
     label: descriptor.label,
     describe: descriptor.describe,
     tone: descriptor.tone,
-    actions: (value, environment) =>
-      /*
-       * `disabledBecause` passes straight through since pbui 0.4.0.
-       *
-       * These two lines used to be here:
-       *
-       *     disabled: action.disabledBecause !== undefined,
-       *     disabledReason: action.disabledBecause,
-       *
-       * because this product had merged the pair into one field on its own,
-       * years before the library did, and had to translate back into pbui's
-       * two-field shape at this boundary. It was the only one of four products
-       * that never shipped the disabled/reason disconnect — and it paid this
-       * adapter for the privilege. pbui adopted the field and the name from
-       * here (PBUI-HARDEN-1 P3.1), so the translation is gone and not one
-       * descriptor changed.
-       */
-      descriptor.actions(value, environment).map((action, index) => ({
-        id: `${descriptor.ptype}:${index}:${action.label}`,
-        label: action.label,
-        verb: action.verb,
-        disabledBecause: action.disabledBecause,
-      })),
+    /*
+     * PBUI-ACTIONS-2 P7: no descriptor carries actions() any more — every
+     * menu resolves through the kernel registry in ./actions.ts. This
+     * adapter binds representation only.
+     */
   };
 }
 

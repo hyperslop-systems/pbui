@@ -1,0 +1,885 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <datum> keep/exclude family over categorical columns 1`] = `
+[
+  {
+    "id": "datalab.datum.filters/keep:id",
+    "label": "Keep only id = evt-00001  (chart α)",
+    "verb": {
+      "docId": "d1",
+      "field": "id",
+      "kind": "addFilter",
+      "op": "=",
+      "value": "evt-00001",
+    },
+  },
+  {
+    "id": "datalab.datum.filters/exclude:id",
+    "label": "Exclude id = evt-00001",
+    "verb": {
+      "docId": "d1",
+      "field": "id",
+      "kind": "addFilter",
+      "op": "!=",
+      "value": "evt-00001",
+    },
+  },
+  {
+    "id": "datalab.datum.filters/keep:drop",
+    "label": "Keep only drop = lab  (chart α)",
+    "verb": {
+      "docId": "d1",
+      "field": "drop",
+      "kind": "addFilter",
+      "op": "=",
+      "value": "lab",
+    },
+  },
+  {
+    "id": "datalab.datum.filters/exclude:drop",
+    "label": "Exclude drop = lab",
+    "verb": {
+      "docId": "d1",
+      "field": "drop",
+      "kind": "addFilter",
+      "op": "!=",
+      "value": "lab",
+    },
+  },
+  {
+    "id": "datalab.datum.filters/keep:stream",
+    "label": "Keep only stream = temps  (chart α)",
+    "verb": {
+      "docId": "d1",
+      "field": "stream",
+      "kind": "addFilter",
+      "op": "=",
+      "value": "temps",
+    },
+  },
+  {
+    "id": "datalab.datum.filters/exclude:stream",
+    "label": "Exclude stream = temps",
+    "verb": {
+      "docId": "d1",
+      "field": "stream",
+      "kind": "addFilter",
+      "op": "!=",
+      "value": "temps",
+    },
+  },
+  {
+    "id": "datalab.datum.filters/keep:time",
+    "label": "Keep only time = 2026-07-24T09:00:00.000Z  (chart α)",
+    "verb": {
+      "docId": "d1",
+      "field": "time",
+      "kind": "addFilter",
+      "op": "=",
+      "value": "2026-07-24T09:00:00.000Z",
+    },
+  },
+  {
+    "id": "datalab.datum.filters/exclude:time",
+    "label": "Exclude time = 2026-07-24T09:00:00.000Z",
+    "verb": {
+      "docId": "d1",
+      "field": "time",
+      "kind": "addFilter",
+      "op": "!=",
+      "value": "2026-07-24T09:00:00.000Z",
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "datum",
+      "value": {
+        "docId": "d1",
+        "row": {
+          "data.humidity": 54,
+          "data.ok": true,
+          "data.station": "north",
+          "data.temp_c": 19.2,
+          "drop": "lab",
+          "id": "evt-00001",
+          "received_at": "2026-07-24T09:00:00.000Z",
+          "seq": 1,
+          "source": "sensor-gateway",
+          "stream": "temps",
+          "subject": "north",
+          "time": "2026-07-24T09:00:00.000Z",
+          "type": "reading",
+        },
+      },
+    },
+  },
+  {
+    "id": "datalab.watch",
+    "label": "Add to watchlist",
+    "verb": {
+      "kind": "watch",
+      "ptype": "datum",
+      "value": {
+        "docId": "d1",
+        "row": {
+          "data.humidity": 54,
+          "data.ok": true,
+          "data.station": "north",
+          "data.temp_c": 19.2,
+          "drop": "lab",
+          "id": "evt-00001",
+          "received_at": "2026-07-24T09:00:00.000Z",
+          "seq": 1,
+          "source": "sensor-gateway",
+          "stream": "temps",
+          "subject": "north",
+          "time": "2026-07-24T09:00:00.000Z",
+          "type": "reading",
+        },
+      },
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 1`] = `
+[
+  {
+    "id": "datalab.doc.snapshot",
+    "label": "⚑ Snapshot it",
+    "verb": {
+      "docId": "d1",
+      "kind": "snapshot",
+    },
+  },
+  {
+    "id": "datalab.doc.duplicate",
+    "label": "Duplicate document",
+    "verb": {
+      "docId": "d1",
+      "kind": "duplicateDoc",
+    },
+  },
+  {
+    "id": "datalab.doc.delete",
+    "label": "Delete document",
+    "verb": {
+      "docId": "d1",
+      "kind": "deleteDoc",
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "doc",
+      "value": "d1",
+    },
+  },
+  {
+    "id": "datalab.watch",
+    "label": "Add to watchlist",
+    "verb": {
+      "kind": "watch",
+      "ptype": "doc",
+      "value": "d1",
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <doc> active and inactive 2`] = `
+[
+  {
+    "id": "datalab.doc.activate",
+    "label": "Make the ACTIVE chart",
+    "verb": {
+      "docId": "d2",
+      "kind": "setActiveDoc",
+    },
+  },
+  {
+    "id": "datalab.doc.snapshot",
+    "label": "⚑ Snapshot it",
+    "verb": {
+      "docId": "d2",
+      "kind": "snapshot",
+    },
+  },
+  {
+    "id": "datalab.doc.duplicate",
+    "label": "Duplicate document",
+    "verb": {
+      "docId": "d2",
+      "kind": "duplicateDoc",
+    },
+  },
+  {
+    "id": "datalab.doc.delete",
+    "label": "Delete document",
+    "verb": {
+      "docId": "d2",
+      "kind": "deleteDoc",
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "doc",
+      "value": "d2",
+    },
+  },
+  {
+    "id": "datalab.watch",
+    "label": "Add to watchlist",
+    "verb": {
+      "kind": "watch",
+      "ptype": "doc",
+      "value": "d2",
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> nominal column, impossible mappings disabled with reasons 1`] = `
+[
+  {
+    "id": "datalab.field.map.x",
+    "label": "Map to x  (chart α)",
+    "verb": {
+      "channel": "x",
+      "docId": "d1",
+      "field": "data.station",
+      "kind": "setMapping",
+    },
+  },
+  {
+    "disabledBecause": "y accepts quantitative",
+    "id": "datalab.field.map.y",
+    "label": "Map to y  (chart α)",
+    "verb": undefined,
+  },
+  {
+    "id": "datalab.field.map.color",
+    "label": "Map to color  (chart α)",
+    "verb": {
+      "channel": "color",
+      "docId": "d1",
+      "field": "data.station",
+      "kind": "setMapping",
+    },
+  },
+  {
+    "disabledBecause": "size accepts quantitative",
+    "id": "datalab.field.map.size",
+    "label": "Map to size  (chart α)",
+    "verb": undefined,
+  },
+  {
+    "id": "datalab.field.map.facet",
+    "label": "Map to facet  (chart α)",
+    "verb": {
+      "channel": "facet",
+      "docId": "d1",
+      "field": "data.station",
+      "kind": "setMapping",
+    },
+  },
+  {
+    "id": "datalab.field.filter",
+    "label": "Filter on this field",
+    "verb": {
+      "docId": "d1",
+      "field": "data.station",
+      "kind": "addFilter",
+      "op": "=",
+      "value": "",
+    },
+  },
+  {
+    "id": "datalab.field.group-count",
+    "label": "Group by + count",
+    "verb": {
+      "by": "data.station",
+      "docId": "d1",
+      "field": "data.station",
+      "fn": "count",
+      "kind": "addSummarize",
+    },
+  },
+  {
+    "id": "datalab.field.sort-desc",
+    "label": "Sort output by (descending)",
+    "verb": {
+      "dir": "desc",
+      "docId": "d1",
+      "field": "data.station",
+      "kind": "addSort",
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "field",
+      "value": {
+        "docId": null,
+        "name": "data.station",
+      },
+    },
+  },
+  {
+    "id": "datalab.watch",
+    "label": "Add to watchlist",
+    "verb": {
+      "kind": "watch",
+      "ptype": "field",
+      "value": {
+        "docId": null,
+        "name": "data.station",
+      },
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <field> owned by another document 1`] = `
+[
+  {
+    "id": "datalab.field.map.x",
+    "label": "Map to x  (chart β)",
+    "verb": {
+      "channel": "x",
+      "docId": "d2",
+      "field": "population",
+      "kind": "setMapping",
+    },
+  },
+  {
+    "id": "datalab.field.map.y",
+    "label": "Map to y  (chart β)",
+    "verb": {
+      "channel": "y",
+      "docId": "d2",
+      "field": "population",
+      "kind": "setMapping",
+    },
+  },
+  {
+    "id": "datalab.field.map.color",
+    "label": "Map to color  (chart β)",
+    "verb": {
+      "channel": "color",
+      "docId": "d2",
+      "field": "population",
+      "kind": "setMapping",
+    },
+  },
+  {
+    "id": "datalab.field.map.size",
+    "label": "Map to size  (chart β)",
+    "verb": {
+      "channel": "size",
+      "docId": "d2",
+      "field": "population",
+      "kind": "setMapping",
+    },
+  },
+  {
+    "disabledBecause": "facet accepts nominal, temporal",
+    "id": "datalab.field.map.facet",
+    "label": "Map to facet  (chart β)",
+    "verb": undefined,
+  },
+  {
+    "id": "datalab.field.filter",
+    "label": "Filter on this field",
+    "verb": {
+      "docId": "d2",
+      "field": "population",
+      "kind": "addFilter",
+      "op": ">",
+      "value": "",
+    },
+  },
+  {
+    "id": "datalab.field.sort-desc",
+    "label": "Sort output by (descending)",
+    "verb": {
+      "dir": "desc",
+      "docId": "d2",
+      "field": "population",
+      "kind": "addSort",
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "field",
+      "value": {
+        "docId": "d2",
+        "name": "population",
+      },
+    },
+  },
+  {
+    "id": "datalab.watch",
+    "label": "Add to watchlist",
+    "verb": {
+      "kind": "watch",
+      "ptype": "field",
+      "value": {
+        "docId": "d2",
+        "name": "population",
+      },
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <source> 1`] = `
+[
+  {
+    "id": "datalab.source.load",
+    "label": "Load into chart α",
+    "verb": {
+      "docId": "d1",
+      "kind": "setSource",
+      "source": {
+        "dataset": "census",
+        "drop": "lab",
+        "kind": "dataset",
+        "path": "rows.csv",
+        "version": 2,
+      },
+    },
+  },
+  {
+    "id": "datalab.source.new-doc",
+    "label": "New chart document from it",
+    "verb": {
+      "kind": "newDoc",
+      "source": {
+        "dataset": "census",
+        "drop": "lab",
+        "kind": "dataset",
+        "path": "rows.csv",
+        "version": 2,
+      },
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "source",
+      "value": {
+        "dataset": "census",
+        "drop": "lab",
+        "kind": "dataset",
+        "path": "rows.csv",
+        "version": 2,
+      },
+    },
+  },
+  {
+    "id": "datalab.watch",
+    "label": "Add to watchlist",
+    "verb": {
+      "kind": "watch",
+      "ptype": "source",
+      "value": {
+        "dataset": "census",
+        "drop": "lab",
+        "kind": "dataset",
+        "path": "rows.csv",
+        "version": 2,
+      },
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <stage> not current 1`] = `
+[
+  {
+    "id": "datalab.stage.switch",
+    "label": "Switch to it",
+    "verb": {
+      "kind": "switchStage",
+      "stageId": "s1",
+    },
+  },
+  {
+    "id": "datalab.stage.export",
+    "label": "Copy this stage to the clipboard",
+    "verb": {
+      "kind": "exportStage",
+      "stageId": "s1",
+    },
+  },
+  {
+    "id": "datalab.stage.import-stage",
+    "label": "Add a stage from the clipboard …",
+    "verb": {
+      "kind": "importStage",
+    },
+  },
+  {
+    "id": "datalab.stage.import-workspace",
+    "label": "Add a workspace from the clipboard …",
+    "verb": {
+      "kind": "importWorkspace",
+      "stageId": "s1",
+    },
+  },
+  {
+    "id": "datalab.stage.template",
+    "label": "Save as a template …",
+    "verb": {
+      "kind": "storeTemplate",
+      "name": "work",
+      "source": {
+        "kind": "stage",
+        "stageId": "s1",
+      },
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "stage",
+      "value": {
+        "current": false,
+        "name": "work",
+        "pinned": true,
+        "stageId": "s1",
+      },
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the linked-view variant 1`] = `
+[
+  {
+    "id": "datalab.tile.replace",
+    "label": "Replace …",
+    "verb": {
+      "kind": "openReplaceView",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.rename",
+    "label": "Rename …",
+    "verb": {
+      "kind": "beginRenameView",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.link",
+    "label": "Create linked duplicate",
+    "verb": {
+      "kind": "createLinkedDuplicate",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.duplicate",
+    "label": "Duplicate",
+    "verb": {
+      "kind": "duplicateView",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.split-right",
+    "label": "Split right",
+    "verb": {
+      "dir": "row",
+      "kind": "splitTile",
+      "nodeId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.split-below",
+    "label": "Split below",
+    "verb": {
+      "dir": "col",
+      "kind": "splitTile",
+      "nodeId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.export",
+    "label": "Copy view to clipboard",
+    "verb": {
+      "kind": "exportTile",
+      "nodeId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.import",
+    "label": "Replace from clipboard …",
+    "verb": {
+      "kind": "importIntoTile",
+      "nodeId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.template",
+    "label": "Save as a template …",
+    "verb": {
+      "kind": "storeTemplate",
+      "name": "chart · α",
+      "source": {
+        "kind": "tile",
+        "nodeId": "n1",
+      },
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "tile",
+      "value": {
+        "app": "chart",
+        "canClose": true,
+        "customTitle": undefined,
+        "docId": "d1",
+        "duplicable": true,
+        "placementCount": 1,
+        "placementId": "n1",
+        "title": "chart · α",
+        "viewId": "v1",
+      },
+    },
+  },
+  {
+    "id": "datalab.tile.remove",
+    "label": "Remove from this workspace",
+    "verb": {
+      "kind": "removePlacement",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.close-view",
+    "label": "Close view",
+    "verb": {
+      "kind": "closeView",
+      "viewId": "v1",
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <tile> with every verb live, and the linked-view variant 2`] = `
+[
+  {
+    "id": "datalab.tile.replace",
+    "label": "Replace …",
+    "verb": {
+      "kind": "openReplaceView",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.rename",
+    "label": "Rename …",
+    "verb": {
+      "kind": "beginRenameView",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.link",
+    "label": "Create linked duplicate",
+    "verb": {
+      "kind": "createLinkedDuplicate",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.duplicate",
+    "label": "Duplicate",
+    "verb": {
+      "kind": "duplicateView",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.split-right",
+    "label": "Split right",
+    "verb": {
+      "dir": "row",
+      "kind": "splitTile",
+      "nodeId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.split-below",
+    "label": "Split below",
+    "verb": {
+      "dir": "col",
+      "kind": "splitTile",
+      "nodeId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.export",
+    "label": "Copy view to clipboard",
+    "verb": {
+      "kind": "exportTile",
+      "nodeId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.import",
+    "label": "Replace from clipboard …",
+    "verb": {
+      "kind": "importIntoTile",
+      "nodeId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.template",
+    "label": "Save as a template …",
+    "verb": {
+      "kind": "storeTemplate",
+      "name": "chart · α",
+      "source": {
+        "kind": "tile",
+        "nodeId": "n1",
+      },
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "tile",
+      "value": {
+        "app": "chart",
+        "canClose": true,
+        "customTitle": undefined,
+        "docId": "d1",
+        "duplicable": true,
+        "placementCount": 3,
+        "placementId": "n1",
+        "title": "chart · α",
+        "viewId": "v1",
+      },
+    },
+  },
+  {
+    "id": "datalab.tile.remove",
+    "label": "Remove from this workspace",
+    "verb": {
+      "kind": "removePlacement",
+      "placementId": "n1",
+    },
+  },
+  {
+    "id": "datalab.tile.close-view",
+    "label": "Close view everywhere",
+    "verb": {
+      "kind": "closeView",
+      "viewId": "v1",
+    },
+  },
+]
+`;
+
+exports[`golden menus (PBUI-ACTIONS-2 P0) > <workspace> pinned 1`] = `
+[
+  {
+    "id": "datalab.workspace.switch-stage",
+    "label": "Switch to it",
+    "verb": {
+      "kind": "switchStage",
+      "stageId": "stage-account",
+    },
+  },
+  {
+    "disabledBecause": "defined in code — cannot be renamed",
+    "id": "datalab.workspace.rename",
+    "label": "Rename this workspace …",
+    "verb": undefined,
+  },
+  {
+    "id": "datalab.workspace.duplicate",
+    "label": "Duplicate",
+    "verb": {
+      "kind": "duplicateWorkspace",
+      "spaceId": "ws-account",
+    },
+  },
+  {
+    "id": "datalab.workspace.export",
+    "label": "Copy this workspace to the clipboard",
+    "verb": {
+      "kind": "exportWorkspace",
+      "spaceId": "ws-account",
+    },
+  },
+  {
+    "id": "datalab.workspace.import",
+    "label": "Add a workspace from the clipboard …",
+    "verb": {
+      "kind": "importWorkspace",
+      "stageId": "stage-account",
+    },
+  },
+  {
+    "id": "datalab.workspace.template",
+    "label": "Save as a template …",
+    "verb": {
+      "kind": "storeTemplate",
+      "name": "profile",
+      "source": {
+        "kind": "workspace",
+        "spaceId": "ws-account",
+      },
+    },
+  },
+  {
+    "id": "datalab.inspect",
+    "label": "Inspect",
+    "verb": {
+      "kind": "inspect",
+      "ptype": "workspace",
+      "value": {
+        "canDelete": true,
+        "name": "profile",
+        "pinned": true,
+        "spaceId": "ws-account",
+        "stageId": "stage-account",
+      },
+    },
+  },
+  {
+    "disabledBecause": "defined in code — cannot be deleted",
+    "id": "datalab.workspace.delete",
+    "label": "Delete",
+    "verb": undefined,
+  },
+]
+`;

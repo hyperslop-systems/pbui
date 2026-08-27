@@ -1,5 +1,11 @@
 import "./styles.css";
 
+export {
+  workbenchScopes,
+  workbenchTileContributions,
+  workbenchTypeDefinitions,
+} from "./actions";
+export type { WorkbenchTileContributionOptions } from "./actions";
 export { defineApp, createAppRegistry, isAppAvailable } from "./apps";
 export type { AppAvailability, AppDescriptor, AppProps, AppRegistry, DefineAppInput } from "./apps";
 export {
@@ -53,7 +59,7 @@ export type {
 export { defaultLauncherRows, groupLauncherRows, rowOf, GOTO_PREFIX, PLACE_PREFIX } from "./launcherRows";
 export type { LauncherInvocation, LauncherRow, LauncherRowsContext } from "./launcherRows";
 export { createTileDescriptor, tileRefOf } from "./tileDescriptor";
-export type { TileDescriptorOptions, TileRef } from "./tileDescriptor";
+export type { TileRef } from "./tileDescriptor";
 export { createWorkbench } from "./createWorkbench";
 export type { CreateWorkbenchOptions } from "./createWorkbench";
 export type {

@@ -9,11 +9,4 @@ export const traceEntryDescriptor: PresentationDescriptor<"traceEntry"> = {
 
   describe: (ref) => ({ presentationType: "traceEntry", id: ref.id, ...ref.value }),
 
-  actions: (ref) => [
-    { label: "Inspect", verb: { kind: "inspect", ref } },
-    {
-      label: "Ask what happened",
-      verb: { kind: "askAgent", template: "what happened at trace entry {0}?", refs: [ref] },
-    },
-  ],
 };

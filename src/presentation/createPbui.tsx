@@ -13,6 +13,25 @@ import {
 import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
+import { createActionRegistry } from "./actions/registry";
+import type { ActionRegistry } from "./actions/registry";
+import { legacyDescriptorFamily } from "./actions/legacy";
+import type { LegacyFacts } from "./actions/legacy";
+import { evaluateFresh } from "./actions/perform";
+import { createPresentationTypeGraph } from "./actions/typeGraph";
+import type {
+  ActionQuery,
+  PerformResult,
+  ResolutionResult,
+  ResolvedAction,
+  SelectionSnapshot,
+} from "./actions/types";
+import { resolveAcceptance } from "./translators/resolve";
+import type {
+  AcceptanceOption,
+  AcceptanceResolution,
+  PresentationTranslator,
+} from "./translators/types";
 import type { PresentationRegistry } from "./registry";
 import type {
   AcceptRequest,
@@ -27,15 +46,49 @@ export interface CreatePbuiOptions<
   Values extends PresentationValues,
   Environment,
   Verb,
+  ProductFacts = LegacyFacts<Environment>,
 > {
   registry: PresentationRegistry<Values, Environment, Verb>;
   defaultEnvironment: Environment;
+  /**
+   * @deprecated PBUI-ACTIONS-2: use `translators`. Conversions remain exact,
+   * ordered, first-wins callbacks for products that have not migrated; they
+   * are deleted with descriptor actions in the final cleanup.
+   */
   conversions?: readonly PresentationConversion<Values>[];
   renderMenuHeader?: (
     reference: PresentationReference<Values>,
     environment: Environment,
     label: ReactNode,
   ) => ReactNode;
+  /**
+   * The action-selection kernel (PBUI-ACTIONS-2). OPTIONAL, and absence is
+   * not a second engine: when a product passes no registry, `createPbui`
+   * builds one internally around `legacyDescriptorFamily`, which routes the
+   * descriptor `actions()` callbacks through the same resolver. One live
+   * selection engine either way; the legacy path exists for one migration
+   * window and is deleted with descriptor actions in the final cleanup.
+   *
+   * `actions` and `snapshotFor` come together: the kernel never reads live
+   * stores, so a product supplying its own registry must also say how a
+   * query's immutable fact snapshot is built from the environment.
+   */
+  actions?: ActionRegistry<Values, ProductFacts, Verb>;
+  snapshotFor?(
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ): SelectionSnapshot<ProductFacts>;
+  /**
+   * Typed accept translators (PBUI-ACTIONS-2 P6). When present they replace
+   * the `conversions` array: acceptance gains graph-subtype satisfaction
+   * (the ORIGINAL reference settles the request), declared source/target/
+   * scope edges instead of ordered callbacks, and explicit chooser ambiguity
+   * instead of first-registered-wins. Requires `actions`/`snapshotFor` (the
+   * graph and snapshots come from them). Mount `AcceptChooser` alongside
+   * `AcceptBanner` — a product whose translators can tie needs the chooser
+   * on screen.
+   */
+  translators?: readonly PresentationTranslator<Values, ProductFacts>[];
 }
 
 export interface PbuiProviderProps<
@@ -171,18 +224,92 @@ export interface PbuiContextValue<
   menu: MenuState<Values> | null;
   openMenu(reference: PresentationReference<Values>, x: number, y: number, invoker?: HTMLElement | null): void;
   closeMenu(): void;
+  /** Pending translator ambiguity: the user must pick; nothing picks for them. */
+  acceptChooser: readonly AcceptanceOption<Values>[] | null;
+  chooseAcceptance(option: AcceptanceOption<Values>): void;
+  /** Dismisses the chooser; the accept request itself stays pending. */
+  dismissAcceptChooser(): void;
   mouseDoc: string | null;
   setMouseDoc(text: string | null): void;
+  /**
+   * Raw verb delegation for chrome buttons and toolbars that construct their
+   * verbs at click time from live props — that path never had the stale-menu
+   * problem. Menu-derived actions must go through `performAction`, which
+   * revalidates.
+   */
   perform(verb: Verb): void | Promise<void>;
+  /** Resolve a query against the current environment's snapshot. Pure. */
+  resolve(query: ActionQuery<Values>): ResolutionResult<Values, Verb>;
+  /**
+   * Fresh revalidation, then delegation (PBUI-ACTIONS-2 Amendment A): the
+   * query re-resolves against a fresh snapshot; the same candidate must still
+   * win its action partition and be available; the FRESH verb is delegated.
+   * Refusals never reach `onPerform`.
+   */
+  performAction(action: ResolvedAction<Values, Verb>): Promise<PerformResult>;
 }
 
-export function createPbui<Values extends PresentationValues, Environment, Verb>({
+export function createPbui<
+  Values extends PresentationValues,
+  Environment,
+  Verb,
+  ProductFacts = LegacyFacts<Environment>,
+>({
   registry,
   defaultEnvironment,
   conversions = [],
   renderMenuHeader,
-}: CreatePbuiOptions<Values, Environment, Verb>) {
+  actions,
+  snapshotFor,
+  translators,
+}: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
+
+  if (actions !== undefined && snapshotFor === undefined) {
+    throw new Error(
+      "createPbui: `actions` requires `snapshotFor` — the kernel never reads " +
+        "live stores, so the product must build the query's fact snapshot",
+    );
+  }
+  if (translators !== undefined && actions === undefined) {
+    throw new Error(
+      "createPbui: `translators` requires `actions` — subtype acceptance " +
+        "resolves against the action registry's type graph",
+    );
+  }
+
+  const EMPTY_MODES: ReadonlySet<string> = new Set();
+  const EMPTY_CAPABILITIES: ReadonlySet<string> = new Set();
+
+  // One live selection engine. Absent product options mean the internal
+  // legacy pair, whose ProductFacts is LegacyFacts<Environment> — which is
+  // exactly what the default type parameter says, making the casts honest.
+  const actionEngine: ActionRegistry<Values, ProductFacts, Verb> =
+    actions ??
+    (createActionRegistry<Values, LegacyFacts<Environment>, Verb>({
+      graph: createPresentationTypeGraph([]),
+      scopes: ["global"],
+      contributions: [
+        legacyDescriptorFamily<Values, Environment, Verb>({
+          id: "legacy.descriptor-actions",
+          descriptors: registry,
+        }),
+      ],
+    }) as unknown as ActionRegistry<Values, ProductFacts, Verb>);
+
+  const snapshotOf: (
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ) => SelectionSnapshot<ProductFacts> =
+    snapshotFor ??
+    ((_query, environment) =>
+      ({
+        revision: 0,
+        scopes: ["global"],
+        modes: EMPTY_MODES,
+        capabilities: EMPTY_CAPABILITIES,
+        product: { environment },
+      }) as SelectionSnapshot<LegacyFacts<Environment>> as SelectionSnapshot<ProductFacts>);
 
   function acceptedReference(
     request: AcceptRequest<Values>,
@@ -201,6 +328,34 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     return undefined;
   }
 
+  const EMPTY_PREDICATES = new Map<string, never>();
+
+  /**
+   * One resolution for highlighting AND clicking. Products with translators
+   * get the typed path (graph subtyping, declared edges, chooser ambiguity);
+   * products still on `conversions` keep today's exact-then-ordered behavior
+   * wrapped in the same result shape.
+   */
+  function acceptanceFor(
+    request: AcceptRequest<Values>,
+    reference: PresentationReference<Values>,
+    environment: Environment,
+  ): AcceptanceResolution<Values> {
+    if (translators !== undefined) {
+      const snapshot = snapshotOf({ subject: reference, invocation: "accept" }, environment);
+      return resolveAcceptance(
+        { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
+        request,
+        reference,
+        snapshot,
+      );
+    }
+    const converted = acceptedReference(request, reference);
+    return converted
+      ? { kind: "accepted", option: { translator: null, result: converted } }
+      : { kind: "none" };
+  }
+
   function Provider({
     children,
     environment = defaultEnvironment,
@@ -208,6 +363,9 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     onAccept,
   }: PbuiProviderProps<Values, Environment, Verb>) {
     const [accepting, setAccepting] = useState<AcceptRequest<Values> | null>(null);
+    const [acceptChooser, setAcceptChooser] = useState<readonly AcceptanceOption<Values>[] | null>(
+      null,
+    );
     const [menu, setMenu] = useState<MenuState<Values> | null>(null);
     const [mouseDoc, setMouseDoc] = useState<string | null>(null);
     const pending = useRef<
@@ -218,6 +376,7 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
       const resolve = pending.current;
       pending.current = null;
       setAccepting(null);
+      setAcceptChooser(null);
       onAccept?.(result);
       resolve?.(result);
     }, [onAccept]);
@@ -236,19 +395,28 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
       [],
     );
 
+    // Highlighting and clicking share ONE resolution (source guide §19.4):
+    // what lights up as acceptable is exactly what a click can settle — or,
+    // for a genuine tie, what the chooser will offer.
     const isAcceptable = useCallback(
       (reference: PresentationReference<Values>) =>
-        accepting !== null && acceptedReference(accepting, reference) !== undefined,
-      [accepting],
+        accepting !== null && acceptanceFor(accepting, reference, environment).kind !== "none",
+      [accepting, environment],
     );
 
     const satisfyAccept = useCallback(
       (reference: PresentationReference<Values>) => {
         if (!accepting) return;
-        const accepted = acceptedReference(accepting, reference);
-        if (accepted) settle(accepted);
+        const resolution = acceptanceFor(accepting, reference, environment);
+        if (resolution.kind === "accepted") {
+          settle(resolution.option.result);
+        } else if (resolution.kind === "ambiguous") {
+          // A tie is the user's choice, never the registry's registration
+          // order — the request stays pending until they pick or abort.
+          setAcceptChooser(resolution.options);
+        }
       },
-      [accepting, settle],
+      [accepting, environment, settle],
     );
 
     const value = useMemo<PbuiContextValue<Values, Environment, Verb>>(
@@ -262,16 +430,35 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
         menu,
         openMenu: (reference, x, y, invoker) => setMenu({ reference, x, y, returnFocus: captureFocusReturn(invoker) }),
         closeMenu: () => setMenu(null),
+        acceptChooser,
+        chooseAcceptance: (option) => settle(option.result),
+        dismissAcceptChooser: () => setAcceptChooser(null),
         mouseDoc,
         setMouseDoc,
         perform: (verb) => {
           setMenu(null);
           return onPerform(verb);
         },
+        resolve: (query) => actionEngine.resolve(query, snapshotOf(query, environment)),
+        performAction: async (stale) => {
+          setMenu(null);
+          const fresh = actionEngine.resolve(stale.query, snapshotOf(stale.query, environment));
+          const decision = evaluateFresh(stale, fresh);
+          if (decision.kind !== "proceed") return decision;
+          try {
+            // Called synchronously within the click segment; the fresh verb,
+            // never the stale one.
+            await onPerform(decision.verb);
+            return { kind: "delegated" };
+          } catch (error) {
+            return { kind: "failed", error };
+          }
+        },
       }),
       [
         environment,
         accepting,
+        acceptChooser,
         accept,
         isAcceptable,
         satisfyAccept,
@@ -506,7 +693,15 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     if (!pbui.menu) return null;
 
     const { reference, x, y } = pbui.menu;
-    const actions = registry.actionsFor(reference, pbui.environment);
+    /*
+     * The menu resolves through the kernel on every render — same
+     * recompute-on-render property the descriptor path had, now with
+     * override, ambiguity, and trace semantics. A rendered menu is not
+     * durable authority: clicking a row goes through `performAction`, which
+     * re-resolves before anything is delegated.
+     */
+    const resolution = pbui.resolve({ subject: reference, invocation: "menu" });
+    const menuActions = resolution.actions;
     const label = registry.labelFor(reference, pbui.environment);
     const left = Math.max(0, Math.min(x, window.innerWidth - 300));
     const top = Math.max(0, Math.min(y, window.innerHeight - 340));
@@ -543,39 +738,47 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
             </>
           )}
         </header>
-        {actions.length === 0 ? (
+        {menuActions.length === 0 && resolution.ambiguities.length === 0 ? (
           <div data-part="menu-item">No actions available</div>
         ) : (
-          actions.map((action) => (
-            <button
-              type="button"
-              role="menuitem"
-              key={action.id}
-              data-part="menu-item"
-              data-danger={action.danger || undefined}
-              /*
-               * Every one of these reads ONE field, and that is the point.
-               *
-               * P2 fixed this render by guarding the reason on `disabled`
-               * rather than on the reason existing. P3.1 removed the guard's
-               * reason to exist: with `disabledBecause` merged, the field being
-               * set MEANS disabled, so there is nothing left to disagree.
-               *
-               * That collapse is the test for whether a merge was real. If the
-               * downstream guards had multiplied instead of disappearing, the
-               * two fields would still have been two concepts wearing one name.
-               */
-              disabled={action.disabledBecause !== undefined}
-              title={action.disabledBecause ?? action.description}
-              onClick={() => pbui.perform(action.verb)}
-            >
-              {action.label}
-              {action.disabledBecause && (
-                <span data-part="menu-reason"> — {action.disabledBecause}</span>
-              )}
-            </button>
-          ))
+          menuActions.map((action) => {
+            /*
+             * One field still drives disabled, title, and the visible reason —
+             * the `disabledBecause` invariant survived the kernel migration as
+             * the `unavailable` status: present ⇔ disabled, and the string is
+             * why. An unavailable action has no verb; `performAction` would
+             * refuse it even if the DOM disabled attribute were bypassed.
+             */
+            const because =
+              action.status.kind === "unavailable" ? action.status.because : undefined;
+            return (
+              <button
+                type="button"
+                role="menuitem"
+                key={action.candidateId}
+                data-part="menu-item"
+                data-danger={action.danger || undefined}
+                disabled={because !== undefined}
+                title={because ?? action.description}
+                onClick={() => void pbui.performAction(action)}
+              >
+                {action.label}
+                {because && <span data-part="menu-reason"> — {because}</span>}
+              </button>
+            );
+          })
         )}
+        {resolution.ambiguities.map((ambiguity) => (
+          /*
+           * A tie the declarations do not decide is DATA, not a guess. The row
+           * is deliberately not a button: an ambiguous action — least of all a
+           * destructive one — must never execute. data-part="menu-ambiguity"
+           * is its styling hook.
+           */
+          <div key={ambiguity.action} data-part="menu-ambiguity" role="note">
+            {ambiguity.candidates.length} rules tie for {ambiguity.action} — nothing runs
+          </div>
+        ))}
       </div>
     );
   }
@@ -661,12 +864,74 @@ export function createPbui<Values extends PresentationValues, Environment, Verb>
     );
   }
 
+  /**
+   * The translator chooser (PBUI-ACTIONS-2 P6): shown when an accept click
+   * matched more than one translator at equal scope and priority. A transient
+   * surface like the menu — Escape dismisses the CHOOSER while the accept
+   * request stays pending; focus is captured on open and restored on close;
+   * the first option is focused. It never picks the first registered edge.
+   */
+  function AcceptChooser() {
+    const pbui = usePbui();
+    const ref = useRef<HTMLDivElement>(null);
+    const options = pbui.acceptChooser;
+    const dismiss = pbui.dismissAcceptChooser;
+
+    const ownsEscape = useEscapeSurface(options !== null);
+    useEffect(() => {
+      if (!options) return;
+      const target = captureFocusReturn(null);
+      ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
+      const handleKey = (event: globalThis.KeyboardEvent) => {
+        if (event.key === "Escape") {
+          if (!ownsEscape) return;
+          event.preventDefault();
+          dismiss();
+        }
+      };
+      window.addEventListener("keydown", handleKey);
+      return () => {
+        window.removeEventListener("keydown", handleKey);
+        queueFocusReturn(target);
+      };
+    }, [options, dismiss, ownsEscape]);
+
+    if (!options) return null;
+
+    return (
+      <div
+        ref={ref}
+        data-pbui="accept-chooser"
+        data-part="accept-chooser"
+        role="dialog"
+        aria-label="choose how to accept this object"
+      >
+        <header data-part="accept-chooser-header">This object fits in more than one way</header>
+        {options.map((option) => (
+          <button
+            type="button"
+            key={option.translator ?? "direct"}
+            data-part="accept-chooser-option"
+            onClick={() => pbui.chooseAcceptance(option)}
+          >
+            {registry.labelFor(option.result, pbui.environment)}
+            <span data-part="accept-chooser-via">
+              {" "}
+              — as &lt;{option.result.type}&gt;{option.translator ? ` via ${option.translator}` : ""}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return {
     Provider,
     Presentation,
     ObjectMenu,
     MouseDocLine,
     AcceptBanner,
+    AcceptChooser,
     usePbui,
     registry,
   };

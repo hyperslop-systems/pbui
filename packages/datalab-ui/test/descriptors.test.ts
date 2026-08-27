@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { census, readings } from "../src/fixtures";
+import { datadropActionRegistry, snapshotForDatalab } from "../src/pbui/actions";
 import { datadropRegistry } from "../src/pbui/registry";
+import type { Action } from "../src/pbui/verbs";
 import type { DatadropPresentationReference } from "../src/pbui/runtime";
 import type { PbuiEnvironment, PresentationType } from "../src/pbui/types";
 import type { Table } from "../src/model/table";
@@ -30,8 +32,29 @@ function env(overrides: Partial<PbuiEnvironment> = {}): PbuiEnvironment {
 
 const reference = (type: PresentationType, value: unknown) =>
   ({ type, value }) as DatadropPresentationReference;
-const actionsFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) =>
-  datadropRegistry.actionsFor(reference(type, value), environment);
+
+/**
+ * PBUI-ACTIONS-2 P3: field, datum, doc, and stage moved from descriptor
+ * callbacks to kernel rules, so their menus resolve through the action
+ * registry; everything else still answers through the descriptor adapter.
+ * The rows are adapted back to the old shape so every assertion below reads
+ * exactly as it did before the migration — same labels, same verbs, same
+ * reasons.
+ */
+// PBUI-ACTIONS-2 P7: every type resolves through the kernel now.
+const actionsFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) => {
+  void datadropRegistry; // representation-only since P7; menus come from the kernel
+  const query = { subject: reference(type, value), invocation: "menu" } as const;
+  const result = datadropActionRegistry.resolve(query, snapshotForDatalab(query, environment));
+  expect(result.ambiguities).toEqual([]);
+  return result.actions.map((action) => ({
+    id: action.candidateId,
+    label: String(action.label),
+    verb: action.verb as Action["verb"],
+    disabledBecause:
+      action.status.kind === "unavailable" ? action.status.because : undefined,
+  }));
+};
 const describeFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) =>
   datadropRegistry.describeFor(reference(type, value), environment);
 const labelFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) =>
@@ -327,15 +350,18 @@ describe("the account descriptors", () => {
       role: "admin" as const,
       isOwner: true,
     };
+    // An unavailable kernel row carries no verb by contract, so the rows are
+    // identified by their declarations rather than by binding them.
     for (const action of actionsFor("member", owner, env())) {
-      if (action.verb.kind === "setMemberRole" || action.verb.kind === "removeMember") {
+      if (action.id.startsWith("datalab.member.roles/") || action.id === "datalab.member.remove") {
         expect(action.disabledBecause).toBe("the owner's role cannot be changed");
+        expect(action.verb).toBeUndefined();
       }
     }
 
     const member = { ...owner, isOwner: false, role: "reader" as const };
     const roles = actionsFor("member", member, env())
-      .filter((action) => action.verb.kind === "setMemberRole")
+      .filter((action) => action.verb?.kind === "setMemberRole")
       .map((action) => (action.verb as { role: string }).role);
     // Every role except the one they already hold.
     expect(roles).toEqual(["writer", "admin"]);

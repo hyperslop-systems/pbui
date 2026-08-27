@@ -1,4 +1,16 @@
 export { createPbui, presentationTypes } from "./createPbui";
+/*
+ * The pure action-selection kernel (PBUI-ACTIONS-2). Exported alongside the
+ * presentation runtime; nothing in the kernel imports React at runtime.
+ */
+export * from "./actions";
+export { resolveAcceptance } from "./translators/resolve";
+export type {
+  AcceptanceOption,
+  AcceptanceResolution,
+  PresentationTranslator,
+  TranslatorId,
+} from "./translators/types";
 export { createPresentationRegistry } from "./registry";
 export type {
   CreatePbuiOptions,
@@ -8,6 +20,7 @@ export type {
   PresentationProps,
 } from "./createPbui";
 export type {
+  PresentationDescriptorRegistry,
   PresentationRegistry,
 } from "./registry";
 export type {

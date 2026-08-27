@@ -2,9 +2,6 @@ import {
   createPresentationRegistry,
   type PresentationDescriptor as GenericPresentationDescriptor,
 } from "@hyperslop-systems/pbui";
-import { fromPresentationReference } from "@hyperslop-systems/pbui-chat";
-import { withGeneratedActions } from "@hyperslop-systems/pbui-sandbox";
-import { library } from "../sandbox";
 import { actionDescriptor } from "./descriptors/action";
 import { appDescriptor } from "./descriptors/app";
 import { programDescriptor } from "./descriptors/program";
@@ -33,7 +30,41 @@ export interface PresentationDescriptor<Type extends PresentationType> {
   tone: string;
   label(value: Values[Type], env: Environment): string;
   describe(value: Values[Type], env: Environment): unknown;
-  actions(value: Values[Type], env: Environment): Action[];
+  /**
+   * OPTIONAL since PBUI-ACTIONS-2 P4 — every type now declares its menu as
+   * kernel rules in `./actions.ts`, so no descriptor carries this callback
+   * any more. It remains in the interface only until the final cleanup
+   * removes the adapter below.
+   */
+  actions?(value: Values[Type], env: Environment): Action[];
+}
+
+/**
+ * PBUI-ACTIONS-2 P0: ids are derived from verb content, not `${index}:${label}`
+ * — labels change, rows get inserted, and the kernel migration needs identity
+ * that survives both (overrides, traces, fresh revalidation). Where one menu
+ * can emit the same verb kind twice, the discriminant tells the entries apart.
+ */
+function verbDiscriminant(verb: Verb): string | null {
+  switch (verb.kind) {
+    case "sortBy":
+      return verb.dir;
+    case "resolveProposal":
+      return verb.decision;
+    case "tile.split":
+      return verb.direction;
+    case "tile.dock":
+      return verb.zone;
+    case "addFilter":
+      return `${verb.field}.${verb.op}`;
+    case "view.open":
+      // A conversation offers one open-tile entry per app.
+      return verb.appId;
+    case "program.open":
+      return verb.programId;
+    default:
+      return null;
+  }
 }
 
 function bind<Type extends PresentationType>(
@@ -43,19 +74,34 @@ function bind<Type extends PresentationType>(
     label: descriptor.label,
     describe: descriptor.describe,
     tone: descriptor.tone,
-    actions: (value, environment) =>
-      descriptor.actions(value, environment).map((action, index) => ({
-        id: `${descriptor.ptype}:${index}:${action.label}`,
-        label: action.label,
-        verb: action.verb,
-        danger: action.danger,
-        description: action.description,
-        disabledBecause: action.disabledBecause,
-      })),
+    actions: (value, environment) => {
+      const seen = new Set<string>();
+      return (descriptor.actions?.(value, environment) ?? []).map((action) => {
+        const discriminant = verbDiscriminant(action.verb);
+        const id = discriminant
+          ? `${descriptor.ptype}.${action.verb.kind}.${discriminant}`
+          : `${descriptor.ptype}.${action.verb.kind}`;
+        if (seen.has(id)) {
+          throw new Error(
+            `duplicate action id "${id}" in the <${descriptor.ptype}> menu — ` +
+              `add a case to verbDiscriminant() for this verb kind`,
+          );
+        }
+        seen.add(id);
+        return {
+          id,
+          label: action.label,
+          verb: action.verb,
+          danger: action.danger,
+          description: action.description,
+          disabledBecause: action.disabledBecause,
+        };
+      });
+    },
   };
 }
 
-const base = createPresentationRegistry<Values, Environment, Verb>({
+export const registry = createPresentationRegistry<Values, Environment, Verb>({
   product: bind(productDescriptor),
   category: bind(categoryDescriptor),
   metal: bind(metalDescriptor),
@@ -77,13 +123,9 @@ const base = createPresentationRegistry<Values, Environment, Verb>({
   unresolved: bind(unresolvedDescriptor),
 });
 
-/**
- * The product's registry, with the library's generated actions appended to
- * each matching type's menu. `ObjectMenu` asks `actionsFor` when it opens,
- * so an action the agent defines a moment ago is in the next menu.
+/*
+ * PBUI-ACTIONS-2 P4: the `withGeneratedActions` wrapper is gone — generated
+ * actions now arrive through `createGeneratedActionsFamily` in `./actions.ts`,
+ * with the same liveness (the records ride in the snapshot, read from the
+ * library at resolution time) plus override, trace, and fresh revalidation.
  */
-export const registry = withGeneratedActions<Values, Environment, Verb>(base, {
-  getActions: () => Object.values(library.getState().actions),
-  toVerb: (action, reference) => ({ kind: "action.run", actionId: action.id, ref: fromPresentationReference(reference) }),
-  programExists: (programId) => Boolean(library.getState().programs[programId]),
-});

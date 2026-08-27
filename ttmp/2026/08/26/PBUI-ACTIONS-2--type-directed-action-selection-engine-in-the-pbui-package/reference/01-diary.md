@@ -1,0 +1,943 @@
+---
+Title: Diary
+Ticket: PBUI-ACTIONS-2
+Status: active
+Topics:
+    - pbui
+    - frontend
+    - architecture
+    - design
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: Working diary for PBUI-ACTIONS-2 — importing the ACTIONS-1 source guide, auditing it against HEAD, and writing the implementation intern guide with the four amendments.
+WhatFor: Record how the implementation design was grounded in current code and what a reviewer should re-check.
+WhenToUse: Read before reviewing the intern guide or starting PR 0.
+---
+
+# Diary
+
+## Goal
+
+Capture the design phase of PBUI-ACTIONS-2: ticket creation, source-guide
+import, the HEAD drift audit, and the intern implementation guide.
+
+## Step 1: Create the ticket, import the source guide, audit against HEAD
+
+Created PBUI-ACTIONS-2 in the pbui repository's docmgr workspace, copied
+`~/Downloads/PBUI-ACTIONS-1-source-audited-implementation-guide.md` (2,198
+lines, audited against the 0.6.0 snapshot) into `sources/`, read it in full,
+and verified its claims against current HEAD rather than trusting the
+snapshot.
+
+The audit's finding: every seam the guide targets still exists unchanged —
+the exact `actionsFor` lookup (`src/presentation/registry.ts:69-72`),
+render-time menu resolution (`createPbui.tsx:509`), raw-verb perform without
+revalidation (`createPbui.tsx:267-270`), the `tileDescriptor.extra` seam
+(lines 30 and 125), the sandbox `withGeneratedActions` wrapper, and the
+unstable `${ptype}:${index}:${label}` adapter IDs in both datalab-ui
+(`registry.ts:84`) and the chat demo (`registry.ts:48`). Drift is limited to:
+`onPerform` now required (commit `e903dbd`), `MenuState` relocated into
+`types.ts`, chrome/toolbars calling `pbui.perform(verb)` directly with
+hand-built verbs, `createPbui.tsx` at 685 lines with the P-series gesture
+fixes applied, and pbui-chat's executor-aware tool runtime (PBUI-TOOLCALL-1)
+landed around — not in — the verb router/gateway seam.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Ok, while we are waiting on OPTKIT-018, let's
+tackle a different topic in pbui. Create a new docmgr ticket to improve the
+actions framework, and import and read the file
+@~/Downloads/PBUI-ACTIONS-1-source-audited-implementation-guide.md into its
+sources/ folder, and analyze.\n\nThen tell me how you would design and
+implement the suggestions in the pbui codebase (since this was based off an
+older prototype)."
+
+**Assistant interpretation:** Create the implementation ticket for the
+ACTIONS-1 design, import the source guide, verify it against current code
+(the "older prototype" caveat), and present a design/implementation position
+in chat.
+
+**Inferred user intent:** Turn the finished ACTIONS-1 research into an
+executable implementation plan that is correct for today's pbui, usable while
+the OPTKIT backend chain is blocked on a colleague.
+
+**Commit (code):** `30e99aa` — "PBUI-ACTIONS-2: create implementation ticket,
+import ACTIONS-1 guide, record HEAD drift audit" (docs only)
+
+### What I did
+- `docmgr ticket create-ticket --ticket PBUI-ACTIONS-2` in the pbui repo
+  (own `.ttmp.yaml`, separate from the optkit workspace root).
+- Copied the guide into `sources/`; read all 2,198 lines.
+- Verified claims at HEAD: read `types.ts` and `registry.ts` in full, grepped
+  `createPbui.tsx` seams, `tileDescriptor.ts`, sandbox `actions.ts`, both
+  product adapters; checked recent history (`git log` on
+  `src/presentation/`, releases since 08/20).
+- Filled the ticket index with the drift-audit summary; changelog; commit.
+- Presented the analysis and design position in chat: guide holds; four
+  amendments (dual perform entry points; optional kernel with automatic
+  legacy adapter; shared-package contribution fragments; stable IDs in PR 0);
+  PR ladder mapped to today's files; OPTKIT-022/023 coordination note.
+
+### Why
+- The user flagged the guide as "based off an older prototype" — the honest
+  first step is establishing exactly how much of the audited snapshot
+  survives at HEAD, before designing anything on top of it.
+
+### What worked
+- The guide's own evidence index (Appendix A) made verification fast: each
+  claim names a file and line range, so the check was mechanical.
+- The two unstable-ID adapter sites are still character-identical to the
+  guide's quotes, which confirms the snapshot is recent enough for the
+  consumer-migration sections to be trustworthy.
+
+### What didn't work
+- `grep -rn --include=*.ts` failed under zsh glob expansion
+  (`no matches found`); quoted patterns or `git grep` avoid it. Cosmetic.
+
+### What I learned
+- `perform(verb)` is called directly by chrome and toolbars with hand-built
+  verbs, so the source guide's §17.2 context-signature change would break
+  pbui-workbench and products — the origin of Amendment A.
+- pbui-chat changed substantially since the audit (PBUI-TOOLCALL-1 executor
+  runtime), but the router/gateway *seam* the kernel relies on is intact;
+  PR 4 needs a fresh line-level audit, not a redesign.
+
+### What was tricky to build
+- Distinguishing "the guide is stale" from "the guide's line numbers are
+  stale". The semantics all hold; only offsets and surroundings moved. The
+  intern guide therefore forbids trusting line numbers while affirming the
+  claims.
+
+### What warrants a second pair of eyes
+- Amendment B (optional `actions`/`snapshotFor` with an auto legacy adapter)
+  deviates from the source PR plan; confirm the team wants zero-change PR 2
+  over the guide's explicit-adoption PR 2.
+- Whether `performAction` should be the name (vs overloading `perform`) —
+  overloading was rejected to keep the raw path's type signature honest.
+
+### What should be done in the future
+- Write the intern implementation guide (Step 2), then PR 0.
+
+### Code review instructions
+- Re-run the audit spot-checks: `sed -n '69,72p' src/presentation/registry.ts`,
+  `sed -n '262,270p' src/presentation/createPbui.tsx`,
+  `grep -n "extra" packages/pbui-workbench/src/tileDescriptor.ts`,
+  `grep -n 'ptype}:' packages/datalab-ui/src/pbui/registry.ts packages/pbui-chat/demo/src/pbui/registry.ts`.
+
+### Technical details
+- Ticket path: `ttmp/2026/08/26/PBUI-ACTIONS-2--type-directed-action-selection-engine-in-the-pbui-package/`.
+- Source guide: `sources/PBUI-ACTIONS-1-source-audited-implementation-guide.md`.
+
+## Step 2: Write the implementation intern guide and publish to reMarkable
+
+Wrote
+`design-doc/01-intern-guide-implementing-the-action-selection-kernel-in-current-pbui.md`:
+the HEAD system tour (references/descriptors/registry, Provider/menu/perform,
+accept, the four consumers and their workarounds), the drift-audit table, the
+kernel condensed to its load-bearing contracts (identities, type graph,
+snapshot, availability quartet, conditions, resolver ladder, revalidation,
+translators) with section pointers into the source guide as the design of
+record, the four amendments in full, the file-by-file plan with the PR ladder
+and exit criteria, testing strategy, OPTKIT coordination, pitfalls, and a
+glossary. Seeded the task list (PR 0–7 plus review), related files, updated
+the changelog, committed, and uploaded the guide bundled with the source
+guide to the reMarkable.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Ok, Create  a detailed analysis / design /
+implementation guide that is for a new intern, explaining all the parts of
+the system needed to understand what it is, with prose paragraphs and bullet
+point sand pseudocode and diagrams and api references and file references. It
+should be very clear and technical. Store in the ticket and the nupload to
+remarkable."
+
+**Assistant interpretation:** Turn the chat design position into a durable
+intern-grade guide in the ticket, complementing (not duplicating) the source
+guide, and publish both to the reMarkable.
+
+**Inferred user intent:** Make the implementation startable and reviewable by
+someone who was not in this conversation, with the current-codebase
+corrections captured durably.
+
+**Commit (code):** recorded in the changelog with the upload entry.
+
+### What I did
+- Wrote the guide (sections 0–10) with the deliberate split: this guide owns
+  the HEAD tour, drift audit, amendments, and file plan; the source guide
+  remains authoritative for kernel semantics and the full test matrix.
+- Tasks, relations, changelog, commit; `remarquee upload bundle` of the
+  intern guide plus the source guide to `/ai/2026/08/26/PBUI-ACTIONS-2`.
+
+### Why
+- Duplicating the 2,198-line source guide would have created two divergent
+  authorities; the companion-guide structure keeps one design of record and
+  one implementation map.
+
+### What worked
+- The amendment structure (A–D) cleanly contains every deviation, so a
+  reviewer can accept/reject them individually without re-litigating the
+  kernel.
+
+### What didn't work
+- N/A.
+
+### What was tricky to build
+- Compressing the kernel (source §§6–19) to a map that is complete enough to
+  orient an intern but visibly *not* the implementation spec — each condensed
+  section carries its source-section pointer to prevent implementing from the
+  summary.
+
+### What warrants a second pair of eyes
+- The PR 2 exit criterion "menu behavior byte-identical to goldens" — with
+  the legacy adapter, ordering comes from metadata order; confirm the
+  adapter's order mapping reproduces current array order exactly, including
+  for the workbench tile menu's informational row.
+
+### What should be done in the future
+- Team review of amendments A–D, then PR 0 (goldens + stable IDs).
+
+### Code review instructions
+- Read the intern guide start to finish with `src/presentation/registry.ts`
+  and `createPbui.tsx` open; then spot-check the drift table (section 3)
+  against HEAD.
+
+### Technical details
+- Guide: `design-doc/01-intern-guide-implementing-the-action-selection-kernel-in-current-pbui.md`.
+- reMarkable: `/ai/2026/08/26/PBUI-ACTIONS-2`.
+
+## Step 3: P0 — freeze golden menus, make action identity semantic
+
+The implementation began with the migration fence. Both product adapters
+stopped manufacturing `${ptype}:${index}:${label}` ids and now derive identity
+from verb content (`ptype.kind[.discriminant]`), with a loud collision guard.
+Golden snapshot tests freeze the full menus of representative references in
+datalab-ui, pbui-workbench, and the chat demo; the two conversion arrays are
+exported and frozen; the sandbox gained an explicit generated-action liveness
+test. Six suites green: root 102, datalab-ui 531, workbench 131, sandbox 105,
+pbui-chat 237, demo 13.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Print out a brutalist work slip with the plan /
+different phases for the ticket. then before stsarting a phase, plrint a
+split about the phase, and print one when the phase is done. \n\ncommit at
+appropriate intervals and keep a detailed diary as you work (using the diary
+format from the skill)"
+
+**Assistant interpretation:** Begin implementing the ticket phase by phase,
+printing physical work slips (almanach thermal printer, brutalist theme) at
+plan/phase-start/phase-done boundaries, committing per phase, diarying as I
+go.
+
+**Inferred user intent:** Run the PBUI-ACTIONS-2 implementation as a properly
+instrumented workflow with physical progress artifacts, matching the
+work-slip discipline the OPTKIT-012–015 implementation tickets used.
+
+**Commit (code):** `fbfa492` — "PBUI-ACTIONS-2 P0: freeze golden menus, make
+action identity semantic"
+
+### What I did
+- Printed the ticket plan slip (8 phases) and P0 start/done slips; YAML
+  archived under `various/work-slips/`.
+- Restored the toolchain: `pnpm install` failed with 403 on
+  `@hyperslop-systems/plot` because the `~/.npmrc` GitHub Packages token is
+  stale; the gh CLI token works, so the install ran with
+  `npm_config_//npm.pkg.github.com/:_authToken=$(gh auth token)` — no edit to
+  the user's `~/.npmrc`. Built all workspace packages (`pnpm -r build`) so
+  cross-package test imports resolve.
+- `packages/datalab-ui/src/pbui/registry.ts` and
+  `packages/pbui-chat/demo/src/pbui/registry.ts`: verb-derived stable ids
+  with per-kind discriminants and a duplicate-id throw.
+- `runtime.tsx` in both products: conversions extracted/exported
+  (`catToField`/`datadropConversions`, `rowToProduct`/`demoConversions`).
+- New golden tests: `datalab-ui/test/menu-goldens.test.ts` (10 snapshots,
+  identity-shape assertions, conversion freeze),
+  `pbui-workbench/src/tileDescriptor.golden.test.ts` (4 snapshots incl.
+  informational row and `extra` composition),
+  `pbui-chat/demo/src/pbui/menu-goldens.test.ts` (4 snapshots, live-library
+  liveness through the real registry, conversion freeze).
+- `pbui-sandbox/src/actions.test.ts`: explicit liveness test (define after
+  registry build → next menu; remove → gone).
+
+### Why
+- P0 exists so every later PR is reviewed as equivalence against recorded
+  behavior; the id fix had to precede the snapshots or the goldens would have
+  fossilized positional identity (intern guide Amendment D).
+
+### What worked
+- The collision guard proved itself within minutes: pbui-chat's own
+  conversation tests hit `duplicate action id "conversation.view.open"` — the
+  conversation menu emits one open-tile entry per app, a duplicate the old
+  positional ids silently tolerated. Fixed with a `view.open → appId`
+  discriminant.
+
+### What didn't work
+- First full datalab-ui run: 11 files failed with unresolved
+  `@hyperslop-systems/workbench-protocol` — unbuilt workspace dep, not my
+  change; `pnpm -r build` fixed it. Recorded because the same trap will hit
+  every fresh checkout.
+- `pnpm install --frozen-lockfile`: `ERR_PNPM_FETCH_403` on plot (stale
+  token), fixed via env-var token override as above.
+
+### What I learned
+- pbui-chat's `src/conversations` tests import the *demo* registry, so demo
+  adapter changes propagate further than the demo — good: the fence is wider
+  than expected.
+
+### What was tricky to build
+- Choosing discriminants without over-qualifying: ids must be stable per
+  (reference, conceptual action), so discriminants use only fields that
+  distinguish same-kind siblings within one menu (channel, dir, decision,
+  zone, appId…), never payload ids that vary per subject.
+
+### What warrants a second pair of eyes
+- The discriminant tables are enumerated by hand; a new same-kind sibling in
+  a future menu will throw at menu-open time. That is the designed behavior
+  (loud beats silently wrong), but confirm the team accepts runtime throws
+  here until PR 3/4 replace the adapters entirely.
+
+### What should be done in the future
+- P1: the pure kernel under `src/presentation/actions/`.
+
+### Code review instructions
+- `git show fbfa492`; run `pnpm -r build && pnpm -r test` from the repo root.
+- Read the datalab snapshot file once: the ids are the review surface.
+
+### Technical details
+- Suites after P0: root 102, datalab-ui 531, pbui-workbench 131,
+  pbui-sandbox 105, pbui-chat 237, chat demo 13 — all green.
+
+## Step 4: P1 — the pure action-selection kernel
+
+Implemented `src/presentation/actions/` in eleven modules plus six test
+files: identities (`ids.ts`), the four-state availability model
+(`availability.ts`), the validated nominal type graph with BFS shortest
+distances (`typeGraph.ts`), the fail-closed condition algebra with named
+predicates (`conditions.ts`), the contract types (`types.ts`), the
+`defineActions` factories making the exact/inherited payload distinction
+visible (`define.ts`), the fail-fast registry with guaranteed-collision
+rejection and potential-conflict diagnostics (`registry.ts`), the 16-step
+resolver with same-branch compact trace (`resolve.ts`), verbose trace
+materialization (`explain.ts`), fresh-perform evaluation (`perform.ts`), and
+the Amendment B legacy descriptor family (`legacy.ts`). Exported through
+`src/presentation/index.ts`. 50 kernel tests; root suite 152 green.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `b58e23b` — "PBUI-ACTIONS-2 P1: the pure action-selection
+kernel"
+
+### What I did
+- Wrote the kernel per the source guide §§7–18 with the intern guide's
+  amendments; method-syntax interfaces keep exact rules assignable to the
+  contribution union (bivariance where we need it).
+- Tests: graph (reflexive/transitive/diamond/cycle/isolated), conditions
+  (short-circuit first reason, fail-closed unknown predicate), registry
+  validation (nine rejection classes incl. rule-id-as-action-id and
+  guaranteed collisions), the §24.3 resolver table (specific-over-generic,
+  unavailable-suppresses, inapplicable-permits, hidden-suppresses,
+  scope/priority/ambiguity, invocation filter), families (stable candidate
+  ids, duplicate-key throw, static-vs-family override, unavailable instance),
+  invariants (permutation, unrelated-action isolation, bind-only-selected,
+  menu-order-never-precedence, label materialization), perform (§24.6 five
+  refusal cases plus fresh-verb proof), and the legacy family
+  (order/danger/reason preservation, namespaced actions, current-environment
+  re-expansion).
+- The legacy adapter design decision from the intern guide held: `subject:
+  "*"` families make the graph tolerate undeclared query types as isolated
+  nodes, so unmigrated products need no graph at all.
+
+### Why
+- PR 1 must be UI-independent so PR 2 can be reviewed purely as integration;
+  every semantic question is settled and tested here.
+
+### What worked
+- The resolver's trace-from-the-same-branch design made the hidden test
+  meaningful: the menu is empty AND the trace proves the suppression.
+
+### What didn't work
+- Two strict-TS rounds: a discriminated-union spread
+  (`status.code` inside a ternary chain) would not narrow — restructured to
+  an explicit entry object; and `.find()` in a test grabbed the type-stage
+  trace entry instead of the condition-stage one (filter by stage). Both
+  caught by tsc/vitest immediately.
+
+### What I learned
+- `Math.min(...pool.map(...))` over a partition then filter is clearer than a
+  sort for the ladder, and keeps ties visible for the ambiguity branch.
+
+### What was tricky to build
+- The `hidden` vs `inapplicable` split shows up in three distinct places
+  (status evaluation, partition retention, assembly skip) and the compiler
+  cannot prove `inapplicable` never reaches assembly — an explicit
+  unreachable throw documents the invariant instead of a cast.
+
+### What warrants a second pair of eyes
+- Ambiguity `because` values: the implementation reports
+  `incomparable-types` when tied candidates declare different types, else
+  `equal-priority`; `equal-specificity`/`equal-scope` are currently never
+  emitted. Semantically covered, but the union suggests finer reporting —
+  confirm this simplification or refine in PR 5 when real inheritance lands.
+- The type-unreachable-contributions-produce-no-trace choice (documented in
+  resolve.ts) trades §16 completeness for compactness.
+
+### What should be done in the future
+- P2: createPbui integration with optional `actions`/`snapshotFor`,
+  `performAction`, ambiguity row.
+
+### Code review instructions
+- Start at `resolve.ts` with the source guide §15 beside it; then
+  `registry.test.ts` and `resolve.test.ts` as the executable spec.
+- `pnpm vitest run src/presentation/actions` and `npx tsc --noEmit`.
+
+### Technical details
+- Root suite: 152 tests (102 pre-existing + 50 kernel).
+
+## Step 5: P2 — one selection engine behind ObjectMenu, zero product changes
+
+Integrated the kernel into `createPbui` per Amendments A and B. `actions` and
+`snapshotFor` are optional and come together (actions alone throws at
+construction); absent, the provider builds an internal registry around
+`legacyDescriptorFamily` over the descriptor registry with a trivial
+`{revision: 0, scopes: ["global"], product: {environment}}` snapshot — one
+live selection engine either way. ObjectMenu resolves `{subject, invocation:
+"menu"}` on every render, maps `ResolvedAction` rows keyed by candidate id
+(the `unavailable` status carries the one-field disabled/reason invariant
+forward), and renders ties as a non-executable `data-part="menu-ambiguity"`
+row. The context gains `resolve()` and `performAction()` (fresh revalidation,
+fresh verb); `perform(verb)` is untouched for chrome and toolbars.
+
+Every pre-existing test passes unmodified: root 158 (152 + 6 new integration
+tests), workbench-protocol 44, pbui-workbench 131, pbui-sandbox 105,
+datalab-ui 531, pbui-chat 237, chat demo 13.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `db3269e` — "PBUI-ACTIONS-2 P2: one selection engine
+behind ObjectMenu, zero product changes"
+
+### What I did
+- `createPbui.tsx`: fourth defaulted generic `ProductFacts =
+  LegacyFacts<Environment>` (existing three-arg callers compile untouched);
+  engine/snapshot fallback construction; context `resolve`/`performAction`;
+  ObjectMenu row mapping and ambiguity rendering.
+- `public/presentation-parts.css`: the `menu-ambiguity` hook, styled like a
+  reason and explicitly not a button.
+- `createPbui.actions.test.tsx`: six integration tests — fresh-verb
+  delegation, refusal after state change (onPerform never called), visible
+  unavailable row, ambiguity row non-executability, legacy-engine parity with
+  environment-sensitive labels, and the actions-without-snapshotFor error.
+
+### Why
+- Amendment B's zero-change property is the whole point of P2: the engine
+  swap must be reviewable as "the fence still passes", not as a product
+  migration.
+
+### What worked
+- The `MenuState` question resolved even less invasively than the intern
+  guide sketched: the query is derived in ObjectMenu (`invocation: "menu"` is
+  constant there), so `MenuState`/`openMenu` did not change at all.
+- `performAction` calls `onPerform` synchronously within the click segment
+  (the await suspends after the call), so existing synchronous delegation
+  tests hold without modification.
+
+### What didn't work
+- `toBeDisabled()` — jest-dom matchers are not installed in this repo's
+  vitest setup; plain `disabled` property assertion instead. One-line fix.
+
+### What I learned
+- Unmigrated products gained real behavior from P2 despite "zero changes":
+  revalidation re-runs their descriptor callback at click time, so the stale
+  render-time verb can no longer be delegated. The legacy test pins this via
+  an environment-sensitive verb.
+
+### What was tricky to build
+- The default-generic dance: `ProductFacts = LegacyFacts<Environment>` makes
+  the internal casts honest (the fallback pair really is that type), while a
+  product supplying its own registry instantiates the generic explicitly.
+  The alternative — overloads — duplicated the options type for no gain.
+
+### What warrants a second pair of eyes
+- `resolve` in the context closes over `environment` from the current render;
+  a menu open across an environment change re-resolves with the new
+  environment on next render (correct), but `performAction` uses the
+  environment captured when the context value was memoized — same as today's
+  `perform`, worth confirming as intended.
+- The ambiguity row wording ("N rules tie for <action> — nothing runs") is
+  developer-facing; product copy may want it gated to dev builds (source
+  guide leaves production policy to products).
+
+### What should be done in the future
+- P3: workbench contribution fragments + datalab migration.
+
+### Code review instructions
+- `git show db3269e`; the review surface is ObjectMenu's row mapping and the
+  engine fallback block. Then `pnpm vitest run src/presentation` — the fence
+  plus the new file.
+
+### Technical details
+- Suites: root 158, protocol 44, workbench 131, sandbox 105, datalab 531,
+  chat 237, demo 13 — 1219 total, all green.
+
+## Step 6: P3 — workbench fragments and the datalab migration
+
+The exit criterion for this phase was "two materially different consumer
+styles prove the API", and both landed. pbui-workbench now exports
+contribution fragments (`workbenchTypeDefinitions`, `workbenchScopes`,
+`workbenchTileContributions()`) — the shared-package pattern replacing the
+deprecated `TileDescriptorOptions.extra` seam — with a parity suite pinning
+the fragment to `createTileDescriptor` row for row across five tile states.
+datalab-ui migrated field, datum, doc, and stage to kernel rules and one
+bounded family in a new `src/pbui/actions.ts`; the four descriptors dropped
+their `actions()` callbacks (now optional on the product descriptor
+interface), which is exactly how the legacy family knows to stay silent for
+them. `runtime.tsx` passes the product registry and `snapshotForDatalab`
+into `createPbui`.
+
+Equivalence audit before re-pinning goldens: 82 menu rows before and after,
+every label and every available verb byte-identical. Two deliberate semantic
+changes, both kernel-native: unavailable rows no longer carry verbs
+(bind-only-available), and "Make the ACTIVE chart" / "Switch to it" /
+"Group by + count on quantitative" are now `inapplicable` rather than
+conditionally-not-pushed — same visible menus, honest override semantics.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `e33f213` — "PBUI-ACTIONS-2 P3: workbench contribution
+fragments; datalab field/datum/doc/stage on kernel rules"
+
+### What I did
+- `packages/pbui-workbench/src/actions.ts` + tests; `extra` deprecated with
+  a pointer, deleted later with descriptor actions.
+- `packages/datalab-ui/src/pbui/actions.ts`: `DatalabFacts` (schema-only
+  derivation with a facts-derived revision string), field/datum/doc/stage
+  contributions, flat 15-type graph, registry composing the legacy family
+  with the new rules.
+- Four descriptor files stripped of actions; adapter guards optional
+  callbacks; runtime wired; both test files route migrated types through the
+  kernel via one dispatch helper so every behavioral assertion reads as
+  before.
+
+### Why
+- Partial migration had to be a first-class state: the optional-callback
+  convention (absent callback ⇒ rules are the only voice) gives a crisp,
+  testable rule for which engine speaks for a type, with no except-lists.
+
+### What worked
+- The golden-diff audit protocol: filter the snapshot diff down to
+  non-id/non-label lines, count label lines on both sides (82 = 82, no
+  singletons). The only surviving diff was `verb: undefined` on disabled
+  rows — reviewed and accepted as the kernel invariant.
+- Datalab's 519 non-menu tests (apps, organisms, effects, DuckDB) passed
+  untouched on the first post-migration run: the UI genuinely only spoke to
+  menus through the seams we replaced.
+
+### What didn't work
+- `define.exact("tile", …)` inside a generic `Values extends {tile:
+  TileRef}` function: TS cannot prove `"tile"` is a key of an unresolved
+  generic. Built against the canonical `{tile: TileRef}` and widened on
+  return with a documented cast; the constraint guarantees safety.
+- A python heredoc edit ran from the wrong cwd (shell had drifted into a
+  package dir) — FileNotFoundError, harmless, re-ran from the root. Same
+  cwd-drift lesson as the P0 git failure.
+
+### What I learned
+- The `inapplicable` state earned its keep on real product logic
+  immediately: three previously conditionally-pushed rows became declarative
+  tests, and their absence semantics (permits fallback) is now explicit
+  instead of accidental.
+
+### What was tricky to build
+- The facts/revision design: the revision string must name exactly the
+  derived facts so it moves iff they move; deriving it from the environment
+  object identity would have missed store changes behind stable closures.
+  Fields: activeDocId, targetDocId, fieldType, categoricalFields.
+
+### What warrants a second pair of eyes
+- `verb: undefined` on disabled golden rows is an API-visible change for
+  anything that read verbs off disabled rows (nothing in-repo does; the
+  goldens prove the menus; but external consumers of `actionsFor` shapes
+  should be checked at release notes time).
+- The datum family's action ids embed the field name
+  (`datum.keep.region`); names with unusual characters would produce odd
+  ids — the source guide's `stableActionSegment` encoder is deferred until a
+  real corpus needs it, noted here so it is a decision, not an oversight.
+
+### What should be done in the future
+- P4: chat demo descriptors → rules/families; sandbox wrapper → generated
+  family; re-audit chat internals post-TOOLCALL-1 first.
+
+### Code review instructions
+- `git show e33f213`; review `actions.ts` beside the four pre-migration
+  descriptors in the parent commit; then the golden snapshot diff.
+- `pnpm -r build && pnpm -r test` — 1226 tests.
+
+### Technical details
+- Suites: root 158, workbench 138, sandbox 105, datalab 531, chat 237,
+  demo 13, protocol 44.
+
+## Step 7: P4 — chat demo and sandbox on the kernel
+
+The dynamic half of the proof. `createGeneratedActionsFamily` in pbui-sandbox
+replaces the `withGeneratedActions` registry wrapper (deprecated, deleted in
+the final cleanup): the records ride in the snapshot's product facts, read
+from the live library at resolution time, so liveness is identical while the
+instances now pass through override, trace, and fresh revalidation; the
+library's stable `act-N` ids provide the candidate identity revalidation
+requires. `workbenchTileContributions` gained a `project` option — the chat
+demo's tile value is a wire reference, not a `TileRef`, and the option lets
+it consume the shared rules unchanged instead of forking them.
+
+All nineteen demo descriptors dropped their `actions()` callbacks;
+`demo/src/pbui/actions.ts` declares every menu as rules via a compact
+`rulesFor` builder (rule ids `demo.<type>.<slug>`, sequential order),
+including the conversation type's twelve availability-laden entries, plus
+the workbench fragment and the generated family. The demo has NO legacy
+family — it is the first fully kernel-native product. `canApprove` became a
+real capability (`capability set {"approve"}` in the snapshot), used by the
+product-reorder and proposal-approve gates.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `7f528d2` — "PBUI-ACTIONS-2 P4: chat demo and sandbox on
+the kernel; no legacy family left in the demo"
+
+### What I did
+- pbui-sandbox: `GeneratedActionFacts`, `createGeneratedActionsFamily`,
+  wrapper deprecation, two family tests (type filtering + stable identity;
+  missing-program unavailability with the wrapper's exact wording).
+- pbui-workbench: `project` option threaded through every fragment rule.
+- Demo: `actions.ts` (19 types, ~60 rules + 1 family + fragment),
+  `snapshotForDemo` (conversation/program facts derived per subject;
+  generated records and program ids always; revision = JSON of the derived
+  facts), descriptor strip, registry wrapper removal, runtime wiring.
+- Tests: demo goldens re-pinned via the kernel (audit: 19 labels both
+  sides, only the disabled reorder row lost its verb); pbui-chat's
+  `descriptor.test.ts` resolves through the demo kernel with unchanged
+  assertions; ConversationsTile and the rest of pbui-chat passed without any
+  edit (their menus flow through ObjectMenu, which was already kernel-backed
+  since P2).
+
+### Why
+- P4's exit criterion is dynamic live contributions through the kernel with
+  routers untouched; the demo going fully kernel-native also derisks the
+  final cleanup (one product already lives where PR 7 wants everyone).
+
+### What worked
+- The P2 investment paid out: pbui-chat's tile/menu component tests needed
+  zero changes because ObjectMenu had been the only door since P2.
+- Reusing the P0 semantic id derivation as the kernel ACTION ids kept
+  conceptual identity continuous across all three phases of the demo's
+  menus.
+
+### What didn't work
+- First typecheck failed six ways at once: a stale replace left two
+  `registry` exports in demo registry.ts (my python target text drifted from
+  the file); the demo compiled against stale dists (sandbox/workbench needed
+  a rebuild before their new exports resolved); two `as Values["row"]` test
+  casts needed `as unknown as` once the wrapper types tightened. All
+  mechanical; all fixed in one pass.
+
+### What I learned
+- The chat demo's conversation menu is the richest availability surface in
+  the repository (missing/active/open/waiting interactions) and it ported to
+  `test` functions over derived facts without losing a single reason string
+  — good evidence the condition/test split is expressive enough pre-P5.
+
+### What was tricky to build
+- `snapshotForDemo` had to read the conversation registry and library at
+  resolution time without leaking live objects into facts: everything copied
+  into plain booleans/numbers/arrays, and the revision built from exactly
+  those copies. The generated-actions liveness test then passes purely
+  because snapshots are rebuilt per resolution.
+
+### What warrants a second pair of eyes
+- The demo tile menu now sorts fragment rows (orders 10–30) before the two
+  agent rows (40, 41) — identical to the old order; but any product mixing
+  fragment rules with its own must mind the shared order space. Documented
+  in the fragment's docstring; worth a line in the playbook at P7.
+- `rulesFor`'s label-context cast (`as unknown as`) is the one place the
+  demo bypasses inference; acceptable for a builder-local cast, but the
+  helper should not be copied into pbui core as-is.
+
+### What should be done in the future
+- P5: abstract nodes + inherited inspect/watch where reuse is demonstrated;
+  scope stacks beyond the flat product scope.
+
+### Code review instructions
+- `git show 7f528d2` — read `demo/src/pbui/actions.ts` beside the stripped
+  descriptors in the parent commit; then the golden snapshot diff.
+- Full sweep: `pnpm -r build && pnpm -r test` (1228 tests).
+
+### Technical details
+- Suites: root 158, protocol 44, workbench 138, sandbox 107, datalab 531,
+  chat 237, demo 13.
+
+## Step 8: P5 — inheritance where duplication proved it
+
+The source guide's rule for this phase — "introduce real abstract runtime
+nodes only for demonstrated reuse" — had exactly one qualifying case in the
+migrated code: every kernel-migrated datalab type carried an identical
+Inspect rule, and three carried an identical Watch rule. Two abstract nodes
+(`inspectable`, `watchable`) and two inherited declarations
+(`datalab.inspect`, `datalab.watch`) replaced the eight per-type rules.
+Stage is inspectable but deliberately not watchable: its menu never offered
+Watch, and inheritance must not add rows as a side effect of refactoring.
+Legacy-family types declare no parents so their descriptor-driven menus
+cannot double. The chat demo deliberately stayed flat — its Inspect rows sit
+at wildly different menu positions per type (first on product, ninth on
+conversation), so a single inherited order would have reordered menus; that
+is a finding about inheritance's limits, not a failure.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `37b51d6`
+
+### What I did
+- Datalab graph: abstract nodes + parents on the four migrated types;
+  `inheritedContributions()`; deleted the eight per-type rules; orders 13/14
+  chosen so all four menus keep their exact row order (checked by goldens).
+- Goldens re-pinned; diff audited as pure id substitution; two new tests pin
+  the inheritance semantics: provenance `{declaredType: "inspectable",
+  typeDistance: 1}`, the inherited verb still naming the concrete ptype, and
+  stage's absence of Watch.
+
+### Why
+- This is the phase that proves inheritance delivers value beyond exact
+  migration — one declaration now serves four types, and a fifth migrated
+  type gets Inspect/Watch by declaring two parents.
+
+### What worked
+- The kernel needed zero changes: graph, resolver, and provenance handled
+  the first real inheritance exactly as the P1 unit tests promised.
+
+### What didn't work
+- The identity-pattern test asserted `^datalab\.field\.` for every field row
+  and failed on `datalab.inspect` — the pattern was over-narrow for
+  inherited rules; relaxed to `^datalab\.` with a comment.
+
+### What was tricky to build
+- Choosing inherited menu orders that preserve four different menus' row
+  sequences with one number pair (13/14) — verified by goldens rather than
+  argued.
+
+### What warrants a second pair of eyes
+- The demo-stays-flat decision: if the team wants inherited inspect there
+  too, menu order must become per-type overridable first (a rule-level
+  metadata override on inherited rules is a plausible P7+ addition).
+- Scope stacks and modes remain static in both products; the kernel supports
+  dynamic stacks (P1 tests) but no product surface demands one yet — noted
+  as deliberately unexercised, not missing.
+
+### What should be done in the future
+- P6: typed translators replacing the two ordered conversions; chooser
+  surface.
+
+### Code review instructions
+- `git show 37b51d6`; the golden diff is the equivalence proof; the two new
+  tests are the semantics proof.
+
+## Step 9: P6 — typed accept, the chooser, and a module-cycle hunt
+
+Accept mode got its type system. `src/presentation/translators/` holds
+`PresentationTranslator` (declared source/target, scopes, condition,
+priority, direct edges only — no chaining) and `resolveAcceptance`, one
+resolver shared by highlighting and clicking so the two can never disagree.
+Subtyping is substitutability: a graph subtype settles the request with the
+ORIGINAL reference, and a supertype never satisfies a subtype request. Ties
+reduce by nearest scope, then priority; a genuine remainder returns an
+explicit chooser — `AcceptChooser`, a transient Escape/focus surface whose
+dismissal keeps the accept request pending. `conversions` is deprecated but
+fully preserved for unmigrated products; both in-repo products moved their
+single conversion to a translator with identical behavior (their own UI
+accept tests passed unchanged).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3)
+
+**Commit (code):** `ae29000`
+
+### What I did
+- Translator types + resolution with the §24.7 matrix as tests (7 kernel
+  tests: subtype-original-reference, supertype-never, single edge, scope
+  removal, filter-on-translated, order-independent chooser, scope/priority
+  ladder).
+- createPbui: `translators` option (requires `actions`), acceptanceFor
+  routing, chooser state/context, `AcceptChooser`, chooser CSS,
+  `ActionInvocation` gains "accept".
+- Product migrations; 3 integration tests through real components
+  (subtype accept, edge accept with highlight/click agreement, tied edges →
+  chooser → Escape-keeps-pending → deliberate pick).
+
+### Why
+- First-registered-wins conversion was the last order-dependent semantics in
+  the presentation layer; P6 removes it the same way P1 removed it from
+  menus: ladder, then explicit ambiguity.
+
+### What worked
+- "One resolver for highlight and click" fell out naturally by routing
+  `isAcceptable` and `satisfyAccept` through the same `acceptanceFor`.
+
+### What didn't work
+- Two rounds of module-cycle whack-a-mole in the chat demo. First:
+  `actions.ts → chat.ts → runtime.tsx → actions.ts` made `createPbui` see a
+  partial actions module (my new construction guard threw where the old
+  closure-based code had silently tolerated the cycle). Second, deeper: the
+  conversation and chatEvent DESCRIPTORS import `chat` for labels/describe,
+  so the registry itself closed the same loop. Fix: a dependency-light
+  `conversationFacts` slot that `chat.ts` registers its registry into at
+  startup; descriptors and the snapshot builder read through it, and an
+  unregistered slot resolves to the honest "not in this browser's list"
+  state. The guard that exposed the latent cycle stays — it turned a
+  silently-tolerated partial-module evaluation into a loud error.
+- Two cwd-drift incidents again (a "root" build that was actually the demo's
+  vite build). Third occurrence this session; absolute paths from here on.
+
+### What I learned
+- The old createPbui survived cycles because it only closed over its options;
+  any create-time validation converts latent cycles into startup crashes.
+  That is a FEATURE (the cycle was real), but it means construction guards
+  and module graphs have to be reviewed together.
+
+### What was tricky to build
+- Chooser semantics: Escape must dismiss the CHOOSER while accept stays
+  pending (the banner still shows, presentations stay acceptable), and
+  settling must clear both. `settle()` clearing chooser state plus a
+  dismiss-only path covers the matrix; the integration test walks it.
+
+### What warrants a second pair of eyes
+- Translator `when` conditions currently evaluate against an EMPTY predicate
+  map inside createPbui (mode/capability conditions work; named predicates
+  in translators would throw fail-closed). Kernel-level API accepts a real
+  map; wiring product predicates through createPbui is deferred until a
+  product declares a conditional translator. Documented here so it is a
+  decision.
+- `AcceptChooser` must be mounted by products whose translators can tie;
+  existing products cannot tie (single edge each). The playbook update in P7
+  should state this.
+
+### What should be done in the future
+- P7: delete descriptor `actions()`, the legacy adapter, `withGeneratedActions`,
+  and `conversions`; tombstones; version bump; docs.
+
+### Code review instructions
+- `git show ae29000`; start at `translators/resolve.ts` with source §19
+  beside it, then the chooser part of `createPbui.tsx`, then the
+  `conversationFacts` slot and its rationale.
+
+### Technical details
+- Suites: root 168, protocol 44, workbench 138, sandbox 107, datalab 533,
+  chat 237, demo 13 — 1240 total.
+
+## Step 10: P7 — the last eleven types, the deletions, and the delete-vs-deprecate adjudication
+
+P7's true scope was larger than the plan slip implied: "delete descriptor
+actions" first required migrating datalab's eleven remaining legacy types.
+All eleven landed as kernel rules (plus a member-roles family), eight of them
+joining the P5 inheritance nodes; the legacy descriptor family left datalab
+entirely — every one of its fifteen types is kernel-native, and the golden
+re-pin was again pure id substitution with zero label changes.
+`withGeneratedActions` was deleted from pbui-sandbox (its only consumer
+migrated in P4), `createTileDescriptor` became representation-only with its
+`extra`/`launcher` options absorbed by the fragment, and the fragment's test
+file was rewritten from descriptor-parity into the standalone written spec of
+the shared tile rows.
+
+One scope adjudication, made explicitly rather than by drift: the source
+guide's PR 7 deletes descriptor `actions()`, the legacy engine, and
+`conversions` outright; its exit criterion, though, is "no in-repository
+production users" — which is now true — while Amendment B built the automatic
+legacy engine precisely as a one-window migration path for products outside
+this repository still on 0.6.x. Deleting the generic surface in 0.7.0 would
+strand them with no path. Decision: all four compat mechanisms are
+`@deprecated` with pointers and a stated next-major deletion, in-repo users
+are zero, and `PresentationDescriptorRegistry` is the forward-looking alias.
+Versions: pbui 0.7.0, pbui-workbench 0.3.0, pbui-sandbox 0.3.0.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 3; mid-phase status question: "how far
+are we?" — answered inline before P7 started)
+
+**Commit (code):** `9dc7768`
+
+### What I did
+- Datalab: eleven type migrations (source/cat/geom/step/user/token/member/
+  upload/tile/workspace/traceEntry) with exact label/reason/verb parity;
+  inheritance extended (user and traceEntry deliberately keep their own
+  differently-worded inspect/watch rows); legacy family removed; adapter
+  reduced to representation with a `never` tombstone on the product
+  descriptor interface; both test files route every type through the kernel.
+- Sandbox: wrapper + its tests deleted; family tests stay.
+- Workbench: representation-only tile descriptor; standalone row spec;
+  golden test file removed as superseded.
+- Core: deprecations, registry alias, playbook section "The action kernel";
+  version bumps; full rebuild and seven-suite sweep (1224).
+
+### Why
+- The kernel's value claim was always "adding a variable/action touches one
+  declaration"; P7 is where the old path stops being an option for any code
+  in this repository, which is what keeps the claim true.
+
+### What worked
+- The golden-audit protocol held for the third time: eleven-type migration,
+  zero label diffs, one reviewed semantic diff class (disabled rows without
+  verbs — established in P3).
+- The member owner test exposed exactly the right contract change: it had
+  been reading verbs off DISABLED rows; the kernel refuses to bind those, and
+  the adapted test now asserts the absence.
+
+### What didn't work
+- Two over-eager python edits: the sandbox deletion swallowed
+  `substituteRef` (restored), and a stale export (`GeneratedActionsOptions`)
+  lingered in the sandbox index. Both caught by tsc within a minute.
+
+### What was tricky to build
+- Preserving eleven different menus' row orders under inherited
+  Inspect/Watch at fixed orders 13/14: tile and workspace needed their tail
+  rows pushed to 20/21 so the inherited rows land exactly where Inspect used
+  to sit. Checked by goldens, not by argument.
+
+### What warrants a second pair of eyes
+- The delete-vs-deprecate adjudication above — if the team prefers the source
+  guide's hard deletion in 0.7.0, it is now a small mechanical commit
+  (legacy.ts, actionsFor, conversions, the tombstoned fields, and the fence
+  tests' descriptor-actions fixtures).
+- Deferred from the §29 definition of done, recorded rather than skipped
+  silently: Storybook stories for inheritance/ambiguity/hidden/translator
+  choice (all semantics are test-covered; stories are a docs artifact), and
+  the optional chat `pbuiAction` provenance wiring from §18.5.
+
+### What should be done in the future
+- Next major: the four deletions above.
+- Products may now reintroduce visual menu groups deliberately (the order
+  space note in the fragment docstring).
+- OPTKIT-022's ragttc product should be written kernel-native from day one —
+  the guide's §8 coordination section stands.
+
+### Code review instructions
+- `git show 9dc7768` — read `datalab-ui/src/pbui/actions.ts` end to end (it
+  is now the complete written form of datalab's menu system), then the
+  workbench actions.test.ts row spec, then the playbook section.
+- Full sweep: `pnpm build && pnpm -r build && pnpm -r test` (1224 tests).
+
+### Technical details
+- Final suites: root 168, protocol 44, workbench 125, sandbox 104,
+  datalab 533, chat 237, demo 13.
+- Commit ladder: P0 fbfa492 → P1 b58e23b → P2 db3269e → P3 e33f213 →
+  P4 7f528d2 → P5 37b51d6 → P6 ae29000 → P7 9dc7768 (docs commits between).
