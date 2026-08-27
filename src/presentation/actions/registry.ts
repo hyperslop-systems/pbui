@@ -8,6 +8,8 @@ import type {
 } from "./types";
 import type { PredicateId, RuntimeTypeId, ScopeId } from "./ids";
 import { resolveActions } from "./resolve";
+import { vocabularyOf } from "./vocabulary";
+import type { ActionVocabulary } from "./vocabulary";
 import type { PreparedRegistry } from "./resolve";
 import type { PresentationTypeGraph } from "./typeGraph";
 
@@ -54,6 +56,13 @@ export interface ActionRegistry<Values extends PresentationValues, ProductFacts,
     scopes: readonly ScopeId[],
   ): readonly ReachableContribution[];
   diagnostics(): readonly RegistryDiagnostic[];
+  /**
+   * The agent-facing vocabulary generated from this registry's graph and
+   * contributions (PBUI-ACTIONS-3 B2): serializable, snapshot-free, suitable
+   * for a build-step export with a golden JSON test. See vocabulary.ts for
+   * what is deliberately absent (verbs, dynamic labels, family instances).
+   */
+  vocabulary(): ActionVocabulary;
 }
 
 export interface CreateActionRegistryOptions<
@@ -244,5 +253,6 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
     explain: (query, snapshot) => resolveActions(prepared, query, snapshot),
     listReachable,
     diagnostics,
+    vocabulary: () => vocabularyOf(graph, contributions, version),
   };
 }
