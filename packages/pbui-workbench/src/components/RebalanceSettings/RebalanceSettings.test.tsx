@@ -1,15 +1,17 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { useSyncExternalStore } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { createWorkbench } from "../../createWorkbench";
 import { layout, split, tile } from "../../document";
-import { DEFAULT_REBALANCE_CONFIG, profileConfig } from "../../rebalance/config";
+import { DEFAULT_REBALANCE_CONFIG, profileConfig, type RebalanceConfig } from "../../rebalance/config";
 import {
   readRebalanceConfig,
   rebalanceConfigMutation,
   REBALANCE_CONFIG_DOC_ID,
 } from "../../rebalance/configDocument";
+import type { RebalanceConfigStore } from "../../rebalance/configStore";
 import { demoApps } from "../../stories/demoApps";
-import { rebalanceSettingsApp } from "./RebalanceSettings";
+import { createRebalanceSettingsApp, rebalanceSettingsApp } from "./RebalanceSettings";
 
 afterEach(cleanup);
 
@@ -73,6 +75,54 @@ describe("RebalanceSettings tile", () => {
     expect(stored?.profile).toBe("careful");
     expect(stored?.allow.topology).toBe(false);
     expect(stored?.minInlinePx).toBe(333); // constraints survive the switch
+  });
+
+  test("a product-supplied store replaces the document payload for BOTH the tile and the dialog", () => {
+    // An in-memory store: what a product with its own settings backend passes.
+    let current: RebalanceConfig = { ...profileConfig("balanced"), minInlinePx: 40, minBlockPx: 40 };
+    const listeners = new Set<() => void>();
+    const memory: RebalanceConfigStore = {
+      useConfig: () =>
+        useSyncExternalStore(
+          (listener) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+          },
+          () => current,
+        ),
+      save: (_host, next) => {
+        current = next;
+        for (const listener of listeners) listener();
+      },
+    };
+    const wb = createWorkbench({
+      apps: [...demoApps, createRebalanceSettingsApp({ store: memory })],
+      initial: layout(
+        split("row", 0.5, split("row", 0.9, tile("counter"), tile("notes")), tile("rebalance-settings")),
+      ),
+    });
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Rebalance configStore={memory} />
+      </>,
+    );
+    // The tile writes into the custom store, never into the document.
+    const checkbox = [...baseElement.querySelectorAll("label")]
+      .find((label) => /reorder tiles/.test(label.textContent ?? ""))
+      ?.querySelector("input");
+    act(() => {
+      fireEvent.click(checkbox!);
+    });
+    expect(current.profile).toBe("custom");
+    expect(wb.store.getState().document.documents[REBALANCE_CONFIG_DOC_ID]).toBeUndefined();
+    // The dialog reads the same store: the 40px floor makes the layout healthy.
+    act(() => {
+      wb.perform({ kind: "rebalance.open" });
+    });
+    expect(baseElement.querySelector('[data-part="rebalance-diagnosis"]')?.textContent).toMatch(
+      /every tile clears its minimum/,
+    );
   });
 
   test("the dialog reads the persisted config: a tiny floor makes a skewed layout healthy", () => {

@@ -4,8 +4,8 @@ import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import { panesOf, toAnalysis, layoutBinary, type Rect } from "../../rebalance/analysisTree";
-import { DEFAULT_REBALANCE_CONFIG, type RebalanceConfig } from "../../rebalance/config";
-import { readRebalanceConfig } from "../../rebalance/configDocument";
+import type { RebalanceConfig } from "../../rebalance/config";
+import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
 import { TIERS } from "../../rebalance/measure";
 import { buildSlate, type Proposal, type RebalanceSlate } from "../../rebalance/slate";
 import type { RebalanceProps } from "../../types";
@@ -25,7 +25,7 @@ import styles from "./RebalanceDialog.module.css";
  * deliberately does NOT register an escape surface of its own (surfaces.ts:
  * one surface, one registration).
  */
-export function WorkbenchRebalance({ shortcut = true, shortcutContext, config }: RebalanceProps) {
+export function WorkbenchRebalance({ shortcut = true, shortcutContext, config, configStore }: RebalanceProps) {
   const workbench = useWorkbench();
   const open = workbench.useWorkbenchState((state) => state.rebalanceOpen);
   const anySurfaceOpen = useAnyEscapeSurface();
@@ -63,7 +63,7 @@ export function WorkbenchRebalance({ shortcut = true, shortcutContext, config }:
     return () => window.removeEventListener("keydown", onKey, true);
   }, [shortcut, shortcutContext, anySurfaceOpen, workbench]);
 
-  return open ? <RebalanceModal config={config} /> : null;
+  return open ? <RebalanceModal config={config} configStore={configStore} /> : null;
 }
 
 /** Headless/story fallback when the Surface has no measurable box yet. */
@@ -112,12 +112,14 @@ function tileLabels(doc: WorkbenchDocument, workspaceId: string, appTitle: (appI
 }
 
 /** Remounted per opening, so selection and undo state start fresh. */
-function RebalanceModal({ config: configProp }: { config?: RebalanceConfig }) {
+function RebalanceModal({ config: configProp, configStore }: { config?: RebalanceConfig; configStore?: RebalanceConfigStore }) {
   const workbench = useWorkbench();
   const doc = workbench.useDocument();
-  // The prop wins (a product supplying its own config store); otherwise the
-  // persisted `pbui.rebalance-config` payload; otherwise the balanced profile.
-  const config = configProp ?? readRebalanceConfig(doc) ?? DEFAULT_REBALANCE_CONFIG;
+  // The store hook runs unconditionally (rules of hooks — keep the store
+  // identity stable); an explicit `config` prop then wins over it. Default
+  // store: the `pbui.rebalance-config` payload in the workbench document.
+  const storedConfig = (configStore ?? documentRebalanceConfigStore).useConfig(workbench);
+  const config = configProp ?? storedConfig;
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
   const [rect, setRect] = useState<Rect>(() => measureRect(workbench.root()));
   const [status, setStatus] = useState<string | null>(null);

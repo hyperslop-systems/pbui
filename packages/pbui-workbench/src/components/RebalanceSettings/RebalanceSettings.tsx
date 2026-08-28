@@ -1,31 +1,31 @@
 import { useEffect, useState } from "react";
 import { Button, CheckboxRow, Text, TextInput } from "@hyperslop-systems/pbui";
-import { defineApp, type AppProps } from "../../apps";
+import { defineApp, type AppDescriptor, type AppProps } from "../../apps";
 import { useWorkbench } from "../../context";
 import { profileConfig, REBALANCE_PROFILES, type RebalanceConfig, type RebalanceProfileName } from "../../rebalance/config";
-import { readRebalanceConfig, rebalanceConfigMutation } from "../../rebalance/configDocument";
-import { DEFAULT_REBALANCE_CONFIG } from "../../rebalance/config";
+import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
 import { GENERATORS } from "../../rebalance/slate";
 import styles from "./RebalanceSettings.module.css";
 
 /**
  * The rebalance settings tile (PBUI-REBALANCE-1, design-doc/01 §4.5): a
- * singleton application whose state is the `pbui.rebalance-config`
- * DocumentPayload in the workbench document. The rebalance dialog reads the
- * same payload, so this tile and the dialog are two doors to one config.
+ * singleton application editing the rebalance config through a
+ * `RebalanceConfigStore`. WHERE that config lives is the product's choice
+ * (configStore.ts): the default store keeps it in the workbench document as
+ * the `pbui.rebalance-config` DocumentPayload, and the rebalance dialog
+ * reads the same store — two doors, one config.
  *
- * Every control commits one `documentPut` per DISCRETE change — checkbox
- * toggles and blur/Enter on the number fields — never per keystroke, because
- * the document store's persistence subscriber fires per commit (store.ts).
+ * Every control commits one save per DISCRETE change — checkbox toggles and
+ * blur/Enter on the number fields — never per keystroke, because a store may
+ * persist on every commit (store.ts documents the failure mode).
  * Any manual deviation from a named profile flips `profile` to "custom".
  */
-export function RebalanceSettings(_props: AppProps) {
+export function RebalanceSettings({ store = documentRebalanceConfigStore }: AppProps & { store?: RebalanceConfigStore }) {
   const workbench = useWorkbench();
-  const doc = workbench.useDocument();
-  const config = readRebalanceConfig(doc) ?? DEFAULT_REBALANCE_CONFIG;
+  const config = store.useConfig(workbench);
 
   const save = (next: RebalanceConfig) => {
-    workbench.mutate([rebalanceConfigMutation(next)]);
+    store.save(workbench, next);
   };
   const patch = (partial: Partial<RebalanceConfig>) => save({ ...config, ...partial, profile: "custom" });
 
@@ -177,13 +177,35 @@ function NumberField({
   );
 }
 
-/** The application descriptor products register to offer the settings tile. */
-export const rebalanceSettingsApp = defineApp({
-  id: "rebalance-settings",
-  title: "Rebalance settings",
-  tone: "var(--pbui-tone-neutral)",
-  singleton: true,
-  group: "WORKBENCH",
-  blurb: "Choose how layout repair proposals are generated and ranked.",
-  Component: RebalanceSettings,
-});
+export interface RebalanceSettingsAppOptions {
+  /** Where the config lives; default: inside the workbench document. */
+  store?: RebalanceConfigStore;
+  id?: string;
+  title?: string;
+  tone?: string;
+  group?: string;
+  blurb?: string;
+}
+
+/**
+ * Build the settings-tile descriptor with a product-chosen config store.
+ * Pass the SAME store to `<wb.Rebalance configStore={…}/>` so the dialog and
+ * the tile agree on where the config lives.
+ */
+export function createRebalanceSettingsApp(options: RebalanceSettingsAppOptions = {}): AppDescriptor {
+  const store = options.store ?? documentRebalanceConfigStore;
+  return defineApp({
+    id: options.id ?? "rebalance-settings",
+    title: options.title ?? "Rebalance settings",
+    tone: options.tone ?? "var(--pbui-tone-neutral)",
+    singleton: true,
+    group: options.group ?? "WORKBENCH",
+    blurb: options.blurb ?? "Choose how layout repair proposals are generated and ranked.",
+    Component: function RebalanceSettingsTile(props: AppProps) {
+      return <RebalanceSettings {...props} store={store} />;
+    },
+  });
+}
+
+/** The default descriptor: config stored in the workbench document. */
+export const rebalanceSettingsApp = createRebalanceSettingsApp();

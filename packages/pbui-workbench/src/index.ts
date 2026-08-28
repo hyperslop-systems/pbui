@@ -80,7 +80,13 @@ export { WorkbenchSurface } from "./components/Surface";
 export { WorkbenchLauncher } from "./components/Launcher";
 export { WorkspaceStrip } from "./components/WorkspaceStrip";
 export { WorkbenchRebalance } from "./components/RebalanceDialog";
-export { RebalanceSettings, rebalanceSettingsApp } from "./components/RebalanceSettings";
+export { RebalanceSettings, rebalanceSettingsApp, createRebalanceSettingsApp } from "./components/RebalanceSettings";
+export type { RebalanceSettingsAppOptions } from "./components/RebalanceSettings";
+export {
+  documentRebalanceConfigStore,
+  createLocalStorageRebalanceConfigStore,
+} from "./rebalance/configStore";
+export type { RebalanceConfigHost, RebalanceConfigStore } from "./rebalance/configStore";
 export {
   readRebalanceConfig,
   rebalanceConfigMutation,

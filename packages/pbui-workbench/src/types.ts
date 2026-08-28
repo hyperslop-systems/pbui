@@ -4,6 +4,7 @@ import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop
 import type { AppDescriptor, AppRegistry } from "./apps";
 import type { LauncherRow, LauncherRowsContext } from "./launcherRows";
 import type { RebalanceConfig } from "./rebalance/config";
+import type { RebalanceConfigStore } from "./rebalance/configStore";
 import type { WorkbenchState, WorkbenchStore } from "./store";
 import type { WorkbenchVerb, WorkbenchVerbHandlers } from "./verbs";
 
@@ -85,11 +86,17 @@ export interface RebalanceProps {
   /** Same contract as `LauncherProps.shortcutContext` — the parts only the product knows. */
   shortcutContext?(): Partial<Pick<ShortcutContext, "objectMenuOpen" | "acceptingPresentation" | "renamingView">>;
   /**
-   * Repair configuration. Defaults to the balanced profile with the
-   * workbench's default pane constraints; the settings tile (Phase 5)
-   * supplies a persisted one here.
+   * Fully-controlled repair configuration; wins over `configStore`. Most
+   * products should prefer `configStore` so the settings tile stays live.
    */
   config?: RebalanceConfig;
+  /**
+   * Where the config lives (see rebalance/configStore.ts). Pass the SAME
+   * store to `createRebalanceSettingsApp({ store })`. Default: the
+   * `pbui.rebalance-config` DocumentPayload in the workbench document.
+   * Keep the identity stable across renders.
+   */
+  configStore?: RebalanceConfigStore;
 }
 
 export interface WorkbenchPlan {
