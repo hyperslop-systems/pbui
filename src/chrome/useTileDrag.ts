@@ -21,7 +21,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type DockZone = "left" | "right" | "top" | "bottom";
-export type DragZone = DockZone | "center";
+/**
+ * "replace" is the Alt-held drop (PBUI-REBALANCE-1): the dragged application
+ * takes over the WHOLE target tile — the target's content is replaced and the
+ * source tile closes. It covers the full rectangle regardless of where the
+ * pointer sits, and only exists while the consumer supplies `onReplace`.
+ */
+export type DragZone = DockZone | "center" | "replace";
 
 const TILES = new Map<string, HTMLElement>();
 
@@ -87,9 +93,15 @@ export interface UseTileDragOptions {
   onSwap(sourceId: string, targetId: string): void;
   /** The pointer released near another tile's edge. */
   onDock(sourceId: string, targetId: string, zone: DockZone): void;
+  /**
+   * The pointer released anywhere on another tile with Alt held: the source
+   * fully replaces the target. Omitting it disables the Alt mode entirely —
+   * Alt-drops then classify like plain drops.
+   */
+  onReplace?(sourceId: string, targetId: string): void;
 }
 
-export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
+export function useTileDrag({ id, onSwap, onDock, onReplace }: UseTileDragOptions): {
   /** Attach to the tile's root element (ref callback). */
   register(element: HTMLElement | null): void;
   /** Attach to the grip's onPointerDown. */
@@ -148,13 +160,29 @@ export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
         /* capture is an optimisation, not a precondition */
       }
 
+      // Alt can change mid-drag without the pointer moving, so the last
+      // position is kept and reclassified on both pointer moves and Alt
+      // keydown/keyup. The pointer event's own altKey keeps the two sources
+      // agreeing when a move and a key change race.
+      let lastPoint: { x: number; y: number } | null = null;
+      let altHeld = false;
+      const classify = () => {
+        const hit = lastPoint ? hitTest(lastPoint.x, lastPoint.y) : null;
+        const over = hit && hit.id !== id ? hit.id : null;
+        const zone: DragZone | null = over ? (altHeld && onReplace ? "replace" : (hit as { zone: DragZone }).zone) : null;
+        setDrag({ from: id, over, zone });
+      };
       const move = (moveEvent: PointerEvent) => {
-        const hit = hitTest(moveEvent.clientX, moveEvent.clientY);
-        setDrag({
-          from: id,
-          over: hit && hit.id !== id ? hit.id : null,
-          zone: hit && hit.id !== id ? hit.zone : null,
-        });
+        lastPoint = { x: moveEvent.clientX, y: moveEvent.clientY };
+        altHeld = moveEvent.altKey;
+        classify();
+      };
+      const altChange = (keyEvent: KeyboardEvent) => {
+        if (keyEvent.key !== "Alt") return;
+        // Keep the browser from moving focus to its menu bar mid-drag.
+        keyEvent.preventDefault();
+        altHeld = keyEvent.type === "keydown";
+        classify();
       };
 
       /**
@@ -172,6 +200,8 @@ export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
         window.removeEventListener("pointerup", up);
         window.removeEventListener("pointercancel", cancel);
         window.removeEventListener("blur", cancel);
+        window.removeEventListener("keydown", altChange);
+        window.removeEventListener("keyup", altChange);
         try {
           grip?.releasePointerCapture?.(pointerId);
         } catch {
@@ -180,7 +210,8 @@ export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
 
         if (!commit) return;
         if (!current?.over || !current.zone) return;
-        if (current.zone === "center") onSwap(current.from, current.over);
+        if (current.zone === "replace") onReplace?.(current.from, current.over);
+        else if (current.zone === "center") onSwap(current.from, current.over);
         else onDock(current.from, current.over, current.zone);
       };
       const up = () => finish(true);
@@ -191,8 +222,10 @@ export function useTileDrag({ id, onSwap, onDock }: UseTileDragOptions): {
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", cancel);
       window.addEventListener("blur", cancel);
+      window.addEventListener("keydown", altChange);
+      window.addEventListener("keyup", altChange);
     },
-    [id, onSwap, onDock],
+    [id, onSwap, onDock, onReplace],
   );
 
   return {

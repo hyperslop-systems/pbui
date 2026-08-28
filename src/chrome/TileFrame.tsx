@@ -33,6 +33,7 @@ export interface TileFrameProps {
   /** Overlay labels; override to localize or re-word per product. */
   swapLabel?: string;
   dockLabel?: string;
+  replaceLabel?: string;
   /** Attach useTileDrag's register here (ref callback for the hit test). */
   registerElement?(element: HTMLElement | null): void;
   children: ReactNode;
@@ -40,6 +41,7 @@ export interface TileFrameProps {
 
 const ZONE_GEOMETRY: Record<DragZone, React.CSSProperties> = {
   center: { inset: 0 },
+  replace: { inset: 0 },
   left: { left: 0, top: 0, bottom: 0, width: "50%" },
   right: { right: 0, top: 0, bottom: 0, width: "50%" },
   top: { top: 0, left: 0, right: 0, height: "50%" },
@@ -54,14 +56,18 @@ export function DropZoneOverlay({
   zone,
   swapLabel = "⇄ swap applications",
   dockLabel = "split-dock here · the source tile closes",
+  replaceLabel = "⌥ replace this tile — the dragged application takes it, the source closes",
 }: {
   zone: DragZone;
   swapLabel?: string;
   dockLabel?: string;
+  replaceLabel?: string;
 }) {
   return (
-    <div data-part="drop-zone" style={ZONE_GEOMETRY[zone]}>
-      <span data-part="drop-zone-label">{zone === "center" ? swapLabel : dockLabel}</span>
+    <div data-part="drop-zone" data-zone={zone} style={ZONE_GEOMETRY[zone]}>
+      <span data-part="drop-zone-label">
+        {zone === "replace" ? replaceLabel : zone === "center" ? swapLabel : dockLabel}
+      </span>
     </div>
   );
 }
@@ -78,6 +84,7 @@ export function TileFrame({
   dragging,
   swapLabel,
   dockLabel,
+  replaceLabel,
   registerElement,
   children,
 }: TileFrameProps) {
@@ -88,13 +95,13 @@ export function TileFrame({
       data-placement-id={placementId}
       data-state={dragging ? "dragging" : undefined}
     >
-      {dropZone && <DropZoneOverlay zone={dropZone} swapLabel={swapLabel} dockLabel={dockLabel} />}
+      {dropZone && <DropZoneOverlay zone={dropZone} swapLabel={swapLabel} dockLabel={dockLabel} replaceLabel={replaceLabel} />}
       <header data-part="tile-bar" style={{ background: tone }}>
         {grip && (
           <span
             data-part="tile-grip"
             onPointerDown={grip.onPointerDown}
-            title="drag ⠿ — drop on a tile's centre to swap, near an edge to dock there"
+            title="drag ⠿ — drop on a tile's centre to swap, near an edge to dock there, hold Alt to replace it"
             aria-hidden="true"
           >
             ⠿

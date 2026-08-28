@@ -168,6 +168,98 @@ describe("useTileDrag lifecycle", () => {
   });
 });
 
+/**
+ * The Alt-held drop replaces the whole target tile (PBUI-REBALANCE-1). Alt is
+ * live state: pressing it mid-hover reclassifies without a pointer move, and
+ * releasing it falls back to the plain zone. Without an `onReplace` consumer
+ * the modifier is inert.
+ */
+describe("useTileDrag Alt-replace", () => {
+  function ReplaceTile({
+    id,
+    left,
+    onSwap,
+    onDock,
+    onReplace,
+  }: {
+    id: string;
+    left: number;
+    onSwap: (a: string, b: string) => void;
+    onDock: (a: string, b: string, zone: string) => void;
+    onReplace?: (a: string, b: string) => void;
+  }) {
+    const drag = useTileDrag({ id, onSwap, onDock, ...(onReplace ? { onReplace } : {}) });
+    return (
+      <section
+        ref={(element) => {
+          if (element) element.getBoundingClientRect = () => box(100, 100, left) as DOMRect;
+          drag.register(element);
+        }}
+        data-placement-id={id}
+        data-zone={drag.zone ?? undefined}
+        data-testid={`tile-${id}`}
+      >
+        <button type="button" data-testid={`grip-${id}`} onPointerDown={drag.onGripPointerDown} />
+      </section>
+    );
+  }
+
+  function setup(withReplace = true) {
+    const onSwap = vi.fn();
+    const onDock = vi.fn();
+    const onReplace = vi.fn();
+    render(
+      <>
+        <ReplaceTile id="alt-a" left={0} onSwap={onSwap} onDock={onDock} {...(withReplace ? { onReplace } : {})} />
+        <ReplaceTile id="alt-b" left={200} onSwap={onSwap} onDock={onDock} {...(withReplace ? { onReplace } : {})} />
+      </>,
+    );
+    return { onSwap, onDock, onReplace };
+  }
+
+  function pointer(type: string, options: { x?: number; y?: number; altKey?: boolean } = {}) {
+    fireEvent(
+      window,
+      new MouseEvent(type, { clientX: options.x ?? 250, clientY: options.y ?? 50, altKey: options.altKey ?? false, bubbles: true }),
+    );
+  }
+
+  test("Alt held during the move classifies the whole tile as replace and commits it", () => {
+    const { onSwap, onReplace } = setup();
+    fireEvent.pointerDown(screen.getByTestId("grip-alt-a"), { pointerId: 1 });
+    // Near B's left edge — WOULD be a dock, but Alt covers the whole tile.
+    pointer("pointermove", { x: 210, altKey: true });
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("replace");
+    pointer("pointerup", { x: 210, altKey: true });
+    expect(onReplace).toHaveBeenCalledWith("alt-a", "alt-b");
+    expect(onSwap).not.toHaveBeenCalled();
+  });
+
+  test("pressing and releasing Alt mid-hover reclassifies without a pointer move", () => {
+    const { onSwap, onReplace } = setup();
+    fireEvent.pointerDown(screen.getByTestId("grip-alt-a"), { pointerId: 1 });
+    pointer("pointermove"); // B's centre, no Alt
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("center");
+    fireEvent.keyDown(window, { key: "Alt" });
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("replace");
+    fireEvent.keyUp(window, { key: "Alt" });
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("center");
+    pointer("pointerup");
+    expect(onSwap).toHaveBeenCalledWith("alt-a", "alt-b");
+    expect(onReplace).not.toHaveBeenCalled();
+  });
+
+  test("without an onReplace consumer, Alt is inert and the drop swaps", () => {
+    const { onSwap, onReplace } = setup(false);
+    fireEvent.pointerDown(screen.getByTestId("grip-alt-a"), { pointerId: 1 });
+    pointer("pointermove", { altKey: true });
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("center");
+    pointer("pointerup", { altKey: true });
+    expect(onSwap).toHaveBeenCalledWith("alt-a", "alt-b");
+    expect(onReplace).not.toHaveBeenCalled();
+  });
+});
+
 describe("TileFrame", () => {
   test("wires the split and close callbacks and respects canClose", () => {
     const onSplit = vi.fn();
