@@ -58,3 +58,12 @@ Phase 4: WorkspaceSetTree mutation (proto+TS+Go+parity fixtures), workspace.setT
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/structural.ts — Reshape/rebuild engines and emitBinary (commit 686b923)
 
+
+## 2026-08-28
+
+Wired the rebalance dialog + settings tile into the pbui-chat demo (the family reference product) and verified end-to-end in the browser: Broken story diagnosis/apply/undo loop and Ctrl+Shift+K in the Gold Coin Shop; demo tests 13/13
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-chat/demo/src/App.tsx — Rebalance dialog mounted beside the launcher
+
