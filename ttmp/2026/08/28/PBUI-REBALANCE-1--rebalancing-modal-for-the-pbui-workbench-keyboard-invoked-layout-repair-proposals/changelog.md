@@ -67,3 +67,12 @@ Wired the rebalance dialog + settings tile into the pbui-chat demo (the family r
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-chat/demo/src/App.tsx — Rebalance dialog mounted beside the launcher
 
+
+## 2026-08-28
+
+Fixed measureDividerPx reading a column divider's full span as the gap (inflated diagnosis + clumped thumbnails, reported from the 8-tile demo); added the Workbench/RebalanceLab story — repair-lab-2's LAYOUTS panel as a standalone test workspace (9 presets + seeded RANDOM). Browser-verified: SKINNY COL reshape applies to zero violations; demo diagnosis sane (commit f91885a)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/stories/RebalanceLab.stories.tsx — The standalone broken-layout test workspace (commit f91885a)
+

@@ -449,3 +449,60 @@ the same `plan`/`applyPlan` door as resize batches.
 ### Technical details
 - Mutation: `workspaceSetTree { workspaceId, rootPlacement }`; errors `invalid_mutation` / `unknown_workspace`; views no longer placed are NOT deleted (rebalance never drops views by construction).
 - Emission ratio at each chain step: `px[i] / (pairExtent)` where pairExtent = remaining extent − divider, clamped to [0.05, 0.95].
+
+## Step 7: The divider-thickness bug and the Rebalance Lab
+
+The user exercised the demo with eight tiles and sent a screenshot showing nonsense numbers
+("needs 1996×1676 · only 6 tiles fit") and thumbnails that looked nothing like the layout.
+Root cause: `measureDividerPx` read `.width` off the FIRST rendered `[data-part=
+"split-divider"]` — but a COLUMN divider is a full-width track, so a ~700px span was measured
+as the gap thickness. Every propagation number inflated, capacity collapsed, and
+`layoutAnalysis` drew panes clumped between giant phantom gaps. Fix: the track's thickness is
+its SMALLER dimension (`Math.min(width, height)`), regression-tested with both orientations.
+
+The user also asked for a standalone test workspace with the repair lab's broken-layout
+generators. Built `Workbench/RebalanceLab` — a story harness porting repair-lab-2's LAYOUTS
+panel: nine presets (HEALTHY, SLIVER, FOUR DONORS, COMPOUND, SKINNY COL, WIDE ROW 9, MASTER
+SWARM, MIXED MESS, TOO MANY 5×4) built as mass-ratio `LayoutSpec` chains, plus seeded RANDOM
+skewed trees, with the dialog, launcher, and settings tile all mounted.
+
+### Prompt Context
+
+**User prompt (verbatim):** "The rebalance part is weird. Can you actually make a standalone workspace for testing that has similar \"broken layout controls generation\" as the attached demo lab? [screenshot] Here also I think the preview is kind of broken."
+
+**Assistant interpretation:** Diagnose why the dialog's numbers/thumbnails looked wrong in the 8-tile demo, and build a dedicated test workspace with preset broken-layout generators like repair-lab-2's LAYOUTS panel.
+
+**Inferred user intent:** Make the feature trustworthy and easy to exercise against every failure mode without hand-building degenerate layouts.
+
+**Commit (code):** f91885a — "pbui-workbench: fix divider thickness measurement + rebalance lab story (PBUI-REBALANCE-1)"
+
+### What I did
+- Fixed `measureDividerPx` (min dimension = track thickness); exported it and added a three-case regression test (column divider 700×10 → 10, row divider 10×500 → 10, unmeasurable → default).
+- `src/stories/RebalanceLab.stories.tsx`: the lab harness — `chain()` mass-ratio LayoutSpec builder, `grid()`, seeded `randomSpec` with skew, preset buttons, RANDOM reroll, REBALANCE button + Ctrl+Shift+K, per-preset note line. Workbench recreated per pick (nonce-keyed useMemo) so every preset starts clean.
+- Browser-verified end-to-end: SKINNY COL diagnosis now reads "needs 490×1010 · exceeds the workspace" with thumbnails matching the real layout; RESHAPE (+1 agree) wears PICK, applies to zero violations ("Applied RESHAPE (one move) — structure changed, 7/7 tiles, 1916px"), workspace visibly regrouped; the demo app's diagnosis dropped from 1996×1676 to a sane 990×670; settings tile placed via Ctrl+K renders and edits.
+
+### Why
+- Stories are exempt from the folder-per-component and raw-controls rules, so the harness could stay one file; it is served by the already-running Storybook, which is what "standalone test workspace" needs in practice.
+
+### What worked
+- One-line root cause; all 186 workbench tests green after the fix; both broken symptoms (numbers and thumbnails) resolved by the same change, confirming the diagnosis.
+
+### What didn't work
+- First regression-test draft passed a bare object to `measureDividerPx`; jsdom's `getComputedStyle` rejects non-Elements (`TypeError: The provided value is not of type 'Element'`). Rewrote with real DOM elements and a stubbed `getBoundingClientRect`.
+
+### What I learned
+- `verbs.ts`'s own `dividerSize` already avoided this bug by taking `row ? width : height` — the dialog's copy diverged from the precedent it was copying. When duplicating a measurement helper, duplicate its orientation handling too (or export and share it — future cleanup).
+
+### What was tricky to build
+- Nothing structurally; the bug was subtle only because BOTH symptoms (inflated needs, clumped thumbnails) looked like adapter math errors while the adapter was exact — the corrupted input was upstream. The lab story now makes this class of regression visible in seconds.
+
+### What warrants a second pair of eyes
+- `measureDividerPx` still measures only the FIRST divider; a product with mixed divider thicknesses (none exist today) would need per-split measurement like `ratioBounds` does.
+- Consider sharing one divider-measurement helper between `verbs.ts` and the dialog instead of two copies.
+
+### What should be done in the future
+- Fold the lab story's preset builders into shared test fixtures if a second consumer appears; remaining P6 items unchanged.
+
+### Code review instructions
+- Diff of `RebalanceDialog.tsx` (`measureDividerPx`) + its new test block; then `src/stories/RebalanceLab.stories.tsx`.
+- Validate: `./node_modules/.bin/vitest run` (186) and open `Workbench/RebalanceLab` in Storybook: SKINNY COL → REBALANCE → the RESHAPE card should read "all fit" and apply cleanly.
