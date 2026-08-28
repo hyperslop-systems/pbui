@@ -8,8 +8,8 @@
  */
 export { TileFrame, DropZoneOverlay } from "./TileFrame";
 export type { TileFrameProps } from "./TileFrame";
-export { useTileDrag, zoneFor, registeredTileCount } from "./useTileDrag";
-export type { DockZone, DragZone, UseTileDragOptions } from "./useTileDrag";
+export { useTileDrag, zoneFor, registeredTileCount, startTileCarry } from "./useTileDrag";
+export type { DockZone, DragZone, TileCarryOptions, UseTileDragOptions } from "./useTileDrag";
 export { LauncherShell, splitDirectionFor } from "./LauncherShell";
 export type {
   LauncherShellGroup,

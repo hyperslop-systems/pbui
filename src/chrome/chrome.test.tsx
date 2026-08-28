@@ -2,13 +2,13 @@
  * The chrome kit (PBUI-UNIFY-001 Phase 2): zone geometry, drag registry
  * hygiene, the tile frame's callbacks, and the launcher shell's keyboard loop.
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { useState } from "react";
 import { LauncherShell } from "./LauncherShell";
 import { routeWorkbenchKey, isEditableTarget, isModKey, type ShortcutContext } from "./shortcutRouting";
 import { TileFrame } from "./TileFrame";
-import { registeredTileCount, useTileDrag, zoneFor } from "./useTileDrag";
+import { registeredTileCount, startTileCarry, useTileDrag, zoneFor } from "./useTileDrag";
 
 afterEach(cleanup);
 
@@ -257,6 +257,105 @@ describe("useTileDrag Alt-replace", () => {
     pointer("pointerup", { altKey: true });
     expect(onSwap).toHaveBeenCalledWith("alt-a", "alt-b");
     expect(onReplace).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * A carry is placement mode (PBUI-REBALANCE-1): a launcher choice aimed at
+ * the tiles with a free pointer. Overlays classify exactly like a drag, the
+ * next pointerdown commits (and never reaches the tile's content), Escape
+ * and empty-space clicks cancel, Enter takes the caller's default.
+ */
+describe("startTileCarry (placement mode)", () => {
+  function CarryTile({ id, left }: { id: string; left: number }) {
+    const drag = useTileDrag({ id, onSwap: () => {}, onDock: () => {} });
+    return (
+      <section
+        ref={(element) => {
+          if (element) element.getBoundingClientRect = () => box(100, 100, left) as DOMRect;
+          drag.register(element);
+        }}
+        data-zone={drag.zone ?? undefined}
+        data-carrying={drag.carrying ? "true" : undefined}
+        data-testid={`carry-${id}`}
+      />
+    );
+  }
+
+  function setup(options: Partial<import("./useTileDrag").TileCarryOptions> = {}) {
+    const onDrop = vi.fn();
+    const onCancel = vi.fn();
+    const onDefault = vi.fn();
+    render(
+      <>
+        <CarryTile id="carry-a" left={0} />
+        <CarryTile id="carry-b" left={200} />
+      </>,
+    );
+    let cancel!: () => void;
+    act(() => {
+      cancel = startTileCarry({ onDrop, onCancel, onDefault, ...options });
+    });
+    return { onDrop, onCancel, onDefault, cancel: () => act(cancel) };
+  }
+
+  function pointer(type: string, options: { x?: number; y?: number; altKey?: boolean } = {}) {
+    fireEvent(
+      window,
+      new MouseEvent(type, { clientX: options.x ?? 250, clientY: options.y ?? 50, altKey: options.altKey ?? false, bubbles: true }),
+    );
+  }
+
+  afterEach(() => {
+    // No carry may outlive its test.
+    fireEvent.keyDown(window, { key: "Escape" });
+  });
+
+  test("tiles see the carry: overlays classify and the click commits the drop", () => {
+    const { onDrop, onCancel } = setup();
+    expect(screen.getByTestId("carry-carry-a").dataset.carrying).toBe("true");
+    pointer("pointermove", { x: 210 }); // near B's left edge
+    expect(screen.getByTestId("carry-carry-b").dataset.zone).toBe("left");
+    pointer("pointerdown", { x: 210 });
+    expect(onDrop).toHaveBeenCalledWith("carry-b", "left");
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByTestId("carry-carry-a").dataset.carrying).toBeUndefined();
+  });
+
+  test("Alt classifies the whole tile as replace, live from the keyboard", () => {
+    const { onDrop } = setup();
+    pointer("pointermove", { x: 210 });
+    fireEvent.keyDown(window, { key: "Alt" });
+    expect(screen.getByTestId("carry-carry-b").dataset.zone).toBe("replace");
+    fireEvent.keyUp(window, { key: "Alt" });
+    expect(screen.getByTestId("carry-carry-b").dataset.zone).toBe("left");
+    pointer("pointerdown", { x: 210, altKey: true });
+    expect(onDrop).toHaveBeenCalledWith("carry-b", "replace");
+  });
+
+  test("Escape cancels; a click on empty space cancels; Enter takes the default", () => {
+    const first = setup();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(first.onCancel).toHaveBeenCalledTimes(1);
+    expect(first.onDrop).not.toHaveBeenCalled();
+
+    const second = setup();
+    pointer("pointerdown", { x: 900 }); // outside every tile
+    expect(second.onCancel).toHaveBeenCalledTimes(1);
+
+    const third = setup();
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(third.onDefault).toHaveBeenCalledTimes(1);
+    expect(third.onDrop).not.toHaveBeenCalled();
+  });
+
+  test("a second carry cancels the first; cancel is idempotent", () => {
+    const first = setup();
+    const second = setup();
+    expect(first.onCancel).toHaveBeenCalledTimes(1);
+    second.cancel();
+    second.cancel();
+    expect(second.onCancel).toHaveBeenCalledTimes(1);
   });
 });
 

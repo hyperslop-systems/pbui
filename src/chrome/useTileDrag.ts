@@ -31,6 +31,14 @@ export type DragZone = DockZone | "center" | "replace";
 
 const TILES = new Map<string, HTMLElement>();
 
+/**
+ * The `from` id of a CARRY — placement mode (PBUI-REBALANCE-1): something not
+ * yet on screen (a launcher choice) is being aimed at the tiles. It reuses
+ * the drag state so every tile's overlay machinery works unchanged, and it
+ * can never collide with a placement id (NUL is not valid in one).
+ */
+const CARRY_ID = "\u0000carry";
+
 interface DragState {
   from: string;
   over: string | null;
@@ -86,6 +94,108 @@ export function registeredTileCount(): number {
   return TILES.size;
 }
 
+export interface TileCarryOptions {
+  /** A click landed on a tile; `zone` is where (Alt held → "replace"). */
+  onDrop(targetId: string, zone: DragZone): void;
+  /** Escape, a click outside every tile, or a second carry starting. */
+  onCancel(): void;
+  /** Enter pressed: commit to the caller's default spot. Omit to make Enter inert. */
+  onDefault?(): void;
+  /** Offer the Alt = replace classification; default true. */
+  allowReplace?: boolean;
+}
+
+let activeCarryCancel: (() => void) | null = null;
+
+/**
+ * Placement mode: aim something new at the existing tiles (PBUI-REBALANCE-1).
+ *
+ * Where a drag starts from a tile and follows a held pointer, a carry starts
+ * from a CHOICE (the launcher's) and follows a free-moving pointer: tiles
+ * show the same drop-zone overlays, Alt switches to replace exactly as in a
+ * drag, and the next pointerdown commits. The pointerdown is intercepted in
+ * the CAPTURE phase so the click never reaches the application under it —
+ * the workspace is inert while a placement is being aimed.
+ *
+ * Returns a cancel function (idempotent); starting a second carry cancels the
+ * first.
+ */
+export function startTileCarry(options: TileCarryOptions): () => void {
+  activeCarryCancel?.();
+  const allowReplace = options.allowReplace ?? true;
+  let lastPoint: { x: number; y: number } | null = null;
+  let altHeld = false;
+  let finished = false;
+
+  const classify = (): { id: string; zone: DragZone } | null => {
+    const hit = lastPoint ? hitTest(lastPoint.x, lastPoint.y) : null;
+    if (!hit) return null;
+    return { id: hit.id, zone: altHeld && allowReplace ? "replace" : hit.zone };
+  };
+  const publish = () => {
+    const hit = classify();
+    setDrag({ from: CARRY_ID, over: hit?.id ?? null, zone: hit?.zone ?? null });
+  };
+
+  const finish = (outcome: { drop?: { id: string; zone: DragZone }; byDefault?: boolean } | null) => {
+    if (finished) return;
+    finished = true;
+    if (activeCarryCancel === cancel) activeCarryCancel = null;
+    setDrag(null);
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerdown", down, true);
+    window.removeEventListener("keydown", key, true);
+    window.removeEventListener("keyup", key, true);
+    window.removeEventListener("blur", onBlur);
+    if (outcome?.drop) options.onDrop(outcome.drop.id, outcome.drop.zone);
+    else if (outcome?.byDefault) options.onDefault?.();
+    else options.onCancel();
+  };
+  const cancel = () => finish(null);
+
+  const move = (event: PointerEvent) => {
+    lastPoint = { x: event.clientX, y: event.clientY };
+    altHeld = event.altKey;
+    publish();
+  };
+  const down = (event: PointerEvent) => {
+    // Capture phase: the aiming click must never reach the tile's content.
+    event.preventDefault();
+    event.stopPropagation();
+    lastPoint = { x: event.clientX, y: event.clientY };
+    altHeld = event.altKey;
+    const hit = classify();
+    finish(hit ? { drop: hit } : null); // clicking empty space cancels
+  };
+  const key = (event: KeyboardEvent) => {
+    if (event.key === "Alt") {
+      event.preventDefault();
+      altHeld = event.type === "keydown";
+      publish();
+      return;
+    }
+    if (event.type !== "keydown") return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      cancel();
+    } else if (event.key === "Enter" && options.onDefault) {
+      event.preventDefault();
+      finish({ byDefault: true });
+    }
+  };
+  const onBlur = () => cancel();
+
+  setDrag({ from: CARRY_ID, over: null, zone: null });
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerdown", down, true);
+  window.addEventListener("keydown", key, true);
+  window.addEventListener("keyup", key, true);
+  window.addEventListener("blur", onBlur);
+  activeCarryCancel = cancel;
+  return cancel;
+}
+
 export interface UseTileDragOptions {
   /** This tile's placement id; also the registry key. */
   id: string;
@@ -110,6 +220,8 @@ export function useTileDrag({ id, onSwap, onDock, onReplace }: UseTileDragOption
   dragging: boolean;
   /** Non-null on the tile currently targeted, naming the zone. */
   zone: DragZone | null;
+  /** A CARRY (placement mode) is active — overlays mean "place", not "move". */
+  carrying: boolean;
 } {
   const [state, setState] = useState<DragState | null>(dragState);
   /** Set while a drag from THIS tile is live; called with commit=false to abandon. */
@@ -233,5 +345,6 @@ export function useTileDrag({ id, onSwap, onDock, onReplace }: UseTileDragOption
     onGripPointerDown,
     dragging: state?.from === id,
     zone: state?.over === id ? state.zone : null,
+    carrying: state?.from === CARRY_ID,
   };
 }
