@@ -76,3 +76,12 @@ Fixed measureDividerPx reading a column divider's full span as the gap (inflated
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/stories/RebalanceLab.stories.tsx — The standalone broken-layout test workspace (commit f91885a)
 
+
+## 2026-08-28
+
+Config storage is now product-injectable: RebalanceConfigStore contract (useConfig hook + save), createRebalanceSettingsApp({store}) factory, RebalanceProps.configStore; defaults unchanged (document payload); localStorage store shipped as alternative; 187 tests (commit 748273d)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/configStore.ts — The storage seam and both stock implementations (commit 748273d)
+

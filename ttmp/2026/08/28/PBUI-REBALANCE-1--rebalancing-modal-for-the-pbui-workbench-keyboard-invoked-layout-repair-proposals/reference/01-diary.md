@@ -506,3 +506,55 @@ skewed trees, with the dialog, launcher, and settings tile all mounted.
 ### Code review instructions
 - Diff of `RebalanceDialog.tsx` (`measureDividerPx`) + its new test block; then `src/stories/RebalanceLab.stories.tsx`.
 - Validate: `./node_modules/.bin/vitest run` (186) and open `Workbench/RebalanceLab` in Storybook: SKINNY COL → REBALANCE → the RESHAPE card should read "all fit" and apply cleanly.
+
+## Step 8: Pluggable config storage (RebalanceConfigStore)
+
+The user asked where settings are stored and required that the answer be the importing
+product's choice. Until now the settings tile hard-wrote the `pbui.rebalance-config`
+DocumentPayload. Extracted the storage into a two-method store contract —
+`useConfig(host)` (a React hook, so any backend can re-render the dialog/tile on change) and
+`save(host, config)` — with the document-payload behaviour as the default implementation and
+a ready-made localStorage store (per-browser, cross-tab via the `storage` event) as the
+shipped alternative.
+
+### Prompt Context
+
+**User prompt (verbatim):** "where are the settings stored?" / "(that should be configurable by the app importing the package)"
+
+**Assistant interpretation:** Answer the storage question and turn the storage location into a product-injectable seam.
+
+**Inferred user intent:** Products embedding pbui-workbench have their own settings backends; the package must not dictate persistence.
+
+**Commit (code):** 748273d — "pbui-workbench: pluggable RebalanceConfigStore — the importing product chooses where settings live (PBUI-REBALANCE-1)"
+
+### What I did
+- `rebalance/configStore.ts`: `RebalanceConfigHost` (the structural slice of `Workbench` stores need — avoids a types.ts import cycle), `RebalanceConfigStore` contract, `documentRebalanceConfigStore` (default; unchanged behaviour), `createLocalStorageRebalanceConfigStore(key)` (cached snapshot keyed by raw string so `useSyncExternalStore` never loops; storage-event subscription; corrupt/blocked storage degrades to defaults). Flagged in its module comment as the ONE React-aware module under `rebalance/`.
+- `createRebalanceSettingsApp({ store, id, title, tone, group, blurb })` factory; `rebalanceSettingsApp` stays as the default instance. `RebalanceSettings` takes `store` as a prop.
+- `RebalanceProps.configStore` on the dialog; resolution: `config` prop (fully controlled) → store hook (called unconditionally per rules-of-hooks; store identity must stay stable, documented) → the default document store.
+- Test: an in-memory store injected into both the tile factory and `<wb.Rebalance configStore>` — a checkbox toggle lands in the custom store, `document.documents` stays empty, and the dialog's diagnosis proves it read the custom config. 187 tests green; dist rebuilt.
+
+### Why
+- A hook-shaped `useConfig` is the minimal contract that keeps reactivity working for arbitrary backends (Redux selector, server subscription, localStorage) without the package prescribing any of them.
+
+### What worked
+- Everything on the first run except a forgotten re-export (`index.ts` for the component folder) — one-line fix.
+
+### What didn't work
+- N/A beyond the re-export typecheck error.
+
+### What I learned
+- The demo already persists the whole document to localStorage on every mutation (`workbench.ts` `onMutate → persistDocument`), so with the DEFAULT store the demo's rebalance settings were already durable — the seam is about products that want a different home, not about making persistence work.
+
+### What was tricky to build
+- **Hook discipline at the seam.** The dialog must call the store hook unconditionally even when a `config` prop overrides it; and `useSyncExternalStore` needs a cached snapshot (fresh objects loop the render) — cached by the raw localStorage string.
+
+### What warrants a second pair of eyes
+- The contract requires stable store identity across renders (rules of hooks); it is documented on both `RebalanceProps.configStore` and the interface, but nothing enforces it.
+- `createLocalStorageRebalanceConfigStore.save` notifies listeners even when `setItem` threw (the snapshot then re-reads the old value — honest, but a reviewer may prefer surfacing the failure).
+
+### What should be done in the future
+- If a product wants per-workspace configs, the store contract already permits it (read the workspace id off the host's state); document an example when the need appears.
+
+### Code review instructions
+- `rebalance/configStore.ts` (the contract + both implementations), then the small diffs in `RebalanceSettings.tsx` (factory) and `RebalanceDialog.tsx` (resolution order), then the in-memory-store test.
+- Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (187).
