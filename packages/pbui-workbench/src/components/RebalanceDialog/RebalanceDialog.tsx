@@ -75,10 +75,18 @@ function measureRect(element: HTMLElement | null): Rect {
   return { x: 0, y: 0, w: Math.round(box.width), h: Math.round(box.height) };
 }
 
-function measureDividerPx(element: HTMLElement | null): number {
+export function measureDividerPx(element: HTMLElement | null): number {
   const rendered = element?.querySelector<HTMLElement>('[data-part="split-divider"]');
-  const width = rendered?.getBoundingClientRect().width ?? 0;
-  if (Number.isFinite(width) && width > 0) return width;
+  if (rendered) {
+    // The track's THICKNESS is its smaller dimension: a row divider is tall
+    // and ~10px wide, a column divider is wide and ~10px tall. Reading
+    // `.width` unconditionally once measured a column divider's full ~700px
+    // span as the gap, inflating every propagation number and clumping the
+    // thumbnails (PBUI-REBALANCE-1 diary step 7).
+    const box = rendered.getBoundingClientRect();
+    const thickness = Math.min(box.width, box.height);
+    if (Number.isFinite(thickness) && thickness > 0) return thickness;
+  }
   if (element && typeof getComputedStyle === "function") {
     const token = Number.parseFloat(getComputedStyle(element).getPropertyValue("--pbui-space-4"));
     if (Number.isFinite(token) && token > 0) return token;

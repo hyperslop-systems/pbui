@@ -21,6 +21,23 @@ function rootRatio(node: Node | undefined): number {
   return node.body.value.ratio;
 }
 
+describe("measureDividerPx", () => {
+  test("reads the track's THICKNESS, not a column divider's full span", async () => {
+    const { measureDividerPx } = await import("./RebalanceDialog");
+    const fake = (width: number, height: number) => {
+      const root = document.createElement("div");
+      const divider = document.createElement("div");
+      divider.setAttribute("data-part", "split-divider");
+      divider.getBoundingClientRect = () => ({ width, height }) as DOMRect;
+      root.append(divider);
+      return root;
+    };
+    expect(measureDividerPx(fake(700, 10))).toBe(10); // column divider: wide, thin
+    expect(measureDividerPx(fake(10, 500))).toBe(10); // row divider: tall, narrow
+    expect(measureDividerPx(fake(0, 0))).toBe(10); // unmeasurable → default (jsdom has no token)
+  });
+});
+
 describe("RebalanceDialog", () => {
   test("Mod+Shift+K opens it; cards render with a recommendation and the diagnosis", () => {
     const wb = brokenWorkbench();
