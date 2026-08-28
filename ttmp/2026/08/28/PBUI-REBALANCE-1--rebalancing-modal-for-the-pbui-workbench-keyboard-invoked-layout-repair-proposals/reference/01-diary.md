@@ -558,3 +558,37 @@ shipped alternative.
 ### Code review instructions
 - `rebalance/configStore.ts` (the contract + both implementations), then the small diffs in `RebalanceSettings.tsx` (factory) and `RebalanceDialog.tsx` (resolution order), then the in-memory-store test.
 - Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (187).
+
+## Step 9: Click-to-commit gesture
+
+Interaction change requested by the user: a plain click on a proposal card now APPLIES it and
+CLOSES the dialog — the card is the choice, not a selection step. Shift+click applies but
+keeps the dialog open (the inspect/compare/undo loop from the lab), and the footer gains an
+explicit "Apply + close" primary button next to the stay-open "Apply". Clicking LEAVE AS IS
+just closes; double-click accept was removed as subsumed.
+
+### Prompt Context
+
+**User prompt (verbatim):** "per default, clicking on a layout not only focuses it, but also applies it and closes the modal. It's when you shift click that it stays open. And add a button \"apply + close\" which applies and closes the modal."
+
+**Assistant interpretation:** Invert the default card gesture from select-then-apply to apply-and-dismiss, with Shift as the hold-open modifier, plus an explicit Apply + close button.
+
+**Inferred user intent:** One-gesture repair: the common case is "that one, do it" — the compare/undo workflow is the exception and earns the modifier.
+
+**Commit (code):** (see git log — card click applies + closes)
+
+### What I did
+- `apply(proposal, { close })`: close-path dismisses via `verbs.closeRebalance()` after a successful commit (refusal/staleness keeps it open with the status line); `none`-kind proposals close without mutating.
+- `ProposalCard.onActivate(event)` replaces onSelect/onApply; `close: !event.shiftKey`. Footer: "Apply + close" (raised), "Apply" (framed, stay-open), "Undo". Hint + card tooltips updated.
+- Tests: plain click applies and closes (ratio changed, `rebalanceOpen` false); LEAVE AS IS click closes untouched; structural test rewritten to Shift+click (applies, stays open, Undo restores). 189 green; verified live in the lab story (click → dialog gone).
+
+### What warrants a second pair of eyes
+- Apply-and-close skips arming Undo (the modal unmounts with the ref) — deliberate, matches the gesture's finality; Shift+click remains the undoable path. Worth confirming this trade-off is wanted.
+- Out-of-policy (greyed) cards also commit on click — the gate constrains the recommendation, not the user's explicit hand (lab precedent). Flag if greyed cards should refuse clicks instead.
+
+### What should be done in the future
+- N/A beyond the open P6 items.
+
+### Code review instructions
+- `RebalanceDialog.tsx` diff (`apply` options, footer, `onActivate`); the three gesture tests in `RebalanceDialog.test.tsx`.
+- Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (189).

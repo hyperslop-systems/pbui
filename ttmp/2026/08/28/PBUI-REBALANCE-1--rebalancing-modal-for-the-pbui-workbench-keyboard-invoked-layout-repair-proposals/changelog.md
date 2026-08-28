@@ -85,3 +85,12 @@ Config storage is now product-injectable: RebalanceConfigStore contract (useConf
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/configStore.ts — The storage seam and both stock implementations (commit 748273d)
 
+
+## 2026-08-28
+
+Gesture change: card click applies + closes, Shift+click applies + stays open (undoable), new Apply + close button; 189 tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx — Click-to-commit gesture and footer buttons
+
