@@ -592,3 +592,63 @@ just closes; double-click accept was removed as subsumed.
 ### Code review instructions
 - `RebalanceDialog.tsx` diff (`apply` options, footer, `onActivate`); the three gesture tests in `RebalanceDialog.test.tsx`.
 - Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (189).
+
+## Step 10: Alt-drag replaces the target tile
+
+Added a third drag-drop outcome to the family chrome: holding Alt while dragging a tile turns
+the WHOLE target into one drop zone, and releasing makes the target show the dragged tile's
+view while the source tile closes — the layout loses one tile, the target's rectangle
+survives, and the target's old view is deleted when nothing else places it. Built bottom-up
+in three commits: the protocol mutation recipe, the chrome gesture, the workbench verb and
+wiring — each layer tested before the next consumed it.
+
+### Prompt Context
+
+**User prompt (verbatim):** "add Alt when dragging to fully replace the target tile. commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)"
+
+**Assistant interpretation:** A new drag modifier: Alt-drop fully replaces the target tile (target keeps its spot, shows the dragged app, source closes), implemented across chrome + protocol + workbench with layered commits and a diary step.
+
+**Inferred user intent:** Complete the drag vocabulary — swap (centre), dock (edge), and now replace (Alt) — so rearranging never needs a close-then-drag two-step.
+
+**Commit (code):** 6b0963e (protocol builder) · 4805c0f (chrome gesture) · 32ee733 (workbench verb + wiring)
+
+### What I did
+- `workbench-protocol/client/builders.ts` — `replacePlacement(doc, sourceId, targetId)`: `placementReplace` on the target, `placementClose` on the source (the source view has its NEW placement before the old one closes — dockPlacement's anti-GC ordering), `viewDelete` for the target's old view iff `placementCount === 1`. Linked twins (same view both sides) collapse to `closePlacement(source)`. Two client tests incl. the twins case (48 green).
+- `src/chrome/useTileDrag.ts` — `DragZone` gains `"replace"`; optional `onReplace` callback gates the whole mode (products without it see zero behaviour change). Alt is LIVE state: the hook keeps the last pointer position and reclassifies on `pointermove` (whose own `altKey` is authoritative) AND on window `keydown`/`keyup` of Alt (preventDefault so the browser menu never steals focus mid-drag); listeners torn down through the existing single-exit `finish`. `DropZoneOverlay` gets full-rect geometry for `replace`, a `replaceLabel` default, and a `data-zone` attribute for product styling; grip tooltip mentions Alt. Three lifecycle tests: Alt near an edge classifies replace (not dock) and commits `onReplace`; pressing/releasing Alt mid-hover flips center↔replace with NO pointer move; without `onReplace` the modifier is inert (177 root tests green).
+- `pbui-workbench` — `tile.replaceWith {source, target}` verb end-to-end (factory `workbenchVerbs.replaceWith`, validation, description "replace that tile with this one", handler over `replacePlacement`, dispatch); the handler moves `activePlacementId` from the closed source to the target so the active id never points at a dead tile. `Tile` supplies `onReplace` to `useTileDrag`; `replaceLabel` threads `SurfaceProps → Tile → TileFrame`. Three workbench tests: full replace (view moved, orphan deleted, active followed), self-drop/missing-placement refusals, the data door (192 green).
+- Live browser check in the lab story: synthetic Alt-drag over Storybook took 3 tiles to 2 with the target showing the dragged view.
+
+### Why
+- Bottom-up layering means each commit is independently green and reviewable, and the chrome stays document-model-agnostic (DR-U3): it reports a gesture; only the workbench knows what "replace" means in mutations.
+- Reusing `placementReplace`/`placementClose`/`viewDelete` means NO protocol change and no new applier semantics — the gesture is pure composition.
+
+### What worked
+- Every layer green on its first full run (one stale-dist typecheck hiccup aside); the existing single-exit `finish` teardown absorbed the two new key listeners without new lifecycle cases.
+
+### What didn't work
+- `tsc` failed with `no exported member 'replacePlacement'` until the protocol dist was rebuilt — the recurring workspace-links-resolve-against-dist lesson (steps 4, 7).
+- In the live-browser probe the overlay read back `null`: the synchronous DOM read ran before React re-rendered the drop zone. The commit path itself proved out (tile count 3 → 2); overlay classification is covered by the chrome unit test instead.
+
+### What I learned
+- The lab's drag machinery had no modifier concept at all; threading one through cleanly required treating the modifier as reclassification INPUT (position + alt → zone) rather than a separate mode flag on the state — that is what makes mid-hover Alt presses work without pointer movement.
+
+### What was tricky to build
+- **Alt without movement.** `pointermove` carries `altKey`, but a user hovering still and tapping Alt generates no pointer event — so the hook stores `lastPoint` and reclassifies from key events too, while letting each pointer event's own `altKey` overwrite the flag so the two signal sources cannot disagree for long.
+- **Who dies, who survives.** Replace must keep the TARGET's placement id (its rectangle, its focus identity) while transplanting the SOURCE's view — the inverse instinct (move the source placement) would rebuild geometry for no reason. The orphan-view rule then falls out of `placementCount` on the pre-mutation document.
+
+### What warrants a second pair of eyes
+- `preventDefault()` on window-level Alt keydown during a drag is deliberate (browser menu steal) but global for the drag's duration — confirm no product needs Alt+something else mid-drag.
+- Cross-workspace replace is theoretically expressible via the verb (drag can't produce it; the registry only holds rendered tiles). The applier would refuse when the source is its workspace's last tile; otherwise it works. Flag if it should be explicitly refused instead.
+- The replace overlay label defaults to prose with ⌥ — macOS reads Alt as Option; wording may want per-platform treatment.
+
+### What should be done in the future
+- datalab-ui/agentlogic/turboproof consume the chrome kit: they get the mode only when they pass `onReplace` — a one-line adoption each, deliberately left to their owners.
+- A `data-zone="replace"` style (e.g. danger-tinted overlay) in chrome.css would make the destructive-ish outcome visually distinct; deferred as product styling.
+
+### Code review instructions
+- Read in commit order: `replacePlacement` + its two client tests; `useTileDrag.ts` diff (classify/altChange/finish) + the three Alt tests; `verbs.ts` replaceWith handler + the three workbench tests; then the mechanical label threading.
+- Validate: `cd packages/workbench-protocol && ./node_modules/.bin/vitest run` (48) · root `pnpm --include-workspace-root --filter @hyperslop-systems/pbui test` (177) · `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (192). By hand: lab story → drag a grip over a tile, tap Alt — the overlay flips to "⌥ replace this tile…" and covers the whole rect; release.
+
+### Technical details
+- Mutation recipe: `[placementReplace(target ← sourceView), placementClose(source), viewDelete(oldTargetView)?]`; twins → `closePlacement(source)`.
+- Zone precedence on drop: `replace` (Alt + onReplace) → `center`/edges as before.

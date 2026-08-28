@@ -94,3 +94,12 @@ Gesture change: card click applies + closes, Shift+click applies + stays open (u
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx — Click-to-commit gesture and footer buttons
 
+
+## 2026-08-28
+
+Alt-drag replace: DragZone 'replace' with live Alt reclassification in chrome (opt-in via onReplace), replacePlacement protocol builder, tile.replaceWith verb wired into the workbench Tile; 48+177+192 tests green; browser-verified in the lab (commits 6b0963e, 4805c0f, 32ee733)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/src/chrome/useTileDrag.ts — Alt-held reclassification and the replace commit path (commit 4805c0f)
+
