@@ -9,7 +9,7 @@ import { readRebalanceConfig } from "../../rebalance/configDocument";
 import { TIERS } from "../../rebalance/measure";
 import { buildSlate, type Proposal, type RebalanceSlate } from "../../rebalance/slate";
 import type { RebalanceProps } from "../../types";
-import { DEFAULT_DIVIDER_PX } from "../../verbs";
+import { DEFAULT_DIVIDER_PX, type WorkbenchVerb } from "../../verbs";
 import styles from "./RebalanceDialog.module.css";
 
 /**
@@ -142,11 +142,15 @@ function RebalanceModal({ config: configProp }: { config?: RebalanceConfig }) {
 
   const apply = (proposal: Proposal | null) => {
     if (!proposal) return;
-    if (proposal.apply.kind !== "resize-batch") {
+    if (proposal.apply.kind === "none") {
       setStatus(proposal.baseline ? "Kept the layout as it is." : "This proposal has nothing to apply.");
       return;
     }
-    const planned = workbench.plan(proposal.apply.verbs);
+    const verbs: WorkbenchVerb[] =
+      proposal.apply.kind === "resize-batch"
+        ? proposal.apply.verbs
+        : [{ kind: "workspace.setTree", workspaceId, tree: proposal.apply.tree }];
+    const planned = workbench.plan(verbs);
     if (!planned.ok) {
       setStatus(`Refused: ${planned.error}`);
       return;

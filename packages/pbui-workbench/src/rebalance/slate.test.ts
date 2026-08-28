@@ -2,9 +2,10 @@ import { describe, expect, test } from "vitest";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { profileConfig, type RebalanceConfig } from "./config";
 import { buildSlate, type RebalanceInput } from "./slate";
-import { BOOK, fourDonors, healthy, sliver, wideRow9 } from "./testTrees";
+import { BOOK, col, fourDonors, healthy, pane, row, skinnyCol, sliver, wideRow9 } from "./testTrees";
 
 const ALL = ["ripple", "ripple-slack", "sparse", "project", "balance"];
+const STRUCTURAL = ["reshape-1", "reshape-4", "rebuild-grid", "rebuild-master", "rebuild-columns"];
 
 function input(tree: Node): RebalanceInput {
   return { tree, rect: BOOK.rect, dividerPx: BOOK.gap, labels: new Map() };
@@ -87,6 +88,45 @@ describe("buildSlate", () => {
   test("disabled generators do not run", () => {
     const slate = buildSlate(input(fourDonors()), cfg({ enabledGenerators: ["ripple"] }));
     expect(slate.proposals.every((p) => p.baseline || p.id === "ripple")).toBe(true);
+  });
+
+  test("SKINNY COL: only structural proposals reach zero violations, and one wins the PICK", () => {
+    const slate = buildSlate(input(skinnyCol()), cfg({ enabledGenerators: [...ALL, ...STRUCTURAL] }));
+    expect(slate.diagnosis.fits).toBe(false);
+    const weightCards = slate.proposals.filter((p) => !p.baseline && (p.tier === 1 || p.tier === 2));
+    for (const card of weightCards) expect(card.stats.viol).toBeGreaterThan(0);
+    const fixed = slate.proposals.filter((p) => p.stats.viol === 0);
+    expect(fixed.length).toBeGreaterThan(0);
+    for (const card of fixed) expect(card.tier).toBeGreaterThanOrEqual(4);
+    const recommended = slate.proposals.find((p) => p.recommended);
+    expect(recommended?.stats.viol).toBe(0);
+    expect(recommended?.apply.kind).toBe("set-tree");
+  });
+
+  test("CAREFUL policy greys structural repairs with the reason, and never recommends them", () => {
+    const careful = {
+      ...cfg({ enabledGenerators: [...ALL, ...STRUCTURAL] }),
+      allow: { reorder: false, topology: false, rebuild: false, overflow: false },
+    };
+    const slate = buildSlate(input(skinnyCol()), careful);
+    const structural = slate.proposals.filter((p) => p.tier >= 4);
+    expect(structural.length).toBeGreaterThan(0);
+    for (const card of structural) {
+      expect(card.policy.ok).toBe(false);
+      expect(card.policy.reason).toMatch(/changes the tree|rebuilds the layout/);
+      expect(card.recommended).toBe(false);
+    }
+  });
+
+  test("a rebuild that lands on the same geometry is measured tier 0, not declared NEW", () => {
+    // A 2×2 equal grid rebuilt as a grid reproduces itself: the proposal
+    // merges into LEAVE AS IS instead of claiming a rebuild happened.
+    const grid = row(col(pane("A"), pane("C"), 0.5), col(pane("B"), pane("D"), 0.5), 0.5);
+    const slate = buildSlate(input(grid), cfg({ enabledGenerators: ["rebuild-grid"] }));
+    const baseline = slate.proposals[0];
+    expect(baseline?.baseline).toBe(true);
+    expect(baseline?.agrees).toContain("REBUILD (grid)");
+    expect(slate.proposals.filter((p) => p.tier === 5)).toEqual([]);
   });
 
   test("diagnosis reaches the slate: COMPOUND-free HEALTHY reports fits + capacity", () => {

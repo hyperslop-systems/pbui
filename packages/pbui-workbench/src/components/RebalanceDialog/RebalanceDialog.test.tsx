@@ -85,6 +85,52 @@ describe("RebalanceDialog", () => {
     expect(wb.store.getState().rebalanceOpen).toBe(false);
   });
 
+  test("a structural proposal applies through workspace.setTree and Undo restores", () => {
+    // A column of four 160px-min tiles needs 4·160 + 3·10 = 670px of height
+    // on a 640px fallback screen — impossible for weights, fixed by reshape.
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(
+        split(
+          "row",
+          0.5,
+          tile("counter"),
+          split("col", 0.25, tile("notes"), split("col", 1 / 3, tile("counter"), split("col", 0.5, tile("counter"), tile("counter")))),
+        ),
+      ),
+    });
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Rebalance />
+      </>,
+    );
+    act(() => {
+      wb.perform({ kind: "rebalance.open" });
+    });
+    const beforeDoc = wb.store.getState().document;
+    const structuralCard = [...baseElement.querySelectorAll('[data-part="rebalance-card"]')].find((card) =>
+      /RESHAPE|REBUILD/.test(card.textContent ?? ""),
+    );
+    expect(structuralCard).toBeDefined();
+    act(() => {
+      fireEvent.click(structuralCard!);
+    });
+    const apply = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Apply");
+    act(() => {
+      fireEvent.click(apply!);
+    });
+    const afterTree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
+    const beforeTree = workspaceTree(beforeDoc, wb.store.getState().workspaceId);
+    expect(afterTree).not.toEqual(beforeTree); // the tree was replaced wholesale
+    expect(baseElement.querySelector('[data-part="rebalance-status"]')?.textContent).toMatch(/Applied/);
+    const undo = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Undo");
+    act(() => {
+      fireEvent.click(undo!);
+    });
+    expect(wb.store.getState().document).toBe(beforeDoc);
+  });
+
   test("a healthy layout collapses to LEAVE AS IS with agreeing generators", () => {
     const wb = createWorkbench({
       apps: demoApps,

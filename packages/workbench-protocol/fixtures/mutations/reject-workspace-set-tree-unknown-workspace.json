@@ -1,0 +1,43 @@
+{
+  "name": "reject-workspace-set-tree-unknown-workspace",
+  "document": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "workbench-1",
+    "name": "Production",
+    "workspaces": [
+      {
+        "id": "workspace-a",
+        "name": "Overview",
+        "tree": {
+          "id": "placement-a",
+          "leaf": {
+            "viewId": "view-chart"
+          }
+        }
+      }
+    ],
+    "views": {
+      "view-chart": {
+        "id": "view-chart",
+        "appId": "chart"
+      }
+    },
+    "viewOrder": [
+      "view-chart"
+    ]
+  },
+  "mutation": {
+    "workspaceSetTree": {
+      "workspaceId": "workspace-b",
+      "rootPlacement": {
+        "id": "placement-a",
+        "leaf": {
+          "viewId": "view-chart"
+        }
+      }
+    }
+  },
+  "error": true,
+  "errorCode": "unknown_workspace"
+}

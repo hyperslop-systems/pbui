@@ -59,6 +59,18 @@ func applyMutation(document *Document, mutation *Mutation) error {
 		})
 		return nil
 
+	case *workbenchv1.Mutation_WorkspaceSetTree:
+		value := body.WorkspaceSetTree
+		if value == nil || value.RootPlacement == nil {
+			return invalid("invalid_mutation", "workspaceSetTree", "root placement is required")
+		}
+		workspace := workspaceByID(document, value.WorkspaceId)
+		if workspace == nil {
+			return invalid("unknown_workspace", "workspaceSetTree.workspaceId", "workspace %q does not exist", value.WorkspaceId)
+		}
+		workspace.Tree = cloneNode(value.RootPlacement)
+		return nil
+
 	case *workbenchv1.Mutation_WorkspaceRename:
 		value := body.WorkspaceRename
 		if value == nil {

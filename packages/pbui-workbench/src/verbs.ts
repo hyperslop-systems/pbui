@@ -98,6 +98,7 @@ export type WorkbenchVerb =
   | { kind: "view.rebind"; viewId: string; documents: Record<string, string> }
   | { kind: "workspace.select"; workspaceId: string }
   | { kind: "workspace.create"; name: string; spec?: LayoutSpec; workspaceId?: string; select?: boolean }
+  | { kind: "workspace.setTree"; workspaceId: string; tree: Node }
   | { kind: "workspace.rename"; workspaceId: string; name: string }
   | { kind: "workspace.delete"; workspaceId: string }
   | { kind: "workspace.clone"; workspaceId: string; name?: string; newWorkspaceId?: string; select?: boolean }
@@ -145,6 +146,7 @@ export const workbenchVerbs = {
   ): WorkbenchVerb => ({ kind: "workspace.create", name, ...(spec ? { spec } : {}), ...options }),
   renameWorkspace: (workspaceId: string, name: string): WorkbenchVerb => ({ kind: "workspace.rename", workspaceId, name }),
   deleteWorkspace: (workspaceId: string): WorkbenchVerb => ({ kind: "workspace.delete", workspaceId }),
+  setWorkspaceTree: (workspaceId: string, tree: Node): WorkbenchVerb => ({ kind: "workspace.setTree", workspaceId, tree }),
   cloneWorkspace: (
     workspaceId: string,
     options: { name?: string; newWorkspaceId?: string; select?: boolean } = {},
@@ -202,6 +204,8 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
       return string("name") && optionalString("workspaceId") && (verb.select === undefined || typeof verb.select === "boolean");
     case "workspace.rename":
       return string("workspaceId") && string("name");
+    case "workspace.setTree":
+      return string("workspaceId") && Boolean(verb.tree) && typeof verb.tree === "object" && !Array.isArray(verb.tree);
     case "workspace.clone":
       return (
         string("workspaceId") &&
@@ -256,6 +260,8 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return `rename the workspace to “${verb.name}”`;
     case "workspace.delete":
       return "delete this workspace and its tiles";
+    case "workspace.setTree":
+      return "replace this workspace's tile arrangement";
     case "workspace.clone":
       return "duplicate this workspace";
     case "view.goTo":
@@ -342,6 +348,13 @@ export interface WorkbenchVerbHandlers {
    * back to the first survivor when the deleted one was on screen.
    */
   deleteWorkspace(workspaceId: string): boolean;
+  /**
+   * Replace a workspace's placement tree wholesale (PBUI-REBALANCE-1): the
+   * door structural layout repairs apply through. Leaves must reference
+   * existing views; the caller is responsible for keeping the leaf set equal
+   * to the workspace's current placements (rebalance never adds or drops).
+   */
+  setWorkspaceTree(workspaceId: string, tree: Node): boolean;
   /**
    * Duplicate a workspace's tree. A duplicable application's view is CLONED
    * (the copy is independent); a singleton's or a `duplicable:false`
@@ -951,6 +964,9 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     return true;
   };
 
+  const setWorkspaceTree: WorkbenchVerbHandlers["setWorkspaceTree"] = (workspaceId, tree) =>
+    store.mutate([mutation({ case: "workspaceSetTree", value: { workspaceId, rootPlacement: tree } })]);
+
   const cloneWorkspace: WorkbenchVerbHandlers["cloneWorkspace"] = (workspaceId, options = {}) => {
     const current = doc();
     const source = current.workspaces.find((item) => item.id === workspaceId);
@@ -1033,6 +1049,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     createWorkspace,
     renameWorkspace,
     deleteWorkspace,
+    setWorkspaceTree,
     cloneWorkspace,
     goToView,
     openLauncher: (placementId) => store.setState({ launcherOpen: true, launcherFrom: placementId ?? null }),
@@ -1102,6 +1119,8 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       return handlers.renameWorkspace(verb.workspaceId, verb.name);
     case "workspace.delete":
       return handlers.deleteWorkspace(verb.workspaceId);
+    case "workspace.setTree":
+      return handlers.setWorkspaceTree(verb.workspaceId, verb.tree);
     case "workspace.clone":
       return (
         handlers.cloneWorkspace(verb.workspaceId, {

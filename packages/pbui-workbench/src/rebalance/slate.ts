@@ -13,7 +13,8 @@ import type { RebalanceConfig } from "./config";
 import { classify, layoutStats, TIERS, type GeneratorKind, type LayoutStats, type Tier } from "./measure";
 import { diagnose, type Diagnosis, type PropagateConfig } from "./propagate";
 import { newRepairContext, repairPass } from "./repairPass";
-import { stratBalance, stratProject, stratRipple, stratSparse, type Strategy, type StrategyConfig } from "./strategies";
+import { stratBalance, stratProject, stratRipple, stratSparse, type RepairContext, type Strategy, type StrategyConfig } from "./strategies";
+import { algoRebuild, algoReshape, emitBinary, type RebuildTarget, type StructuralConfig } from "./structural";
 import type { TraceLine } from "./trace";
 
 /**
@@ -38,6 +39,7 @@ export interface RebalanceInput {
 
 export type ProposalApply =
   | { kind: "resize-batch"; verbs: WorkbenchVerb[] }
+  | { kind: "set-tree"; tree: Node }
   | { kind: "none" };
 
 export interface Proposal {
@@ -68,22 +70,55 @@ export interface RebalanceSlate {
   proposals: Proposal[];
 }
 
-interface GeneratorSpec {
-  id: string;
-  label: string;
-  note: string;
-  kind: GeneratorKind;
-  strategy: Strategy;
-  donorOrder?: StrategyConfig["donorOrder"];
-}
+type StructuralContext = RepairContext & { tree?: AnalysisNode; struct?: number };
 
-/** Weight generators (Phase 2). Structural generators arrive in Phase 4. */
+type GeneratorSpec =
+  | {
+      id: string;
+      label: string;
+      note: string;
+      kind: "weights";
+      strategy: Strategy;
+      donorOrder?: StrategyConfig["donorOrder"];
+    }
+  | {
+      id: string;
+      label: string;
+      note: string;
+      kind: Exclude<GeneratorKind, "weights" | "none">;
+      run(tree: AnalysisNode, rect: Rect, cfg: StructuralConfig, ctx: StructuralContext): Generator<TraceLine, void>;
+    };
+
+/** The candidate generators: weight repairs, then the structural engines. */
 export const GENERATORS: GeneratorSpec[] = [
   { id: "ripple", label: "RIPPLE", note: "nearest donor", kind: "weights", strategy: stratRipple, donorOrder: "near" },
   { id: "ripple-slack", label: "RIPPLE", note: "richest donor", kind: "weights", strategy: stratRipple, donorOrder: "slack" },
   { id: "sparse", label: "SPARSE", note: "fewest donors", kind: "weights", strategy: stratSparse },
   { id: "project", label: "PROJECT", note: "closest in L2", kind: "weights", strategy: stratProject },
   { id: "balance", label: "BALANCE", note: "every split 1/n", kind: "weights", strategy: stratBalance },
+  {
+    id: "reshape-1",
+    label: "RESHAPE",
+    note: "one move",
+    kind: "topology",
+    run: (tree, rect, cfg, ctx) => algoReshape(tree, rect, cfg, ctx, { maxMoves: 1, minGain: 0.05 }),
+  },
+  {
+    id: "reshape-4",
+    label: "RESHAPE",
+    note: "up to four",
+    kind: "topology",
+    run: (tree, rect, cfg, ctx) => algoReshape(tree, rect, cfg, ctx, { maxMoves: 4, minGain: 0.05 }),
+  },
+  ...(["grid", "master", "columns", "dwindle"] as RebuildTarget[]).map(
+    (target): GeneratorSpec => ({
+      id: `rebuild-${target}`,
+      label: "REBUILD",
+      note: target,
+      kind: "rebuild",
+      run: (tree, rect, cfg, ctx) => algoRebuild(tree, rect, cfg, ctx, target),
+    }),
+  ),
 ];
 
 const MAX_TRACE = 3000;
@@ -103,23 +138,46 @@ export function buildSlate(input: RebalanceInput, cfg: RebalanceConfig): Rebalan
   const candidates: Proposal[] = [];
   for (const gen of GENERATORS) {
     if (!cfg.enabledGenerators.includes(gen.id)) continue;
-    const tree = structuredClone(base);
-    const ctx = newRepairContext();
-    const scfg: StrategyConfig = {
+    const ctx: StructuralContext = newRepairContext();
+    const scfg: StructuralConfig = {
       minInlinePx: cfg.minInlinePx,
       minBlockPx: cfg.minBlockPx,
       dividerPx: input.dividerPx,
       hystPx: cfg.hystPx,
-      donorOrder: gen.donorOrder ?? cfg.donorOrder,
+      donorOrder: gen.kind === "weights" ? (gen.donorOrder ?? cfg.donorOrder) : cfg.donorOrder,
+      targetAspect: cfg.targetAspect,
     };
     const trace: TraceLine[] = [];
-    for (const line of repairPass(tree, input.rect, scfg, gen.strategy, ctx)) {
-      trace.push(line);
-      if (trace.length >= MAX_TRACE) break;
+    let tree: AnalysisNode;
+    if (gen.kind === "weights") {
+      tree = structuredClone(base);
+      for (const line of repairPass(tree, input.rect, scfg, gen.strategy, ctx)) {
+        trace.push(line);
+        if (trace.length >= MAX_TRACE) break;
+      }
+    } else {
+      for (const line of gen.run(base, input.rect, scfg, ctx)) {
+        trace.push(line);
+        if (trace.length >= MAX_TRACE) break;
+      }
+      tree = ctx.tree ?? structuredClone(base);
     }
     const stats = layoutStats(tree, input.rect, pcfg, beforeRects);
     const cls = classify(base, tree, gen.kind, stats);
-    const resizes = analysisToResizes(tree, input.rect, input.dividerPx);
+    // Weight-only results (structure preserved, chains valid) apply as a
+    // resize batch; anything structural replaces the workspace tree.
+    let apply: ProposalApply = { kind: "none" };
+    if (gen.kind === "weights") {
+      const resizes = analysisToResizes(tree, input.rect, input.dividerPx);
+      if (resizes.length > 0) {
+        apply = {
+          kind: "resize-batch",
+          verbs: resizes.map((r) => ({ kind: "split.resize", splitId: r.splitId, ratio: r.ratio }) as WorkbenchVerb),
+        };
+      }
+    } else if (cls.tier > 0) {
+      apply = { kind: "set-tree", tree: emitBinary(tree, input.rect, input.dividerPx) };
+    }
     candidates.push({
       id: gen.id,
       label: gen.label,
@@ -134,9 +192,7 @@ export function buildSlate(input: RebalanceInput, cfg: RebalanceConfig): Rebalan
       recommended: false,
       why: whyLine(gen.kind, cls.tier, trace),
       trace,
-      apply: resizes.length
-        ? { kind: "resize-batch", verbs: resizes.map((r) => ({ kind: "split.resize", splitId: r.splitId, ratio: r.ratio }) as WorkbenchVerb) }
-        : { kind: "none" },
+      apply,
       baseline: false,
     });
   }
@@ -226,7 +282,7 @@ function checkPolicy(p: Proposal, baseStats: LayoutStats, cfg: RebalanceConfig):
 }
 
 function whyLine(kind: GeneratorKind, tier: Tier, trace: TraceLine[]): string {
-  const detail = trace.map((l) => l.t).find((t) => /take |pays all|single donor|weights changed|sᵢ=1\//.test(t));
+  const detail = trace.map((l) => l.t).find((t) => /take |pays all|single donor|weights changed|sᵢ=1\/|assignment|accept /.test(t));
   const head =
     kind === "weights"
       ? "Weights only."

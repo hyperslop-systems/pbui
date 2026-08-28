@@ -80,7 +80,7 @@ export const REBALANCE_PROFILES: Record<RebalanceProfileName, RebalanceProfile> 
       allow: { reorder: true, topology: true, rebuild: false, overflow: true },
       budget: { panesPct: 100, dispPx: null },
       weights: { move: 1, struct: 3, aspect: 0.2 },
-      enabledGenerators: ["ripple", "sparse", "project", "balance"],
+      enabledGenerators: ["ripple", "sparse", "project", "balance", "reshape-1", "reshape-4"],
     },
   },
   tidy: {
@@ -91,7 +91,7 @@ export const REBALANCE_PROFILES: Record<RebalanceProfileName, RebalanceProfile> 
       allow: { reorder: true, topology: true, rebuild: true, overflow: true },
       budget: { panesPct: 100, dispPx: null },
       weights: { move: 0.25, struct: 0.3, aspect: 1.6 },
-      enabledGenerators: ["project", "balance"],
+      enabledGenerators: ["project", "balance", "reshape-4", "rebuild-grid", "rebuild-master", "rebuild-columns"],
     },
   },
   anything: {
@@ -102,7 +102,19 @@ export const REBALANCE_PROFILES: Record<RebalanceProfileName, RebalanceProfile> 
       allow: { reorder: true, topology: true, rebuild: true, overflow: true },
       budget: { panesPct: 100, dispPx: null },
       weights: { move: 1, struct: 1, aspect: 0.6 },
-      enabledGenerators: ["ripple", "ripple-slack", "sparse", "project", "balance"],
+      enabledGenerators: [
+        "ripple",
+        "ripple-slack",
+        "sparse",
+        "project",
+        "balance",
+        "reshape-1",
+        "reshape-4",
+        "rebuild-grid",
+        "rebuild-master",
+        "rebuild-columns",
+        "rebuild-dwindle",
+      ],
     },
   },
 };

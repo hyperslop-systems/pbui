@@ -100,3 +100,14 @@ export { layoutBinary, toAnalysis, layoutAnalysis, analysisToResizes, panesOf } 
 export type { AnalysisNode, APane, ASplit, ChainStep, Rect, SplitResize } from "./rebalance/analysisTree";
 export { TIERS, classify, layoutStats } from "./rebalance/measure";
 export type { Classification, GeneratorKind, LayoutStats, Tier } from "./rebalance/measure";
+export {
+  algoRebuild,
+  algoReshape,
+  emitBinary,
+  hungarian,
+  normalizeAnalysis,
+  REBUILD_TARGETS,
+  scoreTree,
+  structuralMutationsOf,
+} from "./rebalance/structural";
+export type { RebuildTarget, StructuralConfig, StructuralMutation, TreeScore } from "./rebalance/structural";
