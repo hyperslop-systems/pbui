@@ -56,11 +56,20 @@ export function WorkbenchLauncher({
       cancelCarryRef.current = null;
       if (placement) workbench.focusPlacement(placement);
     };
-    cancelCarryRef.current = startTileCarry({
-      onDrop: (target, zone) => done(workbench.verbs.placeAt(appId, target, zone)),
-      onDefault: () => done(workbench.verbs.place(appId)),
-      onCancel: () => done(null),
-    });
+    // A refused drop (the target cannot split that way — a sliver, say) does
+    // not end the mode: the carry re-arms so the user can aim elsewhere.
+    const arm = () => {
+      cancelCarryRef.current = startTileCarry({
+        onDrop: (target, zone) => {
+          const placement = workbench.verbs.placeAt(appId, target, zone);
+          if (placement) done(placement);
+          else arm();
+        },
+        onDefault: () => done(workbench.verbs.place(appId)),
+        onCancel: () => done(null),
+      });
+    };
+    arm();
   };
 
   // The store changes synchronously inside the click/key handler, before React
