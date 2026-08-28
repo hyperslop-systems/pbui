@@ -102,6 +102,45 @@ describe("RebalanceDialog", () => {
     expect(wb.store.getState().rebalanceOpen).toBe(false);
   });
 
+  test("a plain click on a card applies the proposal and closes the dialog", () => {
+    const wb = brokenWorkbench();
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Rebalance />
+      </>,
+    );
+    act(() => {
+      wb.perform({ kind: "rebalance.open" });
+    });
+    const ripple = baseElement.querySelector('[id="rebalance:ripple"]');
+    expect(ripple).toBeDefined();
+    act(() => {
+      fireEvent.click(ripple!);
+    });
+    const after = rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    expect(after).toBeLessThan(0.95); // applied…
+    expect(wb.store.getState().rebalanceOpen).toBe(false); // …and closed
+  });
+
+  test("clicking LEAVE AS IS just closes — the layout is untouched", () => {
+    const wb = brokenWorkbench();
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Rebalance />
+      </>,
+    );
+    act(() => {
+      wb.perform({ kind: "rebalance.open" });
+    });
+    act(() => {
+      fireEvent.click(baseElement.querySelector('[id="rebalance:none"]')!);
+    });
+    expect(rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId))).toBeCloseTo(0.95, 6);
+    expect(wb.store.getState().rebalanceOpen).toBe(false);
+  });
+
   test("a structural proposal applies through workspace.setTree and Undo restores", () => {
     // A column of four 160px-min tiles needs 4·160 + 3·10 = 670px of height
     // on a 640px fallback screen — impossible for weights, fixed by reshape.
@@ -130,16 +169,14 @@ describe("RebalanceDialog", () => {
       /RESHAPE|REBUILD/.test(card.textContent ?? ""),
     );
     expect(structuralCard).toBeDefined();
+    // Shift+click: apply but KEEP the dialog open, so Undo has a home.
     act(() => {
-      fireEvent.click(structuralCard!);
-    });
-    const apply = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Apply");
-    act(() => {
-      fireEvent.click(apply!);
+      fireEvent.click(structuralCard!, { shiftKey: true });
     });
     const afterTree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
     const beforeTree = workspaceTree(beforeDoc, wb.store.getState().workspaceId);
     expect(afterTree).not.toEqual(beforeTree); // the tree was replaced wholesale
+    expect(wb.store.getState().rebalanceOpen).toBe(true); // Shift held it open
     expect(baseElement.querySelector('[data-part="rebalance-status"]')?.textContent).toMatch(/Applied/);
     const undo = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Undo");
     act(() => {

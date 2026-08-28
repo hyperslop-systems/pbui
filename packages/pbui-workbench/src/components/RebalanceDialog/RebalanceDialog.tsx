@@ -150,9 +150,19 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
 
   const close = () => workbench.verbs.closeRebalance();
 
-  const apply = (proposal: Proposal | null) => {
+  /**
+   * Apply a proposal. `close: true` (the default gesture — a plain click on a
+   * card, or the Apply + close button) commits and dismisses the dialog;
+   * `close: false` (Shift+click, or the plain Apply button) keeps it open so
+   * the result can be inspected, compared, and undone.
+   */
+  const apply = (proposal: Proposal | null, options: { close: boolean }) => {
     if (!proposal) return;
     if (proposal.apply.kind === "none") {
+      if (options.close) {
+        close();
+        return;
+      }
       setStatus(proposal.baseline ? "Kept the layout as it is." : "This proposal has nothing to apply.");
       return;
     }
@@ -170,6 +180,10 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
       // The document moved between plan and apply; the slate recomputes from
       // the store subscription, so just say what happened.
       setStatus("The layout changed underneath — proposals recomputed.");
+      return;
+    }
+    if (options.close) {
+      close();
       return;
     }
     undoRef.current = before;
@@ -213,13 +227,20 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
       onClose={close}
       footer={
         <div className={styles.footer} data-part="rebalance-footer">
-          <Button variant="framed" onClick={() => apply(selected)} disabled={!selected || selected.apply.kind === "none"}>
+          <Button variant="raised" onClick={() => apply(selected, { close: true })} disabled={!selected}>
+            Apply + close
+          </Button>
+          <Button
+            variant="framed"
+            onClick={() => apply(selected, { close: false })}
+            disabled={!selected || selected.apply.kind === "none"}
+          >
             Apply
           </Button>
           <Button variant="bare" onClick={undo} disabled={!canUndo}>
             Undo
           </Button>
-          <span className={styles.hint}>←/→ select · Enter applies the focused button · Esc closes</span>
+          <span className={styles.hint}>click a card applies + closes · ⇧click keeps the dialog open · ←/→ select · Esc closes</span>
         </div>
       }
     >
@@ -255,8 +276,12 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
               proposal={proposal}
               selected={proposal === selected}
               config={config}
-              onSelect={() => setSelectedId(proposal.id)}
-              onApply={() => apply(proposal)}
+              onActivate={(event) => {
+                setSelectedId(proposal.id);
+                // The default gesture commits and dismisses; Shift holds the
+                // dialog open for the inspect / compare / undo loop.
+                apply(proposal, { close: !event.shiftKey });
+              }}
             />
           ))}
         </div>
@@ -286,14 +311,12 @@ function ProposalCard({
   proposal,
   selected,
   config,
-  onSelect,
-  onApply,
+  onActivate,
 }: {
   proposal: Proposal;
   selected: boolean;
   config: RebalanceConfig;
-  onSelect(): void;
-  onApply(): void;
+  onActivate(event: React.MouseEvent): void;
 }) {
   const out = !proposal.policy.ok;
   return (
@@ -303,9 +326,8 @@ function ProposalCard({
       id={`rebalance:${proposal.id}`}
       data-part="rebalance-card"
       className={[styles.card, selected ? styles.cardSelected : "", out ? styles.cardOut : ""].filter(Boolean).join(" ")}
-      onClick={onSelect}
-      onDoubleClick={onApply}
-      title={`${TIERS[proposal.tier].name} · ${proposal.agrees.join(", ")}`}
+      onClick={onActivate}
+      title={`${TIERS[proposal.tier].name} · ${proposal.agrees.join(", ")} · click applies + closes, ⇧click keeps the dialog open`}
     >
       <div className={styles.cardHead}>
         <span className={styles.tierChip}>{TIERS[proposal.tier].chip}</span>
