@@ -13,3 +13,12 @@ Created ticket; imported tiling-lab-1.html, repair-lab-2.html, tiling-repair-tex
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/verbs.ts — Application path (plan/applyPlan) and existing constraints the design builds on
 
+
+## 2026-08-28
+
+Phase 1: rebalance analysis core — pixel-exact binary⇄n-ary adapter with ChainStep provenance, propagate/violations/diagnose with textbook fixtures; 16 tests green (commit 1beac56)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/analysisTree.ts — Adapter with pixel-share weights and pixel-space write-back (commit 1beac56)
+
