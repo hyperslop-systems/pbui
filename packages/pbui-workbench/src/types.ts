@@ -30,6 +30,7 @@ export interface SurfaceProps {
   /** Drop-overlay labels, for products that word them differently. */
   swapLabel?: string;
   dockLabel?: string;
+  replaceLabel?: string;
 }
 
 /** What `renderWorkspace` learns about the workspace it is drawing. */

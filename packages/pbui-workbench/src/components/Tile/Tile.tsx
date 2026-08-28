@@ -7,7 +7,7 @@ import type { SurfaceProps, TilePlacementInfo } from "../../types";
 import { canClose as canClosePlacement } from "../../verbs";
 import styles from "./Tile.module.css";
 
-export interface TileProps extends Pick<SurfaceProps, "renderTitle" | "swapLabel" | "dockLabel"> {
+export interface TileProps extends Pick<SurfaceProps, "renderTitle" | "swapLabel" | "dockLabel" | "replaceLabel"> {
   node: Node;
 }
 
@@ -19,7 +19,7 @@ export interface TileProps extends Pick<SurfaceProps, "renderTitle" | "swapLabel
  * verbs, and hands the application a one-cell grid with a committed height.
  * It holds no application state and no layout logic of its own.
  */
-export function Tile({ node, renderTitle, swapLabel, dockLabel }: TileProps) {
+export function Tile({ node, renderTitle, swapLabel, dockLabel, replaceLabel }: TileProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const active = workbench.useWorkbenchState((state) => state.activePlacementId === node.id);
@@ -32,6 +32,7 @@ export function Tile({ node, renderTitle, swapLabel, dockLabel }: TileProps) {
     id: node.id,
     onSwap: (source, target) => workbench.verbs.swap(source, target),
     onDock: (source, target, zone) => workbench.verbs.dock(source, target, zone),
+    onReplace: (source, target) => workbench.verbs.replaceWith(source, target),
   });
 
   const label = view ? (view.title || (app ? (app.titleFor?.(view) ?? app.title) : view.appId)) : `missing view ${viewId}`;
@@ -87,6 +88,7 @@ export function Tile({ node, renderTitle, swapLabel, dockLabel }: TileProps) {
         registerElement={drag.register}
         swapLabel={swapLabel}
         dockLabel={dockLabel}
+        replaceLabel={replaceLabel}
       >
         <div className={styles.body}>
           {view && app ? (

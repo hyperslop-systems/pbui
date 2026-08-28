@@ -15,6 +15,7 @@ import {
 import {
   closePlacement,
   dockPlacement,
+  replacePlacement,
   findNode,
   leafNode,
   leaves,
@@ -88,6 +89,7 @@ export type WorkbenchVerb =
   | { kind: "tile.close"; placementId: string }
   | { kind: "tile.swap"; a: string; b: string }
   | { kind: "tile.dock"; source: string; target: string; zone: DockZone }
+  | { kind: "tile.replaceWith"; source: string; target: string }
   | { kind: "tile.activate"; placementId: string }
   | { kind: "split.resize"; splitId: string; ratio: number }
   | { kind: "app.place"; appId: string; from?: string }
@@ -120,6 +122,7 @@ export const workbenchVerbs = {
   close: (placementId: string): WorkbenchVerb => ({ kind: "tile.close", placementId }),
   swap: (a: string, b: string): WorkbenchVerb => ({ kind: "tile.swap", a, b }),
   dock: (source: string, target: string, zone: DockZone): WorkbenchVerb => ({ kind: "tile.dock", source, target, zone }),
+  replaceWith: (source: string, target: string): WorkbenchVerb => ({ kind: "tile.replaceWith", source, target }),
   activate: (placementId: string): WorkbenchVerb => ({ kind: "tile.activate", placementId }),
   resize: (splitId: string, ratio: number): WorkbenchVerb => ({ kind: "split.resize", splitId, ratio }),
   place: (appId: string, from?: string): WorkbenchVerb => ({ kind: "app.place", appId, ...(from ? { from } : {}) }),
@@ -183,6 +186,8 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
       return string("a") && string("b");
     case "tile.dock":
       return string("source") && string("target") && ["top", "right", "bottom", "left"].includes(String(verb.zone));
+    case "tile.replaceWith":
+      return string("source") && string("target");
     case "split.resize":
       return string("splitId") && typeof verb.ratio === "number" && Number.isFinite(verb.ratio);
     case "app.place":
@@ -236,6 +241,8 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return "swap the two tiles";
     case "tile.dock":
       return `dock beside the ${verb.zone} edge`;
+    case "tile.replaceWith":
+      return "replace that tile with this one";
     case "tile.activate":
       return "make this the active tile";
     case "split.resize":
@@ -291,6 +298,12 @@ export interface WorkbenchVerbHandlers {
   close(placementId: string): boolean;
   swap(a: string, b: string): boolean;
   dock(source: string, target: string, zone: DockZone): boolean;
+  /**
+   * The Alt-drag gesture: the target pane shows the SOURCE pane's view, the
+   * source pane closes, and the target's old view is deleted when nothing
+   * else places it. One tile fewer; the target's rectangle survives.
+   */
+  replaceWith(source: string, target: string): boolean;
   /** Clamp to this split's rendered pane constraints, then optionally snap. */
   resize(splitId: string, ratio: number, options?: { snap?: boolean }): number | null;
   ratioBounds(splitId: string): SplitRatioBounds | null;
@@ -1019,12 +1032,23 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     return ok;
   };
 
+  const replaceWith: WorkbenchVerbHandlers["replaceWith"] = (source, target) => {
+    const mutations = replacePlacement(doc(), source, target);
+    if (mutations.length === 0) return false;
+    if (!store.mutate(mutations)) return false;
+    // The source placement is gone; its view now lives in the target (or the
+    // twins collapsed there), so that is where the active id belongs.
+    if (store.getState().activePlacementId === source) activate(target);
+    return true;
+  };
+
   return {
     split,
     canSplit: canSplitPlacement,
     close,
     swap: (a, b) => store.mutate(swapPlacements(doc(), a, b)),
     dock,
+    replaceWith,
     resize,
     ratioBounds,
     layoutFits: (spec) => {
@@ -1082,6 +1106,8 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       return handlers.swap(verb.a, verb.b);
     case "tile.dock":
       return handlers.dock(verb.source, verb.target, verb.zone);
+    case "tile.replaceWith":
+      return handlers.replaceWith(verb.source, verb.target);
     case "tile.activate":
       handlers.activate(verb.placementId);
       return true;

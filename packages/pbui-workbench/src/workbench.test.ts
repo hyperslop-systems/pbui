@@ -245,6 +245,35 @@ describe("verbs", () => {
     expect(leafIds(tree())).toEqual([a, b, c]);
   });
 
+  test("replaceWith: the target shows the source's view, the source closes, the orphan dies", () => {
+    const { wb, tree, a, c } = threeTiles();
+    const moved = viewOf(tree(), a);
+    const displaced = viewOf(tree(), c);
+    wb.store.setState({ activePlacementId: a });
+    expect(wb.verbs.replaceWith(a, c)).toBe(true);
+    const ids = leafIds(tree());
+    expect(ids).toEqual(expect.not.arrayContaining([a])); // the source tile is gone
+    expect(ids).toHaveLength(2);
+    expect(viewOf(tree(), c)).toBe(moved); // the target's rectangle, the source's view
+    expect(wb.store.getState().document.views[displaced]).toBeUndefined(); // old view unplaced → deleted
+    expect(wb.store.getState().document.views[moved]).toBeDefined();
+    // The active id followed the gesture: it must never point at a closed tile.
+    expect(wb.store.getState().activePlacementId).toBe(c);
+  });
+
+  test("replaceWith refuses a self-drop and a missing placement", () => {
+    const { wb, a } = threeTiles();
+    expect(wb.verbs.replaceWith(a, a)).toBe(false);
+    expect(wb.verbs.replaceWith(a, "nope")).toBe(false);
+  });
+
+  test("replaceWith via the data door", () => {
+    const { wb, tree, a, b } = threeTiles();
+    const moved = viewOf(tree(), a);
+    expect(wb.perform({ kind: "tile.replaceWith", source: a, target: b })).toBe(true);
+    expect(viewOf(tree(), b)).toBe(moved);
+  });
+
   test("dock splits the target, closes the source, and keeps the view", () => {
     const { wb, tree, a, c } = threeTiles();
     const moved = viewOf(tree(), a);
