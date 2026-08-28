@@ -380,3 +380,72 @@ a missing, foreign, or stale-schema payload degrades to defaults field-by-field.
 ### Technical details
 - Payload: `{ id: "rebalance-config", format: "pbui.rebalance-config", schema_version: 1, body: RebalanceConfig-as-JSON }` in `WorkbenchDocument.documents`.
 - Config resolution in the dialog: `configProp ?? readRebalanceConfig(doc) ?? DEFAULT_REBALANCE_CONFIG`.
+
+## Step 6: Phase 4 — Structural repairs and the WorkspaceSetTree mutation
+
+The heavy phase: layouts whose propagated requirement exceeds the screen can now be fixed.
+RESHAPE hill-climbs over local tree mutations (with REGROUP — wrapping a run of children in a
+perpendicular sub-split — doing the real work of turning impossible strips into grids), and
+REBUILD regenerates a target shape and seats the existing tiles by Hungarian minimum-cost
+assignment. Both settle every candidate with PROJECT before scoring, per the textbook's
+"single most important detail". Applying a structural result needed the protocol change the
+guide recommended as Option B: a `WorkspaceSetTree` mutation, implemented in the TS and Go
+appliers with parity fixtures, plus a `workspace.setTree` verb — so structural proposals ride
+the same `plan`/`applyPlan` door as resize batches.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue phase-by-phase implementation with commits, diary steps, and slips.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** 686b923 — "protocol + pbui-workbench: WorkspaceSetTree mutation and structural rebalance proposals (PBUI-REBALANCE-1 P4)"
+
+### What I did
+- Proto: `WorkspaceSetTree { workspace_id, root_placement }`, Mutation oneof field 16; `buf generate` regenerated Go + TS.
+- TS applier (`apply.ts`): `workspaceSetTree` case (rootPlacement required → `invalid_mutation`; workspace exists → `unknown_workspace`; tree cloned in). Go applier (`mutation.go`): identical semantics. Parity fixtures `workspace-set-tree.json` + `reject-workspace-set-tree-unknown-workspace.json` — both suites green (TS 46; Go full package incl. the fixture corpus, forced `-count=1`).
+- Verb `workspace.setTree` end-to-end: union, `setWorkspaceTree` factory, validation, description ("replace this workspace's tile arrangement"), handler (`store.mutate` one mutation), dispatch.
+- `rebalance/structural.ts`: `normalizeAnalysis` (flatten/collapse for post-mutation trees, chains cleared), `structuralMutationsOf` + `applyStructuralMutation` (transpose/rotate/reverse/swap/regroup), `scoreTree` (lab weights 10/1per100/0.6/1per1000), `algoReshape` (settle-then-score greedy, minGain stop), `REBUILD_TARGETS` (grid/master/columns/rows/bsp/dwindle), `hungarian` (O(n³) potentials), `algoRebuild` (cost = centre distance + 0.25·size; DFS-order savings traced), `emitBinary` (analysis→protocol: leaves KEEP placement ids + viewIds, splits minted via newId, right-leaning chains with pixel-space ratios clamped to the server's [0.05, 0.95] band from validate.go).
+- Slate: `GeneratorSpec` became a weights|structural union; six structural generators (reshape-1/4, rebuild-grid/master/columns/dwindle); structural results apply as `{kind:"set-tree", tree}` when tier > 0; whyLine regex learned "assignment|accept". Profiles updated (balanced += reshapes; tidy += reshape-4 + rebuilds; anything += all).
+- Dialog: set-tree applies as a one-verb plan (`workspace.setTree` with the modal's workspaceId); Undo unchanged.
+- Tests (14 new; 185 workbench total): hungarian §10.2 fixture ([1,0,2], Σ5); transpose→flatten to Row(7); regroup preserves pane count; SKINNY COL reshape → 0 violations with "regroup" in the trace; WIDE ROW 9 reshape → 0 violations; search never mutates its input (JSON snapshot); rebuild-grid → 0 violations + identity preserved + assignment traced; emitBinary render-parity property (clamp-aware: clamped rounds skipped, >10 exact rounds asserted at 1e-6) + id/view preservation + clamp band; slate: only structural cards reach 0 viol on SKINNY COL and one wins PICK with `set-tree`; CAREFUL greys them with reasons and never recommends; grid-rebuilt-as-grid measures tier 0 and merges into LEAVE AS IS; dialog: structural Apply replaces the workspace tree wholesale and Undo restores the exact prior document reference.
+- Design-doc addendum recording all build-time deviations (pixel-share weights, keep-open-on-apply, Option B, ratio band, open items).
+
+### Why
+- Option B over the clone-workspace stopgap: the workspace id survives (nothing keyed on it breaks), the mutation is generally useful, and the parity loop turned out to be cheap because the corpus infrastructure already existed on both sides.
+- Emission clamps rather than erroring because a clamped ratio still renders close and VALIDATES server-side; the alternative (reject the proposal) throws away a repair over a 2% geometric compromise.
+
+### What worked
+- Both appliers accepted the new mutation with matching fixture behaviour on the first run; lefthook's pre-commit gauntlet (full go test + golangci-lint + logcopter + glazed-lint) passed clean on commit.
+- SKINNY COL's §9.3 story reproduced: the hill-climb's first accepted move is a regroup that erases all six violations.
+
+### What didn't work
+- The emitBinary render-parity property failed on round 4 (12.1px on pane p-r1.h): deeply skewed random trees produce flattened pixel shares below 0.05, the server clamp bit, and the test had wrongly assumed "random ratios stay inside the band". Fixed by detecting clamped emissions and excluding them from the exactness assertion (while asserting >10 unclamped rounds so the property still has teeth).
+- Editor diagnostics flagged `go.work requires go >= 1.26.6 (running go 1.25.5)` — gopls tooling only; the shell go is 1.26.6 and all Go commands pass. Not addressed.
+
+### What I learned
+- `pkg/workbench`'s global Validate (not the per-mutation applier) owns leaf-references-view and the [0.05, 0.95] ratio band; the parity corpus deliberately tests only per-mutation semantics ("which the TypeScript client does not mirror" — its own comment). So the TS `workspaceSetTree` case stays minimal, and CLIENTS must emit valid trees — which `emitBinary` guarantees by construction (existing leaves, minted split ids, clamped ratios).
+- Hill-climbing needs no backtracking on the textbook's test set: WIDE ROW 9 (structurally the worst weight-only case) reaches zero violations within four greedy rounds.
+
+### What was tricky to build
+- **Keeping identity through regeneration.** Tiers, thumbnails, and ghost-pairing all key on placement ids; REBUILD builds over placeholder slots and seats REAL panes by assignment, and emitBinary re-uses pane ids for leaves while minting split ids — get either wrong and classify() reports tier 6 (visible set changed) for a pure rearrangement. The identity-preservation test pins it.
+- **The GeneratorSpec union.** Weight strategies return weights for a driver to assign; structural engines own their whole run and hand back `ctx.tree`. Modeling that as a discriminated union kept buildSlate's loop to one `if` instead of a second slate path.
+
+### What warrants a second pair of eyes
+- `emitBinary`'s clamp: a proposal whose preview needed a 0.02 ratio applies at 0.05 — preview and applied geometry can differ by up to ~3% of a split's extent in that (rare, already-degenerate) case. The dialog's post-apply status does not currently call it out.
+- `scoreTree`'s weights are the lab's constants, untuned for pbui's 240×160 defaults; RESHAPE acceptance choices ride on them.
+- The Go global Validate enforces tree depth/node-count limits (`Limits`); a pathological reshape output is bounded by input size so it cannot exceed them, but a reviewer should confirm no product feeds giant workspaces.
+
+### What should be done in the future
+- Phase 6 (open tasks): FOLD→overflow-workspace card, RELAX strategy, live Surface preview, status-bar diagnosis badge, settings deep-link, aria-activedescendant; consider surfacing "ratio was clamped" in the apply status line.
+- Consider exposing reshape maxMoves/minGain and rebuild master/dwindle ratios in the settings tile.
+
+### Code review instructions
+- Start with the protocol slice: proto diff → `apply.ts` case → `mutation.go` case → the two fixtures. Then `structural.ts` top-to-bottom against sources/repair-lab-2.html (`mutationsOf`/`applyMutation`/`algoMutate`/`TARGETS`/`hungarian`/`regenerate`) for port fidelity; `emitBinary` is the only part with no lab counterpart — read its module comment plus the three emit tests.
+- Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (185); `cd packages/workbench-protocol && ./node_modules/.bin/vitest run` (46); `GOWORK=off go test ./pkg/workbench -count=1`; `buf lint`.
+
+### Technical details
+- Mutation: `workspaceSetTree { workspaceId, rootPlacement }`; errors `invalid_mutation` / `unknown_workspace`; views no longer placed are NOT deleted (rebalance never drops views by construction).
+- Emission ratio at each chain step: `px[i] / (pairExtent)` where pairExtent = remaining extent − divider, clamped to [0.05, 0.95].

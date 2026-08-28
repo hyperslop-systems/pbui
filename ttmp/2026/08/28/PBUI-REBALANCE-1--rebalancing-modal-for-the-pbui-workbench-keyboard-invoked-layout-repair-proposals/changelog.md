@@ -49,3 +49,12 @@ Phase 5: rebalance-settings singleton tile + pbui.rebalance-config DocumentPaylo
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/configDocument.ts — Config persistence contract (commit fb2db6d)
 
+
+## 2026-08-28
+
+Phase 4: WorkspaceSetTree mutation (proto+TS+Go+parity fixtures), workspace.setTree verb, RESHAPE/REBUILD structural generators with Hungarian seating and pixel-space binary emission (server ratio band clamped); slate + dialog integration; 185 workbench / 46 protocol / Go suites green (commit 686b923). Design-doc addendum records build-time deviations.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/structural.ts — Reshape/rebuild engines and emitBinary (commit 686b923)
+

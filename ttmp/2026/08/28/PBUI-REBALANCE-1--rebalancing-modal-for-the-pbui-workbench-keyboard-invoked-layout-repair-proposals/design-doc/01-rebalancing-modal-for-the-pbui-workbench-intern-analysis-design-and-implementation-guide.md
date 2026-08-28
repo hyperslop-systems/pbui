@@ -1443,3 +1443,27 @@ pushEscapeSurface / popEscapeSurface / topEscapeSurface / escapeSurfaceCount
 
 *End of guide. Questions that survive contact with the code go in this ticket's diary
 (`reference/01-diary.md`), decisions that change this document go in the changelog.*
+
+---
+
+# Addendum — Implementation notes (2026-08-28, post-build)
+
+Phases 1–5 shipped on branch `task/add-rebalancing` (see `reference/01-diary.md` steps 2–6
+and the ticket changelog for commits). Where the built system deviates from the guide above,
+the code is right and this addendum is the record:
+
+1. **§3.2/§3.3 — weights are pixel shares, not ratio products.** Ratio products are not
+   exact against pbui's per-level divider subtraction (~3px per chain level, not sub-pixel).
+   The shipped adapter lays the binary tree out first and defines `w[i] = px[i]/Σpx`;
+   write-back runs in pixel space. Both directions are exact (property-tested to 1e-6).
+2. **§4.1/§4.6 — Apply keeps the dialog open** (the lab's behaviour), because closing on
+   accept would unmount the component holding the Undo document. Escape closes.
+3. **§3.4 — Option B was implemented**: `WorkspaceSetTree` (proto field 16), both appliers,
+   two parity fixtures, and a `workspace.setTree` verb. Structural proposals apply through
+   `plan`/`applyPlan` like resize batches.
+4. **Server ratio band.** `pkg/workbench/validate.go` rejects ratios outside [0.05, 0.95];
+   `emitBinary` clamps to that band (a clamped ratio trades exact geometry for validity).
+5. **Not built yet** (open tasks): FOLD→overflow-workspace, RELAX, live Surface preview,
+   status-bar diagnosis badge, settings deep-link from the dialog header, and
+   `aria-activedescendant` on the card listbox. The root package's pre-existing
+   `vocabulary.test.ts` typecheck failure on this branch is unrelated and unfixed.
