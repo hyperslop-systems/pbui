@@ -15,6 +15,7 @@ import {
 import {
   closePlacement,
   dockPlacement,
+  replacePlacement,
   findNode,
   leafNode,
   leaves,
@@ -35,6 +36,14 @@ import { buildLayout, workspaceCreateMutation, type LayoutSpec } from "./documen
 import type { WorkbenchStore } from "./store";
 
 export type SplitDirection = "row" | "col";
+
+/**
+ * Where the launcher's placement mode aims a new tile (PBUI-REBALANCE-1):
+ * an edge docks the new tile there, "center" splits the target along its
+ * longer rendered side, and "replace" (Alt) swaps the target's application
+ * for the chosen one in place.
+ */
+export type PlaceZone = DockZone | "center" | "replace";
 
 export interface PaneConstraints {
   /** Minimum width of either child in a row split. */
@@ -88,9 +97,11 @@ export type WorkbenchVerb =
   | { kind: "tile.close"; placementId: string }
   | { kind: "tile.swap"; a: string; b: string }
   | { kind: "tile.dock"; source: string; target: string; zone: DockZone }
+  | { kind: "tile.replaceWith"; source: string; target: string }
   | { kind: "tile.activate"; placementId: string }
   | { kind: "split.resize"; splitId: string; ratio: number }
   | { kind: "app.place"; appId: string; from?: string }
+  | { kind: "app.placeAt"; appId: string; target: string; zone: PlaceZone }
   | { kind: "view.setTitle"; viewId: string; title: string }
   | { kind: "view.open"; appId: string; documents: Record<string, string>; near?: string; title?: string }
   | { kind: "tile.replace"; placementId: string; appId: string; documents?: Record<string, string> }
@@ -98,12 +109,15 @@ export type WorkbenchVerb =
   | { kind: "view.rebind"; viewId: string; documents: Record<string, string> }
   | { kind: "workspace.select"; workspaceId: string }
   | { kind: "workspace.create"; name: string; spec?: LayoutSpec; workspaceId?: string; select?: boolean }
+  | { kind: "workspace.setTree"; workspaceId: string; tree: Node }
   | { kind: "workspace.rename"; workspaceId: string; name: string }
   | { kind: "workspace.delete"; workspaceId: string }
   | { kind: "workspace.clone"; workspaceId: string; name?: string; newWorkspaceId?: string; select?: boolean }
   | { kind: "view.goTo"; viewId: string }
   | { kind: "launcher.open"; placementId?: string }
-  | { kind: "launcher.close" };
+  | { kind: "launcher.close" }
+  | { kind: "rebalance.open" }
+  | { kind: "rebalance.close" };
 
 export type WorkbenchVerbKind = WorkbenchVerb["kind"];
 
@@ -117,9 +131,11 @@ export const workbenchVerbs = {
   close: (placementId: string): WorkbenchVerb => ({ kind: "tile.close", placementId }),
   swap: (a: string, b: string): WorkbenchVerb => ({ kind: "tile.swap", a, b }),
   dock: (source: string, target: string, zone: DockZone): WorkbenchVerb => ({ kind: "tile.dock", source, target, zone }),
+  replaceWith: (source: string, target: string): WorkbenchVerb => ({ kind: "tile.replaceWith", source, target }),
   activate: (placementId: string): WorkbenchVerb => ({ kind: "tile.activate", placementId }),
   resize: (splitId: string, ratio: number): WorkbenchVerb => ({ kind: "split.resize", splitId, ratio }),
   place: (appId: string, from?: string): WorkbenchVerb => ({ kind: "app.place", appId, ...(from ? { from } : {}) }),
+  placeAt: (appId: string, target: string, zone: PlaceZone): WorkbenchVerb => ({ kind: "app.placeAt", appId, target, zone }),
   setTitle: (viewId: string, title: string): WorkbenchVerb => ({ kind: "view.setTitle", viewId, title }),
   open: (appId: string, documents: Record<string, string>, options: { near?: string; title?: string } = {}): WorkbenchVerb => ({
     kind: "view.open",
@@ -143,6 +159,7 @@ export const workbenchVerbs = {
   ): WorkbenchVerb => ({ kind: "workspace.create", name, ...(spec ? { spec } : {}), ...options }),
   renameWorkspace: (workspaceId: string, name: string): WorkbenchVerb => ({ kind: "workspace.rename", workspaceId, name }),
   deleteWorkspace: (workspaceId: string): WorkbenchVerb => ({ kind: "workspace.delete", workspaceId }),
+  setWorkspaceTree: (workspaceId: string, tree: Node): WorkbenchVerb => ({ kind: "workspace.setTree", workspaceId, tree }),
   cloneWorkspace: (
     workspaceId: string,
     options: { name?: string; newWorkspaceId?: string; select?: boolean } = {},
@@ -153,6 +170,8 @@ export const workbenchVerbs = {
     ...(placementId ? { placementId } : {}),
   }),
   closeLauncher: (): WorkbenchVerb => ({ kind: "launcher.close" }),
+  openRebalance: (): WorkbenchVerb => ({ kind: "rebalance.open" }),
+  closeRebalance: (): WorkbenchVerb => ({ kind: "rebalance.close" }),
 };
 
 export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
@@ -177,10 +196,18 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
       return string("a") && string("b");
     case "tile.dock":
       return string("source") && string("target") && ["top", "right", "bottom", "left"].includes(String(verb.zone));
+    case "tile.replaceWith":
+      return string("source") && string("target");
     case "split.resize":
       return string("splitId") && typeof verb.ratio === "number" && Number.isFinite(verb.ratio);
     case "app.place":
       return string("appId") && optionalString("from");
+    case "app.placeAt":
+      return (
+        string("appId") &&
+        string("target") &&
+        ["top", "right", "bottom", "left", "center", "replace"].includes(String(verb.zone))
+      );
     case "view.setTitle":
       return string("viewId") && typeof verb.title === "string";
     case "view.open":
@@ -198,6 +225,8 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
       return string("name") && optionalString("workspaceId") && (verb.select === undefined || typeof verb.select === "boolean");
     case "workspace.rename":
       return string("workspaceId") && string("name");
+    case "workspace.setTree":
+      return string("workspaceId") && Boolean(verb.tree) && typeof verb.tree === "object" && !Array.isArray(verb.tree);
     case "workspace.clone":
       return (
         string("workspaceId") &&
@@ -210,6 +239,8 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
     case "launcher.open":
       return optionalString("placementId");
     case "launcher.close":
+    case "rebalance.open":
+    case "rebalance.close":
       return true;
     default:
       return false;
@@ -226,12 +257,18 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return "swap the two tiles";
     case "tile.dock":
       return `dock beside the ${verb.zone} edge`;
+    case "tile.replaceWith":
+      return "replace that tile with this one";
     case "tile.activate":
       return "make this the active tile";
     case "split.resize":
       return `set the divider to ${Math.round(verb.ratio * 100)}%`;
     case "app.place":
       return `open ${verb.appId} beside the active tile`;
+    case "app.placeAt":
+      return verb.zone === "replace"
+        ? `show ${verb.appId} in that tile instead`
+        : `open ${verb.appId} ${verb.zone === "center" ? "beside that tile" : `at that tile's ${verb.zone} edge`}`;
     case "view.setTitle":
       return verb.title ? `rename the tile to “${verb.title}”` : "clear the tile's name";
     case "view.open":
@@ -250,6 +287,8 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return `rename the workspace to “${verb.name}”`;
     case "workspace.delete":
       return "delete this workspace and its tiles";
+    case "workspace.setTree":
+      return "replace this workspace's tile arrangement";
     case "workspace.clone":
       return "duplicate this workspace";
     case "view.goTo":
@@ -258,6 +297,10 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return verb.placementId ? "show something else in this tile" : "open the launcher";
     case "launcher.close":
       return "close the launcher";
+    case "rebalance.open":
+      return "propose layout repairs for this workspace";
+    case "rebalance.close":
+      return "close the rebalance dialog";
   }
 }
 
@@ -275,6 +318,12 @@ export interface WorkbenchVerbHandlers {
   close(placementId: string): boolean;
   swap(a: string, b: string): boolean;
   dock(source: string, target: string, zone: DockZone): boolean;
+  /**
+   * The Alt-drag gesture: the target pane shows the SOURCE pane's view, the
+   * source pane closes, and the target's old view is deleted when nothing
+   * else places it. One tile fewer; the target's rectangle survives.
+   */
+  replaceWith(source: string, target: string): boolean;
   /** Clamp to this split's rendered pane constraints, then optionally snap. */
   resize(splitId: string, ratio: number, options?: { snap?: boolean }): number | null;
   ratioBounds(splitId: string): SplitRatioBounds | null;
@@ -285,6 +334,15 @@ export interface WorkbenchVerbHandlers {
    * so a new view never destroys a working tile and never lands as a sliver.
    */
   place(appId: string, options?: { from?: string; crossWorkspace?: CrossWorkspace }): string | null;
+  /**
+   * Placement mode's commit (PBUI-REBALANCE-1): open `appId` exactly where
+   * the user aimed. An edge zone docks the new tile at that edge of the
+   * target, "center" splits the target along its longer rendered side, and
+   * "replace" shows the application in the target INSTEAD (the `replace`
+   * handler's semantics). A placed singleton links rather than minting a
+   * second view. Returns the placement now showing the application.
+   */
+  placeAt(appId: string, target: string, zone: PlaceZone): string | null;
   setTitle(viewId: string, title: string): boolean;
   /**
    * Open an application on specific document bindings beside a tile. A
@@ -333,6 +391,13 @@ export interface WorkbenchVerbHandlers {
    */
   deleteWorkspace(workspaceId: string): boolean;
   /**
+   * Replace a workspace's placement tree wholesale (PBUI-REBALANCE-1): the
+   * door structural layout repairs apply through. Leaves must reference
+   * existing views; the caller is responsible for keeping the leaf set equal
+   * to the workspace's current placements (rebalance never adds or drops).
+   */
+  setWorkspaceTree(workspaceId: string, tree: Node): boolean;
+  /**
    * Duplicate a workspace's tree. A duplicable application's view is CLONED
    * (the copy is independent); a singleton's or a `duplicable:false`
    * application's view is REFERENCED, so the copy stays in lockstep with the
@@ -342,6 +407,9 @@ export interface WorkbenchVerbHandlers {
   /** With a placement, the launcher opens in per-pane mode ("show something else HERE"). */
   openLauncher(placementId?: string): void;
   closeLauncher(): void;
+  /** Open/close the rebalance dialog (PBUI-REBALANCE-1) for the active workspace. */
+  openRebalance(): void;
+  closeRebalance(): void;
 }
 
 export function canClose(doc: WorkbenchDocument, placementId: string): boolean {
@@ -373,6 +441,7 @@ function splitWithView(
   placementId: string,
   direction: SplitDirection,
   viewId: string,
+  position: "before" | "after" = "after",
 ): Mutation[] {
   const workspaceId = workspaceOfPlacement(doc, placementId);
   if (!workspaceId) return [];
@@ -386,7 +455,7 @@ function splitWithView(
         ratio: 0.5,
         splitId: newId("n"),
         newPlacement: leafNode(viewId),
-        place: PlacementPosition.AFTER,
+        place: position === "before" ? PlacementPosition.BEFORE : PlacementPosition.AFTER,
       },
     }),
   ];
@@ -619,11 +688,12 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     placementId: string,
     direction: SplitDirection,
     appId: string,
+    position: "before" | "after" = "after",
   ): Mutation[] => {
     const view = create(AppViewSchema, { id: newId("v"), appId, documents: defaultBindings(current, appId) });
     return [
       mutation({ case: "viewCreate", value: { view } }),
-      ...splitWithView(current, placementId, direction, view.id),
+      ...splitWithView(current, placementId, direction, view.id, position),
     ];
   };
 
@@ -736,6 +806,29 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     const target = targetPlacement(options.from);
     if (!target) return null;
     return split(target, splitDirectionFor(target, root()), appId);
+  };
+
+  const placeAt: WorkbenchVerbHandlers["placeAt"] = (appId, target, zone) => {
+    if (zone === "replace") {
+      // The target keeps its rectangle and identity; only what it shows changes.
+      if (!replace(target, appId)) return null;
+      activate(target);
+      return target;
+    }
+    const current = doc();
+    const direction: SplitDirection =
+      zone === "left" || zone === "right" ? "row" : zone === "top" || zone === "bottom" ? "col" : splitDirectionFor(target, root());
+    const position: "before" | "after" = zone === "left" || zone === "top" ? "before" : "after";
+    if (!canSplitPlacement(target, direction)) return null;
+    const app = apps.get(appId);
+    const existing = app?.singleton ? viewsOfApp(current, appId)[0] : undefined;
+    const mutations = existing
+      ? splitWithView(current, target, direction, existing.id, position)
+      : splitWithNewView(current, target, direction, appId, position);
+    const created = newPlacementIdOf(mutations);
+    if (!store.mutate(mutations)) return null;
+    if (created) activate(created);
+    return created;
   };
 
   const openView: WorkbenchVerbHandlers["openView"] = (appId, documents, options = {}) => {
@@ -938,6 +1031,9 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     return true;
   };
 
+  const setWorkspaceTree: WorkbenchVerbHandlers["setWorkspaceTree"] = (workspaceId, tree) =>
+    store.mutate([mutation({ case: "workspaceSetTree", value: { workspaceId, rootPlacement: tree } })]);
+
   const cloneWorkspace: WorkbenchVerbHandlers["cloneWorkspace"] = (workspaceId, options = {}) => {
     const current = doc();
     const source = current.workspaces.find((item) => item.id === workspaceId);
@@ -990,12 +1086,23 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     return ok;
   };
 
+  const replaceWith: WorkbenchVerbHandlers["replaceWith"] = (source, target) => {
+    const mutations = replacePlacement(doc(), source, target);
+    if (mutations.length === 0) return false;
+    if (!store.mutate(mutations)) return false;
+    // The source placement is gone; its view now lives in the target (or the
+    // twins collapsed there), so that is where the active id belongs.
+    if (store.getState().activePlacementId === source) activate(target);
+    return true;
+  };
+
   return {
     split,
     canSplit: canSplitPlacement,
     close,
     swap: (a, b) => store.mutate(swapPlacements(doc(), a, b)),
     dock,
+    replaceWith,
     resize,
     ratioBounds,
     layoutFits: (spec) => {
@@ -1010,6 +1117,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       );
     },
     place,
+    placeAt,
     setTitle,
     openView,
     replace,
@@ -1020,10 +1128,13 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     createWorkspace,
     renameWorkspace,
     deleteWorkspace,
+    setWorkspaceTree,
     cloneWorkspace,
     goToView,
     openLauncher: (placementId) => store.setState({ launcherOpen: true, launcherFrom: placementId ?? null }),
     closeLauncher: () => store.setState({ launcherOpen: false, launcherFrom: null }),
+    openRebalance: () => store.setState({ rebalanceOpen: true }),
+    closeRebalance: () => store.setState({ rebalanceOpen: false }),
   };
 }
 
@@ -1050,6 +1161,8 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       return handlers.swap(verb.a, verb.b);
     case "tile.dock":
       return handlers.dock(verb.source, verb.target, verb.zone);
+    case "tile.replaceWith":
+      return handlers.replaceWith(verb.source, verb.target);
     case "tile.activate":
       handlers.activate(verb.placementId);
       return true;
@@ -1063,6 +1176,8 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       return handlers.resize(verb.splitId, verb.ratio) !== null;
     case "app.place":
       return handlers.place(verb.appId, verb.from ? { from: verb.from } : {}) !== null;
+    case "app.placeAt":
+      return handlers.placeAt(verb.appId, verb.target, verb.zone) !== null;
     case "view.setTitle":
       return handlers.setTitle(verb.viewId, verb.title);
     case "view.open":
@@ -1087,6 +1202,8 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       return handlers.renameWorkspace(verb.workspaceId, verb.name);
     case "workspace.delete":
       return handlers.deleteWorkspace(verb.workspaceId);
+    case "workspace.setTree":
+      return handlers.setWorkspaceTree(verb.workspaceId, verb.tree);
     case "workspace.clone":
       return (
         handlers.cloneWorkspace(verb.workspaceId, {
@@ -1100,6 +1217,12 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       return true;
     case "launcher.close":
       handlers.closeLauncher();
+      return true;
+    case "rebalance.open":
+      handlers.openRebalance();
+      return true;
+    case "rebalance.close":
+      handlers.closeRebalance();
       return true;
   }
 }

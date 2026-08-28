@@ -907,6 +907,7 @@ type Mutation struct {
 	//	*Mutation_PlacementSplit
 	//	*Mutation_PlacementClose
 	//	*Mutation_SplitResize
+	//	*Mutation_WorkspaceSetTree
 	Body          isMutation_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1084,6 +1085,15 @@ func (x *Mutation) GetSplitResize() *SplitResize {
 	return nil
 }
 
+func (x *Mutation) GetWorkspaceSetTree() *WorkspaceSetTree {
+	if x != nil {
+		if x, ok := x.Body.(*Mutation_WorkspaceSetTree); ok {
+			return x.WorkspaceSetTree
+		}
+	}
+	return nil
+}
+
 type isMutation_Body interface {
 	isMutation_Body()
 }
@@ -1148,6 +1158,10 @@ type Mutation_SplitResize struct {
 	SplitResize *SplitResize `protobuf:"bytes,15,opt,name=split_resize,json=splitResize,proto3,oneof"`
 }
 
+type Mutation_WorkspaceSetTree struct {
+	WorkspaceSetTree *WorkspaceSetTree `protobuf:"bytes,16,opt,name=workspace_set_tree,json=workspaceSetTree,proto3,oneof"`
+}
+
 func (*Mutation_WorkbenchRename) isMutation_Body() {}
 
 func (*Mutation_WorkspaceCreate) isMutation_Body() {}
@@ -1177,6 +1191,8 @@ func (*Mutation_PlacementSplit) isMutation_Body() {}
 func (*Mutation_PlacementClose) isMutation_Body() {}
 
 func (*Mutation_SplitResize) isMutation_Body() {}
+
+func (*Mutation_WorkspaceSetTree) isMutation_Body() {}
 
 type WorkbenchRename struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2118,6 +2134,62 @@ func (x *SplitResize) GetRatio() float64 {
 	return 0
 }
 
+// WorkspaceSetTree replaces one workspace's placement tree wholesale
+// (PBUI-REBALANCE-1): the door structural layout repairs apply through. The
+// tree must be well-formed and every leaf must reference an existing view;
+// views that are no longer placed are NOT deleted by this mutation.
+type WorkspaceSetTree struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	RootPlacement *Node                  `protobuf:"bytes,2,opt,name=root_placement,json=rootPlacement,proto3" json:"root_placement,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkspaceSetTree) Reset() {
+	*x = WorkspaceSetTree{}
+	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkspaceSetTree) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkspaceSetTree) ProtoMessage() {}
+
+func (x *WorkspaceSetTree) ProtoReflect() protoreflect.Message {
+	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkspaceSetTree.ProtoReflect.Descriptor instead.
+func (*WorkspaceSetTree) Descriptor() ([]byte, []int) {
+	return file_hyperslop_pbui_workbench_v1_workbench_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *WorkspaceSetTree) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *WorkspaceSetTree) GetRootPlacement() *Node {
+	if x != nil {
+		return x.RootPlacement
+	}
+	return nil
+}
+
 type WorkbenchConflict struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Code             string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
@@ -2132,7 +2204,7 @@ type WorkbenchConflict struct {
 
 func (x *WorkbenchConflict) Reset() {
 	*x = WorkbenchConflict{}
-	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[29]
+	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2144,7 +2216,7 @@ func (x *WorkbenchConflict) String() string {
 func (*WorkbenchConflict) ProtoMessage() {}
 
 func (x *WorkbenchConflict) ProtoReflect() protoreflect.Message {
-	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[29]
+	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2157,7 +2229,7 @@ func (x *WorkbenchConflict) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkbenchConflict.ProtoReflect.Descriptor instead.
 func (*WorkbenchConflict) Descriptor() ([]byte, []int) {
-	return file_hyperslop_pbui_workbench_v1_workbench_proto_rawDescGZIP(), []int{29}
+	return file_hyperslop_pbui_workbench_v1_workbench_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *WorkbenchConflict) GetCode() string {
@@ -2212,7 +2284,7 @@ type WorkbenchUpdatedEvent struct {
 
 func (x *WorkbenchUpdatedEvent) Reset() {
 	*x = WorkbenchUpdatedEvent{}
-	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[30]
+	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2224,7 +2296,7 @@ func (x *WorkbenchUpdatedEvent) String() string {
 func (*WorkbenchUpdatedEvent) ProtoMessage() {}
 
 func (x *WorkbenchUpdatedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[30]
+	mi := &file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2237,7 +2309,7 @@ func (x *WorkbenchUpdatedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkbenchUpdatedEvent.ProtoReflect.Descriptor instead.
 func (*WorkbenchUpdatedEvent) Descriptor() ([]byte, []int) {
-	return file_hyperslop_pbui_workbench_v1_workbench_proto_rawDescGZIP(), []int{30}
+	return file_hyperslop_pbui_workbench_v1_workbench_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *WorkbenchUpdatedEvent) GetWorkbenchId() string {
@@ -2326,7 +2398,7 @@ const file_hyperslop_pbui_workbench_v1_workbench_proto_rawDesc = "" +
 	"\x16CreateWorkbenchRequest\x12L\n" +
 	"\tworkbench\x18\x01 \x01(\v2..hyperslop.pbui.workbench.v1.WorkbenchDocumentR\tworkbench\"T\n" +
 	"\rMutationBatch\x12C\n" +
-	"\tmutations\x18\x01 \x03(\v2%.hyperslop.pbui.workbench.v1.MutationR\tmutations\"\x81\n" +
+	"\tmutations\x18\x01 \x03(\v2%.hyperslop.pbui.workbench.v1.MutationR\tmutations\"\xe0\n" +
 	"\n" +
 	"\bMutation\x12Y\n" +
 	"\x10workbench_rename\x18\x01 \x01(\v2,.hyperslop.pbui.workbench.v1.WorkbenchRenameH\x00R\x0fworkbenchRename\x12Y\n" +
@@ -2348,7 +2420,8 @@ const file_hyperslop_pbui_workbench_v1_workbench_proto_rawDesc = "" +
 	"\x11placement_replace\x18\f \x01(\v2-.hyperslop.pbui.workbench.v1.PlacementReplaceH\x00R\x10placementReplace\x12V\n" +
 	"\x0fplacement_split\x18\r \x01(\v2+.hyperslop.pbui.workbench.v1.PlacementSplitH\x00R\x0eplacementSplit\x12V\n" +
 	"\x0fplacement_close\x18\x0e \x01(\v2+.hyperslop.pbui.workbench.v1.PlacementCloseH\x00R\x0eplacementClose\x12M\n" +
-	"\fsplit_resize\x18\x0f \x01(\v2(.hyperslop.pbui.workbench.v1.SplitResizeH\x00R\vsplitResizeB\x06\n" +
+	"\fsplit_resize\x18\x0f \x01(\v2(.hyperslop.pbui.workbench.v1.SplitResizeH\x00R\vsplitResize\x12]\n" +
+	"\x12workspace_set_tree\x18\x10 \x01(\v2-.hyperslop.pbui.workbench.v1.WorkspaceSetTreeH\x00R\x10workspaceSetTreeB\x06\n" +
 	"\x04body\"%\n" +
 	"\x0fWorkbenchRename\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"\x92\x01\n" +
@@ -2415,7 +2488,10 @@ const file_hyperslop_pbui_workbench_v1_workbench_proto_rawDesc = "" +
 	"\vSplitResize\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x19\n" +
 	"\bsplit_id\x18\x02 \x01(\tR\asplitId\x12\x14\n" +
-	"\x05ratio\x18\x03 \x01(\x01R\x05ratio\"\xd2\x01\n" +
+	"\x05ratio\x18\x03 \x01(\x01R\x05ratio\"\x7f\n" +
+	"\x10WorkspaceSetTree\x12!\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12H\n" +
+	"\x0eroot_placement\x18\x02 \x01(\v2!.hyperslop.pbui.workbench.v1.NodeR\rrootPlacement\"\xd2\x01\n" +
 	"\x11WorkbenchConflict\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\rR\x06status\x12\x16\n" +
@@ -2448,7 +2524,7 @@ func file_hyperslop_pbui_workbench_v1_workbench_proto_rawDescGZIP() []byte {
 }
 
 var file_hyperslop_pbui_workbench_v1_workbench_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_hyperslop_pbui_workbench_v1_workbench_proto_goTypes = []any{
 	(Direction)(0),                  // 0: hyperslop.pbui.workbench.v1.Direction
 	(PlacementPosition)(0),          // 1: hyperslop.pbui.workbench.v1.PlacementPosition
@@ -2481,32 +2557,33 @@ var file_hyperslop_pbui_workbench_v1_workbench_proto_goTypes = []any{
 	(*PlacementSplit)(nil),          // 28: hyperslop.pbui.workbench.v1.PlacementSplit
 	(*PlacementClose)(nil),          // 29: hyperslop.pbui.workbench.v1.PlacementClose
 	(*SplitResize)(nil),             // 30: hyperslop.pbui.workbench.v1.SplitResize
-	(*WorkbenchConflict)(nil),       // 31: hyperslop.pbui.workbench.v1.WorkbenchConflict
-	(*WorkbenchUpdatedEvent)(nil),   // 32: hyperslop.pbui.workbench.v1.WorkbenchUpdatedEvent
-	nil,                             // 33: hyperslop.pbui.workbench.v1.WorkbenchDocument.ViewsEntry
-	nil,                             // 34: hyperslop.pbui.workbench.v1.WorkbenchDocument.DocumentsEntry
-	nil,                             // 35: hyperslop.pbui.workbench.v1.AppView.DocumentsEntry
-	nil,                             // 36: hyperslop.pbui.workbench.v1.DocumentBindings.ValuesEntry
-	(*structpb.Struct)(nil),         // 37: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),   // 38: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),           // 39: google.protobuf.Empty
+	(*WorkspaceSetTree)(nil),        // 31: hyperslop.pbui.workbench.v1.WorkspaceSetTree
+	(*WorkbenchConflict)(nil),       // 32: hyperslop.pbui.workbench.v1.WorkbenchConflict
+	(*WorkbenchUpdatedEvent)(nil),   // 33: hyperslop.pbui.workbench.v1.WorkbenchUpdatedEvent
+	nil,                             // 34: hyperslop.pbui.workbench.v1.WorkbenchDocument.ViewsEntry
+	nil,                             // 35: hyperslop.pbui.workbench.v1.WorkbenchDocument.DocumentsEntry
+	nil,                             // 36: hyperslop.pbui.workbench.v1.AppView.DocumentsEntry
+	nil,                             // 37: hyperslop.pbui.workbench.v1.DocumentBindings.ValuesEntry
+	(*structpb.Struct)(nil),         // 38: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),   // 39: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),           // 40: google.protobuf.Empty
 }
 var file_hyperslop_pbui_workbench_v1_workbench_proto_depIdxs = []int32{
 	3,  // 0: hyperslop.pbui.workbench.v1.WorkbenchDocument.workspaces:type_name -> hyperslop.pbui.workbench.v1.Workspace
-	33, // 1: hyperslop.pbui.workbench.v1.WorkbenchDocument.views:type_name -> hyperslop.pbui.workbench.v1.WorkbenchDocument.ViewsEntry
-	34, // 2: hyperslop.pbui.workbench.v1.WorkbenchDocument.documents:type_name -> hyperslop.pbui.workbench.v1.WorkbenchDocument.DocumentsEntry
+	34, // 1: hyperslop.pbui.workbench.v1.WorkbenchDocument.views:type_name -> hyperslop.pbui.workbench.v1.WorkbenchDocument.ViewsEntry
+	35, // 2: hyperslop.pbui.workbench.v1.WorkbenchDocument.documents:type_name -> hyperslop.pbui.workbench.v1.WorkbenchDocument.DocumentsEntry
 	4,  // 3: hyperslop.pbui.workbench.v1.Workspace.tree:type_name -> hyperslop.pbui.workbench.v1.Node
 	5,  // 4: hyperslop.pbui.workbench.v1.Node.leaf:type_name -> hyperslop.pbui.workbench.v1.Leaf
 	6,  // 5: hyperslop.pbui.workbench.v1.Node.split:type_name -> hyperslop.pbui.workbench.v1.Split
 	0,  // 6: hyperslop.pbui.workbench.v1.Split.direction:type_name -> hyperslop.pbui.workbench.v1.Direction
 	4,  // 7: hyperslop.pbui.workbench.v1.Split.a:type_name -> hyperslop.pbui.workbench.v1.Node
 	4,  // 8: hyperslop.pbui.workbench.v1.Split.b:type_name -> hyperslop.pbui.workbench.v1.Node
-	35, // 9: hyperslop.pbui.workbench.v1.AppView.documents:type_name -> hyperslop.pbui.workbench.v1.AppView.DocumentsEntry
-	37, // 10: hyperslop.pbui.workbench.v1.DocumentPayload.body:type_name -> google.protobuf.Struct
+	36, // 9: hyperslop.pbui.workbench.v1.AppView.documents:type_name -> hyperslop.pbui.workbench.v1.AppView.DocumentsEntry
+	38, // 10: hyperslop.pbui.workbench.v1.DocumentPayload.body:type_name -> google.protobuf.Struct
 	2,  // 11: hyperslop.pbui.workbench.v1.WorkbenchResource.workbench:type_name -> hyperslop.pbui.workbench.v1.WorkbenchDocument
-	38, // 12: hyperslop.pbui.workbench.v1.WorkbenchResource.created_at:type_name -> google.protobuf.Timestamp
-	38, // 13: hyperslop.pbui.workbench.v1.WorkbenchResource.updated_at:type_name -> google.protobuf.Timestamp
-	38, // 14: hyperslop.pbui.workbench.v1.WorkbenchSummary.updated_at:type_name -> google.protobuf.Timestamp
+	39, // 12: hyperslop.pbui.workbench.v1.WorkbenchResource.created_at:type_name -> google.protobuf.Timestamp
+	39, // 13: hyperslop.pbui.workbench.v1.WorkbenchResource.updated_at:type_name -> google.protobuf.Timestamp
+	39, // 14: hyperslop.pbui.workbench.v1.WorkbenchSummary.updated_at:type_name -> google.protobuf.Timestamp
 	10, // 15: hyperslop.pbui.workbench.v1.ListWorkbenchesResponse.workbenches:type_name -> hyperslop.pbui.workbench.v1.WorkbenchSummary
 	2,  // 16: hyperslop.pbui.workbench.v1.CreateWorkbenchRequest.workbench:type_name -> hyperslop.pbui.workbench.v1.WorkbenchDocument
 	14, // 17: hyperslop.pbui.workbench.v1.MutationBatch.mutations:type_name -> hyperslop.pbui.workbench.v1.Mutation
@@ -2525,23 +2602,25 @@ var file_hyperslop_pbui_workbench_v1_workbench_proto_depIdxs = []int32{
 	28, // 30: hyperslop.pbui.workbench.v1.Mutation.placement_split:type_name -> hyperslop.pbui.workbench.v1.PlacementSplit
 	29, // 31: hyperslop.pbui.workbench.v1.Mutation.placement_close:type_name -> hyperslop.pbui.workbench.v1.PlacementClose
 	30, // 32: hyperslop.pbui.workbench.v1.Mutation.split_resize:type_name -> hyperslop.pbui.workbench.v1.SplitResize
-	4,  // 33: hyperslop.pbui.workbench.v1.WorkspaceCreate.root_placement:type_name -> hyperslop.pbui.workbench.v1.Node
-	8,  // 34: hyperslop.pbui.workbench.v1.DocumentPut.document:type_name -> hyperslop.pbui.workbench.v1.DocumentPayload
-	7,  // 35: hyperslop.pbui.workbench.v1.ViewCreate.view:type_name -> hyperslop.pbui.workbench.v1.AppView
-	36, // 36: hyperslop.pbui.workbench.v1.DocumentBindings.values:type_name -> hyperslop.pbui.workbench.v1.DocumentBindings.ValuesEntry
-	39, // 37: hyperslop.pbui.workbench.v1.ViewConfigure.clear_title:type_name -> google.protobuf.Empty
-	22, // 38: hyperslop.pbui.workbench.v1.ViewConfigure.replace_documents:type_name -> hyperslop.pbui.workbench.v1.DocumentBindings
-	39, // 39: hyperslop.pbui.workbench.v1.ViewClone.clear_title:type_name -> google.protobuf.Empty
-	0,  // 40: hyperslop.pbui.workbench.v1.PlacementSplit.direction:type_name -> hyperslop.pbui.workbench.v1.Direction
-	4,  // 41: hyperslop.pbui.workbench.v1.PlacementSplit.new_placement:type_name -> hyperslop.pbui.workbench.v1.Node
-	1,  // 42: hyperslop.pbui.workbench.v1.PlacementSplit.place:type_name -> hyperslop.pbui.workbench.v1.PlacementPosition
-	7,  // 43: hyperslop.pbui.workbench.v1.WorkbenchDocument.ViewsEntry.value:type_name -> hyperslop.pbui.workbench.v1.AppView
-	8,  // 44: hyperslop.pbui.workbench.v1.WorkbenchDocument.DocumentsEntry.value:type_name -> hyperslop.pbui.workbench.v1.DocumentPayload
-	45, // [45:45] is the sub-list for method output_type
-	45, // [45:45] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	31, // 33: hyperslop.pbui.workbench.v1.Mutation.workspace_set_tree:type_name -> hyperslop.pbui.workbench.v1.WorkspaceSetTree
+	4,  // 34: hyperslop.pbui.workbench.v1.WorkspaceCreate.root_placement:type_name -> hyperslop.pbui.workbench.v1.Node
+	8,  // 35: hyperslop.pbui.workbench.v1.DocumentPut.document:type_name -> hyperslop.pbui.workbench.v1.DocumentPayload
+	7,  // 36: hyperslop.pbui.workbench.v1.ViewCreate.view:type_name -> hyperslop.pbui.workbench.v1.AppView
+	37, // 37: hyperslop.pbui.workbench.v1.DocumentBindings.values:type_name -> hyperslop.pbui.workbench.v1.DocumentBindings.ValuesEntry
+	40, // 38: hyperslop.pbui.workbench.v1.ViewConfigure.clear_title:type_name -> google.protobuf.Empty
+	22, // 39: hyperslop.pbui.workbench.v1.ViewConfigure.replace_documents:type_name -> hyperslop.pbui.workbench.v1.DocumentBindings
+	40, // 40: hyperslop.pbui.workbench.v1.ViewClone.clear_title:type_name -> google.protobuf.Empty
+	0,  // 41: hyperslop.pbui.workbench.v1.PlacementSplit.direction:type_name -> hyperslop.pbui.workbench.v1.Direction
+	4,  // 42: hyperslop.pbui.workbench.v1.PlacementSplit.new_placement:type_name -> hyperslop.pbui.workbench.v1.Node
+	1,  // 43: hyperslop.pbui.workbench.v1.PlacementSplit.place:type_name -> hyperslop.pbui.workbench.v1.PlacementPosition
+	4,  // 44: hyperslop.pbui.workbench.v1.WorkspaceSetTree.root_placement:type_name -> hyperslop.pbui.workbench.v1.Node
+	7,  // 45: hyperslop.pbui.workbench.v1.WorkbenchDocument.ViewsEntry.value:type_name -> hyperslop.pbui.workbench.v1.AppView
+	8,  // 46: hyperslop.pbui.workbench.v1.WorkbenchDocument.DocumentsEntry.value:type_name -> hyperslop.pbui.workbench.v1.DocumentPayload
+	47, // [47:47] is the sub-list for method output_type
+	47, // [47:47] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_hyperslop_pbui_workbench_v1_workbench_proto_init() }
@@ -2570,6 +2649,7 @@ func file_hyperslop_pbui_workbench_v1_workbench_proto_init() {
 		(*Mutation_PlacementSplit)(nil),
 		(*Mutation_PlacementClose)(nil),
 		(*Mutation_SplitResize)(nil),
+		(*Mutation_WorkspaceSetTree)(nil),
 	}
 	file_hyperslop_pbui_workbench_v1_workbench_proto_msgTypes[21].OneofWrappers = []any{
 		(*ViewConfigure_SetTitle)(nil),
@@ -2585,7 +2665,7 @@ func file_hyperslop_pbui_workbench_v1_workbench_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hyperslop_pbui_workbench_v1_workbench_proto_rawDesc), len(file_hyperslop_pbui_workbench_v1_workbench_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   35,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

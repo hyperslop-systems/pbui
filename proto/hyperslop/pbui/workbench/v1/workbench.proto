@@ -107,6 +107,7 @@ message Mutation {
     PlacementSplit placement_split = 13;
     PlacementClose placement_close = 14;
     SplitResize split_resize = 15;
+    WorkspaceSetTree workspace_set_tree = 16;
   }
 }
 
@@ -204,6 +205,15 @@ message SplitResize {
   string workspace_id = 1;
   string split_id = 2;
   double ratio = 3;
+}
+
+// WorkspaceSetTree replaces one workspace's placement tree wholesale
+// (PBUI-REBALANCE-1): the door structural layout repairs apply through. The
+// tree must be well-formed and every leaf must reference an existing view;
+// views that are no longer placed are NOT deleted by this mutation.
+message WorkspaceSetTree {
+  string workspace_id = 1;
+  Node root_placement = 2;
 }
 
 message WorkbenchConflict {

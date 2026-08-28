@@ -169,6 +169,40 @@ export function closePlacement(doc: WorkbenchDocument, placementId: string): Mut
 }
 
 /**
+ * replacePlacement makes the TARGET pane show the SOURCE pane's view and
+ * closes the source pane (the Alt-drag gesture, PBUI-REBALANCE-1): the
+ * dragged application takes the target's rectangle, the layout loses one
+ * tile, and the target's old view is deleted when nothing else places it.
+ * Sources and targets showing the SAME view (linked twins) collapse to the
+ * target placement alone.
+ */
+export function replacePlacement(doc: WorkbenchDocument, sourceId: string, targetId: string): Mutation[] {
+  if (sourceId === targetId) return [];
+  const sourceWorkspace = workspaceOfPlacement(doc, sourceId);
+  const targetWorkspace = workspaceOfPlacement(doc, targetId);
+  if (!sourceWorkspace || !targetWorkspace) return [];
+  const source = findNode(workspaceTree(doc, sourceWorkspace), sourceId);
+  const target = findNode(workspaceTree(doc, targetWorkspace), targetId);
+  if (source?.body.case !== "leaf" || target?.body.case !== "leaf") return [];
+  const sourceView = source.body.value.viewId;
+  const targetView = target.body.value.viewId;
+  if (sourceView === targetView) return closePlacement(doc, sourceId);
+  const mutations: Mutation[] = [
+    mutation({
+      case: "placementReplace",
+      value: { workspaceId: targetWorkspace, placementId: targetId, viewId: sourceView },
+    }),
+    // The source view has its new placement before the old one closes, so it
+    // can never look abandoned (same ordering dockPlacement relies on).
+    mutation({ case: "placementClose", value: { workspaceId: sourceWorkspace, placementId: sourceId } }),
+  ];
+  if (placementCount(doc, targetView) === 1) {
+    mutations.push(mutation({ case: "viewDelete", value: { viewId: targetView } }));
+  }
+  return mutations;
+}
+
+/**
  * swapPlacements exchanges what two panes show. Two placement references
  * change; the views themselves do not notice — which is the whole point of
  * the placement/view split.

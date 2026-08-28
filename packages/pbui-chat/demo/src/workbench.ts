@@ -1,6 +1,6 @@
 import { CONVERSATION_BINDING, createChatApps, createConversationApps, RefPresentation, type Reference } from "@hyperslop-systems/pbui-chat";
 import { createSandboxDevtools, createScriptApp, type SandboxHost } from "@hyperslop-systems/pbui-sandbox";
-import { createWorkbench, describeWorkbench, layout, parseDocument, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench, describeWorkbench, layout, parseDocument, rebalanceSettingsApp, split, tile } from "@hyperslop-systems/pbui-workbench";
 import { createElement } from "react";
 import { createDemoApps } from "./apps";
 import { chat, LEGACY_SESSION_KEY, router } from "./chat";
@@ -80,7 +80,7 @@ export const workbench = createWorkbench({
   // because the app registry refuses a duplicate id, so a name collision
   // between the agent's machinery and the product's tiles fails at startup
   // rather than showing whichever descriptor was registered last.
-  apps: [...createChatApps(chat), ...createConversationApps(chat), ...createDemoApps(), scriptApp, ...devtoolApps],
+  apps: [...createChatApps(chat), ...createConversationApps(chat), ...createDemoApps(), scriptApp, ...devtoolApps, rebalanceSettingsApp],
   initial: parseDocument(storage()?.getItem(WORKBENCH_STORAGE_KEY)) ?? defaultLayout(),
   // The document is the only thing worth writing; onMutate fires once per
   // committed batch and never for activation or launcher state, so this is

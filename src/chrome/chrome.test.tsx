@@ -2,13 +2,13 @@
  * The chrome kit (PBUI-UNIFY-001 Phase 2): zone geometry, drag registry
  * hygiene, the tile frame's callbacks, and the launcher shell's keyboard loop.
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { useState } from "react";
 import { LauncherShell } from "./LauncherShell";
 import { routeWorkbenchKey, isEditableTarget, isModKey, type ShortcutContext } from "./shortcutRouting";
 import { TileFrame } from "./TileFrame";
-import { registeredTileCount, useTileDrag, zoneFor } from "./useTileDrag";
+import { registeredTileCount, startTileCarry, useTileDrag, zoneFor } from "./useTileDrag";
 
 afterEach(cleanup);
 
@@ -168,6 +168,211 @@ describe("useTileDrag lifecycle", () => {
   });
 });
 
+/**
+ * The Alt-held drop replaces the whole target tile (PBUI-REBALANCE-1). Alt is
+ * live state: pressing it mid-hover reclassifies without a pointer move, and
+ * releasing it falls back to the plain zone. Without an `onReplace` consumer
+ * the modifier is inert.
+ */
+describe("useTileDrag Alt-replace", () => {
+  function ReplaceTile({
+    id,
+    left,
+    onSwap,
+    onDock,
+    onReplace,
+  }: {
+    id: string;
+    left: number;
+    onSwap: (a: string, b: string) => void;
+    onDock: (a: string, b: string, zone: string) => void;
+    onReplace?: (a: string, b: string) => void;
+  }) {
+    const drag = useTileDrag({ id, onSwap, onDock, ...(onReplace ? { onReplace } : {}) });
+    return (
+      <section
+        ref={(element) => {
+          if (element) element.getBoundingClientRect = () => box(100, 100, left) as DOMRect;
+          drag.register(element);
+        }}
+        data-placement-id={id}
+        data-zone={drag.zone ?? undefined}
+        data-testid={`tile-${id}`}
+      >
+        <button type="button" data-testid={`grip-${id}`} onPointerDown={drag.onGripPointerDown} />
+      </section>
+    );
+  }
+
+  function setup(withReplace = true) {
+    const onSwap = vi.fn();
+    const onDock = vi.fn();
+    const onReplace = vi.fn();
+    render(
+      <>
+        <ReplaceTile id="alt-a" left={0} onSwap={onSwap} onDock={onDock} {...(withReplace ? { onReplace } : {})} />
+        <ReplaceTile id="alt-b" left={200} onSwap={onSwap} onDock={onDock} {...(withReplace ? { onReplace } : {})} />
+      </>,
+    );
+    return { onSwap, onDock, onReplace };
+  }
+
+  function pointer(type: string, options: { x?: number; y?: number; altKey?: boolean } = {}) {
+    fireEvent(
+      window,
+      new MouseEvent(type, { clientX: options.x ?? 250, clientY: options.y ?? 50, altKey: options.altKey ?? false, bubbles: true }),
+    );
+  }
+
+  test("Alt held during the move classifies the whole tile as replace and commits it", () => {
+    const { onSwap, onReplace } = setup();
+    fireEvent.pointerDown(screen.getByTestId("grip-alt-a"), { pointerId: 1 });
+    // Near B's left edge — WOULD be a dock, but Alt covers the whole tile.
+    pointer("pointermove", { x: 210, altKey: true });
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("replace");
+    pointer("pointerup", { x: 210, altKey: true });
+    expect(onReplace).toHaveBeenCalledWith("alt-a", "alt-b");
+    expect(onSwap).not.toHaveBeenCalled();
+  });
+
+  test("pressing and releasing Alt mid-hover reclassifies without a pointer move", () => {
+    const { onSwap, onReplace } = setup();
+    fireEvent.pointerDown(screen.getByTestId("grip-alt-a"), { pointerId: 1 });
+    pointer("pointermove"); // B's centre, no Alt
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("center");
+    fireEvent.keyDown(window, { key: "Alt" });
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("replace");
+    fireEvent.keyUp(window, { key: "Alt" });
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("center");
+    pointer("pointerup");
+    expect(onSwap).toHaveBeenCalledWith("alt-a", "alt-b");
+    expect(onReplace).not.toHaveBeenCalled();
+  });
+
+  test("without an onReplace consumer, Alt is inert and the drop swaps", () => {
+    const { onSwap, onReplace } = setup(false);
+    fireEvent.pointerDown(screen.getByTestId("grip-alt-a"), { pointerId: 1 });
+    pointer("pointermove", { altKey: true });
+    expect(screen.getByTestId("tile-alt-b").dataset.zone).toBe("center");
+    pointer("pointerup", { altKey: true });
+    expect(onSwap).toHaveBeenCalledWith("alt-a", "alt-b");
+    expect(onReplace).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * A carry is placement mode (PBUI-REBALANCE-1): a launcher choice aimed at
+ * the tiles with a free pointer. Overlays classify exactly like a drag, the
+ * next pointerdown commits (and never reaches the tile's content), Escape
+ * and empty-space clicks cancel, Enter takes the caller's default.
+ */
+describe("startTileCarry (placement mode)", () => {
+  function CarryTile({ id, left }: { id: string; left: number }) {
+    const drag = useTileDrag({ id, onSwap: () => {}, onDock: () => {} });
+    return (
+      <section
+        ref={(element) => {
+          if (element) element.getBoundingClientRect = () => box(100, 100, left) as DOMRect;
+          drag.register(element);
+        }}
+        data-zone={drag.zone ?? undefined}
+        data-carrying={drag.carrying ? "true" : undefined}
+        data-testid={`carry-${id}`}
+      />
+    );
+  }
+
+  function setup(options: Partial<import("./useTileDrag").TileCarryOptions> = {}) {
+    const onDrop = vi.fn();
+    const onCancel = vi.fn();
+    const onDefault = vi.fn();
+    render(
+      <>
+        <CarryTile id="carry-a" left={0} />
+        <CarryTile id="carry-b" left={200} />
+      </>,
+    );
+    let cancel!: () => void;
+    act(() => {
+      cancel = startTileCarry({ onDrop, onCancel, onDefault, ...options });
+    });
+    return { onDrop, onCancel, onDefault, cancel: () => act(cancel) };
+  }
+
+  function pointer(type: string, options: { x?: number; y?: number; altKey?: boolean } = {}) {
+    fireEvent(
+      window,
+      new MouseEvent(type, { clientX: options.x ?? 250, clientY: options.y ?? 50, altKey: options.altKey ?? false, bubbles: true }),
+    );
+  }
+
+  afterEach(() => {
+    // No carry may outlive its test.
+    fireEvent.keyDown(window, { key: "Escape" });
+  });
+
+  test("tiles see the carry: overlays classify and the click commits the drop", () => {
+    const { onDrop, onCancel } = setup();
+    expect(screen.getByTestId("carry-carry-a").dataset.carrying).toBe("true");
+    pointer("pointermove", { x: 210 }); // near B's left edge
+    expect(screen.getByTestId("carry-carry-b").dataset.zone).toBe("left");
+    pointer("pointerdown", { x: 210 });
+    expect(onDrop).toHaveBeenCalledWith("carry-b", "left");
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByTestId("carry-carry-a").dataset.carrying).toBeUndefined();
+  });
+
+  test("Alt classifies the whole tile as replace, live from the keyboard", () => {
+    const { onDrop } = setup();
+    pointer("pointermove", { x: 210 });
+    fireEvent.keyDown(window, { key: "Alt" });
+    expect(screen.getByTestId("carry-carry-b").dataset.zone).toBe("replace");
+    fireEvent.keyUp(window, { key: "Alt" });
+    expect(screen.getByTestId("carry-carry-b").dataset.zone).toBe("left");
+    pointer("pointerdown", { x: 210, altKey: true });
+    expect(onDrop).toHaveBeenCalledWith("carry-b", "replace");
+  });
+
+  test("Escape cancels; a click on empty space cancels; Enter takes the default", () => {
+    const first = setup();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(first.onCancel).toHaveBeenCalledTimes(1);
+    expect(first.onDrop).not.toHaveBeenCalled();
+
+    const second = setup();
+    pointer("pointerdown", { x: 900 }); // outside every tile
+    expect(second.onCancel).toHaveBeenCalledTimes(1);
+
+    const third = setup();
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(third.onDefault).toHaveBeenCalledTimes(1);
+    expect(third.onDrop).not.toHaveBeenCalled();
+  });
+
+  test("the placement Enter never reaches a focused application control (PR #19)", () => {
+    const { onDefault } = setup();
+    const control = document.createElement("button");
+    document.body.append(control);
+    const appHandler = vi.fn();
+    control.addEventListener("keydown", appHandler);
+    // A real key press targets the focused element and bubbles; the carry's
+    // capture-phase window listener must consume it before the control sees it.
+    fireEvent.keyDown(control, { key: "Enter" });
+    expect(onDefault).toHaveBeenCalledTimes(1);
+    expect(appHandler).not.toHaveBeenCalled();
+    control.remove();
+  });
+
+  test("a second carry cancels the first; cancel is idempotent", () => {
+    const first = setup();
+    const second = setup();
+    expect(first.onCancel).toHaveBeenCalledTimes(1);
+    second.cancel();
+    second.cancel();
+    expect(second.onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("TileFrame", () => {
   test("wires the split and close callbacks and respects canClose", () => {
     const onSplit = vi.fn();
@@ -303,5 +508,33 @@ describe("shortcut routing (moved verbatim from datalab-ui)", () => {
     expect(isEditableTarget({ tagName: "DIV", isContentEditable: true })).toBe(true);
     expect(isEditableTarget({ tagName: "DIV" })).toBe(false);
     expect(isEditableTarget(null)).toBe(false);
+  });
+
+  test("Shift discriminates the two chords on the same key", () => {
+    expect(routeWorkbenchKey(key({ ctrlKey: true, shiftKey: true }), quiet, "Linux")).toEqual({
+      kind: "open-rebalance",
+    });
+    expect(routeWorkbenchKey(key({ metaKey: true, shiftKey: true }), quiet, "MacIntel")).toEqual({
+      kind: "open-rebalance",
+    });
+    // Without Mod, Shift+K is just typing a capital K.
+    expect(routeWorkbenchKey(key({ shiftKey: true }), quiet, "Linux")).toEqual({ kind: "ignore" });
+  });
+
+  test("the rebalance chord shares the launcher's guard block", () => {
+    for (const overrides of [
+      { launcherOpen: true },
+      { dialogOpen: true },
+      { objectMenuOpen: true },
+      { acceptingPresentation: true },
+      { renamingView: true },
+    ] satisfies Partial<ShortcutContext>[]) {
+      expect(
+        routeWorkbenchKey(key({ ctrlKey: true, shiftKey: true }), { ...quiet, ...overrides }, "Linux"),
+      ).toEqual({ kind: "ignore" });
+    }
+    expect(
+      routeWorkbenchKey(key({ ctrlKey: true, shiftKey: true }), { ...quiet, targetIsEditable: true }, "Linux"),
+    ).toEqual({ kind: "open-rebalance" });
   });
 });

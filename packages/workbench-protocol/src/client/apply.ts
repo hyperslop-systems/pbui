@@ -89,6 +89,23 @@ export function applyMutation(doc: WorkbenchDocument, mutation: Mutation): Workb
       return next;
     }
 
+    case "workspaceSetTree": {
+      const value = body.value;
+      if (!value.rootPlacement) {
+        throw invalid("invalid_mutation", "workspaceSetTree", "root placement is required");
+      }
+      const workspace = next.workspaces.find((item) => item.id === value.workspaceId);
+      if (!workspace) {
+        throw invalid(
+          "unknown_workspace",
+          "workspaceSetTree.workspaceId",
+          `workspace "${value.workspaceId}" does not exist`,
+        );
+      }
+      workspace.tree = clone(NodeSchema, value.rootPlacement);
+      return next;
+    }
+
     case "workspaceRename": {
       const workspace = next.workspaces.find((item) => item.id === body.value.workspaceId);
       if (!workspace) {

@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REPAIR LAB 2 · proposals</title>
+<style>
+:root{
+  --ink:#000; --paper:#fff; --pale:#f3f3f3;
+  --nav:#1414c8; --mut:#c81400; --wgt:#006414; --dim:#8a8a8a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"SFMono-Regular","Menlo","Consolas","Courier New",monospace;
+  font-size:11px;line-height:1.45;color:var(--ink);background:var(--paper);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;-webkit-font-smoothing:none;
+}
+.blu{color:var(--nav)} .red{color:var(--mut)} .grn{color:var(--wgt)} .k{color:#777}
+
+#main{display:flex;flex:1;min-height:0}
+#left{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
+
+/* ---------- stage ---------- */
+#stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:10px;
+  background:repeating-conic-gradient(var(--ink) 0 25%, var(--paper) 0 50%) 0 0/4px 4px;overflow:hidden;touch-action:none}
+#screen{position:relative;background:var(--paper);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);overflow:hidden}
+#screen::before{content:"";position:absolute;inset:0;
+  background:repeating-conic-gradient(var(--ink) 0 25%, var(--paper) 0 50%) 0 0/4px 4px;opacity:.5}
+#screen.preview{box-shadow:4px 4px 0 var(--nav);border-color:var(--nav)}
+.win{--tint:var(--paper);position:absolute;background:var(--paper);border:2px solid var(--ink);box-shadow:2px 2px 0 var(--ink);
+  display:flex;flex-direction:column;overflow:hidden;z-index:10}
+.win.sel{outline:2px solid var(--nav);outline-offset:1px}
+.win.bad{border-color:var(--mut);box-shadow:2px 2px 0 var(--mut)}
+
+.win.pv{border-color:var(--nav);box-shadow:2px 2px 0 var(--nav)}
+.tbar{height:16px;flex:0 0 16px;border-bottom:2px solid var(--ink);
+  background:repeating-linear-gradient(to bottom,var(--tint) 0 2px,var(--ink) 2px 3px,var(--tint) 3px 4px);
+  display:flex;align-items:center;overflow:hidden;user-select:none}
+.tbar .nm{margin:0 auto;padding:0 6px;background:var(--tint);font-weight:700;letter-spacing:1px;white-space:nowrap}
+.win.bad .tbar .nm{color:var(--mut)}
+.win.pv .tbar .nm{color:var(--nav)}
+.pbody{flex:1;min-height:0;overflow:hidden;padding:3px 5px;user-select:none;cursor:pointer;white-space:pre;font-size:10px;line-height:1.35}
+.tabs{display:flex;border-bottom:2px solid var(--ink);flex:0 0 14px;height:14px;overflow:hidden}
+.tabs i{flex:1;text-align:center;border-right:1px solid var(--ink);font-size:9px;line-height:12px;font-style:normal;overflow:hidden}
+.tabs i.on{background:var(--ink);color:var(--paper)}
+.badge{position:absolute;right:2px;top:2px;background:var(--mut);color:var(--paper);padding:0 3px;font-weight:700;font-size:9px;z-index:12}
+.ghost{position:absolute;border:1px dashed currentColor;z-index:20;pointer-events:none;opacity:.8}
+.ghost b{position:absolute;left:1px;top:-1px;font-size:9px;background:var(--paper);padding:0 2px;font-weight:700}
+.divider{position:absolute;z-index:30}
+.divider.h{cursor:col-resize} .divider.v{cursor:row-resize}
+.divider:hover::after{content:"";position:absolute;inset:0;
+  background:repeating-conic-gradient(var(--ink) 0 25%,transparent 0 50%) 0 0/2px 2px}
+#pvTag{position:absolute;left:0;top:0;z-index:40;background:var(--nav);color:var(--paper);padding:1px 7px;font-weight:700;display:none}
+
+/* ---------- proposal strip ---------- */
+#strip{flex:0 0 auto;border-top:2px solid var(--ink);display:flex;flex-direction:column;background:var(--paper)}
+#stripHead{height:19px;display:flex;align-items:center;gap:8px;padding:0 8px;border-bottom:2px solid var(--ink);white-space:nowrap;overflow:hidden;
+  background:repeating-linear-gradient(to bottom,var(--paper) 0 2px,var(--ink) 2px 3px,var(--paper) 3px 4px)}
+#stripHead b,#stripHead span{background:var(--paper);padding:0 5px;overflow:hidden;text-overflow:ellipsis}
+#stripHead #stripCount{flex:0 1 auto;min-width:0}
+#stripHead .sp{flex:1;background:none}
+#cards{display:flex;gap:6px;padding:7px 8px;overflow-x:auto;overflow-y:hidden;align-items:stretch}
+.card{flex:0 0 186px;border:2px solid var(--ink);display:flex;flex-direction:column;cursor:pointer;background:var(--paper);position:relative}
+.card:hover{box-shadow:2px 2px 0 var(--nav)}
+.card.on{box-shadow:3px 3px 0 var(--nav);border-color:var(--nav)}
+.card.out{border-color:var(--dim);color:var(--dim);background:var(--pale)}
+.card.out .ch{background:var(--pale)}
+.card .ch{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--ink);padding:0 4px;height:16px;font-weight:700;white-space:nowrap;overflow:hidden}
+.card .ch em{font-style:normal;color:var(--dim);font-weight:400}
+.card .tier{flex:0 0 auto;padding:0 3px;border:1px solid var(--ink);font-size:9px}
+.card .tier.t1,.card .tier.t2{color:var(--wgt);border-color:var(--wgt)}
+.card .tier.t3,.card .tier.t4{color:var(--mut);border-color:var(--mut)}
+.card .tier.t5,.card .tier.t6{background:var(--ink);color:var(--paper)}
+.card svg{display:block;width:100%;height:auto;max-height:120px;background:var(--pale)}
+.card rect{stroke:var(--ink);stroke-width:1;shape-rendering:crispEdges}
+.card rect.bad{stroke:var(--mut);stroke-width:2}
+.card rect.gh{fill:none;stroke-dasharray:2 2;opacity:.7}
+.card text{font-family:inherit;font-size:7px;font-weight:700;fill:var(--ink)}
+.card line.trail{stroke-width:1;stroke-dasharray:1 2;opacity:.75}
+.card .why{padding:2px 4px;font-size:9.5px;line-height:1.3;flex:1;min-height:26px;overflow:hidden}
+.card .nums{border-top:1px dotted #999;padding:1px 4px;font-size:9.5px;display:flex;justify-content:space-between}
+.card .rec{position:absolute;right:-2px;top:-2px;background:var(--nav);color:var(--paper);padding:0 4px;font-weight:700;font-size:9px}
+.card.zero .ch{color:var(--wgt)}
+#cards .sep{flex:0 0 2px;background:repeating-linear-gradient(to bottom,var(--ink) 0 3px,transparent 3px 6px);margin:0 4px}
+
+/* ---------- trace ---------- */
+#p-trace{flex:0 0 auto;border-top:2px solid var(--ink);display:flex;flex-direction:column;min-height:0}
+#p-trace .pb{padding:5px 8px;max-height:150px;overflow:auto}
+#p-trace.shut .pb{display:none}
+#log{font-size:10px;line-height:1.4}
+#log div{white-space:pre-wrap}
+#log .op{border-top:1px dotted #999;margin-top:3px;padding-top:2px}
+
+/* ---------- sidebar ---------- */
+#side{flex:0 0 330px;display:flex;flex-direction:column;min-height:0;border-left:2px solid var(--ink);overflow-y:auto}
+.panel{border-bottom:2px solid var(--ink)}
+.phead{height:17px;border-bottom:2px solid var(--ink);display:flex;align-items:center;cursor:pointer;user-select:none;
+  background:repeating-linear-gradient(to bottom,var(--paper) 0 2px,var(--ink) 2px 3px,var(--paper) 3px 4px)}
+.phead b{margin:0 auto;background:var(--paper);padding:0 8px;letter-spacing:2px}
+.pb{padding:6px 8px}
+.panel.shut .pb{display:none}
+.row{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}
+.row label{cursor:pointer;white-space:nowrap}
+.chk{display:inline-block;width:9px;height:9px;border:2px solid var(--ink);vertical-align:-1px;margin-right:3px;background:var(--paper)}
+input:checked+.chk{background:var(--ink)}
+input[type=radio],input[type=checkbox]{position:absolute;opacity:0;width:0;height:0}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:54px;height:2px;background:var(--ink);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:14px;background:var(--paper);border:2px solid var(--ink)}
+input[type=range]::-moz-range-thumb{width:9px;height:14px;background:var(--paper);border:2px solid var(--ink);border-radius:0}
+.btn{display:inline-block;border:2px solid var(--ink);background:var(--paper);padding:1px 7px;cursor:pointer;
+  font:inherit;font-weight:700;box-shadow:2px 2px 0 var(--ink);white-space:nowrap}
+.btn:active,.btn.down{transform:translate(2px,2px);box-shadow:none}
+.btn.go{background:var(--nav);color:var(--paper);border-color:var(--nav);box-shadow:2px 2px 0 var(--ink)}
+.tag{display:inline-block;padding:0 5px;border:2px solid var(--ink);cursor:pointer;font-weight:700;user-select:none}
+.tag.on{background:var(--ink);color:var(--paper)}
+.tag.bad{border-color:var(--mut);color:var(--mut)}
+.tag.bad.on{background:var(--mut);color:var(--paper)}
+#presetGrid{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+#presetGrid .tag{text-align:center;font-size:10px;padding:1px 2px;overflow:hidden}
+#profRow .tag{font-size:10px}
+#genList{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;margin:4px 0}
+#inspect table{border-collapse:collapse;width:100%;font-size:10px}
+#inspect td,#inspect th{border:1px solid var(--ink);padding:1px 4px;text-align:right}
+#inspect th:first-child,#inspect td:first-child{text-align:left}
+#inspect th{background:var(--pale)}
+#ba{display:flex;gap:6px;margin-top:5px}
+#ba figure{flex:1;min-width:0;border:2px solid var(--ink)}
+#ba figcaption{font-size:9px;letter-spacing:1px;text-align:center;border-bottom:1px solid var(--ink);background:var(--pale)}
+#ba svg{display:block;width:100%;height:auto;background:var(--paper)}
+#ba rect{stroke:var(--ink);stroke-width:1;shape-rendering:crispEdges}
+#ba rect.bad{stroke:var(--mut);stroke-width:2}
+#ba rect.gh{fill:none;stroke-dasharray:2 2;opacity:.7}
+#ba text{font-family:inherit;font-size:7px;font-weight:700;fill:var(--ink)}
+#ba line.trail{stroke-width:1;stroke-dasharray:1 2;opacity:.75}
+#tree{white-space:pre;font-size:10px;line-height:1.35;max-height:132px;overflow:auto;margin-top:5px}
+#status{flex:0 0 22px;border-top:2px solid var(--ink);display:flex;overflow:hidden;white-space:nowrap}
+#status .cell{padding:0 9px;border-right:2px solid var(--ink);display:flex;align-items:center;gap:5px}
+#status .grow{flex:1;border-right:0;color:#555;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:900px){
+  body{overflow:auto;height:auto}
+  #main{flex-direction:column}
+  #stage{flex:0 0 48vh;min-height:300px}
+  #left{flex:none}
+  #side{flex:1;border-left:0;border-top:2px solid var(--ink);overflow:visible}
+}
+:focus-visible{outline:2px solid var(--nav);outline-offset:1px}
+</style>
+</head>
+<body>
+
+<div id="main">
+  <div id="left">
+    <div id="stage"><div id="screen"></div><div id="pvTag"></div></div>
+
+    <div id="strip">
+      <div id="stripHead">
+        <b>PROPOSALS</b>
+        <span class="k" title="cards are ordered by how much they disturb the layout: weights, then order, then structure, then a rebuild">least invasive ─────▶ most</span>
+        <span class="k" id="stripCount"></span>
+        <span class="sp"></span>
+        <span class="btn" id="btnAccept">ACCEPT ⏎</span>
+        <span class="btn" id="btnDismiss">DISMISS esc</span>
+        <span class="btn" id="btnRebuild">RECOMPUTE</span>
+      </div>
+      <div id="cards"></div>
+    </div>
+
+    <div class="panel shut" id="p-trace"><div class="phead"><b>TRACE</b></div><div class="pb"><div id="log"></div></div></div>
+  </div>
+
+  <div id="side">
+    <div class="panel" id="p-policy"><div class="phead"><b>POLICY</b></div><div class="pb">
+      <div class="row" id="profRow"></div>
+      <div class="row k" id="profDesc" style="display:block"></div>
+      <div class="row"><label><input type="checkbox" id="autoApply"><i class="chk"></i>apply the recommendation automatically</label></div>
+      <div class="row k" style="display:block;border-top:1px dotted #999;padding-top:4px">what the layout is allowed to do</div>
+      <div class="row" id="allowRow"></div>
+      <div class="row"><span class="k">panes may move</span><input type="range" id="budPanes" min="0" max="100" value="100"><b class="grn" id="budPanesV">100%</b></div>
+      <div class="row"><span class="k">displacement cap</span><input type="range" id="budDisp" min="0" max="8000" step="100" value="8000"><b class="grn" id="budDispV">∞</b></div>
+      <div class="row k" style="display:block;border-top:1px dotted #999;padding-top:4px">how the recommendation is chosen</div>
+      <div class="row"><span class="k">w movement</span><input type="range" id="wMove" min="0" max="400" value="100"><b class="grn" id="wMoveV">1.00</b></div>
+      <div class="row"><span class="k">w structure</span><input type="range" id="wStruct" min="0" max="800" value="300"><b class="grn" id="wStructV">3.00</b></div>
+      <div class="row"><span class="k">w aspect</span><input type="range" id="wAspect" min="0" max="400" value="20"><b class="grn" id="wAspectV">0.20</b></div>
+      <div class="row k" style="display:block;border-top:1px dotted #999;padding-top:4px">candidate generators</div>
+      <div id="genList"></div>
+    </div></div>
+
+    <div class="panel" id="p-preset"><div class="phead"><b>LAYOUTS</b></div><div class="pb">
+      <div id="presetGrid"></div>
+      <div class="row" style="margin-top:5px"><span class="k">panes</span>
+        <input type="range" id="randN" min="3" max="16" value="8"><b id="randNv">8</b>
+        <span class="k">skew</span><input type="range" id="randSkew" min="0" max="100" value="55" style="max-width:50px"><b id="randSkewv">.55</b></div>
+      <div class="row"><button class="btn" id="btnRand">RANDOM</button>
+        <button class="btn" id="btnAdd">+PANE</button>
+        <button class="btn" id="btnDel">−PANE</button>
+        <button class="btn" id="btnSquish">SQUISH</button></div>
+      <div class="row"><span class="k">screen</span><input type="range" id="screenSz" min="30" max="100" value="100"><b id="screenSzv">100%</b></div>
+      <div class="row k" id="presetNote" style="display:block"></div>
+    </div></div>
+
+    <div class="panel" id="p-cfg"><div class="phead"><b>CONSTRAINTS</b></div><div class="pb">
+      <div class="row"><span class="k">min width</span><input type="range" id="cfgW" min="40" max="400" step="5" value="190"><b class="grn" id="cfgWv">190px</b></div>
+      <div class="row"><span class="k">min height</span><input type="range" id="cfgH" min="40" max="320" step="5" value="130"><b class="grn" id="cfgHv">130px</b></div>
+      <div class="row"><span class="k">gap</span><input type="range" id="cfgG" min="0" max="24" value="8"><b class="grn" id="cfgGv">8px</b>
+        <span class="k">hyst</span><input type="range" id="cfgHy" min="0" max="60" value="0" style="max-width:50px"><b class="grn" id="cfgHyv">0px</b></div>
+      <div class="row"><span class="k">target aspect</span><input type="range" id="cfgA" min="50" max="300" value="140"><b class="grn" id="cfgAv">1.40</b></div>
+    </div></div>
+
+    <div class="panel" id="p-inspect"><div class="phead"><b>INSPECT</b></div><div class="pb">
+      <div id="inspect"></div><div id="ba"></div><div id="tree"></div>
+      <div class="row" style="margin-top:5px"><button class="btn" id="btnStep">STEP SELECTED</button><button class="btn" id="btnUndo">UNDO</button></div>
+    </div></div>
+  </div>
+</div>
+
+<div id="status">
+  <div class="cell" id="stViol"></div>
+  <div class="cell" id="stFit"></div>
+  <div class="cell" id="stPick"></div>
+  <div class="cell grow" id="stHint"></div>
+</div>
+
+<script>
+/* =======================================================================
+   REPAIR LAB — core
+   n-ary split tree + minimum-size propagation + repair algorithms.
+   Pure logic, no DOM. Every algorithm is a generator that mutates the
+   tree and yields log records, so RUN and STEP share one code path.
+   ======================================================================= */
+'use strict';
+
+let uid = 1;
+const P  = (name)      => ({t:'p', id:'n'+(uid++), name});
+const SP = (axis,ch,w) => ({t:'s', id:'n'+(uid++), axis, ch, w:w||eqw(ch.length)});
+const ST = (ch,a=0)    => ({t:'k', id:'n'+(uid++), ch, active:a});
+const eqw = n => Array(n).fill(1/n);
+const other = a => a==='h' ? 'v' : 'h';
+const clone = t => JSON.parse(JSON.stringify(t));
+const sum = a => a.reduce((x,y)=>x+y,0);
+const R0 = x => Math.round(x);
+
+function lab(n){
+  return n.t==='p' ? n.name
+       : n.t==='k' ? 'Stack['+n.ch.map(c=>c.name).join(',')+']'
+       : (n.axis==='h' ? 'Row' : 'Col')+'('+n.ch.length+')';
+}
+function walk(n, fn, parent=null, idx=-1){
+  fn(n,parent,idx);
+  if(n.ch) n.ch.forEach((c,i)=>walk(c,fn,n,i));
+}
+function panes(n, out=[]){
+  if(n.t==='p') out.push(n); else n.ch.forEach(c=>panes(c,out));
+  return out;
+}
+function visibleLeaves(n, out=[]){
+  if(n.t==='p') out.push(n);
+  else if(n.t==='k') visibleLeaves(n.ch[n.active], out);
+  else n.ch.forEach(c=>visibleLeaves(c,out));
+  return out;
+}
+function findIn(root,id){
+  let hit=null;
+  walk(root,(n,p,i)=>{ if(n.id===id) hit={node:n,parent:p,idx:i}; });
+  return hit;
+}
+function depthOf(root,id){
+  let d=-1;
+  (function rec(n,k){ if(n.id===id){d=k;return true;} if(n.ch) for(const c of n.ch) if(rec(c,k+1)) return true; return false; })(root,0);
+  return d;
+}
+
+/* ---------- flatten same-axis nesting, drop 1-child nodes ---------- */
+function normalize(node){
+  if(!node.ch) return node;
+  node.ch = node.ch.map(normalize);
+  if(node.t==='k'){
+    if(node.ch.length===1) return node.ch[0];
+    node.active = Math.min(node.active, node.ch.length-1);
+    return node;
+  }
+  if(node.ch.length===1) return node.ch[0];
+  const ch=[], w=[];
+  node.ch.forEach((c,i)=>{
+    const pw=node.w[i];
+    if(c.t==='s' && c.axis===node.axis) c.ch.forEach((g,j)=>{ ch.push(g); w.push(pw*c.w[j]); });
+    else { ch.push(c); w.push(pw); }
+  });
+  const s=sum(w)||1;
+  node.ch=ch; node.w=w.map(x=>x/s);
+  return node;
+}
+
+/* ---------- geometry ---------- */
+function layoutTree(node, r, out, gap){
+  out[node.id]={...r};
+  if(!node.ch) return out;
+  if(node.t==='k'){ node.ch.forEach(c=>layoutTree(c,r,out,gap)); return out; }
+  const horiz = node.axis==='h';
+  const avail = (horiz?r.w:r.h) - gap*(node.ch.length-1);
+  let pos = horiz?r.x:r.y;
+  node.ch.forEach((c,i)=>{
+    const sz = node.w[i]*avail;
+    layoutTree(c, horiz?{x:pos,y:r.y,w:sz,h:r.h}:{x:r.x,y:pos,w:r.w,h:sz}, out, gap);
+    pos += sz + gap;
+  });
+  return out;
+}
+
+/* ---------- bottom-up minimum size propagation -----------------------
+   pane      : (minW, minH)
+   stack     : max over members, plus tab strip
+   Row(h)    : W = Σ Wi + (n-1)gap        H = max Hi
+   Col(v)    : W = max Wi                 H = Σ Hi + (n-1)gap
+   --------------------------------------------------------------------- */
+function propagate(node, cfg, memo={}){
+  if(memo[node.id]) return memo[node.id];
+  let r;
+  if(node.t==='p') r={w:cfg.minW, h:cfg.minH};
+  else if(node.t==='k'){
+    r={w:cfg.minW, h:cfg.minH};
+    node.ch.forEach(c=>{ const q=propagate(c,cfg,memo); r={w:Math.max(r.w,q.w), h:Math.max(r.h,q.h)}; });
+    r={w:r.w, h:r.h+cfg.tabH};
+  } else {
+    const q=node.ch.map(c=>propagate(c,cfg,memo));
+    const g=cfg.gap*(node.ch.length-1);
+    r = node.axis==='h'
+      ? {w:sum(q.map(x=>x.w))+g, h:Math.max(...q.map(x=>x.h))}
+      : {w:Math.max(...q.map(x=>x.w)), h:sum(q.map(x=>x.h))+g};
+  }
+  memo[node.id]=r;
+  return r;
+}
+
+/* ---------- violation report ---------- */
+function violations(root, rect, cfg){
+  const rects = layoutTree(root, rect, {}, cfg.gap);
+  const out=[];
+  for(const p of visibleLeaves(root)){
+    const r=rects[p.id]; if(!r) continue;
+    const f=findIn(root,p.id);
+    const inStack = f.parent && f.parent.t==='k';
+    const needH = cfg.minH + (inStack?cfg.tabH:0);
+    const dw=cfg.minW-r.w, dh=needH-r.h;
+    if(dw>0.5||dh>0.5) out.push({id:p.id, name:p.name, dw:Math.max(0,dw), dh:Math.max(0,dh), r});
+  }
+  return out;
+}
+
+/* ---------- projection onto {Σw=1, w ≥ l} in L2 ----------------------
+   w' = max(l, w + θ) with θ solved by bisection (monotone in θ).
+   --------------------------------------------------------------------- */
+function projectLower(w, l){
+  const sl=sum(l);
+  if(sl>=1-1e-9) return l.map(x=>x/sl);          /* infeasible: best effort */
+  let lo=-1, hi=1;
+  const F = th => sum(w.map((x,i)=>Math.max(l[i], x+th))) - 1;
+  for(let k=0;k<80;k++){ const mid=(lo+hi)/2; if(F(mid)>0) hi=mid; else lo=mid; }
+  const th=(lo+hi)/2;
+  const out=w.map((x,i)=>Math.max(l[i], x+th));
+  const s=sum(out);
+  return out.map(x=>x/s);
+}
+
+/* =======================================================================
+   PER-SPLIT STRATEGIES
+   Each is a generator (node, avail, lowerPx, cfg, ctx) that yields log
+   records and RETURNS a new weight vector.
+   ======================================================================= */
+
+/* --- 1. local sibling borrowing / ripple ---------------------------- */
+function* stratRipple(node, avail, lower, cfg, ctx){
+  const px = node.w.map(w=>w*avail);
+  const n  = px.length;
+  const need = px.map((p,i)=>Math.max(0, lower[i]-p));
+  const order = need.map((d,i)=>[d,i]).filter(x=>x[0]>0.5)
+                    .sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
+  for(const i of order){
+    let want = lower[i]-px[i];
+    if(want<=0.5) continue;
+    yield {c:'grn', t:`  ${lab(node.ch[i])} short ${R0(want)}px — borrow from nearest siblings`};
+    /* donors ranked by |j-i|, ties by side preference, then by slack */
+    const donors = px.map((p,j)=>({j, slack:Math.max(0,p-lower[j]), d:Math.abs(j-i), side:Math.sign(j-i)}))
+      .filter(o=>o.j!==i && o.slack>0.5)
+      .sort((a,b)=>{
+        if(cfg.donorOrder==='slack') return b.slack-a.slack || a.d-b.d;
+        if(a.d!==b.d) return a.d-b.d;
+        return cfg.donorOrder==='left' ? a.side-b.side : b.side-a.side;
+      });
+    for(const dn of donors){
+      if(want<=0.5) break;
+      const take=Math.min(want, dn.slack);
+      px[dn.j]-=take; px[i]+=take; want-=take;
+      ctx.moves++;
+      yield {c:'grn', t:`    take ${R0(take)}px from ${lab(node.ch[dn.j])} (slack ${R0(dn.slack)}) → ${want>0.5?`still short ${R0(want)}`:'satisfied'}`};
+    }
+    if(want>0.5){
+      ctx.infeasible=true;
+      yield {c:'red', t:`    no slack left in this split — ${R0(want)}px must come from an ancestor`};
+    }
+  }
+  return normPx(px, avail, lower);
+}
+
+/* --- 2. constrained L2 projection ----------------------------------- */
+function* stratProject(node, avail, lower, cfg, ctx){
+  const l = lower.map(x=>x/avail);
+  const w0 = node.w.slice();
+  const w1 = projectLower(w0, l);
+  ctx.moves += w1.filter((x,i)=>Math.abs(x-w0[i])>1e-4).length;
+  yield {c:'grn', t:`  min ‖w′−w‖²  s.t. Σw′=1, w′≥l   l=${vec(l)}`};
+  yield {c:'grn', t:`  ${vec(w0)} → ${vec(w1)}   (${w1.filter((x,i)=>Math.abs(x-w0[i])>1e-4).length}/${w0.length} weights changed)`};
+  return w1;
+}
+
+/* --- 3. sparse / fewest-donor repair -------------------------------- */
+function* stratSparse(node, avail, lower, cfg, ctx){
+  const px=node.w.map(w=>w*avail);
+  const need=px.map((p,i)=>Math.max(0,lower[i]-p));
+  const order=need.map((d,i)=>[d,i]).filter(x=>x[0]>0.5).sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
+  for(const i of order){
+    let want=lower[i]-px[i];
+    if(want<=0.5) continue;
+    const cand=px.map((p,j)=>({j,slack:Math.max(0,p-lower[j]),d:Math.abs(j-i)})).filter(o=>o.j!==i&&o.slack>0.5);
+    /* prefer one donor that can pay in full; nearest such wins */
+    const solo=cand.filter(o=>o.slack>=want-0.5).sort((a,b)=>a.d-b.d)[0];
+    if(solo){
+      px[solo.j]-=want; px[i]+=want; ctx.moves++;
+      yield {c:'grn', t:`  ${lab(node.ch[i])} short ${R0(want)}px → single donor ${lab(node.ch[solo.j])} pays all (dist ${solo.d})`};
+      continue;
+    }
+    yield {c:'grn', t:`  ${lab(node.ch[i])} short ${R0(want)}px — no single donor, use fewest (largest slack first)`};
+    cand.sort((a,b)=>b.slack-a.slack || a.d-b.d);
+    for(const dn of cand){
+      if(want<=0.5) break;
+      const take=Math.min(want,dn.slack);
+      px[dn.j]-=take; px[i]+=take; want-=take; ctx.moves++;
+      yield {c:'grn', t:`    ${R0(take)}px from ${lab(node.ch[dn.j])}`};
+    }
+    if(want>0.5){ ctx.infeasible=true; yield {c:'red', t:`    ${R0(want)}px still missing — escalate to ancestor`}; }
+  }
+  return normPx(px, avail, lower);
+}
+
+/* --- 4. balance: every split to 1/n (baseline) ---------------------- */
+function* stratBalance(node, avail, lower, cfg, ctx){
+  const n=node.ch.length;
+  const w=eqw(n);
+  ctx.moves+=n-1;
+  yield {c:'grn', t:`  ${lab(node)} → sᵢ=1/${n} regardless of need`};
+  const l=lower.map(x=>x/avail);
+  if(cfg.balanceThenProject && w.some((x,i)=>x<l[i]-1e-9)){
+    const p=projectLower(w,l);
+    yield {c:'grn', t:`  1/n violates minimums → project → ${vec(p)}`};
+    return p;
+  }
+  return w;
+}
+
+/* --- 5. global-ish quadratic relaxation (projected gradient) --------
+   E = α Σ‖c′−c‖² + β Σ‖s′−s‖² + γ Σ aspect², minimised over the split's
+   weights, then projected back onto {Σw=1, w≥l} each iteration.
+   --------------------------------------------------------------------- */
+function* stratRelax(node, avail, lower, cfg, ctx){
+  const n=node.ch.length;
+  const l=lower.map(x=>x/avail);
+  const w0=node.w.slice();
+  const cross=ctx.cross||300;
+  const gapf=cfg.gap/avail;
+  const geom = w => {
+    const c=[]; let pos=0;
+    for(let i=0;i<n;i++){ c.push(pos+w[i]/2); pos+=w[i]+gapf; }
+    return c;
+  };
+  const c0=geom(w0);
+  const target=Math.log(cfg.aspect);
+  const E = w => {
+    const c=geom(w); let e=0;
+    for(let i=0;i<n;i++){
+      e += cfg.alpha*(c[i]-c0[i])**2 + cfg.beta*(w[i]-w0[i])**2;
+      if(cfg.gamma>0){
+        const px=w[i]*avail;
+        const a = node.axis==='h' ? Math.log(px/cross) : Math.log(cross/px);
+        e += cfg.gamma*(a-target)**2/100;
+      }
+    }
+    return e;
+  };
+  let w=projectLower(w0,l);
+  const h=1e-4;
+  for(let it=0; it<cfg.iters; it++){
+    const g=[], e0=E(w);
+    for(let i=0;i<n;i++){ const t=w.slice(); t[i]+=h; g.push((E(t)-e0)/h); }
+    const gm=sum(g)/n;
+    w = projectLower(w.map((x,i)=>x-cfg.step*(g[i]-gm)), l);
+  }
+  ctx.moves += w.filter((x,i)=>Math.abs(x-w0[i])>1e-3).length;
+  yield {c:'grn', t:`  ${lab(node)} relax ${cfg.iters}it  α=${cfg.alpha} β=${cfg.beta} γ=${cfg.gamma}`};
+  yield {c:'grn', t:`  ${vec(w0)} → ${vec(w)}   E ${E(w0).toFixed(4)} → ${E(w).toFixed(4)}`};
+  return w;
+}
+
+function normPx(px, avail, lower){
+  const s=sum(px)||1;
+  return px.map(x=>Math.max(0, x)/s);
+}
+const vec = w => '['+w.map(x=>(+x).toFixed(2).replace(/^0/,'')).join(' ')+']';
+
+/* =======================================================================
+   DRIVER: bottom-up propagation, then one top-down repair pass.
+   Because requirements are propagated first, an ancestor always knows how
+   much a whole subtree needs, so a single top-down pass fixes both axes.
+   ======================================================================= */
+function* repairPass(root, rect, cfg, strat, ctx){
+  const memo={};
+  const need=propagate(root,cfg,memo);
+  ctx.memo=memo;
+  yield {c:'blu', t:`propagate minimums bottom-up: tree needs ${R0(need.w)}×${R0(need.h)}px, desktop ${R0(rect.w)}×${R0(rect.h)}px`};
+  if(need.w>rect.w+0.5||need.h>rect.h+0.5){
+    ctx.globalInfeasible=true;
+    yield {c:'red', t:`GLOBALLY INFEASIBLE — no weight assignment can satisfy every pane. Best effort follows.`};
+  }
+  yield* rec(root, rect, 0);
+
+  function* rec(n, r, d){
+    if(n.t==='p') return;
+    if(n.t==='k'){ for(const c of n.ch) yield* rec(c, r, d+1); return; }
+    const horiz=n.axis==='h';
+    const avail=(horiz?r.w:r.h)-cfg.gap*(n.ch.length-1);
+    const lower=n.ch.map(c=>Math.min(horiz?memo[c.id].w:memo[c.id].h, avail));
+    const cur=n.w.map(w=>w*avail);
+    const short=cur.map((p,i)=>lower[i]-p).filter(x=>x>0.5+(cfg.hyst||0));
+    if(short.length || strat.always){
+      if(short.length)
+        yield {c:'blu', t:`${'· '.repeat(d)}${lab(n)} ${horiz?'↔':'↕'}${R0(avail)}px — ${short.length} child(ren) under minimum`};
+      ctx.cross = horiz ? r.h : r.w;
+      ctx.visited++;
+      const w = yield* strat(n, avail, lower, cfg, ctx);
+      n.w = w;
+    }
+    let pos=horiz?r.x:r.y;
+    for(let i=0;i<n.ch.length;i++){
+      const sz=n.w[i]*avail;
+      const cr = horiz?{x:pos,y:r.y,w:sz,h:r.h}:{x:r.x,y:pos,w:r.w,h:sz};
+      pos+=sz+cfg.gap;
+      yield* rec(n.ch[i], cr, d+1);
+    }
+  }
+}
+stratRelax.always = true;
+stratBalance.always = true;
+
+/* =======================================================================
+   LOCAL TREE MUTATION SEARCH
+   ======================================================================= */
+function mutationsOf(root, cfg){
+  const out=[];
+  const splits=[];
+  walk(root, n=>{ if(n.t==='s') splits.push(n.id); });
+  for(const id of splits){
+    out.push({k:'transpose', id, d:`transpose ${id}`});
+    const node=findIn(root,id).node;
+    if(node.ch.length>2){
+      out.push({k:'rotate', id, d:`rotate children of ${id}`});
+      /* regroup runs into a perpendicular sub-split → turns a long strip into a grid */
+      for(let k=2;k<=Math.min(4,node.ch.length-1);k++)
+        for(let s=0;s+k<=node.ch.length;s+=k)
+          if(s+k<=node.ch.length) out.push({k:'regroup', id, s, run:k, d:`regroup ${k} from slot ${s}`});
+    }
+    for(let i=0;i+1<node.ch.length;i++) out.push({k:'swap', id, i, d:`swap children ${i}/${i+1}`});
+    if(node.ch.length>2) out.push({k:'reverse', id, d:`reverse child order`});
+  }
+  return out;
+}
+function applyMutation(root, m){
+  const f=findIn(root,m.id); if(!f) return null;
+  const n=f.node;
+  if(m.k==='transpose') n.axis=other(n.axis);
+  else if(m.k==='rotate'){ n.ch.unshift(n.ch.pop()); n.w.unshift(n.w.pop()); }
+  else if(m.k==='swap'){
+    [n.ch[m.i],n.ch[m.i+1]]=[n.ch[m.i+1],n.ch[m.i]];
+    [n.w[m.i],n.w[m.i+1]]=[n.w[m.i+1],n.w[m.i]];
+  }
+  else if(m.k==='regroup'){
+    const kids=n.ch.splice(m.s,m.run), ws=n.w.splice(m.s,m.run);
+    const s=sum(ws)||1;
+    const grp=SP(other(n.axis), kids, ws.map(x=>x/s));
+    n.ch.splice(m.s,0,grp); n.w.splice(m.s,0,s);
+  }
+  else if(m.k==='reverse'){ n.ch.reverse(); n.w.reverse(); }
+  return normalize(root);
+}
+
+/* score: lower is better */
+function scoreTree(root, rect, cfg, base){
+  const v=violations(root,rect,cfg);
+  const rects=layoutTree(root,rect,{},cfg.gap);
+  let deficit=0, aspect=0, move=0, cnt=0;
+  for(const p of visibleLeaves(root)){
+    const r=rects[p.id]; if(!r) continue;
+    deficit += Math.max(0,cfg.minW-r.w)+Math.max(0,cfg.minH-r.h);
+    aspect  += Math.abs(Math.log(Math.max(1,r.w)/Math.max(1,r.h))-Math.log(cfg.aspect))**2;
+    const b=base[p.id];
+    if(b){ move += Math.abs(r.x-b.x)+Math.abs(r.y-b.y)+Math.abs(r.w-b.w)+Math.abs(r.h-b.h); cnt++; }
+  }
+  return {
+    viol:v.length, deficit, aspect, move,
+    score: cfg.wViol*v.length + cfg.wDeficit*deficit/100 + cfg.wAspect*aspect + cfg.wMove*move/1000
+  };
+}
+
+
+/* =======================================================================
+   FULL RE-LAYOUT + MINIMUM-COST ASSIGNMENT
+   ======================================================================= */
+function hungarian(cost){                   /* O(n³) potentials method */
+  const n=cost.length, m=cost[0].length, INF=1e18;
+  const u=Array(n+1).fill(0), v=Array(m+1).fill(0), p=Array(m+1).fill(0), way=Array(m+1).fill(0);
+  for(let i=1;i<=n;i++){
+    p[0]=i; let j0=0;
+    const minv=Array(m+1).fill(INF), used=Array(m+1).fill(false);
+    do{
+      used[j0]=true; const i0=p[j0]; let delta=INF, j1=-1;
+      for(let j=1;j<=m;j++) if(!used[j]){
+        const cur=cost[i0-1][j-1]-u[i0]-v[j];
+        if(cur<minv[j]){ minv[j]=cur; way[j]=j0; }
+        if(minv[j]<delta){ delta=minv[j]; j1=j; }
+      }
+      for(let j=0;j<=m;j++){ if(used[j]){ u[p[j]]+=delta; v[j]-=delta; } else minv[j]-=delta; }
+      j0=j1;
+    } while(p[j0]!==0);
+    do{ const j1=way[j0]; p[j0]=p[j1]; j0=j1; } while(j0);
+  }
+  const ans=Array(n).fill(-1);
+  for(let j=1;j<=m;j++) if(p[j]) ans[p[j]-1]=j-1;
+  return ans;
+}
+
+const TARGETS = {
+  grid(u){
+    const n=u.length, cols=Math.ceil(Math.sqrt(n)), rows=Math.ceil(n/cols), ch=[];
+    for(let i=0;i<n;i+=cols){ const c=u.slice(i,i+cols); ch.push(c.length===1?c[0]:SP('h',c,eqw(c.length))); }
+    return ch.length===1?ch[0]:SP('v',ch,eqw(ch.length));
+  },
+  columns(u){ return u.length===1?u[0]:SP('h',u,eqw(u.length)); },
+  rows(u){ return u.length===1?u[0]:SP('v',u,eqw(u.length)); },
+  master(u,cfg){
+    if(u.length===1) return u[0];
+    const rest=u.slice(1), r=cfg.masterRatio||0.6;
+    return SP('h',[u[0], rest.length===1?rest[0]:SP('v',rest,eqw(rest.length))],[r,1-r]);
+  },
+  bsp(u){
+    const b=(a,ax)=>{ if(a.length===1) return a[0];
+      const mid=Math.ceil(a.length/2);
+      return SP(ax,[b(a.slice(0,mid),other(ax)), b(a.slice(mid),other(ax))],[.5,.5]); };
+    return b(u,'h');
+  },
+  dwindle(u,cfg){
+    const r=cfg.dwindleRatio||0.62;
+    const dw=(a,ax)=> a.length===1?a[0]:SP(ax,[a[0],dw(a.slice(1),other(ax))],[r,1-r]);
+    return dw(u,'h');
+  }
+};
+
+/* returns {tree, log[]} — panes are re-seated into fresh slots */
+function* regenerate(root, rect, cfg, ctx){
+  const before = layoutTree(root, rect, {}, cfg.gap);
+  const ps = visibleLeaves(root);
+  const n = ps.length;
+  ctx.struct=(ctx.struct||0)+1;
+  yield {c:'red', t:`REGENERATE as ${cfg.target.toUpperCase()} — the current topology is discarded`};
+  const slots = ps.map((_,i)=>({t:'slot', id:'slot'+i, idx:i}));
+  const fresh = TARGETS[cfg.target](slots.slice(), cfg);
+  const sr = layoutTree(fresh, rect, {}, cfg.gap);
+  if(!cfg.assign){
+    yield {c:'red', t:`assignment: DFS order (pane k → slot k) — cheap, but identity jumps around`};
+    seat(fresh, ps.map((p,i)=>i));
+    ctx.tree=fresh; return;
+  }
+  const cost=[];
+  for(let i=0;i<n;i++){
+    const a=before[ps[i].id], row=[];
+    for(let j=0;j<n;j++){
+      const b=sr['slot'+j];
+      const dc=Math.hypot((a.x+a.w/2)-(b.x+b.w/2), (a.y+a.h/2)-(b.y+b.h/2));
+      const ds=Math.abs(a.w-b.w)+Math.abs(a.h-b.h);
+      row.push(dc + cfg.sizeCost*ds);
+    }
+    cost.push(row);
+  }
+  const asg=hungarian(cost);
+  const tot=asg.reduce((s,j,i)=>s+cost[i][j],0);
+  const naive=ps.reduce((s,_,i)=>s+cost[i][i],0);
+  const saved = naive>0.5 ? R0(100-100*tot/naive) : 0;
+  yield {c:'red', t:`min-cost assignment over ${n}×${n}: Σcost ${R0(tot)}px vs ${R0(naive)}px in DFS order (−${saved}%)`};
+  for(let i=0;i<n;i++) yield {c:'red', t:`  ${ps[i].name} → slot ${asg[i]}  (${R0(cost[i][asg[i]])}px)`};
+  const bySlot=[]; asg.forEach((j,i)=>{ bySlot[j]=i; });
+  seat(fresh, bySlot);
+  ctx.tree=fresh;
+
+  function seat(node, bySlot){
+    if(node.t==='slot') return;
+    if(!node.ch) return;
+    node.ch = node.ch.map(c => c.t==='slot' ? ps[bySlot[c.idx]] : (seat(c,bySlot), c));
+  }
+}
+
+/* ---------- last resort: fold panes into stacks ---------------------
+   When the screen physically cannot show n panes at the minimum size,
+   no geometry helps. Grouping panes into tabbed stacks is the only
+   move that keeps every *visible* pane usable.
+   --------------------------------------------------------------------- */
+function* foldStacks(root, rect, cfg, ctx){
+  const ps = panes(root);
+  const cols = Math.max(1, Math.floor((rect.w+cfg.gap)/(cfg.minW+cfg.gap)));
+  const rows = Math.max(1, Math.floor((rect.h+cfg.gap)/(cfg.minH+cfg.tabH+cfg.gap)));
+  const cap  = cols*rows;
+  yield {c:'red', t:`screen holds ${cols}×${rows} = ${cap} usable rectangles, but there are ${ps.length} panes`};
+  if(ps.length<=cap){ yield {c:'grn', t:'the panes do fit — folding is not needed'}; return; }
+  const per = Math.ceil(ps.length/cap);
+  yield {c:'red', t:`fold into ${cap} stacks of up to ${per} — every visible pane clears its minimum, the rest live behind tabs`};
+  const groups=[];
+  for(let i=0;i<ps.length;i+=per) groups.push(ps.slice(i,i+per));
+  const units=groups.map(g=>g.length===1?g[0]:ST(g,0));
+  const ch=[];
+  for(let i=0;i<units.length;i+=cols){
+    const c=units.slice(i,i+cols);
+    ch.push(c.length===1?c[0]:SP('h',c,eqw(c.length)));
+  }
+  ctx.tree = normalize(ch.length===1?ch[0]:SP('v',ch,eqw(ch.length)));
+  ctx.struct=(ctx.struct||0)+1;
+}
+
+/* aspect / area statistics for the metrics panel */
+function stats(root, rect, cfg, base){
+  const rects=layoutTree(root,rect,{},cfg.gap);
+  const ls=visibleLeaves(root);
+  let moved=0, disp=0, dispMax=0, worstAsp=1, minArea=Infinity;
+  for(const p of ls){
+    const r=rects[p.id]; if(!r) continue;
+    const asp=Math.max(r.w/Math.max(1,r.h), r.h/Math.max(1,r.w));
+    worstAsp=Math.max(worstAsp,asp);
+    minArea=Math.min(minArea,r.w*r.h);
+    const b=base&&base[p.id];
+    if(b){
+      const d=Math.abs((r.x+r.w/2)-(b.x+b.w/2))+Math.abs((r.y+r.h/2)-(b.y+b.h/2))
+             +Math.abs(r.w-b.w)+Math.abs(r.h-b.h);
+      disp+=d; dispMax=Math.max(dispMax,d);
+      if(d>1) moved++;
+    }
+  }
+  const v=violations(root,rect,cfg);
+  return {viol:v.length, worst:R0(Math.max(0,...v.map(x=>Math.max(x.dw,x.dh)))),
+          moved, panes:ls.length, disp:R0(disp), dispMax:R0(dispMax),
+          asp:worstAsp, minArea:R0(minArea)};
+}
+
+
+/* =======================================================================
+   REPAIR LAB 2 — proposals
+   The layout is never repaired behind your back. Every candidate repair is
+   generated, measured, classified by how invasive it is, and offered.
+   ======================================================================= */
+const $ = s => document.querySelector(s);
+const el = (t,c) => { const e=document.createElement(t); if(c) e.className=c; return e; };
+
+const cfg = {
+  minW:190, minH:130, gap:8, tabH:14, hyst:0, aspect:1.4,
+  donorOrder:'near', balanceThenProject:true,
+  alpha:1, beta:1, gamma:0, iters:60, step:0.05,
+  inner:'project', maxMoves:4, minGain:0.05,
+  wViol:10, wDeficit:1, wAspect:0.6, wMove:1,
+  target:'grid', assign:true, sizeCost:0.25, masterRatio:0.6, dwindleRatio:0.62
+};
+
+/* stable identity colours: a pane keeps its hue through every proposal,
+   which is what makes the thumbnails legible at a glance */
+const PALETTE=[
+  {f:'#f4cccc',i:'#a03a3a'},{f:'#f7e0a6',i:'#8a6410'},{f:'#daecb4',i:'#4c7020'},
+  {f:'#b9e6d5',i:'#1d6b57'},{f:'#bfdcf3',i:'#1f5c8a'},{f:'#cfd2f2',i:'#3f47a0'},
+  {f:'#e9ccea',i:'#7a3b86'},{f:'#eaddc6',i:'#7a6534'},{f:'#f8d3b6',i:'#9a5520'},
+  {f:'#d7dade',i:'#4a5560'},{f:'#c9eaea',i:'#1c6f72'},{f:'#f2cfe0',i:'#993766'}];
+const colors=new Map(); let colorNext=0;
+function colorOf(id){ if(!colors.has(id)) colors.set(id,PALETTE[colorNext++%PALETTE.length]); return colors.get(id); }
+function assignColors(){ colors.clear(); colorNext=0; panes(root).forEach(p=>colorOf(p.id)); }
+
+let root, rect={x:0,y:0,w:100,h:100}, selected=null;
+let slate=[], picked=null, hovered=null, ghosts=null, undoStack=[];
+let logBuf=[], screenPct=1, presetName='', stepper=null;
+
+/* ======================================================================
+   LAYOUTS
+   ====================================================================== */
+let seed=7;
+function rnd(){ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; }
+function pn(n){ return Array.from({length:n},(_,i)=>P(String.fromCharCode(65+i%26)+(i>25?Math.floor(i/26)+1:''))); }
+function randomTree(n, skew){
+  const build=(a,ax)=>{
+    if(a.length===1) return a[0];
+    const k=Math.min(a.length, 2+Math.floor(rnd()*2.6)), per=a.length/k, parts=[];
+    let idx=0;
+    for(let i=0;i<k;i++){ const end=i===k-1?a.length:Math.max(idx+1,Math.round((i+1)*per)); parts.push(a.slice(idx,end)); idx=end; }
+    const kids=parts.filter(p=>p.length).map(p=>build(p,other(ax)));
+    const raw=kids.map(()=>Math.pow(rnd(),1+skew*6)+0.02), s=sum(raw);
+    return SP(ax,kids,raw.map(x=>x/s));
+  };
+  return normalize(build(pn(n), rnd()<0.5?'h':'v'));
+}
+const PRESETS=[
+  {k:'HEALTHY', n:'three roomy panes, one of them a stack — nothing to propose', make(){
+    return SP('h',[P('MAIL'), ST([P('CHAT'),P('TERM')],0), SP('v',[P('DIFF'),P('LOG')],[.55,.45])],[.4,.3,.3]); }},
+  {k:'SLIVER', n:'one pane hogs 90%; two siblings are unusable slivers', make(){
+    return SP('h',[P('A'),P('B'),P('C')],[.90,.05,.05]); }},
+  {k:'FOUR DONORS', n:'30/30/30/10 — the last pane needs a little. Compare who pays for it', make(){
+    return SP('h',[P('A'),P('B'),P('C'),P('D')],[.30,.30,.30,.10]); }},
+  {k:'COMPOUND', n:'nested fractions multiply: .2 × .15 × .3 leaves D at about 1% of the screen', make(){
+    return SP('h',[P('A'), SP('v',[P('B'), SP('h',[P('C'),P('D')],[.7,.3])],[.85,.15])],[.8,.2]); }},
+  {k:'SKINNY COL', n:'Row[big, Col of 6] — the column is structurally too tall for its panes', make(){
+    return SP('h',[P('BIG'), SP('v',pn(6).map((p,i)=>{p.name='p'+(i+1);return p;}),eqw(6))],[.74,.26]); }},
+  {k:'WIDE ROW 9', n:'nine equal columns, each far below a usable width', make(){ return SP('h',pn(9),eqw(9)); }},
+  {k:'STRIPES 6', n:'six full-width bands — feasible, but every aspect ratio is wrong', make(){ return SP('v',pn(6),eqw(6)); }},
+  {k:'DWINDLE 8', n:'golden-ratio dwindle; the tail panes vanish into the corner', make(){
+    const dw=(a,ax)=>a.length===1?a[0]:SP(ax,[a[0],dw(a.slice(1),other(ax))],[.62,.38]); return dw(pn(8),'h'); }},
+  {k:'SPIRAL', n:'dwindle that alternates the side it drops toward', make(){
+    const dw=(a,ax,f)=>{ if(a.length===1) return a[0]; const r=dw(a.slice(1),other(ax),!f);
+      return f?SP(ax,[r,a[0]],[.38,.62]):SP(ax,[a[0],r],[.62,.38]); }; return dw(pn(7),'h',false); }},
+  {k:'BSP 7', n:'balanced binary on a non-power-of-two count: unequal areas by construction', make(){
+    const b=(a,ax)=>a.length===1?a[0]:SP(ax,[b(a.slice(0,Math.ceil(a.length/2)),other(ax)),b(a.slice(Math.ceil(a.length/2)),other(ax))],[.5,.5]);
+    return b(pn(7),'h'); }},
+  {k:'MASTER SWARM', n:'master at 84% plus seven stragglers sharing the rest', make(){
+    return SP('h',[P('MASTER'), SP('v',pn(7).map((p,i)=>{p.name='s'+(i+1);return p;}),eqw(7))],[.84,.16]); }},
+  {k:'STACKS', n:'two stacks; a stack needs the height of its tallest member plus tabs', make(){
+    return SP('h',[SP('v',[ST([P('IDE'),P('DOCS'),P('REF')],0),P('TERM')],[.82,.18]), ST([P('MAIL'),P('CAL')],0)],[.7,.3]); }},
+  {k:'MIXED MESS', n:'what a desktop looks like after forty manual operations', make(){
+    return SP('h',[SP('v',[P('A'),SP('h',[P('B'),P('C')],[.86,.14])],[.72,.28]),
+      SP('v',[SP('h',[P('D'),ST([P('E'),P('F')],0),P('G')],[.55,.35,.10]),P('H'),P('I')],[.5,.42,.08])],[.62,.38]); }},
+  {k:'TOO MANY', n:'more panes than the screen can hold at these minima — only a fallback will do', make(){
+    const cols=Math.max(2,Math.floor(rect.w/(cfg.minW+cfg.gap))+2);
+    const rows=Math.max(2,Math.min(6,Math.floor(rect.h/(cfg.minH+cfg.gap))+1));
+    const n=Math.min(36,cols*rows), u=pn(n), ch=[];
+    for(let i=0;i<n;i+=cols){ const c=u.slice(i,i+cols); ch.push(c.length===1?c[0]:SP('h',c,eqw(c.length))); }
+    return SP('v',ch,eqw(ch.length)); }},
+];
+
+/* ======================================================================
+   MUTATION SEARCH (tree-level candidate, used by two generators)
+   ====================================================================== */
+function* algoMutate(rt, rc, c, ctx){
+  const b=layoutTree(rt,rc,{},c.gap);
+  const innerStrat = c.inner==='ripple'?stratRipple:c.inner==='sparse'?stratSparse:stratProject;
+  const settle=t=>{ const cx={moves:0}; for(const _ of repairPass(t,rc,c,innerStrat,cx)){} return scoreTree(t,rc,c,b); };
+  let cur=clone(rt), curSc=settle(cur);
+  ctx.tree=cur;
+  yield {c:'blu', t:`settle first with ${c.inner} → ${curSc.viol} violations, score ${curSc.score.toFixed(2)}`};
+  for(let round=0; round<c.maxMoves; round++){
+    const muts=mutationsOf(cur,c);
+    let best=null;
+    for(const m of muts){
+      const cand=clone(cur); const r=applyMutation(cand,m); if(!r) continue;
+      const sc=settle(r);
+      if(!best||sc.score<best.sc.score) best={m,sc,r};
+    }
+    if(!best) break;
+    yield {c:'red', t:`round ${round+1}: ${muts.length} candidates, best is ${best.m.d} → ${best.sc.score.toFixed(2)}`};
+    if(best.sc.score > curSc.score - c.minGain){ yield {c:'red', t:`gain below ${c.minGain} — stop`}; break; }
+    cur=best.r; curSc=best.sc; ctx.tree=cur; ctx.struct=(ctx.struct||0)+1; ctx.lastMut=best.m.d;
+    yield {c:'red', t:`  accept ${best.m.k}: ${best.sc.viol} violations left`};
+  }
+  ctx.tree=cur;
+}
+
+/* ======================================================================
+   CANDIDATE GENERATORS
+   kind drives the invasiveness ceiling; params override cfg for that run.
+   ====================================================================== */
+const RUN = {
+  ripple:(t,r,c,x)=>repairPass(t,r,c,stratRipple,x),
+  sparse:(t,r,c,x)=>repairPass(t,r,c,stratSparse,x),
+  project:(t,r,c,x)=>repairPass(t,r,c,stratProject,x),
+  relax:(t,r,c,x)=>repairPass(t,r,c,stratRelax,x),
+  balance:(t,r,c,x)=>repairPass(t,r,c,stratBalance,x),
+  mutate:algoMutate,
+  regen:regenerate,
+  fold:foldStacks,
+};
+const GENS=[
+  {id:'ripple',    algo:'ripple',  label:'RIPPLE',      note:'nearest donor',  kind:'weights', params:{donorOrder:'near'}},
+  {id:'ripple-sl', algo:'ripple',  label:'RIPPLE',      note:'richest donor',  kind:'weights', params:{donorOrder:'slack'}},
+  {id:'sparse',    algo:'sparse',  label:'SPARSE',      note:'fewest donors',  kind:'weights'},
+  {id:'project',   algo:'project', label:'PROJECT',     note:'closest in L2',  kind:'weights'},
+  {id:'relax',     algo:'relax',   label:'RELAX',       note:'displacement',   kind:'weights', params:{gamma:0}},
+  {id:'relax-a',   algo:'relax',   label:'RELAX',       note:'+ aspect',       kind:'weights', params:{gamma:2, iters:90}},
+  {id:'balance',   algo:'balance', label:'BALANCE',     note:'every split 1/n',kind:'weights'},
+  {id:'mutate1',   algo:'mutate',  label:'RESHAPE',     note:'one move',       kind:'topology', params:{maxMoves:1}},
+  {id:'mutate4',   algo:'mutate',  label:'RESHAPE',     note:'up to four',     kind:'topology', params:{maxMoves:4}},
+  {id:'regen-g',   algo:'regen',   label:'REBUILD',     note:'grid',           kind:'rebuild', params:{target:'grid'}},
+  {id:'regen-m',   algo:'regen',   label:'REBUILD',     note:'master',         kind:'rebuild', params:{target:'master'}},
+  {id:'regen-d',   algo:'regen',   label:'REBUILD',     note:'dwindle',        kind:'rebuild', params:{target:'dwindle'}},
+  {id:'regen-c',   algo:'regen',   label:'REBUILD',     note:'columns',        kind:'rebuild', params:{target:'columns'}},
+  {id:'fold',      algo:'fold',    label:'FOLD',        note:'surplus to tabs',kind:'stack'},
+];
+
+/* ======================================================================
+   POLICY PROFILES
+   ====================================================================== */
+const PROFILES={
+  careful:{ label:'CAREFUL',
+    desc:'Move as little as possible. Weights only — the tree you built stays the tree you built.',
+    gens:['ripple','ripple-sl','sparse','project'],
+    allow:{reorder:false,topology:false,rebuild:false,stack:false},
+    bud:{panes:100,disp:2600}, w:{move:1.6,struct:6,aspect:0.1} },
+  balanced:{ label:'BALANCED',
+    desc:'Prefer a quiet repair, but reshape a split when weights genuinely cannot fix it.',
+    gens:['ripple','sparse','project','relax','mutate1','mutate4','fold'],
+    allow:{reorder:true,topology:true,rebuild:false,stack:true},
+    bud:{panes:100,disp:8000}, w:{move:1,struct:3,aspect:0.2} },
+  tidy:{ label:'TIDY',
+    desc:'Optimise the result, not the transition. Regular grids and sane aspect ratios win.',
+    gens:['project','relax','relax-a','balance','mutate4','regen-g','regen-m','regen-c'],
+    allow:{reorder:true,topology:true,rebuild:true,stack:true},
+    bud:{panes:100,disp:8000}, w:{move:0.25,struct:0.3,aspect:1.6} },
+  anything:{ label:'ANYTHING',
+    desc:'Every generator, no budget. Useful for seeing the whole space at once.',
+    gens:GENS.map(g=>g.id),
+    allow:{reorder:true,topology:true,rebuild:true,stack:true},
+    bud:{panes:100,disp:8000}, w:{move:1,struct:1,aspect:0.6} },
+};
+let profName='balanced';
+let policy=JSON.parse(JSON.stringify(PROFILES.balanced));
+let enabled=new Set(policy.gens);
+
+/* ======================================================================
+   INVASIVENESS
+   Tier is measured from the result, not claimed by the generator.
+   ====================================================================== */
+const TIERS=[
+  {t:0, name:'no change',  chip:'—'},
+  {t:1, name:'a divider',  chip:'W1'},
+  {t:2, name:'many dividers', chip:'W+'},
+  {t:3, name:'panes reordered', chip:'ORD'},
+  {t:4, name:'structure changed', chip:'STR'},
+  {t:5, name:'layout rebuilt', chip:'NEW'},
+  {t:6, name:'folded into tabs', chip:'TAB'},
+];
+function sig(n, ordered){
+  if(n.t==='p') return n.name;
+  if(n.t==='k') return 'K['+n.ch.map(c=>c.name).join(',')+']';
+  const kids=n.ch.map(c=>sig(c,ordered));
+  return n.axis+'('+(ordered?kids:kids.slice().sort()).join(',')+')';
+}
+function dividerDiff(a,b){
+  let n=0;
+  (function rec(x,y){
+    if(x.t!=='s'||y.t!=='s'||x.ch.length!==y.ch.length) return;
+    for(let i=0;i<x.ch.length-1;i++){
+      const ca=sum(x.w.slice(0,i+1)), cb=sum(y.w.slice(0,i+1));
+      if(Math.abs(ca-cb)>0.004) n++;
+    }
+    x.ch.forEach((c,i)=>rec(c,y.ch[i]));
+  })(a,b);
+  return n;
+}
+function classify(before, after, gen, s){
+  const vb=visibleLeaves(before).map(p=>p.name).sort().join(','),
+        va=visibleLeaves(after).map(p=>p.name).sort().join(',');
+  if(vb!==va) return {tier:6, div:null};
+  if(s.moved===0) return {tier:0, div:0};
+  if(sig(before,true)===sig(after,true)){
+    const d=dividerDiff(before,after);
+    return {tier:d<=2?1:2, div:d};
+  }
+  if(sig(before,false)===sig(after,false)) return {tier:3, div:null};
+  return {tier: gen.kind==='rebuild'?5:4, div:null};
+}
+
+/* ======================================================================
+   THE SLATE
+   ====================================================================== */
+function buildSlate(){
+  const start=clone(root);
+  const baseRects=layoutTree(start,rect,{},cfg.gap);
+  const baseStats=stats(start,rect,cfg,baseRects);
+  const out=[];
+  for(const g of GENS){
+    if(!enabled.has(g.id)) continue;
+    const c={...cfg, ...(g.params||{})};
+    const t=clone(start), ctx={moves:0,visited:0,struct:0,tree:null};
+    const logs=[]; const t0=performance.now();
+    try{ let n=0; for(const r of RUN[g.algo](t,rect,c,ctx)){ logs.push(r); if(++n>3000) break; } }
+    catch(err){ console.warn(g.id,err); continue; }
+    const fin=normalize(ctx.tree||t);
+    const s=stats(fin,rect,cfg,baseRects);
+    const cls=classify(start,fin,g,s);
+    out.push({...g, tree:fin, s, ...cls, logs, ms:performance.now()-t0,
+              why:whyLine(g,ctx,cls,s,logs), fixed:baseStats.viol-s.viol});
+  }
+  /* merge candidates that land on the same geometry, starting from the
+     do-nothing baseline so that "had no effect" reads as agreement with it */
+  const geoKey=t=>{ const r=layoutTree(t,rect,{},cfg.gap);
+    return visibleLeaves(t).map(l=>l.name+':'+R0(r[l.id].x/2)+','+R0(r[l.id].y/2)+','+R0(r[l.id].w/2)+','+R0(r[l.id].h/2)).join('|'); };
+  const seen=new Map();
+  const none={id:'none', label:'LEAVE AS IS', primary:'LEAVE AS IS', note:'', kind:'none', algo:null,
+    tree:start, s:baseStats, tier:0, div:0, logs:[], ms:0, also:[], why:'', fixed:0, baseline:true};
+  seen.set(geoKey(start), none);
+  for(const p of out){
+    const key=geoKey(p.tree), nm=p.label+(p.note?' ('+p.note+')':'');
+    const q=seen.get(key);
+    if(q){ if(!q.also.includes(nm)) q.also.push(nm); if(p.ms<q.ms) q.ms=p.ms; }
+    else { p.also=[nm]; p.primary=p.label; seen.set(key,p); }
+  }
+  none.why = baseStats.viol===0
+    ? 'Every pane already clears its minimum. The cheapest correct repair is none.'
+    : (none.also.length
+        ? `Nothing changes. ${none.also.join(', ')} found no slack to move — weights alone cannot help here.`
+        : `Leave the layout as it is and live with ${baseStats.viol} unusable pane${baseStats.viol>1?'s':''}.`);
+  none.also.unshift('LEAVE AS IS');
+  let list=[...seen.values()];
+  list.sort((a,b)=> a.tier-b.tier || a.s.disp-b.s.disp);
+  list.forEach(p=>{ p.policy=checkPolicy(p, baseStats); });
+  const ok=list.filter(p=>p.policy.ok && p.s.viol<=Math.min(...list.map(x=>x.s.viol)));
+  const rec=ok.sort((a,b)=>polScore(a)-polScore(b))[0];
+  list.forEach(p=>p.rec = (p===rec));
+  slate=list; picked=rec||list[0]||null;
+  return baseStats;
+}
+function polScore(p){
+  return policy.w.move*p.s.disp/1000 + policy.w.struct*p.tier + policy.w.aspect*Math.log(p.s.asp)
+       + 12*p.s.viol;
+}
+function checkPolicy(p, baseStats){
+  const a=policy.allow;
+  if(p.tier===3 && !a.reorder) return {ok:false, why:'reorders panes'};
+  if(p.tier===4 && !a.topology) return {ok:false, why:'changes the tree'};
+  if(p.tier===5 && !a.rebuild)  return {ok:false, why:'rebuilds the layout'};
+  if(p.tier===6 && !a.stack)    return {ok:false, why:'hides panes behind tabs'};
+  const pct=p.s.panes?100*p.s.moved/p.s.panes:0;
+  if(pct>policy.bud.panes+0.01) return {ok:false, why:`moves ${R0(pct)}% of panes`};
+  if(p.s.disp>policy.bud.disp && policy.bud.disp<8000) return {ok:false, why:`${p.s.disp}px over budget`};
+  if(p.s.viol>baseStats.viol) return {ok:false, why:'makes it worse'};
+  return {ok:true, why:''};
+}
+function whyLine(g,ctx,cls,s,logs){
+  const detail=logs.map(l=>l.t).find(t=>/take |pays all|single donor|assignment|fold into|accept /.test(t));
+  const head={weights:'Weights only.',topology:'Reshapes a split.',rebuild:'Fresh tree, panes reseated.',stack:'Surplus panes go behind tabs.'}[g.kind]||'';
+  const tail=detail?detail.trim().replace(/\s+/g,' '):TIERS[cls.tier].name;
+  const t=(head+' '+tail).replace(/\s+/g,' ').trim();
+  return t.length>112 ? t.slice(0,110)+'…' : t;
+}
+
+/* ======================================================================
+   APPLYING
+   ====================================================================== */
+function accept(p){
+  if(!p||p.id==='none'){ log('grn','kept the current layout',true); refresh(); return; }
+  undoStack.push({tree:clone(root), ghosts});
+  ghosts=layoutTree(root,rect,{},cfg.gap);
+  root=clone(p.tree);
+  log(p.kind==='weights'?'grn':'red', `ACCEPTED ${p.also.join(' / ')} — ${TIERS[p.tier].name}, ${p.s.moved}/${p.s.panes} panes moved, ${p.s.disp}px`, true);
+  p.logs.forEach(l=>log(l.c,l.t));
+  refresh();
+}
+function undo(){
+  if(!undoStack.length) return;
+  const u=undoStack.pop(); root=u.tree; ghosts=u.ghosts;
+  log('blu','undo',true); refresh();
+}
+
+/* ======================================================================
+   MEASUREMENT + REFRESH
+   ====================================================================== */
+let diag={viol:[],need:{w:0,h:0},stats:null};
+function refresh(){
+  sizeScreen();
+  hovered=null;
+  diag.viol=violations(root,rect,cfg);
+  diag.need=propagate(root,cfg,{});
+  diag.stats=stats(root,rect,cfg,ghosts);
+  const baseStats=buildSlate();
+  if($('#autoApply').checked && diag.viol.length){
+    const r=slate.find(p=>p.rec);
+    if(r && r.id!=='none' && r.s.viol<diag.viol.length){
+      log('blu',`auto-apply (${policy.label}): ${r.primary||r.label}`,true);
+      accept(r); return;
+    }
+  }
+  render();
+}
+
+/* ======================================================================
+   RENDER
+   ====================================================================== */
+function sizeScreen(){
+  const st=$('#stage').getBoundingClientRect();
+  const W=Math.max(220,(st.width-20)*screenPct), H=Math.max(150,(st.height-20)*screenPct);
+  const sc=$('#screen');
+  sc.style.width=Math.round(W)+'px'; sc.style.height=Math.round(H)+'px';
+  rect={x:6,y:6,w:Math.round(W)-12,h:Math.round(H)-12};
+}
+function render(){ drawCards(); renderPreview(); drawInspect(); renderLog(); }
+/* hovering must not rebuild the card strip: a DOM swap under the cursor
+   swallows the click that was already on its way */
+function renderPreview(){
+  const preview = hovered || (picked && picked.pinned ? picked : null);
+  const tree = preview ? preview.tree : root;
+  const gh   = preview ? layoutTree(root,rect,{},cfg.gap) : ghosts;
+  drawScreen(tree, gh, !!preview);
+  drawTree(tree); drawBeforeAfter(); drawStatus(preview);
+}
+function drawScreen(tree, gh, isPreview){
+  const sc=$('#screen');
+  sc.classList.toggle('preview',isPreview);
+  sc.querySelectorAll('.win,.divider,.ghost').forEach(n=>n.remove());
+  const rects=layoutTree(tree,rect,{},cfg.gap);
+  const bad=new Set(violations(tree,rect,cfg).map(v=>v.id));
+  const tag=$('#pvTag');
+  if(isPreview){ const p=hovered||picked; tag.style.display='block';
+    tag.textContent=`PREVIEW · ${p.also.join(' · ')}`; }
+  else tag.style.display='none';
+
+  if(gh && visibleLeaves(tree).length<=24){
+    for(const p of visibleLeaves(tree)){
+      const g=gh[p.id], r=rects[p.id];
+      if(!g||!r) continue;
+      if(Math.abs(g.x-r.x)+Math.abs(g.y-r.y)+Math.abs(g.w-r.w)+Math.abs(g.h-r.h)<2) continue;
+      const d=el('div','ghost');
+      Object.assign(d.style,{left:g.x+'px',top:g.y+'px',width:g.w+'px',height:g.h+'px',color:colorOf(p.id).i});
+      d.innerHTML=`<b>${p.name}</b>`; sc.append(d);
+    }
+  }
+  (function draw(n){
+    if(n.t==='p'){ const f=findIn(tree,n.id); if(!(f.parent&&f.parent.t==='k')) win(n,rects[n.id],null); }
+    else if(n.t==='k'){ win(n.ch[n.active],rects[n.id],n); }
+    else n.ch.forEach(draw);
+  })(tree);
+
+  function win(pane,r,stack){
+    if(!r) return;
+    const w=el('div','win'+(pane.id===selected?' sel':'')+(bad.has(pane.id)?' bad':'')+(isPreview?' pv':''));
+    Object.assign(w.style,{left:r.x+'px',top:r.y+'px',width:Math.max(6,r.w)+'px',height:Math.max(6,r.h)+'px'});
+    w.style.setProperty('--tint', colorOf(pane.id).f);
+    const tb=el('div','tbar'), nm=el('div','nm');
+    nm.textContent=(stack?'▤ ':'')+pane.name; tb.append(nm); w.append(tb);
+    if(stack){ const tabs=el('div','tabs');
+      stack.ch.forEach((c,i)=>{ const t=el('i',i===stack.active?'on':''); t.textContent=c.name;
+        if(i!==stack.active) t.style.background=colorOf(c.id).f;
+        t.dataset.stack=stack.id; t.dataset.tab=i; tabs.append(t); });
+      w.append(tabs); }
+    const b=el('div','pbody'); b.dataset.pane=pane.id;
+    const holder=stack||pane, hf=findIn(tree,holder.id);
+    const lines=[`${R0(r.w)}×${R0(r.h)}`];
+    if(hf&&hf.parent&&hf.parent.t==='s') lines.push(`w=${hf.parent.w[hf.idx].toFixed(2).replace(/^0/,'')} of ${lab(hf.parent)}`);
+    if(gh&&gh[pane.id]){ const g=gh[pane.id];
+      const d=R0(Math.abs(g.x-r.x)+Math.abs(g.y-r.y)+Math.abs(g.w-r.w)+Math.abs(g.h-r.h));
+      if(d>1) lines.push(`moved ${d}px`); }
+    b.textContent=lines.join('\n'); w.append(b);
+    const v=violations(tree,rect,cfg).find(x=>x.id===pane.id);
+    if(v){ const bd=el('div','badge');
+      bd.textContent=(v.dw>0.5?`−${R0(v.dw)}w`:'')+(v.dw>0.5&&v.dh>0.5?' ':'')+(v.dh>0.5?`−${R0(v.dh)}h`:''); w.append(bd); }
+    sc.append(w);
+  }
+  if(!isPreview) walk(tree,(n)=>{
+    if(n.t!=='s') return;
+    const r=rects[n.id], horiz=n.axis==='h';
+    const avail=(horiz?r.w:r.h)-cfg.gap*(n.ch.length-1);
+    let acc=0;
+    for(let i=0;i<n.ch.length-1;i++){
+      acc+=n.w[i];
+      const px=(horiz?r.x:r.y)+acc*avail+i*cfg.gap;
+      const d=el('div','divider '+(horiz?'h':'v'));
+      if(horiz) Object.assign(d.style,{left:(px-2)+'px',top:r.y+'px',width:(cfg.gap+4)+'px',height:r.h+'px'});
+      else Object.assign(d.style,{left:r.x+'px',top:(px-2)+'px',width:r.w+'px',height:(cfg.gap+4)+'px'});
+      d.dataset.split=n.id; d.dataset.i=i; sc.append(d);
+    }
+  });
+}
+function drawCards(){
+  const c=$('#cards'); c.innerHTML='';
+  const n=slate.length;
+  const fixes=slate.some(p=>p.policy&&p.policy.ok&&p.s.viol===0);
+  const sc=$('#stripCount');
+  if(diag.viol.length && !fixes){
+    sc.className='red'; sc.textContent=`${n} proposal${n===1?'':'s'} · none repairs this within the policy — allow more, or lower the minimum`;
+  } else { sc.className='k'; sc.textContent=`${n} proposal${n===1?'':'s'}`; }
+  if(!slate.length){ c.innerHTML='<div class="k" style="padding:8px">no generators enabled</div>'; return; }
+  let lastTier=-1;
+  const baseR=layoutTree(root,rect,{},cfg.gap);
+  slate.forEach(p=>{
+    if(lastTier>=0 && p.tier!==lastTier) c.append(el('div','sep'));
+    lastTier=p.tier;
+    const d=el('div','card'+(p===picked?' on':'')+(p.policy&&!p.policy.ok?' out':'')+(p.tier===0?' zero':''));
+    d.innerHTML=
+      `<div class="ch"><span class="tier t${p.tier}">${TIERS[p.tier].chip}</span>${p.primary||p.label}`+
+        `<em>${p.also.length>1?` +${p.also.length-1} agree`:(p.note?' '+p.note:'')}</em></div>`+
+      thumb(p.tree,baseR)+
+      `<div class="why">${esc(p.why)}${p.also.length>1?`<br><span class="k">same result: ${esc(p.also.join(', '))}</span>`:''}${p.policy&&!p.policy.ok?`<br><span class="red">outside policy: ${p.policy.why}</span>`:''}</div>`+
+      `<div class="nums"><span>${p.s.viol?`<span class="red">${p.s.viol} bad</span>`:'<span class="grn">all fit</span>'}</span>`+
+      `<span class="k">${p.s.moved}/${p.s.panes} panes · ${p.s.disp}px</span></div>`+
+      (p.rec?'<span class="rec">PICK</span>':'');
+    d.title=`${TIERS[p.tier].name} · ${p.also.join(', ')}`;
+    d.onmouseenter=()=>{ hovered=p; renderPreview(); };
+    d.onmouseleave=()=>{ hovered=null; renderPreview(); };
+    d.onclick=()=>{
+      picked=p; p.pinned=true; slate.forEach(q=>{ if(q!==p) q.pinned=false; });
+      stepper=null;
+      logBuf=[{c:'blu',op:true,t:`${p.also.join(' / ')} — ${TIERS[p.tier].name}, ${p.s.moved}/${p.s.panes} panes, ${p.s.disp}px${p.policy.ok?'':' · outside policy: '+p.policy.why}`}];
+      p.logs.forEach(l=>logBuf.push(l));
+      if(!p.logs.length) logBuf.push({c:'k',t:'(nothing to trace)'});
+      c.querySelectorAll('.card').forEach((n,i)=>n.classList.toggle('on', slate[i]===p));
+      renderLog(); drawInspect(); renderPreview();
+    };
+    d.ondblclick=()=>accept(p);
+    c.append(d);
+  });
+}
+function thumb(tree, before, opt){
+  opt=opt||{};
+  const W=opt.w||180, H=Math.max(48,Math.round(W*rect.h/rect.w));
+  const sx=W/rect.w, sy=H/rect.h;
+  const rs=layoutTree(tree,{x:0,y:0,w:rect.w,h:rect.h},{},cfg.gap);
+  const bad=new Set(violations(tree,rect,cfg).map(v=>v.id));
+  const ls=visibleLeaves(tree);
+  /* only the biggest movers get a ghost + trail: past four the thumbnail
+     turns into spaghetti and stops communicating anything */
+  let movers=new Set();
+  if(before && opt.trails!==false){
+    movers=new Set(ls.map(p=>{ const g=before[p.id], r=rs[p.id];
+        if(!g||!r) return null;
+        return {id:p.id, d:Math.abs(g.x-rect.x-r.x)+Math.abs(g.y-rect.y-r.y)+Math.abs(g.w-r.w)+Math.abs(g.h-r.h)}; })
+      .filter(x=>x&&x.d>2).sort((a,b)=>b.d-a.d).slice(0,4).map(x=>x.id));
+  }
+  const trail = movers.size>0;
+  let fills='', marks='', labels='';
+  for(const p of ls){
+    const r=rs[p.id]; if(!r) continue;
+    const c=colorOf(p.id), w=Math.max(1,r.w*sx), h=Math.max(1,r.h*sy);
+    fills+=`<rect class="${bad.has(p.id)?'bad':''}" x="${(r.x*sx).toFixed(1)}" y="${(r.y*sy).toFixed(1)}" `+
+           `width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${c.f}"/>`;
+    if(w>11&&h>9) labels+=`<text x="${(r.x*sx+w/2).toFixed(1)}" y="${(r.y*sy+h/2+2.5).toFixed(1)}" text-anchor="middle">${esc(p.name).slice(0,4)}</text>`;
+    if(trail && movers.has(p.id)){
+      const g=before[p.id]; if(!g) continue;
+      const gx=(g.x-rect.x)*sx, gy=(g.y-rect.y)*sy, gw=Math.max(1,g.w*sx), gh=Math.max(1,g.h*sy);
+      if(Math.abs(gx-r.x*sx)+Math.abs(gy-r.y*sy)+Math.abs(gw-w)+Math.abs(gh-h)<2) continue;
+      /* where this pane sits today, drawn over the proposal so the eye can pair them */
+      marks+=`<rect class="gh" x="${gx.toFixed(1)}" y="${gy.toFixed(1)}" width="${gw.toFixed(1)}" height="${gh.toFixed(1)}" stroke="${c.i}"/>`+
+             `<line class="trail" stroke="${c.i}" x1="${(gx+gw/2).toFixed(1)}" y1="${(gy+gh/2).toFixed(1)}" `+
+             `x2="${(r.x*sx+w/2).toFixed(1)}" y2="${(r.y*sy+h/2).toFixed(1)}"/>`;
+    }
+  }
+  return `<svg viewBox="0 0 ${W} ${H}">${fills}${marks}${labels}</svg>`;
+}
+function drawInspect(){
+  const s=diag.stats, p=picked;
+  const cell=(a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;
+  $('#inspect').innerHTML=`<table>
+    <tr><th>now</th><th></th></tr>
+    ${cell('panes under minimum', s.viol?`<span class="red">${s.viol}</span>`:'<span class="grn">0</span>')}
+    ${cell('worst shortfall', s.worst+'px')}
+    ${cell('tree needs', R0(diag.need.w)+'×'+R0(diag.need.h))}
+    ${cell('worst aspect', s.asp.toFixed(2)+':1')}
+    ${p?cell('selected proposal', `<b>${p.primary||p.label}</b>`):''}
+    ${p?cell('  invasiveness', TIERS[p.tier].name+(p.div!=null?` (${p.div} divider${p.div===1?'':'s'})`:'')):''}
+    ${p?cell('  cost', `${p.s.moved}/${p.s.panes} panes · ${p.s.disp}px · ${p.ms.toFixed(1)}ms`):''}
+  </table>`;
+}
+function drawBeforeAfter(){
+  const p=picked, box=$('#ba');
+  if(!p||p.baseline){ box.innerHTML=''; return; }
+  box.innerHTML=
+    `<figure><figcaption>NOW</figcaption>${thumb(root,null,{w:140,trails:false})}</figure>`+
+    `<figure><figcaption>${esc(p.primary||p.label).slice(0,12)}</figcaption>${thumb(p.tree,null,{w:140,trails:false})}</figure>`;
+}
+function drawTree(tree){
+  const rects=layoutTree(tree,rect,{},cfg.gap), memo={}; propagate(tree,cfg,memo);
+  const out=[];
+  (function rec(n,pre,cp,w){
+    const r=rects[n.id], q=memo[n.id];
+    const tight=r&&q&&(q.w>r.w+0.5||q.h>r.h+0.5);
+    const wl=w==null?'':`<span class="grn">${(100*w).toFixed(0).padStart(3)}%</span> `;
+    const sw=id=>`<span style="color:${colorOf(id).i}">■</span>`;
+    let nm=n.t==='p'?sw(n.id)+(n.id===selected?`<b class="blu">${n.name}</b>`:n.name)
+      :n.t==='k'?`Stack[${n.ch.map((c,i)=>sw(c.id)+(i===n.active?c.name+'*':c.name)).join(',')}]`
+      :(n.axis==='h'?'Row ─':'Col │');
+    if(tight) nm=`<span class="red">${nm} ⚠</span>`;
+    out.push(pre+wl+nm);
+    if(n.t==='s') n.ch.forEach((c,i)=>rec(c,cp+(i===n.ch.length-1?'└─':'├─'),cp+(i===n.ch.length-1?'  ':'│ '),n.w[i]));
+  })(tree,'','',null);
+  $('#tree').innerHTML=out.join('\n');
+}
+function log(c,t,head){ logBuf.push({c,t,op:!!head}); }
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function renderLog(){
+  $('#log').innerHTML=logBuf.slice(-300).map(e=>`<div class="${e.c}${e.op?' op':''}">${esc(e.t)}</div>`).join('');
+  const sc=$('#log').parentElement; sc.scrollTop=sc.scrollHeight;
+}
+function drawStatus(preview){
+  const v=diag.viol.length;
+  $('#stViol').innerHTML=v?`<b class="red">${v} pane${v>1?'s':''} under minimum</b>`:`<b class="grn">all panes usable</b>`;
+  const fits=diag.need.w<=rect.w+0.5&&diag.need.h<=rect.h+0.5;
+  $('#stFit').innerHTML=`needs <b>${R0(diag.need.w)}×${R0(diag.need.h)}</b> ${fits?'<span class="grn">fits</span>':'<span class="red">exceeds screen</span>'}`;
+  $('#stPick').innerHTML=picked?`${preview?'previewing':'selected'} <b class="blu">${picked.primary||picked.label}</b>`:'no proposal';
+  $('#stHint').textContent='hover a card to preview · click to pin · ⏎ accept · ←/→ move · U undo · drag a divider to break the layout';
+}
+
+/* ======================================================================
+   STEPPING A PROPOSAL (the old lab, kept for reading the reasoning)
+   ====================================================================== */
+function stepSelected(){
+  if(!picked||picked.id==='none') return;
+  if(!stepper){
+    const c={...cfg,...(picked.params||{})};
+    const t=clone(root), ctx={moves:0,struct:0,tree:null};
+    stepper={gen:RUN[picked.algo](t,rect,c,ctx), ctx, t, n:0};
+    logBuf=[]; log('blu',`STEP ${picked.primary||picked.label}${picked.note?' · '+picked.note:''}`,true);
+    $('#p-trace').classList.remove('shut');
+  }
+  const r=stepper.gen.next();
+  if(r.done){ log('blu',`— end of ${picked.label} (${stepper.n} steps). ACCEPT applies it.`); stepper=null; renderLog(); return; }
+  log(r.value.c,r.value.t); stepper.n++;
+  renderLog();
+}
+
+/* ======================================================================
+   HAND EDITS
+   ====================================================================== */
+let drag=null;
+$('#screen').addEventListener('pointerdown',e=>{
+  if(hovered||(picked&&picked.pinned)){ /* editing clears the preview */ }
+  const tab=e.target.closest('[data-tab]');
+  if(tab){ const st=findIn(root,tab.dataset.stack); if(st){ st.node.active=+tab.dataset.tab; refresh(); } return; }
+  const dv=e.target.closest('.divider');
+  if(dv){ const f=findIn(root,dv.dataset.split); if(!f) return;
+    drag={split:f.node,i:+dv.dataset.i,rects:layoutTree(root,rect,{},cfg.gap)};
+    $('#screen').setPointerCapture(e.pointerId); return; }
+  const pb=e.target.closest('[data-pane]');
+  if(pb){ selected=pb.dataset.pane; render(); }
+});
+$('#screen').addEventListener('pointermove',e=>{
+  if(!drag) return;
+  const {split,i,rects}=drag, r=rects[split.id], horiz=split.axis==='h';
+  const box=$('#screen').getBoundingClientRect();
+  const avail=(horiz?r.w:r.h)-cfg.gap*(split.ch.length-1);
+  const B=(((horiz?e.clientX-box.left-r.x:e.clientY-box.top-r.y))-i*cfg.gap-cfg.gap/2)/avail;
+  const pre=sum(split.w.slice(0,i)), S=split.w[i]+split.w[i+1], m=0.004;
+  const si=Math.min(Math.max(B-pre,m),S-m);
+  split.w[i]=si; split.w[i+1]=S-si;
+  ghosts=null; hovered=null; drawScreen(root,null,false); drawStatus(null);
+});
+$('#screen').addEventListener('pointerup',()=>{ if(drag){ drag=null; log('grn','divider moved by hand',true); refresh(); } });
+
+function addPane(){
+  const ls=visibleLeaves(root);
+  const t=selected&&findIn(root,selected)?findIn(root,selected):findIn(root,ls[ls.length-1].id);
+  const p=P(String.fromCharCode(65+ls.length%26)+(ls.length>25?'2':''));
+  if(t.parent&&t.parent.t==='s'){ const par=t.parent;
+    par.ch.splice(t.idx+1,0,p); const w=par.w[t.idx]/2; par.w[t.idx]=w; par.w.splice(t.idx+1,0,w); }
+  else root=SP('h',[t.node,p],[.5,.5]);
+  root=normalize(root); selected=p.id; ghosts=null;
+  log('red',`added ${p.name} by halving a slot`,true); refresh();
+}
+function delPane(){
+  const ls=visibleLeaves(root); if(ls.length<2) return;
+  const id=selected&&findIn(root,selected)?selected:ls[ls.length-1].id;
+  const f=findIn(root,id); if(!f.parent) return;
+  f.parent.ch.splice(f.idx,1);
+  if(f.parent.t==='s'){ f.parent.w.splice(f.idx,1); const s=sum(f.parent.w)||1; f.parent.w=f.parent.w.map(x=>x/s); }
+  else if(f.parent.active>=f.parent.ch.length) f.parent.active=f.parent.ch.length-1;
+  root=normalize(root); selected=null; ghosts=null;
+  log('red','removed a pane',true); refresh();
+}
+function squish(){
+  const ls=visibleLeaves(root);
+  const id=selected&&findIn(root,selected)?selected:ls[0].id;
+  const f=findIn(root,id);
+  const holder=f.parent&&f.parent.t==='k'?findIn(root,f.parent.id):f;
+  if(!holder.parent||holder.parent.t!=='s'){ log('red','no sibling to shrink against',true); renderLog(); return; }
+  const par=holder.parent, i=holder.idx, j=i>0?i-1:i+1, give=par.w[i]*0.6;
+  par.w[i]-=give; par.w[j]+=give; ghosts=null;
+  log('red',`squished ${f.node.name} to 40% of its slot`,true); refresh();
+}
+
+/* ======================================================================
+   PANELS
+   ====================================================================== */
+function loadPreset(i){
+  const p=PRESETS[i];
+  root=normalize(p.make()); presetName=p.k; assignColors();
+  $('#presetNote').textContent=p.n;
+  ghosts=null; undoStack=[]; selected=null; stepper=null; logBuf=[];
+  log('blu',`LAYOUT ${p.k}`,true);
+  document.querySelectorAll('#presetGrid .tag').forEach((t,j)=>t.classList.toggle('on',j===i));
+  refresh();
+}
+function buildPresets(){
+  const g=$('#presetGrid'); g.innerHTML='';
+  PRESETS.forEach((p,i)=>{ const t=el('span','tag'+(/TOO MANY|WIDE|SKINNY/.test(p.k)?' bad':''));
+    t.textContent=p.k; t.onclick=()=>loadPreset(i); g.append(t); });
+}
+function buildPolicy(){
+  const pr=$('#profRow'); pr.innerHTML='<span class="k">profile</span>';
+  Object.entries(PROFILES).forEach(([k,v])=>{
+    const t=el('span','tag'+(k===profName?' on':'')); t.textContent=v.label;
+    t.onclick=()=>{ profName=k; policy=JSON.parse(JSON.stringify(PROFILES[k])); enabled=new Set(policy.gens);
+      buildPolicy(); syncPolicyInputs(); refresh(); };
+    pr.append(t);
+  });
+  $('#profDesc').textContent=policy.desc||'custom policy';
+  const ar=$('#allowRow'); ar.innerHTML='';
+  [['reorder','reorder panes'],['topology','reshape tree'],['rebuild','rebuild'],['stack','fold to tabs']].forEach(([k,l])=>{
+    const t=el('span','tag'+(policy.allow[k]?' on':'')); t.textContent=l;
+    t.onclick=()=>{ policy.allow[k]=!policy.allow[k]; markCustom(); buildPolicy(); refresh(); };
+    ar.append(t);
+  });
+  const gl=$('#genList'); gl.innerHTML='';
+  GENS.forEach(g=>{
+    const lb=el('label'); lb.innerHTML=`<input type="checkbox" ${enabled.has(g.id)?'checked':''}><i class="chk"></i>${g.label} <span class="k">${g.note||''}</span>`;
+    lb.querySelector('input').onchange=e=>{ e.target.checked?enabled.add(g.id):enabled.delete(g.id); markCustom(); refresh(); };
+    gl.append(lb);
+  });
+}
+function markCustom(){ if(profName!=='custom'){ profName='custom'; PROFILES.custom={...policy,label:'CUSTOM',desc:'your own mix'}; policy=PROFILES.custom; } }
+function syncPolicyInputs(){
+  $('#budPanes').value=policy.bud.panes; $('#budPanesV').textContent=policy.bud.panes+'%';
+  $('#budDisp').value=policy.bud.disp; $('#budDispV').textContent=policy.bud.disp>=8000?'∞':policy.bud.disp+'px';
+  $('#wMove').value=policy.w.move*100; $('#wMoveV').textContent=policy.w.move.toFixed(2);
+  $('#wStruct').value=policy.w.struct*100; $('#wStructV').textContent=policy.w.struct.toFixed(2);
+  $('#wAspect').value=policy.w.aspect*100; $('#wAspectV').textContent=policy.w.aspect.toFixed(2);
+}
+function bindRange(id,valId,obj,key,div,fmt){
+  const i=$(id), v=$(valId);
+  i.oninput=e=>{ obj[key]=+e.target.value/div; v.textContent=fmt(obj[key]); refresh(); };
+}
+function boot(){
+  buildPresets(); buildPolicy(); syncPolicyInputs();
+  bindRange('#cfgW','#cfgWv',cfg,'minW',1,x=>R0(x)+'px');
+  bindRange('#cfgH','#cfgHv',cfg,'minH',1,x=>R0(x)+'px');
+  bindRange('#cfgG','#cfgGv',cfg,'gap',1,x=>R0(x)+'px');
+  bindRange('#cfgHy','#cfgHyv',cfg,'hyst',1,x=>R0(x)+'px');
+  bindRange('#cfgA','#cfgAv',cfg,'aspect',100,x=>x.toFixed(2));
+  bindRange('#budPanes','#budPanesV',policy.bud,'panes',1,x=>R0(x)+'%');
+  bindRange('#budDisp','#budDispV',policy.bud,'disp',1,x=>x>=8000?'∞':R0(x)+'px');
+  bindRange('#wMove','#wMoveV',policy.w,'move',100,x=>x.toFixed(2));
+  bindRange('#wStruct','#wStructV',policy.w,'struct',100,x=>x.toFixed(2));
+  bindRange('#wAspect','#wAspectV',policy.w,'aspect',100,x=>x.toFixed(2));
+  ['#budPanes','#budDisp','#wMove','#wStruct','#wAspect'].forEach(id=>{
+    const prev=$(id).oninput; $(id).oninput=e=>{ markCustom(); prev(e); $('#profDesc').textContent=policy.desc; };
+  });
+  $('#randN').oninput=e=>$('#randNv').textContent=e.target.value;
+  $('#randSkew').oninput=e=>$('#randSkewv').textContent=(e.target.value/100).toFixed(2);
+  $('#btnRand').onclick=()=>{ seed=(Date.now()^(seed*7))>>>0;
+    root=randomTree(+$('#randN').value,+$('#randSkew').value/100); presetName='RANDOM'; assignColors();
+    $('#presetNote').textContent='a random tree with skewed weights — reroll until something ugly appears';
+    document.querySelectorAll('#presetGrid .tag').forEach(t=>t.classList.remove('on'));
+    ghosts=null; undoStack=[]; logBuf=[]; log('blu','LAYOUT RANDOM',true); refresh(); };
+  $('#screenSz').oninput=e=>{ screenPct=+e.target.value/100; $('#screenSzv').textContent=e.target.value+'%'; ghosts=null; refresh(); };
+  $('#btnAdd').onclick=addPane; $('#btnDel').onclick=delPane; $('#btnSquish').onclick=squish;
+  $('#btnAccept').onclick=()=>accept(picked);
+  $('#btnDismiss').onclick=()=>{ hovered=null; slate.forEach(p=>p.pinned=false); renderPreview(); };
+  $('#btnRebuild').onclick=()=>{ log('blu','recomputed the slate',true); refresh(); };
+  $('#btnStep').onclick=stepSelected;
+  $('#btnUndo').onclick=undo;
+  $('#autoApply').onchange=()=>refresh();
+  document.querySelectorAll('.phead').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('shut'));
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT') return;
+    const k=e.key.toLowerCase();
+    if(e.key==='Enter'){ accept(picked); e.preventDefault(); }
+    else if(e.key==='Escape'){ hovered=null; slate.forEach(p=>p.pinned=false); renderPreview(); }
+    else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+      const i=slate.indexOf(picked), j=Math.max(0,Math.min(slate.length-1,i+(e.key==='ArrowRight'?1:-1)));
+      picked=slate[j]; slate.forEach(p=>p.pinned=false); picked.pinned=true; render(); e.preventDefault();
+    }
+    else if(k==='u') undo();
+    else if(k==='s') stepSelected();
+    else if(k==='t') $('#p-trace').classList.toggle('shut');
+  });
+  window.addEventListener('resize',refresh);
+  loadPreset(1);
+}
+boot();
+
+</script>
+</body>
+</html>

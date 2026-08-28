@@ -4,12 +4,14 @@ import {
   isEditableTarget,
   routeWorkbenchKey,
   splitDirectionFor,
+  startTileCarry,
   useAnyEscapeSurface,
 } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import { defaultLauncherRows, groupLauncherRows, rowOf, type LauncherInvocation } from "../../launcherRows";
 import type { LauncherProps } from "../../types";
+import styles from "./Launcher.module.css";
 
 /**
  * pbui's `LauncherShell` over the app registry. Two groups: applications
@@ -34,6 +36,41 @@ export function WorkbenchLauncher({
   const anySurfaceOpen = useAnyEscapeSurface();
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const previousOpenRef = useRef(workbench.store.getState().launcherOpen);
+
+  /**
+   * Placement mode (PBUI-REBALANCE-1): choosing an application does not place
+   * it immediately — the choice is CARRIED, the tiles show drop-zone
+   * overlays, and the next click says where it lands (edges dock, centre
+   * splits the longer side, Alt replaces what the tile shows). Enter takes
+   * the old default spot; Escape or an empty-space click cancels. Lives on
+   * this component, not the modal, because the modal unmounts when the
+   * launcher closes and the carry must survive that.
+   */
+  const [carry, setCarry] = useState<{ appId: string; title: string } | null>(null);
+  const cancelCarryRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => cancelCarryRef.current?.(), []);
+  const beginCarry = (appId: string, appTitle: string) => {
+    setCarry({ appId, title: appTitle });
+    const done = (placement: string | null) => {
+      setCarry(null);
+      cancelCarryRef.current = null;
+      if (placement) workbench.focusPlacement(placement);
+    };
+    // A refused drop (the target cannot split that way — a sliver, say) does
+    // not end the mode: the carry re-arms so the user can aim elsewhere.
+    const arm = () => {
+      cancelCarryRef.current = startTileCarry({
+        onDrop: (target, zone) => {
+          const placement = workbench.verbs.placeAt(appId, target, zone);
+          if (placement) done(placement);
+          else arm();
+        },
+        onDefault: () => done(workbench.verbs.place(appId)),
+        onCancel: () => done(null),
+      });
+    };
+    arm();
+  };
 
   // The store changes synchronously inside the click/key handler, before React
   // mounts Dialog. Capture there: another shell effect may move focus while
@@ -85,15 +122,26 @@ export function WorkbenchLauncher({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [shortcut, shortcutContext, anySurfaceOpen, workbench]);
 
-  return open ? (
-    <LauncherModal
-      title={title}
-      rows={rows}
-      choose={choose}
-      renderDetail={renderDetail}
-      returnFocusTo={returnFocusRef.current}
-    />
-  ) : null;
+  return (
+    <>
+      {open ? (
+        <LauncherModal
+          title={title}
+          rows={rows}
+          choose={choose}
+          renderDetail={renderDetail}
+          returnFocusTo={returnFocusRef.current}
+          beginCarry={beginCarry}
+        />
+      ) : null}
+      {carry ? (
+        <div className={styles.carryHint} data-part="launcher-carry" role="status">
+          placing <b>{carry.title}</b> — click a tile: edges dock, centre splits, hold Alt to replace what it shows ·
+          Enter: default spot · Esc: cancel
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 /** Remounted per opening, so the query and the highlight start fresh. */
@@ -103,8 +151,12 @@ function LauncherModal({
   choose,
   renderDetail,
   returnFocusTo,
+  beginCarry,
 }: Required<Pick<LauncherProps, "title">> &
-  Pick<LauncherProps, "rows" | "choose" | "renderDetail"> & { returnFocusTo: HTMLElement | null }) {
+  Pick<LauncherProps, "rows" | "choose" | "renderDetail"> & {
+    returnFocusTo: HTMLElement | null;
+    beginCarry(appId: string, title: string): void;
+  }) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
@@ -174,8 +226,9 @@ function LauncherModal({
       const placement = workbench.activePlacementId();
       if (placement) workbench.focusPlacement(placement);
     } else {
-      const placement = workbench.verbs.place(row.appId, invocation.target ? { from: invocation.target } : {});
-      if (placement) workbench.focusPlacement(placement);
+      // A placed singleton never reaches this arm (it is offered as its
+      // view). Anything else enters placement mode: the user aims the tile.
+      beginCarry(row.appId, row.title);
     }
     close();
   };
@@ -183,7 +236,7 @@ function LauncherModal({
   const status = perPane
     ? `“${invocation.targetLabel}” shows it instead`
     : invocation.target
-      ? `a new tile opens ${direction === "row" ? "beside" : "below"} “${invocation.targetLabel}”`
+      ? `choosing an application starts placement: click where it goes (Enter here places ${direction === "row" ? "beside" : "below"} “${invocation.targetLabel}”)`
       : "a new tile opens in the workspace";
 
   return (

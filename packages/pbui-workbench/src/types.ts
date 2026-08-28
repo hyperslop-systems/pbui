@@ -3,6 +3,8 @@ import type { ShortcutContext } from "@hyperslop-systems/pbui";
 import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop-systems/workbench-protocol";
 import type { AppDescriptor, AppRegistry } from "./apps";
 import type { LauncherRow, LauncherRowsContext } from "./launcherRows";
+import type { RebalanceConfig } from "./rebalance/config";
+import type { RebalanceConfigStore } from "./rebalance/configStore";
 import type { WorkbenchState, WorkbenchStore } from "./store";
 import type { WorkbenchVerb, WorkbenchVerbHandlers } from "./verbs";
 
@@ -28,6 +30,7 @@ export interface SurfaceProps {
   /** Drop-overlay labels, for products that word them differently. */
   swapLabel?: string;
   dockLabel?: string;
+  replaceLabel?: string;
 }
 
 /** What `renderWorkspace` learns about the workspace it is drawing. */
@@ -78,6 +81,25 @@ export interface LauncherProps {
   renderDetail?(row: LauncherRow): ReactNode;
 }
 
+export interface RebalanceProps {
+  /** Listen for Mod+Shift+K on the window; default true. */
+  shortcut?: boolean;
+  /** Same contract as `LauncherProps.shortcutContext` — the parts only the product knows. */
+  shortcutContext?(): Partial<Pick<ShortcutContext, "objectMenuOpen" | "acceptingPresentation" | "renamingView">>;
+  /**
+   * Fully-controlled repair configuration; wins over `configStore`. Most
+   * products should prefer `configStore` so the settings tile stays live.
+   */
+  config?: RebalanceConfig;
+  /**
+   * Where the config lives (see rebalance/configStore.ts). Pass the SAME
+   * store to `createRebalanceSettingsApp({ store })`. Default: the
+   * `pbui.rebalance-config` DocumentPayload in the workbench document.
+   * Keep the identity stable across renders.
+   */
+  configStore?: RebalanceConfigStore;
+}
+
 export interface WorkbenchPlan {
   /** Exact immutable document identity the plan was derived from. */
   baseDocument: WorkbenchDocument;
@@ -125,4 +147,6 @@ export interface Workbench {
   Surface: ComponentType<SurfaceProps>;
   Launcher: ComponentType<LauncherProps>;
   WorkspaceStrip: ComponentType<WorkspaceStripProps>;
+  /** The rebalance dialog (PBUI-REBALANCE-1): Mod+Shift+K, or the `rebalance.open` verb. */
+  Rebalance: ComponentType<RebalanceProps>;
 }

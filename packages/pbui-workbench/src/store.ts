@@ -22,6 +22,12 @@ export interface WorkbenchState {
    * dialog: the rows model reads this and changes what choosing means.
    */
   launcherFrom: string | null;
+  /**
+   * The rebalance dialog is open (PBUI-REBALANCE-1). Browser-local for the
+   * same reason `launcherOpen` is: which transient surface is showing is this
+   * browser's business, never the layout's, and is not serialised.
+   */
+  rebalanceOpen: boolean;
 }
 
 /**
@@ -85,6 +91,7 @@ export function createWorkbenchStore(
     activePlacementId: null,
     launcherOpen: false,
     launcherFrom: null,
+    rebalanceOpen: false,
   };
   const listeners = new Set<() => void>();
   const emit = () => {
