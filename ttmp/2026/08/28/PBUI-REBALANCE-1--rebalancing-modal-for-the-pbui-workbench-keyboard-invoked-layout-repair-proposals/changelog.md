@@ -103,3 +103,12 @@ Alt-drag replace: DragZone 'replace' with live Alt reclassification in chrome (o
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/src/chrome/useTileDrag.ts — Alt-held reclassification and the replace commit path (commit 4805c0f)
 
+
+## 2026-08-28
+
+Launcher placement mode: app choices carry over the workspace (edges dock before/after, centre splits longer side, Alt replaces in place), Enter = old default, Esc cancels, refused drops re-arm; chrome startTileCarry + app.placeAt verb; 181+196 tests green, live-verified (commits 8465d9c, dbf5890, 2da05e4)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/components/Launcher/Launcher.tsx — beginCarry placement mode and hint bar (commit dbf5890)
+

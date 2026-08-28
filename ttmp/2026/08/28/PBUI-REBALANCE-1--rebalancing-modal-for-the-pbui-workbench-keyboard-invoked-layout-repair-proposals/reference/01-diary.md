@@ -652,3 +652,75 @@ wiring — each layer tested before the next consumed it.
 ### Technical details
 - Mutation recipe: `[placementReplace(target ← sourceView), placementClose(source), viewDelete(oldTargetView)?]`; twins → `closePlacement(source)`.
 - Zone precedence on drop: `replace` (Alt + onReplace) → `center`/edges as before.
+
+## Step 11: Launcher placement mode — choose, then aim
+
+Choosing an application in the global Ctrl+K launcher no longer places it at a spot the
+system guessed: the launcher closes and the choice is CARRIED over the workspace. Tiles show
+the same drop-zone overlays the drag gesture uses, reworded for placement — edges dock the
+new tile before/after the target, the centre splits the target's longer rendered side, and
+holding Alt turns the whole tile into "show it in this tile instead" (the in-place replace,
+keeping the tile's identity). The next click commits; Enter takes the old default spot;
+Escape or an empty-space click cancels. A pinned hint bar narrates the mode.
+
+The chrome grew a second entry point for its drag machinery: `startTileCarry` — a drag that
+starts from a CHOICE instead of a tile and follows a free-moving pointer. It publishes
+through the same module-level drag state under a NUL-prefixed sentinel id, so every tile's
+overlay plumbing worked unchanged, and the commit pointerdown is intercepted in the CAPTURE
+phase so the aiming click never reaches the application underneath.
+
+### Prompt Context
+
+**User prompt (verbatim):** "when selecting an app in ctrl-k launcher, it should switch to \"placement mode\" too (thus giving me the option to place the new tile where I want, and hold to completely replace an existing one)"
+
+**Assistant interpretation:** Launcher app choices enter an aim-then-click placement mode using the drag gesture's zone vocabulary, with the Alt-hold meaning "replace the target" as in Alt-drag.
+
+**Inferred user intent:** One consistent spatial grammar for all tile movement: drag moves, carry places, Alt always means "take over that tile".
+
+**Commit (code):** 8465d9c (chrome startTileCarry) · dbf5890 (app.placeAt verb + launcher wiring) · 2da05e4 (refused drops re-arm the carry)
+
+### What I did
+- Chrome (`useTileDrag.ts`): `startTileCarry({onDrop, onCancel, onDefault?, allowReplace?})` — window pointermove classification with live Alt (same shape as the drag), capture-phase pointerdown commit/cancel (empty space cancels), Escape cancel, Enter → `onDefault`, window blur abort, second-carry-cancels-first, idempotent cancel. `useTileDrag` returns `carrying` so tiles reword overlays. 4 tests (jsdom `act` wrapping needed around the imperative start — state flows through the module listeners into React).
+- Workbench verbs: `splitWithView`/`splitWithNewView` grew a `before|after` position (BEFORE was unreachable until now); new `PlaceZone` type and `app.placeAt {appId, target, zone}` verb — edges → position-aware dock, center → `splitDirectionFor` longer side, replace → the existing in-place `replace` handler (pane keeps its identity; singleton links rather than minting).
+- Launcher: the global app-row arm of `onChoose` now calls `beginCarry` (lives on `WorkbenchLauncher`, since the modal unmounts when the launcher closes); hint bar (`Launcher.module.css`, tokens only); status line explains the mode; refused drops re-arm the carry instead of silently ending it. Per-pane launcher, go-to rows, and product `choose` overrides untouched.
+- Tile: carry-specific default overlay labels ("place the new tile at this edge" / "place beside · splits the longer side" / "show it in this tile instead · keeps the tile").
+- Tests: 3 launcher tests rewritten/added (choose → hint → Enter default; edge click docks BEFORE the target; Alt-click replaces in place with tile count unchanged; Escape cancels) + 2 `placeAt` verb tests + the 4 chrome carry tests. Suites: 181 root, 196 workbench, demo typecheck clean.
+- Live-verified in the lab story: hint text, Alt-hover overlay `zone="replace"` with the placement wording, and a left-edge click taking 3 tiles to 4.
+
+### Why
+- Reusing the drag state under a sentinel id meant ZERO changes to Tile/TileFrame overlay plumbing — the mode came almost entirely from the chrome's existing rendering path.
+- Enter preserving the old default keeps the launcher fully keyboard-drivable: Ctrl+K, type, Enter, Enter is exactly the old flow plus one keystroke.
+
+### What worked
+- The whole feature stacked on the Alt-drag work from step 10: `PlaceZone` mirrors `DragZone`, the replace semantics were already a handler, and the overlay/label channels already existed.
+
+### What didn't work
+- First live probe "failed" by aiming at the SLIVER preset's 5% tile — `canSplitPlacement` correctly refused and the carry silently died. That surfaced the real UX gap fixed in 2da05e4 (re-arm on refusal).
+- Test churn: the status-line regex and two choose-fall-through tests assumed immediate placement (now: + Enter); my first Alt-replace assertion wrongly expected a NEW view id — `replace` retargets the view in place (same id, new app), which is its documented contract.
+- 100px mocked tiles made `canSplitPlacement` refuse in the dock test (240px floor) — mocks went to 600px.
+- Console "errors" during live probes are Storybook's own keydown handler receiving synthetic window-targeted events — harness noise, verified by reading the log.
+- The diary append itself hit the approval dialog's control-character guard twice: the carry sentinel pasted from source carried a literal NUL. Written via a scratchpad file instead.
+
+### What I learned
+- `PlacementPosition.BEFORE` existed in the protocol from day one with no caller — the applier supported before-docking new placements all along; only the TS helpers hardcoded AFTER.
+
+### What was tricky to build
+- **Carry ownership across the modal boundary.** The modal unmounts when the launcher closes, so the carry state and its cancel ref live on `WorkbenchLauncher` (which stays mounted) and reach the modal as a `beginCarry` callback. An unmount effect cancels a live carry so listeners never outlive the component.
+- **Making the aiming click inert.** Committing on bubble-phase click would first activate whatever button sat under the pointer; the capture-phase pointerdown with preventDefault/stopPropagation makes the whole workspace a pure aiming surface for one click.
+
+### What warrants a second pair of eyes
+- The capture-phase pointerdown swallows EVERY click while carrying — including on the workspace strip or product chrome outside tiles (those cancel). Confirm cancel-on-any-non-tile-click is the wanted grammar.
+- `beginCarry`'s re-arm loop has no attempt limit; Escape is always available, but a reviewer may want a status hint ("that tile is too small") on refusal.
+- Products supplying custom `swapLabel`/`dockLabel` get those words during a CARRY too (they win over the carry defaults) — wording may mislead until they also update; flagged rather than fixed to keep the label API single-purpose.
+
+### What should be done in the future
+- A "too small" refusal toast; possibly dim tiles that cannot accept the current zone during a carry.
+- The rebalance-settings deep link and other P6 items unchanged.
+
+### Code review instructions
+- Read in commit order: `startTileCarry` + its 4 tests; the verbs diff (`PlaceZone`, position params, `placeAt`) + 2 verb tests; the Launcher diff (`beginCarry`, hint, status) + 3 launcher tests; the one-hunk re-arm fix.
+- Validate: root `pnpm --include-workspace-root --filter @hyperslop-systems/pbui test` (181); `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (196). By hand in the lab story: Ctrl+K → pick an app → aim (watch the labels change with Alt) → click; then again with Enter; then Esc.
+
+### Technical details
+- Carry sentinel: `from = " carry"` (spelled as the escape sequence in source) in the shared drag state; `useTileDrag().carrying` exposes it.
+- Zone → verb mapping: left/top → dock BEFORE; right/bottom → dock AFTER; center → `splitDirectionFor(target)` AFTER; replace → `replace(target, appId)`.
