@@ -1,6 +1,6 @@
-import { fromJson } from "@bufbuild/protobuf";
+import { create, fromJson } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
-import { WorkbenchDocumentSchema, type WorkbenchDocument } from "../index.js";
+import { MutationSchema, WorkbenchDocumentSchema, type WorkbenchDocument } from "../index.js";
 import {
   applyMutations,
   closePlacement,
@@ -8,6 +8,7 @@ import {
   dockPlacement,
   leaves,
   placementCount,
+  replacePlacement,
   resizeSplit,
   snapRatio,
   splitPlacement,
@@ -141,6 +142,33 @@ describe("config-independent verbs", () => {
     const [a, b] = leaves(next.workspaces[0].tree);
     expect(a.body.case === "leaf" && a.body.value.viewId).toBe("view-launcher");
     expect(b.body.case === "leaf" && b.body.value.viewId).toBe("view-chart");
+  });
+
+  it("replacePlacement: the target shows the source's view, the source closes, the orphan dies", () => {
+    const doc = baseDocument();
+    const next = applyMutations(doc, replacePlacement(doc, "placement-b", "placement-a"));
+    const placements = leaves(next.workspaces[0].tree);
+    expect(placements).toHaveLength(1);
+    expect(placements[0].id).toBe("placement-a"); // the target's rectangle survives
+    expect(placements[0].body.case === "leaf" && placements[0].body.value.viewId).toBe("view-launcher");
+    expect(next.views["view-chart"]).toBeUndefined(); // old target view had no other placement
+    expect(workspaceOfPlacement(next, "placement-b")).toBeNull();
+  });
+
+  it("replacePlacement on linked twins collapses to the target placement", () => {
+    const doc = baseDocument();
+    // Point both placements at one view first, then replace across the link.
+    const linked = applyMutations(doc, [
+      create(MutationSchema, {
+        body: {
+          case: "placementReplace",
+          value: { workspaceId: "workspace-a", placementId: "placement-b", viewId: "view-chart" },
+        },
+      }),
+    ]);
+    const next = applyMutations(linked, replacePlacement(linked, "placement-b", "placement-a"));
+    expect(leaves(next.workspaces[0].tree)).toHaveLength(1);
+    expect(next.views["view-chart"]).toBeDefined(); // the shared view survives
   });
 
   it("dockPlacement splits the target and closes the source", () => {
