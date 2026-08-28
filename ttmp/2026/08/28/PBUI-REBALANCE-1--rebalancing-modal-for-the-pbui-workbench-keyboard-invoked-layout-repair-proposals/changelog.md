@@ -112,3 +112,12 @@ Launcher placement mode: app choices carry over the workspace (edges dock before
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/components/Launcher/Launcher.tsx — beginCarry placement mode and hint bar (commit dbf5890)
 
+
+## 2026-08-28
+
+PR #19 review fixes: repair batches apply as raw splitResize mutations (no stale rendered-bounds clamp), Undo restores via workspace.setTree so onMutate persistence fires, carry Enter stops propagation; 3 regression tests; replied inline on the PR (commit e1810d8)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx — Raw-mutation apply path and mutation-path undo (commit e1810d8)
+

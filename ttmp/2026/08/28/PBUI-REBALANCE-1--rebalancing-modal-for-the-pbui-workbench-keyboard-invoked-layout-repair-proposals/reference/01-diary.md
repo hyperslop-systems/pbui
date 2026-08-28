@@ -724,3 +724,45 @@ phase so the aiming click never reaches the application underneath.
 ### Technical details
 - Carry sentinel: `from = " carry"` (spelled as the escape sequence in source) in the shared drag state; `useTileDrag().carrying` exposes it.
 - Zone → verb mapping: left/top → dock BEFORE; right/bottom → dock AFTER; center → `splitDirectionFor(target)` AFTER; replace → `replace(target, appId)`.
+
+## Step 12: PR #19 review fixes
+
+Codex review on PR #19 (https://github.com/hyperslop-systems/pbui/pull/19) raised three
+findings — one P1, two P2 — and all three were real. Fixed in one commit, each with a
+regression test, pushed to the branch, and answered inline on the PR.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Address code review issues: https://github.com/hyperslop-systems/pbui/pull/19"
+
+**Assistant interpretation:** Fetch the PR's review comments, fix each finding with tests, push, and respond on the thread.
+
+**Inferred user intent:** Get the branch review-clean.
+
+**Commit (code):** e1810d8 — "fix(workbench): address PR #19 review — clamp bypass for repair batches, undo via mutation path, carry Enter propagation"
+
+### What I did
+- **P1 — stale DOM bounds refuse compound repairs.** The `split.resize` verb clamps through `ratioBounds()`, which measures PRE-repair rendered geometry; a nested split whose container is currently under 2×minInlinePx yields null bounds and the whole plan was refused, even when the parent resize earlier in the batch would have made the child feasible. Fix: `ProposalApply.resize-batch` now carries raw `SplitResize[]`; the dialog builds one `splitResize` mutation batch via the protocol builder and commits with `workbench.mutate` — the engine's ratios were already validated against propagated minimums (globally at least as strict as the local clamp), and the applier still validates split ids, with a missing id surfacing as the "layout changed underneath" status. Regression test mocks the root split at 300 px (where `ratioBounds` provably returns null) and asserts Apply still commits.
+- **P2 — Undo bypassed persistence.** `store.replaceDocument` skips `store.mutate`, so `onMutate` subscribers (the pbui-chat demo persists exclusively from it) never saw the undo; the layout looked restored until reload. Fix: `undoRef` stores `{workspaceId, tree}` (the immutable previous tree) and undo performs `workspace.setTree` — one mutation through the normal path, courtesy of the P4 protocol work. Structural-undo assertion changed from document identity to tree equality; the weight-undo test now asserts `onMutate` fires exactly once on undo.
+- **P2 — carry Enter leaked to focused controls.** After the launcher closes, focus returns to the workbench, so the placement Enter reached a focused application control's own keydown handler alongside placing the tile. Fix: `stopPropagation()` in the Enter branch (matching Escape). Regression test dispatches Enter from a focused button carrying its own handler and asserts the handler never runs while `onDefault` does.
+- Replied to all three inline comments with fix + commit + test references (reply ids 3884766471/578/663). Suites: 197 workbench, 182 root; dists rebuilt; demo typecheck clean; branch pushed (437e309 → e1810d8).
+
+### What worked
+- The P2 undo fix fell out of the P4 `WorkspaceSetTree` mutation for free — one `perform` call replaced the bypass, and the "restore through an inverse batch" alternative the reviewer suggested became unnecessary.
+
+### What didn't work
+- A batch python edit died on a non-matching block (the apply function had gained the click-to-commit early-return since the guide's version) — redone as individual Edits after re-reading the actual code. `Node` from the protocol collides with DOM `Node` in a .tsx file; imported as `PlacementNode`.
+
+### What was tricky to build
+- **Choosing the P1 fix surface.** Adding a `clamp: false` option to the resize verb would have widened the trust surface to every verb caller including agents; the dialog-local raw-mutation batch keeps the clamp exactly where it protects interactive dragging and removes it exactly where the engine's own validation is stronger. The trade: resize-batch applies no longer preflight through `plan` — staleness is instead caught by id lookup + applier validation.
+
+### What warrants a second pair of eyes
+- Undo after a workspace deletion: `workspace.setTree` on a vanished workspace fails cleanly with a status message, but a reviewer may prefer disabling the Undo button on workspace switch.
+- The regression test for P1 relies on `data-split-id` being present on rendered SplitPane containers — if that attribute ever moves, the test silently loses its guard (the `ratioBounds` null pre-assertion protects against that).
+
+### What should be done in the future
+- N/A beyond the standing P6 items.
+
+### Code review instructions
+- One commit, three concerns: `slate.ts` (`ProposalApply`), `RebalanceDialog.tsx` (apply + undo), `useTileDrag.ts` (one hunk), plus the three regression tests.
+- Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (197); root `pnpm --include-workspace-root --filter @hyperslop-systems/pbui test` (182).
