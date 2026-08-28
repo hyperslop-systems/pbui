@@ -37,6 +37,14 @@ import type { WorkbenchStore } from "./store";
 
 export type SplitDirection = "row" | "col";
 
+/**
+ * Where the launcher's placement mode aims a new tile (PBUI-REBALANCE-1):
+ * an edge docks the new tile there, "center" splits the target along its
+ * longer rendered side, and "replace" (Alt) swaps the target's application
+ * for the chosen one in place.
+ */
+export type PlaceZone = DockZone | "center" | "replace";
+
 export interface PaneConstraints {
   /** Minimum width of either child in a row split. */
   minInlinePx: number;
@@ -93,6 +101,7 @@ export type WorkbenchVerb =
   | { kind: "tile.activate"; placementId: string }
   | { kind: "split.resize"; splitId: string; ratio: number }
   | { kind: "app.place"; appId: string; from?: string }
+  | { kind: "app.placeAt"; appId: string; target: string; zone: PlaceZone }
   | { kind: "view.setTitle"; viewId: string; title: string }
   | { kind: "view.open"; appId: string; documents: Record<string, string>; near?: string; title?: string }
   | { kind: "tile.replace"; placementId: string; appId: string; documents?: Record<string, string> }
@@ -126,6 +135,7 @@ export const workbenchVerbs = {
   activate: (placementId: string): WorkbenchVerb => ({ kind: "tile.activate", placementId }),
   resize: (splitId: string, ratio: number): WorkbenchVerb => ({ kind: "split.resize", splitId, ratio }),
   place: (appId: string, from?: string): WorkbenchVerb => ({ kind: "app.place", appId, ...(from ? { from } : {}) }),
+  placeAt: (appId: string, target: string, zone: PlaceZone): WorkbenchVerb => ({ kind: "app.placeAt", appId, target, zone }),
   setTitle: (viewId: string, title: string): WorkbenchVerb => ({ kind: "view.setTitle", viewId, title }),
   open: (appId: string, documents: Record<string, string>, options: { near?: string; title?: string } = {}): WorkbenchVerb => ({
     kind: "view.open",
@@ -192,6 +202,12 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
       return string("splitId") && typeof verb.ratio === "number" && Number.isFinite(verb.ratio);
     case "app.place":
       return string("appId") && optionalString("from");
+    case "app.placeAt":
+      return (
+        string("appId") &&
+        string("target") &&
+        ["top", "right", "bottom", "left", "center", "replace"].includes(String(verb.zone))
+      );
     case "view.setTitle":
       return string("viewId") && typeof verb.title === "string";
     case "view.open":
@@ -249,6 +265,10 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return `set the divider to ${Math.round(verb.ratio * 100)}%`;
     case "app.place":
       return `open ${verb.appId} beside the active tile`;
+    case "app.placeAt":
+      return verb.zone === "replace"
+        ? `show ${verb.appId} in that tile instead`
+        : `open ${verb.appId} ${verb.zone === "center" ? "beside that tile" : `at that tile's ${verb.zone} edge`}`;
     case "view.setTitle":
       return verb.title ? `rename the tile to “${verb.title}”` : "clear the tile's name";
     case "view.open":
@@ -314,6 +334,15 @@ export interface WorkbenchVerbHandlers {
    * so a new view never destroys a working tile and never lands as a sliver.
    */
   place(appId: string, options?: { from?: string; crossWorkspace?: CrossWorkspace }): string | null;
+  /**
+   * Placement mode's commit (PBUI-REBALANCE-1): open `appId` exactly where
+   * the user aimed. An edge zone docks the new tile at that edge of the
+   * target, "center" splits the target along its longer rendered side, and
+   * "replace" shows the application in the target INSTEAD (the `replace`
+   * handler's semantics). A placed singleton links rather than minting a
+   * second view. Returns the placement now showing the application.
+   */
+  placeAt(appId: string, target: string, zone: PlaceZone): string | null;
   setTitle(viewId: string, title: string): boolean;
   /**
    * Open an application on specific document bindings beside a tile. A
@@ -412,6 +441,7 @@ function splitWithView(
   placementId: string,
   direction: SplitDirection,
   viewId: string,
+  position: "before" | "after" = "after",
 ): Mutation[] {
   const workspaceId = workspaceOfPlacement(doc, placementId);
   if (!workspaceId) return [];
@@ -425,7 +455,7 @@ function splitWithView(
         ratio: 0.5,
         splitId: newId("n"),
         newPlacement: leafNode(viewId),
-        place: PlacementPosition.AFTER,
+        place: position === "before" ? PlacementPosition.BEFORE : PlacementPosition.AFTER,
       },
     }),
   ];
@@ -658,11 +688,12 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     placementId: string,
     direction: SplitDirection,
     appId: string,
+    position: "before" | "after" = "after",
   ): Mutation[] => {
     const view = create(AppViewSchema, { id: newId("v"), appId, documents: defaultBindings(current, appId) });
     return [
       mutation({ case: "viewCreate", value: { view } }),
-      ...splitWithView(current, placementId, direction, view.id),
+      ...splitWithView(current, placementId, direction, view.id, position),
     ];
   };
 
@@ -775,6 +806,29 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     const target = targetPlacement(options.from);
     if (!target) return null;
     return split(target, splitDirectionFor(target, root()), appId);
+  };
+
+  const placeAt: WorkbenchVerbHandlers["placeAt"] = (appId, target, zone) => {
+    if (zone === "replace") {
+      // The target keeps its rectangle and identity; only what it shows changes.
+      if (!replace(target, appId)) return null;
+      activate(target);
+      return target;
+    }
+    const current = doc();
+    const direction: SplitDirection =
+      zone === "left" || zone === "right" ? "row" : zone === "top" || zone === "bottom" ? "col" : splitDirectionFor(target, root());
+    const position: "before" | "after" = zone === "left" || zone === "top" ? "before" : "after";
+    if (!canSplitPlacement(target, direction)) return null;
+    const app = apps.get(appId);
+    const existing = app?.singleton ? viewsOfApp(current, appId)[0] : undefined;
+    const mutations = existing
+      ? splitWithView(current, target, direction, existing.id, position)
+      : splitWithNewView(current, target, direction, appId, position);
+    const created = newPlacementIdOf(mutations);
+    if (!store.mutate(mutations)) return null;
+    if (created) activate(created);
+    return created;
   };
 
   const openView: WorkbenchVerbHandlers["openView"] = (appId, documents, options = {}) => {
@@ -1063,6 +1117,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       );
     },
     place,
+    placeAt,
     setTitle,
     openView,
     replace,
@@ -1121,6 +1176,8 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       return handlers.resize(verb.splitId, verb.ratio) !== null;
     case "app.place":
       return handlers.place(verb.appId, verb.from ? { from: verb.from } : {}) !== null;
+    case "app.placeAt":
+      return handlers.placeAt(verb.appId, verb.target, verb.zone) !== null;
     case "view.setTitle":
       return handlers.setTitle(verb.viewId, verb.title);
     case "view.open":

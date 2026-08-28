@@ -245,6 +245,37 @@ describe("verbs", () => {
     expect(leafIds(tree())).toEqual([a, b, c]);
   });
 
+  test("placeAt: edge zones dock before/after the target; replace swaps the app in place", () => {
+    const { wb, tree, a } = threeTiles();
+    // canSplit measures rendered geometry; headless there is none, so mock
+    // the tile element the verb looks up.
+    const cell = document.createElement("div");
+    cell.setAttribute("data-placement-id", a);
+    cell.getBoundingClientRect = () => box(600, 600);
+    document.body.append(cell);
+    wb.setRoot(document.body);
+
+    const before = wb.verbs.placeAt("notes", a, "left");
+    expect(before).toBeTruthy();
+    const ids = leafIds(tree());
+    expect(ids.indexOf(before!)).toBe(ids.indexOf(a) - 1); // BEFORE the target
+
+    const after = wb.verbs.placeAt("counter", a, "bottom");
+    expect(after).toBeTruthy();
+
+    const replaced = wb.verbs.placeAt("notes", a, "replace");
+    expect(replaced).toBe(a); // same placement, new application
+    expect(wb.store.getState().document.views[viewOf(tree(), a)]?.appId).toBe("notes");
+    expect(wb.store.getState().activePlacementId).toBe(a);
+    cell.remove();
+  });
+
+  test("placeAt via the data door validates its zone", () => {
+    const { a } = threeTiles();
+    expect(isWorkbenchVerb({ kind: "app.placeAt", appId: "notes", target: a, zone: "left" })).toBe(true);
+    expect(isWorkbenchVerb({ kind: "app.placeAt", appId: "notes", target: a, zone: "diagonal" })).toBe(false);
+  });
+
   test("replaceWith: the target shows the source's view, the source closes, the orphan dies", () => {
     const { wb, tree, a, c } = threeTiles();
     const moved = viewOf(tree(), a);

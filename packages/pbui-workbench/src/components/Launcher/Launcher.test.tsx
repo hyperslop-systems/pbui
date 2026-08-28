@@ -33,15 +33,100 @@ describe("Launcher", () => {
       (row) => row.querySelector('[data-part="launcher-row-title"]')?.textContent,
     );
     expect(titles).toEqual(["counter", "notes", "counter"]);
-    expect(baseElement.querySelector('[data-part="launcher-status"]')?.textContent).toMatch(/a new tile opens (beside|below)/);
+    expect(baseElement.querySelector('[data-part="launcher-status"]')?.textContent).toMatch(/starts placement/);
 
-    // Choosing "place" splits the active tile; the launcher closes.
+    // Choosing "place" enters PLACEMENT MODE (PBUI-REBALANCE-1): the
+    // launcher closes, nothing is placed yet, and the carry hint shows.
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
     expect(wb.store.getState().launcherOpen).toBe(false);
+    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(2);
+    expect(baseElement.querySelector('[data-part="launcher-carry"]')?.textContent).toMatch(/placing/);
+    // Enter commits the old default spot: split the active tile.
+    act(() => {
+      fireEvent.keyDown(window, { key: "Enter" });
+    });
+    expect(baseElement.querySelector('[data-part="launcher-carry"]')).toBeNull();
     expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
+  });
+
+  test("placement mode: a click on a tile edge docks there; Alt replaces instead", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("counter"))) });
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Launcher />
+      </>,
+    );
+    // Give the registry real geometry: tile A at 0..100, tile B at 200..300.
+    const mockRects = (elements: HTMLElement[]) =>
+      elements.forEach((element, index) => {
+        // 600px wide: a row split leaves 300px a side, clearing the 240px floor.
+        element.getBoundingClientRect = () =>
+          ({ left: index * 700, top: 0, right: index * 700 + 600, bottom: 600, width: 600, height: 600, x: index * 700, y: 0, toJSON: () => ({}) }) as DOMRect;
+      });
+    mockRects([...baseElement.querySelectorAll<HTMLElement>('[data-part="tile"]')]);
+    const leafBefore = leaves(wb.store.getState().document.workspaces[0]?.tree).map((l) => l.id);
+
+    // Aim at B's left edge and click: the new tile docks BEFORE B.
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    act(() => {
+      fireEvent.click(baseElement.querySelector("#place\\:counter")!);
+    });
+    act(() => {
+      fireEvent(window, new MouseEvent("pointerdown", { clientX: 710, clientY: 300, bubbles: true }));
+    });
+    const afterDock = leaves(wb.store.getState().document.workspaces[0]?.tree);
+    expect(afterDock).toHaveLength(3);
+    const created = afterDock.map((l) => l.id).find((id) => !leafBefore.includes(id));
+    expect(afterDock.findIndex((l) => l.id === created)).toBe(1); // before B, after A
+
+    // Alt-click on a tile replaces what it shows: tile count unchanged.
+    const targetLeaf = afterDock[0]!;
+    expect(targetLeaf.body.case === "leaf" && wb.store.getState().document.views[targetLeaf.body.value.viewId]?.appId).toBe("counter");
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    act(() => {
+      fireEvent.click(baseElement.querySelector("#place\\:notes")!);
+    });
+    mockRects([...baseElement.querySelectorAll<HTMLElement>('[data-part="tile"]')]);
+    act(() => {
+      fireEvent(window, new MouseEvent("pointerdown", { clientX: 300, clientY: 300, altKey: true, bubbles: true }));
+    });
+    const afterReplace = leaves(wb.store.getState().document.workspaces[0]?.tree);
+    expect(afterReplace).toHaveLength(3); // no new tile
+    const replacedLeaf = afterReplace.find((l) => l.id === targetLeaf.id);
+    const replacedView = replacedLeaf?.body.case === "leaf" ? replacedLeaf.body.value.viewId : "";
+    // `replace` retargets a single-placement view in place (same view id, new
+    // app) — the pane keeps its identity; what it SHOWS changed.
+    expect(wb.store.getState().document.views[replacedView]?.appId).toBe("notes");
+  });
+
+  test("placement mode: Escape cancels without placing", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(tile("counter")) });
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Launcher />
+      </>,
+    );
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    act(() => {
+      fireEvent.click(baseElement.querySelector("#place\\:counter")!);
+    });
+    expect(baseElement.querySelector('[data-part="launcher-carry"]')).not.toBeNull();
+    act(() => {
+      fireEvent.keyDown(window, { key: "Escape" });
+    });
+    expect(baseElement.querySelector('[data-part="launcher-carry"]')).toBeNull();
+    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
   });
 
   test("returns focus to the exact control that opened it", async () => {
@@ -161,6 +246,10 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
+    // Placement mode is live; Enter commits the default (split the active tile).
+    act(() => {
+      fireEvent.keyDown(window, { key: "Enter" });
+    });
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
   });
 
@@ -204,6 +293,9 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     });
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
+    });
+    act(() => {
+      fireEvent.keyDown(window, { key: "Enter" });
     });
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
   });

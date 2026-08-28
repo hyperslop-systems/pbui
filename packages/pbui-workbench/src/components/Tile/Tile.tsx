@@ -86,9 +86,11 @@ export function Tile({ node, renderTitle, swapLabel, dockLabel, replaceLabel }: 
         dropZone={drag.zone}
         dragging={drag.dragging}
         registerElement={drag.register}
-        swapLabel={swapLabel}
-        dockLabel={dockLabel}
-        replaceLabel={replaceLabel}
+        swapLabel={drag.carrying ? (swapLabel ?? "place beside \u00b7 splits the longer side") : swapLabel}
+        dockLabel={drag.carrying ? (dockLabel ?? "place the new tile at this edge") : dockLabel}
+        replaceLabel={
+          drag.carrying ? (replaceLabel ?? "\u2325 show it in this tile instead \u00b7 keeps the tile") : replaceLabel
+        }
       >
         <div className={styles.body}>
           {view && app ? (
