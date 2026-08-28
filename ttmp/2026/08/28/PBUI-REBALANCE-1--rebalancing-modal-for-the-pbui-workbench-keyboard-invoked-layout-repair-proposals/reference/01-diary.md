@@ -240,3 +240,80 @@ hardcoding numbers whose premise changed.
 ### Technical details
 - polScore = `w.move·disp/1000 + w.struct·tier + w.aspect·ln(worstAspect) + 12·viol`; recommendation restricted to policy-ok proposals achieving the slate's minimum violation count.
 - Geometry dedup key: pane ids + rects rounded to 2px (`Math.round(v/2)`), DFS order.
+
+## Step 4: Phase 3 — The modal, the shortcut, and the atomic apply path
+
+The feature became visible: `Mod+Shift+K` now opens a `WorkbenchRebalance` dialog showing the
+proposal slate as cards — tier chip, merged "+n agree", an SVG thumbnail with per-tile
+identity hues and dashed ghost-outlines + trails for the biggest movers, a why-line, and the
+numbers row — over a diagnosis header and a collapsible trace panel. Apply routes through
+`plan`/`applyPlan` (atomic, staleness-checked), and a single-level Undo restores the
+pre-apply document. The shortcut router grew into the two-row route table its own header
+comment promised at the second shortcut.
+
+One deliberate deviation from design-doc/01 §4.1/§4.6: Apply keeps the dialog OPEN (the
+lab's behaviour) instead of closing it. Closing on accept would leave Undo with no home —
+the modal unmounts and the ref holding the previous document dies with it. The lab's
+apply-inspect-undo loop is also simply better for a feature whose whole point is trying
+repairs safely; Escape closes when the user is done, and Dialog's focus-return puts the
+keyboard back where it was.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue phase-by-phase implementation with commits, diary steps, and slips.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** 0784a5c — "pbui + pbui-workbench: rebalance dialog, Mod+Shift+K route table, rebalance verbs (PBUI-REBALANCE-1 P3)"
+
+### What I did
+- `src/chrome/shortcutRouting.ts`: `ShortcutDecision` gains `open-rebalance`; a static two-row `ROUTES` table (`k`+shift discriminator) replaces the single hard-coded key check; guard block unchanged and shared. Header comment updated to say the promised table has arrived.
+- `src/chrome/chrome.test.tsx`: two new tests — shift discriminates the chords (both platforms; Shift+K without Mod is typing), and the rebalance chord shares the full guard block (all five blocked contexts + editable-target pass-through).
+- `packages/pbui-workbench/src/store.ts`: `WorkbenchState.rebalanceOpen` (browser-local, never serialised — same doc'd rationale as `launcherOpen`).
+- `packages/pbui-workbench/src/verbs.ts`: `rebalance.open`/`rebalance.close` verbs — union, factories (`openRebalance`/`closeRebalance`), `isWorkbenchVerb`, `describeWorkbenchVerb` ("propose layout repairs for this workspace"), handlers interface + implementations, `performWorkbenchVerb` dispatch.
+- `components/RebalanceDialog/` (folder-per-component with index, story, test, CSS module): `WorkbenchRebalance` (launcher-mirrored window listener: focus-ownership rule, `useAnyEscapeSurface`, route → `verbs.openRebalance()`), `RebalanceModal` (rect via `wb.root()` + ResizeObserver with a 1024×640 headless fallback; dividerPx measured from `[data-part="split-divider"]` → `--pbui-space-4` token → `DEFAULT_DIVIDER_PX`; labels from views/app registry; slate in `useMemo` keyed on doc/rect/config), `ProposalCard`, `Thumbnail` (top-4 movers get ghost+trail; identity hue = reading-order index mod 7).
+- `RebalanceDialog.module.css`: all colours are tokens or `color-mix(in srgb, token, token)` — the package's no-hex test forbids literals; seven identity hues derive from existing family tokens knocked back toward paper.
+- `slate.ts`: `Proposal.beforeRects` (shared reference to the current geometry) so thumbnails can draw ghosts without a second computation.
+- `createWorkbench.tsx` + `types.ts` + `index.ts`: `wb.Rebalance` bound component, `RebalanceProps`, and public exports for the whole rebalance engine (buildSlate/diagnose/config/adapter/measure) so products and agents can use the logic without the dialog.
+- Tests: 4 component tests — chord opens the dialog and cards render with PICK + diagnosis; Apply commits the resize batch (root ratio 0.95 → less), arms Undo, Undo restores 0.95 exactly; verbs round-trip; healthy layout collapses to a recommended LEAVE AS IS.
+
+### Why
+- Mirroring the Launcher's listener/ownership/verb wiring keeps the second transient surface boring — every rule (focus ownership, surface-stack suppression, verb-as-door) already had a tested precedent one file away.
+- Exporting the pure engine from the package index makes the agent door (describeWorkbench-style diagnosis) and the settings tile (Phase 5) trivial consumers.
+
+### What worked
+- Full workbench suite 165/165 and root pbui suite 174/174 green; workbench typecheck clean.
+- The jsdom fallbacks (rect 1024×640, divider 10px) made the component tests deterministic with zero mocking — the same code path stories use.
+
+### What didn't work
+- `tsc` first run: `Node` type imported from `/client` (it lives on the protocol root), route-kind comparison failed against a STALE `@hyperslop-systems/pbui` dist (rebuild the root package after editing `src/chrome/*` — workspace links resolve against `dist/`), and `Button variant="plain"` does not exist (`bare | framed | raised`). All three fixed in one pass.
+- Root `pnpm --filter @hyperslop-systems/pbui typecheck` fails on this branch in `src/presentation/actions/vocabulary.test.ts` (`Property 'reference' does not exist on type 'PresentationReference<Values>'`) — verified PRE-EXISTING by stashing my changes and re-running. Not addressed here; flagged for the branch owner.
+
+### What I learned
+- The package's hygiene tests actively shaped the component: no raw `<button>`/`<input>` (pbui atoms only), no colour literals anywhere including CSS modules (hence the color-mix identity palette — `color-mix(` is not on the forbidden-function list, and deriving hues from family tokens is arguably better than the lab's hex palette), and folder-per-component with a REQUIRED story.
+- `plan()`'s shadow `resize` clamps to the fraction fallback ([0.1, 0.9]) when headless — fine for realistic repairs, but a repair ratio below 0.1 (very deep chains) would be clamped; noted as a Phase 4/6 check.
+
+### What was tricky to build
+- **Escape ownership.** The dialog must NOT call `useEscapeSurface` itself (Dialog registers; a second registration makes Dialog think it is not topmost and Escape dies — surfaces.ts invariant 1). The shortcut listener instead consults `useAnyEscapeSurface()` for its `dialogOpen` guard, exactly as the Launcher does.
+- **Stable identity hues.** Hues must key on the CURRENT tree's reading order (not each proposal's), or a reorder-class proposal would recolor every tile and the ghost-pairing would lie. The thumbnail derives order once from the live document and indexes both fills and strokes off it.
+- **Undo across recomputes.** `useDocument()` re-renders on apply, the slate rebuilds, and the selected card id may vanish (a repaired layout has different proposals). Selection falls back id → recommended → first; the undo ref holds the immutable pre-apply document (a reference, not a clone — protobuf documents are treated as immutable) and `store.replaceDocument` restores it.
+
+### What warrants a second pair of eyes
+- The `useMemo` dependency list for the slate (`doc, workspaceId, rect, config, workbench, tree`) — `tree` is derived from `doc` but included for the null-guard; a reviewer should confirm no re-render loop under ResizeObserver churn (rect is rounded to ints, which is the damping).
+- `Undo` uses `store.replaceDocument`, which would also discard a concurrent mutation landing between apply and undo. Acceptable for a single-user dialog session; a product with server sync should review.
+- The route table's `shift: false` on the launcher row means Mod+Shift+K can NEVER fall through to the launcher — intended, but it changes behaviour for anyone who was pressing Mod+Shift+K and getting the launcher (previously shiftKey was ignored). Flagged in review notes.
+
+### What should be done in the future
+- Phase 5: settings tile supplying `config` to `wb.Rebalance` + DocumentPayload persistence.
+- Phase 4: structural generators; Phase 6: live preview on the Surface behind the dialog, aria-activedescendant for the listbox, and a status-bar diagnosis badge.
+- Update design-doc/01 §4.1/§4.6 to record the keep-open-on-apply deviation (done in this step's docs pass? — no: deferred, tracked here).
+
+### Code review instructions
+- Start: `src/chrome/shortcutRouting.ts` (the table), then `components/RebalanceDialog/RebalanceDialog.tsx` top-to-bottom (wrapper → modal → card → thumbnail), then the small verbs/store diffs.
+- Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (165) after `pnpm --include-workspace-root --filter @hyperslop-systems/pbui build`; root: `pnpm --include-workspace-root --filter @hyperslop-systems/pbui test` (174). Storybook: `pnpm --filter @hyperslop-systems/pbui-workbench storybook` → Workbench/RebalanceDialog/Broken.
+
+### Technical details
+- Chord: `Mod+Shift+K`; decision `{kind:"open-rebalance"}`; consumed by `WorkbenchRebalance`'s capture-phase window listener under the same workbench-ownership rule as the launcher.
+- Headless fallbacks: rect 1024×640 when the root box is ≤8px; divider 10px when unmeasurable.

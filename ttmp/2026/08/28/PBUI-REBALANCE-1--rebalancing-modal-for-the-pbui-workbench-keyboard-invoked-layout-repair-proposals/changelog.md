@@ -31,3 +31,12 @@ Phase 2: weight strategies (ripple/sparse/project/balance), repair driver, tiers
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/slate.ts — Slate orchestration: dedup, policy gate, polScore recommendation (commit d6a1b30)
 
+
+## 2026-08-28
+
+Phase 3: RebalanceDialog + Mod+Shift+K route table + rebalance verbs/store field; apply via plan/applyPlan with single-level undo; engine exported from package index; 165 workbench + 174 root tests green (commit 0784a5c). Deviation: Apply keeps the dialog open so Undo has a home.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx — The dialog, cards, and thumbnails (commit 0784a5c)
+
