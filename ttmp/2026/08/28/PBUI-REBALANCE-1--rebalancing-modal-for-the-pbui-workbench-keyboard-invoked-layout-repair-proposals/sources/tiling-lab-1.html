@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TILING LAB · system 1</title>
+<style>
+:root{
+  --ink:#000; --paper:#fff;
+  --nav:#1414c8;   /* blue: focus & navigation */
+  --mut:#c81400;   /* red: structural mutations */
+  --wgt:#006414;   /* green: weights & normalize */
+  --gap:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"SFMono-Regular","Menlo","Consolas","Courier New",monospace;
+  font-size:11px; line-height:1.45; color:var(--ink); background:var(--paper);
+  display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  -webkit-font-smoothing:none;
+}
+/* ------- classic 50% dither desktop ------- */
+#desktop{
+  position:relative; flex:1; min-height:0; overflow:hidden;
+  background:repeating-conic-gradient(var(--ink) 0 25%, var(--paper) 0 50%) 0 0/4px 4px;
+  touch-action:none;
+}
+/* ------- generic mac-1 window chrome ------- */
+.win{
+  position:absolute; background:var(--paper);
+  border:2px solid var(--ink); box-shadow:3px 3px 0 var(--ink);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.tbar{
+  position:relative; height:18px; flex:0 0 18px; border-bottom:2px solid var(--ink);
+  background:repeating-linear-gradient(to bottom, var(--paper) 0 2px, var(--ink) 2px 3px, var(--paper) 3px 4px);
+  background-clip:padding-box;
+  display:flex; align-items:center; cursor:grab; user-select:none;
+}
+.tbar .name{
+  margin:0 auto; padding:0 8px; background:var(--paper);
+  font-weight:700; letter-spacing:1px; font-size:11px;
+}
+.win.focused .tbar .name{color:var(--nav)}
+.closebox{
+  width:11px;height:11px;border:2px solid var(--ink);background:var(--paper);
+  margin-left:5px; flex:0 0 auto; cursor:pointer;
+}
+.closebox:hover{background:var(--ink)}
+.body{flex:1; min-height:0; overflow:hidden; padding:5px 7px; user-select:none; cursor:default}
+.body .ln{white-space:pre; overflow:hidden; text-overflow:clip}
+.k{color:#777}
+.blue{color:var(--nav)} .red{color:var(--mut)} .green{color:var(--wgt)}
+.wbar{display:flex;height:8px;border:1px solid var(--ink);margin:4px 0}
+.wbar i{display:block;border-right:1px solid var(--ink);background:var(--paper)}
+.wbar i:last-child{border-right:0}
+.wbar i.me{background:repeating-linear-gradient(45deg,var(--ink) 0 2px,var(--paper) 2px 4px)}
+.mini{margin-top:4px}
+.mini rect{fill:var(--paper);stroke:var(--ink);stroke-width:1;shape-rendering:crispEdges}
+.mini rect.me{fill:var(--ink)}
+.mini rect.foc{stroke:var(--nav);stroke-width:2}
+/* stack tabs */
+.tabs{display:flex;border-bottom:2px solid var(--ink);flex:0 0 16px;height:16px;overflow:hidden}
+.tabs .tab{
+  flex:1;text-align:center;border-right:2px solid var(--ink);cursor:pointer;
+  font-size:10px;line-height:14px;overflow:hidden;white-space:nowrap;background:var(--paper)
+}
+.tabs .tab:last-child{border-right:0}
+.tabs .tab.on{background:var(--ink);color:var(--paper)}
+/* dividers */
+.divider{position:absolute;z-index:30;background:transparent}
+.divider.h{cursor:col-resize}
+.divider.v{cursor:row-resize}
+.divider:hover::after,.divider.live::after{
+  content:"";position:absolute;inset:0;
+  background:repeating-conic-gradient(var(--ink) 0 25%, transparent 0 50%) 0 0/2px 2px;
+}
+/* drag-to-dock overlay */
+#dockOverlay{position:absolute;z-index:60;pointer-events:none;display:none}
+#dockOverlay svg{display:block}
+#dockOverlay .diag{stroke:var(--ink);stroke-width:1;stroke-dasharray:3 3}
+#dockOverlay .zone{fill:var(--ink);fill-opacity:.28}
+#dockOverlay .zoneC{fill:none;stroke:var(--nav);stroke-width:2;stroke-dasharray:4 3}
+#dragGhost{
+  position:fixed;z-index:70;pointer-events:none;display:none;
+  border:2px dashed var(--ink);background:transparent;width:90px;height:56px;
+}
+#dragGhost span{position:absolute;left:4px;top:2px;font-weight:700;background:var(--paper);padding:0 3px}
+/* ------- side panels ------- */
+#main{display:flex;flex:1;min-height:0}
+#side{
+  flex:0 0 292px;display:flex;flex-direction:column;min-height:0;
+  border-left:2px solid var(--ink);background:var(--paper)
+}
+.panel{display:flex;flex-direction:column;min-height:0;border-bottom:2px solid var(--ink)}
+.panel:last-child{border-bottom:0}
+.phead{
+  flex:0 0 18px;height:18px;border-bottom:2px solid var(--ink);
+  background:repeating-linear-gradient(to bottom, var(--paper) 0 2px, var(--ink) 2px 3px, var(--paper) 3px 4px);
+  display:flex;align-items:center
+}
+.phead b{margin:0 auto;background:var(--paper);padding:0 8px;letter-spacing:2px;font-size:11px}
+.pbody{overflow:auto;padding:6px 8px;min-height:0}
+#panel-settings .pbody{flex:0 0 auto}
+#panel-tree{flex:0 0 auto;max-height:34%}
+#panel-log{flex:1}
+#treeTxt{white-space:pre;font-size:11px;line-height:1.4}
+#logTxt div{white-space:pre-wrap;margin-bottom:1px}
+#logTxt .op{border-top:1px dotted #999;padding-top:2px;margin-top:3px}
+/* settings controls */
+.set{display:flex;align-items:center;gap:6px;margin:3px 0;flex-wrap:wrap}
+.set label{cursor:pointer}
+.chk{display:inline-block;width:10px;height:10px;border:2px solid var(--ink);vertical-align:-1px;margin-right:4px;background:var(--paper)}
+input:checked+.chk{background:var(--ink)}
+input[type=radio],input[type=checkbox]{position:absolute;opacity:0;width:0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:110px;height:2px;background:var(--ink);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:14px;background:var(--paper);border:2px solid var(--ink)}
+input[type=range]::-moz-range-thumb{width:9px;height:14px;background:var(--paper);border:2px solid var(--ink);border-radius:0}
+.btn{
+  display:inline-block;border:2px solid var(--ink);background:var(--paper);
+  padding:1px 8px;cursor:pointer;font:inherit;font-weight:700;box-shadow:2px 2px 0 var(--ink)
+}
+.btn:active{transform:translate(2px,2px);box-shadow:none}
+/* ------- status strip ------- */
+#status{
+  flex:0 0 24px;border-top:2px solid var(--ink);background:var(--paper);
+  display:flex;align-items:center;gap:0;overflow:hidden;white-space:nowrap;font-size:11px
+}
+#status .cell{padding:0 10px;border-right:2px solid var(--ink);height:100%;display:flex;align-items:center;gap:6px}
+.mode{padding:0 6px;border:2px solid var(--ink);cursor:pointer;font-weight:700}
+.mode.on{background:var(--ink);color:var(--paper)}
+#status .keys{color:#555;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:820px){
+  body{overflow:auto;height:auto}
+  #main{flex-direction:column}
+  #desktop{flex:0 0 62vh;min-height:380px}
+  #side{flex:1;border-left:0;border-top:2px solid var(--ink)}
+}
+:focus-visible{outline:2px solid var(--nav);outline-offset:1px}
+</style>
+</head>
+<body>
+
+<div id="main">
+  <div id="desktop" aria-label="tiling desktop"></div>
+
+  <div id="side">
+    <div class="panel" id="panel-settings">
+      <div class="phead"><b>SETTINGS</b></div>
+      <div class="pbody" id="settingsBody"></div>
+    </div>
+    <div class="panel" id="panel-tree">
+      <div class="phead"><b>TREE</b></div>
+      <div class="pbody"><div id="treeTxt"></div></div>
+    </div>
+    <div class="panel" id="panel-log">
+      <div class="phead"><b>ALGORITHM LOG</b></div>
+      <div class="pbody"><div id="logTxt"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="status">
+  <div class="cell" id="modeCell"></div>
+  <div class="cell">focus <b class="blue" id="focName">–</b></div>
+  <div class="cell keys" id="keysHelp"></div>
+</div>
+
+<div id="dockOverlay"></div>
+<div id="dragGhost"><span id="ghostName"></span></div>
+
+<script>
+/* =======================================================================
+   TILING LAB — n-ary split tree window manager
+   Implements: axis-sensitive insertion, multiplicative normalization,
+   pair-preserving divider resize, tree-topological WASD navigation,
+   clone→insert→remove redocking, triangular dock hit-testing, stacks.
+   ======================================================================= */
+'use strict';
+
+/* ---------- state ---------- */
+let uid = 1;
+const P = (name)=>({t:'p', id:'n'+(uid++), name});
+const SP = (axis,ch,w)=>({t:'s', id:'n'+(uid++), axis, ch, w});
+const ST = (ch,active=0)=>({t:'k', id:'n'+(uid++), ch, active});
+
+const settings = {
+  minW: 0.10,          // minimum fractional pane size m
+  step: 0.03,          // keyboard resize step
+  insertPolicy: 'equalize',   // equalize | share
+  removePolicy: 'equalize',   // equalize | renorm
+  navAlgo: 'tree',            // tree | dfs
+  centerStacks: true,         // center drop region → stack
+  logNormalize: true,
+  autoLayout: 'off',          // off | columns | rows | grid | master | dwindle | bsp | monocle
+  autoKeep: false,            // re-apply generator after every structural change
+  masterRatio: 0.60,
+  dwindleRatio: 0.62,         // ~golden
+};
+
+let nextName = 68; // 'D'
+let root, focusedId, mode='focus';
+
+function initLayout(){
+  const a=P('A');
+  const chat=P('CHAT'), term=P('TERM');
+  const rev=P('REVIEW'), c=P('C');
+  root = SP('h',[a, ST([chat,term],0), SP('v',[rev,c],[0.5,0.5])],[1/3,1/3,1/3]);
+  focusedId = a.id;
+}
+initLayout();
+
+/* ---------- log ---------- */
+const logEl = ()=>document.getElementById('logTxt');
+let logBuf = [];
+function op(color,text){ logBuf.push({c:color,t:text,op:true}); trimLog(); }
+function sub(color,text){ logBuf.push({c:color,t:'  '+text}); trimLog(); }
+function trimLog(){ if(logBuf.length>400) logBuf = logBuf.slice(-400); }
+const pct = x => (100*x).toFixed(1).replace(/\.0$/,'')+'%';
+const vec = w => '['+w.map(x=>(+x).toFixed(2).replace(/^0/,'')).join(', ')+']';
+
+/* ---------- tree helpers ---------- */
+function walk(node, fn, parent=null, idx=-1){
+  fn(node,parent,idx);
+  if(node.ch) node.ch.forEach((c,i)=>walk(c,fn,node,i));
+}
+function find(id){
+  let out=null;
+  walk(root,(n,p,i)=>{ if(n.id===id) out={node:n,parent:p,idx:i}; });
+  return out;
+}
+function pathTo(id){
+  const path=[];
+  (function rec(n){
+    path.push(n);
+    if(n.id===id) return true;
+    if(n.ch) for(const c of n.ch) if(rec(c)) return true;
+    path.pop(); return false;
+  })(root);
+  return path;
+}
+/* visible leaves in visual depth-first order (stack contributes active child) */
+function visibleLeaves(n=root, out=[]){
+  if(n.t==='p') out.push(n);
+  else if(n.t==='k') visibleLeaves(n.ch[n.active], out);
+  else n.ch.forEach(c=>visibleLeaves(c,out));
+  return out;
+}
+function allPanes(n=root,out=[]){
+  if(n.t==='p') out.push(n); else n.ch.forEach(c=>allPanes(c,out));
+  return out;
+}
+function firstWindow(n){ return n.t==='p'?n : n.t==='k'?firstWindow(n.ch[n.active]) : firstWindow(n.ch[0]); }
+function lastWindow(n){ return n.t==='p'?n : n.t==='k'?lastWindow(n.ch[n.active]) : lastWindow(n.ch[n.ch.length-1]); }
+function newName(){ return String.fromCharCode(nextName++ > 90 ? (nextName=66,65) : nextName-1); }
+
+/* ---------- normalization (§3) ---------- */
+function normalize(node, log){
+  if(!node.ch) return node;
+  node.ch = node.ch.map(c=>normalize(c,log));
+
+  if(node.t==='k'){
+    if(node.ch.length===1){ log&&sub('green',`collapse stack(1) → ${label(node.ch[0])}`); return node.ch[0]; }
+    node.active = Math.min(node.active, node.ch.length-1);
+    return node;
+  }
+  /* split */
+  if(node.ch.length===1){ log&&sub('green',`collapse split(1) → ${label(node.ch[0])}`); return node.ch[0]; }
+
+  const ch=[], w=[];
+  node.ch.forEach((c,i)=>{
+    const pw = node.w[i];
+    if(c.t==='s' && c.axis===node.axis){
+      log&&sub('green',`flatten ${node.axis==='h'?'Row⊂Row':'Col⊂Col'}: ×${pw.toFixed(2)}`);
+      c.ch.forEach((g,j)=>{
+        ch.push(g); w.push(pw*c.w[j]);
+        log&&sub('green',`  ${label(g)}: ${pw.toFixed(2)}×${c.w[j].toFixed(2)} = ${(pw*c.w[j]).toFixed(3)}`);
+      });
+    } else { ch.push(c); w.push(pw); }
+  });
+  const s=w.reduce((a,b)=>a+b,0);
+  node.ch=ch; node.w=w.map(x=>x/s);
+  return node;
+}
+function label(n){ return n.t==='p'?n.name : n.t==='k'?`STACK[${n.ch.map(c=>label(c)).join(',')}]` : (n.axis==='h'?'Row':'Col'); }
+
+/* ---------- insertion (§2) ---------- */
+function insert(targetId, edge, pane){
+  const axis = (edge==='left'||edge==='right') ? 'h' : 'v';
+  let f = find(targetId);
+  if(!f) return;
+  /* dock relative to enclosing stack, if any */
+  if(f.parent && f.parent.t==='k'){ f = find(f.parent.id); }
+  const {node:tgt, parent, idx} = f;
+
+  op('red',`INSERT ${pane.name} ${edge.toUpperCase()} of ${label(tgt)}`);
+  sub('red',`edge → axis=${axis==='h'?'ROW':'COL'}; parent=${parent?label(parent)+(parent.t==='s'?'('+parent.axis+')':''):'∅'}`);
+
+  const before = (edge==='left'||edge==='top');
+
+  if(parent && parent.t==='s' && parent.axis===axis){
+    sub('red','same axis → insert as SIBLING');
+    const at = idx + (before?0:1);
+    parent.ch.splice(at,0,pane);
+    if(settings.insertPolicy==='equalize'){
+      const n=parent.ch.length;
+      parent.w = parent.ch.map(()=>1/n);
+      sub('green',`equalize: sᵢ = 1/${n} → ${vec(parent.w)}`);
+    } else {
+      const wt = parent.w[idx];
+      parent.w.splice(at,0,0);
+      parent.w[idx + (before?1:0)] = wt/2;   /* original target slot */
+      parent.w[at] = wt/2;
+      sub('green',`share target: ${wt.toFixed(2)} → ${ (wt/2).toFixed(2)} + ${(wt/2).toFixed(2)} → ${vec(parent.w)}`);
+    }
+  } else {
+    sub('red','perpendicular → wrap in new split [.5,.5]');
+    const pair = before?[pane,tgt]:[tgt,pane];
+    const wrap = SP(axis, pair, [0.5,0.5]);
+    if(!parent) root = wrap;
+    else { parent.ch[idx]=wrap; }
+  }
+  root = normalize(root, settings.logNormalize);
+  focusedId = pane.id;
+}
+
+/* ---------- removal (§4) ---------- */
+function removePane(id, silent){
+  if(allPanes().length<=1){ op('red','REMOVE refused: last pane'); return; }
+  const leaves = visibleLeaves();
+  const vi = leaves.findIndex(l=>l.id===id);
+  let nf = focusedId;
+  if(id===focusedId && vi>=0){
+    const next = leaves[vi+1] || leaves[vi-1];
+    nf = next ? next.id : null;
+  }
+  const f = find(id); if(!f) return;
+  const {parent, idx} = f;
+  if(!silent){
+    op('red',`REMOVE ${f.node.name||label(f.node)}`);
+    if(id===focusedId) sub('blue',`next focus chosen before mutation → ${find(nf)?.node.name||'–'}`);
+  }
+  if(!parent){ /* root pane — shouldn't happen with guard */ return; }
+
+  if(parent.t==='k'){
+    parent.ch.splice(idx,1);
+    if(parent.active>=parent.ch.length) parent.active=parent.ch.length-1;
+    sub('red','removed from stack');
+  } else {
+    parent.ch.splice(idx,1);
+    const rem = parent.w[idx];
+    parent.w.splice(idx,1);
+    if(settings.removePolicy==='equalize'){
+      parent.w = parent.ch.map(()=>1/parent.ch.length);
+      if(!silent) sub('green',`equalize survivors → ${vec(parent.w)}`);
+    } else {
+      const s=parent.w.reduce((a,b)=>a+b,0);
+      parent.w = parent.w.map(x=>x/s);
+      if(!silent) sub('green',`renorm: drop ${rem.toFixed(2)}, ÷${s.toFixed(2)} → ${vec(parent.w)}`);
+    }
+  }
+  root = normalize(root, settings.logNormalize && !silent);
+  if(nf && find(nf)) focusedId = nf;
+  else focusedId = visibleLeaves()[0].id;
+}
+
+/* ---------- navigation (§10 / §13) ---------- */
+function neighbor(id, dir){
+  if(settings.navAlgo==='dfs'){
+    const ls = visibleLeaves();
+    const i = ls.findIndex(l=>l.id===id);
+    const fwd = (dir==='right'||dir==='down');
+    const j = (i + (fwd?1:-1) + ls.length) % ls.length;
+    sub('blue',`dfs-order: leaf ${i} ${fwd?'→ next':'→ prev'} = ${ls[j].name} (wrap)`);
+    return ls[j];
+  }
+  /* tree-topological */
+  const wantAxis = (dir==='left'||dir==='right')?'h':'v';
+  const fwd = (dir==='right'||dir==='down');
+  const path = pathTo(id);
+  for(let k=path.length-2; k>=0; k--){
+    const anc = path[k], child = path[k+1];
+    if(anc.t==='s' && anc.axis===wantAxis){
+      const i = anc.ch.indexOf(child);
+      const j = i + (fwd?1:-1);
+      if(j>=0 && j<anc.ch.length){
+        const sib = anc.ch[j];
+        const w = fwd ? firstWindow(sib) : lastWindow(sib);
+        sub('blue',`climb to ${anc.axis==='h'?'Row':'Col'}, sibling[${j}]=${label(sib)} → ${fwd?'first':'last'} window ${w.name}`);
+        return w;
+      }
+      sub('blue',`${anc.axis==='h'?'Row':'Col'}: no ${fwd?'next':'prev'} sibling, climb ↑`);
+    } else {
+      sub('blue',`${label(anc)} not a ${wantAxis==='h'?'Row':'Col'}, climb ↑`);
+    }
+  }
+  sub('blue','no adjacent window');
+  return null;
+}
+
+/* ---------- swap ---------- */
+function swapPanes(aId,bId){
+  const A=find(aId), B=find(bId);
+  if(!A||!B||aId===bId) return;
+  op('red',`SWAP ${A.node.name} ⇄ ${B.node.name}`);
+  A.parent.ch[A.idx]=B.node; B.parent.ch[B.idx]=A.node;
+  if(A.parent.t==='k'||B.parent.t==='k') sub('red','(across stack boundary)');
+}
+
+/* ---------- move = clone → insert → remove (§9) ---------- */
+function movePane(id, dir){
+  op('blue',`MOVE ${find(id).node.name} ${dir.toUpperCase()} — resolve neighbor:`);
+  const nb = neighbor(id, dir);
+  if(!nb){ sub('red','abort: no neighbor'); return; }
+  redock(id, nb.id, dir);
+}
+function redock(srcId, tgtId, edge){
+  const src = find(srcId).node;
+  const clone = P(src.name); /* fresh id */
+  op('red',`REDOCK ${src.name}: clone(${clone.id}) → insert → remove(${src.id})`);
+  src.name = src.name+'′';   /* mark original during the transient interval */
+  insert(tgtId, edge, clone);
+  removePane(srcId, true);
+  clone.name = clone.name;   /* clone keeps clean name */
+  focusedId = clone.id;
+  root = normalize(root,false);
+}
+
+/* ---------- stacking ---------- */
+function stackOnto(tgtId, pane){
+  const f=find(tgtId); if(!f) return;
+  op('red',`STACK ${pane.name} onto ${label(f.node)}`);
+  if(f.parent && f.parent.t==='k'){ f.parent.ch.push(pane); f.parent.active=f.parent.ch.length-1; }
+  else if(f.node.t==='k'){ f.node.ch.push(pane); f.node.active=f.node.ch.length-1; }
+  else{
+    const st = ST([f.node,pane],1);
+    if(!f.parent) root=st; else f.parent.ch[f.idx]=st;
+    sub('red','wrap target in Stack node — children share one rectangle');
+  }
+  focusedId=pane.id;
+}
+
+/* ---------- autolayout generators ----------
+   A layout generator is a pure function: ordered leaf units → new tree.
+   Units are panes, with stacks kept atomic. The manual tree ops above
+   still work; a generator just rebuilds structure from the DFS order. */
+function leafUnits(n=root,out=[]){
+  if(n.t==='p'||n.t==='k') out.push(n);
+  else n.ch.forEach(c=>leafUnits(c,out));
+  return out;
+}
+const eq=n=>Array(n).fill(1/n);
+const other=a=>a==='h'?'v':'h';
+
+const BUILDERS={
+  columns(u){ sub('green',`Row of ${u.length}, sᵢ=1/${u.length}`);
+    return u.length===1?u[0]:SP('h',u,eq(u.length)); },
+  rows(u){ sub('green',`Col of ${u.length}, sᵢ=1/${u.length}`);
+    return u.length===1?u[0]:SP('v',u,eq(u.length)); },
+  grid(u){
+    const n=u.length, cols=Math.ceil(Math.sqrt(n)), rows=Math.ceil(n/cols);
+    const chunks=[]; for(let i=0;i<n;i+=cols) chunks.push(u.slice(i,i+cols));
+    sub('green',`cols=⌈√${n}⌉=${cols}  rows=⌈${n}/${cols}⌉=${rows}  → [${chunks.map(c=>c.length).join(',')}]`);
+    const rowNodes=chunks.map(c=>c.length===1?c[0]:SP('h',c,eq(c.length)));
+    return rows===1?rowNodes[0]:SP('v',rowNodes,eq(rows));
+  },
+  master(u){
+    if(u.length===1) return u[0];
+    const r=settings.masterRatio, rest=u.slice(1);
+    sub('green',`master ${label(u[0])}=${pct(r)} · stack col=${pct(1-r)} (${rest.length})`);
+    const col=rest.length===1?rest[0]:SP('v',rest,eq(rest.length));
+    return SP('h',[u[0],col],[r,1-r]);
+  },
+  dwindle(u){
+    const r=settings.dwindleRatio;
+    sub('green',`ratio=${r.toFixed(2)} per step, axes alternate h→v→h…`);
+    const dw=(u,ax,d)=>{
+      if(u.length===1) return u[0];
+      sub('green',`  d${d}: ${label(u[0])} gets ${pct(r)} of remainder (${ax==='h'?'Row':'Col'})`);
+      return SP(ax,[u[0],dw(u.slice(1),other(ax),d+1)],[r,1-r]);
+    };
+    return dw(u,'h',0);
+  },
+  bsp(u){
+    sub('green','balanced binary, every split .5/.5 — the representation §1 argues against');
+    const b=(u,ax)=>{
+      if(u.length===1) return u[0];
+      const mid=Math.ceil(u.length/2);
+      return SP(ax,[b(u.slice(0,mid),other(ax)),b(u.slice(mid),other(ax))],[.5,.5]);
+    };
+    const t=b(u,'h');
+    if(u.length&(u.length-1)) sub('green',`n=${u.length} not a power of 2 → unequal leaf areas (compare grid)`);
+    return t;
+  },
+  monocle(u){
+    const ps=allPanes();
+    sub('green',`one Stack of ${ps.length} — all children share one rect`);
+    const ai=Math.max(0,ps.findIndex(p=>p.id===focusedId));
+    return ps.length===1?ps[0]:ST(ps,ai);
+  },
+};
+
+function applyLayout(name, quiet){
+  settings.autoLayout=name;
+  if(name==='off'){ if(!quiet) op('red','AUTOLAYOUT off — manual tree ops only'); return; }
+  let units=leafUnits();
+  if(name!=='monocle'&&units.length===1&&units[0].t==='k'&&units[0].ch.length>1){
+    if(!quiet) sub('red','unpack whole-desktop stack → panes');
+    units=units[0].ch.slice();
+  }
+  if(!quiet) op('red',`AUTOLAYOUT ${name.toUpperCase()}  (units in DFS order: ${units.map(label).join(', ')})`);
+  transient.clear();
+  root=normalize(BUILDERS[name](units),false);
+  if(!find(focusedId)) focusedId=visibleLeaves()[0].id;
+}
+function maybeAuto(){
+  if(settings.autoKeep&&settings.autoLayout!=='off'){
+    applyLayout(settings.autoLayout,true);
+    sub('green',`autolayout ${settings.autoLayout} re-applied`);
+  }
+}
+function balanceAll(){
+  op('green','BALANCE: every split → sᵢ=1/n (structure kept)');
+  walk(root,n=>{ if(n.t==='s') n.w=eq(n.ch.length); });
+}
+const LAYOUT_CYCLE=['off','columns','rows','grid','master','dwindle','bsp','monocle'];
+
+/* ---------- sibling & structure actions (keyboard) ---------- */
+function parentSplitOf(id){
+  const path=pathTo(id);
+  for(let k=path.length-2;k>=0;k--)
+    if(path[k].t==='s') return {split:path[k], child:path[k+1]};
+  return null;
+}
+function rotateSiblings(back){
+  const ps=parentSplitOf(focusedId);
+  if(!ps){op('red','ROTATE: no parent split');return;}
+  const {split}=ps, names=split.ch.map(label);
+  if(back){ split.ch.push(split.ch.shift()); split.w.push(split.w.shift()); }
+  else    { split.ch.unshift(split.ch.pop()); split.w.unshift(split.w.pop()); }
+  op('red',`ROTATE ${split.axis==='h'?'Row':'Col'} ${back?'↺':'↻'}: [${names.join(', ')}] → [${split.ch.map(label).join(', ')}]  (weights travel with children)`);
+}
+function flipSiblings(){
+  const ps=parentSplitOf(focusedId);
+  if(!ps){op('red','FLIP: no parent split');return;}
+  const {split}=ps, names=split.ch.map(label);
+  split.ch.reverse(); split.w.reverse();
+  op('red',`FLIP ${split.axis==='h'?'Row':'Col'}: [${names.join(', ')}] → [${split.ch.map(label).join(', ')}]`);
+}
+function transposeNote(){
+  if(settings.autoKeep&&settings.autoLayout!=='off')
+    sub('red','note: kept autolayout rebuilds structure — transpose will not persist');
+}
+function transposeParent(){
+  const ps=parentSplitOf(focusedId);
+  if(!ps){op('red','TRANSPOSE: no parent split');return;}
+  const {split}=ps, was=split.axis;
+  split.axis=other(was);
+  op('red',`TRANSPOSE ${was==='h'?'Row→Col':'Col→Row'} — may create same-axis nesting → normalize:`);
+  transposeNote();
+  root=normalize(root, settings.logNormalize);
+}
+function transposeAll(){
+  op('red','TRANSPOSE ALL: every Row↔Col (layout mirrored across the diagonal)');
+  transposeNote();
+  walk(root,n=>{ if(n.t==='s') n.axis=other(n.axis); });
+  root=normalize(root, settings.logNormalize);
+}
+function equalizeParent(){
+  const ps=parentSplitOf(focusedId);
+  if(!ps){op('green','EQUALIZE: no parent split');return;}
+  const {split}=ps;
+  op('green',`EQUALIZE ${split.axis==='h'?'Row':'Col'}: ${vec(split.w)} → sᵢ=1/${split.ch.length}`);
+  split.w=eq(split.ch.length);
+}
+function zoomMaster(){
+  const ls=visibleLeaves();
+  if(ls.length<2){op('red','ZOOM: nothing to promote');return;}
+  let target=ls[0];
+  if(target.id===focusedId){ target=ls[1]; op('blue','ZOOM: already master → swap back with slot 1'); }
+  else op('blue',`ZOOM: promote ${find(focusedId).node.name} to slot 0 (dwm-style)`);
+  swapPanes(focusedId,target.id);
+}
+function ejectFromStack(){
+  const f=find(focusedId);
+  if(!(f.parent&&f.parent.t==='k')){op('red','EJECT: focus is not inside a stack');return;}
+  const st=f.parent, pane=f.node;
+  op('red',`EJECT ${pane.name} from ${label(st)} → dock right of the stack`);
+  st.ch.splice(f.idx,1);
+  if(st.active>=st.ch.length) st.active=st.ch.length-1;
+  insert(st.id,'right',pane);
+}
+function shiftSlot(fwd){
+  const ps=parentSplitOf(focusedId);
+  if(!ps){op('red','SHIFT: no parent split');return;}
+  const {split,child}=ps;
+  const i=split.ch.indexOf(child), n=split.ch.length, j=(i+(fwd?1:-1)+n)%n;
+  op('red',`SHIFT ${label(child)} slot ${i}→${j}${(fwd?i===n-1:i===0)?' (wrap)':''} — weights stay with SLOTS, children move`);
+  [split.ch[i],split.ch[j]]=[split.ch[j],split.ch[i]];
+}
+
+
+function boundaryFor(id, dir){
+  const wantAxis=(dir==='left'||dir==='right')?'h':'v';
+  const path=pathTo(id);
+  for(let k=path.length-2;k>=0;k--){
+    const anc=path[k], child=path[k+1];
+    if(anc.t==='s'&&anc.axis===wantAxis){
+      const i=anc.ch.indexOf(child);
+      if((dir==='right'||dir==='down') && i<anc.ch.length-1) return {split:anc,i};
+      if((dir==='left'||dir==='up') && i>0) return {split:anc,i:i-1};
+    }
+  }
+  return null;
+}
+function applyBoundary(split, i, B, live){
+  const m=settings.minW;
+  const Pm = split.w.slice(0,i).reduce((a,b)=>a+b,0);
+  const S = split.w[i]+split.w[i+1];
+  const si = Math.min(Math.max(B-Pm, m), S-m);
+  const w = split.w.slice();
+  w[i]=si; w[i+1]=S-si;
+  if(live){ transient.set(split.id,w); }
+  else{
+    split.w=w;
+    sub('green',`P=Σs₍<i₎=${Pm.toFixed(2)}  S=sᵢ+sᵢ₊₁=${S.toFixed(2)}`);
+    sub('green',`s′ᵢ=clamp(B−P, m, S−m)=clamp(${(B-Pm).toFixed(2)}, ${m}, ${(S-m).toFixed(2)})=${si.toFixed(2)}`);
+    sub('green',`s′ᵢ₊₁=S−s′ᵢ=${(S-si).toFixed(2)}   invariant: pair sum ${S.toFixed(2)} preserved`);
+  }
+}
+function kbResize(dir){
+  const b=boundaryFor(focusedId,dir);
+  if(!b){ op('green',`RESIZE ${dir}: no boundary on that side`); return; }
+  const {split,i}=b;
+  const grow=(dir==='right'||dir==='down')?+settings.step:-settings.step;
+  const Pm=split.w.slice(0,i).reduce((a,b)=>a+b,0);
+  const B=Pm+split.w[i]+grow;
+  op('green',`RESIZE ${dir.toUpperCase()} divider(${i}) of ${split.axis==='h'?'Row':'Col'}  δ=${grow>0?'+':''}${grow}`);
+  applyBoundary(split,i,B,false);
+}
+
+/* =======================================================================
+   RENDERING
+   ======================================================================= */
+const GAP=8, desk=document.getElementById('desktop');
+const transient=new Map(); /* splitId → weights during divider drag (§6) */
+let rects={};              /* paneOrStackId → {x,y,w,h} */
+
+function layout(node, r, out){
+  out[node.id]=r;
+  if(node.t==='p') return;
+  if(node.t==='k'){ node.ch.forEach(c=>{ out[c.id]=r; if(c.ch) layout(c,r,out); }); return; }
+  const w = transient.get(node.id)||node.w;
+  const horiz = node.axis==='h';
+  const total = horiz?r.w:r.h;
+  const avail = total - GAP*(node.ch.length-1);
+  let pos = horiz?r.x:r.y;
+  node.ch.forEach((c,i)=>{
+    const sz=w[i]*avail;
+    layout(c, horiz?{x:pos,y:r.y,w:sz,h:r.h}:{x:r.x,y:pos,w:r.w,h:sz}, out);
+    pos+=sz+GAP;
+  });
+}
+
+function render(){
+  rects={};
+  const R=desk.getBoundingClientRect();
+  layout(root,{x:6,y:6,w:R.width-12,h:R.height-12},rects);
+  desk.querySelectorAll('.win,.divider').forEach(e=>e.remove());
+
+  /* windows */
+  (function draw(n){
+    if(n.t==='p'&&!inStack(n)) drawWin(n,rects[n.id],null);
+    else if(n.t==='k') drawWin(firstWindow(n),rects[n.id],n);
+    else if(n.t==='s') n.ch.forEach(draw);
+  })(root);
+
+  /* dividers */
+  walk(root,(n)=>{
+    if(n.t!=='s') return;
+    const r=rects[n.id], w=transient.get(n.id)||n.w, horiz=n.axis==='h';
+    const avail=(horiz?r.w:r.h)-GAP*(n.ch.length-1);
+    let acc=0;
+    for(let i=0;i<n.ch.length-1;i++){
+      acc+=w[i];
+      const px=(horiz?r.x:r.y)+acc*avail+i*GAP;
+      const d=document.createElement('div');
+      d.className='divider '+(horiz?'h':'v');
+      if(horiz) Object.assign(d.style,{left:(px-2)+'px',top:r.y+'px',width:(GAP+4)+'px',height:r.h+'px'});
+      else Object.assign(d.style,{left:r.x+'px',top:(px-2)+'px',width:r.w+'px',height:(GAP+4)+'px'});
+      d.dataset.split=n.id; d.dataset.i=i;
+      if(divDrag && divDrag.split===n && divDrag.i===i) d.classList.add('live');
+      desk.appendChild(d);
+    }
+  });
+
+  renderTree(); renderLog(); renderStatus();
+}
+function inStack(n){ const f=find(n.id); return f&&f.parent&&f.parent.t==='k'; }
+
+function drawWin(pane, r, stack){
+  const f=find(pane.id);
+  const win=document.createElement('div');
+  win.className='win'+(pane.id===focusedId?' focused':'');
+  Object.assign(win.style,{left:r.x+'px',top:r.y+'px',width:r.w+'px',height:r.h+'px'});
+  const holderId = stack?stack.id:pane.id;
+
+  const tb=document.createElement('div'); tb.className='tbar';
+  tb.dataset.drag=pane.id;
+  const cb=document.createElement('div'); cb.className='closebox'; cb.title='close';
+  cb.dataset.close=pane.id;
+  const nm=document.createElement('div'); nm.className='name';
+  nm.textContent = stack?`▤ ${pane.name}`:pane.name;
+  tb.append(cb,nm); win.append(tb);
+
+  if(stack){
+    const tabs=document.createElement('div');tabs.className='tabs';
+    stack.ch.forEach((c,i)=>{
+      const t=document.createElement('div');
+      t.className='tab'+(i===stack.active?' on':'');
+      t.textContent=c.name; t.dataset.stack=stack.id; t.dataset.tab=i;
+      tabs.append(t);
+    });
+    win.append(tabs);
+  }
+
+  const body=document.createElement('div'); body.className='body';
+  body.dataset.paneBody=pane.id;
+  body.append(paneXray(pane,f,stack,r));
+  win.append(body);
+  desk.append(win);
+}
+
+/* the tile fills itself with its own algorithmic x-ray */
+function paneXray(pane,f,stack,r){
+  const frag=document.createDocumentFragment();
+  const path=pathTo(pane.id);
+  const crumbs=path.map(n=>n.t==='p'?n.name:n.t==='k'?'Stk':(n.axis==='h'?'Row':'Col')).join('›');
+  const parent = stack ? find(stack.id).parent : f.parent;
+  const holder = stack || pane;
+  const hf = find(holder.id);
+
+  const lines=[];
+  lines.push(`<div class="ln"><span class="k">path </span>${crumbs}</div>`);
+  lines.push(`<div class="ln"><span class="k">rect </span>${Math.round(r.w)}×${Math.round(r.h)} @ ${Math.round(r.x)},${Math.round(r.y)}</div>`);
+  if(parent&&parent.t==='s'){
+    const wgt=parent.w[hf.idx];
+    lines.push(`<div class="ln"><span class="k">in </span>${parent.axis==='h'?'Row':'Col'}[${hf.idx}] <span class="green">w=${pct(wgt)}</span> <span class="k">Σ=1 m=${pct(settings.minW)}</span></div>`);
+  } else if(!parent){
+    lines.push(`<div class="ln"><span class="k">in </span>ROOT</div>`);
+  }
+  if(stack) lines.push(`<div class="ln"><span class="k">stack </span>${stack.active+1}/${stack.ch.length} <span class="k">share one rect</span></div>`);
+
+  const d=document.createElement('div'); d.innerHTML=lines.join('');
+  frag.append(d);
+
+  /* sibling weight bar */
+  if(parent&&parent.t==='s'&&r.h>84){
+    const bar=document.createElement('div'); bar.className='wbar';
+    const w=transient.get(parent.id)||parent.w;
+    parent.ch.forEach((c,i)=>{
+      const seg=document.createElement('i');
+      seg.style.width=(w[i]*100)+'%';
+      if(c===holder) seg.className='me';
+      bar.append(seg);
+    });
+    frag.append(bar);
+  }
+
+  /* minimap of whole layout, self filled */
+  if(r.h>128&&r.w>110){
+    const mm={x:0,y:0,w:96,h:56}, out={};
+    layoutMini(root,mm,out);
+    let svg=`<svg class="mini" width="98" height="58" viewBox="-1 -1 98 58">`;
+    for(const [id,rr] of Object.entries(out)){
+      const me=(id===holder.id||id===pane.id);
+      const foc=(id===focusedId);
+      svg+=`<rect x="${rr.x.toFixed(1)}" y="${rr.y.toFixed(1)}" width="${Math.max(1,rr.w).toFixed(1)}" height="${Math.max(1,rr.h).toFixed(1)}" class="${me?'me':''}${foc?' foc':''}"/>`;
+    }
+    svg+='</svg>';
+    const s=document.createElement('div'); s.innerHTML=svg; frag.append(s.firstChild);
+  }
+  return frag;
+}
+function layoutMini(n,r,out){
+  if(n.t==='p'){out[n.id]=r;return;}
+  if(n.t==='k'){out[n.id]=r;return;}
+  const horiz=n.axis==='h', total=horiz?r.w:r.h;
+  let pos=horiz?r.x:r.y;
+  n.ch.forEach((c,i)=>{
+    const sz=n.w[i]*total;
+    layoutMini(c,horiz?{x:pos,y:r.y,w:sz,h:r.h}:{x:r.x,y:pos,w:r.w,h:sz},out);
+    pos+=sz;
+  });
+}
+
+/* ---------- tree panel ---------- */
+function renderTree(){
+  const out=[];
+  (function rec(n,pre,childPre,w){
+    const wl = w==null?'':`<span class="green">${pct(w).padStart(5)}</span> `;
+    let name;
+    if(n.t==='p') name = n.id===focusedId?`<span class="blue">▶ ${n.name}</span>`:n.name;
+    else if(n.t==='k') name=`STACK [${n.ch.map((c,i)=>i===n.active?c.name+'*':c.name).join(', ')}]`;
+    else name = n.axis==='h'?'Row ─':'Col │';
+    out.push(pre+wl+name);
+    if(n.t==='s') n.ch.forEach((c,i)=>{
+      const last=i===n.ch.length-1;
+      rec(c, childPre+(last?'└─ ':'├─ '), childPre+(last?'   ':'│  '), n.w[i]);
+    });
+    else if(n.t==='k'&&n.ch.some(c=>c.id===focusedId)&&false){}
+  })(root,'','',null);
+  document.getElementById('treeTxt').innerHTML=out.join('\n');
+}
+
+/* ---------- log panel ---------- */
+function renderLog(){
+  const el=logEl();
+  el.innerHTML=logBuf.slice(-120).map(e=>
+    `<div class="${e.c}${e.op?' op':''}">${e.t}</div>`).join('');
+  el.parentElement.scrollTop=el.parentElement.scrollHeight;
+}
+
+/* ---------- status + settings ---------- */
+const MODES=[['focus','FOCUS'],['move','MOVE'],['swap','SWAP'],['resize','RESIZE']];
+function renderStatus(){
+  document.getElementById('modeCell').innerHTML =
+    MODES.map(([m,l],i)=>`<span class="mode${mode===m?' on':''}" data-mode="${m}">${i+1} ${l}</span>`).join('');
+  const f=find(focusedId);
+  document.getElementById('focName').textContent=f?f.node.name:'–';
+  document.getElementById('keysHelp').textContent =
+    (settings.autoLayout!=='off'?`⌗ ${settings.autoLayout}${settings.autoKeep?' (kept)':''} · `:'')+
+    'WASD act in mode · C cycle · Z zoom · R rotate · F flip · O transpose · E equalize · full key list in SETTINGS';
+}
+function renderSettings(){
+  const s=settings;
+  document.getElementById('settingsBody').innerHTML=`
+  <div class="set"><span class="k">min size m</span>
+    <input type="range" id="setMin" min="5" max="30" value="${Math.round(s.minW*100)}">
+    <b class="green" id="minVal">${pct(s.minW)}</b></div>
+  <div class="set"><span class="k">insert</span>
+    <label><input type="radio" name="ins" value="equalize" ${s.insertPolicy==='equalize'?'checked':''}><i class="chk"></i>equalize 1/n</label>
+    <label><input type="radio" name="ins" value="share" ${s.insertPolicy==='share'?'checked':''}><i class="chk"></i>share target ½</label></div>
+  <div class="set"><span class="k">remove</span>
+    <label><input type="radio" name="rem" value="equalize" ${s.removePolicy==='equalize'?'checked':''}><i class="chk"></i>equalize</label>
+    <label><input type="radio" name="rem" value="renorm" ${s.removePolicy==='renorm'?'checked':''}><i class="chk"></i>renormalize</label></div>
+  <div class="set"><span class="k">navigate</span>
+    <label><input type="radio" name="nav" value="tree" ${s.navAlgo==='tree'?'checked':''}><i class="chk"></i>tree-topological</label>
+    <label><input type="radio" name="nav" value="dfs" ${s.navAlgo==='dfs'?'checked':''}><i class="chk"></i>visual DFS order</label></div>
+  <div class="set">
+    <label><input type="checkbox" id="setCenter" ${s.centerStacks?'checked':''}><i class="chk"></i>center drop = stack</label>
+    <label><input type="checkbox" id="setNorm" ${s.logNormalize?'checked':''}><i class="chk"></i>log normalize steps</label></div>
+  <div class="set"><span class="k">autolayout</span></div>
+  <div class="set" id="layoutBtns">${LAYOUT_CYCLE.map(l=>
+    `<span class="mode${s.autoLayout===l?' on':''}" data-layout="${l}">${l==='off'?'OFF':l.toUpperCase().slice(0,l==='monocle'?4:6)}</span>`).join('')}</div>
+  <div class="set">
+    <label><input type="checkbox" id="setKeep" ${s.autoKeep?'checked':''}><i class="chk"></i>keep applied on changes</label></div>
+  <div class="set"><span class="k">master</span>
+    <input type="range" id="setMaster" min="50" max="80" value="${Math.round(s.masterRatio*100)}">
+    <b class="green" id="masterVal">${pct(s.masterRatio)}</b></div>
+  <div class="set"><span class="k">dwindle</span>
+    <input type="range" id="setDwindle" min="38" max="70" value="${Math.round(s.dwindleRatio*100)}">
+    <b class="green" id="dwindleVal">${pct(s.dwindleRatio)}</b></div>
+  <div class="set"><button class="btn" id="btnReset">RESET LAYOUT</button>
+    <button class="btn" id="btnNorm">NORMALIZE</button>
+    <button class="btn" id="btnBal">BALANCE</button></div>
+  <div class="set k" style="display:block;line-height:1.6;border-top:1px dotted #999;padding-top:5px">
+KEYS · <b>1–4</b> mode · <b>WASD</b> act in mode · <b>C</b>/⇧C cycle focus ·
+<b>Z</b> zoom→master · <b>R</b>/⇧R rotate siblings · <b>F</b> flip ·
+<b>O</b> transpose split · ⇧O transpose all · <b>E</b> equalize split · ⇧E balance all ·
+<b>N</b>/<b>V</b> split → right/below · <b>T</b> stack · <b>B</b> eject from stack ·
+<b>Tab</b>/⇧Tab cycle stack · <b>,</b>/<b>.</b> shift slot · <b>X</b> close · <b>L</b> cycle autolayout</div>`;
+  const B=document.getElementById('settingsBody');
+  B.querySelector('#setMin').oninput=e=>{s.minW=+e.target.value/100;B.querySelector('#minVal').textContent=pct(s.minW);};
+  B.querySelectorAll('input[name=ins]').forEach(r=>r.onchange=()=>{s.insertPolicy=r.value;});
+  B.querySelectorAll('input[name=rem]').forEach(r=>r.onchange=()=>{s.removePolicy=r.value;});
+  B.querySelectorAll('input[name=nav]').forEach(r=>r.onchange=()=>{s.navAlgo=r.value; op('blue','nav algorithm → '+r.value); render();});
+  B.querySelector('#setCenter').onchange=e=>s.centerStacks=e.target.checked;
+  B.querySelector('#setNorm').onchange=e=>s.logNormalize=e.target.checked;
+  B.querySelectorAll('[data-layout]').forEach(b=>b.onclick=()=>{
+    applyLayout(b.dataset.layout,false); render(); renderSettings();
+  });
+  B.querySelector('#setKeep').onchange=e=>{
+    s.autoKeep=e.target.checked;
+    op('red',`keep applied → ${s.autoKeep?'ON — inserts/removes/moves rebuild the tree':'OFF'}`);
+    if(s.autoKeep) {maybeAuto(); render();}
+  };
+  const liveRatio=(id,valId,key,layouts)=>{
+    B.querySelector(id).oninput=e=>{
+      s[key]=+e.target.value/100;
+      B.querySelector(valId).textContent=pct(s[key]);
+      if(layouts.includes(s.autoLayout)){ applyLayout(s.autoLayout,true); render(); }
+    };
+  };
+  liveRatio('#setMaster','#masterVal','masterRatio',['master']);
+  liveRatio('#setDwindle','#dwindleVal','dwindleRatio',['dwindle']);
+  B.querySelector('#btnReset').onclick=()=>{uid=1;nextName=68;initLayout();settings.autoLayout='off';op('red','RESET to demo layout');render();renderSettings();};
+  B.querySelector('#btnNorm').onclick=()=>{op('green','NORMALIZE (manual)');root=normalize(root,true);render();};
+  B.querySelector('#btnBal').onclick=()=>{balanceAll();render();};
+}
+
+/* =======================================================================
+   INTERACTION
+   ======================================================================= */
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  const K=e.key.toLowerCase();
+  const dirMap={a:'left',arrowleft:'left',d:'right',arrowright:'right',w:'up',arrowup:'up',s:'down',arrowdown:'down'};
+  if(K==='1'||K==='2'||K==='3'||K==='4'){mode=MODES[+K-1][0];renderStatus();return;}
+  if(dirMap[K]){
+    e.preventDefault();
+    const dir=dirMap[K];
+    if(mode==='focus'){
+      op('blue',`FOCUS ${dir.toUpperCase()} from ${find(focusedId).node.name} (${settings.navAlgo})`);
+      const nb=neighbor(focusedId,dir);
+      if(nb)focusedId=nb.id;
+    }
+    else if(mode==='swap'){
+      op('blue',`SWAP ${dir.toUpperCase()} — resolve neighbor:`);
+      const nb=neighbor(focusedId,dir);
+      if(nb){swapPanes(focusedId,nb.id); maybeAuto();} else sub('red','abort: no neighbor');
+    }
+    else if(mode==='move'){ movePane(focusedId,dir); maybeAuto(); }
+    else if(mode==='resize') kbResize(dir);
+    render();return;
+  }
+  if(K==='n'){ insert(focusedId,'right',P(newName())); maybeAuto(); render(); }
+  else if(K==='v'){ insert(focusedId,'bottom',P(newName())); maybeAuto(); render(); }
+  else if(K==='t'){ stackOnto(focusedId,P(newName())); maybeAuto(); render(); }
+  else if(K==='x'||K==='backspace'){ e.preventDefault(); removePane(focusedId); maybeAuto(); render(); }
+  else if(K==='l'){
+    const i=LAYOUT_CYCLE.indexOf(settings.autoLayout);
+    applyLayout(LAYOUT_CYCLE[(i+1)%LAYOUT_CYCLE.length],false);
+    render(); renderSettings();
+  }
+  else if(K==='c'){
+    const ls=visibleLeaves(), i=ls.findIndex(l=>l.id===focusedId);
+    const j=(i+(e.shiftKey?-1:1)+ls.length)%ls.length;
+    focusedId=ls[j].id;
+    op('blue',`CYCLE ${e.shiftKey?'prev':'next'} → ${ls[j].name} (visual DFS order, wraps)`);
+    render();
+  }
+  else if(K==='z'){ zoomMaster(); maybeAuto(); render(); }
+  else if(K==='r'){ rotateSiblings(e.shiftKey); maybeAuto(); render(); }
+  else if(K==='f'){ flipSiblings(); maybeAuto(); render(); }
+  else if(K==='o'){ (e.shiftKey?transposeAll:transposeParent)(); maybeAuto(); render(); }
+  else if(K==='e'){ e.shiftKey?balanceAll():equalizeParent(); render(); }
+  else if(K==='b'){ ejectFromStack(); maybeAuto(); render(); }
+  else if(K===','){ shiftSlot(false); maybeAuto(); render(); }
+  else if(K==='.'){ shiftSlot(true); maybeAuto(); render(); }
+  else if(K==='tab'){
+    e.preventDefault();
+    const f=find(focusedId);
+    if(f.parent&&f.parent.t==='k'){
+      const st=f.parent, n=st.ch.length;
+      st.active=(st.active+(e.shiftKey?-1:1)+n)%n;
+      focusedId=st.ch[st.active].id;
+      op('blue',`STACK cycle ${e.shiftKey?'↑':'↓'} → ${find(focusedId).node.name}`);
+      render();
+    }
+  }
+});
+document.getElementById('status').addEventListener('click',e=>{
+  const m=e.target.closest('[data-mode]'); if(m){mode=m.dataset.mode;renderStatus();}
+});
+
+/* pointer: focus / close / tabs / dividers / title drag */
+let divDrag=null, paneDrag=null;
+desk.addEventListener('pointerdown',e=>{
+  const cb=e.target.closest('[data-close]');
+  if(cb){removePane(cb.dataset.close);maybeAuto();render();return;}
+  const tab=e.target.closest('[data-tab]');
+  if(tab){
+    const st=find(tab.dataset.stack).node;
+    st.active=+tab.dataset.tab; focusedId=st.ch[st.active].id;
+    op('blue',`STACK select ${st.ch[st.active].name}`); render(); return;
+  }
+  const dv=e.target.closest('.divider');
+  if(dv){
+    const split=find(dv.dataset.split).node, i=+dv.dataset.i;
+    const r=rects[split.id], horiz=split.axis==='h';
+    divDrag={split,i,horiz,r};
+    dv.classList.add('live'); desk.setPointerCapture(e.pointerId);
+    op('green',`DRAG divider(${i}) of ${horiz?'Row':'Col'} — transient state, commit on release`);
+    return;
+  }
+  const tb=e.target.closest('[data-drag]');
+  if(tb){
+    const id=tb.dataset.drag;
+    focusedId=id;
+    paneDrag={id,x0:e.clientX,y0:e.clientY,started:false};
+    desk.setPointerCapture(e.pointerId);
+    render(); return;
+  }
+  const pb=e.target.closest('[data-pane-body]');
+  if(pb){focusedId=pb.dataset.paneBody;render();}
+});
+
+desk.addEventListener('pointermove',e=>{
+  if(divDrag){
+    const {split,i,horiz,r}=divDrag;
+    const avail=(horiz?r.w:r.h)-GAP*(split.ch.length-1);
+    const B=((horiz?e.clientX-r.x-desk.getBoundingClientRect().left
+                    :e.clientY-r.y-desk.getBoundingClientRect().top)-i*GAP-GAP/2)/avail;
+    applyBoundary(split,i,B,true);
+    render();
+    return;
+  }
+  if(paneDrag){
+    const dx=e.clientX-paneDrag.x0, dy=e.clientY-paneDrag.y0;
+    if(!paneDrag.started){
+      if(Math.hypot(dx,dy)<5) return;              /* §8: 5px threshold */
+      paneDrag.started=true;
+      op('blue',`DRAG ${find(paneDrag.id).node.name}: √(Δx²+Δy²) ≥ 5px → drag begins`);
+      const g=document.getElementById('dragGhost');
+      document.getElementById('ghostName').textContent=find(paneDrag.id).node.name;
+      g.style.display='block';
+    }
+    const g=document.getElementById('dragGhost');
+    g.style.left=(e.clientX+8)+'px'; g.style.top=(e.clientY+8)+'px';
+    hitTest(e.clientX,e.clientY);
+  }
+});
+desk.addEventListener('pointerup',e=>{
+  if(divDrag){
+    const {split,i,horiz,r}=divDrag;
+    const w=transient.get(split.id);
+    transient.clear();
+    if(w){
+      const avail=(horiz?r.w:r.h)-GAP*(split.ch.length-1);
+      const B=((horiz?e.clientX-r.x-desk.getBoundingClientRect().left
+                      :e.clientY-r.y-desk.getBoundingClientRect().top)-i*GAP-GAP/2)/avail;
+      op('green',`COMMIT divider(${i}): B=${B.toFixed(2)} (cumulative boundary)`);
+      applyBoundary(split,i,B,false);
+    }
+    divDrag=null; render(); return;
+  }
+  if(paneDrag){
+    const g=document.getElementById('dragGhost'); g.style.display='none';
+    const ov=document.getElementById('dockOverlay'); ov.style.display='none';
+    if(paneDrag.started && dropTarget){
+      const {paneId,edge}=dropTarget;
+      if(paneId!==paneDrag.id){
+        if(edge==='center') { const src=find(paneDrag.id).node;
+          /* move into stack: clone→stack→remove */
+          const clone=P(src.name);
+          op('red',`DROP center → STACK (clone→insert→remove)`);
+          stackOnto(paneId,clone); removePane(paneDrag.id,true); focusedId=clone.id;
+        }
+        else { op('red',`DROP on ${find(paneId).node.name} · edge=${edge.toUpperCase()}`); redock(paneDrag.id,paneId,edge); }
+        maybeAuto();
+      }
+    }
+    dropTarget=null; paneDrag=null; render();
+  }
+});
+
+/* triangular hit test (§7) */
+let dropTarget=null;
+function hitTest(px,py){
+  const ov=document.getElementById('dockOverlay');
+  const el=document.elementFromPoint(px,py);
+  const pb=el&&el.closest?el.closest('[data-pane-body]'):null;
+  if(!pb){ov.style.display='none';dropTarget=null;return;}
+  const win=pb.closest('.win'), R=win.getBoundingClientRect(), D=desk.getBoundingClientRect();
+  const cx=R.left+R.width/2, cy=R.top+R.height/2;
+  const dx=(px-cx)/(R.width/2), dy=(py-cy)/(R.height/2);
+  let edge;
+  if(settings.centerStacks && Math.abs(dx)<.3 && Math.abs(dy)<.3) edge='center';
+  else if(Math.abs(dx)>=Math.abs(dy)) edge = dx<0?'left':'right';
+  else edge = dy<0?'top':'bottom';
+  dropTarget={paneId:pb.dataset.paneBody, edge, dx, dy};
+
+  const w=R.width,h=R.height;
+  const zones={
+    left:`0,0 ${w/2},${h/2} 0,${h}`, right:`${w},0 ${w/2},${h/2} ${w},${h}`,
+    top:`0,0 ${w},0 ${w/2},${h/2}`, bottom:`0,${h} ${w/2},${h/2} ${w},${h}`};
+  let svg=`<svg width="${w}" height="${h}">`+
+    `<line class="diag" x1="0" y1="0" x2="${w}" y2="${h}"/>`+
+    `<line class="diag" x1="${w}" y1="0" x2="0" y2="${h}"/>`;
+  if(edge!=='center') svg+=`<polygon class="zone" points="${zones[edge]}"/>`;
+  else svg+=`<rect class="zoneC" x="${w*.35}" y="${h*.35}" width="${w*.3}" height="${h*.3}"/>`;
+  svg+=`<text x="6" y="${h-8}" font-size="10" fill="#000">dx=${dx.toFixed(2)} dy=${dy.toFixed(2)} → ${edge.toUpperCase()}</text></svg>`;
+  ov.innerHTML=svg;
+  Object.assign(ov.style,{display:'block',left:(R.left-D.left)+'px',top:(R.top-D.top)+'px',width:w+'px',height:h+'px'});
+}
+
+/* ---------- boot ---------- */
+op('blue','TILING LAB ready — n-ary split tree · click a tile, then try WASD');
+sub('blue','modes: 1 focus · 2 move · 3 swap · 4 resize');
+sub('blue','N/V split beside focus · T stacks · X closes · drag a title bar');
+sub('blue','L cycles autolayout: columns rows grid master dwindle bsp monocle');
+renderSettings();
+render();
+window.addEventListener('resize',render);
+</script>
+</body>
+</html>
