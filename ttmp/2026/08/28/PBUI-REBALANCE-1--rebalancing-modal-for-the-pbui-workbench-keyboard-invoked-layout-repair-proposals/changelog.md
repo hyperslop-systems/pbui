@@ -40,3 +40,12 @@ Phase 3: RebalanceDialog + Mod+Shift+K route table + rebalance verbs/store field
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx — The dialog, cards, and thumbnails (commit 0784a5c)
 
+
+## 2026-08-28
+
+Phase 5: rebalance-settings singleton tile + pbui.rebalance-config DocumentPayload persistence; dialog reads the payload; 171 workbench tests green (commit fb2db6d)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/configDocument.ts — Config persistence contract (commit fb2db6d)
+

@@ -317,3 +317,66 @@ keyboard back where it was.
 ### Technical details
 - Chord: `Mod+Shift+K`; decision `{kind:"open-rebalance"}`; consumed by `WorkbenchRebalance`'s capture-phase window listener under the same workbench-ownership rule as the launcher.
 - Headless fallbacks: rect 1024×640 when the root box is ≤8px; divider 10px when unmeasurable.
+
+## Step 5: Phase 5 — Settings tile and config persistence
+
+Took Phase 5 before Phase 4 (the guide marks 4–6 order-flexible; the settings tile is small
+and completes the user-facing loop, while structural repairs are a separable engine
+extension). The `RebalanceConfig` now persists as a `pbui.rebalance-config` DocumentPayload
+inside the workbench document itself — `documentPut` on write, `normalizeConfig` on read, so
+a missing, foreign, or stale-schema payload degrades to defaults field-by-field. The
+`rebalance-settings` singleton tile edits it; the dialog reads the same payload when no
+`config` prop is supplied. Two doors, one config, zero new storage mechanisms.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue phase-by-phase implementation with commits, diary steps, and slips.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** fb2db6d — "pbui-workbench: rebalance settings tile + config persistence (PBUI-REBALANCE-1 P5)"
+
+### What I did
+- `rebalance/configDocument.ts` (pure): `REBALANCE_CONFIG_DOC_ID/FORMAT/SCHEMA_VERSION`, `readRebalanceConfig` (null for absent/foreign; `normalizeConfig` otherwise), `rebalanceConfigMutation` (one idempotent `documentPut`; Struct bodies are `JsonObject`s, learned from `NotesApp`'s precedent in pbui-chat).
+- `components/RebalanceSettings/` (folder, index, story, test, css module): the tile — profile buttons that seed `profileConfig(name)` while PRESERVING constraint fields (constraints describe the screen, not a repair posture), allow-flag `CheckboxRow`s, budget/weight `NumberField`s (local draft, commit on blur/Enter — one mutation per settled value, never per keystroke), generator toggles driven by the `GENERATORS` table. Any manual change flips profile to "custom". `rebalanceSettingsApp` descriptor: singleton, group WORKBENCH, `var(--pbui-tone-neutral)`.
+- `RebalanceDialog.tsx`: modal resolves config as prop → persisted payload → balanced default.
+- Package index: settings component/app + configDocument exports.
+- Tests (6 new; 171 total): mutation round-trips through the REAL applier and back through `normalizeConfig` (deep-equal); `dispPx: null` (unbounded) survives the Struct round-trip; missing payload reads null; checkbox toggle writes the payload and flips profile to custom; profile button keeps constraints (minInlinePx 333 survives CAREFUL); and the dialog provably consumes the payload (persisted 40px floor turns a 0.9-skewed layout's diagnosis healthy where the 240px default would report violations).
+
+### Why
+- Persisting in the document (not localStorage) gives serialize/restore/multi-product/server sync for free and keeps the workbench's "the document is the state" discipline.
+- Commit-on-blur mirrors SplitPane's commit-on-release: the persistence subscriber fires per commit, and a slider/keystroke stream would write storage sixty times a second (store.ts documents the failure).
+
+### What worked
+- Typecheck and all 171 tests green on the first run after one prop fix.
+- The applier accepted the payload with zero protocol work — `documentPut` and the documents map existed exactly for this (their only prior caller was pbui-chat's NotesApp).
+
+### What didn't work
+- `Text` has no `muted` prop (it is `tone="faint"`) — caught by grepping the foundation component before typecheck even ran; fixed with a sed pass.
+
+### What I learned
+- `DocumentPayload.body` is generated as a plain `JsonObject` (protobuf-es Struct), so `JSON.parse(JSON.stringify(config))` is the whole serializer, and `null` is representable (the unbounded displacement cap needed that).
+- The atoms constrain UI shape usefully: with no slider atom, number fields with blur-commit fell out as the natural (and mutation-frugal) design.
+
+### What was tricky to build
+- **Profile semantics.** A profile press must not clobber the user's screen constraints; `applyProfile` seeds from `profileConfig(name)` then copies the four constraint fields back. The test pins it (minInlinePx 333 survives CAREFUL).
+- **The settings⇄dialog config seam.** The dialog's config resolution order (prop → payload → default) had to stay a pure derivation per render — no effect, no cached state — or a settings edit while the dialog is open would show a stale slate. Because the payload lives in the document and the modal already re-renders on `useDocument()`, editing settings while the dialog is open recomputes the slate for free.
+
+### What warrants a second pair of eyes
+- `NumberField` commit-on-blur discards invalid input silently (resets the draft). Reasonable, but a reviewer may prefer an `invalid` flag on the TextInput.
+- The settings tile writes the FULL config each time (idempotent overwrite). Concurrent editors last-write-wins per field-set; fine locally, worth a thought for server-synced products.
+
+### What should be done in the future
+- Phase 4: structural generators (reshape/rebuild) + the structural-apply decision (WorkspaceSetTree vs clone-workspace stopgap).
+- Phase 6 leftovers: live Surface preview, status-bar diagnosis badge, RELAX, aria-activedescendant on the card listbox.
+- A "Rebalance settings" deep-link from the dialog header (`app.place rebalance-settings`) — trivial now, deferred to keep the dialog diff small.
+
+### Code review instructions
+- Start: `rebalance/configDocument.ts` (the contract), then `RebalanceSettings.tsx` (`applyProfile` and `NumberField`), then the three-line dialog resolution change.
+- Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (171) and `../../node_modules/.bin/tsc -p tsconfig.json --noEmit`.
+
+### Technical details
+- Payload: `{ id: "rebalance-config", format: "pbui.rebalance-config", schema_version: 1, body: RebalanceConfig-as-JSON }` in `WorkbenchDocument.documents`.
+- Config resolution in the dialog: `configProp ?? readRebalanceConfig(doc) ?? DEFAULT_REBALANCE_CONFIG`.
