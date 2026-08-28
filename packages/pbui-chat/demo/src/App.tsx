@@ -216,6 +216,8 @@ function Workbench() {
         }}
       />
       <workbench.Launcher title="Place an application" shortcutContext={shortcutContext} rows={rows} choose={choose} />
+      {/* Mod+Shift+K: layout repair proposals (PBUI-REBALANCE-1). */}
+      <workbench.Rebalance shortcutContext={shortcutContext} />
     </>
   );
 }
