@@ -167,3 +167,76 @@ sPrint out a brutalist work slip with the plan / different phases for the ticket
 ### Technical details
 - Write-back formula: for chain head with `leftCount` L over target pixels px′: `ratio = (Σ_{i<L} px′ᵢ + (L−1)·div) / (Σ px′ + (n−2)·div)` — denominator is the pair extent, i.e. this split's `extent − div`.
 - Fixture config: textbook reference 1072×656 / 190×130 / gap 8 (in `testTrees.BOOK`), NOT pbui defaults — keeps the book's worked numbers valid as assertions.
+
+## Step 3: Phase 2 — Weight strategies and the proposal slate
+
+Ported the repair machinery from repair-lab-2: the L2 projection, the four v1 weight
+strategies as trace-yielding generators, the one-pass repair driver, the measurement/tier
+layer, and `buildSlate` — dedup-by-geometry seeded from LEAVE AS IS, policy gating with
+visible-but-greyed reasons, and the polScore recommendation. The slate returns `Proposal`
+objects whose `apply` is already a `split.resize` verb batch, so Phase 3's accept path is a
+straight `plan`/`applyPlan` call.
+
+The interesting deviation from the book: because Phase 1 made weights *pixel shares of the
+binary rendering* rather than mass-ratio products, the textbook's exact FOUR DONORS pixel
+table ([314,314,229,190] etc.) does not literally hold on chain-built fixtures — the binary
+nesting renders 319/316/310/103 before repair. The tests therefore assert the *behavioral*
+claims (D pins to the floor; RIPPLE's single nearest donor pays all with A/B untouched;
+PROJECT spreads exactly deficit/3 per free sibling; BALANCE equalizes to 262px, which IS
+book-exact since avail is conserved) computed from the actual before-pixels, instead of
+hardcoding numbers whose premise changed.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue phase-by-phase implementation with commits, diary steps, and slips.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** d6a1b30 — "pbui-workbench: rebalance weight strategies + proposal slate (PBUI-REBALANCE-1 P2)"
+
+### What I did
+- `rebalance/trace.ts`: `TraceLine` + shared formatting helpers (R0/pct/vec/sum).
+- `rebalance/projectLower.ts`: KKT one-parameter family `w′ᵢ = max(lᵢ, wᵢ+θ)`, 80-step bisection, infeasible branch returns `l/Σl`.
+- `rebalance/strategies.ts`: `stratRipple` (donor order near/left/slack), `stratSparse` (solo-donor preference), `stratProject`, `stratBalance` (`always = true`, balance-then-project), all `Generator<TraceLine, number[]>` over a `StrategyConfig`.
+- `rebalance/repairPass.ts`: the top-down driver — propagate first, global-infeasibility banner, trigger `deficit > 0.5 + hystPx`, children recursed with corrected rects; `newRepairContext()`.
+- `rebalance/measure.ts`: `layoutStats` (viol/worst/moved/disp/dispMax/worstAspect), `sig` ordered/unordered, `dividerDiff` (0.004 tolerance), `classify` → tiers 0–6 (tier 6 renamed "moved to another workspace" for the pbui FOLD adaptation), `TIERS` chips.
+- `rebalance/slate.ts`: `GENERATORS` (ripple, ripple-slack, sparse, project, balance), `buildSlate` (clone → run → measure → classify → dedup → gate → recommend), `polScore`, `checkPolicy`, `whyLine`, `geometryKey` (2px rounding), `Proposal`/`RebalanceInput`/`RebalanceSlate` types. Applies as `{kind:"split.resize"}` verb lists via `analysisToResizes`.
+- Tests (20 new; 36 total in rebalance/): §5.2 projection vector + idempotence property; FOUR DONORS behavioral table incl. measured tiers (RIPPLE → W1 with exactly 1 resize verb, PROJECT → W+ with 3 dividers); COMPOUND cascade (exactly 3 borrowings at 3 depths, 0 violations); WIDE ROW 9 global infeasibility; hysteresis trigger/target asymmetry; Σw=1 invariant; slate-level HEALTHY/SLIVER/ordering/policy-budget/disabled-generator/diagnosis tests.
+
+### Why
+- Generators-as-strategies keep one code path for slate building and the modal's future trace/step panel (textbook §1.7).
+- Measured tiers (not declared) are what let CAREFUL/TIDY change the recommendation without any strategy knowing a policy exists.
+
+### What worked
+- All 36 rebalance tests green on the first full run; the whole workbench suite (161) stayed green.
+- The dedup mechanics reproduced the lab's headline behaviors verbatim: SLIVER merges all four targeted repairs into one card; WIDE ROW 9's donor-less ripple visibly "agrees" with LEAVE AS IS and the baseline's why-line says weights cannot help.
+
+### What didn't work
+- One typecheck failure (TS6133 unused `cfg` in `stratSparse`) — renamed to `_cfg`. A first draft of the COMPOUND cascade test used a clumsy import-indirection hack; rewritten as a plain test before ever running it.
+- `pnpm --filter … typecheck` run from inside `packages/pbui-workbench` produced a doubled path (`packages/pbui-workbench/packages/…`) for the subsequent `git add` — run git from the repo root.
+
+### What I learned
+- Pixel-share weights change which *numbers* the book predicts but none of the *behaviors*; writing tests against derived expectations (deficit computed from actual before-pixels) keeps them meaningful under both models.
+- BALANCE's result is book-exact even on chain fixtures (avail conservation ⇒ 1/n of 1048 = 262), a nice cross-check that the adapter's avail accounting is right.
+
+### What was tricky to build
+- **Asserting tier boundaries.** RIPPLE on FOUR DONORS moves exactly one cumulative boundary (only the C|D divider), PROJECT moves all three — this dropped out of `dividerDiff` correctly, but only after being careful that `sig()` uses pane *ids* (identity), not names, so identical names can't alias two panes.
+- **The baseline's why-line state machine** (three cases: healthy / agreed-with-by-failed-repairs / lone) — ported from the lab's `buildSlate` but restructured because our dedup seeds the map with the baseline before candidates arrive.
+
+### What warrants a second pair of eyes
+- `whyLine`'s regex over trace text is inherently brittle prose-scraping; if trace wording changes, cards degrade to the tier name (harmless, but silent).
+- `checkPolicy`'s budget comparison uses `dispPx === null` as "unbounded" — the settings tile (Phase 5) must round-trip that null faithfully through protobuf Struct.
+
+### What should be done in the future
+- Phase 3: modal + shortcut + accept path (`plan`/`applyPlan`), store field `rebalanceOpen`, verbs `rebalance.open/close`.
+- When structural generators land (Phase 4), `GeneratorSpec` grows a non-strategy runner shape — the `kind` field already anticipates it.
+
+### Code review instructions
+- Start: `slate.ts` `buildSlate` (the orchestration), then `strategies.ts` against sources/repair-lab-2.html's `stratRipple`/`stratSparse` for port fidelity.
+- Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run src/rebalance` (36) and `pnpm --filter @hyperslop-systems/pbui-workbench test` (161).
+
+### Technical details
+- polScore = `w.move·disp/1000 + w.struct·tier + w.aspect·ln(worstAspect) + 12·viol`; recommendation restricted to policy-ok proposals achieving the slate's minimum violation count.
+- Geometry dedup key: pane ids + rects rounded to 2px (`Math.round(v/2)`), DFS order.

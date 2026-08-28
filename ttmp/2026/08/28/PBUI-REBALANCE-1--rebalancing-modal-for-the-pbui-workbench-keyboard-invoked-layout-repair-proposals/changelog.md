@@ -22,3 +22,12 @@ Phase 1: rebalance analysis core — pixel-exact binary⇄n-ary adapter with Cha
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/analysisTree.ts — Adapter with pixel-share weights and pixel-space write-back (commit 1beac56)
 
+
+## 2026-08-28
+
+Phase 2: weight strategies (ripple/sparse/project/balance), repair driver, tiers, and buildSlate with dedup/policy/recommendation; 36 rebalance tests green (commit d6a1b30)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/rebalance/slate.ts — Slate orchestration: dedup, policy gate, polScore recommendation (commit d6a1b30)
+
