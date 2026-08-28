@@ -80,6 +80,14 @@ export { WorkbenchSurface } from "./components/Surface";
 export { WorkbenchLauncher } from "./components/Launcher";
 export { WorkspaceStrip } from "./components/WorkspaceStrip";
 export { WorkbenchRebalance } from "./components/RebalanceDialog";
+export { RebalanceSettings, rebalanceSettingsApp } from "./components/RebalanceSettings";
+export {
+  readRebalanceConfig,
+  rebalanceConfigMutation,
+  REBALANCE_CONFIG_DOC_ID,
+  REBALANCE_CONFIG_FORMAT,
+  REBALANCE_CONFIG_SCHEMA_VERSION,
+} from "./rebalance/configDocument";
 // The rebalance engine (PBUI-REBALANCE-1): pure logic a product or agent can
 // call without the dialog — diagnose a layout, or build the proposal slate.
 export { buildSlate, GENERATORS, polScore } from "./rebalance/slate";

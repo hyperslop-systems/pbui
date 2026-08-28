@@ -5,6 +5,7 @@ import { workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import { panesOf, toAnalysis, layoutBinary, type Rect } from "../../rebalance/analysisTree";
 import { DEFAULT_REBALANCE_CONFIG, type RebalanceConfig } from "../../rebalance/config";
+import { readRebalanceConfig } from "../../rebalance/configDocument";
 import { TIERS } from "../../rebalance/measure";
 import { buildSlate, type Proposal, type RebalanceSlate } from "../../rebalance/slate";
 import type { RebalanceProps } from "../../types";
@@ -62,7 +63,7 @@ export function WorkbenchRebalance({ shortcut = true, shortcutContext, config }:
     return () => window.removeEventListener("keydown", onKey, true);
   }, [shortcut, shortcutContext, anySurfaceOpen, workbench]);
 
-  return open ? <RebalanceModal config={config ?? DEFAULT_REBALANCE_CONFIG} /> : null;
+  return open ? <RebalanceModal config={config} /> : null;
 }
 
 /** Headless/story fallback when the Surface has no measurable box yet. */
@@ -103,9 +104,12 @@ function tileLabels(doc: WorkbenchDocument, workspaceId: string, appTitle: (appI
 }
 
 /** Remounted per opening, so selection and undo state start fresh. */
-function RebalanceModal({ config }: { config: RebalanceConfig }) {
+function RebalanceModal({ config: configProp }: { config?: RebalanceConfig }) {
   const workbench = useWorkbench();
   const doc = workbench.useDocument();
+  // The prop wins (a product supplying its own config store); otherwise the
+  // persisted `pbui.rebalance-config` payload; otherwise the balanced profile.
+  const config = configProp ?? readRebalanceConfig(doc) ?? DEFAULT_REBALANCE_CONFIG;
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
   const [rect, setRect] = useState<Rect>(() => measureRect(workbench.root()));
   const [status, setStatus] = useState<string | null>(null);
