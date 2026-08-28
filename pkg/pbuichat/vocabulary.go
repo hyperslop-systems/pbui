@@ -139,7 +139,7 @@ func (v *Vocabulary) Validate() error {
 		}
 		for field, typ := range spec.Fields {
 			switch typ {
-			case "string", "number", "boolean", "ref", "refs", "object":
+			case "string", "number", "boolean", "ref", "refs", "object", "any":
 			default:
 				return errors.Errorf("verb %q field %q has unknown type %q", kind, field, typ)
 			}
@@ -313,9 +313,16 @@ func checkCoarseType(value any, typ string) error {
 			}
 		}
 	case "object":
-		if _, ok := value.(map[string]any); !ok {
+		// A structured JSON value: a map or an array (the schema deriver
+		// coarsens non-reference arrays to "object").
+		switch value.(type) {
+		case map[string]any, []any:
+		default:
 			return fmt.Errorf("expected object, got %T", value)
 		}
+	case "any":
+		// Product-typed: the receiving domain (a compile loop, a document
+		// validator) is the authority; the vocabulary only names the field.
 	}
 	return nil
 }

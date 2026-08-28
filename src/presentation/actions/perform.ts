@@ -18,14 +18,14 @@ import type { PerformResult, ResolutionResult, ResolvedAction } from "./types";
  * and gateways stay the security boundary.
  */
 
-export type FreshDecision<Verb> =
-  | { kind: "proceed"; verb: Verb }
+export type FreshDecision<Values extends PresentationValues, Verb> =
+  | { kind: "proceed"; verb: Verb; action: ResolvedAction<Values, Verb> }
   | Extract<PerformResult, { kind: "refused" }>;
 
 export function evaluateFresh<Values extends PresentationValues, Verb>(
   stale: ResolvedAction<Values, Verb>,
   fresh: ResolutionResult<Values, Verb>,
-): FreshDecision<Verb> {
+): FreshDecision<Values, Verb> {
   if (fresh.ambiguities.some((ambiguity) => ambiguity.action === stale.action)) {
     return { kind: "refused", code: "action-became-ambiguous" };
   }
@@ -43,5 +43,5 @@ export function evaluateFresh<Values extends PresentationValues, Verb>(
       ...(current.status.kind === "unavailable" ? { because: current.status.because } : {}),
     };
   }
-  return { kind: "proceed", verb: current.verb };
+  return { kind: "proceed", verb: current.verb, action: current };
 }

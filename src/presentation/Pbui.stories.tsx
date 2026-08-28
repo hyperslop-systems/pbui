@@ -1,5 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState, type CSSProperties } from "react";
+import {
+  available,
+  createActionRegistry,
+  createPresentationTypeGraph,
+  defineActions,
+  unavailable,
+} from "./actions";
 import { createPbui } from "./createPbui";
 import { createPresentationRegistry } from "./registry";
 
@@ -16,49 +23,60 @@ type ExampleVerb =
   | { type: "emailPerson"; personId: string }
   | { type: "archiveProject"; projectId: string };
 
-const registry = createPresentationRegistry<ExampleValues, ExampleEnvironment, ExampleVerb>({
+const registry = createPresentationRegistry<ExampleValues, ExampleEnvironment>({
   person: {
     label: (person) => person.name,
     describe: (person) => person,
     tone: "accent",
-    actions: (person, environment) => [
-      {
-        id: "email",
-        label: "Send email",
-        verb: { type: "emailPerson", personId: person.id },
-        // One field, one expression. The two-field form this replaced showed
-        // "Send email — You cannot email yourself from this example" on every
-        // person who was NOT you, in this library's own primary story.
-        disabledBecause:
-          person.id === environment.currentUserId
-            ? "You cannot email yourself from this example"
-            : undefined,
-      },
-    ],
   },
   project: {
     label: (project) => project.title,
     describe: (project) => project,
     tone: "positive",
-    actions: (project) => [
-      {
-        id: "archive",
-        label: "Archive project",
-        verb: { type: "archiveProject", projectId: project.id },
-        danger: true,
-        // This one was already correct under the old API — the reason was
-        // conditioned on the same predicate as the disable. Fifteen lines
-        // above, the same author wrote the same idea and got it wrong. That
-        // is the argument for the merge in two adjacent descriptors.
-        disabledBecause: project.archived ? "Already archived" : undefined,
-      },
-    ],
   },
+});
+
+const define = defineActions<ExampleValues, ExampleEnvironment, ExampleVerb>();
+const exampleActions = createActionRegistry<ExampleValues, ExampleEnvironment, ExampleVerb>({
+  graph: createPresentationTypeGraph([{ id: "person" }, { id: "project" }]),
+  scopes: ["global"],
+  contributions: [
+    define.exact("person", {
+      id: "story.person.email",
+      action: "person.email",
+      scopes: ["global"],
+      // Unavailability is one value — the fact and its reason cannot drift
+      // apart the way the pre-kernel disabled/disabledReason pair could.
+      test: ({ subject, snapshot }) =>
+        subject.value.id === snapshot.product.currentUserId
+          ? unavailable("You cannot email yourself from this example")
+          : available(),
+      metadata: { label: "Send email" },
+      bind: ({ subject }) => ({ type: "emailPerson", personId: subject.value.id }),
+    }),
+    define.exact("project", {
+      id: "story.project.archive",
+      action: "project.archive",
+      scopes: ["global"],
+      test: ({ subject }) =>
+        subject.value.archived ? unavailable("Already archived") : available(),
+      metadata: { label: "Archive project", danger: true },
+      bind: ({ subject }) => ({ type: "archiveProject", projectId: subject.value.id }),
+    }),
+  ],
 });
 
 const examplePbui = createPbui({
   registry,
   defaultEnvironment: { currentUserId: "person-1" },
+  actions: exampleActions,
+  snapshotFor: (_query, environment) => ({
+    revision: environment.currentUserId,
+    scopes: ["global"],
+    modes: new Set<string>(),
+    capabilities: new Set<string>(),
+    product: environment,
+  }),
 });
 
 function Example({ themed = false }: { themed?: boolean }) {

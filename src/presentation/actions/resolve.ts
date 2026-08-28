@@ -312,6 +312,7 @@ export function resolveActions<Values extends PresentationValues, ProductFacts, 
       ...(winner.metadata.group !== undefined ? { group: winner.metadata.group } : {}),
       order: winner.metadata.order ?? 0,
       danger: winner.metadata.danger ?? false,
+      primary: winner.metadata.primary ?? false,
       status:
         winnerStatus.kind === "available"
           ? { kind: "available" }

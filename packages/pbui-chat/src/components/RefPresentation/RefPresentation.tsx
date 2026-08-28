@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { usePbuiChat } from "../../context";
 import type { Reference } from "../../types";
-import { toPresentationReference } from "../../types";
 
 export interface RefPresentationProps {
   reference: Reference;
@@ -38,7 +37,7 @@ export function RefPresentation({
   return (
     <Wrap data-part="ref" data-ref-type={reference.type} onMouseOverCapture={focus} onFocusCapture={focus}>
       <Presentation
-        reference={toPresentationReference(reference)}
+        reference={chat.refs.toProduct(reference)}
         doc={doc ?? chat.docFor(reference.type) ?? `<${reference.type}>`}
         block={block}
         className={className}

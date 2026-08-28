@@ -9,7 +9,6 @@ import {
 import type {
   ActionContribution,
   ActionQuery,
-  LegacyFacts,
   SelectionSnapshot,
 } from "@hyperslop-systems/pbui/presentation";
 import { CHANNELS, CHANNEL_ACCEPTS } from "../model/graphic";
@@ -36,9 +35,11 @@ import type { Verb } from "./verbs";
  * Query-local immutable facts (source guide §9.4): schema-only derivation, so
  * the cost boundary DR-40 draws — `fieldsFor` on render-adjacent paths,
  * `tableFor` only where rows are genuinely needed — survives the migration.
- * The environment rides along for the legacy family.
+ * The environment field carries ambient product state the derived facts do not.
  */
-export interface DatalabFacts extends LegacyFacts<PbuiEnvironment> {
+export interface DatalabFacts {
+  /** For rules that need ambient product state beyond the derived facts. */
+  environment: PbuiEnvironment;
   activeDocId: DocId | null;
   /** field/datum subjects: the document the verb will land on. */
   targetDocId: DocId | null;

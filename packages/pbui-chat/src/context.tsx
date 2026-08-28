@@ -1,16 +1,16 @@
-import type { PbuiInstance, PresentationRegistry } from "@hyperslop-systems/pbui";
+import type { PbuiInstance, PresentationDescriptorRegistry } from "@hyperslop-systems/pbui";
 import { createContext, useContext } from "react";
 import type { ChatDebugEventStore } from "@go-go-golems/chat-provider";
 import type { ConversationRegistry } from "./conversations/registry";
 import type { ChatRuntime } from "./conversations/runtime";
 import type { VerbRouter } from "./router/createVerbRouter";
 import type { PbuiChatStore } from "./store/chatStore";
-import type { ChatMessageBody, Reference, VerbLike } from "./types";
+import type { ChatMessageBody, Reference, ReferenceAdapter, VerbLike } from "./types";
 import type { Vocabulary } from "./vocabulary/schemas";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type AnyPbui = PbuiInstance<any, any, any>;
-export type AnyRegistry = PresentationRegistry<any, any, any>;
+export type AnyRegistry = PresentationDescriptorRegistry<any, any>;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
@@ -41,6 +41,12 @@ export interface PbuiChatContextValue {
   send(body: Omit<ChatMessageBody, "attachments">): Promise<void>;
   /** Send to a named conversation; null means the active one. */
   sendTo(conversationId: string | null, body: Omit<ChatMessageBody, "attachments">): Promise<void>;
+  /**
+   * The product's reference codec (default: the identity convention).
+   * Every wire↔product crossing in chat components goes through this.
+   */
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  refs: ReferenceAdapter<any>;
   /** The product's text label for a wire reference. */
   labelFor(reference: Reference): string;
   /** Doc line for a type, from the vocabulary. */

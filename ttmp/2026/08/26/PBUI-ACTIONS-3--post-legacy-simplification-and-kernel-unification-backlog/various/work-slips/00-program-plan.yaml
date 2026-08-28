@@ -1,0 +1,70 @@
+almanach_studio_version: 1
+theme: brutalist
+paperWidth: 384
+bodyScale: 1
+feedLines: 8
+blocks:
+- id: head
+  type: row
+  data:
+    cols:
+    - w: 1fr
+      text: PBUI-ACTIONS-3
+      preset: micro
+    - w: 1fr
+      text: PLAN
+      preset: micro
+      align: right
+- id: r1
+  type: rule
+  data:
+    weight: heavy
+- id: gap1
+  type: space
+  data:
+    size: s
+- id: title
+  type: text
+  data:
+    text: Greenfield Cleanup and Workbench Build
+    preset: h1
+    lines: 3
+- id: gap2
+  type: space
+  data:
+    size: s
+- id: summary
+  type: text
+  data:
+    text: Delete pbui legacy surfaces, retarget the OPTKIT guides, then build the ragttc workbench 022 and 023.
+    preset: body
+- id: gap3
+  type: space
+  data:
+    size: m
+- id: planhead
+  type: text
+  data:
+    text: PLAN
+    preset: h2
+- id: plan
+  type: checks
+  data:
+    items:
+    - P1 pbui 0.8.0 legacy deletion
+    - P2 OPTKIT-021 ADR guide kernel-native
+    - P3 022-024 guides on 0.8.0 API
+    - P4 implement OPTKIT-022 tiles
+    - P5 implement OPTKIT-023 propose
+- id: r2
+  type: rule
+  data:
+    weight: hair
+- id: facts
+  type: kv
+  data:
+    items:
+    - - PHASES
+      - '5'
+    - - NEXT
+      - P1 pbui 0.8.0 legacy deletion

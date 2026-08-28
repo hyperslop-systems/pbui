@@ -25,7 +25,7 @@ export type ReferenceInput = z.infer<typeof ReferenceSchema>;
 
 /* ---- the vocabulary file ------------------------------------------------- */
 
-export const VERB_FIELD_TYPES = ["string", "number", "boolean", "ref", "refs", "object"] as const;
+export const VERB_FIELD_TYPES = ["string", "number", "boolean", "ref", "refs", "object", "any"] as const;
 export type VerbFieldType = (typeof VERB_FIELD_TYPES)[number];
 
 export const VerbSpecSchema = z.object({

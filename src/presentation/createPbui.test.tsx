@@ -1,6 +1,13 @@
 import { useState, type ReactElement } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
+import {
+  available,
+  createActionRegistry,
+  createPresentationTypeGraph,
+  defineActions,
+} from "./actions";
+import type { SelectionSnapshot } from "./actions";
 import { createPbui } from "./createPbui";
 import { createPresentationRegistry } from "./registry";
 
@@ -14,23 +21,45 @@ afterEach(cleanup);
 
 const ignorePerform = () => {};
 
+const personGraph = () => createPresentationTypeGraph([{ id: "person" }]);
+
+function snapshotOf<Environment>(environment: Environment): SelectionSnapshot<Environment> {
+  return {
+    revision: 0,
+    scopes: ["global"],
+    modes: new Set(),
+    capabilities: new Set(),
+    product: environment,
+  };
+}
+
 function makePbui() {
-  const registry = createPresentationRegistry<Values, { prefix: string }, Verb>({
+  const registry = createPresentationRegistry<Values, { prefix: string }>({
     person: {
       label: (person, environment) => `${environment.prefix}${person.name}`,
-      actions: (person) => [
-        {
-          id: "select",
-          label: "Select",
-          verb: { type: "select", id: person.id },
-        },
-      ],
     },
+  });
+  const define = defineActions<Values, { prefix: string }, Verb>();
+  const actions = createActionRegistry<Values, { prefix: string }, Verb>({
+    graph: personGraph(),
+    scopes: ["global"],
+    contributions: [
+      define.exact("person", {
+        id: "test.person.select",
+        action: "person.select",
+        scopes: ["global"],
+        test: () => available(),
+        metadata: { label: "Select" },
+        bind: ({ subject }) => ({ type: "select", id: subject.value.id }),
+      }),
+    ],
   });
 
   return createPbui({
     registry,
     defaultEnvironment: { prefix: "" },
+    actions,
+    snapshotFor: (_query, environment) => snapshotOf(environment),
   });
 }
 
@@ -431,27 +460,41 @@ describe("createPbui", () => {
     type MenuVerb = { type: "focus"; id: string };
 
     function menuPbui() {
-      const registry = createPresentationRegistry<Values, { focused: string }, MenuVerb>({
+      const registry = createPresentationRegistry<Values, { focused: string }>({
         person: {
           label: (person) => person.name,
-          actions: (person, environment) => [
-            {
-              id: "focus",
-              label: "Focus",
-              verb: { type: "focus", id: person.id },
-              description: "bring this person into view",
-              // One field. Under the two-field API this read
-              //     disabled: environment.focused === person.id,
-              //     disabledReason: "the cursor is already here",
-              // which is how every real descriptor wrote it: a predicate and a
-              // prose explanation OF that predicate, evaluated independently.
-              disabledBecause:
-                environment.focused === person.id ? "the cursor is already here" : undefined,
-            },
-          ],
         },
       });
-      return createPbui({ registry, defaultEnvironment: { focused: "" } });
+      const define = defineActions<Values, { focused: string }, MenuVerb>();
+      const actions = createActionRegistry<Values, { focused: string }, MenuVerb>({
+        graph: personGraph(),
+        scopes: ["global"],
+        contributions: [
+          define.exact("person", {
+            id: "test.person.focus",
+            action: "person.focus",
+            scopes: ["global"],
+            // One expression over one state. Under the pre-kernel two-field
+            // API this read
+            //     disabled: environment.focused === person.id,
+            //     disabledReason: "the cursor is already here",
+            // a predicate and a prose explanation OF that predicate,
+            // evaluated independently. `unavailable(reason)` cannot split.
+            test: ({ subject, snapshot }) =>
+              snapshot.product.focused === subject.value.id
+                ? { kind: "unavailable", because: "the cursor is already here" }
+                : available(),
+            metadata: { label: "Focus", description: "bring this person into view" },
+            bind: ({ subject }) => ({ type: "focus", id: subject.value.id }),
+          }),
+        ],
+      });
+      return createPbui({
+        registry,
+        defaultEnvironment: { focused: "" },
+        actions,
+        snapshotFor: (_query, environment) => snapshotOf(environment),
+      });
     }
 
     function openMenuFor(focused: string) {

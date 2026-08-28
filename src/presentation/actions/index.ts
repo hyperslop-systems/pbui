@@ -31,10 +31,14 @@ export type {
   RuntimeTypeId,
   ScopeId,
 } from "./ids";
-export { legacyDescriptorFamily } from "./legacy";
-export type { LegacyFacts } from "./legacy";
 export { evaluateFresh } from "./perform";
 export type { FreshDecision } from "./perform";
+export { vocabularyOf } from "./vocabulary";
+export type {
+  ActionVocabulary,
+  VocabularyActionEntry,
+  VocabularyTypeEntry,
+} from "./vocabulary";
 export { createActionRegistry } from "./registry";
 export type {
   ActionRegistry,
@@ -60,6 +64,7 @@ export type {
   FamilyContext,
   InheritedActionRule,
   InheritedRuleContext,
+  PerformEnvelope,
   PerformResult,
   ResolutionResult,
   ResolutionTraceEntry,

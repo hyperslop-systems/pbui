@@ -98,6 +98,17 @@ export interface ActionMetadata<Values extends PresentationValues, ProductFacts>
    * imply a capability, permission, or authorization rule.
    */
   danger?: boolean;
+  /**
+   * Marks this action as its subject's PRIMARY action: the one a left click
+   * on the bare presentation performs. `Presentation` resolves the click with
+   * `invocation: "primary"` and performs the action only when it is the
+   * UNIQUE available primary for that subject — zero or several available
+   * primaries fall back to opening the menu, because guessing among
+   * primaries would reintroduce registration-order semantics. Pair with
+   * `invocations` to keep a primary-only action out of the menu, or omit
+   * `invocations` to have it appear in both.
+   */
+  primary?: boolean;
 }
 
 /* ---------------------------------------------------------- contributions -- */
@@ -194,6 +205,7 @@ export interface ResolvedAction<Values extends PresentationValues, Verb> {
   group?: string;
   order: number;
   danger: boolean;
+  primary: boolean;
 
   status:
     | { kind: "available" }
@@ -212,6 +224,27 @@ export interface ResolvedAction<Values extends PresentationValues, Verb> {
     scopeIndex: number;
     priority: number;
   };
+}
+
+/**
+ * The provenance handed to `onPerform` beside the verb (PBUI-ACTIONS-3 B1):
+ * which action produced it, through which invocation, on which subject, and
+ * as whom. Verb logs and trace records read this envelope instead of
+ * reconstructing provenance from the verb's own fields.
+ *
+ * `invocation: "direct"` marks chrome-owned delegation (`pbui.perform`) —
+ * verbs built at click time from live props, with no resolved action behind
+ * them; `action`/`candidateId`/`subject` are absent there and ONLY there.
+ * `actor` is the Provider's `actor` prop verbatim: principal attribution for
+ * multi-seat products (the OPTKIT-024 agent seat), absent when the Provider
+ * does not declare one.
+ */
+export interface PerformEnvelope<Values extends PresentationValues> {
+  invocation: ActionInvocation | "direct";
+  action?: ActionId;
+  candidateId?: CandidateId;
+  subject?: PresentationReference<Values>;
+  actor?: string;
 }
 
 export interface SelectionAmbiguity {

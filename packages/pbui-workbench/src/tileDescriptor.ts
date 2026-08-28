@@ -1,6 +1,6 @@
 import type { PresentationDescriptor } from "@hyperslop-systems/pbui";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
-import { canClose as canClosePlacement, type WorkbenchVerb } from "./verbs";
+import { canClose as canClosePlacement } from "./verbs";
 import type { Workbench } from "./types";
 
 /**
@@ -36,7 +36,7 @@ export interface TileRef {
  * `extra` is replaced by product rules for subject "tile"; `launcher` is a
  * fragment option.
  */
-export function createTileDescriptor(): PresentationDescriptor<TileRef, unknown, WorkbenchVerb> {
+export function createTileDescriptor(): PresentationDescriptor<TileRef, unknown> {
   return {
     label: (tile) => tile.title,
     describe: (tile) => `tile showing ${tile.title}`,

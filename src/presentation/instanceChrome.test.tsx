@@ -6,6 +6,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
+import { createActionRegistry, createPresentationTypeGraph } from "./actions";
 import { createPbui } from "./createPbui";
 import { createPresentationRegistry } from "./registry";
 
@@ -20,13 +21,28 @@ afterEach(cleanup);
 const ignorePerform = () => {};
 
 function makePbui() {
-  const registry = createPresentationRegistry<Values, Record<string, never>, Verb>({
+  const registry = createPresentationRegistry<Values, Record<string, never>>({
     person: {
       label: (person) => person.name,
-      actions: () => [],
     },
   });
-  return createPbui({ registry, defaultEnvironment: {} });
+  const actions = createActionRegistry<Values, Record<string, never>, Verb>({
+    graph: createPresentationTypeGraph([{ id: "person" }]),
+    scopes: ["global"],
+    contributions: [],
+  });
+  return createPbui({
+    registry,
+    defaultEnvironment: {},
+    actions,
+    snapshotFor: () => ({
+      revision: 0,
+      scopes: ["global"],
+      modes: new Set(),
+      capabilities: new Set(),
+      product: {},
+    }),
+  });
 }
 
 describe("MouseDocLine", () => {
