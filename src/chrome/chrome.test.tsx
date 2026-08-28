@@ -304,4 +304,32 @@ describe("shortcut routing (moved verbatim from datalab-ui)", () => {
     expect(isEditableTarget({ tagName: "DIV" })).toBe(false);
     expect(isEditableTarget(null)).toBe(false);
   });
+
+  test("Shift discriminates the two chords on the same key", () => {
+    expect(routeWorkbenchKey(key({ ctrlKey: true, shiftKey: true }), quiet, "Linux")).toEqual({
+      kind: "open-rebalance",
+    });
+    expect(routeWorkbenchKey(key({ metaKey: true, shiftKey: true }), quiet, "MacIntel")).toEqual({
+      kind: "open-rebalance",
+    });
+    // Without Mod, Shift+K is just typing a capital K.
+    expect(routeWorkbenchKey(key({ shiftKey: true }), quiet, "Linux")).toEqual({ kind: "ignore" });
+  });
+
+  test("the rebalance chord shares the launcher's guard block", () => {
+    for (const overrides of [
+      { launcherOpen: true },
+      { dialogOpen: true },
+      { objectMenuOpen: true },
+      { acceptingPresentation: true },
+      { renamingView: true },
+    ] satisfies Partial<ShortcutContext>[]) {
+      expect(
+        routeWorkbenchKey(key({ ctrlKey: true, shiftKey: true }), { ...quiet, ...overrides }, "Linux"),
+      ).toEqual({ kind: "ignore" });
+    }
+    expect(
+      routeWorkbenchKey(key({ ctrlKey: true, shiftKey: true }), { ...quiet, targetIsEditable: true }, "Linux"),
+    ).toEqual({ kind: "open-rebalance" });
+  });
 });

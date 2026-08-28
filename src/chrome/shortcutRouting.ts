@@ -1,12 +1,14 @@
 /**
  * Which workbench shortcut, if any, a key press means.
  *
- * A pure function and one hard-coded action, not a command registry
+ * A pure function over a two-row route table, not a command registry
  * (DATALAB-VIEW-001 design-doc/02 §11.1, Decision 7). The first shortcut system
- * needs exactly one behaviour — open the launcher — and a registry with dynamic
- * priorities, application contributions, user remapping and command metadata
- * would be a large amount of machinery answering a question nobody has asked.
- * A route table earns its place when a second or third shortcut exists.
+ * needed exactly one behaviour — open the launcher — and this file said "a
+ * route table earns its place when a second or third shortcut exists". The
+ * second shortcut exists now (PBUI-REBALANCE-1: Mod+Shift+K opens the
+ * rebalance dialog), so the promised table is here — still static, still
+ * without priorities, contributions, remapping or metadata, which remain
+ * machinery nobody has asked for.
  *
  * Being pure is what makes the awkward cases testable: an editable target, an
  * open object menu, a pending accept, and a second embedded workbench are all
@@ -37,7 +39,17 @@ export interface ShortcutContext {
   renamingView: boolean;
 }
 
-export type ShortcutDecision = { kind: "ignore" } | { kind: "open-launcher" };
+export type ShortcutDecision = { kind: "ignore" } | { kind: "open-launcher" } | { kind: "open-rebalance" };
+
+/**
+ * The chords. One modifier apart on the same key: Mod+K places something,
+ * Mod+Shift+K fixes the placements. Both rows share the guard block below —
+ * a transient surface that blocks one blocks the other, for the same reasons.
+ */
+const ROUTES: ReadonlyArray<{ key: string; shift: boolean; decision: Exclude<ShortcutDecision, { kind: "ignore" }> }> = [
+  { key: "k", shift: false, decision: { kind: "open-launcher" } },
+  { key: "k", shift: true, decision: { kind: "open-rebalance" } },
+];
 
 /** The modifier that means "application shortcut": Meta on Apple, Control elsewhere. */
 export function isModKey(
@@ -54,19 +66,23 @@ export function routeWorkbenchKey(
 ): ShortcutDecision {
   // Escape is deliberately absent. The topmost transient surface owns it, and
   // that is decided by the surface stack rather than here (§11.5).
-  if (event.key.toLowerCase() !== "k") return { kind: "ignore" };
+  const route = ROUTES.find(
+    (candidate) => candidate.key === event.key.toLowerCase() && candidate.shift === event.shiftKey,
+  );
+  if (!route) return { kind: "ignore" };
   if (!isModKey(event, platform) || event.altKey) return { kind: "ignore" };
 
-  // Mod+K is a chord, so an editable target is not a reason to ignore it on its
-  // own — a user typing in a search box still expects the launcher. What blocks
-  // it is another transient surface already owning the keyboard: the object
-  // menu, a pending accept, a dialog including the launcher itself, or an
-  // inline rename, which is the one that would lose work.
+  // These are chords, so an editable target is not a reason to ignore one on
+  // its own — a user typing in a search box still expects the launcher. What
+  // blocks a chord is another transient surface already owning the keyboard:
+  // the object menu, a pending accept, a dialog (including the launcher and
+  // the rebalance dialog themselves), or an inline rename, which is the one
+  // that would lose work.
   if (context.launcherOpen || context.dialogOpen) return { kind: "ignore" };
   if (context.objectMenuOpen || context.acceptingPresentation) return { kind: "ignore" };
   if (context.renamingView) return { kind: "ignore" };
 
-  return { kind: "open-launcher" };
+  return route.decision;
 }
 
 /**

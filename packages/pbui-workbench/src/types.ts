@@ -3,6 +3,7 @@ import type { ShortcutContext } from "@hyperslop-systems/pbui";
 import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop-systems/workbench-protocol";
 import type { AppDescriptor, AppRegistry } from "./apps";
 import type { LauncherRow, LauncherRowsContext } from "./launcherRows";
+import type { RebalanceConfig } from "./rebalance/config";
 import type { WorkbenchState, WorkbenchStore } from "./store";
 import type { WorkbenchVerb, WorkbenchVerbHandlers } from "./verbs";
 
@@ -78,6 +79,19 @@ export interface LauncherProps {
   renderDetail?(row: LauncherRow): ReactNode;
 }
 
+export interface RebalanceProps {
+  /** Listen for Mod+Shift+K on the window; default true. */
+  shortcut?: boolean;
+  /** Same contract as `LauncherProps.shortcutContext` — the parts only the product knows. */
+  shortcutContext?(): Partial<Pick<ShortcutContext, "objectMenuOpen" | "acceptingPresentation" | "renamingView">>;
+  /**
+   * Repair configuration. Defaults to the balanced profile with the
+   * workbench's default pane constraints; the settings tile (Phase 5)
+   * supplies a persisted one here.
+   */
+  config?: RebalanceConfig;
+}
+
 export interface WorkbenchPlan {
   /** Exact immutable document identity the plan was derived from. */
   baseDocument: WorkbenchDocument;
@@ -125,4 +139,6 @@ export interface Workbench {
   Surface: ComponentType<SurfaceProps>;
   Launcher: ComponentType<LauncherProps>;
   WorkspaceStrip: ComponentType<WorkspaceStripProps>;
+  /** The rebalance dialog (PBUI-REBALANCE-1): Mod+Shift+K, or the `rebalance.open` verb. */
+  Rebalance: ComponentType<RebalanceProps>;
 }

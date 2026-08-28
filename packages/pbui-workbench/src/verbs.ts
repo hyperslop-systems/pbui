@@ -103,7 +103,9 @@ export type WorkbenchVerb =
   | { kind: "workspace.clone"; workspaceId: string; name?: string; newWorkspaceId?: string; select?: boolean }
   | { kind: "view.goTo"; viewId: string }
   | { kind: "launcher.open"; placementId?: string }
-  | { kind: "launcher.close" };
+  | { kind: "launcher.close" }
+  | { kind: "rebalance.open" }
+  | { kind: "rebalance.close" };
 
 export type WorkbenchVerbKind = WorkbenchVerb["kind"];
 
@@ -153,6 +155,8 @@ export const workbenchVerbs = {
     ...(placementId ? { placementId } : {}),
   }),
   closeLauncher: (): WorkbenchVerb => ({ kind: "launcher.close" }),
+  openRebalance: (): WorkbenchVerb => ({ kind: "rebalance.open" }),
+  closeRebalance: (): WorkbenchVerb => ({ kind: "rebalance.close" }),
 };
 
 export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
@@ -210,6 +214,8 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
     case "launcher.open":
       return optionalString("placementId");
     case "launcher.close":
+    case "rebalance.open":
+    case "rebalance.close":
       return true;
     default:
       return false;
@@ -258,6 +264,10 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
       return verb.placementId ? "show something else in this tile" : "open the launcher";
     case "launcher.close":
       return "close the launcher";
+    case "rebalance.open":
+      return "propose layout repairs for this workspace";
+    case "rebalance.close":
+      return "close the rebalance dialog";
   }
 }
 
@@ -342,6 +352,9 @@ export interface WorkbenchVerbHandlers {
   /** With a placement, the launcher opens in per-pane mode ("show something else HERE"). */
   openLauncher(placementId?: string): void;
   closeLauncher(): void;
+  /** Open/close the rebalance dialog (PBUI-REBALANCE-1) for the active workspace. */
+  openRebalance(): void;
+  closeRebalance(): void;
 }
 
 export function canClose(doc: WorkbenchDocument, placementId: string): boolean {
@@ -1024,6 +1037,8 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     goToView,
     openLauncher: (placementId) => store.setState({ launcherOpen: true, launcherFrom: placementId ?? null }),
     closeLauncher: () => store.setState({ launcherOpen: false, launcherFrom: null }),
+    openRebalance: () => store.setState({ rebalanceOpen: true }),
+    closeRebalance: () => store.setState({ rebalanceOpen: false }),
   };
 }
 
@@ -1100,6 +1115,12 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
       return true;
     case "launcher.close":
       handlers.closeLauncher();
+      return true;
+    case "rebalance.open":
+      handlers.openRebalance();
+      return true;
+    case "rebalance.close":
+      handlers.closeRebalance();
       return true;
   }
 }

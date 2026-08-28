@@ -1,0 +1,198 @@
+/*
+ * Rebalance dialog (PBUI-REBALANCE-1). Colours are tokens or mixes of tokens
+ * (playbook §4 — no literals in this package): the seven identity hues are
+ * existing family tokens knocked back toward paper, so a tile keeps one hue
+ * through every proposal card, which is what makes the thumbnails legible.
+ */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-4);
+  min-width: 0;
+  max-width: 720px;
+}
+
+.diagnosis {
+  font-size: var(--pbui-fs-small);
+  color: var(--pbui-ink);
+}
+
+.ok {
+  color: var(--pbui-ok);
+}
+
+.badText {
+  color: var(--pbui-danger);
+}
+
+.strip {
+  display: flex;
+  gap: var(--pbui-space-3);
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: stretch;
+  padding-bottom: var(--pbui-space-2);
+  outline: none;
+}
+
+.strip:focus-visible {
+  outline: 2px solid var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}
+
+.card {
+  flex: 0 0 188px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  border: var(--pbui-border-firm) solid var(--pbui-line);
+  background: var(--pbui-pane);
+  padding: var(--pbui-space-2);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.cardSelected {
+  border-color: var(--pbui-selected);
+  box-shadow: 0 0 0 1px var(--pbui-selected);
+}
+
+.cardOut {
+  opacity: 0.55;
+  background: var(--pbui-pane-alt);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-2);
+  font-size: var(--pbui-fs-small);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tierChip {
+  flex: 0 0 auto;
+  border: var(--pbui-border-hair) solid var(--pbui-line);
+  padding: 0 var(--pbui-space-1);
+  font-size: var(--pbui-fs-micro);
+}
+
+.cardTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardNote {
+  font-weight: 400;
+  color: var(--pbui-ink-faint);
+  font-size: var(--pbui-fs-micro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pick {
+  margin-left: auto;
+  background: var(--pbui-selected);
+  color: var(--pbui-paper);
+  padding: 0 var(--pbui-space-2);
+  font-size: var(--pbui-fs-micro);
+}
+
+.cardWhy {
+  font-size: var(--pbui-fs-micro);
+  line-height: var(--pbui-lh-tight);
+  color: var(--pbui-ink);
+  min-height: 2.4em;
+}
+
+.cardNums {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-ink-faint);
+  border-top: var(--pbui-border-hair) dotted var(--pbui-line);
+  padding-top: var(--pbui-space-1);
+}
+
+.thumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--pbui-pane-alt);
+}
+
+.thumb rect {
+  stroke: var(--pbui-line);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.thumbBad {
+  stroke: var(--pbui-danger) !important;
+  stroke-width: 2 !important;
+}
+
+.ghost {
+  fill: none;
+  stroke-dasharray: 2 2;
+  opacity: 0.8;
+}
+
+.trail {
+  stroke-width: 1;
+  stroke-dasharray: 1 2;
+  opacity: 0.8;
+}
+
+.status {
+  font-size: var(--pbui-fs-small);
+  color: var(--pbui-ink);
+  border-top: var(--pbui-border-hair) dotted var(--pbui-line);
+  padding-top: var(--pbui-space-2);
+}
+
+.trace {
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-ink-faint);
+}
+
+.traceLines {
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: var(--pbui-font);
+  padding-top: var(--pbui-space-2);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+}
+
+.hint {
+  margin-left: auto;
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-ink-faint);
+}
+
+/* Identity hues: family tokens knocked back toward paper for fills, and the
+ * full-strength token for the paired ghost/trail strokes. */
+.fill0 { fill: color-mix(in srgb, var(--pbui-tone-field) 45%, var(--pbui-paper)); }
+.fill1 { fill: color-mix(in srgb, var(--pbui-mustard) 45%, var(--pbui-paper)); }
+.fill2 { fill: color-mix(in srgb, var(--pbui-ok) 40%, var(--pbui-paper)); }
+.fill3 { fill: color-mix(in srgb, var(--pbui-blue) 40%, var(--pbui-paper)); }
+.fill4 { fill: color-mix(in srgb, var(--pbui-type-t) 50%, var(--pbui-paper)); }
+.fill5 { fill: color-mix(in srgb, var(--pbui-cat-3) 45%, var(--pbui-paper)); }
+.fill6 { fill: color-mix(in srgb, var(--pbui-tone-neutral) 50%, var(--pbui-paper)); }
+
+.stroke0 { stroke: var(--pbui-tone-field); }
+.stroke1 { stroke: var(--pbui-mustard); }
+.stroke2 { stroke: var(--pbui-ok); }
+.stroke3 { stroke: var(--pbui-blue); }
+.stroke4 { stroke: var(--pbui-type-t); }
+.stroke5 { stroke: var(--pbui-cat-3); }
+.stroke6 { stroke: var(--pbui-tone-neutral); }

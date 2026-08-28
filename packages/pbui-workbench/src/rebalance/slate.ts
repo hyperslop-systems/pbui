@@ -51,6 +51,8 @@ export interface Proposal {
   stats: LayoutStats;
   /** Proposed geometry per pane id, for thumbnails. */
   rects: ReadonlyMap<string, Rect>;
+  /** Current geometry per pane id (shared reference; the thumbnails' ghost layer). */
+  beforeRects: ReadonlyMap<string, Rect>;
   policy: { ok: boolean; reason: string };
   recommended: boolean;
   why: string;
@@ -127,6 +129,7 @@ export function buildSlate(input: RebalanceInput, cfg: RebalanceConfig): Rebalan
       div: cls.div,
       stats,
       rects: layoutAnalysis(tree, input.rect, input.dividerPx),
+      beforeRects,
       policy: { ok: true, reason: "" },
       recommended: false,
       why: whyLine(gen.kind, cls.tier, trace),
@@ -151,6 +154,7 @@ export function buildSlate(input: RebalanceInput, cfg: RebalanceConfig): Rebalan
     div: 0,
     stats: baseStats,
     rects: beforeRects,
+    beforeRects,
     policy: { ok: true, reason: "" },
     recommended: false,
     why: "",
