@@ -349,6 +349,20 @@ describe("startTileCarry (placement mode)", () => {
     expect(third.onDrop).not.toHaveBeenCalled();
   });
 
+  test("the placement Enter never reaches a focused application control (PR #19)", () => {
+    const { onDefault } = setup();
+    const control = document.createElement("button");
+    document.body.append(control);
+    const appHandler = vi.fn();
+    control.addEventListener("keydown", appHandler);
+    // A real key press targets the focused element and bubbles; the carry's
+    // capture-phase window listener must consume it before the control sees it.
+    fireEvent.keyDown(control, { key: "Enter" });
+    expect(onDefault).toHaveBeenCalledTimes(1);
+    expect(appHandler).not.toHaveBeenCalled();
+    control.remove();
+  });
+
   test("a second carry cancels the first; cancel is idempotent", () => {
     const first = setup();
     const second = setup();

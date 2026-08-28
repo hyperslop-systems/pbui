@@ -180,7 +180,11 @@ export function startTileCarry(options: TileCarryOptions): () => void {
       event.stopPropagation();
       cancel();
     } else if (event.key === "Enter" && options.onDefault) {
+      // The launcher has closed and focus is back in the workbench, so an
+      // application control may be focused: without stopping propagation its
+      // own keydown handler would run ALONGSIDE the placement (PR #19).
       event.preventDefault();
+      event.stopPropagation();
       finish({ byDefault: true });
     }
   };

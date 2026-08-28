@@ -1,5 +1,4 @@
 import type { Node } from "@hyperslop-systems/workbench-protocol";
-import type { WorkbenchVerb } from "../verbs";
 import {
   analysisToResizes,
   layoutAnalysis,
@@ -8,6 +7,7 @@ import {
   toAnalysis,
   type AnalysisNode,
   type Rect,
+  type SplitResize,
 } from "./analysisTree";
 import type { RebalanceConfig } from "./config";
 import { classify, layoutStats, TIERS, type GeneratorKind, type LayoutStats, type Tier } from "./measure";
@@ -38,7 +38,14 @@ export interface RebalanceInput {
 }
 
 export type ProposalApply =
-  | { kind: "resize-batch"; verbs: WorkbenchVerb[] }
+  /**
+   * Raw per-split ratios, applied as ONE splitResize mutation batch. The
+   * ratios were validated against propagated minimums by the repair itself;
+   * routing them through the `split.resize` verb would re-clamp each one
+   * against the PRE-repair rendered geometry, refusing compound repairs whose
+   * nested splits only become feasible once their parent resizes (PR #19).
+   */
+  | { kind: "resize-batch"; resizes: SplitResize[] }
   | { kind: "set-tree"; tree: Node }
   | { kind: "none" };
 
@@ -169,12 +176,7 @@ export function buildSlate(input: RebalanceInput, cfg: RebalanceConfig): Rebalan
     let apply: ProposalApply = { kind: "none" };
     if (gen.kind === "weights") {
       const resizes = analysisToResizes(tree, input.rect, input.dividerPx);
-      if (resizes.length > 0) {
-        apply = {
-          kind: "resize-batch",
-          verbs: resizes.map((r) => ({ kind: "split.resize", splitId: r.splitId, ratio: r.ratio }) as WorkbenchVerb),
-        };
-      }
+      if (resizes.length > 0) apply = { kind: "resize-batch", resizes };
     } else if (cls.tier > 0) {
       apply = { kind: "set-tree", tree: emitBinary(tree, input.rect, input.dividerPx) };
     }

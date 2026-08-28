@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "../../createWorkbench";
@@ -64,7 +64,12 @@ describe("RebalanceDialog", () => {
   });
 
   test("Apply commits the recommended resize batch atomically and arms Undo", () => {
-    const wb = brokenWorkbench();
+    const onMutate = vi.fn();
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.95, tile("counter"), tile("notes"))),
+      onMutate,
+    });
     const { baseElement } = render(
       <>
         <wb.Surface />
@@ -87,11 +92,15 @@ describe("RebalanceDialog", () => {
     // The dialog stays open (lab behaviour) so Undo has a home.
     expect(wb.store.getState().rebalanceOpen).toBe(true);
     const undo = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Undo");
+    const mutationsBeforeUndo = onMutate.mock.calls.length;
     act(() => {
       fireEvent.click(undo!);
     });
     const restored = rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
     expect(restored).toBeCloseTo(0.95, 6);
+    // Undo notified the persistence hook (PR #19): it is a mutation, not a
+    // silent document replacement that would look undone until reload.
+    expect(onMutate.mock.calls.length).toBe(mutationsBeforeUndo + 1);
   });
 
   test("the rebalance verbs are data: perform round-trips open and close", () => {
@@ -100,6 +109,35 @@ describe("RebalanceDialog", () => {
     expect(wb.store.getState().rebalanceOpen).toBe(true);
     expect(wb.perform({ kind: "rebalance.close" })).toBe(true);
     expect(wb.store.getState().rebalanceOpen).toBe(false);
+  });
+
+  test("a repair applies even when the rendered split is too small for the verb's clamp (PR #19)", () => {
+    const wb = brokenWorkbench();
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Rebalance />
+      </>,
+    );
+    // Give the root split a rendered size below 2×minInlinePx: the
+    // `split.resize` verb's ratioBounds would return null here and refuse the
+    // whole repair. The dialog's raw mutation batch must not consult it.
+    const rootSplitId = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId)?.id ?? "";
+    const splitElement = baseElement.querySelector<HTMLElement>(`[data-split-id="${rootSplitId}"]`);
+    if (splitElement) {
+      splitElement.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, right: 300, bottom: 300, width: 300, height: 300, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    }
+    expect(wb.verbs.ratioBounds(rootSplitId)).toBeNull(); // the clamp WOULD refuse
+    act(() => {
+      wb.perform({ kind: "rebalance.open" });
+    });
+    const apply = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Apply");
+    act(() => {
+      fireEvent.click(apply!);
+    });
+    const after = rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    expect(after).toBeLessThan(0.95); // committed despite the stale rendered bounds
   });
 
   test("a plain click on a card applies the proposal and closes the dialog", () => {
@@ -182,7 +220,10 @@ describe("RebalanceDialog", () => {
     act(() => {
       fireEvent.click(undo!);
     });
-    expect(wb.store.getState().document).toBe(beforeDoc);
+    // Undo goes through the MUTATION path (PR #19), so the document is a new
+    // object whose tree equals the original — not the same reference.
+    const wsId = wb.store.getState().workspaceId;
+    expect(workspaceTree(wb.store.getState().document, wsId)).toEqual(workspaceTree(beforeDoc, wsId));
   });
 
   test("a healthy layout collapses to LEAVE AS IS with agreeing generators", () => {

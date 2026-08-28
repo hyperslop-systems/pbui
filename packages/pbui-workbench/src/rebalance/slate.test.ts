@@ -61,8 +61,8 @@ describe("buildSlate", () => {
     expect(recommended?.apply.kind).toBe("resize-batch");
     if (recommended?.apply.kind === "resize-batch") {
       // One divider moved → exactly one binary ratio changes.
-      expect(recommended.apply.verbs).toHaveLength(1);
-      expect(recommended.apply.verbs[0]?.kind).toBe("split.resize");
+      expect(recommended.apply.resizes).toHaveLength(1);
+      expect(recommended.apply.resizes[0]?.ratio).toBeGreaterThan(0);
     }
   });
 

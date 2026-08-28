@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Dialog, isEditableTarget, routeWorkbenchKey, useAnyEscapeSurface } from "@hyperslop-systems/pbui";
-import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
-import { workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
+import type { Node as PlacementNode, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import { resizeSplit, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import { panesOf, toAnalysis, layoutBinary, type Rect } from "../../rebalance/analysisTree";
 import type { RebalanceConfig } from "../../rebalance/config";
@@ -9,7 +9,7 @@ import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../r
 import { TIERS } from "../../rebalance/measure";
 import { buildSlate, type Proposal, type RebalanceSlate } from "../../rebalance/slate";
 import type { RebalanceProps } from "../../types";
-import { DEFAULT_DIVIDER_PX, type WorkbenchVerb } from "../../verbs";
+import { DEFAULT_DIVIDER_PX } from "../../verbs";
 import styles from "./RebalanceDialog.module.css";
 
 /**
@@ -123,7 +123,7 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
   const [rect, setRect] = useState<Rect>(() => measureRect(workbench.root()));
   const [status, setStatus] = useState<string | null>(null);
-  const undoRef = useRef<WorkbenchDocument | null>(null);
+  const undoRef = useRef<{ workspaceId: string; tree: PlacementNode } | null>(null);
   const [canUndo, setCanUndo] = useState(false);
 
   useEffect(() => {
@@ -166,28 +166,45 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
       setStatus(proposal.baseline ? "Kept the layout as it is." : "This proposal has nothing to apply.");
       return;
     }
-    const verbs: WorkbenchVerb[] =
-      proposal.apply.kind === "resize-batch"
-        ? proposal.apply.verbs
-        : [{ kind: "workspace.setTree", workspaceId, tree: proposal.apply.tree }];
-    const planned = workbench.plan(verbs);
-    if (!planned.ok) {
-      setStatus(`Refused: ${planned.error}`);
-      return;
-    }
     const before = workbench.store.getState().document;
-    if (!workbench.applyPlan(planned.plan)) {
-      // The document moved between plan and apply; the slate recomputes from
-      // the store subscription, so just say what happened.
-      setStatus("The layout changed underneath — proposals recomputed.");
-      return;
+    if (proposal.apply.kind === "resize-batch") {
+      // A raw splitResize batch, NOT `split.resize` verbs: the verb re-clamps
+      // each ratio against the PRE-repair rendered geometry, which refuses
+      // compound repairs whose nested splits only become feasible once their
+      // parent has resized (PR #19). The engine already validated these
+      // ratios against propagated minimums; the applier still validates ids.
+      const mutations = proposal.apply.resizes.flatMap((r) => resizeSplit(before, r.splitId, r.ratio));
+      if (mutations.length !== proposal.apply.resizes.length) {
+        // A split id no longer exists: the document moved under the slate.
+        setStatus("The layout changed underneath — proposals recomputed.");
+        return;
+      }
+      if (!workbench.mutate(mutations)) {
+        setStatus("Refused: the workbench rejected the resize batch.");
+        return;
+      }
+    } else {
+      const planned = workbench.plan([{ kind: "workspace.setTree", workspaceId, tree: proposal.apply.tree }]);
+      if (!planned.ok) {
+        setStatus(`Refused: ${planned.error}`);
+        return;
+      }
+      if (!workbench.applyPlan(planned.plan)) {
+        // The document moved between plan and apply; the slate recomputes
+        // from the store subscription, so just say what happened.
+        setStatus("The layout changed underneath — proposals recomputed.");
+        return;
+      }
     }
     if (options.close) {
       close();
       return;
     }
-    undoRef.current = before;
-    setCanUndo(true);
+    const previousTree = workspaceTree(before, workspaceId);
+    if (previousTree) {
+      undoRef.current = { workspaceId, tree: previousTree };
+      setCanUndo(true);
+    }
     setStatus(`Applied ${proposal.agrees[0]} — ${TIERS[proposal.tier].name}, ${proposal.stats.moved}/${proposal.stats.panes} tiles, ${proposal.stats.disp}px. Undo restores the previous layout.`);
   };
 
@@ -196,8 +213,15 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
     if (!previous) return;
     undoRef.current = null;
     setCanUndo(false);
-    workbench.store.replaceDocument(previous);
-    setStatus("Restored the previous layout.");
+    // Through the MUTATION path, never `replaceDocument`: a product's
+    // persistence/outbox subscribes to onMutate, and a silent replacement
+    // would look undone until reload (PR #19). The previous tree is immutable
+    // protobuf data; the applier clones it in.
+    if (workbench.perform({ kind: "workspace.setTree", workspaceId: previous.workspaceId, tree: previous.tree })) {
+      setStatus("Restored the previous layout.");
+    } else {
+      setStatus("Could not restore the previous layout — the workspace no longer exists.");
+    }
   };
 
   const move = (delta: number) => {
