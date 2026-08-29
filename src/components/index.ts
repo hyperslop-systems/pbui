@@ -1,4 +1,5 @@
 export * from "./atoms";
+export * from "./ContextHelp";
 export * from "./Dialog";
 export * from "./format";
 export * from "./foundation";
