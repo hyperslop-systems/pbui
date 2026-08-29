@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@hyperslop-systems/pbui";
 import { workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import type { Rect } from "../../rebalance/analysisTree";
@@ -59,14 +60,15 @@ export function RebalanceStatusBadge({ config: configProp, configStore }: Rebala
     ? `worst shortfall ${diagnosis.worstShortfallPx}px — a weight repair can fix this`
     : `needs ${diagnosis.need.w}×${diagnosis.need.h}, screen offers ${rect.w}×${rect.h}`;
   return (
-    <button
-      type="button"
+    <Button
+      size="tiny"
+      variant="framed"
       className={styles.badge}
       data-part="rebalance-badge"
       title={`${detail} — open the rebalance dialog`}
       onClick={() => workbench.verbs.openRebalance()}
     >
       ⚠ {pieces.join(" · ")}
-    </button>
+    </Button>
   );
 }
