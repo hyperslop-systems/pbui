@@ -523,3 +523,50 @@ Codex re-reviewed the pushed branch and raised two P2s against the help surface 
 
 ### Technical details
 - Ticket commits now: f9f6b83, 9ae5bb9, 2125f11, f57ed5a, bcd9c2c, 12f5e4d, 360c52e, b36270a (rebalance CSS), d0af22b.
+
+## Step 10: PR #20 review round three — hover gap, unmount leak, Chip title walk-back
+
+Codex's third pass found three more P2s, all valid, one of them a direct correction of my own Step 8 Chip change. Fixed in 89d1afa (250 core tests), replied on and resolved all three threads, requested another review.
+
+### Prompt Context
+
+**User prompt (verbatim):** "address the next round of code review comments" (following "reply, resolve, ask for new codex review with @codex review", which set the per-round workflow)
+
+**Assistant interpretation:** Fix the three new findings, then reply/resolve/re-request per the established pattern.
+
+**Inferred user intent:** Iterate with the reviewer until the PR is clean.
+
+**Commit (code):** 89d1afa — "PBUI-HELP-001: address PR #20 review round 3"
+
+### What I did
+- **Hover gap:** the card's `box.bottom + 4` offset left 4px belonging to neither element, so a slow pointer crossing it fired the anchor's mouseleave and closed the card before its scrollbar was reachable. The card now sits flush (`box.bottom`); contiguous boxes make the crossing's `relatedTarget` the card itself. Chose gap removal over a grace-delay timer — deterministic, no new timer state (the reviewer sanctioned either).
+- **Unmount leak:** a presentation unmounting with its card open (virtualized row dropped — no leave, no blur) left `ContextHelp` showing content anchored to a detached element. The unmount cleanup now calls `closeHelp(element)` beside the timer cancel. Two subtleties: the ref callback skips `null` assignment so the element identity survives React's detach-before-passive-cleanup ordering, and `closeHelp` compares the anchor inside its state updater so the stable callback can't close another element's card.
+- **Chip title walk-back:** the reviewer correctly flagged Step 8's global `title ?? label` removal as a regression for every consumer that never enables help — the default was the only pointer recovery for ellipsis-truncated labels. Restored the default; the suppression moved to the help path per call site: datalab's `FieldChip` passes `title=""` (empty string survives `??`), keeping its missing-field warning title.
+- Tests: unmount-closes-card regression (rerender dropping the presentation), and a Chip component test pinning all three title states (default → label, `""` → silenced, explicit → explicit).
+- Replied with fixing commits on comment threads 3887857141/3887857143/3887857144, resolved all three (isResolved true), posted `@codex review` (issuecomment-5465314476).
+
+### Why
+- Each finding survives scrutiny; notably the Chip one shows the reviewer catching a cross-product regression I had shipped as a "fix" — the duel was real but the global default removal was the wrong altitude for it.
+
+### What worked
+- The anchor-comparison design of `closeHelp(anchor?)` from Phase 5 paid off twice: the unmount cleanup and the stale-leave guard both compose with it without new state.
+
+### What didn't work
+- Nothing failed at the gates; the Step 8 Chip decision itself was the failure this round corrects.
+
+### What was tricky to build
+- **React's unmount ordering.** Function refs are detached (called with `null`) before passive effect cleanups run, so a cleanup reading `elementRef.current` would see `null` and close nothing. The ref callback now ignores the null detach, holding the last element for identity comparison only — the comment on `elementRef` explains why.
+
+### What warrants a second pair of eyes
+- Flush positioning means the card's top border touches the anchor's bottom edge — check it reads acceptably in Storybook/datalab (padding provides the breathing room now).
+- `title=""` as the silencing idiom relies on `"" ?? label` keeping the empty string — obvious once seen, but worth the component test that pins it.
+
+### What should be done in the future
+- If a future round asks for a visual gap back, it needs the grace-delay close (timer + card mouseenter cancel), not a naked offset.
+
+### Code review instructions
+- `createPbui.tsx`: the flush `top` computation and the unmount cleanup block; `Chip.tsx` title comment; `FieldChip.tsx` title branch; the two new tests.
+- Validate: `pnpm test` (250) + `pnpm typecheck` at root; datalab 536 + 1 pre-existing.
+
+### Technical details
+- Round commits: b36270a (round 1), d0af22b (round 2), 89d1afa (round 3). All threads through round 3 replied to and resolved; review re-requested.

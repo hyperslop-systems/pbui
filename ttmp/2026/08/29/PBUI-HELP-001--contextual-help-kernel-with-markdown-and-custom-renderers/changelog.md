@@ -91,3 +91,12 @@ PR #20 review round 2: isRestoringFocus mark in focus.ts stops keyboard menu dis
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/focus.ts — isRestoringFocus mark around focus-return dispatch
 
+
+## 2026-08-29
+
+PR #20 round 3: help card flush against anchor (4px dead gap gone), unmount closes open card (ref survives null detach), Chip title default restored with per-call-site silencing in FieldChip; threads replied+resolved, review re-requested (commit 89d1afa)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/components/atoms/Chip/Chip.tsx — Title default restored per review
+
