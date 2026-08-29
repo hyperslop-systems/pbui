@@ -236,7 +236,7 @@ listed is a no-op (return the same state).
 | Event | `idle` | `armed(x)` | `open(x, trig)` | guard |
 | --- | --- | --- | --- | --- |
 | `pointer-enter(a)` | `armed(a)` | `armed(a)` (re-target) | `a === x` → stay `open`; else `armed(a)` | ignored entirely when `menuOpen` |
-| `pointer-leave(a, into)` | — | `a === x` → `idle` | `a === x` ∧ `into = "elsewhere"` → `idle`; `into = "card"` → stay | |
+| `pointer-leave(a, into)` | — | `a === x` → `idle` | `a === x` ∧ `trig = "pointer"` ∧ `into = "elsewhere"` → `idle`; `into = "card"` → stay | a focus-opened card is governed by blur (I2), not by a pointer that may never have been there |
 | `timer-fired(a)` | — | `a === x` → `resolve` ? `open(a, "pointer")` : `idle` | — | ignored when `menuOpen` (defense in depth; MO already disarms) |
 | `focus(a, kbd, restoring)` | `kbd ∧ ¬restoring` → `resolve` ? `open(a, "focus")` : `idle` | same (replaces the arm) | same, incl. re-resolve on the same anchor | ignored when `menuOpen` or `¬kbd` or `restoring` |
 | `blur(a)` | — | — | `a === x` → `idle` | pointer arming survives blur |
