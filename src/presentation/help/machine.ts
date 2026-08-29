@@ -191,6 +191,7 @@ export function helpSurfaceStep<Values extends PresentationValues, ProductFacts>
     }
 
     case "menu-opened": {
+      if (state.menuOpen && surface.kind === "idle") return state;
       // I1: the menu supersedes the card AND any pending arm — a timer that
       // outlived the menu opening was PR #20 round 4, finding 1.
       return { menuOpen: true, surface: IDLE };
@@ -199,6 +200,7 @@ export function helpSurfaceStep<Values extends PresentationValues, ProductFacts>
     case "menu-closed": {
       // I1 says the surface is already idle here; keep whatever it is
       // rather than asserting, so a hand-built state cannot corrupt further.
+      if (!state.menuOpen) return state;
       return { ...state, menuOpen: false };
     }
 

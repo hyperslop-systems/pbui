@@ -6,6 +6,21 @@
  */
 
 export { defineHelp } from "./define";
+export { helpSurfaceStep, initialHelpSurfaceState } from "./machine";
+export type {
+  HelpSurface,
+  HelpSurfaceDeps,
+  HelpSurfaceEvent,
+  HelpSurfaceOpenPayload,
+  HelpSurfaceState,
+} from "./machine";
+export { HELP_MIN_CARD, HELP_VIEWPORT_MARGIN, placeHelpCard } from "./place";
+export type {
+  HelpAnchorRect,
+  HelpCardSize,
+  HelpPlacement,
+  HelpViewportSize,
+} from "./place";
 export type { DefinedHelpContribution } from "./define";
 export { createHelpRegistry } from "./registry";
 export type { CreateHelpRegistryOptions, HelpRegistry } from "./registry";

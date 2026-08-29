@@ -324,6 +324,36 @@ describe("surface interplay", () => {
     expect(fireEvent.keyDown(window, { key: "PageDown" })).toBe(true);
   });
 
+  test("an armed hover timer never fires over an open menu (PR #20 r4)", () => {
+    const { pbui, resolveSpy } = makePbui();
+    vi.useFakeTimers();
+    renderWithHelp(pbui);
+    const presentation = screen.getByRole("button", { name: "Ada" });
+
+    // Enter, then open the menu INSIDE the 350ms window: the arm must die
+    // with the menu opening, not fire help on top of it.
+    fireEvent.mouseEnter(presentation);
+    fireEvent.contextMenu(presentation, { clientX: 10, clientY: 10 });
+    expect(screen.getByRole("menu")).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    expect(resolveSpy).not.toHaveBeenCalled();
+  });
+
+  test("the card carries its placement side from the pure geometry", () => {
+    const { pbui } = makePbui();
+    renderWithHelp(pbui);
+    byKeyboard();
+    fireEvent.focus(screen.getByRole("button", { name: "Ada" }));
+    const tooltip = screen.getByRole("tooltip");
+    // jsdom has no layout, so rects are zero — but the placement pipeline
+    // must still have run and stamped a side.
+    expect(tooltip.getAttribute("data-side")).toMatch(/^(below|above)$/);
+    expect(tooltip.style.maxHeight).not.toBe("");
+  });
+
   test("unmounting the presentation closes its open card", () => {
     const { pbui } = makePbui();
     vi.useFakeTimers();
