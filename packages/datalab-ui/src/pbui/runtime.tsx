@@ -7,6 +7,7 @@ import {
 import type { ReactNode } from "react";
 import { datadropActionRegistry, snapshotForDatalab } from "./actions";
 import type { DatalabFacts } from "./actions";
+import { datadropHelpRenderers, datalabHelpRegistry } from "./help";
 import { datadropRegistry } from "./registry";
 import type { CatRef, FieldRef, PbuiEnvironment, PresentationValues } from "./types";
 import type { Verb } from "./verbs";
@@ -62,6 +63,9 @@ const datadropPbui = createPbui<PresentationValues, PbuiEnvironment, Verb, Datal
   actions: datadropActionRegistry,
   snapshotFor: snapshotForDatalab,
   translators: datadropTranslators,
+  // PBUI-HELP-001 P6: typed contextual help over the same snapshot facts.
+  help: datalabHelpRegistry,
+  helpRenderers: datadropHelpRenderers,
   renderMenuHeader: (reference, environment, label: ReactNode) => {
     const ambient = ["field", "source", "geom"].includes(reference.type);
     return (
@@ -84,6 +88,7 @@ export const ObjectMenu = datadropPbui.ObjectMenu;
 export const usePbui = datadropPbui.usePbui;
 export const MouseDocLine = datadropPbui.MouseDocLine;
 export const AcceptBanner = datadropPbui.AcceptBanner;
+export const ContextHelp = datadropPbui.ContextHelp;
 
 export type AcceptRequest = GenericAcceptRequest<PresentationValues>;
 export type AcceptResult = PresentationReference<PresentationValues>;

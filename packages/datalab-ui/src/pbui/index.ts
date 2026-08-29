@@ -6,7 +6,13 @@ export type {
   MenuState,
   PbuiContextValue,
 } from "./runtime";
-export { AcceptBanner, MouseDocLine } from "./runtime";
+export { AcceptBanner, ContextHelp, MouseDocLine } from "./runtime";
+export {
+  datalabHelpRegistry,
+  datalabHelpContributions,
+  datadropHelpRenderers,
+  fieldSummaryHelp,
+} from "./help";
 export { PARTS, STATES } from "./parts";
 export { datadropRegistry } from "./registry";
 export type { PresentationDescriptor } from "./registry";
