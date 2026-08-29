@@ -69,7 +69,7 @@ export function WorkbenchRebalance({ shortcut = true, shortcutContext, config, c
 /** Headless/story fallback when the Surface has no measurable box yet. */
 const FALLBACK_RECT: Rect = { x: 0, y: 0, w: 1024, h: 640 };
 
-function measureRect(element: HTMLElement | null): Rect {
+export function measureRect(element: HTMLElement | null): Rect {
   const box = element?.getBoundingClientRect();
   if (!box || !Number.isFinite(box.width) || box.width <= 8 || box.height <= 8) return FALLBACK_RECT;
   return { x: 0, y: 0, w: Math.round(box.width), h: Math.round(box.height) };

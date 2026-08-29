@@ -130,6 +130,23 @@ export const GENERATORS: GeneratorSpec[] = [
 
 const MAX_TRACE = 3000;
 
+/**
+ * DETECT alone (textbook §12.1 stage 1): the free, always-useful measurement
+ * with none of the generators. The status-bar badge runs this on every
+ * document/rect change — on a healthy layout the correct behaviour is to do
+ * nothing, and it must cost nothing.
+ */
+export function detectOnly(input: RebalanceInput, cfg: RebalanceConfig): Diagnosis {
+  const pcfg: PropagateConfig = {
+    minInlinePx: cfg.minInlinePx,
+    minBlockPx: cfg.minBlockPx,
+    dividerPx: input.dividerPx,
+  };
+  const binaryRects = layoutBinary(input.tree, input.rect, input.dividerPx);
+  const base = toAnalysis(input.tree, binaryRects, { labels: input.labels });
+  return diagnose(base, input.rect, pcfg);
+}
+
 export function buildSlate(input: RebalanceInput, cfg: RebalanceConfig): RebalanceSlate {
   const pcfg: PropagateConfig = {
     minInlinePx: cfg.minInlinePx,

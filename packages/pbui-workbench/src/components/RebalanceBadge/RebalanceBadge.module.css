@@ -1,0 +1,16 @@
+/* The diagnosis badge: loud enough to notice, quiet enough to sit in a
+   status bar. Rendered only while something is actually wrong. */
+.badge {
+  font: inherit;
+  font-size: var(--pbui-fs-tiny, 11px);
+  border: 1px solid var(--pbui-tone-warning, #b08a2e);
+  color: var(--pbui-tone-warning, #b08a2e);
+  background: transparent;
+  border-radius: 0;
+  padding: 0 6px;
+  cursor: pointer;
+}
+.badge:hover {
+  background: var(--pbui-tone-warning, #b08a2e);
+  color: var(--pbui-bg, #fff);
+}

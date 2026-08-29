@@ -80,6 +80,8 @@ export { WorkbenchSurface } from "./components/Surface";
 export { WorkbenchLauncher } from "./components/Launcher";
 export { WorkspaceStrip } from "./components/WorkspaceStrip";
 export { WorkbenchRebalance } from "./components/RebalanceDialog";
+export { RebalanceStatusBadge } from "./components/RebalanceBadge";
+export type { RebalanceBadgeProps } from "./components/RebalanceBadge";
 export { RebalanceSettings, rebalanceSettingsApp, createRebalanceSettingsApp } from "./components/RebalanceSettings";
 export type { RebalanceSettingsAppOptions } from "./components/RebalanceSettings";
 export {
