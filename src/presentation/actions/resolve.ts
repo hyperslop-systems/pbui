@@ -1,3 +1,4 @@
+import { activeScope, matchContext } from "../context/match";
 import type { PresentationValues } from "../types";
 import { available } from "./availability";
 import type { Availability } from "./availability";
@@ -61,18 +62,6 @@ interface Candidate<Values extends PresentationValues, ProductFacts, Verb> {
   priority: number;
 }
 
-function activeScope(
-  declared: readonly ScopeId[],
-  stack: readonly ScopeId[],
-): { scope: ScopeId; index: number } | null {
-  let best: { scope: ScopeId; index: number } | null = null;
-  for (const scope of declared) {
-    const index = stack.indexOf(scope);
-    if (index >= 0 && (best === null || index < best.index)) best = { scope, index };
-  }
-  return best;
-}
-
 export function resolveActions<Values extends PresentationValues, ProductFacts, Verb>(
   prepared: PreparedRegistry<Values, ProductFacts, Verb>,
   query: ActionQuery<Values>,
@@ -80,10 +69,6 @@ export function resolveActions<Values extends PresentationValues, ProductFacts, 
 ): ResolutionResult<Values, Verb> {
   const trace: ResolutionTraceEntry[] = [];
   const subjectType = query.subject.type as RuntimeTypeId;
-  const ancestorDistance = new Map<RuntimeTypeId, number>();
-  for (const entry of prepared.graph.ancestors(subjectType)) {
-    ancestorDistance.set(entry.type, entry.distance);
-  }
   const context: InheritedRuleContext<Values, ProductFacts> = {
     subject: query.subject,
     snapshot,
@@ -94,18 +79,38 @@ export function resolveActions<Values extends PresentationValues, ProductFacts, 
   const candidates: Candidate<Values, ProductFacts, Verb>[] = [];
 
   for (const contribution of prepared.contributions) {
-    // Type reachability. Exact matches the concrete type; subtypes matches
-    // any ancestor; "*" (families only) matches every concrete type exactly.
+    /*
+     * Type reachability and scope nearness now come from the shared
+     * contextual matcher (PBUI-HELP-001) — the "*" family escape hatch is the
+     * one target it cannot express, so that keeps the inline path. The
+     * matcher checks type before scope, and this loop's trace order requires
+     * invocation BETWEEN them (a type-reachable contribution failing both
+     * invocation and scope traces invocation-not-allowed), so the rejection
+     * is held and interleaved rather than acted on immediately. No `when` is
+     * passed: a failing action condition is a STATUS that stays in the
+     * override competition, not a reject.
+     */
     let distance: number;
+    let scope: { scope: ScopeId; index: number } | null;
     if (contribution.subject === "*") {
       distance = 0;
-    } else if (contribution.match === "exact") {
-      if (contribution.subject !== subjectType) continue;
-      distance = 0;
+      scope = activeScope(contribution.scopes, snapshot.scopes);
     } else {
-      const found = ancestorDistance.get(contribution.subject);
-      if (found === undefined) continue;
-      distance = found;
+      const matched = matchContext(
+        { subject: contribution.subject, match: contribution.match, scopes: contribution.scopes },
+        query.subject,
+        snapshot,
+        prepared.graph,
+        prepared.predicates,
+      );
+      if (matched.kind === "rejected" && matched.stage === "type") continue;
+      if (matched.kind === "matched") {
+        distance = matched.match.typeDistance;
+        scope = { scope: matched.match.scope, index: matched.match.scopeIndex };
+      } else {
+        distance = 0; // unread: every rejected path below continues
+        scope = null;
+      }
     }
 
     const seedId =
@@ -125,7 +130,6 @@ export function resolveActions<Values extends PresentationValues, ProductFacts, 
       continue;
     }
 
-    const scope = activeScope(contribution.scopes, snapshot.scopes);
     if (scope === null) {
       trace.push({
         candidateId: seedId,
