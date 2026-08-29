@@ -37,6 +37,14 @@ afterEach(() => {
 const ignorePerform = () => {};
 const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
 
+/**
+ * Focus opens help only for KEYBOARD focus (the :focus-visible idea, tracked
+ * via window-level keydown/pointerdown). Tests that open help through focus
+ * establish keyboard modality first, the way a Tab press would.
+ */
+const byKeyboard = () => fireEvent.keyDown(window, { key: "Tab" });
+const byPointer = (target: Element) => fireEvent.pointerDown(target);
+
 function snapshotOf(environment: Facts): SelectionSnapshot<Facts> {
   return {
     revision: 0,
@@ -176,6 +184,7 @@ describe("hover and focus parity", () => {
     fireEvent.mouseLeave(presentation);
     expect(screen.queryByRole("tooltip")).toBeNull();
 
+    byKeyboard();
     fireEvent.focus(presentation);
     expect(screen.getByRole("tooltip").textContent).toBe(hoverContent);
     fireEvent.blur(presentation);
@@ -190,6 +199,7 @@ describe("accessibility contract", () => {
     const presentation = screen.getByRole("button", { name: "Ada" });
     expect(presentation.getAttribute("aria-describedby")).toBeNull();
 
+    byKeyboard();
     fireEvent.focus(presentation);
     const tooltip = screen.getByRole("tooltip");
     expect(presentation.getAttribute("aria-describedby")).toBe(tooltip.id);
@@ -203,6 +213,7 @@ describe("accessibility contract", () => {
     const { pbui } = makePbui();
     renderWithHelp(pbui);
     const presentation = screen.getByRole("button", { name: "Ada" });
+    byKeyboard();
     fireEvent.focus(presentation);
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip.querySelector("button, a, input, [tabindex]")).toBeNull();
@@ -213,6 +224,7 @@ describe("accessibility contract", () => {
   test("Escape closes open help", () => {
     const { pbui } = makePbui();
     renderWithHelp(pbui);
+    byKeyboard();
     fireEvent.focus(screen.getByRole("button", { name: "Ada" }));
     expect(screen.getByRole("tooltip")).toBeTruthy();
     fireEvent.keyDown(window, { key: "Escape" });
@@ -225,12 +237,47 @@ describe("surface interplay", () => {
     const { pbui } = makePbui();
     renderWithHelp(pbui);
     const presentation = screen.getByRole("button", { name: "Ada" });
+    byKeyboard();
     fireEvent.focus(presentation);
     expect(screen.getByRole("tooltip")).toBeTruthy();
 
     fireEvent.contextMenu(presentation, { clientX: 10, clientY: 10 });
     expect(screen.queryByRole("tooltip")).toBeNull();
     expect(screen.getByRole("menu")).toBeTruthy();
+  });
+
+  test("performing a menu action does not reopen help through focus return", async () => {
+    const { pbui } = makePbui();
+    renderWithHelp(pbui);
+    const presentation = screen.getByRole("button", { name: "Ada" });
+
+    fireEvent.contextMenu(presentation, { clientX: 10, clientY: 10 });
+    const item = screen.getByRole("menuitem", { name: "Select" });
+    // A real click is preceded by pointerdown — that is what marks the
+    // interaction as pointer-modal, so the menu's focus RETURN to the
+    // presentation must not open the card the gesture never asked for.
+    byPointer(item);
+    fireEvent.click(item);
+    await act(async () => Promise.resolve());
+    expect(document.activeElement).toBe(presentation);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  test("clicking the presentation itself opens no card either", () => {
+    const { pbui } = makePbui();
+    vi.useFakeTimers();
+    renderWithHelp(pbui);
+    const presentation = screen.getByRole("button", { name: "Ada" });
+    // Focus-follows-click: pointerdown, then the element receives focus.
+    byPointer(presentation);
+    fireEvent.focus(presentation);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    // The pointer path still works afterwards, on its own delay.
+    fireEvent.mouseEnter(presentation);
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(screen.getByRole("tooltip")).toBeTruthy();
   });
 
   test("an empty resolution opens no card at all", () => {
@@ -273,6 +320,7 @@ describe("surface interplay", () => {
       helpRenderers: createHelpRendererRegistry(builtinHelpItems),
     });
     renderWithHelp(pbui);
+    byKeyboard();
     fireEvent.focus(screen.getByRole("button", { name: "Ada" }));
     expect(screen.queryByRole("tooltip")).toBeNull();
   });

@@ -29,7 +29,14 @@ export function Chip({ label, tone, badge, strong = false, state, title }: ChipP
         .filter(Boolean)
         .join(" ")}
       style={tone ? { borderLeftColor: tone } : undefined}
-      title={title ?? label}
+      /*
+       * Only an EXPLICIT title renders. The old `title ?? label` default gave
+       * every chip a native browser tooltip mirroring its visible label,
+       * which stacked on top of the contextual help card (PBUI-HELP-001) the
+       * moment products enabled help. A caller with a genuinely truncated
+       * value passes the full value as `title` deliberately.
+       */
+      title={title}
     >
       <span data-part="chip-label" className={styles.label}>
         {label}

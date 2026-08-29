@@ -96,6 +96,41 @@ export interface CreatePbuiOptions<
 /** How long the pointer rests on a presentation before its help opens. */
 const HELP_POINTER_DELAY_MS = 350;
 
+/*
+ * FOCUS opens help only for KEYBOARD focus — the :focus-visible idea, tracked
+ * by hand because jsdom cannot test the pseudo-class and browsers disagree on
+ * programmatic focus. Without this, closing the object menu reopened help:
+ * the menu returns focus to its invoker (`queueFocusReturn`), that focus event
+ * hit the help path, and the card a pointer gesture never asked for sat open
+ * until the next hover. A pointer click on the presentation itself had the
+ * same defect in miniature — focus-follows-click opened help instantly,
+ * bypassing the rest delay.
+ *
+ * Module state, like the escape-surface stack in surfaces.ts and for the same
+ * reason: input modality is a property of the whole page, not of one provider
+ * subtree. Listeners install once, on the first help-enabled Provider mount.
+ */
+let lastInputWasKeyboard = false;
+let inputModalityTracked = false;
+function trackInputModality(): void {
+  if (inputModalityTracked || typeof window === "undefined") return;
+  inputModalityTracked = true;
+  window.addEventListener(
+    "keydown",
+    () => {
+      lastInputWasKeyboard = true;
+    },
+    true,
+  );
+  window.addEventListener(
+    "pointerdown",
+    () => {
+      lastInputWasKeyboard = false;
+    },
+    true,
+  );
+}
+
 /**
  * One open help card (design doc §12.2): which subject, resolved to what,
  * anchored where, and via which trigger. The snapshot rides along because
@@ -348,6 +383,9 @@ export function createPbui<
     const [mouseDoc, setMouseDoc] = useState<string | null>(null);
     const [helpState, setHelpState] = useState<PbuiHelpState<Values, ProductFacts> | null>(null);
     const helpSurfaceId = useId();
+    useEffect(() => {
+      if (helpEnabled) trackInputModality();
+    }, []);
     const pending = useRef<
       ((result: PresentationReference<Values> | null) => void) | null
     >(null);
@@ -765,8 +803,11 @@ export function createPbui<
         }}
         onFocus={(event: { currentTarget: Element }) => {
           pbui.setMouseDoc(describe());
-          if (pbui.helpEnabled) {
-            // Focus is the reliable accessible path: no delay, no timer.
+          if (pbui.helpEnabled && lastInputWasKeyboard) {
+            // KEYBOARD focus is the reliable accessible path: no delay, no
+            // timer. Pointer and programmatic focus (a click on the chip,
+            // the menu's focus return) stay silent — the pointer has the
+            // hover path, and a returned focus asked for nothing.
             pbui.openHelp(reference, event.currentTarget, "focus");
           }
         }}
