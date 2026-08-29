@@ -82,3 +82,12 @@ Fix round: focus opens help only under keyboard modality (menu focus-return no l
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/createPbui.tsx — Input-modality tracking for focus help
 
+
+## 2026-08-29
+
+PR #20 review round 2: isRestoringFocus mark in focus.ts stops keyboard menu dismissal reopening help; card overflow reachable (pointer-events auto, hover-into-card, PageDown/PageUp for focus-opened help) (commit d0af22b)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/focus.ts — isRestoringFocus mark around focus-return dispatch
+

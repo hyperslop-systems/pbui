@@ -476,3 +476,50 @@ The user tried the running demos and reported two real defects, and separately a
 
 ### Technical details
 - Modality listeners are capture-phase on `window` so no `stopPropagation` in product code can starve them.
+
+## Step 9: PR #20 review round two — restored focus and reachable overflow
+
+Codex re-reviewed the pushed branch and raised two P2s against the help surface itself; both were legitimate gaps in the Step 8 fixes. Fixed, tested (248 core), pushed as d0af22b.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Address coode review issues: https://github.com/hyperslop-systems/pbui/pull/20"
+
+**Assistant interpretation:** Fetch the open review findings on PR #20 and fix them (the earlier border-box finding was already resolved; two new ones targeted the help runtime).
+
+**Inferred user intent:** Keep the PR review clean as the help work landed on the same branch.
+
+**Commit (code):** d0af22b — "PBUI-HELP-001: address PR #20 review — restored focus, reachable overflow"
+
+### What I did
+- **Keyboard focus return (P2):** Step 8's modality tracking only silenced pointer-driven menu dismissal — a keyboard Escape keeps keyboard modality, so the menu's focus return still reopened the card. Fix at the true cause: `focus.ts` sets a module flag around its `element.focus()` call (`isRestoringFocus()`), which is sound because focus events dispatch synchronously inside `.focus()`; the Presentation focus path now requires keyboard modality AND not-restoring.
+- **Reachable overflow (P2):** the card had `max-height: 280px; overflow: auto` but `pointer-events: none`, so overflow was unreachable by any input. Now: the card takes pointer events (wheel/scrollbar work); `Presentation.onMouseLeave` keeps the card open when `relatedTarget` is inside it; the card's own `onMouseLeave` closes it unless the pointer returns to the anchor; and for keyboard-opened help (`trigger === "focus"`), PageDown/PageUp page the card via the existing window keydown listener — hover-opened help deliberately does NOT capture those keys, so an incidental hover card never hijacks page scrolling.
+- Three regression tests: keyboard menu round-trip (focus → Shift+F10 → Escape → no card), pointer-into-card persistence, and PageDown pages focus-opened help while hover-opened help returns `defaultPrevented === false`.
+
+### Why
+- Both findings were correct: my Step 8 diary had even flagged the keyboard-menu case as "left deliberately," and the reviewer's framing (it defeats `openMenu` closing help) is the better reading. The overflow case violated the reviewer-quoted reachability principle outright.
+
+### What worked
+- Marking the restore inside `focus.ts` is one flag around one call — no menu-to-help coupling, and it covers every focus-return consumer (dialogs included) for free.
+- `fireEvent(...)` returning `false` on `preventDefault` made the PageDown assertions clean despite jsdom having no layout.
+
+### What didn't work
+- Nothing failed at the gates this round.
+
+### What was tricky to build
+- **Preserving "non-interactive" honestly.** `pointer-events: auto` sounds like it breaks the v1 tooltip contract, but the contract's substance is focus behavior: nothing in the card is focusable, it never steals focus, and `role="tooltip"` stands. The CSS comment and the createPbui comments now state the distinction so a reviewer doesn't read the diff as scope creep.
+- **Scoping the PageDown capture.** Stealing PageUp/PageDown globally whenever any hover card is open would break page scrolling for pointer users; keying the capture on `trigger === "focus"` gives keyboard users reachability without taxing everyone else.
+
+### What warrants a second pair of eyes
+- The `isRestoringFocus` module flag is set/cleared synchronously around `.focus()` — correct for focus events, but a future async wrapper around `focusConnected` would silently break it; the comment warns.
+- Hover-into-card persistence is a behavior change from Step 8's "leaving always closes" — the leave path now has a relatedTarget carve-out.
+
+### What should be done in the future
+- Reply/resolve the three Codex threads on PR #20 (outward-facing; left to the user).
+
+### Code review instructions
+- `src/focus.ts` (the flag), the `onFocus`/`onMouseLeave` guards and the `ContextHelp` keydown/mouseleave in `src/presentation/createPbui.tsx`, the three new tests at the bottom of `createPbui.help.test.tsx`.
+- Validate: `pnpm test` (248), `pnpm typecheck`; manually in Storybook: keyboard-focus Ada, Shift+F10, Escape — no card returns.
+
+### Technical details
+- Ticket commits now: f9f6b83, 9ae5bb9, 2125f11, f57ed5a, bcd9c2c, 12f5e4d, 360c52e, b36270a (rebalance CSS), d0af22b.
