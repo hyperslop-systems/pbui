@@ -797,3 +797,55 @@ The Phase 0 reading (o423) was paid down as preparation for Phase 6: both labs s
 
 ### Technical details
 - RELAX book anchors for tests: FOUR DONORS α=β,γ=0 → `[.292 .281 .246 .181]`; STACKS 13px transfer; nonzero γ acts on healthy splits.
+
+
+## Step 14: Phase 6 — badge, RELAX, live preview, perf guard, playbook; ticket complete
+
+The polish phase landed in four commits. The **status-bar badge** (`RebalanceStatusBadge` + `detectOnly` in slate.ts) runs the free DETECT pass on every document/rect change and renders NOTHING on a healthy layout — the §12.1 stage-1 contract made a component; broken layouts get the violation count and overflow in words, the worst shortfall in the title, and a click opens the dialog. The repo's conformance suite earned its keep immediately: the first cut used a raw `<button>`, hex fallbacks, and no story, and all three tests refused it.
+
+**RELAX** (textbook §7) landed as `stratRelax`: the displacement energy (α·Δcentre² + β·Δsize² + γ·Δlog-aspect²/100) minimised by gradient-step/project/repeat over the §5 projection, mean-subtracted to stay on Σw=1. Tests pin the qualitative book claims — near donors pay more than far ones on FOUR DONORS (the centre-coupling difference from PROJECT), γ=0 leaves a healthy split byte-close to untouched even though `always` ran it, γ>0 changes layouts DETECT would leave alone. It is an opt-in generator: TIDY enables it with γ=1, ANYTHING with γ=0, and the settings tile grew the relax energy block. **Live preview** renders the selected proposal's pane geometry as a dashed, labelled, pointer-transparent overlay portaled over the real Surface — document identity pinned across preview in tests; the baseline previews nothing. **Perf guard**: the full ANYTHING slate over 12 skewed tiles, median-of-five, 50ms loud-failure line over the lab's ~9ms reference. The **QA playbook** (playbooks/01) scripts eight manual checks from healthy-is-silent to cost.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Land the five Phase 6 items and close the ticket.
+
+**Inferred user intent:** The rebalance system finished to its own design's standard, not merely merged.
+
+**Commit (code):** 64d10fb (badge), ad907be (conformance), 752b468 (RELAX), f1dda25 (preview), 80283c0 (perf + playbook).
+
+### What I did
+- `slate.ts`: `detectOnly`; `components/RebalanceBadge/*` (+story, +tests); index exports.
+- `config.ts`: `RelaxParams` + per-profile relax + normalize; `strategies.ts`: `stratRelax` (+`StrategyConfig.relax/targetAspect`); `slate.ts`: relax generator + scfg threading; settings block; three strategy tests.
+- `RebalanceDialog.tsx`: `PreviewOverlay` portal + selection wiring + module css; two preview tests.
+- `slate.perf.test.ts`; `playbooks/01-qa-playbook.md`.
+
+### What worked
+- The conformance suite (one-folder-per-component, no-hex, no-raw-controls) catching the badge's first cut — exactly what those tests exist for, and the pbui lefthook does NOT run vitest, so running the suite manually before commit is load-bearing in this repo.
+
+### What didn't work
+- Badge commit 64d10fb went in with 3 failing conformance tests because only Go hooks run pre-commit here; caught and fixed in the immediate follow-up ad907be. Preview's first test expected 2 overlay boxes and got 3 — `Proposal.rects` carries split-node rects too; the overlay now filters to labelled leaves.
+- One transient print-service timeout on a slip; retry succeeded.
+
+### What I learned
+- `chain()` in testTrees takes mass-ratio weights that are NOT pixel shares once dividers nest — comparisons must be before/after through the same adapter, never against the literal ratios.
+
+### What was tricky to build
+- RELAX's centre term: divider offsets are identical between w and w0 at each index, so they cancel in the differences and the energy can live in normalized units — one line of insight that removes all gap bookkeeping.
+
+### What warrants a second pair of eyes
+- The preview overlay uses `position: fixed` with the Surface's live bounding box measured at render; a scrolled or transformed host container would offset the outlines. Fine for the workbench chrome as shipped; revisit if Surface ever nests in a scroll container.
+- TIDY's γ=1 default means picking the TIDY profile makes RELAX propose changes on healthy layouts by design — the playbook states it, but watch for surprise reports.
+
+### What should be done in the future
+- Ticket closed. Product adoption of the badge (e.g. rag-ttc's masthead/status line) is each host's one-line decision.
+
+### Code review instructions
+- Diff the five commits in order; start at `detectOnly`, then `stratRelax`'s energy, then `PreviewOverlay`.
+- Validate: `pnpm exec vitest run` in packages/pbui-workbench (204 tests) and `tsc --noEmit`; drive the playbook against the Storybook lab.
+
+### Technical details
+- Badge: `data-part="rebalance-badge"`, silent when `violations=0 ∧ ¬overflow`.
+- RELAX defaults: α=1 β=1 γ=0 iters=60 step=0.12; TIDY overrides γ=1 and enables the generator.
+- Preview: `data-part="rebalance-preview"`, leaves only, aria-hidden, pointer-events none.
