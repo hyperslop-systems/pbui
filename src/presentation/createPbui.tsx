@@ -14,7 +14,7 @@ import {
 import { HelpContent } from "../components/ContextHelp";
 import type { HelpRendererRegistry } from "../components/ContextHelp";
 import { VisuallyHidden } from "../components/foundation";
-import { captureFocusReturn, queueFocusReturn } from "../focus";
+import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
 import type { ActionRegistry } from "./actions/registry";
 import { evaluateFresh } from "./actions/perform";
@@ -798,16 +798,23 @@ export function createPbui<
           pbui.setMouseDoc(null);
           if (pbui.helpEnabled) {
             cancelHelpTimer();
+            // Leaving INTO the help card keeps it open so overflowing
+            // content can be scrolled (PR #20 review); the card closes
+            // itself when the pointer leaves it.
+            const into = event.relatedTarget as Element | null;
+            if (into instanceof Element && into.closest('[data-pbui="context-help"]')) return;
             pbui.closeHelp(event.currentTarget as Element);
           }
         }}
         onFocus={(event: { currentTarget: Element }) => {
           pbui.setMouseDoc(describe());
-          if (pbui.helpEnabled && lastInputWasKeyboard) {
+          if (pbui.helpEnabled && lastInputWasKeyboard && !isRestoringFocus()) {
             // KEYBOARD focus is the reliable accessible path: no delay, no
-            // timer. Pointer and programmatic focus (a click on the chip,
-            // the menu's focus return) stay silent — the pointer has the
-            // hover path, and a returned focus asked for nothing.
+            // timer. Pointer and programmatic focus stay silent — the
+            // pointer has the hover path, and a RESTORED focus (the menu
+            // handing focus back to its invoker on close, which keeps
+            // keyboard modality when Escape did the closing) asked for
+            // nothing (PR #20 review).
             pbui.openHelp(reference, event.currentTarget, "focus");
           }
         }}
@@ -1110,6 +1117,7 @@ export function createPbui<
     const pbui = usePbui();
     const state = pbui.help;
     const closeHelp = pbui.closeHelp;
+    const cardRef = useRef<HTMLDivElement>(null);
 
     const ownsEscape = useEscapeSurface(state !== null);
     useEffect(() => {
@@ -1119,6 +1127,21 @@ export function createPbui<
           if (!ownsEscape) return;
           event.preventDefault();
           closeHelp();
+          return;
+        }
+        /*
+         * Keyboard-opened help must keep overflowing content reachable
+         * (PR #20 review): the tooltip is not focusable, so PageDown/PageUp
+         * page the card while it is open. Pointer-opened help keeps the
+         * keys — a hover card must not hijack page scrolling; the wheel
+         * scrolls it instead.
+         */
+        if (state.trigger === "focus" && (event.key === "PageDown" || event.key === "PageUp")) {
+          const card = cardRef.current;
+          if (!card) return;
+          event.preventDefault();
+          const delta = card.clientHeight || 200;
+          card.scrollTop += event.key === "PageDown" ? delta : -delta;
         }
       };
       window.addEventListener("keydown", handleKey);
@@ -1133,11 +1156,19 @@ export function createPbui<
 
     return (
       <div
+        ref={cardRef}
         id={pbui.helpSurfaceId}
         data-pbui="context-help"
         data-part="context-help"
         role="tooltip"
         style={{ left, top }}
+        onMouseLeave={(event) => {
+          // The pointer wandered in to scroll; wandering back to the anchor
+          // keeps the card, anywhere else closes it.
+          const to = event.relatedTarget as Element | null;
+          if (to instanceof Element && state.anchor.contains(to)) return;
+          closeHelp();
+        }}
       >
         <HelpContent
           resolution={state.resolution}

@@ -263,6 +263,67 @@ describe("surface interplay", () => {
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
+  test("KEYBOARD menu dismissal does not reopen help through focus return", async () => {
+    const { pbui } = makePbui();
+    renderWithHelp(pbui);
+    const presentation = screen.getByRole("button", { name: "Ada" });
+
+    // Keyboard user: focus opens help, Shift+F10 opens the menu (closing
+    // help), Escape closes the menu. Modality stays keyboard throughout, so
+    // only the focus-restore mark can tell the returned focus apart.
+    byKeyboard();
+    fireEvent.focus(presentation);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    fireEvent.keyDown(presentation, { key: "F10", shiftKey: true });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    expect(screen.getByRole("menu")).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await act(async () => Promise.resolve());
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(presentation);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  test("moving the pointer into the card keeps it open; leaving the card closes it", () => {
+    const { pbui } = makePbui();
+    vi.useFakeTimers();
+    renderWithHelp(pbui);
+    const presentation = screen.getByRole("button", { name: "Ada" });
+    fireEvent.mouseEnter(presentation);
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    const tooltip = screen.getByRole("tooltip");
+
+    // Overflowing help is scrollable only if the pointer can reach the card.
+    fireEvent.mouseLeave(presentation, { relatedTarget: tooltip });
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    fireEvent.mouseLeave(tooltip, { relatedTarget: document.body });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  test("PageDown pages keyboard-opened help; hover-opened help keeps the keys", () => {
+    const { pbui } = makePbui();
+    vi.useFakeTimers();
+    renderWithHelp(pbui);
+    const presentation = screen.getByRole("button", { name: "Ada" });
+
+    byKeyboard();
+    fireEvent.focus(presentation);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    // fireEvent returns false when a handler called preventDefault.
+    expect(fireEvent.keyDown(window, { key: "PageDown" })).toBe(false);
+    fireEvent.blur(presentation);
+
+    fireEvent.mouseEnter(presentation);
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    expect(fireEvent.keyDown(window, { key: "PageDown" })).toBe(true);
+  });
+
   test("clicking the presentation itself opens no card either", () => {
     const { pbui } = makePbui();
     vi.useFakeTimers();

@@ -18,10 +18,29 @@ export function captureFocusReturn(explicit?: HTMLElement | null): FocusReturnTa
   return { invoker, fallbacks };
 }
 
+/*
+ * True while a focus-return `.focus()` call is dispatching. Focus events fire
+ * synchronously inside `element.focus()`, so a handler can ask whether the
+ * focus it is seeing was RESTORED rather than asked for. The contextual help
+ * runtime uses this (PR #20 review): a keyboard user closing the object menu
+ * keeps keyboard input modality, and without this mark the menu's focus
+ * return would reopen the help card the close was meant to dismiss.
+ */
+let restoring = false;
+
+export function isRestoringFocus(): boolean {
+  return restoring;
+}
+
 function focusConnected(element: HTMLElement | null): boolean {
   if (!element?.isConnected) return false;
   if (element.tabIndex < 0 && !element.hasAttribute("tabindex")) element.setAttribute("tabindex", "-1");
-  element.focus();
+  restoring = true;
+  try {
+    element.focus();
+  } finally {
+    restoring = false;
+  }
   return document.activeElement === element || element.contains(document.activeElement);
 }
 

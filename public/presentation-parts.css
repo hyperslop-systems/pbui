@@ -253,7 +253,14 @@
   border: var(--pbui-border-firm, 1.5px solid #1f2430);
   border-radius: var(--pbui-radius, 2px);
   box-shadow: var(--pbui-shadow, 0 2px 8px rgba(31, 36, 48, 0.18));
-  pointer-events: none; /* non-interactive v1: the card must not eat hover */
+  /*
+   * The card receives pointer events so overflowing content stays REACHABLE
+   * (PR #20 review): wheel and scrollbar must work when help exceeds the
+   * max height. Non-interactive still holds in the focus sense — nothing in
+   * the card is focusable and it never steals focus; moving the pointer into
+   * it keeps it open, leaving it closes it (see createPbui.tsx).
+   */
+  pointer-events: auto;
 }
 
 [data-part="help-item"] + [data-part="help-item"] {
