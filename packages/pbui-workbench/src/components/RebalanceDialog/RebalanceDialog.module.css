@@ -206,6 +206,10 @@
 }
 .previewPane {
   position: fixed;
+  /* The inline width/height ARE the proposed geometry; the border must sit
+   * inside them, or every outline runs 4px past its rectangle in hosts
+   * without a global border-box reset (PR #20 review). */
+  box-sizing: border-box;
   border: 2px dashed var(--pbui-tone-field);
   background: transparent;
   display: flex;
