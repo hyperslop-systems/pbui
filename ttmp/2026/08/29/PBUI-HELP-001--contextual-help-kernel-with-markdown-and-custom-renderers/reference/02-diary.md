@@ -11,6 +11,12 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://src/components/ContextHelp/builtins.tsx
+      Note: Five built-in help renderers and payload contracts (commit f57ed5a)
+    - Path: repo://src/components/ContextHelp/markdown.tsx
+      Note: Bounded help Markdown subset, no HTML path (commit f57ed5a)
+    - Path: repo://src/components/ContextHelp/registry.ts
+      Note: defineHelpItem and renderer registry (commit f57ed5a)
     - Path: repo://src/presentation/actions/resolve.freeze.test.ts
       Note: Phase 1 freeze fixtures for the resolver front half (commit f9f6b83)
     - Path: repo://src/presentation/actions/resolve.ts
@@ -31,6 +37,7 @@ LastUpdated: 2026-08-29T14:21:00-04:00
 WhatFor: Record the implementation journey of PBUI-HELP-001 so reviewers and future implementers can follow what changed, why, and how to validate it.
 WhenToUse: Read when reviewing the help kernel implementation or continuing work on this ticket.
 ---
+
 
 
 
@@ -236,3 +243,58 @@ Built `src/presentation/help/` as the additive sibling of the action kernel: typ
 
 ### Technical details
 - Help rules carry `kind: "rule"` for forward compatibility with a possible family/dynamic contribution kind, mirroring the action contribution union shape.
+
+## Step 5: Phase 4 — built-in and custom renderers
+
+Built `src/components/ContextHelp/` (registry, bounded Markdown, five built-ins, `HelpContent`) as the React half of the help system. 17 new tests bring the total to 234; typecheck clean.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Execute Phase 4: renderer registry, safe Markdown subset, text/fields/notice/actions built-ins, custom renderer fixture.
+
+**Inferred user intent:** Products should render help without touching HTML, and typed custom renderers should be provably wired.
+
+**Commit (code):** f57ed5a — "PBUI-HELP-001: built-in and custom help renderers (Phase 4)"
+
+### What I did
+- `registry.ts`: `HelpRendererProps<Payload, Values, ProductFacts>`, `defineHelpItem` (bundles kind + Renderer + `create` so a kind can't be misspelled), `createHelpRendererRegistry` (duplicate kinds throw).
+- `markdown.tsx`: `splitHelpMarkdownBlocks` + `HelpMarkdown` — the pbui-chat subset minus `[[type:id|label]]` mentions; paragraphs/breaks/strong/inline-code/fences/lists/headings; everything becomes text nodes.
+- `builtins.tsx`: `textHelp`, `markdownHelp`, `fieldsHelp` (dl), `noticeHelp` (tone as data + text), `actionsHelp` (informational rows; `ActionsHelpEntry` is the structural slice of `ResolvedAction` so `resolution.actions` passes straight through), `builtinHelpItems`.
+- `HelpContent.tsx`: renders a resolution; unknown kinds `console.warn` and omit that item only.
+- Tests: `markdown.test.tsx` (block splitting, inline rendering, **no raw HTML**, mention syntax stays literal) and `renderers.test.tsx` (registry, every built-in's semantic structure, title part, custom renderer receiving payload + provenance, no buttons in v1 actions).
+- Exported via `components/ContextHelp/index.ts` → `components/index.ts`. Checked task `gq7b`.
+
+### Why
+- §8: the renderer registry is React-specific and must live outside the pure selector; §9.2: reuse the proven bounded parser rather than adding react-markdown.
+
+### What worked
+- Copying the pbui-chat block splitter verbatim (minus mentions) meant the Markdown tests passed immediately — the parser was already battle-tested.
+
+### What didn't work
+- `pnpm typecheck` caught two errors the test run didn't: (1) `HelpRenderer = ComponentType<HelpRendererProps>` — the DEFAULT type args collapse, because `PresentationReference<object>` resolves to `never` (`PresentationType<object> = Extract<keyof object, string> = never`), producing `TS2769 … 'PresentationReference<Values>' is not assignable to type 'never'` at the `<Renderer …>` call; fixed by erasing with `ComponentType<HelpRendererProps<any, any, any>>`. (2) An unused `type Values` in the test (TS6196).
+- First draft passed `data-part` directly to the `Text` foundation component, which has a closed prop set — wrapped in plain elements instead (3 sites).
+
+### What I learned
+- `PresentationValues = object` means "the default generic" is a trap for any erased-component type in this codebase; `any`-erasure with a comment is the working pattern.
+- Vitest passing while tsc fails is routine here (vitest transpiles without typechecking) — both gates must run every phase.
+
+### What was tricky to build
+- **Payload variance at the registry boundary.** `HelpItemDefinition<TextPayload>` is not assignable to `HelpItemDefinition<unknown>` (contravariant `Renderer` prop), so the registry accepts `HelpItemDefinition<any>` (`AnyHelpItemDefinition`). The precision lives in the definition values authors touch; the registry is deliberately erased.
+- **Typing the actions payload without generic contagion.** `ActionsHelpPayload` as `ResolvedAction<Values, Verb>[]` would make every renderer generic over product types. `ActionsHelpEntry` (action/label/description/danger/status) is the structural subset — `ResolvedAction` satisfies it, products just pass `resolution.actions`.
+
+### What warrants a second pair of eyes
+- The `no-explicit-any` suppressions in `registry.ts` — deliberate erasure, but worth a style check.
+- I did NOT ship an `escapeMarkdown` helper although the design's §19 example references one: the subset has no backslash-escape syntax, so a correct escaper can't exist without extending the grammar. The Markdown doc comment and the builtins steer user-controlled values to the fields item instead.
+
+### What should be done in the future
+- If pbui-chat later consumes `splitHelpMarkdownBlocks` (the design suggests it may), delete its private copy of the splitter.
+- Decide whether to add backslash escaping to the subset so an honest `escapeMarkdown` becomes possible.
+
+### Code review instructions
+- Read `builtins.tsx` top to bottom (payload contracts are the API), then `markdown.tsx` against `packages/pbui-chat/src/markdown/PbuiMarkdown/PbuiMarkdown.tsx` to confirm the subset is a strict reduction.
+- Validate: `pnpm test` (234), `pnpm typecheck`; the no-raw-HTML test in `markdown.test.tsx` is the security-relevant one.
+
+### Technical details
+- Built-in kinds: `help.text`, `help.markdown`, `help.fields`, `help.notice`, `help.actions`. Parts: `help-item`, `help-title`, `help-text`, `help-markdown(-list/-code)`, `help-fields`/`help-field`, `help-notice`, `help-actions`/`help-action(-reason)`.

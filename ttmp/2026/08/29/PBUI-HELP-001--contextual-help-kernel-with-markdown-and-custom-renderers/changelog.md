@@ -46,3 +46,12 @@ Phase 3: pure help kernel — defineHelp, createHelpRegistry, additive resolveHe
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/help/resolve.ts — New additive resolver
 
+
+## 2026-08-29
+
+Phase 4: renderer registry, bounded markdown, five built-ins, HelpContent; task gq7b done (commit f57ed5a)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/components/ContextHelp/builtins.tsx — Built-in renderers
+
