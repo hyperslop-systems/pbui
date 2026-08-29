@@ -28,3 +28,12 @@ Phase 1: freeze fixtures for resolver front-half (when-conditions, nearest scope
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/actions/resolve.freeze.test.ts — New freeze fixtures
 
+
+## 2026-08-29
+
+Phase 2: extracted matchContext into src/presentation/context/; action resolver refactored with traces byte-identical; task adx6 done (commit 9ae5bb9)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/context/match.ts — New shared matcher
+

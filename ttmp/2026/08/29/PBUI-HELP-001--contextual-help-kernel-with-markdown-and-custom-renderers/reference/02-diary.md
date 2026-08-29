@@ -15,12 +15,17 @@ RelatedFiles:
       Note: Phase 1 freeze fixtures for the resolver front half (commit f9f6b83)
     - Path: repo://src/presentation/actions/resolve.ts
       Note: Resolver whose front half the fixtures freeze and Phase 2 extracts
+    - Path: repo://src/presentation/context/match.ts
+      Note: Shared contextual matcher extracted in Phase 2 (commit 9ae5bb9)
+    - Path: repo://src/presentation/context/types.ts
+      Note: ContextTarget/ContextMatch contracts (commit 9ae5bb9)
 ExternalSources: []
 Summary: Implementation diary for the PBUI contextual help kernel — phase-by-phase narrative, failures, tricky parts, and review instructions.
 LastUpdated: 2026-08-29T14:21:00-04:00
 WhatFor: Record the implementation journey of PBUI-HELP-001 so reviewers and future implementers can follow what changed, why, and how to validate it.
 WhenToUse: Read when reviewing the help kernel implementation or continuing work on this ticket.
 ---
+
 
 
 # Diary
@@ -126,3 +131,51 @@ Audited `resolve.test.ts` (498 lines) against what the Phase 2 extraction could 
 
 ### Technical details
 - Trace contract worth remembering: invocation rejects use `stage: "scope"` (not a dedicated stage), and type-unreachable contributions are deliberately traceless.
+
+## Step 3: Phase 2 — extract the shared contextual matcher
+
+Created `src/presentation/context/` with the `ContextTarget`/`ContextMatch` contracts and a pure `matchContext` function, then refactored `resolveActions` to call it for every non-`"*"` contribution. The action resolver's output and trace are byte-identical: all 199 core tests (including the Phase 1 freeze fixtures) and the datalab golden suite pass unchanged.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Execute Phase 2: extract `matchContext` per design doc §6.1 without changing action behavior.
+
+**Inferred user intent:** One shared applicability model for actions and help, so the two kernels can never drift.
+
+**Commit (code):** 9ae5bb9 — "PBUI-HELP-001: extract shared contextual matcher (Phase 2)"
+
+### What I did
+- Added `context/types.ts` (`ContextTarget`, `ContextMatch`, `ContextMatchResult` with staged rejections) and `context/match.ts` (`matchContext`, exported `activeScope`).
+- Refactored `resolve.ts`: removed the per-query `ancestorDistance` map and the local `activeScope`; the loop now calls `matchContext` and interleaves the invocation filter using the rejection's stage.
+- Added `context/match.test.ts` (11 tests): exact-only concrete match, shortest ancestor distance, nearest active scope, inactive-scope reject, condition/predicate parity with the action kernel (including `all` first-failure and fail-closed unknown predicates), provenance completeness, isolated undeclared types.
+- Checked ticket task `adx6`.
+
+### Why
+- Design §6.1/§6.2: help must reuse the applicability front half without a rewrite, and the refactor is only acceptable with unchanged action behavior.
+
+### What worked
+- The Phase 1 freeze fixtures did their job: they passed unchanged through the refactor, which is the proof the extraction preserves trace shape.
+
+### What didn't work
+- Nothing failed in this phase; tests were green on the first run after the refactor.
+
+### What was tricky to build
+- **Trace order vs. stage order.** `matchContext` checks type → scope, but the resolver traces the invocation filter BETWEEN those stages: a type-reachable contribution that fails both invocation and scope must trace `invocation-not-allowed`, not `no-active-scope`. Calling the matcher and acting immediately on a scope rejection would have flipped that. Solution: hold the rejection (`scope = null`), run the invocation check, then emit the scope reject — the matcher call site in `resolve.ts` documents this.
+- **Action conditions are not matcher conditions.** A failing action `when` yields a *status* (`unavailable`/`hidden`) that stays in the override competition; `matchContext`'s condition stage is a binary reject. So the action caller passes no `when` and keeps its own status evaluation; only help will use the matcher's condition stage. This is written into `ContextTarget.when`'s doc comment.
+- **The `"*"` family target** is not expressible as a `ContextTarget` (help forbids wildcards in v1), so the resolver keeps an inline path for it using the exported `activeScope`.
+
+### What warrants a second pair of eyes
+- The `distance = 0; scope = null` placeholder branch in `resolve.ts` when the matcher rejects on scope — `distance` is unread on every rejected path, but a future edit could read it; the comment marks it.
+- Perf: the per-query `ancestorDistance` map became `graph.distance()` calls (a linear `find` over the cached BFS ancestor list per contribution). Ancestor lists are tiny (≤5 in every product graph here), but a reviewer should confirm this is acceptable on the datalab grid path.
+
+### What should be done in the future
+- If a product ever has deep type graphs plus hundreds of contributions, memoize distance per (concreteType, declaredType) inside the matcher call site.
+
+### Code review instructions
+- Start at `src/presentation/context/match.ts` (pure, ~110 lines), then the refactored loop in `src/presentation/actions/resolve.ts` (the comment block explains the interleave).
+- Validate: `pnpm test` (199), `pnpm typecheck`, `pnpm test` in `packages/datalab-ui` (532 pass + 1 pre-existing baseline failure).
+
+### Technical details
+- `matchContext` rejection reasons: type-stage reasons are prose; scope stage is exactly `"no-active-scope"`; condition stage carries the failure's `because` for `unavailable`, else its kind (`"inapplicable"`/`"hidden"`).
