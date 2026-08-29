@@ -4,6 +4,13 @@ export { createPbui, presentationTypes } from "./createPbui";
  * presentation runtime; nothing in the kernel imports React at runtime.
  */
 export * from "./actions";
+/*
+ * The pure contextual help kernel and the shared matcher it rides on
+ * (PBUI-HELP-001). Additive sibling of the action kernel; no React at runtime.
+ */
+export * from "./help";
+export { activeScope, matchContext } from "./context/match";
+export type { ContextMatch, ContextMatchResult, ContextTarget } from "./context/types";
 export { resolveAcceptance } from "./translators/resolve";
 export type {
   AcceptanceOption,
