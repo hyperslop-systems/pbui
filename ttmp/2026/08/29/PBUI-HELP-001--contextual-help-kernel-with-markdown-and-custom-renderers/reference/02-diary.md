@@ -11,6 +11,8 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://public/presentation-parts.css
+      Note: Context-help part styling (commit bcd9c2c)
     - Path: repo://src/components/ContextHelp/builtins.tsx
       Note: Five built-in help renderers and payload contracts (commit f57ed5a)
     - Path: repo://src/components/ContextHelp/markdown.tsx
@@ -25,6 +27,10 @@ RelatedFiles:
       Note: Shared contextual matcher extracted in Phase 2 (commit 9ae5bb9)
     - Path: repo://src/presentation/context/types.ts
       Note: ContextTarget/ContextMatch contracts (commit 9ae5bb9)
+    - Path: repo://src/presentation/createPbui.help.test.tsx
+      Note: Runtime surface tests (commit bcd9c2c)
+    - Path: repo://src/presentation/createPbui.tsx
+      Note: Runtime help wiring — options, provider state, hover/focus scheduling, ContextHelp surface (commit bcd9c2c)
     - Path: repo://src/presentation/help/registry.ts
       Note: Fail-fast help registry (commit 2125f11)
     - Path: repo://src/presentation/help/resolve.ts
@@ -37,6 +43,7 @@ LastUpdated: 2026-08-29T14:21:00-04:00
 WhatFor: Record the implementation journey of PBUI-HELP-001 so reviewers and future implementers can follow what changed, why, and how to validate it.
 WhenToUse: Read when reviewing the help kernel implementation or continuing work on this ticket.
 ---
+
 
 
 
@@ -298,3 +305,55 @@ Built `src/components/ContextHelp/` (registry, bounded Markdown, five built-ins,
 
 ### Technical details
 - Built-in kinds: `help.text`, `help.markdown`, `help.fields`, `help.notice`, `help.actions`. Parts: `help-item`, `help-title`, `help-text`, `help-markdown(-list/-code)`, `help-fields`/`help-field`, `help-notice`, `help-actions`/`help-action(-reason)`.
+
+## Step 6: Phase 5 — the runtime hover/focus surface
+
+Wired optional `help` + `helpRenderers` into `createPbui`: Provider-held help state with lazy `openHelp`/`closeHelp`, Presentation hover/focus scheduling (350ms pointer delay, immediate focus), the one non-interactive `ContextHelp` tooltip, `aria-describedby` while open, Escape via the surface stack, menu-supersedes-help, and parts CSS. 9 new runtime tests; 243 total; `pnpm build` and datalab both green.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Execute Phase 5: runtime integration per design doc §12–§14 with the §18 runtime test list.
+
+**Inferred user intent:** Hovering or focusing any presentation should show contextual help, without costing anything when a product doesn't opt in.
+
+**Commit (code):** bcd9c2c — "PBUI-HELP-001: runtime hover/focus help surface (Phase 5)"
+
+### What I did
+- `CreatePbuiOptions` gains `help?`/`helpRenderers?`; `PbuiHelpState` carries reference, resolution, snapshot, anchor element, and trigger.
+- Provider: `openHelp` resolves via `snapshotFor({subject, invocation: "introspection"})` then `help.resolve(...)`; an EMPTY resolution opens nothing. `closeHelp(anchor?)` ignores closes from elements that don't own the current card. `openMenu` clears help.
+- Presentation: extended the existing enter/leave/focus/blur handlers (no wrapper element, so SVG/composite markup stays valid); `helpEnabled` guards every branch; a `useRef` timer with unmount cleanup; a ref on the rendered Tag so `aria-describedby={helpSurfaceId}` appears only when `pbui.help.anchor` is this element.
+- `ContextHelp`: fixed-position card near the anchor, `role="tooltip"`, `pointer-events: none`, id from `useId`, Escape through `useEscapeSurface`, renders `HelpContent` with the stored snapshot.
+- CSS: `context-help` card mirroring the menu's pane/border tokens at z-index 110, plus item/fields/notice/markdown/actions part rules appended to `public/presentation-parts.css`.
+- Tests (`createPbui.help.test.tsx`): no-help unchanged-behavior, lazy resolve counting (0 on render, 1 after exactly 350ms), leave-cancels-pending, hover/focus identical content, aria-describedby lifecycle, non-interactive surface, Escape close, menu-closes-help, empty-resolution-no-card.
+
+### Why
+- §12.2/§2.3: help must reuse action introspection facts and stay off the render path (the datalab grid cost boundary); §13: focus is the reliable accessible path, so it opens immediately while hover is debounced.
+
+### What worked
+- All 234 pre-existing tests passed untouched after the Presentation edits — the `helpEnabled` guard held the no-op contract without any test churn.
+- `vi.spyOn(helpRegistry, "resolve")` gave exact lazy-resolution counting through the public API.
+
+### What didn't work
+- Nothing failed at the gates this phase; the first full run of the new suite was green.
+
+### What was tricky to build
+- **Anchor-guarded closes.** With one shared card and unguarded `closeHelp()`, a stale `mouseleave` from element A (firing after focus opened help on element B) would dismiss B's card. Solution: `closeHelp(anchor?)` compares the caller's element to `state.anchor` inside the state updater and ignores mismatches.
+- **`aria-describedby` per element with one shared surface.** The relation must appear on exactly the presentation whose card is open. Each Presentation keeps an element ref and compares it to `pbui.help.anchor` at render; the provider-state change re-renders consumers (same cost model as the existing `menu` state, so no new cost class).
+- **Timer hygiene under React strict/unmount.** The pointer timer lives in a `useRef` with `useEffect(() => cancel, [])` cleanup so an unmounted grid cell can't open help posthumously.
+
+### What warrants a second pair of eyes
+- Context-value churn: `help` state now invalidates the memoized context value on open/close, re-rendering all `Presentation` consumers — identical to `menu`/`mouseDoc` behavior today, but a reviewer should confirm that's acceptable on large datalab grids (hover-open happens at most once per 350ms rest).
+- The card's fixed positioning clamps to `window.innerWidth - 320`/`innerHeight - 60` — simplistic versus the menu's clamp; fine for v1, worth a look on small viewports.
+- `ContextHelp` claims Escape via the surface stack while open; a hover card owning Escape over an underlying dialog is debatable (though it closes on blur/leave first in practice).
+
+### What should be done in the future
+- Touch long-press, interactive/pinned help, and hover-into-card persistence are all explicitly deferred (§4); an interactive surface would need the focus-return machinery the menu uses.
+
+### Code review instructions
+- Read the Phase 5 diff in `src/presentation/createPbui.tsx` top to bottom (options → provider callbacks → Presentation handlers → `ContextHelp`), then `createPbui.help.test.tsx` against design doc §18's runtime list.
+- Validate: `pnpm test` (243), `pnpm typecheck`, `pnpm build`, datalab suite (532 + 1 pre-existing).
+
+### Technical details
+- Pointer delay constant: `HELP_POINTER_DELAY_MS = 350` in `createPbui.tsx`. Surface id from `useId` per Provider, so two pbui roots on one page cannot collide.

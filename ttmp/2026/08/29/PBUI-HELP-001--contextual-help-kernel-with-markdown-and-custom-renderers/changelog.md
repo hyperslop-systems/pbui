@@ -55,3 +55,12 @@ Phase 4: renderer registry, bounded markdown, five built-ins, HelpContent; task 
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/components/ContextHelp/builtins.tsx — Built-in renderers
 
+
+## 2026-08-29
+
+Phase 5: optional runtime surface — lazy openHelp/closeHelp, 350ms hover delay, instant focus, aria-describedby, Escape, menu supersedes help, parts CSS (commit bcd9c2c)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/createPbui.tsx — Runtime integration
+
