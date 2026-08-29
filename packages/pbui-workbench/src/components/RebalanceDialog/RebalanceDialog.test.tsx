@@ -249,3 +249,46 @@ describe("RebalanceDialog", () => {
     );
   });
 });
+
+describe("live preview (Phase 6)", () => {
+  test("selecting a repair renders its panes on the surface without touching the document", () => {
+    const wb = brokenWorkbench();
+    const before = wb.store.getState().document;
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Rebalance />
+      </>,
+    );
+    act(() => {
+      wb.perform({ kind: "rebalance.open" });
+    });
+    // The recommended card is selected on open; it proposes a real repair,
+    // so the read-only overlay appears with one outline per pane.
+    const overlay = baseElement.querySelector('[data-part="rebalance-preview"]');
+    expect(overlay).not.toBeNull();
+    expect(overlay?.getAttribute("aria-hidden")).toBe("true");
+    expect(overlay?.children.length).toBe(2);
+    // Preview is never a mutation: the protocol document is untouched.
+    expect(wb.store.getState().document).toBe(before);
+  });
+
+  test("the baseline previews nothing — the surface itself is that preview", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+    });
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Rebalance />
+      </>,
+    );
+    act(() => {
+      wb.perform({ kind: "rebalance.open" });
+    });
+    // Healthy layout: LEAVE AS IS is recommended and selected; no overlay.
+    expect(baseElement.querySelector('[data-part="rebalance"]')).not.toBeNull();
+    expect(baseElement.querySelector('[data-part="rebalance-preview"]')).toBeNull();
+  });
+});

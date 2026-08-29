@@ -196,3 +196,24 @@
 .stroke4 { stroke: var(--pbui-type-t); }
 .stroke5 { stroke: var(--pbui-cat-3); }
 .stroke6 { stroke: var(--pbui-tone-neutral); }
+
+/* Phase 6 live preview: proposed pane outlines over the real Surface. */
+.preview {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+.previewPane {
+  position: fixed;
+  border: 2px dashed var(--pbui-tone-field);
+  background: transparent;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+.previewLabel {
+  font-size: var(--pbui-fs-tiny);
+  color: var(--pbui-tone-field);
+  padding: 1px 4px;
+}
