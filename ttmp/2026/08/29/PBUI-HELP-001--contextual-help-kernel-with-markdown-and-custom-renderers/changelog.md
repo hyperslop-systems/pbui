@@ -73,3 +73,12 @@ Phase 6: datalab field help + custom renderer + action-parity test, workbench mo
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/packages/datalab-ui/src/pbui/help.tsx — Product proof
 
+
+## 2026-08-29
+
+Fix round: focus opens help only under keyboard modality (menu focus-return no longer reopens the card), Chip's implicit label title dropped (native tooltip dueled the help card), PR #20 review fix box-sizing on rebalance previewPane (commits 360c52e, b36270a)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/createPbui.tsx — Input-modality tracking for focus help
+

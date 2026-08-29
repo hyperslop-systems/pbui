@@ -27,6 +27,8 @@ RelatedFiles:
       Note: Bounded help Markdown subset, no HTML path (commit f57ed5a)
     - Path: repo://src/components/ContextHelp/registry.ts
       Note: defineHelpItem and renderer registry (commit f57ed5a)
+    - Path: repo://src/components/atoms/Chip/Chip.tsx
+      Note: Implicit label title removed — dueled the help card (commit 360c52e)
     - Path: repo://src/presentation/actions/resolve.freeze.test.ts
       Note: Phase 1 freeze fixtures for the resolver front half (commit f9f6b83)
     - Path: repo://src/presentation/actions/resolve.ts
@@ -51,6 +53,7 @@ LastUpdated: 2026-08-29T14:21:00-04:00
 WhatFor: Record the implementation journey of PBUI-HELP-001 so reviewers and future implementers can follow what changed, why, and how to validate it.
 WhenToUse: Read when reviewing the help kernel implementation or continuing work on this ticket.
 ---
+
 
 
 
@@ -420,3 +423,56 @@ Shipped the product proof and the handoff artifacts: Datalab field help with the
 
 ### Technical details
 - Ticket commits, in order: f9f6b83 (P1 freeze), 9ae5bb9 (P2 matcher), 2125f11 (P3 kernel), f57ed5a (P4 renderers), bcd9c2c (P5 runtime), 12f5e4d (P6 proof), plus diary/docs commits between phases.
+
+## Step 8: Field-report fixes — focus-return reopening, native tooltip duel, PR #20 review
+
+The user tried the running demos and reported two real defects, and separately asked to address the Codex review finding on PR #20. All three fixed, tested, and pushed.
+
+### Prompt Context
+
+**User prompt (verbatim):** "after I select an action (like send email on ada lovelace in storybook), the help after that is open and I need to rehover over the object to hide it. I also get an overlay of I guess the default browser hover when going over a field in datalab for example." — followed mid-turn by: "also address code review issue regarding rebalance: https://github.com/hyperslop-systems/pbui/pull/20"
+
+**Assistant interpretation:** Fix (1) the help card reopening/sticking after performing a menu action, (2) the native browser tooltip stacking on the help card over datalab fields, and (3) the open review finding on PR #20.
+
+**Inferred user intent:** Make the shipped help feature feel right in real use, and keep the PR review clean.
+
+**Commit (code):** 360c52e — "PBUI-HELP-001: keyboard-only focus help; drop Chip's implicit title"; b36270a — "PBUI-REBALANCE-1: include the preview border in proposed dimensions"
+
+### What I did
+- **Focus-return bug:** traced to `ObjectMenu`'s `queueFocusReturn` — closing the menu refocuses the invoker programmatically, and the Presentation `onFocus` help path treated that like keyboard focus, opening a card that then persisted (nothing subsequently blurred). Fix: page-wide input-modality tracking in `createPbui.tsx` (capture-phase `keydown` sets keyboard, `pointerdown` clears it; installed once from the first help-enabled Provider, module state like `surfaces.ts`); `onFocus` opens help only under keyboard modality.
+- **Native tooltip duel:** the pbui `Chip` atom rendered `title={title ?? label}`, giving every chip a browser tooltip of its own label under the help card. Dropped the implicit default; only an explicit `title` renders (FieldChip's missing-field warning title is explicit and survives).
+- **PR #20 (P2 finding):** `.previewPane` in `pbui-workbench`'s `RebalanceDialog.module.css` sets inline width/height as the proposed geometry but drew its 2px dashed border outside them under default `content-box`. Added `box-sizing: border-box` with a comment naming the review.
+- Tests: two new regression tests (menu action round-trip does not reopen help; pointer-click on the presentation opens nothing while hover still works), and keyboard-modality setup (`byKeyboard()`) added to every focus-opens test. Core 245 pass, datalab 536+1 baseline, pbui-workbench 205 pass.
+- Pushed the branch (8cb44a5..b36270a) — which also lands the whole PBUI-HELP-001 series on PR #20, since the PR tracks `task/use-optkit`.
+
+### Why
+- The focus contract said "focus opens help immediately" but the honest contract is ":focus-visible-shaped": keyboard focus asked for help; programmatic and pointer-borne focus did not.
+- A dumb context-free `Chip` cannot know a help card exists, so the fix belonged at the default (`title ?? label` was marginal value duplicating the visible label) rather than in a datalab workaround.
+
+### What worked
+- The modality tracker fixed a second latent annoyance for free: clicking a chip no longer opens the card instantly around the 350ms rest delay.
+- jsdom testing was clean because the tracker listens on `window` — `fireEvent.keyDown(window, …)`/`fireEvent.pointerDown(el)` drive it deterministically, where `:focus-visible` itself would have been untestable.
+
+### What didn't work
+- Nothing failed at the gates; the defects themselves were the failures, found only by human use — neither was covered by the §18 runtime test list (it never combines "perform an action" with "help state afterwards").
+
+### What was tricky to build
+- **Choosing where to detect programmatic focus.** No event property distinguishes `element.focus()` from Tab. Options were suppressing the next focus after menu close (couples menu to help), `:focus-visible` (untestable in jsdom, inconsistent for programmatic focus), or modality tracking (the focus-visible polyfill approach) — chose the last; it is module state for the same page-wide reason as the escape-surface stack.
+- **Keyboard menu selection still reopens help** (Enter on a menu item keeps keyboard modality, so the focus return shows the card). Left deliberately: for a keyboard user the card re-describing the object they returned to is arguably correct, and suppressing it would need the menu-to-help coupling rejected above.
+
+### What warrants a second pair of eyes
+- The `Chip` title default removal is a small cross-product behavior change: any consumer that RELIED on the implicit label tooltip for truncated chips must now pass `title` explicitly. No in-repo consumer did.
+- The push added the full help series to PR #20, which was opened for the rebalance badge — the PR's scope grew because both ride `task/use-optkit`. If the reviewer expected a rebalance-only PR, the branch strategy is the thing to discuss, not the commits.
+
+### What should be done in the future
+- Reply on / resolve the PR #20 review thread (left to the user — outward-facing).
+- Consider a `HELP_POINTER_DELAY_MS`/behavior knob if products want focus-opens-always back.
+
+### Code review instructions
+- `src/presentation/createPbui.tsx`: the `trackInputModality` block and the `onFocus` guard; `createPbui.help.test.tsx`: the two new "surface interplay" tests.
+- `src/components/atoms/Chip/Chip.tsx`: the title line and its comment.
+- `packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.module.css`: `.previewPane`.
+- Validate: `pnpm test` (245) at root; `pnpm test` in `packages/pbui-workbench` (205); hover/click-through in the running Storybook (port 6006) and datalab demo (port 5175).
+
+### Technical details
+- Modality listeners are capture-phase on `window` so no `stopPropagation` in product code can starve them.
