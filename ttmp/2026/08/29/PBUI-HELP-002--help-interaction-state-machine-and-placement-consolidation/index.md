@@ -1,7 +1,7 @@
 ---
 Title: Help Interaction State Machine and Placement Consolidation
 Ticket: PBUI-HELP-002
-Status: active
+Status: review
 Topics:
     - frontend
     - pbui
@@ -13,10 +13,11 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: ""
-LastUpdated: 2026-08-29T19:03:17.650505424-04:00
+LastUpdated: 2026-08-29T19:17:32.57043295-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # Help Interaction State Machine and Placement Consolidation
 
