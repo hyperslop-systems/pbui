@@ -578,6 +578,12 @@ export function createPbui<
      * not configured every branch below is dead and the handlers behave
      * exactly as before.
      */
+    /*
+     * Holds the LAST rendered element and survives the ref callback's
+     * detach-with-null on unmount — the cleanup below needs the element
+     * identity after React has already handed the ref null.
+     */
+    const elementRef = useRef<Element | null>(null);
     const helpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelHelpTimer = () => {
       if (helpTimer.current !== null) {
@@ -585,7 +591,23 @@ export function createPbui<
         helpTimer.current = null;
       }
     };
-    useEffect(() => cancelHelpTimer, []);
+    /*
+     * Unmount closes this element's help as well as its pending timer
+     * (PR #20 review): a virtualized row can be dropped with the card open
+     * and no leave/blur ever firing, which would leave ContextHelp showing
+     * stale content anchored to a detached element. `closeHelp` compares the
+     * anchor inside its state updater, so the stable callback closes only a
+     * card this element owns.
+     */
+    const closeHelpStable = pbui.closeHelp;
+    useEffect(
+      () => () => {
+        cancelHelpTimer();
+        const element = elementRef.current;
+        if (element) closeHelpStable(element);
+      },
+      [closeHelpStable],
+    );
 
     const scheduleHelp = (anchor: Element) => {
       cancelHelpTimer();
@@ -595,7 +617,6 @@ export function createPbui<
       }, HELP_POINTER_DELAY_MS);
     };
 
-    const elementRef = useRef<Element | null>(null);
     const helpOpenHere = pbui.help !== null && pbui.help.anchor === elementRef.current;
     const tone = registry.toneFor(reference);
     const label = registry.labelFor(reference, pbui.environment);
@@ -768,7 +789,8 @@ export function createPbui<
     return (
       <Tag
         ref={(node: Element | null) => {
-          elementRef.current = node;
+          // Keep the last element through the null detach; see elementRef.
+          if (node !== null) elementRef.current = node;
         }}
         className={className}
         data-pbui="presentation"
@@ -1152,7 +1174,11 @@ export function createPbui<
 
     const box = state.anchor.getBoundingClientRect();
     const left = Math.max(0, Math.min(box.left, window.innerWidth - 320));
-    const top = Math.max(0, Math.min(box.bottom + 4, window.innerHeight - 60));
+    // Flush against the anchor, deliberately: any gap belongs to neither
+    // element, so a slow pointer crossing it would fire the anchor's
+    // mouseleave and close the card before its scrollbar is reachable
+    // (PR #20 review). Breathing room comes from the card's own padding.
+    const top = Math.max(0, Math.min(box.bottom, window.innerHeight - 60));
 
     return (
       <div

@@ -324,6 +324,28 @@ describe("surface interplay", () => {
     expect(fireEvent.keyDown(window, { key: "PageDown" })).toBe(true);
   });
 
+  test("unmounting the presentation closes its open card", () => {
+    const { pbui } = makePbui();
+    vi.useFakeTimers();
+    const view = (show: boolean) => (
+      <pbui.Provider onPerform={ignorePerform}>
+        {show && <pbui.Presentation reference={reference}>Ada</pbui.Presentation>}
+        <pbui.ContextHelp />
+      </pbui.Provider>
+    );
+    const { rerender } = render(view(true));
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Ada" }));
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+
+    // A virtualized collection drops the row: no mouseleave, no blur — the
+    // card must not linger anchored to a detached element.
+    rerender(view(false));
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
   test("clicking the presentation itself opens no card either", () => {
     const { pbui } = makePbui();
     vi.useFakeTimers();

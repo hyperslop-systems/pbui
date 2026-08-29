@@ -30,13 +30,15 @@ export function Chip({ label, tone, badge, strong = false, state, title }: ChipP
         .join(" ")}
       style={tone ? { borderLeftColor: tone } : undefined}
       /*
-       * Only an EXPLICIT title renders. The old `title ?? label` default gave
-       * every chip a native browser tooltip mirroring its visible label,
-       * which stacked on top of the contextual help card (PBUI-HELP-001) the
-       * moment products enabled help. A caller with a genuinely truncated
-       * value passes the full value as `title` deliberately.
+       * The label doubles as the native tooltip so a chip clipped by the
+       * label's ellipsis stays recoverable by pointer — most call sites pass
+       * no explicit title and rely on this (PR #20 review). A product whose
+       * contextual help card covers the same chip silences the native
+       * tooltip PER CALL SITE with `title=""` (datalab's FieldChip does);
+       * dropping the default globally would strip truncated chips bare in
+       * every product that never enables help.
        */
-      title={title}
+      title={title ?? label}
     >
       <span data-part="chip-label" className={styles.label}>
         {label}

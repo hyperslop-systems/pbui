@@ -41,7 +41,11 @@ export function FieldChip({ field: ref, testId }: { field: FieldRef; testId?: st
         title={
           missing
             ? `${ref.name} is not in the pipeline output — a step may have removed it`
-            : undefined
+            : // Silence the Chip label tooltip: the field's contextual help
+              // card (PBUI-HELP-001) opens on the same hover and the two
+              // would stack. The missing-field warning stays — it must read
+              // even where help is not mounted.
+              ""
         }
         badge={missing ? null : <TypeBadge type={field.type} />}
       />
