@@ -37,3 +37,12 @@ Phase 2: extracted matchContext into src/presentation/context/; action resolver 
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/context/match.ts — New shared matcher
 
+
+## 2026-08-29
+
+Phase 3: pure help kernel — defineHelp, createHelpRegistry, additive resolveHelp with ordering + duplicate-id errors; task w3lr done (commit 2125f11)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/help/resolve.ts — New additive resolver
+

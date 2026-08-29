@@ -19,12 +19,19 @@ RelatedFiles:
       Note: Shared contextual matcher extracted in Phase 2 (commit 9ae5bb9)
     - Path: repo://src/presentation/context/types.ts
       Note: ContextTarget/ContextMatch contracts (commit 9ae5bb9)
+    - Path: repo://src/presentation/help/registry.ts
+      Note: Fail-fast help registry (commit 2125f11)
+    - Path: repo://src/presentation/help/resolve.ts
+      Note: Additive help resolver (commit 2125f11)
+    - Path: repo://src/presentation/help/types.ts
+      Note: Help rule/item/resolution contracts (commit 2125f11)
 ExternalSources: []
 Summary: Implementation diary for the PBUI contextual help kernel — phase-by-phase narrative, failures, tricky parts, and review instructions.
 LastUpdated: 2026-08-29T14:21:00-04:00
 WhatFor: Record the implementation journey of PBUI-HELP-001 so reviewers and future implementers can follow what changed, why, and how to validate it.
 WhenToUse: Read when reviewing the help kernel implementation or continuing work on this ticket.
 ---
+
 
 
 
@@ -179,3 +186,53 @@ Created `src/presentation/context/` with the `ContextTarget`/`ContextMatch` cont
 
 ### Technical details
 - `matchContext` rejection reasons: type-stage reasons are prose; scope stage is exactly `"no-active-scope"`; condition stage carries the failure's `because` for `unavailable`, else its kind (`"inapplicable"`/`"hidden"`).
+
+## Step 4: Phase 3 — the pure help kernel
+
+Built `src/presentation/help/` as the additive sibling of the action kernel: typed exact/inherited rule factories, a fail-fast registry, and a resolver that rides `matchContext` for applicability and then accumulates every matching rule's items with provenance and deterministic ordering. 18 new tests; 217 total, typecheck clean.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Execute Phase 3: help IDs, factories, registry validation, and the additive resolver per design doc §§7, 11, 15.
+
+**Inferred user intent:** A working pure help kernel so renderers and runtime can layer on top in P4/P5.
+
+**Commit (code):** 2125f11 — "PBUI-HELP-001: pure help kernel (Phase 3)"
+
+### What I did
+- Added `help/types.ts` (HelpRuleId/HelpItemId/HelpKind, `HelpItem`, exact/inherited rules with `kind: "rule"`, `ResolvedHelpItem` with provenance, `HelpResolution`), `help/define.ts` (`defineHelp` mirroring `defineActions`), `help/resolve.ts` (`resolveHelp` — matcher, only-available `test`, item validation, duplicate-id rejection, five-key sort), `help/registry.ts` (`createHelpRegistry` with duplicate/unknown-type/scope/predicate/priority validation), `help/index.ts`.
+- Exported the help kernel plus `matchContext`/`ContextTarget` from `src/presentation/index.ts`.
+- Tests: `registry.test.ts` (7 construction-failure cases) and `resolve.test.ts` (11 cases: accumulation, no-match, provenance, non-available when/test, exact narrowing, inherited original-reference, full ordering ladder, registration-order independence, duplicate/malformed items).
+- Checked ticket task `w3lr`.
+
+### Why
+- §7.2: additive composition with ordering-only precedence is the core semantic difference from actions; the ordering test encodes the ladder (`typeDistance` ↑, `scopeIndex` ↑, `priority` ↓, `order` ↑, `id` ↑) end to end.
+
+### What worked
+- Everything passed on the first full run after one import fix; reusing `InheritedRuleContext`/`ExactRuleContext` from the action kernel meant zero new context machinery.
+
+### What didn't work
+- Two small self-inflicted slips fixed before running: an over-clever `declare function` type helper for `HelpQuery` (replaced with a plain interface) and importing `Availability` from `./types` where it isn't re-exported (import from `../actions/availability`), plus a `../context` vs `./context` path in the index export.
+
+### What I learned
+- The `exactOptionalPropertyTypes`-style spreads (`...(rule.when !== undefined ? { when: rule.when } : {})`) used across the action kernel are required here too — passing `when: undefined` explicitly would violate the optional-property contracts.
+
+### What was tricky to build
+- **Duplicate-id policy.** The design offers diagnostic-and-omit or throw; it recommends throwing because help never resolves during ordinary render. I implemented throw with an error naming BOTH rule ids (first writer and second writer), since with additive composition across packages the collision report is only useful if it names both sides. `diagnostics` stays in `HelpResolution` as a reserved empty field.
+- **Registration-order independence without a competition ladder.** Actions get it from the partition ladder; help needs the final `id.localeCompare` tiebreaker to make sort order independent of rule iteration order by construction (two rules, same distance/scope/priority/order → id decides).
+
+### What warrants a second pair of eyes
+- The five-key sort comparator in `resolve.ts` — comparator bugs are classically silent.
+- `test` narrowing cast (`rule.test as (ctx: InheritedRuleContext…)`) copies the action resolver's pattern; confirm the comment justifying runtime-identical contexts is acceptable.
+
+### What should be done in the future
+- If products want non-fatal duplicate handling in production builds, populate `HelpResolution.diagnostics` behind an option instead of throwing.
+
+### Code review instructions
+- Read `help/resolve.ts` first (the semantics live there, ~140 lines), then `help/registry.ts` against `actions/registry.ts` for the validation parity, then the ordering test in `help/resolve.test.ts`.
+- Validate: `pnpm test` (217), `pnpm typecheck`.
+
+### Technical details
+- Help rules carry `kind: "rule"` for forward compatibility with a possible family/dynamic contribution kind, mirroring the action contribution union shape.
