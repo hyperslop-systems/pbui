@@ -13,7 +13,7 @@ import type { RebalanceConfig } from "./config";
 import { classify, layoutStats, TIERS, type GeneratorKind, type LayoutStats, type Tier } from "./measure";
 import { diagnose, type Diagnosis, type PropagateConfig } from "./propagate";
 import { newRepairContext, repairPass } from "./repairPass";
-import { stratBalance, stratProject, stratRipple, stratSparse, type RepairContext, type Strategy, type StrategyConfig } from "./strategies";
+import { stratBalance, stratProject, stratRelax, stratRipple, stratSparse, type RepairContext, type Strategy, type StrategyConfig } from "./strategies";
 import { algoRebuild, algoReshape, emitBinary, type RebuildTarget, type StructuralConfig } from "./structural";
 import type { TraceLine } from "./trace";
 
@@ -103,6 +103,9 @@ export const GENERATORS: GeneratorSpec[] = [
   { id: "sparse", label: "SPARSE", note: "fewest donors", kind: "weights", strategy: stratSparse },
   { id: "project", label: "PROJECT", note: "closest in L2", kind: "weights", strategy: stratProject },
   { id: "balance", label: "BALANCE", note: "every split 1/n", kind: "weights", strategy: stratBalance },
+  // Opt-in (textbook §7): a nonzero gamma changes layouts that are not
+  // broken, so only TIDY and ANYTHING enable it by default.
+  { id: "relax", label: "RELAX", note: "displacement", kind: "weights", strategy: stratRelax },
   {
     id: "reshape-1",
     label: "RESHAPE",
@@ -170,6 +173,7 @@ export function buildSlate(input: RebalanceInput, cfg: RebalanceConfig): Rebalan
       hystPx: cfg.hystPx,
       donorOrder: gen.kind === "weights" ? (gen.donorOrder ?? cfg.donorOrder) : cfg.donorOrder,
       targetAspect: cfg.targetAspect,
+      relax: cfg.relax,
     };
     const trace: TraceLine[] = [];
     let tree: AnalysisNode;

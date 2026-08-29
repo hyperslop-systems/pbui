@@ -107,6 +107,21 @@ export function RebalanceSettings({ store = documentRebalanceConfigStore }: AppP
 
       <section>
         <Text size="small" strong>
+          relax energy (opt-in generator)
+        </Text>
+        <Text size="tiny" tone="faint">
+          A nonzero aspect pull acts on splits that are not broken — tidying, not repair.
+        </Text>
+        <div className={styles.grid}>
+          <NumberField label="relax: centre weight α" value={config.relax.alpha} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, alpha: v } })} />
+          <NumberField label="relax: size weight β" value={config.relax.beta} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, beta: v } })} />
+          <NumberField label="relax: aspect pull γ" value={config.relax.gamma} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, gamma: v } })} />
+          <NumberField label="relax: iterations" value={config.relax.iters} min={5} onCommit={(v) => patch({ relax: { ...config.relax, iters: Math.min(200, v) } })} />
+        </div>
+      </section>
+
+      <section>
+        <Text size="small" strong>
           candidate generators
         </Text>
         {GENERATORS.map((generator) => (

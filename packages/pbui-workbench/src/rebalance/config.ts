@@ -44,7 +44,25 @@ export interface RebalanceConfig {
   weights: { move: number; struct: number; aspect: number };
   /** Generator ids allowed to run; see `slate.ts` GENERATORS. */
   enabledGenerators: string[];
+  /**
+   * RELAX (textbook §7): projected gradient on a displacement energy.
+   * alpha weighs centre movement, beta size movement, gamma the pull toward
+   * targetAspect — NONZERO GAMMA ACTS ON HEALTHY SPLITS, which is a feature
+   * for tidying and a hazard for silent repair; that is why the generator is
+   * opt-in and gamma defaults to zero everywhere except TIDY.
+   */
+  relax: RelaxParams;
 }
+
+export interface RelaxParams {
+  alpha: number;
+  beta: number;
+  gamma: number;
+  iters: number;
+  step: number;
+}
+
+export const DEFAULT_RELAX: RelaxParams = { alpha: 1, beta: 1, gamma: 0, iters: 60, step: 0.12 };
 
 export type RebalanceProfileName = "careful" | "balanced" | "tidy" | "anything";
 
@@ -70,6 +88,7 @@ export const REBALANCE_PROFILES: Record<RebalanceProfileName, RebalanceProfile> 
       budget: { panesPct: 100, dispPx: 2600 },
       weights: { move: 1.6, struct: 6, aspect: 0.1 },
       enabledGenerators: ["ripple", "ripple-slack", "sparse", "project"],
+      relax: { ...DEFAULT_RELAX },
     },
   },
   balanced: {
@@ -81,6 +100,7 @@ export const REBALANCE_PROFILES: Record<RebalanceProfileName, RebalanceProfile> 
       budget: { panesPct: 100, dispPx: null },
       weights: { move: 1, struct: 3, aspect: 0.2 },
       enabledGenerators: ["ripple", "sparse", "project", "balance", "reshape-1", "reshape-4"],
+      relax: { ...DEFAULT_RELAX },
     },
   },
   tidy: {
@@ -91,7 +111,11 @@ export const REBALANCE_PROFILES: Record<RebalanceProfileName, RebalanceProfile> 
       allow: { reorder: true, topology: true, rebuild: true, overflow: true },
       budget: { panesPct: 100, dispPx: null },
       weights: { move: 0.25, struct: 0.3, aspect: 1.6 },
-      enabledGenerators: ["project", "balance", "reshape-4", "rebuild-grid", "rebuild-master", "rebuild-columns"],
+      // TIDY is the one profile where RELAX runs by default, WITH the
+      // aspect term: it is the "optimise the result" posture, and a nonzero
+      // gamma acting on healthy splits is exactly what tidy means.
+      enabledGenerators: ["relax", "project", "balance", "reshape-4", "rebuild-grid", "rebuild-master", "rebuild-columns"],
+      relax: { ...DEFAULT_RELAX, gamma: 1 },
     },
   },
   anything: {
@@ -114,7 +138,9 @@ export const REBALANCE_PROFILES: Record<RebalanceProfileName, RebalanceProfile> 
         "rebuild-master",
         "rebuild-columns",
         "rebuild-dwindle",
+        "relax",
       ],
+      relax: { ...DEFAULT_RELAX },
     },
   },
 };
@@ -173,5 +199,12 @@ export function normalizeConfig(partial: unknown): RebalanceConfig {
     enabledGenerators: Array.isArray(p.enabledGenerators)
       ? p.enabledGenerators.filter((g): g is string => typeof g === "string")
       : base.enabledGenerators,
+    relax: {
+      alpha: num(p.relax?.alpha, base.relax.alpha),
+      beta: num(p.relax?.beta, base.relax.beta),
+      gamma: num(p.relax?.gamma, base.relax.gamma),
+      iters: num(p.relax?.iters, base.relax.iters),
+      step: num(p.relax?.step, base.relax.step),
+    },
   };
 }
