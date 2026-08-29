@@ -766,3 +766,34 @@ regression test, pushed to the branch, and answered inline on the PR.
 ### Code review instructions
 - One commit, three concerns: `slate.ts` (`ProposalApply`), `RebalanceDialog.tsx` (apply + undo), `useTileDrag.ts` (one hunk), plus the three regression tests.
 - Validate: `cd packages/pbui-workbench && ./node_modules/.bin/vitest run` (197); root `pnpm --include-workspace-root --filter @hyperslop-systems/pbui test` (182).
+
+
+## Step 13: Finish pass P1 — chord audit and the Phase 0 reading debt
+
+Two bookkeeping tasks blocked closing this ticket. The chord audit (0o1p) is clean: grep for `k`-key chord handlers (`KeyK`, `=== "k"` with modifiers) across `datalab/ui/src`, `turboproof/ui/src`, and `~/code/wesen/hyperslop-systems/agentlogic/ui/src` finds nothing — the only hit is a DataTable column literally named "k". The fourth consumer, rag-ttc, verified Mod+Shift+K live in RAG-TTC-REBALANCE-001's browser smoke (opens in all four workspaces, guarded by the shared shortcutContext). The chord is uncontested.
+
+The Phase 0 reading (o423) was paid down as preparation for Phase 6: both labs served over HTTP and run in a real browser (repair-lab-2's slate renders LEAVE AS IS through REBUILD with its own reference RELAX — the numbers Phase 6's implementation must agree with), and textbook §7 (RELAX: energy, projected-gradient solver, FOUR DONORS `[.292 .281 .246 .181]`, `always = true`, opt-in) and §12 (escalation ladder, dedup-by-geometry, policy gating, polScore) read in full as the working spec.
+
+### Prompt Context
+
+**User prompt (verbatim):** "ok, do choice 1 and 2"
+
+**Assistant interpretation:** Finish PBUI-REBALANCE-1: the two open bookkeeping tasks, then Phase 6 (tggp).
+
+**Inferred user intent:** Close the ticket with the polish items real, not hand-waved.
+
+### What I did
+- Chord grep across three consumer UIs; confirmed the rag-ttc live verification covers the fourth.
+- Served `sources/` on :8097, ran both labs in the browser; read §7 and §12.
+
+### What worked / What didn't work
+- Playwright refuses `file://` — a one-line `python3 -m http.server` in the sources directory is the way to run the labs. Nothing failed.
+
+### What should be done in the future
+- Phase 6 next: badge, RELAX, live preview, perf guard, playbook (steps 14+).
+
+### Code review instructions
+- Nothing to review in this step; the audit commands are reproducible from the text above.
+
+### Technical details
+- RELAX book anchors for tests: FOUR DONORS α=β,γ=0 → `[.292 .281 .246 .181]`; STACKS 13px transfer; nonzero γ acts on healthy splits.
