@@ -64,3 +64,12 @@ Phase 5: optional runtime surface — lazy openHelp/closeHelp, 350ms hover delay
 
 - /home/manuel/workspaces/2026-08-24/use-optkit/pbui/src/presentation/createPbui.tsx — Runtime integration
 
+
+## 2026-08-29
+
+Phase 6: datalab field help + custom renderer + action-parity test, workbench mount, core story, consumer smoke modernized, README authoring rules; tasks cshp+6xny done, ticket to review (commit 12f5e4d)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-08-24/use-optkit/pbui/packages/datalab-ui/src/pbui/help.tsx — Product proof
+

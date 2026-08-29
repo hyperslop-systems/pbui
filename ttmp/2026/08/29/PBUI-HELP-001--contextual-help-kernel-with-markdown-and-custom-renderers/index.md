@@ -1,7 +1,7 @@
 ---
 Title: Contextual Help Kernel with Markdown and Custom Renderers
 Ticket: PBUI-HELP-001
-Status: active
+Status: review
 Topics:
     - frontend
     - pbui
@@ -13,10 +13,11 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: Design and implementation handoff for a sibling PBUI contextual help kernel with shared action matching, Markdown, structured built-ins, custom renderers, and accessible hover/focus delivery.
-LastUpdated: 2026-08-29T12:15:00-04:00
+LastUpdated: 2026-08-29T14:47:07.317976952-04:00
 WhatFor: Give the frontend implementer one authoritative map of the reusable action machinery, proposed help APIs, runtime integration, phases, and validation criteria.
 WhenToUse: Use when implementing or reviewing typed contextual help in PBUI.
 ---
+
 
 # Contextual Help Kernel with Markdown and Custom Renderers
 

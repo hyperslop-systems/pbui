@@ -11,8 +11,16 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://README.md
+      Note: Contextual-help authoring rules and release note (commit 12f5e4d)
+    - Path: repo://packages/datalab-ui/src/pbui/help.tsx
+      Note: Datalab product help — rules, custom renderer, registries (commit 12f5e4d)
+    - Path: repo://packages/datalab-ui/test/help.test.ts
+      Note: Product-level integration test incl. action parity (commit 12f5e4d)
     - Path: repo://public/presentation-parts.css
       Note: Context-help part styling (commit bcd9c2c)
+    - Path: repo://scripts/consumer-smoke.mjs
+      Note: Consumer smoke rewritten to kernel + help API (commit 12f5e4d)
     - Path: repo://src/components/ContextHelp/builtins.tsx
       Note: Five built-in help renderers and payload contracts (commit f57ed5a)
     - Path: repo://src/components/ContextHelp/markdown.tsx
@@ -43,6 +51,7 @@ LastUpdated: 2026-08-29T14:21:00-04:00
 WhatFor: Record the implementation journey of PBUI-HELP-001 so reviewers and future implementers can follow what changed, why, and how to validate it.
 WhenToUse: Read when reviewing the help kernel implementation or continuing work on this ticket.
 ---
+
 
 
 
@@ -357,3 +366,57 @@ Wired optional `help` + `helpRenderers` into `createPbui`: Provider-held help st
 
 ### Technical details
 - Pointer delay constant: `HELP_POINTER_DELAY_MS = 350` in `createPbui.tsx`. Surface id from `useId` per Provider, so two pbui roots on one page cannot collide.
+
+## Step 7: Phase 6 — Datalab proof, exports, smoke, and handoff
+
+Shipped the product proof and the handoff artifacts: Datalab field help with the custom `FieldSummaryHelp` renderer wired into the real runtime and workbench shell, a resolution-level integration test proving action rows are the action resolution byte-equal, a core Storybook example, a consumer smoke rewritten to the current API (it had been stale since 0.5.0), and README authoring rules. All five ticket tasks checked; ticket status set to review.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Execute Phase 6 per design doc §17: product proof, action-parity verification, exports/smoke, documentation.
+
+**Inferred user intent:** Ship the handoff-complete help system with a real product using it.
+
+**Commit (code):** 12f5e4d — "PBUI-HELP-001: datalab proof and handoff (Phase 6)"
+
+### What I did
+- `packages/datalab-ui/src/pbui/help.tsx`: `FieldSummaryPayload`/`FieldSummaryHelp` (design §10), `datalab.field.help` rule composing Markdown + summary + actions items, `datalabHelpRegistry` over `datadropActionRegistry.graph` with scopes `["datalab", "global"]`, `datadropHelpRenderers` = built-ins + the custom item.
+- Wired `help`/`helpRenderers` into `runtime.tsx`'s `createPbui`; exported `ContextHelp` and the help values from `pbui/index.ts`; mounted `<ContextHelp />` in `WorkbenchShell.tsx` beside `ObjectMenu`.
+- `test/help.test.ts` (4 tests, kernel-level like the menu goldens): item composition/order, summary payload derived from the readings fixture (`seq` → type `"q"`, chart "α"; unknown column → `type: null`), **action rows `toEqual` the real action resolution**, doc type resolves empty.
+- Core story `WithContextualHelp` in `Pbui.stories.tsx` — includes a subject whose email action is unavailable so the card shows a reason.
+- Rewrote `scripts/consumer-smoke.mjs`'s embedded app off the deleted `PresentationAction` descriptor API onto the kernel + help; `pnpm consumer:smoke` passes ("clean PBUI consumer smoke passed with React 19.2.8").
+- README: "Contextual help (PBUI-HELP-001)" section — wiring example, authoring rules, a11y/styling contract, migration-free note.
+- Checked tasks `cshp` and `6xny`; `docmgr meta update` → Status review.
+
+### Why
+- §17 Phase 6 and the §22 handoff checklist: exact/inherited demonstrated (kernel tests), Markdown + custom renderer demonstrated (datalab), hover/focus parity (runtime tests), action availability from the action registry (datalab parity test), core/datalab/typecheck/build/smoke all run.
+
+### What worked
+- `expect(shown).toEqual(resolved)` on the actions payload is the strongest possible §9.5 proof: the rows in help ARE the resolution output, not a lookalike.
+- The datalab test file reuses the menu-goldens `env()` fixture pattern, so it reads like the neighbouring tests.
+
+### What didn't work
+- One trivial slip: an unused `fieldsHelp` import in `help.tsx` caught by datalab's typecheck (TS6133); removed.
+
+### What was tricky to build
+- **The consumer smoke was quietly rotten.** Last touched for 0.5.0, it still imported `PresentationAction` (deleted in 0.8.0) and called `createPbui` without the now-required `actions`/`snapshotFor` — its typecheck step could not have passed since the kernel migration. Updating it was technically beyond the "add help" bullet, but a smoke that cannot pass validates nothing; the rewrite doubles as the packaged-help proof.
+- **Datalab has no DOM tests**, so the "integration fixture" is resolution-level plus the runtime wiring, with DOM behavior covered by the core `createPbui.help.test.tsx`. The design doc explicitly allows "Storybook fixture or Datalab integration test".
+
+### What warrants a second pair of eyes
+- The help card now appears across the whole datalab workbench for fields (hover + focus). If products want it opt-out per surface, that's a product decision this ticket didn't add API for.
+- The smoke-script rewrite — confirm nothing else consumed its old snippet as documentation.
+- Ticket status: set to review, not closed — closing is the owner's call after human review of the design-decision statuses (§20 items are still "proposed").
+
+### What should be done in the future
+- Storybook a11y/interaction checks (§18 mentions them; the repo has no a11y addon configured today).
+- Extend datalab help beyond fields (datum, doc, stage) once the field card proves useful.
+- Consider bumping the package minor (0.9 → 0.10) at release; the README release note is version-neutral pending that call.
+
+### Code review instructions
+- Start with `packages/datalab-ui/src/pbui/help.tsx` and `test/help.test.ts` (the parity test), then the README section as the API's public statement, then the story for a hands-on look (`pnpm storybook`, "Presentation/PBUI Protocol/With Contextual Help").
+- Validate everything: `pnpm test` (243) + `pnpm typecheck` + `pnpm build` at the root; same trio in `packages/datalab-ui` (536 pass + 1 pre-existing shortcut-routing failure); `pnpm consumer:smoke`.
+
+### Technical details
+- Ticket commits, in order: f9f6b83 (P1 freeze), 9ae5bb9 (P2 matcher), 2125f11 (P3 kernel), f57ed5a (P4 renderers), bcd9c2c (P5 runtime), 12f5e4d (P6 proof), plus diary/docs commits between phases.
