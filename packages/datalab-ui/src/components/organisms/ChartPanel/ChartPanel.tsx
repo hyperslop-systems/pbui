@@ -1,4 +1,4 @@
-import type { PlotHit, PlotOutcome } from "@hyperslop-systems/plot";
+import type { InteractionTargetRecord, PlotOutcome } from "@hyperslop-systems/plot";
 import { PlotHost } from "@hyperslop-systems/plot/react";
 import type { ReactElement } from "react";
 import type { Table } from "../../../model/table";
@@ -25,28 +25,32 @@ export function ChartPanel({
   docId: string | null;
 }) {
   const errors = plot?.diagnostics.filter((item) => item.severity === "error") ?? [];
-  const renderInteractive = (hit: PlotHit, element: ReactElement) => {
-    if (hit.kind === "legend") {
+  const renderTarget = (record: InteractionTargetRecord, element: ReactElement) => {
+    const { target } = record;
+    if (target.kind === "legend") {
+      const field = table?.fields.find(({ fieldId }) => fieldId === target.fieldId)?.name;
+      if (!field || typeof target.value !== "string") return element;
       return (
         <Presentation
-          key={`${hit.fieldId}:${hit.value}`}
+          key={target.id}
           svg
-          reference={{ type: "cat", value: { docId, field: hit.field, value: hit.value } }}
-          doc={`<cat> ${hit.label}`}
+          reference={{ type: "cat", value: { docId, field, value: target.value } }}
+          doc={`<cat> ${target.label}`}
         >
           {element}
         </Presentation>
       );
     }
-    const preview = Object.entries(hit.values)
+    if (target.kind !== "mark") return element;
+    const preview = Object.entries(record.semanticValues)
       .slice(0, 3)
       .map(([key, value]) => `${key}=${String(value)}`)
       .join(" · ");
     return (
       <Presentation
-        key={hit.datumKey}
+        key={target.id}
         svg
-        reference={{ type: "datum", value: { docId, row: hit.values } }}
+        reference={{ type: "datum", value: { docId, row: record.semanticValues } }}
         doc={`<datum> ${preview}`}
       >
         {element}
@@ -77,9 +81,10 @@ export function ChartPanel({
       ) : (
         <PlotHost
           scene={plot?.scene ?? null}
+          interactions={plot?.interactions ?? undefined}
           diagnostics={plot?.diagnostics}
           loading={loading}
-          renderInteractive={renderInteractive}
+          renderTarget={renderTarget}
         />
       )}
     </>
