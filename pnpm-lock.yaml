@@ -63,8 +63,8 @@ importers:
         specifier: workspace:^
         version: link:../..
       '@hyperslop-systems/plot':
-        specifier: file:../../../plot/.artifacts/hyperslop-systems-plot-0.3.0.tgz
-        version: file:../plot/.artifacts/hyperslop-systems-plot-0.3.0.tgz(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: 0.3.0
+        version: 0.3.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@hyperslop-systems/workbench-protocol':
         specifier: workspace:^
         version: link:../workbench-protocol
@@ -767,9 +767,8 @@ packages:
       react: ^18 || ^19
       react-dom: ^18 || ^19
 
-  '@hyperslop-systems/plot@file:../plot/.artifacts/hyperslop-systems-plot-0.3.0.tgz':
-    resolution: {integrity: sha512-ONKM6z4UtZEBG89t0nUsfN6SwR+Z0u4uxL/209Y4EOmveHy0gGDTd0zhUHqhVbe2+Uezj3+aVOVOjoLV5yNPLw==, tarball: file:../plot/.artifacts/hyperslop-systems-plot-0.3.0.tgz}
-    version: 0.3.0
+  '@hyperslop-systems/plot@0.3.0':
+    resolution: {integrity: sha512-HEvolj+agp/eDj9mi+EAPyNNkP3ieGuaRB1kLdKqwg7WD6yTvBbDfOaURkjc7KDKXYjwG1/fLMlaUNrGDEy5eA==, tarball: https://npm.pkg.github.com/download/@hyperslop-systems/plot/0.3.0/535c9ba9dd36855638abd1ed3731df33bec5f7f5}
     engines: {node: '>=20', pnpm: '>=10'}
     peerDependencies:
       react: ^18.3.0 || ^19.0.0
@@ -2949,7 +2948,7 @@ snapshots:
       - '@types/react'
       - redux
 
-  '@hyperslop-systems/plot@file:../plot/.artifacts/hyperslop-systems-plot-0.3.0.tgz(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@hyperslop-systems/plot@0.3.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
