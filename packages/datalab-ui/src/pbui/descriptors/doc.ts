@@ -24,5 +24,4 @@ export const docDescriptor: PresentationDescriptor<DocId> = {
       rows_loaded: table?.row_count ?? 0,
     };
   },
-
 };

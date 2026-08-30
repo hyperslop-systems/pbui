@@ -20,5 +20,4 @@ export const geomDescriptor: PresentationDescriptor<Mark> = {
     baseline:
       geom === "bar" || geom === "area" ? "zero — otherwise magnitude is misrepresented" : "none",
   }),
-
 };

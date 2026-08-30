@@ -51,8 +51,7 @@ const actionsFor = (type: PresentationType, value: unknown, environment: PbuiEnv
     id: action.candidateId,
     label: String(action.label),
     verb: action.verb as Action["verb"],
-    disabledBecause:
-      action.status.kind === "unavailable" ? action.status.because : undefined,
+    disabledBecause: action.status.kind === "unavailable" ? action.status.because : undefined,
   }));
 };
 const describeFor = (type: PresentationType, value: unknown, environment: PbuiEnvironment) =>

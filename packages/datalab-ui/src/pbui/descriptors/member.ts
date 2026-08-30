@@ -1,7 +1,6 @@
 import type { PresentationDescriptor } from "../registry";
 import type { MemberRef } from "../types";
 
-
 /** `<member>` — one row of a drop's access list. */
 export const memberDescriptor: PresentationDescriptor<MemberRef> = {
   ptype: "member",
@@ -22,5 +21,4 @@ export const memberDescriptor: PresentationDescriptor<MemberRef> = {
           ? "everything a reader can, plus append events and publish datasets"
           : "everything a writer can, plus manage members and delete versions",
   }),
-
 };

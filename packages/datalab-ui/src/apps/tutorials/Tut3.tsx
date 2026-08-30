@@ -1,4 +1,5 @@
 import { registerApp, type AppProps } from "../../appkit/registry";
+import { fieldRef } from "../../model/graphicAuthoring";
 import { worldActions } from "../../store/world";
 import { Step, TutorialBody, TutorialHead } from "./Tutorial";
 
@@ -18,9 +19,27 @@ function Tut3(_props: AppProps) {
         run={({ dispatch, state }) => {
           const docId = state.world.activeDocId;
           dispatch(worldActions.setGeom({ docId, geom: "line" }));
-          dispatch(worldActions.setMapping({ docId, channel: "x", field: "time" }));
-          dispatch(worldActions.setMapping({ docId, channel: "y", field: "data.temp_c" }));
-          dispatch(worldActions.setMapping({ docId, channel: "color", field: "data.station" }));
+          dispatch(
+            worldActions.setMapping({
+              docId,
+              channel: "x",
+              field: fieldRef("source:root", "time"),
+            }),
+          );
+          dispatch(
+            worldActions.setMapping({
+              docId,
+              channel: "y",
+              field: fieldRef("source:root", "data.temp_c"),
+            }),
+          );
+          dispatch(
+            worldActions.setMapping({
+              docId,
+              channel: "color",
+              field: fieldRef("source:root", "data.station"),
+            }),
+          );
           dispatch(worldActions.setMapping({ docId, channel: "facet", field: null }));
         }}
       >
@@ -47,7 +66,13 @@ function Tut3(_props: AppProps) {
         run={({ dispatch, state }) => {
           const docId = state.world.activeDocId;
           dispatch(worldActions.setGeom({ docId, geom: "line" }));
-          dispatch(worldActions.setMapping({ docId, channel: "facet", field: "data.station" }));
+          dispatch(
+            worldActions.setMapping({
+              docId,
+              channel: "facet",
+              field: fieldRef("source:root", "data.station"),
+            }),
+          );
         }}
       >
         <strong>Facets are one mapping away.</strong> Small multiples, one panel per level, sharing
@@ -61,7 +86,13 @@ function Tut3(_props: AppProps) {
         run={({ dispatch, state }) => {
           const docId = state.world.activeDocId;
           dispatch(worldActions.setGeom({ docId, geom: "point" }));
-          dispatch(worldActions.setMapping({ docId, channel: "size", field: "data.humidity" }));
+          dispatch(
+            worldActions.setMapping({
+              docId,
+              channel: "size",
+              field: fieldRef("source:root", "data.humidity"),
+            }),
+          );
         }}
       >
         <strong>Two more channels.</strong> Size maps a quantity to mark radius, square-root scaled

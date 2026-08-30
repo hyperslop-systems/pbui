@@ -12,6 +12,8 @@ export type FieldType = "q" | "n" | "t";
 export type TypeSource = "schema" | "envelope" | "values" | "default";
 
 export interface Field {
+  /** Stable analytical identity when the field has crossed the authoring boundary. */
+  fieldId?: string;
   name: string;
   type: FieldType;
   inferred_from: TypeSource;

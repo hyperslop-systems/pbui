@@ -528,7 +528,7 @@ describe("canonical persistence clean break", () => {
   });
 
   test("migrate is identity-only for the current version", () => {
-    const current = { version: 4 };
+    const current = { version: 5 };
     expect(migrate(current)).toBe(current);
     expect(migrate(migrate(current))).toBe(current);
   });

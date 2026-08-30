@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { readings } from "../src/fixtures";
-import { orderedTransformIds, rootView } from "../src/model/graphicAuthoring";
+import { fieldRef, orderedTransformIds, rootView } from "../src/model/graphicAuthoring";
 import {
   cloneTree,
   countLeaves,
@@ -386,10 +386,24 @@ describe("documents", () => {
 
   test("duplicating a document does not alias its spec", () => {
     let { state, docId } = withDoc();
-    state = world(state, worldActions.setMapping({ docId, channel: "y", field: "data.temp_c" }));
+    state = world(
+      state,
+      worldActions.setMapping({
+        docId,
+        channel: "y",
+        field: fieldRef("source:root", "data.temp_c"),
+      }),
+    );
     state = world(state, worldActions.duplicateDoc({ docId, id: "copy" }));
 
-    state = world(state, worldActions.setMapping({ docId, channel: "y", field: "data.humidity" }));
+    state = world(
+      state,
+      worldActions.setMapping({
+        docId,
+        channel: "y",
+        field: fieldRef("source:root", "data.humidity"),
+      }),
+    );
     // A spread would have aliased `mapping`, so editing one would edit both.
     expect(state.docs.copy ? rootView(state.docs.copy).encodings.y?.name : null).toBe(
       "data.temp_c",
@@ -398,7 +412,14 @@ describe("documents", () => {
 
   test("changing source resets the pipeline and the encoding", () => {
     let { state, docId } = withDoc();
-    state = world(state, worldActions.setMapping({ docId, channel: "y", field: "data.temp_c" }));
+    state = world(
+      state,
+      worldActions.setMapping({
+        docId,
+        channel: "y",
+        field: fieldRef("source:root", "data.temp_c"),
+      }),
+    );
     state = world(
       state,
       worldActions.setDocSource({ docId, source: { kind: "stream", drop: "other" } }),
@@ -468,11 +489,25 @@ describe("snapshots", () => {
     // The single line the whole feature depends on: structuredClone, not a
     // spread. If this fails, every snapshot silently tracks its document.
     let { state, docId } = withDoc();
-    state = world(state, worldActions.setMapping({ docId, channel: "y", field: "data.temp_c" }));
+    state = world(
+      state,
+      worldActions.setMapping({
+        docId,
+        channel: "y",
+        field: fieldRef("source:root", "data.temp_c"),
+      }),
+    );
     state = world(state, worldActions.snapshot(docId, "2026-07-25T00:00:00Z"));
     const snapshotId = state.snapshotOrder[0] as string;
 
-    state = world(state, worldActions.setMapping({ docId, channel: "y", field: "data.humidity" }));
+    state = world(
+      state,
+      worldActions.setMapping({
+        docId,
+        channel: "y",
+        field: fieldRef("source:root", "data.humidity"),
+      }),
+    );
     const frozen = state.snapshots[snapshotId]?.document;
     expect(frozen ? rootView(frozen).encodings.y?.name : null).toBe("data.temp_c");
   });
@@ -483,7 +518,10 @@ describe("snapshots", () => {
     const snapshotId = state.snapshotOrder[0] as string;
     state = world(state, worldActions.restoreSnapshot({ snapshotId, docId }));
 
-    state = world(state, worldActions.setMapping({ docId, channel: "x", field: "time" }));
+    state = world(
+      state,
+      worldActions.setMapping({ docId, channel: "x", field: fieldRef("source:root", "time") }),
+    );
     const frozen = state.snapshots[snapshotId]?.document;
     expect(frozen ? rootView(frozen).encodings.x : undefined).toBeUndefined();
   });
@@ -564,7 +602,11 @@ describe("verbs become actions", () => {
     environmentFor(
       state,
       () => readings,
-      () => readings.fields,
+      () =>
+        readings.fields.map((field) => ({
+          ...field,
+          fieldId: fieldRef("source:root", field.name).fieldId,
+        })),
     );
 
   /**
@@ -687,7 +729,7 @@ describe("persistence is defensive", () => {
     stages: unknown[] = [],
     currentStageId = WORK_STAGE_ID,
   ) => ({
-    version: 4,
+    version: 5,
     world: { docs: {}, docOrder: [], snapshots: {} },
     layout: {
       stages,

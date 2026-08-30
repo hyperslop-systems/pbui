@@ -24,5 +24,4 @@ export const datumDescriptor: PresentationDescriptor<DatumRef> = {
     from_chart: env.nameOf(ref.docId),
     ...ref.row,
   }),
-
 };

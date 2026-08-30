@@ -54,7 +54,7 @@ const meta = {
   // application the ResizeObserver measures the real container and buildPlot is
   // given that number, so the two can never disagree.
   parameters: { tile: { width: 700, height: 420 }, pbui: { table: readings } },
-  args: { plot: graphicPlot(graphicFixture({ geom: "point" })), docId: "d1", colorField: null },
+  args: { plot: graphicPlot(graphicFixture({ geom: "point" })), docId: "d1" },
 } satisfies Meta<typeof ChartPanel>;
 
 export default meta;
@@ -98,7 +98,6 @@ export const SummaryIntervals: Story = {
         },
       }),
     ),
-    colorField: READINGS.station,
   },
 };
 
@@ -116,7 +115,6 @@ export const Regression: Story = {
         },
       }),
     ),
-    colorField: READINGS.station,
   },
 };
 
@@ -134,7 +132,6 @@ export const Boxplot: Story = {
         },
       }),
     ),
-    colorField: READINGS.station,
   },
 };
 
@@ -152,7 +149,6 @@ export const Density: Story = {
         },
       }),
     ),
-    colorField: READINGS.station,
   },
 };
 
@@ -176,7 +172,6 @@ export const WithALegend: Story = {
         },
       }),
     ),
-    colorField: READINGS.station,
   },
 };
 
@@ -220,7 +215,6 @@ export const Filtered: Story = {
         },
       }),
     ),
-    colorField: READINGS.station,
   },
 };
 

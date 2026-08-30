@@ -38,7 +38,7 @@ const environment: CompileEnvironment = {
 function document(filterValue: number | string = 4_000): GraphicDocument {
   return {
     format: "datadrop.gog.document",
-    version: 1,
+    version: 2,
     id: "doc",
     name: "compiler",
     sources: {
@@ -95,7 +95,11 @@ function document(filterValue: number | string = 4_000): GraphicDocument {
         state: "complete",
         groupBy: [{ fieldId: speciesId, name: "species" }],
         measures: [
-          { name: 'mean "mass"', function: "mean", field: { name: "mass_kg" } },
+          {
+            name: 'mean "mass"',
+            function: "mean",
+            field: { fieldId: "field:extend:mass_kg", name: "mass_kg" },
+          },
           { name: "rows", function: "count_rows" },
         ],
       },
@@ -105,7 +109,13 @@ function document(filterValue: number | string = 4_000): GraphicDocument {
         input: { kind: "transform", transformId: "aggregate" },
         enabled: true,
         state: "complete",
-        fields: [{ field: { name: 'mean "mass"' }, direction: "desc", nulls: "last" }],
+        fields: [
+          {
+            field: { fieldId: "field:aggregate:mean%20%22mass%22", name: 'mean "mass"' },
+            direction: "desc",
+            nulls: "last",
+          },
+        ],
       },
       limit: {
         id: "limit",
@@ -121,7 +131,10 @@ function document(filterValue: number | string = 4_000): GraphicDocument {
         id: "view",
         relation: { kind: "transform", transformId: "limit" },
         mark: "bar",
-        encodings: { x: { fieldId: speciesId, name: "species" }, y: { name: 'mean "mass"' } },
+        encodings: {
+          x: { fieldId: speciesId, name: "species" },
+          y: { fieldId: "field:aggregate:mean%20%22mass%22", name: 'mean "mass"' },
+        },
         yScale: "linear",
         analysis: { kind: "identity" },
         facetScales: "fixed",

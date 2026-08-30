@@ -15,7 +15,20 @@ import { CHANNELS, CHANNEL_ACCEPTS } from "../model/graphic";
 import type { Mark } from "../model/graphic";
 import { TYPE_LABEL, asText } from "../model/table";
 import type { FieldType } from "../model/table";
-import type { CatRef, DatumRef, DocId, FieldRef, MemberRef, PbuiEnvironment, StageRef, TileRef, TokenRef, UploadRef, PresentationValues, WorkspaceRef } from "./types";
+import type {
+  CatRef,
+  DatumRef,
+  DocId,
+  FieldRef,
+  MemberRef,
+  PbuiEnvironment,
+  StageRef,
+  TileRef,
+  TokenRef,
+  UploadRef,
+  PresentationValues,
+  WorkspaceRef,
+} from "./types";
 import type { Verb } from "./verbs";
 
 /**
@@ -609,9 +622,7 @@ function layoutContributions(): ActionContribution<PresentationValues, DatalabFa
       ...(test ? { test: ({ subject }) => test(subject.value as TileRef) } : {}),
       metadata: {
         label:
-          typeof label === "function"
-            ? ({ subject }) => label(subject.value as TileRef)
-            : label,
+          typeof label === "function" ? ({ subject }) => label(subject.value as TileRef) : label,
         order,
       },
       bind: ({ subject }) => bind(subject.value as TileRef),
@@ -789,11 +800,7 @@ function inheritedContributions(): ActionContribution<PresentationValues, Datala
   ];
 }
 
-export const datadropActionRegistry = createActionRegistry<
-  PresentationValues,
-  DatalabFacts,
-  Verb
->({
+export const datadropActionRegistry = createActionRegistry<PresentationValues, DatalabFacts, Verb>({
   graph: createPresentationTypeGraph(TYPE_DEFINITIONS),
   scopes: ["datalab", "global"],
   contributions: [

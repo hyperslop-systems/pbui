@@ -81,10 +81,8 @@ export const datalabHelpContributions = [
         title: "Actions",
         order: 20,
         payload: {
-          actions: datadropActionRegistry.resolve(
-            { subject, invocation: "menu" },
-            snapshot,
-          ).actions,
+          actions: datadropActionRegistry.resolve({ subject, invocation: "menu" }, snapshot)
+            .actions,
         },
       }),
     ],

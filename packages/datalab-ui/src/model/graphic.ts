@@ -33,7 +33,7 @@ export interface ValueType {
 }
 
 export interface AuthoringFieldRef {
-  fieldId?: FieldId;
+  fieldId: FieldId;
   name: string;
 }
 
@@ -153,7 +153,7 @@ export interface AuthoringView {
 
 export interface GraphicDocument {
   format: "datadrop.gog.document";
-  version: 1;
+  version: 2;
   id: DocumentId;
   name: string;
   sources: Record<SourceNodeId, AuthoringSource>;
@@ -402,26 +402,12 @@ function resolveField(
   nodeId: string,
   path: string,
 ): FieldSymbol | null {
-  if (ref.fieldId) {
-    const byId = relation.fields.find((field) => field.id === ref.fieldId);
-    if (byId) return byId;
-    report(
-      diagnostics,
-      "field.missing",
-      `Field ${ref.name} (${ref.fieldId}) is not produced by the input relation`,
-      nodeId,
-      path,
-    );
-    return null;
-  }
-  const matches = relation.fields.filter((field) => field.name === ref.name);
-  if (matches.length === 1) return matches[0] as FieldSymbol;
+  const field = relation.fields.find((candidate) => candidate.id === ref.fieldId);
+  if (field) return field;
   report(
     diagnostics,
-    matches.length === 0 ? "field.missing" : "field.ambiguous",
-    matches.length === 0
-      ? `Field ${ref.name} is not produced by the input relation`
-      : `Field ${ref.name} is ambiguous; select it again to store its stable identity`,
+    "field.missing",
+    `Field ${ref.name} (${ref.fieldId}) is not produced by the input relation`,
     nodeId,
     path,
   );
@@ -579,7 +565,7 @@ export function compileGraphicDocument(
   environment: CompileEnvironment,
 ): CompileResult {
   const diagnostics: Diagnostic[] = [];
-  if (document.format !== "datadrop.gog.document" || document.version !== 1) {
+  if (document.format !== "datadrop.gog.document" || document.version !== 2) {
     report(diagnostics, "document.version", "Unsupported graphic document format or version");
     return { documentVersion: document.version, logical: null, diagnostics };
   }

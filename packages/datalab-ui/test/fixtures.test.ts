@@ -4,6 +4,7 @@ import {
   appendTransform,
   compileTableDocument,
   createDefaultGraphic,
+  fieldRef,
   rootView,
 } from "../src/model/graphicAuthoring";
 import { renderPbuiPlot } from "../src/appkit/plotAdapter";
@@ -17,6 +18,8 @@ import type { Table } from "../src/model/table";
  * the same component fed a real table behaves differently. So each fixture is
  * put through the actual `defaultChart` → `evaluate` → `buildPlot` path here.
  */
+
+const ref = (name: string) => fieldRef("source:root", name);
 
 const ALL: [string, Table][] = [
   ["readings", readings],
@@ -131,7 +134,7 @@ describe("the fixtures cover the states that matter", () => {
     {
       name: "histogram",
       analysis: { kind: "histogram", bins: 12 } as const,
-      encodings: { x: { name: READINGS.temp } },
+      encodings: { x: ref(READINGS.temp) },
       methods: ["bin"],
       layers: ["bar"],
     },
@@ -143,9 +146,9 @@ describe("the fixtures cover the states that matter", () => {
         multiplier: 1,
       } as const,
       encodings: {
-        x: { name: READINGS.station },
-        y: { name: READINGS.temp },
-        color: { name: READINGS.station },
+        x: ref(READINGS.station),
+        y: ref(READINGS.temp),
+        color: ref(READINGS.station),
       },
       methods: ["mean", "mean"],
       layers: ["errorbar", "point"],
@@ -154,9 +157,9 @@ describe("the fixtures cover the states that matter", () => {
       name: "regression",
       analysis: { kind: "regression", confidence: 0.95 } as const,
       encodings: {
-        x: { name: READINGS.humidity },
-        y: { name: READINGS.temp },
-        color: { name: READINGS.station },
+        x: ref(READINGS.humidity),
+        y: ref(READINGS.temp),
+        color: ref(READINGS.station),
       },
       methods: ["identity", "ols", "ols"],
       layers: ["point", "ribbon", "line"],
@@ -165,9 +168,9 @@ describe("the fixtures cover the states that matter", () => {
       name: "boxplot",
       analysis: { kind: "boxplot" } as const,
       encodings: {
-        x: { name: READINGS.station },
-        y: { name: READINGS.temp },
-        color: { name: READINGS.station },
+        x: ref(READINGS.station),
+        y: ref(READINGS.temp),
+        color: ref(READINGS.station),
       },
       methods: ["boxplot"],
       layers: ["boxplot"],
@@ -176,8 +179,8 @@ describe("the fixtures cover the states that matter", () => {
       name: "density",
       analysis: { kind: "density", points: 64 } as const,
       encodings: {
-        x: { name: READINGS.temp },
-        color: { name: READINGS.station },
+        x: ref(READINGS.temp),
+        color: ref(READINGS.station),
       },
       methods: ["density"],
       layers: ["line"],
@@ -214,7 +217,7 @@ describe("the fixtures cover the states that matter", () => {
   test("facet scale authoring reaches the plot planner", () => {
     const document = createDefaultGraphic("fixture", "facets", readings);
     const view = rootView(document);
-    view.encodings.facet = { name: READINGS.station };
+    view.encodings.facet = ref(READINGS.station);
     view.facetScales = "free-y";
     const plot = renderPbuiPlot(
       document.id,
@@ -261,8 +264,8 @@ describe("the fixtures cover the states that matter", () => {
       input: { kind: "source", sourceId: "pending" },
       enabled: true,
       state: "complete",
-      groupBy: [{ name: "line" }],
-      measures: [{ name: "mean_yield_pct", function: "mean", field: { name: "yield_pct" } }],
+      groupBy: [ref("line")],
+      measures: [{ name: "mean_yield_pct", function: "mean", field: ref("yield_pct") }],
     });
     rootView(document).encodings = {};
     const logical = compileTableDocument(document, batches).logical!;

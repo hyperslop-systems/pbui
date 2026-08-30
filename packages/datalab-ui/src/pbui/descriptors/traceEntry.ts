@@ -24,5 +24,4 @@ export const traceEntryDescriptor: PresentationDescriptor<TraceEntryRef> = {
   label: (ref) => `entry ${ref.seq}`,
 
   describe: (ref) => ({ presentationType: "traceEntry", seq: ref.seq }),
-
 };

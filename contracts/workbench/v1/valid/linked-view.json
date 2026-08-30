@@ -42,7 +42,7 @@
     "document-chart": {
       "id": "document-chart",
       "format": "datadrop.gog.document",
-      "schemaVersion": 1,
+      "schemaVersion": 2,
       "body": {
         "name": "Mass and yield",
         "sources": {

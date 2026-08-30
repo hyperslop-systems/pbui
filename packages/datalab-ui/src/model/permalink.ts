@@ -27,7 +27,7 @@ export function decodeSpec(encoded: string): GraphicDocument | null {
     const document = parsed as Partial<GraphicDocument>;
     if (
       document.format !== "datadrop.gog.document" ||
-      document.version !== 1 ||
+      document.version !== 2 ||
       typeof document.id !== "string" ||
       typeof document.name !== "string" ||
       !document.sources ||

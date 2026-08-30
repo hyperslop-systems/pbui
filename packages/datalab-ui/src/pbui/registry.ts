@@ -70,10 +70,7 @@ function bindProductDescriptor<Value>(
  * descriptor-coverage contract while moving registry mechanics out of the
  * product.
  */
-export const datadropRegistry = createPresentationRegistry<
-  PresentationValues,
-  PbuiEnvironment
->({
+export const datadropRegistry = createPresentationRegistry<PresentationValues, PbuiEnvironment>({
   field: bindProductDescriptor(fieldDescriptor),
   source: bindProductDescriptor(sourceDescriptor),
   doc: bindProductDescriptor(docDescriptor),

@@ -1,7 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { csvField, toCSV } from "../src/export/csv";
 import { census } from "../src/fixtures";
-import { appendTransform, createDefaultGraphic, rootView } from "../src/model/graphicAuthoring";
+import {
+  appendTransform,
+  createDefaultGraphic,
+  fieldRef,
+  rootView,
+} from "../src/model/graphicAuthoring";
 import { decodeSpec, encodeSpec, specFromHash } from "../src/model/permalink";
 import type { Field } from "../src/model/table";
 
@@ -49,7 +54,7 @@ describe("permalink", () => {
       kind: "call",
       function: "eq",
       arguments: [
-        { kind: "field", field: { name: "region" } },
+        { kind: "field", field: fieldRef("source:root", "region") },
         { kind: "literal", value: "north" },
       ],
     },
@@ -73,6 +78,12 @@ describe("permalink", () => {
     expect(specFromHash(`#graphic=${encodeSpec(spec)}`)).toEqual(spec);
     expect(specFromHash("")).toBeNull();
     expect(specFromHash("#other=1")).toBeNull();
+  });
+
+  test("version 1 authoring documents are rejected without migration", () => {
+    const obsolete = structuredClone(spec) as unknown as { version: number };
+    obsolete.version = 1;
+    expect(decodeSpec(encodeSpec(obsolete as never))).toBeNull();
   });
 
   test("the former ChartSpec permalink is rejected without conversion", () => {

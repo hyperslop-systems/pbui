@@ -256,7 +256,7 @@ function hasCompleteRootRelation(graphic: Record<string, unknown>): boolean {
 
 function isGraphic(value: unknown): value is PortableDoc["graphic"] {
   if (!isRecord(value)) return false;
-  if (value.format !== "datadrop.gog.document" || value.version !== 1) return false;
+  if (value.format !== "datadrop.gog.document" || value.version !== 2) return false;
   if (!isRecord(value.sources) || Object.values(value.sources).length !== 1) return false;
   if (
     !Object.values(value.sources).every((source) => isRecord(source) && isSource(source.source))

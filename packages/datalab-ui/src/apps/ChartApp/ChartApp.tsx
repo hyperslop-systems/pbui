@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { registerApp, type AppProps } from "../../appkit/registry";
-import { rootView } from "../../model/graphicAuthoring";
 import { useDocPlot } from "../useTable";
 import { AppBody } from "@hyperslop-systems/pbui";
 import { DocBar } from "../../components/molecules";
@@ -58,13 +57,7 @@ function ChartApp({ view }: AppProps) {
         {/* The measuring container stays here: the size feeds buildPlot, which
             is a container concern. Everything below it is presentational. */}
         <div ref={container} className={styles.plotFrame}>
-          <ChartPanel
-            plot={plot}
-            table={table}
-            loading={loading}
-            docId={doc?.id ?? null}
-            colorField={doc ? (rootView(doc).encodings.color?.name ?? null) : null}
-          />
+          <ChartPanel plot={plot} table={table} loading={loading} docId={doc?.id ?? null} />
         </div>
       </AppBody>
     </>

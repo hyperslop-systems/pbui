@@ -18,5 +18,4 @@ export const userDescriptor: PresentationDescriptor<UserRef> = {
     // reads the tile as broken (guide §5.4).
     managedBy: "the identity provider — password, MFA and email live there",
   }),
-
 };

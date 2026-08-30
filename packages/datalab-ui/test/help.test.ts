@@ -66,7 +66,8 @@ describe("datalab field help", () => {
   test("action rows come FROM the action resolution, unavailable reasons included", () => {
     const { resolution, subject, snapshot } = helpFor("field", { docId: "d1", name: "seq" });
     const actionsItem = resolution.items.find((item) => item.id === "field.actions");
-    const shown = (actionsItem?.payload as { actions: readonly { action: string }[] }).actions;
+    if (!actionsItem) throw new Error("expected field actions help item");
+    const shown = (actionsItem.payload as { actions: readonly { action: string }[] }).actions;
     const resolved = datadropActionRegistry.resolve(
       { subject, invocation: "menu" },
       snapshot,

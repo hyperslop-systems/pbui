@@ -7,6 +7,7 @@ import {
   type CompileEnvironment,
   type CompileResult,
   type FieldId,
+  type FieldSymbol,
   type GraphicDocument,
   type PhysicalType,
   type RelationRef,
@@ -96,7 +97,7 @@ export function createGraphicDocument(
   const viewId = "view:root";
   return {
     format: "datadrop.gog.document",
-    version: 1,
+    version: 2,
     id,
     name,
     sources: {
@@ -168,6 +169,10 @@ export function fieldRef(sourceId: SourceNodeId, name: string): AuthoringFieldRe
   return { fieldId: sourceFieldId(sourceId, name), name };
 }
 
+export function transformFieldRef(transformId: TransformId, name: string): AuthoringFieldRef {
+  return { fieldId: `field:${transformId}:${encodeURIComponent(name)}`, name };
+}
+
 const ENVELOPE_COLUMNS = new Set(["id", "drop", "stream", "seq", "source", "type", "subject"]);
 
 export function createDefaultGraphic(
@@ -220,19 +225,38 @@ export function compileTableDocument(
   );
 }
 
-export function fieldsAtRelation(
+function fieldSymbolsAtRelation(
   document: GraphicDocument,
   table: Table,
   relation: RelationRef,
-): Field[] {
+): readonly FieldSymbol[] {
   const probe = cloneGraphicDocument(document);
   rootView(probe).relation = relation;
   rootView(probe).encodings = {};
   const compiled = compileGraphicDocument(probe, compileEnvironmentForTable(probe, table, false));
   const logical = compiled.logical;
   const view = logical?.views[logical.rootView];
-  const relationType = view ? logical?.relations[view.relation] : null;
-  return (relationType?.fields ?? []).map((field) => ({
+  return view ? (logical?.relations[view.relation]?.fields ?? []) : [];
+}
+
+export function fieldRefsAtRelation(
+  document: GraphicDocument,
+  table: Table,
+  relation: RelationRef,
+): AuthoringFieldRef[] {
+  return fieldSymbolsAtRelation(document, table, relation).map(({ id, name }) => ({
+    fieldId: id,
+    name,
+  }));
+}
+
+export function fieldsAtRelation(
+  document: GraphicDocument,
+  table: Table,
+  relation: RelationRef,
+): Field[] {
+  return fieldSymbolsAtRelation(document, table, relation).map((field) => ({
+    fieldId: field.id,
     name: field.name,
     type:
       field.semanticType === "quantitative" ? "q" : field.semanticType === "temporal" ? "t" : "n",

@@ -23,8 +23,6 @@ export function ChartPanel({
   table?: Table | null;
   loading?: boolean;
   docId: string | null;
-  /** Deprecated at the call boundary; legend identity now travels in the scene. */
-  colorField?: string | null;
 }) {
   const errors = plot?.diagnostics.filter((item) => item.severity === "error") ?? [];
   const renderInteractive = (hit: PlotHit, element: ReactElement) => {

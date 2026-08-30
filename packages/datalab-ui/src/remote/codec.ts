@@ -89,7 +89,7 @@ function decodeGraphicDocument(
   if (
     payload.id !== id ||
     payload.format !== "datadrop.gog.document" ||
-    payload.schemaVersion !== 1 ||
+    payload.schemaVersion !== 2 ||
     !body ||
     typeof body.name !== "string" ||
     typeof body.sources !== "object" ||

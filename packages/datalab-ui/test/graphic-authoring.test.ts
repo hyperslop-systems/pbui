@@ -39,7 +39,7 @@ describe("canonical graphic authoring helpers", () => {
     const graphic = createGraphicDocument("doc-1", "birds", table.source, 2_000);
     expect(graphic).toMatchObject({
       format: "datadrop.gog.document",
-      version: 1,
+      version: 2,
       id: "doc-1",
       name: "birds",
       transforms: {},

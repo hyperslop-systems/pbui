@@ -44,9 +44,7 @@ function menuOf(type: PresentationType, value: unknown, environment = env()) {
     id: action.candidateId,
     label: String(action.label),
     verb: action.verb,
-    ...(action.status.kind === "unavailable"
-      ? { disabledBecause: action.status.because }
-      : {}),
+    ...(action.status.kind === "unavailable" ? { disabledBecause: action.status.because } : {}),
   }));
 }
 
@@ -141,9 +139,10 @@ describe("current conversions, frozen before typed translators (PBUI-ACTIONS-2 P
   });
 
   test("a categorical value stands in for its field", () => {
-    expect(
-      catToField(reference("cat", { docId: "d2", field: "region", value: "north" })),
-    ).toEqual({ type: "field", value: { docId: "d2", name: "region" } });
+    expect(catToField(reference("cat", { docId: "d2", field: "region", value: "north" }))).toEqual({
+      type: "field",
+      value: { docId: "d2", name: "region" },
+    });
   });
 
   test("a cat with no field converts to nothing, and other types pass through untouched", () => {
