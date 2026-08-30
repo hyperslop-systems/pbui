@@ -768,7 +768,7 @@ packages:
       react-dom: ^18 || ^19
 
   '@hyperslop-systems/plot@file:../plot/.artifacts/hyperslop-systems-plot-0.3.0.tgz':
-    resolution: {integrity: sha512-euMZhUkxq6xYJFanC9r1D6N4pkx5yV23lyqt+59WbJ5Rc1sJmMq6z9kJtL9UuBcb+bG6u6QMgg1ziuwKCUs+Pw==, tarball: file:../plot/.artifacts/hyperslop-systems-plot-0.3.0.tgz}
+    resolution: {integrity: sha512-ONKM6z4UtZEBG89t0nUsfN6SwR+Z0u4uxL/209Y4EOmveHy0gGDTd0zhUHqhVbe2+Uezj3+aVOVOjoLV5yNPLw==, tarball: file:../plot/.artifacts/hyperslop-systems-plot-0.3.0.tgz}
     version: 0.3.0
     engines: {node: '>=20', pnpm: '>=10'}
     peerDependencies:
