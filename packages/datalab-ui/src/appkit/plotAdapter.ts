@@ -64,23 +64,16 @@ export function collectPlotReferences(view: AuthoringView): readonly AuthoringFi
   return [...unique.values()];
 }
 
-export function buildPlotSchema(view: AuthoringView, result: PlotAnalysisResult): PlotSchema {
+export function buildPlotSchema(_view: AuthoringView, result: PlotAnalysisResult): PlotSchema {
   return {
-    fields: collectPlotReferences(view).flatMap((reference) => {
-      const source = resultField(result.fields, reference);
-      return source
-        ? [
-            {
-              id: fieldId(reference.fieldId),
-              name: reference.name,
-              column: reference.name,
-              semanticType: semanticType(source.type),
-              nullable: (source.null_count ?? 0) > 0,
-              ...(source.type === "t" ? { timezone: "UTC" } : {}),
-            },
-          ]
-        : [];
-    }),
+    fields: result.fields.map((source) => ({
+      id: fieldId(source.fieldId),
+      name: source.name,
+      column: source.name,
+      semanticType: semanticType(source.type),
+      nullable: (source.null_count ?? 0) > 0,
+      ...(source.type === "t" ? { timezone: "UTC" } : {}),
+    })),
   };
 }
 
@@ -277,6 +270,15 @@ export function buildDatalabPlot(
     schema,
     data: {
       rows: result.rows,
+      ...(schema.fields.length > 0
+        ? {
+            identity: {
+              fields: schema.fields
+                .map(({ id }) => id)
+                .sort((left, right) => left.localeCompare(right)),
+            },
+          }
+        : {}),
       coverage: {
         kind: "bounded",
         rowCount: result.rows.length,

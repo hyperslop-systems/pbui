@@ -60,10 +60,13 @@ describe("canonical Datalab Plot projection", () => {
     expect(built.document.annotations).toMatchObject([
       { kind: "rule", channel: "y", label: "target", intent: "target" },
     ]);
+    expect(built.data.identity?.fields).toEqual(
+      built.schema.fields.map(({ id }) => id).sort((left, right) => left.localeCompare(right)),
+    );
     expect(JSON.stringify(built)).not.toContain("function");
   });
 
-  test("joins result schema by stable field ID rather than display name", () => {
+  test("keeps duplicate display names distinct by stable field ID", () => {
     const source = graphicFixture();
     const view = rootView(source);
     view.encodings.x = { fieldId: "field:right", name: "duplicate" };
@@ -87,7 +90,9 @@ describe("canonical Datalab Plot projection", () => {
     expect(schema.fields).toContainEqual(
       expect.objectContaining({ id: "field:right", semanticType: "quantitative" }),
     );
-    expect(schema.fields).not.toContainEqual(expect.objectContaining({ id: "field:left" }));
+    expect(schema.fields).toContainEqual(
+      expect.objectContaining({ id: "field:left", semanticType: "nominal" }),
+    );
   });
 
   test("renders through the packed 0.3.0 contract with first-class annotation semantics", () => {
@@ -100,6 +105,10 @@ describe("canonical Datalab Plot projection", () => {
     expect(outcome.semantics?.annotations).toMatchObject([
       { kind: "rule", label: "target", intent: "target" },
     ]);
+    expect(outcome.interactions?.targets.some(({ target }) => target.kind === "mark")).toBe(true);
+    expect(outcome.diagnostics).not.toContainEqual(
+      expect.objectContaining({ code: "interaction.identity.missing" }),
+    );
   });
 
   test("source contains no compatibility mapping, rule-layer, or identity fallback path", async () => {
