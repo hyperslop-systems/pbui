@@ -131,6 +131,7 @@
    * these tokens colour the legend swatches that describe those marks. A legend
    * that disagrees with its marks is a bug that survives review, because both
    * halves look right in isolation. */
+  --pbui-neutral: #f3f3ef;
   /* ---- BEGIN GENERATED PALETTE ---- */
   --pbui-cat-1: #2db878;
   --pbui-cat-2: #805bd7;
@@ -142,7 +143,6 @@
   --pbui-cat-8: #f47570;
   --pbui-ramp-low: #805bd7;
   --pbui-ramp-high: #f2ad00;
-  --pbui-neutral: #f3f3ef;
   /* ---- END GENERATED PALETTE ---- */
 
   /* ---- type: one family, a small scale, tight leading ------------------- *

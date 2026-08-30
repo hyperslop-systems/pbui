@@ -22,6 +22,10 @@ export interface Field {
   null_count?: number;
 }
 
+export interface AnalyticalField extends Field {
+  fieldId: string;
+}
+
 export interface SourceRef {
   kind: "stream" | "dataset";
   drop: string;

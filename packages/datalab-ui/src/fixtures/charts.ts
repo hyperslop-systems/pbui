@@ -9,10 +9,11 @@ import {
   appendTransform,
   applyDefaultView,
   createGraphicDocument,
+  fieldRef,
   fieldRefsAtRelation,
   rootView,
 } from "../model/graphicAuthoring";
-import type { Field, Table } from "../model/table";
+import type { AnalyticalField, Table } from "../model/table";
 import {
   draftToTransform,
   type AggregateFunction,
@@ -119,9 +120,17 @@ export function graphicFixture(
 
 export function fixtureResult(table: Table = readings): {
   rows: Table["rows"];
-  fields: Field[];
+  fields: AnalyticalField[];
   err: null;
   dropped: Record<string, never>;
 } {
-  return { rows: table.rows, fields: table.fields, err: null, dropped: {} };
+  return {
+    rows: table.rows,
+    fields: table.fields.map((field) => ({
+      ...field,
+      fieldId: field.fieldId ?? fieldRef("source:root", field.name).fieldId,
+    })),
+    err: null,
+    dropped: {},
+  };
 }

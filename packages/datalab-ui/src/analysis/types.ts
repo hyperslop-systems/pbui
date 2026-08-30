@@ -6,7 +6,7 @@ import type {
   SourceNodeId,
   ValueId,
 } from "../model/graphic";
-import type { Field, Row, Table } from "../model/table";
+import type { AnalyticalField, Row, Table } from "../model/table";
 
 export const DUCKDB_TARGET_VERSION = 1;
 
@@ -87,7 +87,7 @@ export interface AnalysisMetrics {
 
 export interface AnalysisResult {
   rows: Row[];
-  fields: Field[];
+  fields: AnalyticalField[];
   err: null;
   dropped: Record<string, never>;
   coverage: Coverage;

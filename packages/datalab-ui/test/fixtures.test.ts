@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { batches, census, readings, READINGS } from "../src/fixtures";
+import { batches, census, fixtureResult, readings, READINGS } from "../src/fixtures";
 import {
   appendTransform,
   compileTableDocument,
@@ -34,7 +34,7 @@ function plotFixture(table: Table) {
     rootView(document),
     {
       rows: table.rows,
-      fields: table.fields,
+      fields: fixtureResult(table).fields,
       coverage: {
         kind: "bounded",
         strategy: table.strategy,
@@ -100,11 +100,13 @@ describe("the fixtures cover the states that matter", () => {
     const plot = plotFixture(readings);
     // A banded time axis would emit one tick per distinct timestamp — 90 of
     // them. A continuous one emits a handful on round units.
-    expect(plot.plan?.axes[0].ticks.length).toBeLessThan(12);
-    expect(plot.plan?.axes[0].ticks.length).toBeGreaterThan(1);
+    const xAxis = plot.plan?.guides.find((guide) => guide.kind === "axis" && guide.channel === "x");
+    if (xAxis?.kind !== "axis") throw new Error("expected a planned x axis");
+    expect(xAxis.ticks.length).toBeLessThan(12);
+    expect(xAxis.ticks.length).toBeGreaterThan(1);
   });
 
-  test("authoring references become ordinary rule layers", () => {
+  test("authoring references become first-class annotations", () => {
     const document = createDefaultGraphic("fixture", "fixture", readings);
     rootView(document).references = [{ on: "y", value: 20, label: "target", intent: "target" }];
     const plot = renderPbuiPlot(
@@ -112,7 +114,7 @@ describe("the fixtures cover the states that matter", () => {
       rootView(document),
       {
         rows: readings.rows,
-        fields: readings.fields,
+        fields: fixtureResult(readings).fields,
         coverage: {
           kind: "bounded",
           strategy: readings.strategy,
@@ -125,9 +127,12 @@ describe("the fixtures cover the states that matter", () => {
       360,
     );
 
-    expect(plot.compiled?.layers.map((layer) => layer.geom.kind)).toEqual(["rule", "line"]);
-    expect(plot.plan?.layers.map((layer) => layer.kind)).toEqual(["rule", "line"]);
-    expect(plot.scene?.root.children.some((node) => node.id.includes(":rule"))).toBe(true);
+    expect(plot.grammar?.layers.map((layer) => layer.geom.kind)).toEqual(["line"]);
+    expect(plot.plan?.panels[0]?.layers.map((layer) => layer.kind)).toEqual(["line"]);
+    expect(plot.plan?.annotations.map((entry) => entry.kind)).toEqual(["rule"]);
+    expect(plot.semantics?.annotations).toMatchObject([
+      { kind: "rule", label: "target", intent: "target" },
+    ]);
   });
 
   test.each([
@@ -195,7 +200,7 @@ describe("the fixtures cover the states that matter", () => {
       view,
       {
         rows: readings.rows,
-        fields: readings.fields,
+        fields: fixtureResult(readings).fields,
         coverage: {
           kind: "bounded",
           strategy: readings.strategy,
@@ -210,7 +215,7 @@ describe("the fixtures cover the states that matter", () => {
 
     expect(plot.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
     expect(plot.plan?.statistics.map((statistic) => statistic.method)).toEqual(fixture.methods);
-    expect(plot.plan?.layers.map((layer) => layer.kind)).toEqual(fixture.layers);
+    expect(plot.plan?.panels[0]?.layers.map((layer) => layer.kind)).toEqual(fixture.layers);
     expect(plot.scene?.metadata.renderedMarkCount).toBeGreaterThan(0);
   });
 
@@ -224,7 +229,7 @@ describe("the fixtures cover the states that matter", () => {
       view,
       {
         rows: readings.rows,
-        fields: readings.fields,
+        fields: fixtureResult(readings).fields,
         coverage: {
           kind: "bounded",
           strategy: readings.strategy,
@@ -237,7 +242,7 @@ describe("the fixtures cover the states that matter", () => {
       360,
     );
 
-    expect(plot.compiled?.facetScales).toBe("free-y");
+    expect(plot.grammar?.defaultComposition.facets?.scales).toBe("free-y");
     expect(plot.plan?.panels).toHaveLength(4);
   });
 

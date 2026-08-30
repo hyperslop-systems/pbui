@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_CATEGORICAL_COLORS as PALETTE,
-  NEUTRAL_COLOR as NEUTRAL,
   QUANTITATIVE_RAMP_HIGH as RAMP_HIGH,
   QUANTITATIVE_RAMP_LOW as RAMP_LOW,
 } from "@hyperslop-systems/plot";
@@ -42,10 +41,10 @@ describe("tokens.css agrees with @hyperslop-systems/plot", () => {
     expect(tokenValue(`pbui-cat-${PALETTE.length + 1}`)).toBeUndefined();
   });
 
-  test("the quantitative ramp and the neutral agree", () => {
+  test("the quantitative ramp agrees while PBUI owns its neutral token", () => {
     expect(tokenValue("pbui-ramp-low")).toBe(RAMP_LOW);
     expect(tokenValue("pbui-ramp-high")).toBe(RAMP_HIGH);
-    expect(tokenValue("pbui-neutral")).toBe(NEUTRAL);
+    expect(tokenValue("pbui-neutral")).toBe("#f3f3ef");
   });
 });
 
@@ -53,7 +52,7 @@ describe("the palette is well formed", () => {
   test("every entry is a six-digit hex colour", () => {
     // lerpHex slices fixed offsets out of these strings (plot.ts:109), so a
     // three-digit shorthand would silently produce nonsense rather than throw.
-    for (const hex of [...PALETTE, RAMP_LOW, RAMP_HIGH, NEUTRAL]) {
+    for (const hex of [...PALETTE, RAMP_LOW, RAMP_HIGH]) {
       expect(hex).toMatch(/^#[0-9a-f]{6}$/);
     }
   });

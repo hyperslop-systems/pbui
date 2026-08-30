@@ -1,5 +1,5 @@
 import type { Diagnostic, FieldSymbol } from "../model/graphic";
-import type { Field, FieldType, Row } from "../model/table";
+import type { AnalyticalField, FieldType, Row } from "../model/table";
 import type { ArrowResultPort } from "./ports";
 
 function visualType(symbol: FieldSymbol): FieldType {
@@ -38,7 +38,7 @@ function normalizeScalar(
 
 export interface NormalizedResult {
   rows: Row[];
-  fields: Field[];
+  fields: AnalyticalField[];
   diagnostics: Diagnostic[];
   truncated: boolean;
   bytes: number;
@@ -60,7 +60,8 @@ export function normalizeArrowResult(
     }
     return row;
   });
-  const fields: Field[] = output.map((field) => ({
+  const fields: AnalyticalField[] = output.map((field) => ({
+    fieldId: field.id,
     name: field.name,
     type: visualType(field),
     inferred_from: "values",
