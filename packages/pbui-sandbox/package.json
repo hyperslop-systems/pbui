@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/pbui-sandbox",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A reactive sandbox for agent-written programs: the definePlugin dialect (pure render to a JSON UI tree, handlers that emit intents), a swappable engine, a PBUI-atoms renderer, and a local program library",
   "type": "module",
   "sideEffects": [
