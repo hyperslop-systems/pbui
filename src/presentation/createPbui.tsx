@@ -1200,20 +1200,29 @@ export function createPbui<
      * pure geometry decide — flush against the anchor (a gap closes the card
      * mid-crossing), flipped above when below cannot fit, height capped to
      * the space that actually exists so overflow is reachable, never a flat
-     * clamp. Runs pre-paint, so the initial 0,0 render is never visible.
+     * clamp. The stylesheet's max-height stays the OUTER bound (PR #20
+     * round 5): placement may only shrink the card below it, never grow past
+     * it, so a roomy viewport still gets the compact scrolling card the
+     * theme configured. Runs pre-paint, so the initial 0,0 render is never
+     * visible.
      */
     useLayoutEffect(() => {
       if (!state) return;
       const card = cardRef.current;
       if (!card) return;
+      // Drop the previous placement's inline cap so the themable stylesheet
+      // bound — not last time's geometry — is what getComputedStyle reports.
+      card.style.maxHeight = "";
+      const styleCap = Number.parseFloat(getComputedStyle(card).maxHeight);
+      const outerCap = Number.isFinite(styleCap) ? styleCap : Number.POSITIVE_INFINITY;
       const placement = placeHelpCard(
         state.anchor.getBoundingClientRect(),
-        { width: card.offsetWidth || 320, height: card.scrollHeight || 0 },
+        { width: card.offsetWidth || 320, height: Math.min(card.scrollHeight || 0, outerCap) },
         { width: window.innerWidth, height: window.innerHeight },
       );
       card.style.left = `${placement.left}px`;
       card.style.top = `${placement.top}px`;
-      card.style.maxHeight = `${placement.maxHeight}px`;
+      card.style.maxHeight = `${Math.min(placement.maxHeight, outerCap)}px`;
       card.dataset.side = placement.side;
     }, [state]);
 

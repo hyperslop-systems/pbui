@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, CheckboxRow, Text, TextInput } from "@hyperslop-systems/pbui";
 import { defineApp, type AppDescriptor, type AppProps } from "../../apps";
 import { useWorkbench } from "../../context";
-import { profileConfig, REBALANCE_PROFILES, type RebalanceConfig, type RebalanceProfileName } from "../../rebalance/config";
+import { profileConfig, REBALANCE_PROFILES, RELAX_ITERS_MAX, RELAX_ITERS_MIN, type RebalanceConfig, type RebalanceProfileName } from "../../rebalance/config";
 import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
 import { GENERATORS } from "../../rebalance/slate";
 import styles from "./RebalanceSettings.module.css";
@@ -116,7 +116,7 @@ export function RebalanceSettings({ store = documentRebalanceConfigStore }: AppP
           <NumberField label="relax: centre weight α" value={config.relax.alpha} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, alpha: v } })} />
           <NumberField label="relax: size weight β" value={config.relax.beta} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, beta: v } })} />
           <NumberField label="relax: aspect pull γ" value={config.relax.gamma} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, gamma: v } })} />
-          <NumberField label="relax: iterations" value={config.relax.iters} min={5} onCommit={(v) => patch({ relax: { ...config.relax, iters: Math.min(200, v) } })} />
+          <NumberField label="relax: iterations" value={config.relax.iters} min={RELAX_ITERS_MIN} onCommit={(v) => patch({ relax: { ...config.relax, iters: Math.min(RELAX_ITERS_MAX, v) } })} />
         </div>
       </section>
 

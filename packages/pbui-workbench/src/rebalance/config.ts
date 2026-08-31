@@ -64,6 +64,15 @@ export interface RelaxParams {
 
 export const DEFAULT_RELAX: RelaxParams = { alpha: 1, beta: 1, gamma: 0, iters: 60, step: 0.12 };
 
+/**
+ * Bounds on relax iterations, shared by the settings UI and `normalizeConfig`:
+ * `stratRelax` runs `iters` synchronous passes per split before yielding its
+ * first trace line, so a persisted payload must not smuggle in a count the
+ * UI would never allow.
+ */
+export const RELAX_ITERS_MIN = 5;
+export const RELAX_ITERS_MAX = 200;
+
 export type RebalanceProfileName = "careful" | "balanced" | "tidy" | "anything";
 
 export interface RebalanceProfile {
@@ -203,7 +212,10 @@ export function normalizeConfig(partial: unknown): RebalanceConfig {
       alpha: num(p.relax?.alpha, base.relax.alpha),
       beta: num(p.relax?.beta, base.relax.beta),
       gamma: num(p.relax?.gamma, base.relax.gamma),
-      iters: num(p.relax?.iters, base.relax.iters),
+      iters: Math.min(
+        RELAX_ITERS_MAX,
+        Math.max(RELAX_ITERS_MIN, Math.round(num(p.relax?.iters, base.relax.iters))),
+      ),
       step: num(p.relax?.step, base.relax.step),
     },
   };

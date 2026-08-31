@@ -354,6 +354,25 @@ describe("surface interplay", () => {
     expect(tooltip.style.maxHeight).not.toBe("");
   });
 
+  test("placement never grows the card past the stylesheet cap (PR #20 r5)", () => {
+    // presentation-parts.css caps the card at 280px; jsdom does not load it,
+    // so inject the rule the way a host page provides it. Placement offers
+    // the full space below the (zero-rect) anchor — far more than 280 — and
+    // the inline style must keep the stylesheet's cap, not replace it.
+    const sheet = document.createElement("style");
+    sheet.textContent = '[data-part="context-help"] { max-height: 280px; }';
+    document.head.appendChild(sheet);
+    try {
+      const { pbui } = makePbui();
+      renderWithHelp(pbui);
+      byKeyboard();
+      fireEvent.focus(screen.getByRole("button", { name: "Ada" }));
+      expect(screen.getByRole("tooltip").style.maxHeight).toBe("280px");
+    } finally {
+      sheet.remove();
+    }
+  });
+
   test("unmounting the presentation closes its open card", () => {
     const { pbui } = makePbui();
     vi.useFakeTimers();
