@@ -1,6 +1,11 @@
 import type { Lesson } from "../../appkit/lessons";
 import { readings } from "../../fixtures";
-import { orderedTransformIds, rootView } from "../../model/graphicAuthoring";
+import {
+  fieldRef,
+  orderedTransformIds,
+  rootView,
+  transformFieldRef,
+} from "../../model/graphicAuthoring";
 import { draftToTransform, transformToDraft } from "../../model/transformEditor";
 import { worldActions } from "../../store/world";
 import { COLUMNS } from "../fixtures";
@@ -98,7 +103,13 @@ export const grammarLessons: Lesson[] = [
     run: ({ dispatch, getState }) => {
       const docId = getState().world.activeDocId;
       if (!docId) return;
-      dispatch(worldActions.setMapping({ docId, channel: "x", field: COLUMNS.temp }));
+      dispatch(
+        worldActions.setMapping({
+          docId,
+          channel: "x",
+          field: fieldRef("source:root", COLUMNS.temp),
+        }),
+      );
       dispatch(worldActions.setGeom({ docId, geom: "bar" }));
     },
     done: (state) => {
@@ -128,12 +139,13 @@ export const grammarLessons: Lesson[] = [
     run: ({ dispatch, getState }) => {
       const docId = getState().world.activeDocId;
       if (!docId) return;
+      const transformId = crypto.randomUUID();
       dispatch(
         worldActions.addTransform({
           docId,
           transform: draftToTransform(
             {
-              id: crypto.randomUUID(),
+              id: transformId,
               kind: "summarize",
               enabled: true,
               by: COLUMNS.station,
@@ -145,8 +157,20 @@ export const grammarLessons: Lesson[] = [
         }),
       );
       dispatch(worldActions.setGeom({ docId, geom: "bar" }));
-      dispatch(worldActions.setMapping({ docId, channel: "x", field: COLUMNS.station }));
-      dispatch(worldActions.setMapping({ docId, channel: "y", field: `mean_${COLUMNS.temp}` }));
+      dispatch(
+        worldActions.setMapping({
+          docId,
+          channel: "x",
+          field: fieldRef("source:root", COLUMNS.station),
+        }),
+      );
+      dispatch(
+        worldActions.setMapping({
+          docId,
+          channel: "y",
+          field: transformFieldRef(transformId, `mean_${COLUMNS.temp}`),
+        }),
+      );
     },
     /**
      * "The engine can draw this", not "the spec has these fields".
@@ -181,7 +205,13 @@ export const grammarLessons: Lesson[] = [
     run: ({ dispatch, getState }) => {
       const docId = getState().world.activeDocId;
       if (!docId) return;
-      dispatch(worldActions.setMapping({ docId, channel: "facet", field: COLUMNS.station }));
+      dispatch(
+        worldActions.setMapping({
+          docId,
+          channel: "facet",
+          field: fieldRef("source:root", COLUMNS.station),
+        }),
+      );
     },
     done: (state) => {
       const doc = active(state);

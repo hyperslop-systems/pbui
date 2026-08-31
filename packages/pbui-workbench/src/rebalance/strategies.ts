@@ -1,4 +1,5 @@
 import type { ASplit, AnalysisNode } from "./analysisTree";
+import { DEFAULT_RELAX, type RelaxParams } from "./config";
 import { projectLower } from "./projectLower";
 import { R0, sum, vec, type TraceLine } from "./trace";
 
@@ -21,6 +22,10 @@ export interface StrategyConfig {
   dividerPx: number;
   hystPx: number;
   donorOrder: "near" | "left" | "slack";
+  /** RELAX's energy terms; absent means the §7 defaults. */
+  relax?: RelaxParams;
+  /** Target width:height for RELAX's aspect term; absent means 1.4. */
+  targetAspect?: number;
 }
 
 export interface RepairContext {
@@ -187,3 +192,78 @@ export const stratBalance: Strategy = function* stratBalance(node, availPx, lowe
   return equal;
 };
 stratBalance.always = true;
+
+/**
+ * RELAX — projected gradient on a displacement energy (textbook §7). The
+ * previous strategies optimise WEIGHTS; what users perceive is RECTANGLES.
+ * RELAX minimises centre displacement + size displacement + (optionally) an
+ * aspect-ratio error, subject to the same floors, by "gradient step,
+ * project, repeat". Centres are coupled through the cumulative sum, so it
+ * naturally takes space from panes nearest the damage. With a nonzero gamma
+ * it changes layouts that are NOT broken — the reason it is opt-in and runs
+ * with `always` (aspect correction is not triggered by a violation).
+ */
+export const stratRelax: Strategy = function* stratRelax(node, availPx, lowerPx, cfg, ctx) {
+  const params = cfg.relax ?? DEFAULT_RELAX;
+  const targetAspect = cfg.targetAspect ?? 1.4;
+  const n = node.ch.length;
+  const w0 = node.w.slice();
+  const floors = lowerPx.map((x) => x / availPx);
+  const horiz = node.axis === "h";
+  const cross = Math.max(1, ctx.cross);
+
+  // All in normalized units (Σw = 1). Divider offsets are identical between
+  // w and w0 at each index, so they cancel in the centre differences.
+  const centres = (w: readonly number[]): number[] => {
+    const out: number[] = [];
+    let acc = 0;
+    for (let i = 0; i < n; i++) {
+      out.push(acc + (w[i] ?? 0) / 2);
+      acc += w[i] ?? 0;
+    }
+    return out;
+  };
+  const c0 = centres(w0);
+  const energy = (w: readonly number[]): number => {
+    const c = centres(w);
+    let e = 0;
+    for (let i = 0; i < n; i++) {
+      const dc = (c[i] ?? 0) - (c0[i] ?? 0);
+      const ds = (w[i] ?? 0) - (w0[i] ?? 0);
+      e += params.alpha * dc * dc + params.beta * ds * ds;
+      if (params.gamma > 0) {
+        const px = Math.max(1, (w[i] ?? 0) * availPx);
+        const aspect = horiz ? px / cross : cross / px;
+        const da = Math.log(Math.max(1e-6, aspect)) - Math.log(targetAspect);
+        e += (params.gamma * da * da) / 100;
+      }
+    }
+    return e;
+  };
+
+  // Projected gradient descent (§7.2): start feasible, subtract the gradient
+  // mean to stay on the Σw = 1 surface, re-project after every step.
+  let w = projectLower(w0, floors);
+  const h = 1e-4;
+  for (let it = 0; it < params.iters; it++) {
+    const e0 = energy(w);
+    const g: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const t = w.slice();
+      t[i] = (t[i] ?? 0) + h;
+      g.push((energy(t) - e0) / h);
+    }
+    const gm = g.reduce((a, b) => a + b, 0) / n;
+    w = projectLower(w.map((x, i) => x - params.step * ((g[i] ?? 0) - gm)), floors);
+  }
+
+  const changed = w.filter((x, i) => Math.abs(x - (w0[i] ?? 0)) > 1e-4).length;
+  ctx.moves += changed;
+  yield {
+    c: "grn",
+    t: `  min Σ α·Δcentre² + β·Δsize²${params.gamma > 0 ? " + γ·Δlog-aspect²/100" : ""}   α=${params.alpha} β=${params.beta} γ=${params.gamma}`,
+  };
+  yield { c: "grn", t: `  ${vec(w0)} → ${vec(w)}   (${changed}/${n} weights changed, ${params.iters} iterations)` };
+  return w;
+};
+stratRelax.always = true;

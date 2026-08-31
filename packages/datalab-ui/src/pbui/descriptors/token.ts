@@ -25,5 +25,4 @@ export const tokenDescriptor: PresentationDescriptor<TokenRef> = {
     // scoped credentials.
     note: "scopes narrow what this token may do; they never grant more than its owner has",
   }),
-
 };

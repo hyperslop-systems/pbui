@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { WorkbenchInstance } from "./WorkbenchInstance";
 import { fixturesFrom } from "../../../api/fixtures";
 import { readings, census } from "../../../fixtures";
-import { createDefaultGraphic } from "../../../model/graphicAuthoring";
+import { createDefaultGraphic, fieldRef } from "../../../model/graphicAuthoring";
 import { split } from "../../../store/layout";
 import { singleStageLayout } from "../../../store/stages";
 import { newId } from "../../../store/world";
@@ -86,9 +86,9 @@ function seededAuthoringWorld() {
   const document = Object.values(world.docs)[0]!;
   const view = document.views[document.rootView]!;
   view.encodings = {
-    x: { name: "data.humidity" },
-    y: { name: "data.temp_c" },
-    color: { name: "data.station" },
+    x: fieldRef("source:root", "data.humidity"),
+    y: fieldRef("source:root", "data.temp_c"),
+    color: fieldRef("source:root", "data.station"),
   };
   return world;
 }

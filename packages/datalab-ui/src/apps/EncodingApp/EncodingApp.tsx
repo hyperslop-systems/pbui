@@ -1,6 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
 import { CHANNELS, CHANNEL_ACCEPTS, type AnalysisSpec, type Channel } from "../../model/graphic";
-import { rootView } from "../../model/graphicAuthoring";
+import { fieldRefsAtRelation, rootView } from "../../model/graphicAuthoring";
 import { usePbui, type FieldRef } from "../../pbui";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocAnalysisResult } from "../useTable";
@@ -25,13 +25,15 @@ function EncodingApp({ view: appView }: AppProps) {
   const docId = appView.documents.primary ?? null;
   const dispatch = useDispatch();
   const pbui = usePbui();
-  const { doc, pipeline } = useDocAnalysisResult(docId);
+  const { doc, table, pipeline } = useDocAnalysisResult(docId);
   const activeDocId = useSelector((s: RootState) => s.world.activeDocId);
   const target = doc?.id ?? activeDocId;
 
   const fields = pipeline?.fields ?? [];
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? null;
   const view = doc ? rootView(doc) : null;
+  const fieldReferences =
+    doc && table && view ? fieldRefsAtRelation(doc, table, view.relation) : [];
   const mapping = Object.fromEntries(
     CHANNELS.map((channel) => [channel, view?.encodings[channel]?.name ?? null]),
   ) as Record<Channel, string | null>;
@@ -91,9 +93,9 @@ function EncodingApp({ view: appView }: AppProps) {
       },
     });
     if (result) {
-      dispatch(
-        worldActions.setMapping({ docId: target, channel, field: (result.value as FieldRef).name }),
-      );
+      const name = (result.value as FieldRef).name;
+      const field = fieldReferences.find((candidate) => candidate.name === name);
+      if (field) dispatch(worldActions.setMapping({ docId: target, channel, field }));
     }
   };
 

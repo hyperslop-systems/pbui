@@ -8,6 +8,7 @@ import "@hyperslop-systems/pbui/presentation-parts.css";
 import "@hyperslop-systems/pbui/chrome.css";
 import "./styles/pbui-extras.css";
 import "@hyperslop-systems/plot/styles.css";
+import "./styles/plot.css";
 // After `components.css`, because it overrides that file's `:where(...)` rules
 // for the dialog parts. Order is the whole mechanism here.
 import "./styles/dialogs.css";

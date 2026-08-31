@@ -1,5 +1,5 @@
 import { registerApp, type AppProps } from "../../appkit/registry";
-import { orderedTransformIds } from "../../model/graphicAuthoring";
+import { fieldRef, orderedTransformIds } from "../../model/graphicAuthoring";
 import { worldActions } from "../../store/world";
 import { Step, TutorialBody, TutorialHead } from "./Tutorial";
 
@@ -31,7 +31,7 @@ function Tut2(_props: AppProps) {
                   kind: "call",
                   function: "ne",
                   arguments: [
-                    { kind: "field", field: { name: "data.station" } },
+                    { kind: "field", field: fieldRef("source:root", "data.station") },
                     { kind: "literal", value: "roof" },
                   ],
                 },
@@ -58,8 +58,8 @@ function Tut2(_props: AppProps) {
                   kind: "call",
                   function: "divide",
                   arguments: [
-                    { kind: "field", field: { name: "data.temp_c" } },
-                    { kind: "field", field: { name: "data.humidity" } },
+                    { kind: "field", field: fieldRef("source:root", "data.temp_c") },
+                    { kind: "field", field: fieldRef("source:root", "data.humidity") },
                   ],
                 },
               },
@@ -79,12 +79,12 @@ function Tut2(_props: AppProps) {
               transform: {
                 ...base(),
                 kind: "core:aggregate",
-                groupBy: [{ name: "data.station" }],
+                groupBy: [fieldRef("source:root", "data.station")],
                 measures: [
                   {
                     name: "mean_data.temp_c",
                     function: "mean",
-                    field: { name: "data.temp_c" },
+                    field: fieldRef("source:root", "data.temp_c"),
                   },
                 ],
               },

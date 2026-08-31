@@ -1,0 +1,6 @@
+/* The diagnosis badge: loud enough to notice, quiet enough for a status
+   bar. Rendered only while something is actually wrong. */
+.badge {
+  border-color: var(--pbui-danger);
+  color: var(--pbui-danger);
+}

@@ -34,7 +34,7 @@ export const WORKBENCH_KEY = "datadrop-workbench";
  * 2 since DATADROP-8, which put stages above workspaces. Version 1 payloads
  * are MIGRATED rather than discarded (DR-73) — see `migrate` below.
  */
-const VERSION = 4;
+const VERSION = 5;
 
 interface Persisted {
   version: number;
@@ -131,7 +131,7 @@ function isGraphicDocument(value: unknown): value is GraphicDocument {
   const document = value as Partial<GraphicDocument>;
   return (
     document.format === "datadrop.gog.document" &&
-    document.version === 1 &&
+    document.version === 2 &&
     typeof document.id === "string" &&
     typeof document.name === "string" &&
     !!document.sources &&

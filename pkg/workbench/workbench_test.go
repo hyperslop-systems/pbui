@@ -24,7 +24,7 @@ func (c testCatalog) LookupApplication(_ context.Context, id string) (Applicatio
 type testDocumentValidator struct{}
 
 func (testDocumentValidator) ValidateDocument(_ context.Context, document *DocumentPayload) error {
-	if document.Format != "datadrop.gog.document" || document.SchemaVersion != 1 {
+	if document.Format != "datadrop.gog.document" || document.SchemaVersion != 2 {
 		return errors.New("unsupported graphic document")
 	}
 	if document.Body == nil || document.Body.Fields["name"] == nil {
@@ -65,7 +65,7 @@ func graphicDocument(t *testing.T, id string) *DocumentPayload {
 		t.Fatal(err)
 	}
 	return &DocumentPayload{
-		Id: id, Format: "datadrop.gog.document", SchemaVersion: 1, Body: body,
+		Id: id, Format: "datadrop.gog.document", SchemaVersion: 2, Body: body,
 	}
 }
 

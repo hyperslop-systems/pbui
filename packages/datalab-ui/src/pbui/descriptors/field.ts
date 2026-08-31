@@ -108,5 +108,4 @@ export const fieldDescriptor: PresentationDescriptor<FieldRef> = {
       ...statistics(ref, table, type as FieldType),
     };
   },
-
 };

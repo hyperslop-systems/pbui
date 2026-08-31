@@ -53,6 +53,72 @@ a Vite *config preset*, while `@hyperslop-systems/datalab-ui`'s `./vite`
 subpath exports that package's public asset directory. Same path, unrelated
 jobs.
 
+## Contextual help (PBUI-HELP-001)
+
+Since 0.9, a product can register typed contextual help beside its action
+kernel. Hovering a `Presentation` (350&nbsp;ms rest) or focusing it with the
+keyboard shows one non-interactive card; both triggers resolve identical
+content. **Migration-free:** with no `help`/`helpRenderers` configured,
+nothing changes — no state, no timers, no DOM difference.
+
+```tsx
+const define = defineHelp<Values, ProductFacts>();
+
+const help = createHelpRegistry({
+  graph: actions.graph,              // the SAME type graph as the actions
+  scopes: ["editor", "global"],
+  contributions: [
+    define.exact("field", {
+      id: "product.field.help",
+      scopes: ["editor"],
+      help: ({ subject, snapshot }) => [
+        markdownHelp.create({ id: "field.meaning", order: 0,
+          payload: { markdown: "A **field** is one column." } }),
+        actionsHelp.create({ id: "field.actions", order: 10,
+          payload: { actions: actions.resolve({ subject, invocation: "menu" }, snapshot).actions } }),
+      ],
+    }),
+  ],
+});
+
+const pbui = createPbui({
+  registry, actions, snapshotFor, defaultEnvironment,
+  help,
+  helpRenderers: createHelpRendererRegistry([...builtinHelpItems, myCustomItem]),
+});
+
+<pbui.Provider onPerform={performVerb}>
+  <App />
+  <pbui.ObjectMenu />
+  <pbui.ContextHelp />   {/* mount once, beside the menu */}
+</pbui.Provider>
+```
+
+Authoring rules, briefly:
+
+- Help rules reuse the action kernel's type graph, scopes, conditions, named
+  predicates, and immutable `snapshotFor` facts. They never compete: EVERY
+  matching rule contributes items; type distance, scope nearness, and
+  priority order the display only.
+- Rule ids, item ids, and renderer kinds are stable identities. Duplicate
+  item ids in one resolution throw — an authoring defect, not a render state.
+- Only `available` matches: a rule whose `when`/`test` is unavailable,
+  inapplicable, or hidden contributes nothing. To EXPLAIN an unavailable
+  action, emit an `actionsHelp` item — its rows come from the real action
+  resolution, reasons included; never re-derive applicability in a help rule.
+- Built-ins: `textHelp`, `markdownHelp` (bounded subset: paragraphs, breaks,
+  `**strong**`, inline code, fences, lists, headings — no HTML, no links, no
+  mentions), `fieldsHelp` (put user-controlled values here, not in Markdown),
+  `noticeHelp`, `actionsHelp` (informational in v1). Domain visuals get a
+  typed custom renderer via `defineHelpItem` + `createHelpRendererRegistry`.
+- The surface is `role="tooltip"`, references the subject with
+  `aria-describedby` while open, never steals focus, and closes on
+  leave/blur/Escape; opening the object menu closes it. Style it through the
+  `context-help` / `help-*` parts in `presentation-parts.css`.
+
+`packages/datalab-ui/src/pbui/help.tsx` is the reference product
+integration; the `WithContextualHelp` story shows the core wiring.
+
 ## Datalab UI workspace package
 
 `packages/datalab-ui` contains `@hyperslop-systems/datalab-ui`, the complete

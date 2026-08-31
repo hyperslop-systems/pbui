@@ -35,5 +35,4 @@ export const tileDescriptor: PresentationDescriptor<TileRef> = {
     document: tile.docId,
     duplicable: tile.duplicable,
   }),
-
 };

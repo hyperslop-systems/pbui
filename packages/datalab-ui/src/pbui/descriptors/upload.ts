@@ -24,5 +24,4 @@ export const uploadDescriptor: PresentationDescriptor<UploadRef> = {
     state: upload.state,
     error: upload.error,
   }),
-
 };

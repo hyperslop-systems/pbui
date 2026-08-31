@@ -71,10 +71,10 @@ describe("workbench key routing", () => {
     });
   });
 
-  test("case does not matter: Shift+Mod+K still routes", () => {
+  test("Shift+Mod+K routes to rebalancing regardless of key case", () => {
     expect(
       routeWorkbenchKey(key({ key: "K", ctrlKey: true, shiftKey: true }), quiet, "Linux"),
-    ).toEqual({ kind: "open-launcher" });
+    ).toEqual({ kind: "open-rebalance" });
   });
 
   test("Escape is never routed here — the surface stack owns it", () => {

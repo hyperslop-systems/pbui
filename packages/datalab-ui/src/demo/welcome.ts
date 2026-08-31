@@ -1,5 +1,11 @@
 import type { Me } from "../api/client";
-import { appendTransform, createGraphicDocument, rootView } from "../model/graphicAuthoring";
+import {
+  appendTransform,
+  createGraphicDocument,
+  fieldRef,
+  rootView,
+  transformFieldRef,
+} from "../model/graphicAuthoring";
 import type { AuthoringTransform, GraphicDocument, Mark } from "../model/graphic";
 import type { SourceRef } from "../model/table";
 
@@ -89,12 +95,23 @@ interface DocumentSpec {
 function demoDocument(spec: DocumentSpec): GraphicDocument {
   const document = createGraphicDocument(spec.id, spec.name, spec.source, 2_000);
   for (const transform of spec.transforms ?? []) appendTransform(document, transform);
+  const reference = (name: string) => {
+    const producer = [...Object.values(document.transforms)]
+      .reverse()
+      .find(
+        (transform) =>
+          (transform.kind === "core:extend" && transform.name === name) ||
+          (transform.kind === "core:aggregate" &&
+            transform.measures.some((measure) => measure.name === name)),
+      );
+    return producer ? transformFieldRef(producer.id, name) : fieldRef("source:root", name);
+  };
   const view = rootView(document);
   view.mark = spec.mark;
   view.encodings = {
-    x: { name: spec.x },
-    y: { name: spec.y },
-    ...(spec.color ? { color: { name: spec.color } } : {}),
+    x: reference(spec.x),
+    y: reference(spec.y),
+    ...(spec.color ? { color: reference(spec.color) } : {}),
   };
   if (spec.references) view.references = spec.references;
   return document;
@@ -113,8 +130,8 @@ function aggregate(
     input: { kind: "source", sourceId: "source:root" },
     enabled: true,
     state: "complete",
-    groupBy: [{ name: group }],
-    measures: [{ name: output, function: fn, field: { name: field } }],
+    groupBy: [fieldRef("source:root", group)],
+    measures: [{ name: output, function: fn, field: fieldRef("source:root", field) }],
   };
 }
 
@@ -140,7 +157,7 @@ function filterEq(id: string, field: string, value: string): AuthoringTransform 
       arguments: [
         {
           kind: "cast",
-          expression: { kind: "field", field: { name: field } },
+          expression: { kind: "field", field: fieldRef("source:root", field) },
           to: { kind: "string" },
           onFailure: "null",
         },

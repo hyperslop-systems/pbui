@@ -6,12 +6,16 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { HelpContent } from "../components/ContextHelp";
+import type { HelpRendererRegistry } from "../components/ContextHelp";
 import { VisuallyHidden } from "../components/foundation";
-import { captureFocusReturn, queueFocusReturn } from "../focus";
+import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
 import type { ActionRegistry } from "./actions/registry";
 import { evaluateFresh } from "./actions/perform";
@@ -23,6 +27,15 @@ import type {
   ResolvedAction,
   SelectionSnapshot,
 } from "./actions/types";
+import { helpSurfaceStep, initialHelpSurfaceState } from "./help/machine";
+import type {
+  HelpSurfaceDeps,
+  HelpSurfaceEvent,
+  HelpSurfaceState,
+} from "./help/machine";
+import { placeHelpCard } from "./help/place";
+import type { HelpRegistry } from "./help/registry";
+import type { HelpResolution } from "./help/types";
 import { resolveAcceptance } from "./translators/resolve";
 import type {
   AcceptanceOption,
@@ -75,6 +88,68 @@ export interface CreatePbuiOptions<
    * on screen.
    */
   translators?: readonly PresentationTranslator<Values, ProductFacts>[];
+  /**
+   * The contextual help kernel (PBUI-HELP-001), OPTIONAL unlike `actions`:
+   * with neither `help` nor `helpRenderers` configured, `Presentation`
+   * allocates no help state, schedules no timers, and renders exactly the
+   * DOM it renders today. When configured, hovering or focusing a
+   * presentation resolves additive help rules lazily — against the same
+   * `snapshotFor` facts as action introspection — and shows them in the one
+   * `ContextHelp` surface the product mounts beside `ObjectMenu`.
+   */
+  help?: HelpRegistry<Values, ProductFacts>;
+  helpRenderers?: HelpRendererRegistry;
+}
+
+/** How long the pointer rests on a presentation before its help opens. */
+const HELP_POINTER_DELAY_MS = 350;
+
+/*
+ * FOCUS opens help only for KEYBOARD focus — the :focus-visible idea, tracked
+ * by hand because jsdom cannot test the pseudo-class and browsers disagree on
+ * programmatic focus. Without this, closing the object menu reopened help:
+ * the menu returns focus to its invoker (`queueFocusReturn`), that focus event
+ * hit the help path, and the card a pointer gesture never asked for sat open
+ * until the next hover. A pointer click on the presentation itself had the
+ * same defect in miniature — focus-follows-click opened help instantly,
+ * bypassing the rest delay.
+ *
+ * Module state, like the escape-surface stack in surfaces.ts and for the same
+ * reason: input modality is a property of the whole page, not of one provider
+ * subtree. Listeners install once, on the first help-enabled Provider mount.
+ */
+let lastInputWasKeyboard = false;
+let inputModalityTracked = false;
+function trackInputModality(): void {
+  if (inputModalityTracked || typeof window === "undefined") return;
+  inputModalityTracked = true;
+  window.addEventListener(
+    "keydown",
+    () => {
+      lastInputWasKeyboard = true;
+    },
+    true,
+  );
+  window.addEventListener(
+    "pointerdown",
+    () => {
+      lastInputWasKeyboard = false;
+    },
+    true,
+  );
+}
+
+/**
+ * One open help card (design doc §12.2): which subject, resolved to what,
+ * anchored where, and via which trigger. The snapshot rides along because
+ * custom renderers receive it beside the item payload.
+ */
+export interface PbuiHelpState<Values extends PresentationValues, ProductFacts> {
+  reference: PresentationReference<Values>;
+  resolution: HelpResolution;
+  snapshot: SelectionSnapshot<ProductFacts>;
+  anchor: Element;
+  trigger: "pointer" | "focus";
 }
 
 export interface PbuiProviderProps<
@@ -223,6 +298,22 @@ export interface PbuiContextValue<
   mouseDoc: string | null;
   setMouseDoc(text: string | null): void;
   /**
+   * Contextual help (PBUI-HELP-001, consolidated by PBUI-HELP-002). ALL
+   * open/close/arm policy lives in the pure `helpSurfaceStep` machine
+   * (src/presentation/help/machine.ts — see the HELP-002 intern guide for
+   * the transition table and fuzzed invariants). Components translate DOM
+   * facts into `HelpSurfaceEvent`s and dispatch; they hold no policy.
+   * `helpEnabled` is static for a pbui instance: false means handlers skip
+   * dispatching entirely. `help` is the derived view of the machine's
+   * `open` state; resolution stays lazy by construction — the machine calls
+   * its injected resolver only inside timer-fired and keyboard-focus
+   * transitions.
+   */
+  helpEnabled: boolean;
+  help: PbuiHelpState<Values, unknown> | null;
+  helpSurfaceId: string;
+  helpDispatch(event: HelpSurfaceEvent<Values>): void;
+  /**
    * Raw verb delegation for chrome buttons and toolbars that construct their
    * verbs at click time from live props — that path never had the stale-menu
    * problem. Menu-derived actions must go through `performAction`, which
@@ -252,11 +343,16 @@ export function createPbui<
   actions,
   snapshotFor,
   translators = [],
+  help,
+  helpRenderers,
 }: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
 
   const actionEngine = actions;
   const snapshotOf = snapshotFor;
+  const helpEngine = help ?? null;
+  const helpRendererRegistry = helpRenderers ?? null;
+  const helpEnabled = helpEngine !== null && helpRendererRegistry !== null;
 
   const EMPTY_PREDICATES = new Map<string, never>();
 
@@ -292,6 +388,61 @@ export function createPbui<
     );
     const [menu, setMenu] = useState<MenuState<Values> | null>(null);
     const [mouseDoc, setMouseDoc] = useState<string | null>(null);
+    const helpSurfaceId = useId();
+    useEffect(() => {
+      if (helpEnabled) trackInputModality();
+    }, []);
+
+    /*
+     * The help surface machine (PBUI-HELP-002). The deps ref carries the
+     * CURRENT environment into the pure step function; laziness is
+     * structural — the machine calls resolve only in its two lazy
+     * transitions, so no gesture-free render ever resolves rules.
+     */
+    const helpDepsRef = useRef<HelpSurfaceDeps<Values, ProductFacts>>({ resolve: () => null });
+    helpDepsRef.current = {
+      resolve: (reference) => {
+        if (!helpEngine) return null;
+        const snapshot = snapshotOf(
+          { subject: reference, invocation: "introspection" },
+          environment,
+        );
+        const resolution = helpEngine.resolve(reference, snapshot);
+        return resolution.items.length === 0 ? null : { resolution, snapshot };
+      },
+    };
+    const [helpSurface, setHelpSurface] = useState<HelpSurfaceState<Values, ProductFacts>>(
+      initialHelpSurfaceState,
+    );
+    const helpDispatch = useCallback((event: HelpSurfaceEvent<Values>) => {
+      setHelpSurface((state) => helpSurfaceStep(state, event, helpDepsRef.current));
+    }, []);
+
+    /*
+     * Effects as state sync: exactly ONE timer, provider-owned, running iff
+     * the machine is armed. Re-arming on a new anchor restarts it via the
+     * cleanup; menu-opened disarming cancels it the same way — an armed
+     * timeout can no longer outlive anything (PR #20 round 4).
+     */
+    const armed = helpSurface.surface.kind === "armed" ? helpSurface.surface : null;
+    useEffect(() => {
+      if (armed === null) return;
+      const timer = setTimeout(
+        () => helpDispatch({ type: "timer-fired", anchor: armed.anchor }),
+        HELP_POINTER_DELAY_MS,
+      );
+      return () => clearTimeout(timer);
+    }, [armed, helpDispatch]);
+
+    /*
+     * The menu mirror is an effect on the ACTUAL menu state, so every path
+     * that closes the menu — closeMenu, perform, performAction, accept —
+     * is covered without instrumenting any of them.
+     */
+    const menuOpen = menu !== null;
+    useEffect(() => {
+      helpDispatch({ type: menuOpen ? "menu-opened" : "menu-closed" });
+    }, [menuOpen, helpDispatch]);
     const pending = useRef<
       ((result: PresentationReference<Values> | null) => void) | null
     >(null);
@@ -352,13 +503,31 @@ export function createPbui<
         isAcceptable,
         satisfyAccept,
         menu,
-        openMenu: (reference, x, y, invoker) => setMenu({ reference, x, y, returnFocus: captureFocusReturn(invoker) }),
+        openMenu: (reference, x, y, invoker) => {
+          // The menu supersedes the hover card AND any pending arm — the
+          // machine's menu-opened transition handles both, driven by the
+          // menu mirror effect above.
+          setMenu({ reference, x, y, returnFocus: captureFocusReturn(invoker) });
+        },
         closeMenu: () => setMenu(null),
         acceptChooser,
         chooseAcceptance: (option) => settle(option.result),
         dismissAcceptChooser: () => setAcceptChooser(null),
         mouseDoc,
         setMouseDoc,
+        helpEnabled,
+        help:
+          helpSurface.surface.kind === "open"
+            ? {
+                reference: helpSurface.surface.reference,
+                resolution: helpSurface.surface.resolution,
+                snapshot: helpSurface.surface.snapshot,
+                anchor: helpSurface.surface.anchor,
+                trigger: helpSurface.surface.trigger,
+              }
+            : null,
+        helpSurfaceId,
+        helpDispatch,
         perform: (verb) => {
           setMenu(null);
           // Chrome-owned delegation: no resolved action stands behind the
@@ -397,6 +566,9 @@ export function createPbui<
         satisfyAccept,
         menu,
         mouseDoc,
+        helpSurface,
+        helpSurfaceId,
+        helpDispatch,
         settle,
         onPerform,
         actor,
@@ -425,6 +597,41 @@ export function createPbui<
   }: PresentationProps<Values>) {
     const pbui = usePbui();
     const acceptable = pbui.isAcceptable(reference);
+
+    /*
+     * Contextual help (PBUI-HELP-001 §12.3, machine per PBUI-HELP-002): the
+     * EXISTING enter/leave and focus/blur handlers DISPATCH surface events —
+     * no wrapper element, so SVG, table, and composite markup stay valid,
+     * and no policy lives here: classification only (relatedTarget → into,
+     * modality flags → keyboard/restoring). When help is not configured no
+     * event is dispatched and the handlers behave exactly as before.
+     */
+    /*
+     * Holds the LAST rendered element and survives the ref callback's
+     * detach-with-null on unmount — the unmount dispatch below needs the
+     * element identity after React has already handed the ref null.
+     */
+    const elementRef = useRef<Element | null>(null);
+    /*
+     * Unmount tells the machine (PR #20 review): a virtualized row can drop
+     * with the card open and no leave/blur ever firing. The machine's
+     * `unmounted` transition clears only a surface anchored to THIS element.
+     * The hover timer itself is provider-owned and machine-synced now — no
+     * per-presentation timer exists to clean up.
+     */
+    const helpDispatchStable = pbui.helpDispatch;
+    const helpEnabledStable = pbui.helpEnabled;
+    useEffect(
+      () => () => {
+        const element = elementRef.current;
+        if (helpEnabledStable && element) {
+          helpDispatchStable({ type: "unmounted", anchor: element });
+        }
+      },
+      [helpDispatchStable, helpEnabledStable],
+    );
+
+    const helpOpenHere = pbui.help !== null && pbui.help.anchor === elementRef.current;
     const tone = registry.toneFor(reference);
     const label = registry.labelFor(reference, pbui.environment);
     const labelText =
@@ -595,6 +802,10 @@ export function createPbui<
 
     return (
       <Tag
+        ref={(node: Element | null) => {
+          // Keep the last element through the null detach; see elementRef.
+          if (node !== null) elementRef.current = node;
+        }}
         className={className}
         data-pbui="presentation"
         data-part={svg ? "presentation-svg" : "presentation"}
@@ -602,6 +813,8 @@ export function createPbui<
         data-tone={tone}
         data-state={acceptable ? "acceptable" : undefined}
         data-testid={testId}
+        /* Present only while THIS element's help card is open (§13). */
+        aria-describedby={helpOpenHere ? pbui.helpSurfaceId : undefined}
         /*
          * Inside a composite widget the container owns the tab stop and moves
          * focus with arrow keys, so this must not add a second one. `none`
@@ -613,10 +826,54 @@ export function createPbui<
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onKeyDown={handleKeyDown}
-        onMouseEnter={() => pbui.setMouseDoc(describe())}
-        onMouseLeave={() => pbui.setMouseDoc(null)}
-        onFocus={() => pbui.setMouseDoc(describe())}
-        onBlur={() => pbui.setMouseDoc(null)}
+        onMouseEnter={(event: MouseEvent) => {
+          pbui.setMouseDoc(describe());
+          if (pbui.helpEnabled) {
+            pbui.helpDispatch({
+              type: "pointer-enter",
+              anchor: event.currentTarget as Element,
+              reference,
+            });
+          }
+        }}
+        onMouseLeave={(event: MouseEvent) => {
+          pbui.setMouseDoc(null);
+          if (pbui.helpEnabled) {
+            // Classification, not policy: leaving INTO the card is a
+            // different event than leaving elsewhere; the machine decides
+            // what each means.
+            const into = event.relatedTarget as Element | null;
+            pbui.helpDispatch({
+              type: "pointer-leave",
+              anchor: event.currentTarget as Element,
+              into:
+                into instanceof Element && into.closest('[data-pbui="context-help"]')
+                  ? "card"
+                  : "elsewhere",
+            });
+          }
+        }}
+        onFocus={(event: { currentTarget: Element }) => {
+          pbui.setMouseDoc(describe());
+          if (pbui.helpEnabled) {
+            // Stamp the platform facts here, at the adapter edge; the
+            // machine's focus row does the rest (keyboard focus opens,
+            // pointer-borne and RESTORED focus stay silent).
+            pbui.helpDispatch({
+              type: "focus",
+              anchor: event.currentTarget,
+              reference,
+              keyboard: lastInputWasKeyboard,
+              restoring: isRestoringFocus(),
+            });
+          }
+        }}
+        onBlur={(event: { currentTarget: Element }) => {
+          pbui.setMouseDoc(null);
+          if (pbui.helpEnabled) {
+            pbui.helpDispatch({ type: "blur", anchor: event.currentTarget });
+          }
+        }}
       >
         {children}
       </Tag>
@@ -895,6 +1152,110 @@ export function createPbui<
     );
   }
 
+  /**
+   * The one hover/focus help surface (PBUI-HELP-001 §12.4), mounted once
+   * beside `ObjectMenu`. Non-interactive by design: `role="tooltip"`, no
+   * focusable content, never steals focus — which keeps the focus contract
+   * simple (blur closes) and makes `aria-describedby` the honest relation.
+   * Escape closes it through the shared surface stack, so a dialog opened
+   * above keeps its own Escape. Renders nothing when help is not configured.
+   */
+  function ContextHelp() {
+    const pbui = usePbui();
+    const state = pbui.help;
+    const helpDispatch = pbui.helpDispatch;
+    const cardRef = useRef<HTMLDivElement>(null);
+
+    const ownsEscape = useEscapeSurface(state !== null);
+    useEffect(() => {
+      if (!state) return;
+      const handleKey = (event: globalThis.KeyboardEvent) => {
+        if (event.key === "Escape") {
+          if (!ownsEscape) return;
+          event.preventDefault();
+          helpDispatch({ type: "escape" });
+          return;
+        }
+        /*
+         * Keyboard-opened help must keep overflowing content reachable
+         * (PR #20 review): the tooltip is not focusable, so PageDown/PageUp
+         * page the card while it is open. Pointer-opened help keeps the
+         * keys — a hover card must not hijack page scrolling; the wheel
+         * scrolls it instead.
+         */
+        if (state.trigger === "focus" && (event.key === "PageDown" || event.key === "PageUp")) {
+          const card = cardRef.current;
+          if (!card) return;
+          event.preventDefault();
+          const delta = card.clientHeight || 200;
+          card.scrollTop += event.key === "PageDown" ? delta : -delta;
+        }
+      };
+      window.addEventListener("keydown", handleKey);
+      return () => window.removeEventListener("keydown", handleKey);
+    }, [state, helpDispatch, ownsEscape]);
+
+    /*
+     * Placement (PBUI-HELP-002 §5): measure the RENDERED card, then let the
+     * pure geometry decide — flush against the anchor (a gap closes the card
+     * mid-crossing), flipped above when below cannot fit, height capped to
+     * the space that actually exists so overflow is reachable, never a flat
+     * clamp. The stylesheet's max-height stays the OUTER bound (PR #20
+     * round 5): placement may only shrink the card below it, never grow past
+     * it, so a roomy viewport still gets the compact scrolling card the
+     * theme configured. Runs pre-paint, so the initial 0,0 render is never
+     * visible.
+     */
+    useLayoutEffect(() => {
+      if (!state) return;
+      const card = cardRef.current;
+      if (!card) return;
+      // Drop the previous placement's inline cap so the themable stylesheet
+      // bound — not last time's geometry — is what getComputedStyle reports.
+      card.style.maxHeight = "";
+      const styleCap = Number.parseFloat(getComputedStyle(card).maxHeight);
+      const outerCap = Number.isFinite(styleCap) ? styleCap : Number.POSITIVE_INFINITY;
+      const placement = placeHelpCard(
+        state.anchor.getBoundingClientRect(),
+        { width: card.offsetWidth || 320, height: Math.min(card.scrollHeight || 0, outerCap) },
+        { width: window.innerWidth, height: window.innerHeight },
+      );
+      card.style.left = `${placement.left}px`;
+      card.style.top = `${placement.top}px`;
+      card.style.maxHeight = `${Math.min(placement.maxHeight, outerCap)}px`;
+      card.dataset.side = placement.side;
+    }, [state]);
+
+    if (!state || helpRendererRegistry === null) return null;
+
+    return (
+      <div
+        ref={cardRef}
+        id={pbui.helpSurfaceId}
+        data-pbui="context-help"
+        data-part="context-help"
+        role="tooltip"
+        style={{ left: 0, top: 0 }}
+        onMouseLeave={(event) => {
+          // The pointer wandered in to scroll; the machine decides what
+          // leaving toward the anchor or elsewhere means.
+          const to = event.relatedTarget as Element | null;
+          helpDispatch({
+            type: "card-leave",
+            into: to instanceof Element && state.anchor.contains(to) ? "anchor" : "elsewhere",
+          });
+        }}
+      >
+        <HelpContent
+          resolution={state.resolution}
+          subject={state.reference}
+          snapshot={state.snapshot}
+          renderers={helpRendererRegistry}
+        />
+      </div>
+    );
+  }
+
   return {
     Provider,
     Presentation,
@@ -902,6 +1263,7 @@ export function createPbui<
     MouseDocLine,
     AcceptBanner,
     AcceptChooser,
+    ContextHelp,
     usePbui,
     registry,
   };

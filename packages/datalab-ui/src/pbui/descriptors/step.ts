@@ -14,5 +14,4 @@ export const stepDescriptor: PresentationDescriptor<string> = {
   label: (stepId) => stepId,
 
   describe: (stepId) => ({ presentationType: "step", id: stepId }),
-
 };

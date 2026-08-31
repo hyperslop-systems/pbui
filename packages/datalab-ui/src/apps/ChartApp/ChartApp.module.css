@@ -12,6 +12,7 @@
   overflow: hidden;
 }
 
+.plotFrame [data-part="responsive-plot"],
 .plotFrame [data-hs-plot],
 .plotFrame [data-part="viewport"],
 .plotFrame [data-part="svg"] {

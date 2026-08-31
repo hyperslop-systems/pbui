@@ -26,5 +26,4 @@ export const stageDescriptor: PresentationDescriptor<StageRef> = {
     definedInCode: stage.pinned,
     current: stage.current,
   }),
-
 };

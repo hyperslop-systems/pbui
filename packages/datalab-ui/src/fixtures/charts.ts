@@ -9,9 +9,11 @@ import {
   appendTransform,
   applyDefaultView,
   createGraphicDocument,
+  fieldRef,
+  fieldRefsAtRelation,
   rootView,
 } from "../model/graphicAuthoring";
-import type { Field, Table } from "../model/table";
+import type { AnalyticalField, Table } from "../model/table";
 import {
   draftToTransform,
   type AggregateFunction,
@@ -88,31 +90,47 @@ export function graphicFixture(
   limit = 2_000,
   table: Table = readings,
 ): GraphicDocument {
-  const document = createGraphicDocument(id, name, options.source ?? table.source, limit);
-  applyDefaultView(document, table);
+  const source = options.source ?? table.source;
+  const fixtureTable = source === table.source ? table : { ...table, source };
+  const document = createGraphicDocument(id, name, source, limit);
+  applyDefaultView(document, fixtureTable);
   const view = rootView(document);
   if (options.geom) view.mark = options.geom;
   if (options.yScale) view.yScale = options.yScale;
   if (options.analysis) view.analysis = structuredClone(options.analysis);
   if (options.facetScales) view.facetScales = options.facetScales;
   if (options.references) view.references = structuredClone(options.references);
-  if (options.mapping) {
-    for (const [channel, field] of Object.entries(options.mapping)) {
-      if (field === null) delete view.encodings[channel as keyof typeof view.encodings];
-      else view.encodings[channel as keyof typeof view.encodings] = { name: field };
-    }
-  }
   for (const transform of options.transforms ?? []) {
-    appendTransform(document, draftToTransform(transform, table.fields));
+    appendTransform(document, draftToTransform(transform, fixtureTable.fields));
+  }
+  if (options.mapping) {
+    const fields = fieldRefsAtRelation(document, fixtureTable, view.relation);
+    for (const [channel, field] of Object.entries(options.mapping)) {
+      if (field === null) {
+        delete view.encodings[channel as keyof typeof view.encodings];
+        continue;
+      }
+      const reference = fields.find((candidate) => candidate.name === field);
+      if (!reference) throw new Error(`fixture relation does not produce field ${field}`);
+      view.encodings[channel as keyof typeof view.encodings] = reference;
+    }
   }
   return document;
 }
 
 export function fixtureResult(table: Table = readings): {
   rows: Table["rows"];
-  fields: Field[];
+  fields: AnalyticalField[];
   err: null;
   dropped: Record<string, never>;
 } {
-  return { rows: table.rows, fields: table.fields, err: null, dropped: {} };
+  return {
+    rows: table.rows,
+    fields: table.fields.map((field) => ({
+      ...field,
+      fieldId: field.fieldId ?? fieldRef("source:root", field.name).fieldId,
+    })),
+    err: null,
+    dropped: {},
+  };
 }

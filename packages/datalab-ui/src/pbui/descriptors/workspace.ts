@@ -25,5 +25,4 @@ export const workspaceDescriptor: PresentationDescriptor<WorkspaceRef> = {
     stage: space.stageId,
     definedInCode: space.pinned,
   }),
-
 };

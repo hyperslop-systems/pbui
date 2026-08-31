@@ -22,5 +22,4 @@ export const catDescriptor: PresentationDescriptor<CatRef> = {
     value: ref.value,
     chart: env.nameOf(ref.docId),
   }),
-
 };

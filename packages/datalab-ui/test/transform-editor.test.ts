@@ -63,7 +63,10 @@ describe("nominal and boolean filter operands", () => {
     // boolean once rows are on screen, string while the table is empty.
     expect(transform.predicate.arguments[0]).toEqual({
       kind: "cast",
-      expression: { kind: "field", field: { name: "ok" } },
+      expression: {
+        kind: "field",
+        field: { fieldId: "field:source:root:ok", name: "ok" },
+      },
       to: { kind: "string" },
       onFailure: "null",
     });
@@ -84,7 +87,7 @@ describe("nominal and boolean filter operands", () => {
       }
       expect(transform.predicate.arguments[0]).toEqual({
         kind: "field",
-        field: { name },
+        field: { fieldId: `field:source:root:${name}`, name },
       });
     }
   });

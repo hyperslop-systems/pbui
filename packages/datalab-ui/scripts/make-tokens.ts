@@ -20,7 +20,6 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_CATEGORICAL_COLORS as PALETTE,
-  NEUTRAL_COLOR as NEUTRAL,
   QUANTITATIVE_RAMP_HIGH as RAMP_HIGH,
   QUANTITATIVE_RAMP_LOW as RAMP_LOW,
 } from "@hyperslop-systems/plot";
@@ -33,7 +32,6 @@ function block(): string {
   const lines = PALETTE.map((hex, i) => `  --pbui-cat-${i + 1}: ${hex};`);
   lines.push(`  --pbui-ramp-low: ${RAMP_LOW};`);
   lines.push(`  --pbui-ramp-high: ${RAMP_HIGH};`);
-  lines.push(`  --pbui-neutral: ${NEUTRAL};`);
   return lines.join("\n");
 }
 
@@ -52,5 +50,5 @@ if (next === css) {
   console.log("tokens.css palette already matches @hyperslop-systems/plot");
 } else {
   await writeFile(TOKENS, next);
-  console.log(`wrote ${PALETTE.length} categorical tokens + ramp + neutral to tokens.css`);
+  console.log(`wrote ${PALETTE.length} categorical tokens + ramp to tokens.css`);
 }

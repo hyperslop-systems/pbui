@@ -1,4 +1,5 @@
-import type { AuthoringTransform, Expression, RelationRef } from "./graphic";
+import type { AuthoringFieldRef, AuthoringTransform, Expression, RelationRef } from "./graphic";
+import { sourceFieldId } from "./graphicAuthoring";
 import type { Field } from "./table";
 
 export type AggregateFunction = "mean" | "sum" | "min" | "max" | "count";
@@ -39,7 +40,18 @@ export const AGGREGATE_FUNCTIONS: AggregateFunction[] = ["mean", "sum", "min", "
 export const DERIVE_OPERATORS: DeriveOperator[] = ["+", "-", "*", "/", "log10"];
 export const FILTER_OPERATORS: FilterOperator[] = ["=", "!=", ">", "<"];
 
-const field = (name: string): Expression => ({ kind: "field", field: { name } });
+function fieldReference(fields: readonly Field[], name: string): AuthoringFieldRef {
+  const candidate = fields.find((item) => item.name === name);
+  return {
+    fieldId: candidate?.fieldId ?? sourceFieldId("source:root", name),
+    name,
+  };
+}
+
+const field = (fields: readonly Field[], name: string): Expression => ({
+  kind: "field",
+  field: fieldReference(fields, name),
+});
 const inputPlaceholder: RelationRef = { kind: "source", sourceId: "pending" };
 
 export function newTransformDraft(kind: TransformKind, fields: Field[]): TransformDraft {
@@ -105,10 +117,10 @@ export function draftToTransform(draft: TransformDraft, fields: Field[]): Author
       // cast, so the round-trip keeps the field name.
       const operand: Expression =
         source?.type === "q" || source?.type === "t"
-          ? field(draft.field)
+          ? field(fields, draft.field)
           : {
               kind: "cast",
-              expression: field(draft.field),
+              expression: field(fields, draft.field),
               to: { kind: "string" },
               onFailure: "null",
             };
@@ -138,7 +150,10 @@ export function draftToTransform(draft: TransformDraft, fields: Field[]): Author
         expression: {
           kind: "call",
           function: functions[draft.op],
-          arguments: draft.op === "log10" ? [field(draft.a)] : [field(draft.a), field(draft.b)],
+          arguments:
+            draft.op === "log10"
+              ? [field(fields, draft.a)]
+              : [field(fields, draft.a), field(fields, draft.b)],
         },
       };
     }
@@ -146,12 +161,12 @@ export function draftToTransform(draft: TransformDraft, fields: Field[]): Author
       return {
         ...base,
         kind: "core:aggregate",
-        groupBy: [{ name: draft.by }],
+        groupBy: [fieldReference(fields, draft.by)],
         measures: [
           {
             name: draft.fn === "count" ? "count" : `${draft.fn}_${draft.field}`,
             function: draft.fn === "count" ? "count_rows" : draft.fn,
-            ...(draft.fn === "count" ? {} : { field: { name: draft.field } }),
+            ...(draft.fn === "count" ? {} : { field: fieldReference(fields, draft.field) }),
           },
         ],
       };
@@ -159,7 +174,13 @@ export function draftToTransform(draft: TransformDraft, fields: Field[]): Author
       return {
         ...base,
         kind: "core:sort",
-        fields: [{ field: { name: draft.field }, direction: draft.dir, nulls: "last" }],
+        fields: [
+          {
+            field: fieldReference(fields, draft.field),
+            direction: draft.dir,
+            nulls: "last",
+          },
+        ],
       };
     case "limit":
       return { ...base, kind: "core:limit", count: draft.n };

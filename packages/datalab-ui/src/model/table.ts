@@ -12,12 +12,18 @@ export type FieldType = "q" | "n" | "t";
 export type TypeSource = "schema" | "envelope" | "values" | "default";
 
 export interface Field {
+  /** Stable analytical identity when the field has crossed the authoring boundary. */
+  fieldId?: string;
   name: string;
   type: FieldType;
   inferred_from: TypeSource;
   distinct?: number;
   distinct_capped?: boolean;
   null_count?: number;
+}
+
+export interface AnalyticalField extends Field {
+  fieldId: string;
 }
 
 export interface SourceRef {

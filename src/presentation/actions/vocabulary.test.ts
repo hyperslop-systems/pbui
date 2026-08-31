@@ -49,7 +49,7 @@ const contributions = [
     scopes: ["global"],
     invocations: ["menu"],
     test: () => available(),
-    metadata: { label: ({ subject }) => `Inspect ${subject.reference.type}` },
+    metadata: { label: ({ subject }) => `Inspect ${subject.type}` },
     bind: () => ({ kind: "inspect" }),
   }),
   define.family("folder", {

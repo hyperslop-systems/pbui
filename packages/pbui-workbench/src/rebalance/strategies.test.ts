@@ -3,7 +3,7 @@ import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
 import { layoutAnalysis, layoutBinary, toAnalysis, type ASplit } from "./analysisTree";
 import { classify, dividerDiff, layoutStats } from "./measure";
 import { newRepairContext, repairPass } from "./repairPass";
-import { stratBalance, stratProject, stratRipple, stratSparse, type Strategy, type StrategyConfig } from "./strategies";
+import { stratBalance, stratProject, stratRelax, stratRipple, stratSparse, type Strategy, type StrategyConfig } from "./strategies";
 import { BOOK, chain, compound, fourDonors, pane, wideRow9 } from "./testTrees";
 import type { TraceLine } from "./trace";
 
@@ -130,5 +130,55 @@ describe("weight invariants", () => {
       const split = root as ASplit;
       expect(split.w.reduce((s, v) => s + v, 0)).toBeCloseTo(1, 6);
     }
+  });
+});
+
+describe("RELAX (textbook §7): projected gradient on the displacement energy", () => {
+  const relaxCfg = (gamma = 0): StrategyConfig => ({
+    ...CFG,
+    relax: { alpha: 1, beta: 1, gamma, iters: 60, step: 0.12 },
+    targetAspect: 1.4,
+  });
+  const healthyTree = (weights: number[]) =>
+    chain(Direction.ROW, [pane("A"), pane("B"), pane("C")], weights);
+  const topWeights = (tree: Node): number[] => {
+    const top = analysisOf(tree);
+    if (top.t !== "s") throw new Error("expected a split root");
+    return top.w.slice();
+  };
+
+  test("FOUR DONORS: floors satisfied, and centre coupling makes near donors pay more", () => {
+    const { widths, ctx } = repair(fourDonors(), stratRelax, relaxCfg());
+    const [a, b, c, d] = ["p-A", "p-B", "p-C", "p-D"].map((id) => widths.get(id) ?? Number.NaN);
+    // The starved pane reaches its floor; nobody is pushed below theirs.
+    expect(d).toBeGreaterThanOrEqual(BOOK.minW - 1);
+    for (const w of [a, b, c]) expect(w).toBeGreaterThanOrEqual(BOOK.minW - 1);
+    // §7.3: centres couple through the cumulative sum, so the donor nearest
+    // the damage (C) gives up more than the farthest (A) — the qualitative
+    // difference from PROJECT's equal split of the deficit.
+    const before = donorsBefore();
+    const paid = (idx: number, now: number) => (before[idx] as number) - now;
+    expect(paid(2, c as number)).toBeGreaterThan(paid(0, a as number));
+    expect(ctx.infeasible).toBe(false);
+  });
+
+  test("gamma = 0 leaves a healthy split untouched: the energy minimum is w0", () => {
+    const weightsBefore = topWeights(healthyTree([0.4, 0.3, 0.3]));
+    const { root } = repair(healthyTree([0.4, 0.3, 0.3]), stratRelax, relaxCfg(0));
+    if (root.t !== "s") throw new Error("expected a split root");
+    // always=true means RELAX RAN on the healthy split — and changed nothing.
+    for (let i = 0; i < weightsBefore.length; i++) {
+      expect(root.w[i]).toBeCloseTo(weightsBefore[i] as number, 3);
+    }
+  });
+
+  test("gamma > 0 acts on splits with no violation at all — the tidy hazard, stated", () => {
+    const weightsBefore = topWeights(healthyTree([0.6, 0.2, 0.2]));
+    const { root } = repair(healthyTree([0.6, 0.2, 0.2]), stratRelax, relaxCfg(4));
+    if (root.t !== "s") throw new Error("expected a split root");
+    // The aspect pull moved weights on a layout DETECT would leave alone.
+    expect(Math.abs((root.w[0] ?? 0) - (weightsBefore[0] as number))).toBeGreaterThan(0.01);
+    // Feasibility is never traded away for tidiness.
+    expect(root.w.reduce((sum, x) => sum + x, 0)).toBeCloseTo(1, 6);
   });
 });

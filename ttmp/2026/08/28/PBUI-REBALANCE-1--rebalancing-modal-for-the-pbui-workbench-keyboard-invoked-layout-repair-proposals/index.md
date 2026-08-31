@@ -1,7 +1,7 @@
 ---
 Title: 'Rebalancing modal for the pbui workbench: keyboard-invoked layout repair proposals'
 Ticket: PBUI-REBALANCE-1
-Status: active
+Status: complete
 Topics:
     - pbui
     - frontend
@@ -16,11 +16,12 @@ ExternalSources:
     - sources/tiling-repair-textbook.md
     - sources/repair-lab-2.html
     - sources/tiling-lab-1.html
-Summary: "Add a keyboard-invoked rebalancing modal to the pbui workbench: layout-repair proposals (ripple/sparse/project/balance, later reshape/rebuild) computed over an n-ary analysis view of the binary workbench tree, visualized as ranked thumbnail cards, applied atomically via plan/applyPlan; plus a singleton settings tile for algorithms and policy."
-LastUpdated: 2026-08-28T15:38:00-04:00
-WhatFor: "Landing page for the rebalancing-modal feature ticket."
-WhenToUse: "Start here; the design guide in design-doc/ is the main deliverable."
+Summary: 'Add a keyboard-invoked rebalancing modal to the pbui workbench: layout-repair proposals (ripple/sparse/project/balance, later reshape/rebuild) computed over an n-ary analysis view of the binary workbench tree, visualized as ranked thumbnail cards, applied atomically via plan/applyPlan; plus a singleton settings tile for algorithms and policy.'
+LastUpdated: 2026-08-29T14:06:16.607124063-04:00
+WhatFor: Landing page for the rebalancing-modal feature ticket.
+WhenToUse: Start here; the design guide in design-doc/ is the main deliverable.
 ---
+
 
 # Rebalancing modal for the pbui workbench: keyboard-invoked layout repair proposals
 

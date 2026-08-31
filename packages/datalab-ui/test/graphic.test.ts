@@ -40,7 +40,7 @@ function document(
 ): GraphicDocument {
   return {
     format: "datadrop.gog.document",
-    version: 1,
+    version: 2,
     id: "doc",
     name: "test",
     sources: {
@@ -62,7 +62,7 @@ function document(
           x: { fieldId: "field:source:species", name: "species" },
           y:
             relation === "aggregate"
-              ? { name: "mean_mass" }
+              ? { fieldId: "field:aggregate:mean_mass", name: "mean_mass" }
               : { fieldId: "field:source:mass", name: "mass_g" },
         },
         yScale: "linear",
@@ -136,7 +136,13 @@ describe("GraphicDocument compilation", () => {
           enabled: true,
           state: "complete",
           groupBy: [field("field:source:species", "species")],
-          measures: [{ name: "mean_mass", function: "mean", field: { name: "mass_kg" } }],
+          measures: [
+            {
+              name: "mean_mass",
+              function: "mean",
+              field: field("field:extend:mass_kg", "mass_kg"),
+            },
+          ],
         },
       ]),
       environment,
@@ -219,7 +225,7 @@ describe("GraphicDocument compilation", () => {
     expect(cycleResult.diagnostics.map((item) => item.code)).toContain("transform.cycle");
   });
 
-  test("field identity wins and stale or ambiguous names are rejected", () => {
+  test("stale field identities are rejected without name fallback", () => {
     const missing = document([
       {
         id: "filter",

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, Dialog, isEditableTarget, routeWorkbenchKey, useAnyEscapeSurface } from "@hyperslop-systems/pbui";
 import type { Node as PlacementNode, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { resizeSplit, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
@@ -69,7 +70,7 @@ export function WorkbenchRebalance({ shortcut = true, shortcutContext, config, c
 /** Headless/story fallback when the Surface has no measurable box yet. */
 const FALLBACK_RECT: Rect = { x: 0, y: 0, w: 1024, h: 640 };
 
-function measureRect(element: HTMLElement | null): Rect {
+export function measureRect(element: HTMLElement | null): Rect {
   const box = element?.getBoundingClientRect();
   if (!box || !Number.isFinite(box.width) || box.width <= 8 || box.height <= 8) return FALLBACK_RECT;
   return { x: 0, y: 0, w: Math.round(box.width), h: Math.round(box.height) };
@@ -245,8 +246,21 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
   };
 
   const diagnosis = slate?.diagnosis;
+  // Phase 6 live preview: the selected proposal's geometry rendered READ-ONLY
+  // on the actual Surface behind the modal — never a document mutation, so
+  // Escape leaves nothing to undo. The baseline (LEAVE AS IS) previews
+  // nothing: the surface itself is that preview.
+  const previewRects = selected && !selected.baseline && selected.apply.kind !== "none" ? selected.rects : null;
   return (
-    <Dialog
+    <>
+      {previewRects ? (
+        <PreviewOverlay
+          rects={previewRects}
+          labels={tileLabels(doc, workspaceId, (appId) => workbench.apps.get(appId)?.title ?? null)}
+          root={workbench.root()}
+        />
+      ) : null}
+      <Dialog
       title="Rebalance workspace"
       onClose={close}
       footer={
@@ -328,6 +342,45 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
         ) : null}
       </div>
     </Dialog>
+    </>
+  );
+}
+
+/**
+ * The proposal's panes, drawn as outlines exactly where they would land on
+ * the real Surface. Purely decorative (pointer-events none, aria-hidden):
+ * the card's thumbnail and trace stay the accessible record.
+ */
+function PreviewOverlay({
+  rects,
+  labels,
+  root,
+}: {
+  rects: ReadonlyMap<string, Rect>;
+  labels: ReadonlyMap<string, string>;
+  root: HTMLElement | null;
+}) {
+  const box = root?.getBoundingClientRect();
+  if (!box || typeof document === "undefined") return null;
+  return createPortal(
+    <div className={styles.preview} data-part="rebalance-preview" aria-hidden="true">
+      {/* rects carries split nodes too; only the labelled leaves are tiles. */}
+      {[...rects].filter(([paneId]) => labels.has(paneId)).map(([paneId, rect]) => (
+        <div
+          key={paneId}
+          className={styles.previewPane}
+          style={{
+            left: box.left + rect.x,
+            top: box.top + rect.y,
+            width: rect.w,
+            height: rect.h,
+          }}
+        >
+          <span className={styles.previewLabel}>{labels.get(paneId) ?? paneId}</span>
+        </div>
+      ))}
+    </div>,
+    document.body,
   );
 }
 

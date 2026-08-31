@@ -1,0 +1,17 @@
+/* Datalab's explicit design-system boundary for the renderer-neutral Plot host. */
+[data-hs-plot]:not([data-unstyled]) {
+  --hs-plot-background: var(--pbui-pane);
+  --hs-plot-foreground: var(--pbui-ink);
+  --hs-plot-green: var(--pbui-cat-1);
+  --hs-plot-purple: var(--pbui-cat-2);
+  --hs-plot-yellow: var(--pbui-cat-3);
+  --hs-plot-red: var(--pbui-danger);
+  --hs-plot-page: var(--page);
+  --hs-plot-font-size-micro: var(--pbui-fs-micro);
+  --hs-plot-font-size-tick: var(--pbui-fs-tiny);
+  --hs-plot-font-size-label: var(--pbui-fs-small);
+  --hs-plot-font-size-title: var(--pbui-fs-title);
+  --hs-plot-font-size-base: var(--pbui-fs-base);
+  --hs-plot-gap: var(--pbui-space-3);
+  --hs-plot-radius: var(--pbui-radius);
+}

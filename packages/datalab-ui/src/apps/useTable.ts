@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import { api, useDatasetTableQuery, useStreamTableQuery } from "../api/client";
 import { useAnalysisResultFor, useDocAnalysis } from "../appkit/AnalysisProvider";
-import { renderPbuiPlot } from "../appkit/plotAdapter";
+import { buildDatalabPlot } from "../appkit/plotAdapter";
 import {
   applyDefaultView,
   cloneGraphicDocument,
@@ -112,12 +112,12 @@ export function useDocAnalysisResult(docId: DocId | null) {
   };
 }
 
-export function useDocPlot(docId: DocId | null, width: number, height: number) {
+export function useDocPlot(docId: DocId | null) {
   const { doc, table, pipeline, metrics, loading, error } = useDocAnalysisResult(docId);
   const view = doc ? rootView(doc) : null;
   const plot = useMemo(
-    () => (pipeline && view && doc ? renderPbuiPlot(doc.id, view, pipeline, width, height) : null),
-    [pipeline, view, doc, width, height],
+    () => (pipeline && view && doc ? buildDatalabPlot(doc.id, view, pipeline) : null),
+    [pipeline, view, doc],
   );
   return { doc, table, pipeline, metrics, plot, loading, error };
 }

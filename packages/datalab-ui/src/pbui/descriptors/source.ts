@@ -32,5 +32,4 @@ export const sourceDescriptor: PresentationDescriptor<SourceRef> = {
         : { note: "not currently loaded" }),
     };
   },
-
 };

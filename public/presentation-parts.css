@@ -238,3 +238,98 @@
   color: var(--pbui-faint-inverted, #918c85);
   white-space: nowrap;
 }
+
+/* ---- the contextual help surface (PBUI-HELP-001) ------------------------- */
+
+[data-part="context-help"] {
+  position: fixed;
+  z-index: 110; /* above the menu; both never show for one subject at once */
+  width: max-content;
+  max-width: 320px;
+  max-height: 280px;
+  overflow: auto;
+  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
+  background: var(--pbui-pane, #ffffff);
+  border: var(--pbui-border-firm, 1.5px solid #1f2430);
+  border-radius: var(--pbui-radius, 2px);
+  box-shadow: var(--pbui-shadow, 0 2px 8px rgba(31, 36, 48, 0.18));
+  /*
+   * The card receives pointer events so overflowing content stays REACHABLE
+   * (PR #20 review): wheel and scrollbar must work when help exceeds the
+   * max height. Non-interactive still holds in the focus sense — nothing in
+   * the card is focusable and it never steals focus; moving the pointer into
+   * it keeps it open, leaving it closes it (see createPbui.tsx).
+   */
+  pointer-events: auto;
+}
+
+[data-part="help-item"] + [data-part="help-item"] {
+  margin-top: var(--pbui-space-2, 4px);
+  padding-top: var(--pbui-space-2, 4px);
+  border-top: var(--pbui-border-hairline, 1px solid #d8d4cc);
+}
+
+[data-part="help-title"] {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+[data-part="help-text"],
+[data-part="help-markdown"] p {
+  margin: 0;
+}
+
+[data-part="help-markdown"] p + p,
+[data-part="help-markdown-list"],
+[data-part="help-markdown-code"] {
+  margin: var(--pbui-space-1, 2px) 0 0;
+}
+
+[data-part="help-markdown-list"] {
+  padding-left: var(--pbui-space-5, 14px);
+}
+
+[data-part="help-markdown-code"] {
+  padding: var(--pbui-space-1, 2px) var(--pbui-space-2, 4px);
+  background: var(--pbui-well, #f1efe9);
+  overflow-x: auto;
+}
+
+[data-part="help-fields"] {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0 var(--pbui-space-3, 7px);
+}
+
+[data-part="help-field"] {
+  display: contents;
+}
+
+[data-part="help-field"] dt,
+[data-part="help-field"] dd {
+  margin: 0;
+}
+
+[data-part="help-notice"] {
+  padding: var(--pbui-space-1, 2px) var(--pbui-space-2, 4px);
+  border-left: 3px solid var(--pbui-faint, #918c85);
+}
+
+[data-part="help-notice"][data-tone="warning"] {
+  border-left-color: var(--pbui-cat-3, #f2ad00);
+}
+
+[data-part="help-notice"][data-tone="error"] {
+  border-left-color: var(--pbui-danger, #c0392b);
+}
+
+[data-part="help-actions"] {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-part="help-action"][data-danger] {
+  color: var(--pbui-danger, #c0392b);
+}

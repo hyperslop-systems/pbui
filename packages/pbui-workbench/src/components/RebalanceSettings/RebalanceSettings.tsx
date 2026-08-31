@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, CheckboxRow, Text, TextInput } from "@hyperslop-systems/pbui";
 import { defineApp, type AppDescriptor, type AppProps } from "../../apps";
 import { useWorkbench } from "../../context";
-import { profileConfig, REBALANCE_PROFILES, type RebalanceConfig, type RebalanceProfileName } from "../../rebalance/config";
+import { profileConfig, REBALANCE_PROFILES, RELAX_ITERS_MAX, RELAX_ITERS_MIN, type RebalanceConfig, type RebalanceProfileName } from "../../rebalance/config";
 import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
 import { GENERATORS } from "../../rebalance/slate";
 import styles from "./RebalanceSettings.module.css";
@@ -102,6 +102,21 @@ export function RebalanceSettings({ store = documentRebalanceConfigStore }: AppP
           <NumberField label="weight: movement" value={config.weights.move} min={0} step onCommit={(v) => patch({ weights: { ...config.weights, move: v } })} />
           <NumberField label="weight: structure" value={config.weights.struct} min={0} step onCommit={(v) => patch({ weights: { ...config.weights, struct: v } })} />
           <NumberField label="weight: aspect" value={config.weights.aspect} min={0} step onCommit={(v) => patch({ weights: { ...config.weights, aspect: v } })} />
+        </div>
+      </section>
+
+      <section>
+        <Text size="small" strong>
+          relax energy (opt-in generator)
+        </Text>
+        <Text size="tiny" tone="faint">
+          A nonzero aspect pull acts on splits that are not broken — tidying, not repair.
+        </Text>
+        <div className={styles.grid}>
+          <NumberField label="relax: centre weight α" value={config.relax.alpha} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, alpha: v } })} />
+          <NumberField label="relax: size weight β" value={config.relax.beta} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, beta: v } })} />
+          <NumberField label="relax: aspect pull γ" value={config.relax.gamma} min={0} step onCommit={(v) => patch({ relax: { ...config.relax, gamma: v } })} />
+          <NumberField label="relax: iterations" value={config.relax.iters} min={RELAX_ITERS_MIN} onCommit={(v) => patch({ relax: { ...config.relax, iters: Math.min(RELAX_ITERS_MAX, v) } })} />
         </div>
       </section>
 

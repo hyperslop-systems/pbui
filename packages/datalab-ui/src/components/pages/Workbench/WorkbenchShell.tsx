@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, Button, IconButton, Surface, Toolbar, Text } from "@hyperslop-systems/pbui";
 import { useDispatch, useSelector } from "react-redux";
-import { AcceptBanner, MouseDocLine, ObjectMenu, usePbui } from "../../../pbui";
+import { AcceptBanner, ContextHelp, MouseDocLine, ObjectMenu, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { countLeaves } from "../../../store/layout";
 import { allApps } from "../../../appkit/registry";
@@ -386,6 +386,7 @@ export function WorkbenchShell({
       <LauncherDialog root={shellRef} />
       <ExportNotice />
       <ObjectMenu />
+      <ContextHelp />
     </>
   );
 }

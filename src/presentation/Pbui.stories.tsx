@@ -7,7 +7,15 @@ import {
   defineActions,
   unavailable,
 } from "./actions";
+import {
+  actionsHelp,
+  builtinHelpItems,
+  createHelpRendererRegistry,
+  fieldsHelp,
+  markdownHelp,
+} from "../components/ContextHelp";
 import { createPbui } from "./createPbui";
+import { createHelpRegistry, defineHelp } from "./help";
 import { createPresentationRegistry } from "./registry";
 
 interface ExampleValues {
@@ -152,4 +160,104 @@ export const TwoIsolatedProviders: Story = {
       <Example themed />
     </div>
   ),
+};
+
+/* ---------------------------------------------------------------------------
+ * Contextual help (PBUI-HELP-001): the same typed subjects explain themselves
+ * on hover and on keyboard focus. Help rules ride the action kernel's type
+ * graph, scopes, and snapshot; the actions row below is the REAL action
+ * resolution rendered informationally.
+ */
+
+const helpPbui = createPbui({
+  registry,
+  defaultEnvironment: { currentUserId: "person-1" },
+  actions: exampleActions,
+  snapshotFor: (_query, environment) => ({
+    revision: environment.currentUserId,
+    scopes: ["global"],
+    modes: new Set<string>(),
+    capabilities: new Set<string>(),
+    product: environment,
+  }),
+  help: createHelpRegistry<ExampleValues, ExampleEnvironment>({
+    graph: exampleActions.graph,
+    scopes: ["global"],
+    contributions: [
+      defineHelp<ExampleValues, ExampleEnvironment>().exact("person", {
+        id: "story.person.help",
+        scopes: ["global"],
+        help: ({ subject, snapshot }) => [
+          markdownHelp.create({
+            id: "person.meaning",
+            title: "Person",
+            order: 0,
+            payload: {
+              markdown:
+                "A **person** can be emailed from their menu.\n\n- hover shows this card\n- keyboard focus shows the same card",
+            },
+          }),
+          fieldsHelp.create({
+            id: "person.fields",
+            title: "Details",
+            order: 10,
+            payload: {
+              fields: [
+                { label: "Name", value: subject.value.name },
+                { label: "Email", value: subject.value.email },
+              ],
+            },
+          }),
+          actionsHelp.create({
+            id: "person.actions",
+            title: "Actions",
+            order: 20,
+            payload: {
+              actions: exampleActions.resolve(
+                { subject, invocation: "menu" },
+                snapshot,
+              ).actions,
+            },
+          }),
+        ],
+      }),
+    ],
+  }),
+  helpRenderers: createHelpRendererRegistry(builtinHelpItems),
+});
+
+function HelpExample() {
+  const [lastVerb, setLastVerb] = useState<ExampleVerb | null>(null);
+  return (
+    <helpPbui.Provider onPerform={setLastVerb}>
+      <div style={{ display: "grid", gap: "1rem", padding: "2rem" }}>
+        <p>Rest the pointer on a presentation — or Tab to it — for its help card.</p>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <helpPbui.Presentation
+            reference={{
+              type: "person",
+              value: { id: "person-2", name: "Ada Lovelace", email: "ada@example.test" },
+            }}
+          >
+            Ada Lovelace
+          </helpPbui.Presentation>
+          <helpPbui.Presentation
+            reference={{
+              type: "person",
+              value: { id: "person-1", name: "You", email: "you@example.test" },
+            }}
+          >
+            You (email action unavailable)
+          </helpPbui.Presentation>
+        </div>
+        <output>{lastVerb ? JSON.stringify(lastVerb) : "No action performed"}</output>
+        <helpPbui.ObjectMenu />
+        <helpPbui.ContextHelp />
+      </div>
+    </helpPbui.Provider>
+  );
+}
+
+export const WithContextualHelp: Story = {
+  render: () => <HelpExample />,
 };

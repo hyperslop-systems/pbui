@@ -100,11 +100,22 @@ import {
   BackdropPanel,
   Button,
   ResultLog,
+  builtinHelpItems,
+  createHelpRendererRegistry,
   createPbui,
   createPresentationRegistry,
+  textHelp,
   type ResultLine,
 } from "@hyperslop-systems/pbui";
-import type { PresentationAction } from "@hyperslop-systems/pbui/presentation";
+import {
+  available,
+  createActionRegistry,
+  createHelpRegistry,
+  createPresentationTypeGraph,
+  defineActions,
+  defineHelp,
+  type SelectionSnapshot,
+} from "@hyperslop-systems/pbui/presentation";
 import "@hyperslop-systems/pbui/styles.css";
 import "@hyperslop-systems/pbui/components.css";
 
@@ -114,18 +125,62 @@ type Values = {
 type Environment = { prefix: string };
 type Verb = { type: "select"; personId: string };
 
-const registry = createPresentationRegistry<Values, Environment, Verb>({
+const registry = createPresentationRegistry<Values, Environment>({
   person: {
     label: (person, environment) => environment.prefix + person.name,
-    actions: (person): readonly PresentationAction<Verb>[] => [{
-      id: "select",
-      label: "Select",
-      verb: { type: "select", personId: person.id },
-    }],
   },
 });
-const first = createPbui({ registry, defaultEnvironment: { prefix: "A: " } });
-const second = createPbui({ registry, defaultEnvironment: { prefix: "B: " } });
+const graph = createPresentationTypeGraph([{ id: "person" }]);
+const define = defineActions<Values, Environment, Verb>();
+const actions = createActionRegistry<Values, Environment, Verb>({
+  graph,
+  scopes: ["global"],
+  contributions: [
+    define.exact("person", {
+      id: "smoke.person.select",
+      action: "person.select",
+      scopes: ["global"],
+      test: () => available(),
+      metadata: { label: "Select" },
+      bind: ({ subject }) => ({ type: "select", personId: subject.value.id }),
+    }),
+  ],
+});
+const help = createHelpRegistry<Values, Environment>({
+  graph,
+  scopes: ["global"],
+  contributions: [
+    defineHelp<Values, Environment>().exact("person", {
+      id: "smoke.person.help",
+      scopes: ["global"],
+      help: ({ subject }) => [
+        textHelp.create({ id: "person.meaning", payload: { text: subject.value.name + " is a person" } }),
+      ],
+    }),
+  ],
+});
+const snapshotFor = (_query: unknown, environment: Environment): SelectionSnapshot<Environment> => ({
+  revision: environment.prefix,
+  scopes: ["global"],
+  modes: new Set<string>(),
+  capabilities: new Set<string>(),
+  product: environment,
+});
+const helpRenderers = createHelpRendererRegistry(builtinHelpItems);
+const first = createPbui({
+  registry,
+  defaultEnvironment: { prefix: "A: " },
+  actions,
+  snapshotFor,
+  help,
+  helpRenderers,
+});
+const second = createPbui({
+  registry,
+  defaultEnvironment: { prefix: "B: " },
+  actions,
+  snapshotFor,
+});
 const person = { id: "p1", name: "Ada" };
 const lines: ResultLine<"person">[] = [{
   id: "result-1",
@@ -144,6 +199,8 @@ function App() {
         <first.Presentation reference={{ type: "person", value: person }}>
           <Button>First instance</Button>
         </first.Presentation>
+        <first.ObjectMenu />
+        <first.ContextHelp />
       </first.Provider>
       <second.Provider onPerform={() => {}}>
         <second.Presentation reference={{ type: "person", value: person }}>

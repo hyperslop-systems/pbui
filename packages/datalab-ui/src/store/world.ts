@@ -1,6 +1,7 @@
 import { createSlice, current, isDraft, type PayloadAction } from "@reduxjs/toolkit";
 import type {
   AnalysisSpec,
+  AuthoringFieldRef,
   AuthoringTransform,
   Channel,
   FacetScalePolicy,
@@ -289,14 +290,22 @@ export const worldSlice = createSlice({
 
     setMapping(
       state,
-      action: PayloadAction<{ docId: DocId | null; channel: Channel; field: string | null }>,
+      action: PayloadAction<{
+        docId: DocId | null;
+        channel: Channel;
+        field: AuthoringFieldRef | null;
+      }>,
     ) {
       const doc = target(state, action.payload.docId);
       if (!doc) return;
       const view = rootView(doc);
       if (action.payload.field === null) delete view.encodings[action.payload.channel];
-      else view.encodings[action.payload.channel] = { name: action.payload.field };
-      trace(state, "encoded", `${action.payload.channel} ↦ ${action.payload.field ?? "(none)"}`);
+      else view.encodings[action.payload.channel] = action.payload.field;
+      trace(
+        state,
+        "encoded",
+        `${action.payload.channel} ↦ ${action.payload.field?.name ?? "(none)"}`,
+      );
     },
 
     setGeom(state, action: PayloadAction<{ docId: DocId | null; geom: Mark }>) {

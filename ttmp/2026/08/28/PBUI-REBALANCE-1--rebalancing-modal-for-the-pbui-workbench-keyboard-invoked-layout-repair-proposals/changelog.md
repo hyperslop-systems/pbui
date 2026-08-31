@@ -121,3 +121,18 @@ PR #19 review fixes: repair batches apply as raw splitResize mutations (no stale
 
 - /home/manuel/workspaces/2026-08-28/add-rebalancing/pbui/packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx — Raw-mutation apply path and mutation-path undo (commit e1810d8)
 
+
+## 2026-08-29
+
+P1 of the finish pass: chord audit clean — no k-chord handlers in datalab/ui, turboproof/ui, or agentlogic/ui (only a DataTable column key); rag-ttc verified live in RAG-TTC-REBALANCE-001. Both labs run in a browser; textbook sections 7 (RELAX) and 12 (composition) read as the Phase 6 spec.
+
+
+## 2026-08-29
+
+Phase 6 complete: status-bar diagnosis badge (detectOnly, silent when healthy), RELAX strategy (projected gradient, opt-in, TIDY gamma 1) with settings block, live preview overlay on the real Surface (document identity pinned), perf guard (12-tile slate under budget), QA playbook. Commits 64d10fb, ad907be, 752b468, f1dda25, 80283c0.
+
+
+## 2026-08-29
+
+Ticket closed
+

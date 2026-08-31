@@ -86,9 +86,23 @@ export function actionsForVerb(
       out.push(a.watchAdd(verb.ptype, verb.value));
       break;
 
-    case "setMapping":
-      out.push(a.setMapping({ docId: verb.docId, channel: verb.channel, field: verb.field }));
+    case "setMapping": {
+      if (verb.field === null) {
+        out.push(a.setMapping({ docId: verb.docId, channel: verb.channel, field: null }));
+        break;
+      }
+      const field = env.fieldsFor(verb.docId).find((candidate) => candidate.name === verb.field);
+      if (field?.fieldId) {
+        out.push(
+          a.setMapping({
+            docId: verb.docId,
+            channel: verb.channel,
+            field: { fieldId: field.fieldId, name: field.name },
+          }),
+        );
+      }
       break;
+    }
 
     case "setGeom":
       out.push(a.setGeom({ docId: verb.docId, geom: verb.geom }));
