@@ -1,42 +1,31 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChartPanel } from "./ChartPanel";
 import { READINGS, fixtureResult, graphicFixture, readings, draft } from "../../../fixtures";
-import { renderPbuiPlot } from "../../../appkit/plotAdapter";
+import { buildDatalabPlot } from "../../../appkit/plotAdapter";
 import { rootView } from "../../../model/graphicAuthoring";
 import type { GraphicDocument } from "../../../model/graphic";
 import type { Table } from "../../../model/table";
 
-function graphicPlot(
-  document: GraphicDocument = graphicFixture(),
-  table: Table = readings,
-  width = 560,
-  height = 300,
-) {
-  return renderPbuiPlot(
-    document.id,
-    rootView(document),
-    {
-      ...fixtureResult(table),
-      coverage: {
-        kind: "bounded",
-        strategy: table.strategy,
-        rows: table.rows.length,
-        hasMore: table.truncated,
-      },
-      resultTruncated: table.truncated,
+function graphicPlot(document: GraphicDocument = graphicFixture(), table: Table = readings) {
+  return buildDatalabPlot(document.id, rootView(document), {
+    ...fixtureResult(table),
+    coverage: {
+      kind: "bounded",
+      strategy: table.strategy,
+      rows: table.rows.length,
+      hasMore: table.truncated,
     },
-    width,
-    height,
-  );
+    resultTruncated: table.truncated,
+  });
 }
 
 /**
  * The chart, driven by the real engine rather than by hand-written literals.
  *
- * `buildPlot` and `evaluate` are pure — a table and a specification in, a plot
- * out, with no DOM and no server — so every story below is the actual output of
- * the actual code path the application uses. A mark in the wrong place here is
- * a defect in `@hyperslop-systems/plot`, not in this panel.
+ * Datalab's adapter is pure — a table and specification become canonical Plot
+ * inputs without DOM or server access — while ResponsivePlot measures the story
+ * container through the same path used by the application. A mark in the wrong
+ * place here is a Plot or adapter defect, not a hand-written story artifact.
  *
  * That is also why the pipeline stories matter. A chart of raw rows exercises
  * scales and marks; a chart of *summarised* rows exercises the thing the
@@ -47,12 +36,9 @@ function graphicPlot(
 const meta = {
   title: "Component Library/Organisms/ChartPanel",
   component: ChartPanel,
-  // The tile has to be wider than the plot. `reset.css` sets
-  // `svg { max-width: 100% }`, so a plot drawn at 560px inside a container
-  // narrower than that is scaled down and its right-hand content clips — which
-  // reads as a broken chart rather than as a story sized wrong. In the
-  // application the ResizeObserver measures the real container and buildPlot is
-  // given that number, so the two can never disagree.
+  // The story uses the same content-box measurement path as ChartApp; changing
+  // the tile dimensions therefore replans the plot rather than scaling a
+  // precomputed fixed viewport.
   parameters: { tile: { width: 700, height: 420 }, pbui: { table: readings } },
   args: { plot: graphicPlot(graphicFixture({ geom: "point" })), docId: "d1" },
 } satisfies Meta<typeof ChartPanel>;

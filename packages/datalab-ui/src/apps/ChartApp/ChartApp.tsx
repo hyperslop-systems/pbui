@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocPlot } from "../useTable";
 import { AppBody } from "@hyperslop-systems/pbui";
@@ -6,57 +5,16 @@ import { DocBar } from "../../components/molecules";
 import { ChartPanel } from "../../components/organisms";
 import styles from "./ChartApp.module.css";
 
-/**
- * The chart tile — the container half.
- *
- * All it does is measure. The width and height feed `buildPlot`, which is why
- * the ResizeObserver lives here and not in `ChartPanel`: a size is an input to
- * the plot, and a component that measures itself cannot be rendered against a
- * literal one.
- *
- * The debounce is load-bearing. Without it a divider drag re-runs `buildPlot`
- * over the whole table twenty times a second.
- */
+/** The chart tile owns application data; ResponsivePlot owns content-box measurement. */
 function ChartApp({ view }: AppProps) {
   const docId = view.documents.primary ?? null;
-  const container = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 640, height: 360 });
-
-  // Debounced, because a divider drag would otherwise re-run buildPlot twenty
-  // times a second over the whole table.
-  useEffect(() => {
-    const element = container.current;
-    if (!element) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const observer = new ResizeObserver((entries) => {
-      const box = entries[0]?.contentRect;
-      if (!box) return;
-      clearTimeout(timer);
-      timer = setTimeout(
-        () =>
-          setSize({
-            width: Math.max(280, Math.floor(box.width)),
-            height: Math.max(200, Math.floor(box.height)),
-          }),
-        80,
-      );
-    });
-    observer.observe(element);
-    return () => {
-      clearTimeout(timer);
-      observer.disconnect();
-    };
-  }, []);
-
-  const { doc, table, plot, loading } = useDocPlot(docId, size.width, size.height);
+  const { doc, table, plot, loading } = useDocPlot(docId);
 
   return (
     <>
       <DocBar viewId={view.id} docId={docId} />
       <AppBody className={styles.body}>
-        {/* The measuring container stays here: the size feeds buildPlot, which
-            is a container concern. Everything below it is presentational. */}
-        <div ref={container} className={styles.plotFrame}>
+        <div className={styles.plotFrame}>
           <ChartPanel plot={plot} table={table} loading={loading} docId={doc?.id ?? null} />
         </div>
       </AppBody>
