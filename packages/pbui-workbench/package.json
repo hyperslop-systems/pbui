@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/pbui-workbench",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A local, server-free PBUI workbench: a split tree of tiles over a workbench-protocol document, with drag-to-swap/dock, split and close, resizable splits and a launcher",
   "type": "module",
   "sideEffects": [

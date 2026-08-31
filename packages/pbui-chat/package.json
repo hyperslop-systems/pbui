@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/pbui-chat",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "PBUI-native chat: widget documents, typed mentions, human tools and a verb trace on top of @go-go-golems/chat-provider",
   "type": "module",
   "sideEffects": [
