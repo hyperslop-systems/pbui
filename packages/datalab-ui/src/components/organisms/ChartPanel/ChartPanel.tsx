@@ -78,6 +78,7 @@ export function ChartPanel({
           schema={plot.schema}
           data={plot.data}
           resizeDelayMs={80}
+          style={{ width: "100%", height: "100%" }}
           loading={loading}
           renderTarget={renderTarget}
           emptyFallback={emptyFallback}
