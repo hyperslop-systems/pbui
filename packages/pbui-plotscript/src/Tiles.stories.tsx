@@ -58,7 +58,12 @@ export const PlotAlone: StoryObj = {
   render: () => <Pair source={SCATTER} spec="plot-only" />,
 };
 
-export const FailingScript: StoryObj = {
-  name: "a script that throws: the error in the pane, no plot yet",
+export const InvalidResult: StoryObj = {
+  name: "a script that returns the wrong shape: the guard's message in the pane, no plot yet",
   render: () => <Pair source={`const rows = [];\nreturn rows.map(r => r.missing.x);`} />,
+};
+
+export const ThrowingScript: StoryObj = {
+  name: "a script that throws: the engine's error in the pane",
+  render: () => <Pair source={`const rows = [{ v: 1 }];\nreturn rows.map(r => r.missing.x);`} />,
 };

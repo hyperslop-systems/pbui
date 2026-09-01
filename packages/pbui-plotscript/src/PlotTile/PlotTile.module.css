@@ -15,8 +15,11 @@
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   padding: var(--pbui-space-2);
+  /* The plot is sized to the cell; nothing here should ever scroll. */
+  overflow: hidden;
 }
 
 .plot {
   min-height: 0;
+  overflow: hidden;
 }
