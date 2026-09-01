@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkScriptResult, describeScriptResultProblem } from "./scriptResult";
+import { checkScriptResult, checkScriptResults, describeScriptResultProblem } from "./scriptResult";
 
 const VALID = {
   document: { format: "hyperslop.plot", version: 1, id: "p", variables: {}, composition: { dimensions: {} }, layers: [] },
@@ -45,7 +45,21 @@ describe("checkScriptResult", () => {
 
   it("enforces the row limit and says what it was", () => {
     const rows = Array.from({ length: 11 }, (_, i) => ({ i }));
-    const checked = checkScriptResult({ ...VALID, data: { rows, coverage: { kind: "complete", rowCount: 11 } } }, { rows: 10 });
+    const checked = checkScriptResult({ ...VALID, data: { rows, coverage: { kind: "complete", rowCount: 11 } } }, { rows: 10, plots: 12 });
     expect(checked).toEqual({ ok: false, problem: { kind: "too-many-rows", got: 11, limit: 10 } });
+  });
+});
+
+describe("checkScriptResults — one or a list", () => {
+  it("wraps one result, accepts a list, and names the index of a bad element", () => {
+    expect(checkScriptResults(VALID)).toEqual({ ok: true, results: [VALID] });
+    expect(checkScriptResults([VALID, BOUNDED])).toMatchObject({ ok: true, results: [VALID, BOUNDED] });
+    expect(checkScriptResults([VALID, { nope: 1 }])).toEqual({ ok: false, problem: { kind: "in-list", index: 1, problem: { kind: "missing", field: "document" } } });
+    expect(describeScriptResultProblem({ kind: "in-list", index: 1, problem: { kind: "missing", field: "document" } })).toBe('plot 2: the result has no "document"');
+  });
+
+  it("refuses an empty list and a list over the plot limit", () => {
+    expect(checkScriptResults([])).toEqual({ ok: false, problem: { kind: "empty-list" } });
+    expect(checkScriptResults([VALID, VALID, VALID], { rows: 10, plots: 2 })).toEqual({ ok: false, problem: { kind: "too-many-plots", got: 3, limit: 2 } });
   });
 });

@@ -1,5 +1,9 @@
 import {
   algebra,
+  annotation,
+  coordinate,
+  guide,
+  transform,
   composition,
   geom,
   layer,
@@ -95,6 +99,27 @@ const CASES: Array<[string, unknown]> = [
   ["presence.configured({ side: 'top' })", presence.configured({ side: "top" })],
   ["presentation.compact()", presentation.compact()],
   ["presentation.compact({ padding: 8 })", presentation.compact({ padding: 8 })],
+  // annotation
+  ["annotation.rule({ id: 'a', channel: 'y', value: { kind: 'constant', value: 30 }, label: 'Target', intent: 'target' })",
+     annotation.rule({ id: "a" as never, channel: "y", value: value.constant(30), label: "Target", intent: "target" })],
+  ["annotation.text({ id: 't', anchor: { kind: 'panel', x: 0.5, y: 0.9 }, text: 'hi' })", annotation.text({ id: "t" as never, anchor: { kind: "panel", x: 0.5, y: 0.9 }, text: "hi" })],
+  ["annotation.region({ id: 'r', from: { kind: 'panel', x: 0, y: 0 }, to: { kind: 'panel', x: 1, y: 0.2 } })",
+     annotation.region({ id: "r" as never, from: { kind: "panel", x: 0, y: 0 }, to: { kind: "panel", x: 1, y: 0.2 } })],
+  ["annotation.point({ id: 'p', anchor: { kind: 'panel', x: 0.1, y: 0.1 } })", annotation.point({ id: "p" as never, anchor: { kind: "panel", x: 0.1, y: 0.1 } })],
+  // coordinate
+  ["coordinate.cartesian()", coordinate.cartesian()],
+  ["coordinate.transpose()", coordinate.transpose()],
+  ["coordinate.polar({ theta: 'x', startAngle: -1.5, direction: 'clockwise', innerRadius: 0.16 })", coordinate.polar({ theta: "x", startAngle: -1.5, direction: "clockwise", innerRadius: 0.16 })],
+  // guide
+  ["guide.axis({ label: 'Day', side: 'top', grid: 'major' })", guide.axis({ label: "Day", side: "top", grid: "major" })],
+  ["guide.legend({ title: 'Shift', orientation: 'horizontal' })", guide.legend({ title: "Shift", orientation: "horizontal" })],
+  // transform
+  ["transform.variable('v')", transform.variable(variableId("v"))],
+  ["transform.unary('abs', transform.variable('v'))", transform.unary("abs", transform.variable(variableId("v")))],
+  ["transform.binary('add', transform.variable('a'), transform.variable('b'))", transform.binary("add", transform.variable(variableId("a")), transform.variable(variableId("b")))],
+  ["transform.log(transform.variable('v'))", transform.log(transform.variable(variableId("v")))],
+  ["transform.sqrt(transform.variable('v'))", transform.sqrt(transform.variable(variableId("v")))],
+  ["transform.cut(transform.variable('v'), [1, 2, 3])", transform.cut(transform.variable(variableId("v")), [1, 2, 3])],
   // erased ids
   ["plotId('p')", plotId("p")],
   ["variableId('v')", variableId("v")],

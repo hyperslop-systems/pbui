@@ -112,9 +112,19 @@ function suite(name: string, make: () => ProgramEngine) {
       spy.mockRestore();
     });
 
+    it("a script may return a list: every plot comes back, the first is `result`", async () => {
+      const engine = await host();
+      const run = await runPlotScript(engine, { instanceId: "plot-1", source: SCATTER.replace("return {", "const one = {").replace(/\};\s*$/, "}; return [one, { ...one, document: { ...one.document, id: 'second' } }];") });
+      expect(run.status).toBe("ok");
+      if (run.status !== "ok") return;
+      expect(run.results).toHaveLength(2);
+      expect(run.result.document.id).toBe("monthly-temperature");
+      expect(run.results[1]!.document.id).toBe("second");
+    });
+
     it("the row limit applies", async () => {
       const engine = await host();
-      const run = await runPlotScript(engine, { instanceId: "plot-1", source: WIDE, limits: { rows: 100 } });
+      const run = await runPlotScript(engine, { instanceId: "plot-1", source: WIDE, limits: { rows: 100, plots: 12 } });
       expect(run).toMatchObject({ status: "invalid", problem: { kind: "too-many-rows", got: 1000, limit: 100 } });
     });
   });

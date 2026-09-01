@@ -1,6 +1,6 @@
 import type { ProgramEngine } from "../engine";
 import { PLOT_AUTHOR_SHIM } from "./authorShim";
-import { checkScriptResult, type ScriptResult, type ScriptResultLimits, type ScriptResultProblem } from "./scriptResult";
+import { checkScriptResults, type ScriptResult, type ScriptResultLimits, type ScriptResultProblem } from "./scriptResult";
 
 /**
  * The program a plot script is evaluated INSIDE.
@@ -65,7 +65,8 @@ export interface RunPlotScriptInput {
 }
 
 export type PlotScriptRun =
-  | { status: "ok"; result: ScriptResult; logs: ScriptLog[]; ms: number }
+  /** `result` is the first plot; `results` is every plot the script returned (one, unless it returned a list). */
+  | { status: "ok"; result: ScriptResult; results: ScriptResult[]; logs: ScriptLog[]; ms: number }
   | { status: "invalid"; problem: ScriptResultProblem; logs: ScriptLog[]; ms: number }
   | { status: "error"; error: unknown; logs: ScriptLog[]; ms: number };
 
@@ -98,6 +99,8 @@ export async function runPlotScript(engine: ProgramEngine, input: RunPlotScriptI
     return { status: "error", error, logs: [], ms: elapsed() };
   }
   const logs = Array.isArray(parsed.logs) ? (parsed.logs as ScriptLog[]) : [];
-  const checked = checkScriptResult(parsed.value, input.limits);
-  return checked.ok ? { status: "ok", result: checked.result, logs, ms: elapsed() } : { status: "invalid", problem: checked.problem, logs, ms: elapsed() };
+  const checked = checkScriptResults(parsed.value, input.limits);
+  return checked.ok
+    ? { status: "ok", result: checked.results[0]!, results: checked.results, logs, ms: elapsed() }
+    : { status: "invalid", problem: checked.problem, logs, ms: elapsed() };
 }

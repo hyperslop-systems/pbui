@@ -11,12 +11,11 @@
  * under QuickJS there is no module loader, and under `eval` there is no reason
  * to behave differently. It must never import anything.
  *
- * `guide`, `annotation`, `coordinate` and `transform` are deliberately absent
- * from this first version: nothing in the worked examples uses them, and each
- * one added without a call site is one more thing to keep in step. Add them
- * with a parity case each when a script needs them.
+ * Version 2 added `annotation`, `coordinate`, `guide` and `transform` when the
+ * showcase examples needed reference lines, polar bars, configured axes and
+ * derived variables; each came with its parity cases.
  */
-export const PLOT_AUTHOR_SHIM_VERSION = 1;
+export const PLOT_AUTHOR_SHIM_VERSION = 2;
 
 export const PLOT_AUTHOR_SHIM = String.raw`
 const plot = (input) => ({ format: "hyperslop.plot", version: 1, ...input });
@@ -114,6 +113,33 @@ const presentation = {
   }),
 };
 
+const annotation = {
+  rule: (input) => ({ ...input, kind: "rule" }),
+  text: (input) => ({ ...input, kind: "text" }),
+  region: (input) => ({ ...input, kind: "region" }),
+  point: (input) => ({ ...input, kind: "point" }),
+};
+
+const coordinate = {
+  cartesian: () => ({ kind: "cartesian" }),
+  transpose: () => ({ kind: "transpose" }),
+  polar: (o) => ({ kind: "polar", ...o }),
+};
+
+const guide = {
+  axis: (options) => options,
+  legend: (options) => options,
+};
+
+const transform = {
+  variable: (variable) => ({ kind: "variable", variable }),
+  unary: (op, input) => ({ kind: "unary", op, input }),
+  binary: (op, left, right) => ({ kind: "binary", op, left, right }),
+  log: (input) => ({ kind: "unary", op: "log", input }),
+  sqrt: (input) => ({ kind: "unary", op: "sqrt", input }),
+  cut: (input, breaks) => ({ kind: "cut", input, breaks }),
+};
+
 // The branded id constructors erase at runtime; they exist so a script
 // copied out of the plot README runs unchanged.
 const plotId = (v) => v;
@@ -137,6 +163,10 @@ export const PLOT_AUTHOR_SHIM_NAMES: readonly string[] = [
   "algebra",
   "presence",
   "presentation",
+  "annotation",
+  "coordinate",
+  "guide",
+  "transform",
   "plotId",
   "variableId",
   "fieldId",
