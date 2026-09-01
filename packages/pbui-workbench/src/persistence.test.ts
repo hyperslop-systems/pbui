@@ -133,6 +133,26 @@ describe("local persistence (5.F)", () => {
     expect(readWorkbenchSnapshot("k", { storage, version: 2, migrate: () => null })).toBeNull();
   });
 
+  test("a bare pre-envelope document arrives at migrate as version 0", () => {
+    const storage = fakeStorage();
+    const wb = createWorkbench({ apps: demoApps, initial: singleTile("counter") });
+    // What every product that hand-wrote this loop stored: the serialised
+    // document under the key, with no envelope around it.
+    storage.setItem("k", wb.serialize());
+    // No migrate: discarded, and the product falls back to its default.
+    expect(readWorkbenchSnapshot("k", { storage })).toBeNull();
+    const versions: number[] = [];
+    const migrated = readWorkbenchSnapshot("k", {
+      storage,
+      migrate: (payload, from) => {
+        versions.push(from);
+        return { version: 1, document: payload };
+      },
+    });
+    expect(versions).toEqual([0]);
+    expect(migrated?.document.workspaces).toHaveLength(1);
+  });
+
   test("a storage that throws is reported, never rethrown into the gesture", () => {
     const errors: unknown[] = [];
     const storage: StorageLike = {

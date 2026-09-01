@@ -74,7 +74,7 @@ export type {
 } from "./types";
 export { WorkbenchContext, useWorkbench, usePlacement } from "./context";
 export { createPlacementController } from "./placement";
-export { createLocalPersistence, readWorkbenchSnapshot, PERSISTENCE_VERSION } from "./persistence";
+export { createLocalPersistence, readWorkbenchSnapshot, PERSISTENCE_VERSION, PRE_ENVELOPE_VERSION } from "./persistence";
 export type { LocalPersistence, LocalPersistenceOptions, ReadOptions, StorageLike, WorkbenchSnapshot } from "./persistence";
 export type {
   ActivePlacement,

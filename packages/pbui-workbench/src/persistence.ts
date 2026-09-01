@@ -10,8 +10,20 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
-/** The envelope version a payload without one is assumed to be. */
+/** The current envelope version. A payload with no `version` reads as 0. */
 export const PERSISTENCE_VERSION = 1;
+
+/**
+ * What a payload with no `version` field claims to be.
+ *
+ * Zero, not 1: every product that hand-wrote this loop stored the bare
+ * serialised document under the key, and calling that "version 1" would make
+ * it indistinguishable from an envelope — so `migrate` could never be handed
+ * one. As version 0 it arrives at `migrate(payload, 0)`, which is a
+ * four-line wrap, and a product that supplies no `migrate` discards it and
+ * falls back to its default layout.
+ */
+export const PRE_ENVELOPE_VERSION = 0;
 
 /**
  * What is written under the key.
@@ -86,7 +98,7 @@ export function readWorkbenchSnapshot(key: string, options: ReadOptions = {}): W
   }
   if (!payload || typeof payload !== "object") return null;
   const claimed = (payload as { version?: unknown }).version;
-  const version = typeof claimed === "number" ? claimed : PERSISTENCE_VERSION;
+  const version = typeof claimed === "number" ? claimed : PRE_ENVELOPE_VERSION;
   let current: unknown = payload;
   if (version !== expected) {
     if (!options.migrate) return null;
