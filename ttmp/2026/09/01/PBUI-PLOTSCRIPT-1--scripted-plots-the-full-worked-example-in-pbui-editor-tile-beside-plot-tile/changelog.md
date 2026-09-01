@@ -18,3 +18,21 @@ Moved here from datalab (was DATALAB-PLOTSCRIPT-1) and retargeted: the worked ex
 
 Uploaded to reMarkable at /ai/2026/09/01/PBUI-PLOTSCRIPT-1.
 
+
+## 2026-09-01
+
+Step 1-2: scaffolded pbui-plotscript and its demo (commit b063aba); document as DocumentPayload, draft store, runner with stale-run ticket and lastGood, log capture added to the sandbox's buildPlotScriptCode; 10 tests (commit 126832d).
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/src/runner.ts — The runner and its two rules
+
+
+## 2026-09-01
+
+Step 3: ScriptTile, PlotTile and createPlotScriptApps, tested inside a real workbench Surface (commit 2ff7f91); plot pane overflow fixed and stories split (commit 506c12a); four screenshots. Finding for the plot package: a data max of 25.1 is clipped at a niced 25 axis.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/src/ScriptTile/ScriptTile.tsx — The editor tile and its document-on-success rule
+
