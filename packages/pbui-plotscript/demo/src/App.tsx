@@ -3,14 +3,19 @@ import { useMemo } from "react";
 import { STORAGE_KEY, createDemoWorkbench } from "./workbench";
 
 export function App() {
-  const { workbench, restored } = useMemo(createDemoWorkbench, []);
+  const { workbench, host, restored } = useMemo(createDemoWorkbench, []);
   const reset = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       // nothing to clear
     }
+    // The document AND the host: drafts and runner state are keyed by the
+    // same example ids, and without clearing them the remounted tiles keep
+    // showing the edited scripts (review finding P2 on PR #22).
     workbench.reset();
+    host.drafts.clear();
+    void host.runner.disposeAll();
   };
   return (
     <div className="shell">

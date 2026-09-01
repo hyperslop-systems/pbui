@@ -1,6 +1,6 @@
 import { createAppRegistry, createWorkbench, parseDocument, split, tile, workspaces, type Workbench } from "@hyperslop-systems/pbui-workbench";
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
-import { EXAMPLE_SCRIPTS, PLOT_BINDING, createPlotScriptApps, createPlotScriptHost, plotScriptMutation } from "@hyperslop-systems/pbui-plotscript";
+import { EXAMPLE_SCRIPTS, PLOT_BINDING, connectPlotScriptDocuments, createPlotScriptApps, createPlotScriptHost, plotScriptMutation, type PlotScriptHost } from "@hyperslop-systems/pbui-plotscript";
 
 /**
  * One workspace per example, so the workspace strip is the example picker.
@@ -22,7 +22,7 @@ export function seedDocument() {
   return applyMutations(doc, EXAMPLE_SCRIPTS.map(plotScriptMutation));
 }
 
-export function createDemoWorkbench(): { workbench: Workbench; restored: boolean } {
+export function createDemoWorkbench(): { workbench: Workbench; host: PlotScriptHost; restored: boolean } {
   const host = createPlotScriptHost();
   const apps = createAppRegistry(createPlotScriptApps(host));
   const seed = seedDocument();
@@ -46,5 +46,8 @@ export function createDemoWorkbench(): { workbench: Workbench; restored: boolean
       }
     },
   });
-  return { workbench, restored: restored !== null };
+  // Successful runs persist into the document from the runner's own
+  // lifecycle, so a run that finishes after its tile closed is not lost.
+  connectPlotScriptDocuments(workbench, host);
+  return { workbench, host, restored: restored !== null };
 }

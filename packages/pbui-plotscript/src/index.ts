@@ -6,6 +6,7 @@ export { createDraftStore, useDraft } from "./draftStore";
 export type { DraftStore } from "./draftStore";
 export { IDLE_RUN, createPlotScriptRunner, useScriptRun } from "./runner";
 export type { CreatePlotScriptRunnerOptions, PlotScriptRunner, ScriptRunState } from "./runner";
+export { connectPlotScriptDocuments } from "./connect";
 export { PLOT_BINDING, createPlotScriptHost } from "./host";
 export type { CreatePlotScriptHostOptions, PlotScriptHost } from "./host";
 export { PLOT_APP_ID, SCRIPT_APP_ID, createPlotScriptApps } from "./apps";

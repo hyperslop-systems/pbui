@@ -469,3 +469,32 @@ quietly dropped.
 
 ### Technical details
 - Final counts: 13 screenshots in `reference/screenshots/`, 28 package tests, 9 examples, 2 tiles, 1 demo.
+
+## Step 7: PR #22 review findings — persistence outlives the tile, reset clears the host
+
+Codex review on PR #22 raised two findings, both correct, both now fixed.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Address code review issues, commit, push. Don't commit PBUI-LINK-1 yet"
+
+**Assistant interpretation:** Fix the two Codex findings on PR #22 (P1: the document write depended on a mounted ScriptTile; P2: the demo reset left host state), commit and push, and leave the untracked PBUI-LINK-1 ticket directory out of the commit.
+
+**Inferred user intent:** Land the review round on the open PR without entangling unrelated in-progress ticket docs.
+
+### What I did
+- **P1** — persistence moved out of the tile. The runner gained `onPublish(listener)` (fires only for published runs, so a stale run cannot write), replacing the `onRan` creation option. A new `connectPlotScriptDocuments(workbench, host)` subscribes at workbench level and writes `plotScriptMutation` when a run succeeded with a source that differs from the document's. `ScriptTile` lost its write effect. `connect.test.ts` proves the P1 scenario literally: a run persists with no component mounted at all, plus no-write cases (failure, unknown id, unchanged source) and disconnect.
+- **P2** — the demo's reset now clears the host beside the document: `workbench.reset(); host.drafts.clear(); void host.runner.disposeAll()`. `DraftStore` gained `clear()`; `createDemoWorkbench` returns the host. Both tiles' seed/initial-run effects now depend on `run.status` with an idle guard, so a disposed (idle) runner triggers a fresh seed-and-run from the restored document. A tiles test replays the sequence: edit, run, reset, and the editor and plot return to the seeded source.
+
+### Why
+- A run is owned by the runner, not by the tile that happened to start it; the write must live at the owner's lifecycle. The reset finding is the same principle inverted: the document and the host are two stores, and a reset that touches one is not a reset.
+
+### What worked / didn't
+- 32/32 package tests on the first run after the edits; the demo typecheck failed once purely from ordering (it types against the package's `dist`, which had not been rebuilt yet).
+
+### What warrants a second pair of eyes
+- The tiles' effects now re-fire on every `run.status` change with an idle guard; the guard makes them no-ops outside reset, but the pattern is "effect as state-machine edge" and deserves a look.
+- `connectPlotScriptDocuments` must be called once per workbench; calling it twice writes twice (idempotent `documentPut`s, but two mutations). Not guarded.
+
+### Code review instructions
+- `src/connect.ts` and `connect.test.ts` first; then the `onPublish` block in `src/runner.ts`; then the reset test in `tiles.test.tsx`.

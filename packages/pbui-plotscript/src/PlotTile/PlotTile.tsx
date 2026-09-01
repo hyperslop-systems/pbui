@@ -35,11 +35,15 @@ export function PlotTile({ view, host }: PlotTileProps) {
   const run = useScriptRun(host.runner, id);
   const [outcome, setOutcome] = useState<PlotOutcome | null>(null);
 
+  // `run.status` is a dependency so a host reset re-runs the restored
+  // document's source; the idle guard makes other status changes no-ops.
   useEffect(() => {
     if (!script) return;
-    if (host.runner.getState(script.id).status === "idle") void host.runner.run(script.id, script.source);
+    if (run.status === "idle" && host.runner.getState(script.id).status === "idle") {
+      void host.runner.run(script.id, script.source);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [script?.id]);
+  }, [script?.id, run.status]);
 
   if (!id) return <EmptyState message="this tile names no script" hint={`bind it: view.documents.${PLOT_BINDING}`} />;
   if (!script) return <EmptyState message={`no script "${id}" in this workbench`} hint="open one from the launcher, or seed the document" />;

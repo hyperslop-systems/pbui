@@ -3,7 +3,7 @@ import { CodeEditor } from "@hyperslop-systems/pbui-editor";
 import { byteLength, describeScriptResultProblem } from "@hyperslop-systems/pbui-sandbox";
 import { useWorkbench, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import { useEffect, useState } from "react";
-import { plotScriptMutation, readPlotScript } from "../document";
+import { readPlotScript } from "../document";
 import { useDraft } from "../draftStore";
 import { PLOT_BINDING, type PlotScriptHost } from "../host";
 import { useScriptRun, type ScriptRunState } from "../runner";
@@ -39,22 +39,20 @@ export function ScriptTile({ view, host }: ScriptTileProps) {
   const [auto, setAuto] = useState(true);
 
   // Seed the draft from the document on first sight, and run once so a
-  // freshly opened tile shows its plot without a keystroke.
+  // freshly opened tile shows its plot without a keystroke. `run.status` is
+  // a dependency so a host reset (drafts cleared, runner disposed to idle)
+  // seeds and runs again from the restored document; the guards make every
+  // other status change a no-op. Persisting a successful run into the
+  // document is NOT this tile's job — see connectPlotScriptDocuments.
   useEffect(() => {
     if (!script) return;
     host.drafts.seed(script.id, script.source);
-    if (host.runner.getState(script.id).status === "idle") void host.runner.run(script.id, script.source);
-    // The document's source only matters on first sight; later runs come from the draft.
+    if (run.status === "idle" && host.runner.getState(script.id).status === "idle") {
+      void host.runner.run(script.id, script.source);
+    }
+    // The document's source only matters at seed time; later runs come from the draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [script?.id]);
-
-  // A successful run writes its source into the document.
-  useEffect(() => {
-    if (!script || run.status !== "ok" || run.lastGoodSource === null || run.lastGoodSource === script.source) return;
-    workbench.mutate([plotScriptMutation({ ...script, source: run.lastGoodSource, updatedAt: new Date().toISOString() })]);
-    // Keyed on runCount: one write per published run, never per render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run.runCount]);
+  }, [script?.id, run.status]);
 
   if (!id) return <EmptyState message="this tile names no script" hint={`bind it: view.documents.${PLOT_BINDING}`} />;
   if (!script) return <EmptyState message={`no script "${id}" in this workbench`} hint="open one from the launcher, or seed the document" />;

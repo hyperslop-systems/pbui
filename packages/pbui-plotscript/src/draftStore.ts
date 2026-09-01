@@ -19,6 +19,8 @@ export interface DraftStore {
   /** Seed a draft only if none exists — the document's source on first open. */
   seed(id: string, source: string): void;
   forget(id: string): void;
+  /** Every draft gone — the reset path; tiles fall back to the document's source. */
+  clear(): void;
   subscribe(listener: () => void): () => void;
 }
 
@@ -42,6 +44,11 @@ export function createDraftStore(): DraftStore {
     },
     forget(id) {
       if (drafts.delete(id)) emit();
+    },
+    clear() {
+      if (drafts.size === 0) return;
+      drafts.clear();
+      emit();
     },
     subscribe(listener) {
       listeners.add(listener);

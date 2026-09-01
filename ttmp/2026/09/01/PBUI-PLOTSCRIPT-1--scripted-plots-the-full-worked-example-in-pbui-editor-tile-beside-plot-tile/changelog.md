@@ -63,3 +63,12 @@ Step 6: QuickJS runner test, nine-script serialize round-trip, README, design am
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/README.md — The package charter
 
+
+## 2026-09-01
+
+Step 7: PR #22 review round. P1: document persistence moved from a ScriptTile effect to connectPlotScriptDocuments over the runner's new onPublish listener, proven with no component mounted. P2: the demo reset clears drafts and runner state; tiles re-seed via a run.status dependency. 32 package tests.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/src/connect.ts — The workbench-level persistence connector
+

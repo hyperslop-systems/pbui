@@ -43,6 +43,14 @@ export interface PlotScriptRunner {
   dispose(id: string): Promise<void>;
   /** Every instance gone; the engine is the caller's to terminate. */
   disposeAll(): Promise<void>;
+  /**
+   * Called after every PUBLISHED run (stale runs never reach it), with the
+   * source that ran and the state that resulted. This is the persistence
+   * door: it belongs to the runner rather than to a tile, because a run can
+   * publish after the tile that started it has unmounted, and the document
+   * write must not be lost with the tile (review finding P1 on PR #22).
+   */
+  onPublish(listener: (id: string, source: string, state: ScriptRunState) => void): () => void;
 }
 
 export interface CreatePlotScriptRunnerOptions {
@@ -50,8 +58,6 @@ export interface CreatePlotScriptRunnerOptions {
   /** Milliseconds after the last `schedule` before the run starts; default 400. */
   debounceMs?: number;
   limits?: ScriptResultLimits;
-  /** Called after every run that publishes, with the source that ran. The document write hangs here. */
-  onRan?(id: string, source: string, state: ScriptRunState): void;
 }
 
 const instanceIdOf = (id: string) => `plot-script:${id}`;
@@ -74,6 +80,7 @@ export function createPlotScriptRunner(options: CreatePlotScriptRunnerOptions): 
   const tickets = new Map<string, number>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   const listeners = new Set<() => void>();
+  const publishListeners = new Set<(id: string, source: string, state: ScriptRunState) => void>();
 
   const emit = () => {
     for (const listener of listeners) listener();
@@ -126,7 +133,7 @@ export function createPlotScriptRunner(options: CreatePlotScriptRunnerOptions): 
     }
     states.set(id, next);
     emit();
-    options.onRan?.(id, source, next);
+    for (const listener of publishListeners) listener(id, source, next);
   };
 
   return {
@@ -161,6 +168,12 @@ export function createPlotScriptRunner(options: CreatePlotScriptRunnerOptions): 
     async disposeAll() {
       for (const id of [...loaded.keys()]) await this.dispose(id);
       for (const id of [...states.keys()]) await this.dispose(id);
+    },
+    onPublish(listener) {
+      publishListeners.add(listener);
+      return () => {
+        publishListeners.delete(listener);
+      };
     },
   };
 }

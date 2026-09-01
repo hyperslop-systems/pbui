@@ -73,8 +73,9 @@ describe("createPlotScriptRunner", () => {
 
   it("schedule debounces, and a newer schedule cancels the older one", async () => {
     vi.useFakeTimers();
-    const onRan = vi.fn();
-    const runner = createPlotScriptRunner({ engine: createEvalEngine(), debounceMs: 100, onRan });
+    const onPublish = vi.fn();
+    const runner = createPlotScriptRunner({ engine: createEvalEngine(), debounceMs: 100 });
+    runner.onPublish(onPublish);
     runner.schedule("a", "return {");
     runner.schedule("a", OK);
     await vi.advanceTimersByTimeAsync(99);
@@ -82,8 +83,8 @@ describe("createPlotScriptRunner", () => {
     await vi.advanceTimersByTimeAsync(2);
     await vi.runAllTimersAsync();
     expect(runner.getState("a").status).toBe("ok");
-    expect(onRan).toHaveBeenCalledTimes(1);
-    expect(onRan).toHaveBeenCalledWith("a", OK, expect.objectContaining({ status: "ok" }));
+    expect(onPublish).toHaveBeenCalledTimes(1);
+    expect(onPublish).toHaveBeenCalledWith("a", OK, expect.objectContaining({ status: "ok" }));
   });
 
   it("captures console output and two scripts do not share instances", async () => {

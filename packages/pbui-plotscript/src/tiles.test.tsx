@@ -4,6 +4,7 @@ import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { createPlotScriptApps } from "./apps";
+import { connectPlotScriptDocuments } from "./connect";
 import { plotScriptMutation, readPlotScript } from "./document";
 import { createPlotScriptHost } from "./host";
 
@@ -28,6 +29,7 @@ function mount(source = OK) {
     plotScriptMutation({ id: "s1", name: "three points", source, updatedAt: "2026-09-01T00:00:00.000Z" }),
   ]);
   const wb = createWorkbench({ apps: createAppRegistry(createPlotScriptApps(host)), initial });
+  connectPlotScriptDocuments(wb, host);
   const utils = render(<wb.Surface />);
   return { host, wb, ...utils };
 }
@@ -88,6 +90,32 @@ describe("the script tile and the plot tile over one document", () => {
     await waitFor(() => expect(container.querySelectorAll('[data-part="plot-grid"] svg').length).toBe(2));
     expect(container.textContent).toContain("2 plots");
     expect(container.textContent).toContain("the second");
+  });
+
+  test("resetting the workbench AND the host restores the seeded source and re-runs it", async () => {
+    // The P2 scenario from PR #22: reset must clear the host's drafts and
+    // runner state, or remounted tiles keep showing the edited script.
+    const { container, host, wb } = mount();
+    await waitFor(() => expect(host.runner.getState("s1").status).toBe("ok"));
+    const view = editorOf(container);
+    const edited = OK.replace("three points", "still three points");
+    act(() => {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: edited } });
+    });
+    await waitFor(() => expect(host.runner.getState("s1").lastGoodSource).toBe(edited));
+    await waitFor(() => expect(readPlotScript(wb.store.getState().document, "s1")?.source).toBe(edited));
+
+    // The demo's reset sequence.
+    await act(async () => {
+      wb.reset();
+      host.drafts.clear();
+      await host.runner.disposeAll();
+    });
+    await waitFor(() => expect(editorOf(container).state.doc.toString()).toBe(OK));
+    await waitFor(() => expect(host.runner.getState("s1").lastGoodSource).toBe(OK));
+    await waitFor(() => expect(container.querySelector('[data-part="plot-view"] svg')).not.toBeNull());
+    expect(container.textContent).toContain("three points");
+    expect(container.textContent).not.toContain("still three points");
   });
 
   test("an unbound tile and a missing script each say so", () => {
