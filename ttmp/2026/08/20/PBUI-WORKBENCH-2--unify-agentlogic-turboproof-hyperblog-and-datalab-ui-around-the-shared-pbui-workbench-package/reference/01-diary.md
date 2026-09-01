@@ -40,10 +40,20 @@ RelatedFiles:
       Note: MutationError.detail restored for TS-Go parity (cd13915)
     - Path: repo://src/chrome/TileFrame.tsx
       Note: the actions slot the per-pane launcher door lives in (7d89732)
+    - Path: ws://agentlogic/ui/src/components/pages/Workbench/Workbench.tsx
+      Note: rebalance wired; the C1 title workaround deleted (51a5df6)
+    - Path: ws://hyperblog/ui/src/appkit/adapt.tsx
+      Note: 'C3: the registry as applications, six arrangements as layout specs, the split policy (624164d)'
+    - Path: ws://hyperblog/ui/src/model/paneTree.test.ts
+      Note: 'C3: the seven behaviours rewritten against the shell, plus five (624164d)'
+    - Path: ws://hyperblog/ui/src/pbui/runtime.tsx
+      Note: 'C3 prerequisite: pbui 0.8.0''s action kernel over the product''s own descriptor actions (c08d22e)'
     - Path: ws://turboproof/ui/src/apps/FilesApp.tsx
       Note: 'C2: openNode awaits wb.placement.begin with per-tile wording (7265f98)'
     - Path: ws://turboproof/ui/src/components/organisms/TileTitle.tsx
       Note: 'C2: what survives of Tile.tsx — the presentation, the file chip, the composed badge (d503dd0)'
+    - Path: ws://turboproof/ui/src/components/pages/Workbench.tsx
+      Note: rebalance wired; one shortcutContext for both surfaces (b6feaf8)
     - Path: ws://turboproof/ui/src/store/workbenchShell.ts
       Note: 'C2: the Redux boundary plus turboproof''s three policies (c5e3f3e, d503dd0)'
 ExternalSources: []
@@ -52,6 +62,7 @@ LastUpdated: 2026-08-20T14:29:03.657935947-04:00
 WhatFor: Record how the unification analysis was made and what was decided, so the migrations can be executed and reviewed per product.
 WhenToUse: Read before migrating any product onto pbui-workbench or extending the package.
 ---
+
 
 
 
@@ -1069,4 +1080,135 @@ Ctrl-K               ON SCREEN / NEW TILE, "files · shown 1 place";
 divider              role=separator tabindex=0 aria-valuetext="18 percent", keyboard-operable
 switch to inspect    5 tiles, all still Demo — only the target workspace follows
 reload               7 tiles, bindings intact, sync synced
+```
+
+## Step 8: rebalance in two products, and C3 — the hyperblog migration
+
+Three pieces of work, and the middle one is the reason to read this step. Rebalance went into agentlogic and turboproof; hyperblog moved onto the package; and datalab (§6.4) was surveyed, measured and deliberately not started.
+
+hyperblog is the migration the design most under-described. §6.3 calls it "own tree, no persistence, server ready" and lists its prerequisites as 5.B, 5.C and 5.D — all of which existed. What it does not mention is that hyperblog was five pbui releases behind, across a breaking deletion: pbui 0.8.0 removed the descriptor's `actions()` callback, which hyperblog's entire presentation layer was built on. That had to be migrated first, and it is a bigger change than the workbench part.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Add rebalancing in agentlogic and turboproof. Do phase 7"
+
+**Second user prompt (verbatim):** "Ok, hyperblog."
+
+**Third user prompt (verbatim):** "hyperblog should not have a second border box around each object" (with a screenshot of the index tile)
+
+**Assistant interpretation:** Wire PBUI-REBALANCE-1's dialog, badge and settings tile into both migrated products; then attempt §6.4; when that proved to rest on a wrong premise, migrate hyperblog instead; then fix the doubled borders the pbui version jump introduced.
+
+**Inferred user intent:** Keep the family converging on one shell, product by product, with the newest core features actually reaching users rather than sitting in the package.
+
+**Commits (code):**
+- `51a5df6` — agentlogic: rebalance, and the C1 title workaround deleted
+- `b6feaf8` — turboproof: rebalance, and the accept flag Mod-K had lost
+- `465365d` — `wb.RebalanceBadge`
+- `c08d22e` — hyperblog: pbui 0.5 → 0.10 and the action kernel
+- `624164d` — hyperblog: the workbench is the package's
+- `fe5f136` — the two findings against §6.4
+
+### What I did
+
+**Rebalance, both products.** `<wb.Rebalance />` (Mod+Shift+K), `<wb.RebalanceBadge />` in the chrome, and `rebalance-settings` registered as a placeable tile — which meant adding it to both `registry.fixture.json` files and both Go catalogs, because `pkg/workbench` refuses `unknown_application` and a stored layout holding the tile would otherwise be unloadable. Both parity tests now assert the SHELL's registry rather than `allApps()`, since the catalog mirrors what the client can place.
+
+**hyperblog, in two commits.** First the pbui jump: `ProductAction` moved into the product, `runtime.tsx` gained an action registry with one wildcard family bridging to the descriptors' own `actions()`, and the four anonymous `conversions` became declared translators. Then the workbench: `appkit/adapt.tsx` (the registry as applications, the six arrangements as layout specs, the split policy), a Workbench page of masthead + `Surface` + `Launcher`, and `model/paneTree.ts` deleted.
+
+**datalab, not started.** Measured instead: see Step 7's successor findings in `tasks.md` (`w3fi`, `jxsa`).
+
+### Why
+
+- **`emptyPaneApp` went into the package, not into turboproof.** All three launcher-policy products fill new panes with a picker, and all three separately need "placing into a picker pane replaces it rather than halving it". turboproof had the rule by hand (`globalTarget.isLauncher`); it is the package's now, defaulted from the split policy's own app id.
+- **agentlogic's `renderTitle` was deleted rather than kept.** C1's diary said the title-as-button "should be deleted the moment `splitPolicy` wins over the singleton rule". Finding 1 fixed that and finding 4 added the chrome's ⌕ door, so both reasons for it were gone. Keeping it would have left a hand-written `×N` badge drifting beside the shell's.
+- **hyperblog's presentations were neutralised at the product, not the package.** pbui 0.10's box on every presentation is right for a product that draws nothing around its objects. hyperblog draws a Chip, a card or a tinted span around every one. The library rule is `:where(...)` — zero specificity — precisely so the product can say which it is.
+
+### What worked
+
+- **Rebalance verified by repairing a real squeeze, not by booting.** The badge renders NOTHING on a healthy layout, so a boot screenshot would have shown nothing at all:
+  - turboproof, restored 7-tile layout at 1280px: badge read *"⚠ 6 tiles under minimum"*; the dialog offered LEAVE AS IS / RIPPLE (picked, "take 611px from files (slack 778) → satisfied") / BALANCE / RESHAPE with thumbnails and costs; Apply left every tile ≥ 240px and the badge gone.
+  - agentlogic, 4 tiles at 760px: *"⚠ 3 tiles under minimum"* → RIPPLE → 240/240/248/240, badge gone.
+- **hyperblog's browser pass**: six workspace tabs, three tiles in "read", no broken tiles, and the first divider went 28 % → 33 % on ArrowRight with `role="separator"`, `tabindex="0"`, `aria-valuetext="28 percent"`. hyperblog has never had a working divider.
+- The twelve behaviour tests (§6.3's seven, plus five the migration made possible) pass against the shell. `ReaderApp.test.tsx` was not touched, because `TileProps` is unchanged.
+- `make ci-check` exit=0 in all three products; `make ui-token-check` clean in all three.
+
+### What didn't work
+
+- **`RebalanceStatusBadge` threw the moment agentlogic used it.** It is exported bare and calls `useWorkbench()`, so it only works inside the Surface's subtree — and a status bar is exactly where that context does not reach. Nothing in the repo had used it, so the hole had never been hit. Fixed as `wb.RebalanceBadge` (`465365d`).
+- **I re-broke turboproof's accept flow in P9 and caught it in P14.** Deleting `LauncherShortcut` deleted `acceptingPresentation` with it, so Mod-K would open the launcher over a pending accept and strand it. Both surfaces now share one `shortcutContext` built inside the provider.
+- **Splits refuse to go sub-minimum**, so I could not squeeze agentlogic by splitting — nothing happened, which is the pane-constraint guard working. Shrinking the window to 760px is how a user actually gets a squeeze, and it worked immediately.
+- **The doubled borders.** The user's screenshot showed every object in hyperblog's index inside two boxes. Cause: pbui 0.10's `:where([data-pbui="presentation"])` sets `border`, `background` and `padding`; hyperblog was written against 0.5, where a presentation was layout-neutral and the child carried the look. Not caught by any test, and not visible in a type check — a rendering regression from a version jump, found by looking.
+- **hyperblog's dev server 502'd** until I noticed its vite proxy targets `:8080` and I had started the server on `:8081`.
+
+### What I learned
+
+- **A design doc's prerequisite list is only as good as the version it was written against.** §6.3's prerequisites were all satisfied and the migration was still blocked, by a pbui deletion two releases after the guide was written. The lesson generalises: "which version of the shared package does this product hold" belongs in the migration plan beside the feature prerequisites.
+- **The action-kernel bridge is the migration, not a workaround.** turboproof had already solved this and I copied it: one wildcard contribution that asks whichever descriptor owns the subject for its rows. Entries stay written beside the type they belong to, which is the rule worth keeping, and the kernel gets its composability. Reading the neighbour's answer cost twenty minutes and saved rewriting ten `actions()` callbacks.
+- **A default that is right for a bare product is wrong for a dressed one.** pbui boxes presentations so that objects read as objects; hyperblog already boxed them. Both are correct and only the product can say which applies — which is what `:where()` is for, and it is the same shape of argument as the token trap, one layer up.
+- **hyperblog's dead verbs were dead in a way tests cannot see.** `swapTilesByAccept` was emitted by the tile descriptor, listed in the verb union, described by `describeVerb`, and handled by nothing. Everything about it typechecked. Only running the menu entry finds that class of defect.
+
+### What was tricky to build
+
+**1. The split policy is the whole migration's risk, and it depended on a fix from Phase 4.**
+*Cause:* hyperblog's `companionFor` is per-application — a singleton's new pane shows the launcher, the reader duplicates. The package's `resolvePolicy` used to force `"link"` for a singleton BEFORE consulting the product's policy.
+*Symptom, had it not been fixed:* "split the term tile" would have produced a second linked `term` pane, which `pkg/workbench` refuses as `duplicate_singleton` — the exact regression `paneTree.test.ts` was written for. Task `t:77j8` flagged this as needing a re-read before C3.
+*Fix:* none needed here; C1 finding 1 was fixed in Phase 4 (`5e4d592`), and the function form works. The test that would have caught it is the first one in the rewritten file, and it passes.
+
+**2. The verb handler and the workbench refer to each other.**
+*Cause:* a tile's `perform` is handed to it at REGISTRATION (`appsFor(perform)`), and the layout half of what those tiles emit is interpreted by the workbench that registration built.
+*Symptom:* the obvious ordering captures an undefined handler, and every tile's buttons are inert while the frame's still work — the same invisible failure App.tsx already documents for the provider.
+*Fix:* one `performRef` assigned during render, the same knot and the same untying the product already uses one layer up.
+
+**3. `bindTile` addresses a placement; `rebind` addresses a view.**
+*Cause:* hyperblog's leaves carried bindings, so pinning was a property of the pane. In the protocol a binding belongs to the VIEW, and two panes showing one view share it.
+*Fix:* the translation walks the tree for the placement's view id first. This is a real semantic change and the right one: pinning one of two linked panes now pins both, because they are one thing — which is what "linked" has always meant everywhere else in the family.
+
+### What warrants a second pair of eyes
+
+- **Three products now wait on one publish.** agentlogic moved from "installs cleanly from the registry" to "needs 0.10.0/0.4.0", because rebalance needs the token fix. That is a real cost of this session and it is reversible only by publishing.
+- **hyperblog's `binding: { source: "post" }`** makes a newly placed tile bind the current post. Its tiles were written to treat an absent binding as "follow the cursor", so this changes what a fresh tile does. It matches what §6.3 asks for and it deserves a look from someone who reads the product.
+- **The presentation-border rule is broad.** It neutralises the resting box on every presentation in hyperblog. If a future tile renders a bare presentation with nothing around it, that object will read as plain text.
+- **`swapTilesByAccept` has never run in front of a user.** It typechecks and the accept protocol is exercised elsewhere, but this specific path is new.
+
+### What should be done in the future
+
+- Publish `pbui@0.10.0` and `pbui-workbench@0.4.0`, then `make ui-install && make ui` in agentlogic, turboproof and hyperblog and commit the three regenerated lockfiles and bundles.
+- hyperblog's server half: `createLocalPersistence` landed, the `/v1/workbenches` sync did not. It is the only product on the package still browser-only, and §5.F's module is sitting unused.
+- hyperblog should adopt `createTileDescriptor` and drop its hand-written tile actions; the `<tile>` presentation is already in place for it.
+- §6.4 (datalab) remains, with the two findings in `tasks.md` to resolve first.
+
+### Technical details
+
+hyperblog's whole configuration of the shell:
+
+```ts
+createWorkbench({
+  apps: appsFor(perform),                    // fourteen tiles, TileProps unchanged
+  initial: stored?.document ?? initialDocument(),   // six arrangements as layout specs
+  splitPolicy: (_view, app) => (app?.singleton ? { app: "launcher" } : "duplicate"),
+  binding: { source: "post" },
+});
+```
+
+Line counts, `ui/` only, `2c0c098..624164d`:
+
+```
+deleted   model/paneTree.ts              261
+deleted   Workbench.tsx (tree half)     ~300  (378 → 276, and the 276 is a different file)
+deleted   styles/app.css (.hb-split*)    ~35
+added     appkit/adapt.tsx               150
+rewritten model/paneTree.test.ts         12 tests (was 11)
+                                        ————
+7 files changed, +538 / −731
+```
+
+Verification:
+
+```
+hyperblog   tsc 0 errors · 28 tests · make ui-token-check clean · make ci-check exit=0
+            browser: 6 tabs, 3 tiles, 2 dividers, divider 28% → 33% on ArrowRight
+agentlogic  126 tests · ui-token-check clean · make ci-check exit=0
+            browser: badge "⚠ 3 tiles under minimum" at 760px → RIPPLE → 240/240/248/240
+turboproof  133 tests · ui-token-check clean · make ci-check exit=0
+            browser: badge "⚠ 6 tiles under minimum" → RIPPLE → every tile ≥ 240px
+pbui        272 tests · package 251
 ```
