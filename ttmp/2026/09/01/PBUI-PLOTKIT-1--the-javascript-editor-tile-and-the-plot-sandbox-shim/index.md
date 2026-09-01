@@ -1,7 +1,7 @@
 ---
 Title: The JavaScript editor tile and the plot sandbox shim
 Ticket: PBUI-PLOTKIT-1
-Status: active
+Status: review
 Topics:
     - frontend
     - pbui
@@ -14,10 +14,11 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: ""
-LastUpdated: 2026-09-01T13:15:40.982115252-04:00
+LastUpdated: 2026-09-01T14:09:43.01696423-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # The JavaScript editor tile and the plot sandbox shim
 

@@ -45,3 +45,12 @@ Step 4: PlaygroundTile and SourceTile migrated onto CodeEditor with tests drivin
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-sandbox/src/devtools/Devtools.stories.tsx — The stories the screenshots come from
 
+
+## 2026-09-01
+
+Step 5: full build in dependency order, every affected suite green, and a consumer smoke for pbui-editor that installs the packed tarballs from the public registry (commit f070334). The smoke found npm refusing @codemirror/state@6.7.2 under an unexplained 'before 2026-08-25' cutoff; repinned to 6.7.1/6.43.9. Design doc gained section 13, amendments from the implementation. Ticket ready for review.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-editor/scripts/consumer-smoke.mjs — The stranger's-install gate
+

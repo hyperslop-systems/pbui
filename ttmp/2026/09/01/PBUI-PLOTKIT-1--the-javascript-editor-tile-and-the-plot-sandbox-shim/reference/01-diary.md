@@ -12,6 +12,10 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/pbui-editor/package.json
+      Note: CodeMirror pins the smoke forced (commit f070334)
+    - Path: repo://packages/pbui-editor/scripts/consumer-smoke.mjs
+      Note: Packs four tarballs and builds a consumer (commit f070334)
     - Path: repo://packages/pbui-editor/src/CodeEditor/CodeEditor.tsx
       Note: The React/CodeMirror bridge (commit 73c99fb)
     - Path: repo://packages/pbui-editor/src/diagnostics.ts
@@ -48,6 +52,7 @@ LastUpdated: 2026-09-01T13:40:07.686508511-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -383,3 +388,63 @@ offset, which is the brutalist idiom, not a blur); `RebalanceDialog` uses a
 scope — but the two `presentation-parts.css` entries are the ones a user
 actually sees on every hover, and `--pbui-shadow` being undefined is exactly
 the token-fallback failure `tokens.css` documents.
+
+## Step 5: Build order, consumer smoke, and the CodeMirror repin
+
+Phase 5 is the "does it work for a stranger" gate: every package built in
+dependency order, every affected suite run, and a consumer smoke that packs
+the four tarballs a real consumer would install, installs them from the public
+registry into a throwaway project, and typechecks and builds a page that mounts
+a `CodeEditor`. The smoke found the one thing the monorepo could never have:
+`npm` refused the CodeMirror versions I had pinned.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Finish phase 5: build, smoke, and leave the package consumable by PBUI-PLOTSCRIPT-1.
+
+**Inferred user intent:** Ship a package that installs and works outside the workspace, not only under `workspace:^`.
+
+**Commit (code):** f070334 — "pbui-editor: consumer smoke, CodeMirror repinned to versions npm will resolve"
+
+### What I did
+- Full build in dependency order (`pnpm build` at the root → `workbench-protocol` → `pbui-workbench` → `pbui-editor` → `pbui-sandbox`); suites: editor 12/12, sandbox 203/203, core 272/272, workbench 209/210 then 1/1 (below).
+- `packages/pbui-editor/scripts/consumer-smoke.mjs`, modelled on `datalab-ui`'s: packs `pbui`, `workbench-protocol`, `pbui-workbench`, `pbui-editor`; writes a consumer with `skipLibCheck: false`, a `vite-env.d.ts` (`/// <reference types="vite/client" />`), and a `main.tsx` importing `CodeEditor`, `EditorView`, both stylesheets; `npm install` → `tsc --noEmit` → `vite build`. `consumer:smoke` and `pack:check` scripts added.
+- Repinned `@codemirror/state 6.7.2 → 6.7.1` and `@codemirror/view 6.43.10 → 6.43.9`.
+- `tsconfig.build.json` excludes `src/test-setup.ts` (the pack listing showed `dist/test-setup.d.ts` shipping).
+- Killed both Storybook tmux sessions once the screenshots were in.
+
+### Why
+- A dist that works under `workspace:^` and not from the tarball is the exact failure the sibling packages' smoke scripts exist for; a new package gets one on day one.
+
+### What worked
+- Once the two issues below were fixed: `consumer smoke: ok`, consumer bundle 603 KB / 200 KB gzip (CodeMirror + React), CSS 31.7 KB.
+
+### What didn't work
+- `pbui-workbench`'s `slate.perf.test.ts` ("every generator over 12 skewed tiles stays interactive") failed during the full run — a wall-clock guard in a package this ticket never touched, while two Storybook servers and five builds were running. Alone on a quiet machine: 1/1 in 84 ms. Load, not a regression.
+- First smoke: `npm install --silent` failed with no output. Without `--silent`: `npm error notarget No matching version found for @codemirror/state@6.7.2 with a date before 8/25/2026`. `npm config get before` is `null`, no `.npmrc` sets it, no `npm_config_*` env — the cutoff's source is unknown; pnpm did not apply it, which is why the original install succeeded. Resolved by pinning to the newest versions published before that date (`npm view … time`): `state 6.7.1` (2026-07-05), `view 6.43.9` (2026-08-16). The other four were already older.
+- Second smoke: `error TS2882: Cannot find module or type declarations for side-effect import of './styles.css'` from the packed `dist/index.d.ts`, plus the consumer's own two stylesheet imports. Every sibling package ships the same `import "./styles.css"` line in its d.ts; core's smoke handles it by writing `src/vite-env.d.ts` with `/// <reference types="vite/client" />` into the consumer, which declares `*.css` globally. Copied.
+
+### What I learned
+- Something on this machine gives npm a `before` date. Until its source is found, any dependency pinned with `pnpm view` can fail under `npm install`. The smoke is the guard.
+- The `styles.css` side-effect import in a package's d.ts is a known shape here, handled on the consumer side by `vite/client` types rather than by a typed CSS export like `plot`'s `styles-export.ts`. Either would do; this package follows its siblings.
+
+### What was tricky to build
+- Nothing in the code; the phase was diagnosis. The `--silent` flag on `npm install` cost one cycle by hiding the only useful line — the sibling smokes use it too and would hide the same failure.
+
+### What warrants a second pair of eyes
+- The CodeMirror repin. `6.7.1`/`6.43.9` vs `6.7.2`/`6.43.10` is a patch-level difference; a reviewer who knows why the cutoff exists should confirm it is the policy and not an accident.
+- The smoke is not wired into CI for this package. The siblings' `consumer:smoke` scripts are invoked by a publish workflow; this one should join it.
+
+### What should be done in the future
+- Drop `--silent` from the sibling smoke scripts' `npm install`, or make the failure visible another way.
+- Find the `before` cutoff's source and write it down in the repo.
+
+### Code review instructions
+- `packages/pbui-editor/scripts/consumer-smoke.mjs`; `package.json` dependency pins.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-editor consumer:smoke` (needs network access to `registry.npmjs.org`).
+
+### Technical details
+- Ticket totals: 5 phases, 8 code commits, 4 screenshots, tests added: editor 12, sandbox +99 (203 total).
+- Deliverables for PBUI-PLOTSCRIPT-1: `@hyperslop-systems/pbui-editor` (`CodeEditor`, `EditorDiagnostic`, `EditorView` re-export) and `@hyperslop-systems/pbui-sandbox`'s `PLOT_AUTHOR_SHIM`, `PLOT_HOST_PROGRAM`, `buildPlotScriptCode`, `runPlotScript`, `checkScriptResult`.

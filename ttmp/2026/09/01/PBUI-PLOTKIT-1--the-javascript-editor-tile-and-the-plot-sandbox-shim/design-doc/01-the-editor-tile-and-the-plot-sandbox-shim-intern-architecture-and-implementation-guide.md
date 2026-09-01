@@ -1089,3 +1089,36 @@ hygiene.
 - `pbui/ttmp/2026/09/01/PBUI-PLOTSCRIPT-1--*/` — the consumer, and the full system tour
 - `datalab/ttmp/2026/09/01/DATALAB-WORKBENCH-1--*/` — Datalab's cutover to `pbui-workbench`
 - `pbui/ttmp/2026/08/21/PBUI-AGENT-3--*/` and `PBUI-SANDBOX-1--*/` — how the sandbox came to be
+
+---
+
+## 13. Amendments from the implementation (2026-09-01)
+
+Recorded here so the design and the code agree; the diary
+(`reference/01-diary.md`) has the evidence for each.
+
+1. **Scripts are synchronous, not async (§8.4).** Neither engine's `evaluate`
+   drives promise jobs, so an `await` in the body would come back as `{}`.
+   `buildPlotScriptCode` wraps the body in a synchronous IIFE. Async arrives
+   with `sql`.
+2. **The result crosses the boundary as a JSON string (§8.4).** `__describe`
+   in `bootstrap.ts` truncates arrays at 200 items and objects at depth 8 —
+   right for a REPL, wrong for plot rows. The evaluated expression is
+   `JSON.stringify(...)`; `runPlotScript` parses it. Proven with a 1 000-row
+   script on both engines.
+3. **`evaluate` needs a loaded instance (§8.4).** It is a direct eval inside a
+   program's scope. `PLOT_HOST_PROGRAM` — a one-widget plugin that renders
+   nothing — exists so there is a scope; a consumer loads it once per tile.
+4. **Two `defaultKeymap` collisions, not one (§7.5).** `Mod+Shift+K` is
+   removed as designed; `Mod+Enter` is *also* bound (`insertBlankLine`), so the
+   run chord is `Prec.highest`.
+5. **`createEditorApp` is not built (§7.2).** PBUI-PLOTSCRIPT-1 builds its own
+   descriptors; the factory has no consumer yet.
+6. **`pbui-editor` re-exports `EditorView`, `EditorState`, `Compartment`,
+   `Prec` (§7.1).** CodeMirror is bundled, so a consumer that needs the view
+   class must use this copy.
+7. **CodeMirror is pinned at `state 6.7.1` / `view 6.43.9`**, the newest
+   versions `npm` on this machine will resolve; see diary Step 5.
+8. **`pbui-sandbox` gained a Storybook** (`.storybook/`, `Devtools.stories.tsx`)
+   so the migrated tiles could be screenshotted; it had the script and no
+   config.

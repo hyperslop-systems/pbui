@@ -14,4 +14,4 @@
 - [x] Phase 3: add @hyperslop-systems/plot as a devDependency of pbui-sandbox; verify the bundle carries no plot code <!-- t:y2cy -->
 - [x] Phase 4: migrate PlaygroundTile TextArea to CodeEditor <!-- t:chce -->
 - [x] Phase 4: migrate SourceTile SourceListing to a read-only CodeEditor, keeping versions/diff/rollback <!-- t:jwpa -->
-- [ ] Phase 5: build, consumer:smoke, publish or link for PBUI-PLOTSCRIPT-1 <!-- t:x80a -->
+- [x] Phase 5: build, consumer:smoke, publish or link for PBUI-PLOTSCRIPT-1 <!-- t:x80a -->
