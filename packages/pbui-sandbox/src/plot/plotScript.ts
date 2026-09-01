@@ -38,7 +38,24 @@ definePlugin(() => ({
  * binding arrives it brings that with it.
  */
 export function buildPlotScriptCode(source: string): string {
-  return `JSON.stringify((() => {${PLOT_AUTHOR_SHIM}\nreturn (() => {\n${source}\n})();\n})())`;
+  // `console` is a local that shadows whatever the engine provides, so a
+  // script's console.log lands in the tile rather than the browser console
+  // and travels back inside the same JSON string as the result. Logs from a
+  // run that THROWS are lost with it — the string is never produced.
+  return (
+    `JSON.stringify((() => {${PLOT_AUTHOR_SHIM}\n` +
+    `const __logs = [];\n` +
+    `const __log = (level) => (...args) => { __logs.push({ level, text: args.map((a) => typeof a === "string" ? a : JSON.stringify(a)).join(" ") }); };\n` +
+    `const console = { log: __log("log"), info: __log("info"), warn: __log("warn"), error: __log("error"), debug: __log("log") };\n` +
+    `const __value = (() => {\n${source}\n})();\n` +
+    `return { value: __value === undefined ? null : __value, logs: __logs };\n` +
+    `})())`
+  );
+}
+
+export interface ScriptLog {
+  level: "log" | "info" | "warn" | "error";
+  text: string;
 }
 
 export interface RunPlotScriptInput {
@@ -48,9 +65,9 @@ export interface RunPlotScriptInput {
 }
 
 export type PlotScriptRun =
-  | { status: "ok"; result: ScriptResult; ms: number }
-  | { status: "invalid"; problem: ScriptResultProblem; ms: number }
-  | { status: "error"; error: unknown; ms: number };
+  | { status: "ok"; result: ScriptResult; logs: ScriptLog[]; ms: number }
+  | { status: "invalid"; problem: ScriptResultProblem; logs: ScriptLog[]; ms: number }
+  | { status: "error"; error: unknown; logs: ScriptLog[]; ms: number };
 
 /**
  * Evaluate a plot script in a loaded `PLOT_HOST_PROGRAM` instance and check
@@ -69,18 +86,18 @@ export async function runPlotScript(engine: ProgramEngine, input: RunPlotScriptI
   try {
     ({ value: raw } = await engine.evaluate({ instanceId: input.instanceId, code: buildPlotScriptCode(input.source), pluginState: null, globalState: null }));
   } catch (error) {
-    return { status: "error", error, ms: elapsed() };
+    return { status: "error", error, logs: [], ms: elapsed() };
   }
   if (typeof raw !== "string") {
-    // `JSON.stringify(undefined)` is `undefined`, described as `{ $type: "undefined" }`.
-    return { status: "invalid", problem: { kind: "not-an-object", got: "undefined" }, ms: elapsed() };
+    return { status: "invalid", problem: { kind: "not-an-object", got: typeof raw }, logs: [], ms: elapsed() };
   }
-  let parsed: unknown;
+  let parsed: { value?: unknown; logs?: unknown };
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw) as { value?: unknown; logs?: unknown };
   } catch (error) {
-    return { status: "error", error, ms: elapsed() };
+    return { status: "error", error, logs: [], ms: elapsed() };
   }
-  const checked = checkScriptResult(parsed, input.limits);
-  return checked.ok ? { status: "ok", result: checked.result, ms: elapsed() } : { status: "invalid", problem: checked.problem, ms: elapsed() };
+  const logs = Array.isArray(parsed.logs) ? (parsed.logs as ScriptLog[]) : [];
+  const checked = checkScriptResult(parsed.value, input.limits);
+  return checked.ok ? { status: "ok", result: checked.result, logs, ms: elapsed() } : { status: "invalid", problem: checked.problem, logs, ms: elapsed() };
 }

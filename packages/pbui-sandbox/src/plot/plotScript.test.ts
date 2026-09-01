@@ -1,5 +1,5 @@
 import { renderPlot } from "@hyperslop-systems/plot";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ProgramEngine } from "../engine";
 import { createEvalEngine } from "../engines/evalEngine";
 import { createQuickJsDirectEngine } from "../quickjs/directEngine";
@@ -103,6 +103,15 @@ function suite(name: string, make: () => ProgramEngine) {
       expect(run).toMatchObject({ status: "invalid", problem: { kind: "not-an-object" } });
     });
 
+    it("console output travels back with the result, and never reaches the host console", async () => {
+      const engine = await host();
+      const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const run = await runPlotScript(engine, { instanceId: "plot-1", source: "console.log('rows', 3); console.warn('careful'); return null;" });
+      expect(run.logs).toEqual([{ level: "log", text: "rows 3" }, { level: "warn", text: "careful" }]);
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
     it("the row limit applies", async () => {
       const engine = await host();
       const run = await runPlotScript(engine, { instanceId: "plot-1", source: WIDE, limits: { rows: 100 } });
@@ -115,9 +124,9 @@ suite("eval", () => createEvalEngine());
 suite("quickjs (direct)", () => createQuickJsDirectEngine());
 
 describe("buildPlotScriptCode", () => {
-  it("is a single expression that JSON-stringifies the body's return value", () => {
-    const code = buildPlotScriptCode("return { a: 1 };");
+  it("is a single expression that JSON-stringifies the body's return value beside its logs", () => {
+    const code = buildPlotScriptCode("console.log('hi', { n: 1 }); return { a: 1 };");
     expect(code.startsWith("JSON.stringify(")).toBe(true);
-    expect(new Function(`return (${code});`)()).toBe('{"a":1}');
+    expect(JSON.parse(new Function(`return (${code});`)())).toEqual({ value: { a: 1 }, logs: [{ level: "log", text: 'hi {"n":1}' }] });
   });
 });
