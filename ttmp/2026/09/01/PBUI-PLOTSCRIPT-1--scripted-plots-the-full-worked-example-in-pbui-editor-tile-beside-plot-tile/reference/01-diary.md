@@ -447,7 +447,7 @@ quietly dropped.
 **Commit (code):** 6b34bf9 — "pbui-plotscript: QuickJS runner test, seed round-trip test, README"
 
 ### What I did
-- Suites: pbui core 272, workbench 210, editor 12, sandbox 224, plotscript 28 — all green; demo typecheck clean.
+- Suites: pbui core 272, editor 12, sandbox 224, plotscript 28 — green; demo typecheck clean. Workbench: 209 green plus `slate.perf.test.ts`, a median-of-five wall-clock guard (50 ms budget) that fails during full-suite runs on this machine — vitest runs test files in parallel workers and the contention inflates the median — and passes 4/4 when run alone (also during PLOTKIT-1's phase 5, 84 ms). Pre-existing, in a package this branch does not touch; worth a `sequence`/`fileParallelism` hint on that file upstream.
 - A runner test under `createQuickJsDirectEngine` (the engine is one line, proven); a round-trip test that all nine scripts survive `serialize → parseDocument` beside their layout; the package README.
 - Design doc §15 (nine amendments); status → review.
 
