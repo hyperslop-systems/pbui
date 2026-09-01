@@ -1070,3 +1070,43 @@ it.each(EXAMPLES)("%s renders a scene", async (name, source) => {
 - `pbui/ttmp/2026/09/01/PBUI-PLOTKIT-1--*/` — the editor and the shim
 - `datalab/ttmp/2026/09/01/DATALAB-WORKBENCH-1--*/` — Datalab's cutover, after which these tiles can reach the product
 - `datalab/ttmp/2026/07/27/DATADROP-12--extensible-grammar-of-graphics-ir-visual-builder-and-fluent-javascript-api/` — the 34-section design that produced the authoring API this ticket exposes to users
+
+---
+
+## 15. Amendments from the implementation (2026-09-01)
+
+The diary (`reference/01-diary.md`) has the evidence for each.
+
+1. **Scripts are synchronous** (inherited from PBUI-PLOTKIT-1 §13.1); async
+   arrives with a future `sql` binding.
+2. **The editor's live text lives in a draft store**, not the document
+   (`src/draftStore.ts`): a keystroke is not a document mutation. The document
+   holds the source of the last **successful** run, written by the script tile
+   keyed on `runCount`, so `PlotScriptDoc.source` is always "what the plot
+   shows" and persistence sees one write per good run.
+3. **A script may return a list** of results (≤ 12), which the plot tile draws
+   as a grid of independent `ResponsivePlot`s — the answer to "multiple plots
+   in one tile" beside facets, which remain the grammar's way when panels must
+   share scales. `checkScriptResults` wraps an element's problem with its
+   index.
+4. **`console` output is captured** inside the JSON string the shim already
+   returns and shown in the script tile's pane; logs from a run that throws
+   are lost with it.
+5. **The shim is v2**: `annotation`, `coordinate`, `guide` and `transform`
+   joined it for the showcase examples, each with parity cases.
+6. **Nine examples, not three** (§10 grew): D histogram+density, E mean ± SE
+   beside a Tukey boxplot with jittered points, F facets, G stack/fill/polar,
+   H log axis + configured guides + all four annotation kinds, I derived
+   variable + colour/size/shape. Every one mirrors a document in
+   `plot/src/react/PlotHost.stories.tsx` and is integration-tested through the
+   runner and `renderPlot`.
+7. **QuickJS is verified, not swapped**: the runner passes under
+   `createQuickJsDirectEngine` in tests; the demo stays on the eval engine per
+   D5 until scripts are shareable. Version history (phase 5's last item) is
+   deferred with the task left open.
+8. **Findings for `@hyperslop-systems/plot`**: a niced linear domain can clip
+   the data max (25.1 at a 5–25 axis); `geom.point` takes `radius`, not
+   `size`; `shape` requires `scale.shape` (its diagnostic is excellent).
+9. **Open questions resolved**: OQ-1 a plain `PlotTile` (no Datalab
+   `ChartPanel`); OQ-2 two tiles; OQ-3 no `sql` in pbui; OQ-4 `params`
+   deferred; OQ-5 JavaScript only; OQ-6 `localStorage`, no server.

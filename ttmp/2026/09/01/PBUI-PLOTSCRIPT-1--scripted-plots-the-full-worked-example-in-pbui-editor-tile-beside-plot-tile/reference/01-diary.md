@@ -428,3 +428,44 @@ undocumented territory.
 ![I: a derived variable with colour, size and shape from data](./screenshots/13-p4-demo-aesthetics.png)
 
 *`variable.derived(transform.sqrt(load))` on x; uptime → `color-linear`, load → size, kind → shape.*
+
+## Step 6: Wrap — every suite green, the ticket in review
+
+The closing gate: every package suite on the branch, the demo typecheck, the
+design doc's amendments section (§15), and the bookkeeping. Version history is
+the one phase-5 item deliberately left open, recorded on the task rather than
+quietly dropped.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Close the ticket the way PBUI-PLOTKIT-1 closed: verified, amended, reviewed.
+
+**Inferred user intent:** A finished, honest state to review from.
+
+**Commit (code):** 6b34bf9 — "pbui-plotscript: QuickJS runner test, seed round-trip test, README"
+
+### What I did
+- Suites: pbui core 272, workbench 210, editor 12, sandbox 224, plotscript 28 — all green; demo typecheck clean.
+- A runner test under `createQuickJsDirectEngine` (the engine is one line, proven); a round-trip test that all nine scripts survive `serialize → parseDocument` beside their layout; the package README.
+- Design doc §15 (nine amendments); status → review.
+
+### What worked / didn't
+- Everything on the first run this step. The perf-sensitive workbench test passed with Storybook still running this time.
+
+### What was tricky to build
+- N/A — the step is verification.
+
+### What warrants a second pair of eyes
+- The deferred task: script version history (modelled on the sandbox library's `rollback`). Open on the ticket.
+
+### What should be done in the future
+- Version history; `params`; a theme switcher on the plot tile; the future-example list from Step 5; report the plot-package findings (§15.8) upstream.
+
+### Code review instructions
+- Follow the commits in order: b063aba → 126832d → 2ff7f91 → 506c12a → 48bb255 → ad79e72 → 8ece301 → daa55f1 → 6b34bf9.
+- Validate: `pnpm -r --filter './packages/*' test` after building core, protocol, workbench, editor; then the demo.
+
+### Technical details
+- Final counts: 13 screenshots in `reference/screenshots/`, 28 package tests, 9 examples, 2 tiles, 1 demo.

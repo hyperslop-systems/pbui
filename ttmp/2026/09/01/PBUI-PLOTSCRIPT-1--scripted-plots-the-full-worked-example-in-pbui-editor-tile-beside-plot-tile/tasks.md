@@ -12,6 +12,6 @@
 - [x] Phase 3: createPlotScriptApps(host) returning both AppDescriptors with bindings: [plot] <!-- t:x7a4 -->
 - [x] Phase 4: examples.ts - the three worked scripts as seeded docs with versioned ids <!-- t:a0jm -->
 - [x] Phase 4: demo/ Vite app - createWorkbench, one workspace per example <!-- t:5quf -->
-- [ ] Phase 5: swap in createQuickJsEngine; byte and row budgets; serialize/restore round-trip <!-- t:ikup -->
+- [x] Phase 5: swap in createQuickJsEngine; byte and row budgets; serialize/restore round-trip <!-- t:ikup -->
 - [ ] Phase 5: script version history modelled on library.rollback <!-- t:keqb -->
-- [ ] Resolve OQ-1..OQ-6 <!-- t:et5f -->
+- [x] Resolve OQ-1..OQ-6 <!-- t:et5f -->

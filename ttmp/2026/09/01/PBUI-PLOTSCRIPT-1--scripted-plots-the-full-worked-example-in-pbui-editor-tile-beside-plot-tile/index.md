@@ -1,7 +1,7 @@
 ---
 Title: 'Scripted plots: the full worked example in pbui, editor tile beside plot tile'
 Ticket: PBUI-PLOTSCRIPT-1
-Status: active
+Status: review
 Topics:
     - frontend
     - pbui
@@ -14,10 +14,11 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: ""
-LastUpdated: 2026-09-01T13:15:41.041305642-04:00
+LastUpdated: 2026-09-01T14:42:48.209959524-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # Scripted plots: the full worked example in pbui, editor tile beside plot tile
 

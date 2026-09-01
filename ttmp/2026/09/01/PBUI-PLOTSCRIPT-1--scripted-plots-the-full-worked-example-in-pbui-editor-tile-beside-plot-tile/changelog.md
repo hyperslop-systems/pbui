@@ -54,3 +54,12 @@ Step 5: six showcase examples (D histogram+density, E intervals+boxplot, F facet
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/src/examples.ts — The nine-example showcase
 
+
+## 2026-09-01
+
+Step 6: QuickJS runner test, nine-script serialize round-trip, README, design amendments section 15; every suite on the branch green (commit 6b34bf9). Ticket to review; version history (keqb) deliberately left open.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/README.md — The package charter
+
