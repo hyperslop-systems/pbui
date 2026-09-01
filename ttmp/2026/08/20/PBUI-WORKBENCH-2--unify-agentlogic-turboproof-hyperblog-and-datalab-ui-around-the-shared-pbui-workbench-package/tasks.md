@@ -22,3 +22,5 @@
 - [ ] Correct guide 1.3: parseDocument IS strict, and the package now has persistence and a sync module <!-- t:vedp -->
 - [ ] BLOCKER for turboproof CI: publish pbui 0.10.0 and pbui-workbench 0.4.0 (manual workflow_dispatch, CONFIRM_LATEST), then make ui-install && make ui and commit the lockfile + dist <!-- t:dqef -->
 - [ ] hyperblog is still not checked out; Phase 6 is blocked on the repo, not on code <!-- t:m5gg -->
+- [ ] 6.4 is wrong that the codec disappears: datalab's documents live in the world slice, not the layout slice, so 'the runtime document IS the wire document' needs a world/layout merge the design does not decide <!-- t:w3fi -->
+- [ ] Phase 7 measured: swapping datalab's Node for the protocol's alone produces 308 type errors across 25 files; steps 1 and 2 are NOT separable for the geometry reducers (step 1 would rewrite code step 2 deletes) <!-- t:jxsa -->
