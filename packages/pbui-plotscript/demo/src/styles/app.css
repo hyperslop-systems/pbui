@@ -1,0 +1,31 @@
+/* The demo's own grammar: a full-height shell with the strip above the surface. */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--pbui-font);
+  color: var(--pbui-ink);
+  background: var(--pbui-paper);
+}
+
+.shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.strip {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-bottom: var(--pbui-border-hair);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
