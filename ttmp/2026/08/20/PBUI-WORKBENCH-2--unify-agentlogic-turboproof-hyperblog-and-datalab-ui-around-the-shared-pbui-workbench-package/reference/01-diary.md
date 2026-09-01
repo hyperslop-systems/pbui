@@ -10,6 +10,18 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/pbui-chat/demo/src/workbench.ts
+      Note: 'the consumer proof: three hand-written pieces deleted (2db8675)'
+    - Path: repo://packages/pbui-workbench/src/components/Tile/Tile.tsx
+      Note: 'C1 findings 4 and 5: the launcher door and the composed badge (7d89732)'
+    - Path: repo://packages/pbui-workbench/src/persistence.ts
+      Note: 5.F read-before-construct snapshot plus the store-subscribed writer (19d7c32)
+    - Path: repo://packages/pbui-workbench/src/placement.ts
+      Note: 5.E placement mode as a promise a product awaits (1fb6f8c)
+    - Path: repo://packages/pbui-workbench/src/sync.ts
+      Note: '5.F the server loop: outbox, 409 rebase, 422 isolate, SSE (7e67f9d)'
+    - Path: repo://packages/pbui-workbench/src/verbs.ts
+      Note: view.open with at, and openAt beside openView (6e906be)
     - Path: repo://pbui/packages/pbui-chat/demo/src/workbench.ts
       Note: 'Phase 1 acceptance: selected-workspace persistence, onMutate/onRejected wiring (cd13915)'
     - Path: repo://pbui/packages/pbui-workbench/src/components/WorkspaceStrip/WorkspaceStrip.tsx
@@ -22,12 +34,15 @@ RelatedFiles:
       Note: 'Phase 1 5.B+5.C: workspace verbs, replace/link/rebind, SplitPolicy, BindingConfig (ccd02f8)'
     - Path: repo://pbui/packages/workbench-protocol/src/client/apply.ts
       Note: MutationError.detail restored for TS-Go parity (cd13915)
+    - Path: repo://src/chrome/TileFrame.tsx
+      Note: the actions slot the per-pane launcher door lives in (7d89732)
 ExternalSources: []
 Summary: 'Diary for PBUI-WORKBENCH-2: the analysis of the four product shells (agentlogic, turboproof, hyperblog, datalab-ui), the gap analysis against @hyperslop-systems/pbui-workbench, the core additions and the migration plan.'
 LastUpdated: 2026-08-20T14:29:03.657935947-04:00
 WhatFor: Record how the unification analysis was made and what was decided, so the migrations can be executed and reviewed per product.
 WhenToUse: Read before migrating any product onto pbui-workbench or extending the package.
 ---
+
 
 
 # Diary
@@ -649,3 +664,211 @@ Findings 1, 2 and 8 were fixed immediately rather than filed, because all three 
 Five tests added (114 in the package). The remaining five findings — no `reset(factory?)`, no chrome door to per-pane `launcher.open`, `renderTitle` replacing rather than composing the `×N` badge, `defaultLauncherRows` having no workspace scope, and `AppDescriptor.available`'s contract being buried in prose — are queued as tasks rather than fixed, because each is a design choice rather than a defect and three of them want a second product's opinion first.
 
 **The unblocked prerequisite this exposed:** agentlogic cannot `pnpm install` from a registry, because `@hyperslop-systems/pbui-workbench` is unpublished. C1 verified by packing tarballs from the worktree behind an untracked overrides block, so its `package.json` names `^0.1.0` while its lockfile does not contain it — honestly broken, pointing at the publish. **No further product migration can be merged until that package is published.** That is now the gating item for C2, C3 and C4, ahead of any code.
+
+## Step 6: Phase 4 — the five C1 findings, then placement mode, persistence and sync
+
+The package now has everything §7's Phase 4 asked for, plus the five findings the agentlogic migration filed and did not fix. The order was deliberate: the findings first, because three of them are about the same seam Phase 4 builds on (a tile's chrome, a title's composition, what "reset" means for a persisted product), and fixing them afterwards would have meant writing placement mode against an API I already knew was wrong. Then `view.open` learned to take aim, then the launcher's carry became `wb.placement`, then the two halves of §5.F.
+
+What came out is 746 lines of new module (`placement.ts` 149, `persistence.ts` 231, `sync.ts` 366) and 49 new tests, 243 in the package. The pbui-chat demo is the consumer proof for the persistence half — it deleted three hand-written pieces to adopt it — and a browser pass on the running demo confirmed the invariants that matter: one write for a burst of six resizes, a reload landing back in the workspace the user was in, and "reset layout" returning to the default rather than to the layout it had just restored.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Implement docmgr ticket PBUI-WORKBENCH-2. commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)
+Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done.
+
+Read the design-doc first."
+
+**Assistant interpretation:** Execute the next unfinished work in the ticket — Phase 4's core additions (§5.E, §5.F) and the queued C1 findings, all of which live in `pbui/packages/pbui-workbench` — committing per phase, printing a thermal slip at each phase boundary, and writing this diary.
+
+**Inferred user intent:** Move PBUI-WORKBENCH-2 forward by the amount this workspace can actually carry, with the work legible on paper as it happens and reviewable afterwards.
+
+**Commits (code):**
+- `7d89732` — the five C1 findings
+- `6e906be` — `view.open` with `at` (5.E)
+- `1fb6f8c` — placement mode as an API (5.E)
+- `19d7c32` — local persistence (5.F)
+- `7e67f9d` — the sync module (5.F)
+- `2db8675` — the demo on the new persistence
+
+### What I did
+
+**P1, the five C1 findings (`7d89732`).**
+- `reset(factory?)` — `store.replaceDocument(factory ? factory() : initial)`.
+- `TileFrame` gained an `actions` slot before ⬌/⬍/✕, and the workbench's `Tile` fills it with a ⌕ button performing `openLauncher(node.id)`. `SurfaceProps.tileAction?(placement)` overrides it; `undefined` keeps the default, `null` removes it.
+- `SurfaceProps.renderTitle?(view, placement, defaultTitle)` — the third argument is the node the shell would have rendered, badge and all.
+- `LauncherProps.scope?: "document" | "workspace"`, threaded into `LauncherRowsContext`.
+- `AppDescriptor.available`'s doc comment says in its FIRST clause that it gates the launcher's rows and nothing else.
+
+**P2, zone-aware open (`6e906be`).** `view.open` gained `at?: { placementId, zone: PlaceZone }`, sharing the zone vocabulary with the launcher's carry. `openAt` is a sibling of `openView` rather than a branch inside it.
+
+**P3, placement mode (`1fb6f8c`).** `src/placement.ts`: `wb.placement.begin(request) → Promise<PlacementOutcome>` over pbui's `startTileCarry`. The Surface draws the banner and hands `labelFor` to the hovered tile. The Launcher's own carry state, hint markup and `Launcher.module.css` are deleted; it is one caller now.
+
+**P4, local persistence (`19d7c32`, `2db8675`).** `readWorkbenchSnapshot(key, …)` and `createLocalPersistence(wb, …)` as a pair rather than one function. The demo adopted both.
+
+**P5, the sync module (`7e67f9d`).** `@hyperslop-systems/pbui-workbench/sync`, a second Vite entry (3.5 kB), React-free: `createWorkbenchSync(options) → { enqueue, attach, status, flush, dispose }`.
+
+### Why
+
+- **The findings before the features.** Finding 4 (no chrome door to the per-pane launcher) and finding 5 (`renderTitle` replacing rather than composing the badge) are both about the tile's chrome, which is the surface placement mode paints its labels onto. Doing them first meant `labelFor` slotted into a `Tile` that already knew how to take wording from outside.
+- **`begin` performs nothing.** The design sketched `wb.placement.begin({ appId, documents, prompt })`, i.e. a mode that knows what it is placing. Resolving an AIM instead lets one mode serve `placeAt`, `view.open` with `at`, and any product gesture that needs a pane — including ones the package has no verb for.
+- **Reading and writing split into two functions.** `createLocalPersistence(wb, …)` alone would have to restore after construction, which renders the default layout and then replaces it: a visible flash on every reload.
+- **`attach` separate from construction.** `createWorkbenchSync` needs the workbench and the workbench needs `onMutate`; every product that hand-wrote this loop tied the knot with a ref (C1's Step 5 finding 3 is the same knot in agentlogic). Two calls untie it: `createWorkbench({ onMutate: sync.enqueue })`, then `sync.attach(wb)`.
+
+### What worked
+
+- The C1 report was accurate. All five findings were real, all five were small, and none needed a design conversation once a second consumer (the demo) was on the other end of them.
+- `startTileCarry` already had every hard part of placement mode — capture-phase pointerdown, the hit test, Alt, Escape, blur, the overlays through the shared drag store. `placement.ts` is 149 lines because it adds only the promise, the banner state, per-tile labels and the right to refuse an aim.
+- Browser pass on the demo (Vite dev server, `:5175`), with `Storage.prototype.setItem` patched to count writes:
+  - the envelope carries `version: 1`, the document and `workspaceId`;
+  - creating a workspace, switching to it and six unsnapped resizes cost **one** write;
+  - a reload landed back in `scratch` with both workspaces present;
+  - a plain `wb.reset()` restored the two-workspace STORED layout — the finding-3 bug, reproduced deliberately — and the button's `reset(defaultLayout)` returned to the four-tile default, with the write following it;
+  - all four tiles carry the new ⌕ door.
+- Storybook pass (`:6008`, `Workbench/Surface`): the placement banner reads *"placing Basic.lean — click a tile: edges dock, centre splits, hold Alt to replace what it shows · Enter: beside the active tile · Esc: cancel"*, and the hovered tile's overlay reads *"Basic.lean docks at this pane's left edge"* — the product's words, not the shell's. Screenshots in `various/03` and `various/04`.
+- Every other package in the repo typechecks and its tests pass against the changed package: `datalab-ui` (554), `pbui-sandbox` (224), `workbench-protocol` (48), `pbui-plotscript` (32), `pbui-editor` (12).
+
+### What didn't work
+
+- **`parseDocument` is already the strict reader §5.F asks for**, so no `{ strict }` option was added. I probed it rather than trusting the design or the C1 note:
+
+  ```
+  unknown field → REJECTED
+  version 2     → REJECTED
+  ```
+
+  The C1 diary's "the package's `parseDocument` is deliberately tolerant" was true of an earlier build; it now refuses an unknown field, an unknown schema version, and a tree naming views the document does not have. §1.3 of the guide should be corrected the next time it is edited.
+- Five launcher tests failed after P3 with `expected null not to be null` and tile counts one short. Two causes, both real: the carry hint moved from `[data-part="launcher-carry"]` (Launcher) to `[data-part="workbench-placing"]` (Surface), and **the launcher's Enter now commits a microtask later**, because the outcome is a promise. Three tests became `await act(async () => …)`. That timing change is invisible in a browser and is the only behaviour change in P3.
+- Six sync tests failed on arithmetic, not behaviour: `status().queued` counts MUTATIONS and I had written the expectations in batches (a split is `viewCreate` + `placementSplit`). The interface now says so.
+- `pnpm run typecheck` in the package failed with `Property 'actions' does not exist on type 'TileFrameProps'` until `pnpm run build` was run at the pbui root: the package resolves `@hyperslop-systems/pbui` through `dist`, so a change to `src/chrome` is invisible to it until the root is rebuilt.
+- The demo's dev server 500'd on `Failed to resolve import "@hyperslop-systems/pbui-chat/styles.css"` because it had been started before `pbui-chat` was built. Restarting Vite fixed it; the resolution is cached per server, not per request.
+- **Two failures in the repo are NOT mine and are not fixed here:**
+  - `packages/pbui-workbench/src/rebalance/slate.perf.test.ts` fails under parallel load (`expected 77.8 to be less than 50`) and passes when run alone. It is a wall-clock budget on a shared machine.
+  - `packages/pbui-chat`'s `test/grid-columns.test.ts` fails on `pbui-sandbox/src/devtools/SourceTile/SourceTile.module.css: .code` having an implicit-column grid. That file last changed in `549c325` (PBUI-PLOTKIT-1) and is untouched by this work.
+
+### What I learned
+
+- **`available` needed a rewrite of its first sentence, not of its behaviour.** C1's finding 7 was right that the contract was buried. Reading `launcherRows.ts` to be sure a stored layout would not lose a tile is a thing a second person should never have to do, and one clause fixes it.
+- **A scoped launcher can hide an application entirely.** With `scope: "workspace"`, a singleton placed only in ANOTHER workspace loses its view row (correct — it is not on screen) and would also have lost its application row to the "already placed" filter, leaving it unreachable from this workspace's launcher. The filter now asks "placed WHERE IT COUNTS": scoped, that means this workspace. Choosing it then goes through `place`'s cross-workspace case (switch) or `placeAt`'s (link it in here), both of which already existed. The first scoped test caught this; nothing in the design predicted it.
+- **Aim must beat de-dup on position, but never on identity.** `view.open` with `at` is a user pointing at a pane, so it must land there. But if the document already has a view of that document, minting a second one gives two tiles that will drift apart. Linking the existing view satisfies both, and is visible in `various/04`: aiming a second `notes` at a pane produced `NOTES ×2`, not two independent notes tiles.
+- **`onMutate` cannot see `replaceDocument`.** The demo's old loop wrote on `onMutate` AND had to remember a manual `persistDocument()` after `resetLayout`'s `replaceDocument`. A store subscription sees both; the cost is that it also fires for activation and launcher toggles, which one identity comparison removes. This is the same conclusion agentlogic reached in C1 ("persisting is a `store.subscribe` that compares against a captured `last`"), reached again from the other end.
+
+### What was tricky to build
+
+**1. The rebase must not be atomic, and the store is.**
+*Cause:* `store.mutate` is all-or-nothing by design — the shell's promise is that a refused batch leaves the document untouched. A 409 rebase wants the opposite: replay a queue onto a document that moved, keep what still applies, drop what the other writer made meaningless.
+*Symptom:* routing the rebase through `store.mutate` loses the WHOLE queue the moment one entry is stale — a close of a tile the other tab already closed takes an unrelated split down with it. Both products' comments warn about this; C1's diary says "if anyone tidies it to go through the shell, a rebase that hits one stale mutation will drop the entire queue".
+*Fix:* `rebase()` in `sync.ts` calls the protocol's `applyMutation` per mutation against a local document, collects `kept` and `dropped`, and installs the result with `replaceDocument` — never `mutate`. `onDropped(mutations, "rebase")` reports what was lost so a product can tell the user. The comment above it says why, in the imperative, so the next tidy-up reads the warning before making it.
+
+**2. Three placement outcomes, not a nullable aim.**
+*Cause:* the obvious signature is `begin(...) → Promise<{ placementId, zone } | null>`. The launcher needs Enter to mean "the default spot", which is neither an aim nor a cancel.
+*Symptom:* with a nullable aim, Enter and Escape are the same value, and the launcher either places nothing when the user asked for the default or places something when they pressed Escape.
+*Fix:* `PlacementOutcome` is a three-arm union, and `defaultLabel` both names what Enter does in the banner and decides whether Enter is live at all — omitting it makes Enter inert, so a product with no default cannot accidentally get one.
+
+**3. Refusing an aim without ending the mode.**
+*Cause:* the launcher's old carry re-armed when `placeAt` returned null (a target too small to split), so a refused drop left the user still aiming. A promise cannot resolve twice, so a caller cannot re-arm from the outside.
+*Fix:* `accept?(aim): boolean` runs before the promise settles; false re-arms. It also gave the launcher somewhere to do its placement synchronously, which is why only Enter moved to a microtask and drops did not.
+
+**4. TypeScript narrowed `phase` into a lie.**
+*Cause:* `pump()` starts with `if (disposed || phase === "detached") return;`. `phase` is a module-scope `let` assigned from callbacks, so TS narrowed it for the rest of the function and called the later `phase !== "detached"` checks dead code:
+```
+src/sync.ts(237,29): error TS2367: This comparison appears to be unintentional because the types
+'"local" | "offline" | "pending" | "probing" | "synced"' and '"detached"' have no overlap.
+```
+*Fix:* `const detached = () => phase === "detached";` and read through the call. The comment says why, because the obvious "simplification" back to a direct comparison reintroduces it.
+
+**5. A pre-envelope payload cannot be version 1.**
+*Cause:* `readWorkbenchSnapshot` treats a missing `version` as a number. Defaulting it to `PERSISTENCE_VERSION` makes a bare serialised document (what every product that hand-wrote this loop stored) indistinguishable from a current envelope — so `migrate` is never called for it, and the read fails on `envelope.document` being undefined.
+*Fix:* `PRE_ENVELOPE_VERSION = 0`. A bare document arrives at `migrate(payload, 0)`, and the demo's migration is `from === 0 ? { version: 1, document: payload } : null`. A product with no `migrate` discards it and falls back to its default layout, which is the honest outcome rather than a silent crash.
+
+### What warrants a second pair of eyes
+
+- **Every tile now has a fourth button.** The ⌕ door is on by default, which changes the chrome of every product on the package, not just the ones that wanted it. `tileAction: () => null` removes it. If a product with a `<tile>` presentation would rather reach `launcher.open({ placementId })` through its object menu, this button is redundant there — but a default that is absent is a default nobody discovers.
+- **The launcher's Enter is now asynchronous.** Invisible in a browser; visible in any test that does not await. Three of ours did not.
+- **`sync.ts` has no product using it yet.** It is tested against a fake server across eight paths, and the fake is thirty lines, which means the loop is only as right as my reading of agentlogic's and turboproof's. The first real adoption (C2) should be read against those two files, not against this one.
+- **The conflict livelock guard is a count, not a strategy.** Five consecutive rebases throws into the backoff path. A server with a chatty second writer will get there; whether backing off is the right answer or whether the queue should be handed to the product is a question a real deployment answers.
+- **`status().queued` counts mutations.** A product showing "3 unsaved changes" will be showing mutations, not gestures.
+
+### What should be done in the future
+
+- **Phases 5–7 (turboproof, hyperblog, datalab-ui) cannot be done from this workspace**: it holds `pbui`, `datalab` and `plot`, and those products live in `~/code/wesen/hyperslop-systems/`. Phase 4's prerequisites for them are now all in place.
+- The design's §1.3 says the package has "no persistence adapter, debounce or schema-version check" and that `parseDocument` "checks only `format` and a tree". Both are now false; §5.F's strict-reader item is closed by inspection rather than by code.
+- `datalab-ui`'s whole-document `PUT` controller was to be expressed as `onConflict` + a `replace` client method (§5.F). `SyncClient` has no `replace`; C4 should add one rather than bend `mutate`.
+- `seedApp`, `registrySnapshot`, `exportLayout`/`importLayout` (§5.H) are still unbuilt; `reset(factory?)` was the only §5.H item Phase 4 needed.
+- The `grid-columns` failure in `pbui-sandbox`'s `SourceTile.module.css` should be fixed by whoever owns PBUI-PLOTKIT-1; it fails `pbui-chat`'s suite today.
+
+### Code review instructions
+
+- Read in this order: `packages/pbui-workbench/src/placement.ts` (149 lines, start at `createPlacementController`), then `src/sync.ts` from `pump` down (`send`'s three HTTP arms are the whole loop), then `src/persistence.ts`, then the diff of `src/components/Tile/Tile.tsx` (the badge composition and the door), then `packages/pbui-chat/demo/src/workbench.ts` (what the persistence deleted).
+- Check by hand: `rebase` never calls `store.mutate`; `openAt`'s `existing` branch links rather than mints; `createLocalPersistence`'s `schedule` does not reset a live timer; the launcher's `accept` places and the `.then` only handles `"default"`.
+- Validate, from `pbui/`:
+  ```
+  pnpm run build                                   # the package resolves @hyperslop-systems/pbui through dist
+  pnpm run typecheck && pnpm run test              # 272
+  cd packages/pbui-workbench
+  pnpm run typecheck
+  npx vitest run --exclude '**/*.perf.test.ts'     # 243 in 23 files
+  pnpm run build && pnpm run build-storybook       # dist/sync.js is a separate 3.5 kB entry
+  ```
+- Run: `pnpm --filter @hyperslop-systems/pbui-chat-demo dev`, open `/static/`, then: split a tile and click its ⌕; create a workspace, switch, reload; press "reset layout". In Storybook (`pnpm --filter @hyperslop-systems/pbui-workbench storybook`), open *Workbench/Surface → placement mode* and click `Basic.lean`.
+
+### Technical details
+
+The two new public surfaces, in full:
+
+```ts
+// placement (§5.E)
+wb.placement.begin({
+  prompt: string;                 // the banner line
+  defaultLabel?: string;          // what Enter does; omitted, Enter is inert
+  labelFor?(placementId, zone): string | undefined;   // the hovered tile's overlay wording
+  allowReplace?: boolean;         // offer Alt = replace; default true
+  accept?(aim): boolean;          // false refuses the aim and re-arms
+}) → Promise<
+  | { kind: "aimed"; placementId: string; zone: PlaceZone }
+  | { kind: "default" }
+  | { kind: "cancelled" }
+>
+wb.placement.cancel() · wb.placement.current() · wb.placement.subscribe(fn) · usePlacement(wb)
+
+// persistence (§5.F)
+readWorkbenchSnapshot(key, { version?, storage?, migrate?(payload, fromVersion) })
+  → { document, workspaceId? } | null
+createLocalPersistence(wb, { key, version?, debounceMs?, storage?, onError? })
+  → { flush(), dispose() }
+
+// sync (§5.F) — @hyperslop-systems/pbui-workbench/sync
+createWorkbenchSync({ client, flushDelayMs?, onInvalid?, backoffMs?, onPhase?, onDropped?, onError? })
+  → { enqueue(mutations), attach(wb), status(), flush(), dispose() }
+SyncClient = { get(), create(doc), mutate(revision, mutations, requestId), stream?(onChange) }
+SyncPhase  = "local" | "probing" | "synced" | "pending" | "offline" | "detached"
+```
+
+Sizes and counts:
+
+```
+new     src/placement.ts            149
+new     src/persistence.ts          231
+new     src/sync.ts                 366
+new     src/placement.test.ts         6 tests
+new     src/persistence.test.ts       7 tests
+new     src/sync.test.ts              8 tests
+                                   ————
+27 files changed, 2113 insertions(+), 164 deletions(-)   (7d89732~1..2db8675)
+
+pnpm run test (pbui root)                       272 passed
+vitest --exclude '**/*.perf.test.ts' (package)  243 passed, 23 files
+pnpm run build (package)                        dist/index.js 117.73 kB · dist/sync.js 3.50 kB
+pnpm run build-storybook                        ok
+datalab-ui 554 · pbui-sandbox 224 · workbench-protocol 48 · pbui-plotscript 32 · pbui-editor 12
+```
+
+Browser evidence (demo, `:5175`, `Storage.prototype.setItem` patched to count):
+
+```
+first paint          { version: 1, hasDocument: true, workspaceId: "main", tiles: 4, doors: 4 }
+create + switch + 6 resizes, immediately   writes: 0
+                            after 500 ms   writes: 1   stored pointer: ws-e49601f5-35bd
+reload               { workspaceId: "ws-e49601f5-35bd", name: "scratch", workspaces: ["main","scratch"] }
+wb.reset()           workspaces: ["main","scratch"]        ← the finding-3 bug, on purpose
+"reset layout"       workspaces: ["main"], stored pointer: "main", tiles: 4
+```

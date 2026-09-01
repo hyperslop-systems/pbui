@@ -24,3 +24,8 @@ Phase 2 built (0dfd1bb): 5.D launcher rows slot, per-pane invocation, group/blur
 
 C1 (agentlogic) migrated: net -232 lines in its ui/, TileTree and LauncherPanel deleted, product policy reduced to a 147-line shell; it gained Mod-K, launcher search, per-tile error boundaries, keyboard dividers, the linked badge and focus restoration. Its eight core findings are in diary Step 5; three were defects and are fixed in 5e4d592 (splitPolicy vs singletons, unbound tiles from split/place, silently dropped mutation hooks). Surfaced a hard blocker: pbui-workbench is unpublished, so no product migration can install it.
 
+
+## 2026-09-01
+
+Phase 4 built (7d89732, 6e906be, 1fb6f8c, 19d7c32, 7e67f9d, 2db8675): the five C1 findings closed (reset(factory), a TileFrame actions slot carrying the per-pane launcher door, renderTitle composing the xN badge, Launcher scope, available's contract); 5.E view.open with at:{placementId,zone} and wb.placement.begin() over pbui's carry, with the Surface drawing the banner and per-tile labels; 5.F readWorkbenchSnapshot + createLocalPersistence, and a React-free sync entry point (3.5 kB) with a 409 rebase that is deliberately NOT atomic. 49 new tests (243 in the package). The pbui-chat demo adopted the persistence and deleted three hand-written pieces; a browser pass confirmed one write per burst, a reload landing back in the switched-to workspace, and reset(factory) escaping the stored layout. Phases 5-7 are migrations in repos not checked out here.
+
