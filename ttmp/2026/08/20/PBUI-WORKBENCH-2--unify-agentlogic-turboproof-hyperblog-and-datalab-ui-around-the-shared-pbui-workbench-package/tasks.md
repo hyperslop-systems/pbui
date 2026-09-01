@@ -19,11 +19,12 @@
 - [ ] Phases 5-7 need turboproof/hyperblog/datalab-ui checked out; this workspace holds only pbui, datalab and plot <!-- t:tmxa -->
 - [ ] 5.H leftovers: seedApp, registrySnapshot, exportLayout/importLayout (reset(factory) landed in Phase 4) <!-- t:bqmm -->
 - [ ] SyncClient needs a replace() before C4 can express datalab-ui's whole-document PUT <!-- t:vyvh -->
-- [ ] Correct guide 1.3: parseDocument IS strict, and the package now has persistence and a sync module <!-- t:vedp -->
+- [x] Correct guide 1.3: parseDocument IS strict, and the package now has persistence and a sync module <!-- t:vedp -->
 - [ ] BLOCKER for turboproof CI: publish pbui 0.10.0 and pbui-workbench 0.4.0 (manual workflow_dispatch, CONFIRM_LATEST), then make ui-install && make ui and commit the lockfile + dist <!-- t:dqef -->
 - [x] hyperblog is still not checked out; Phase 6 is blocked on the repo, not on code <!-- t:m5gg -->
-- [ ] 6.4 is wrong that the codec disappears: datalab's documents live in the world slice, not the layout slice, so 'the runtime document IS the wire document' needs a world/layout merge the design does not decide <!-- t:w3fi -->
-- [ ] Phase 7 measured: swapping datalab's Node for the protocol's alone produces 308 type errors across 25 files; steps 1 and 2 are NOT separable for the geometry reducers (step 1 would rewrite code step 2 deletes) <!-- t:jxsa -->
-- [ ] 6.3 omits a prerequisite: hyperblog was five pbui releases behind across 0.8.0's deletion of descriptor actions(); a migration plan needs the product's package VERSION beside its feature prerequisites <!-- t:qpzx -->
+- [x] 6.4 is wrong that the codec disappears: datalab's documents live in the world slice, not the layout slice, so 'the runtime document IS the wire document' needs a world/layout merge the design does not decide <!-- t:w3fi -->
+- [x] Phase 7 measured: swapping datalab's Node for the protocol's alone produces 308 type errors across 25 files; steps 1 and 2 are NOT separable for the geometry reducers (step 1 would rewrite code step 2 deletes) <!-- t:jxsa -->
+- [x] 6.3 omits a prerequisite: hyperblog was five pbui releases behind across 0.8.0's deletion of descriptor actions(); a migration plan needs the product's package VERSION beside its feature prerequisites <!-- t:qpzx -->
 - [ ] hyperblog: adopt createTileDescriptor, and wire /v1/workbenches through the 5.F sync module (it has createLocalPersistence only) <!-- t:ygdt -->
 - [ ] 5.H still unbuilt: seedApp, registrySnapshot, exportLayout/importLayout <!-- t:4nu5 -->
+- [ ] DECISION NEEDED before 6.4: where datalab's documents live — design-doc 10.5 lays out (a) merge world.docs, (b) keep apart and rename the boundary, (c) put stage-sendability in the protocol. Recommendation is (b) <!-- t:5vgz -->
