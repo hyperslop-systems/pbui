@@ -15,8 +15,10 @@ import {
 export interface ScriptRunState {
   /** `idle` before the first run; `running` while one is in flight. */
   status: "idle" | "running" | "ok" | "invalid" | "error";
-  /** The last result that passed the guard. Survives a failing run (design §8.1). */
+  /** The first plot of the last run that passed the guard. Survives a failing run (design §8.1). */
   lastGood: ScriptResult | null;
+  /** Every plot of that run: one, unless the script returned a list. */
+  lastGoodAll: ScriptResult[];
   /** The source `lastGood` came from, so a tile can say the plot is stale. */
   lastGoodSource: string | null;
   problem: ScriptResultProblem | null;
@@ -28,7 +30,7 @@ export interface ScriptRunState {
   runCount: number;
 }
 
-export const IDLE_RUN: ScriptRunState = { status: "idle", lastGood: null, lastGoodSource: null, problem: null, error: null, logs: [], ms: null, runCount: 0 };
+export const IDLE_RUN: ScriptRunState = { status: "idle", lastGood: null, lastGoodAll: [], lastGoodSource: null, problem: null, error: null, logs: [], ms: null, runCount: 0 };
 
 export interface PlotScriptRunner {
   getState(id: string): ScriptRunState;
@@ -116,7 +118,7 @@ export function createPlotScriptRunner(options: CreatePlotScriptRunnerOptions): 
     const runCount = previous.runCount + 1;
     let next: ScriptRunState;
     if (outcome.status === "ok") {
-      next = { status: "ok", lastGood: outcome.result, lastGoodSource: source, problem: null, error: null, logs: outcome.logs, ms: outcome.ms, runCount };
+      next = { status: "ok", lastGood: outcome.result, lastGoodAll: outcome.results, lastGoodSource: source, problem: null, error: null, logs: outcome.logs, ms: outcome.ms, runCount };
     } else if (outcome.status === "invalid") {
       next = { ...previous, status: "invalid", problem: outcome.problem, error: null, logs: outcome.logs, ms: outcome.ms, runCount };
     } else {

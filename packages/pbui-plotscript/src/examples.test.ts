@@ -9,10 +9,22 @@ describe("the seeded examples", () => {
     const runner = createPlotScriptRunner({ engine: createEvalEngine() });
     await runner.run(script.id, script.source);
     const state = runner.getState(script.id);
-    expect(state.status).toBe("ok");
-    const outcome = renderPlot({ ...state.lastGood!, viewport: { width: 640, height: 360 } });
-    expect(outcome.scene).not.toBeNull();
-    expect(outcome.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(state.status, JSON.stringify(state.error ?? state.problem)).toBe("ok");
+    expect(state.lastGoodAll.length).toBeGreaterThan(0);
+    for (const result of state.lastGoodAll) {
+      const outcome = renderPlot({ ...result, viewport: { width: 640, height: 360 } });
+      expect(outcome.scene, result.document.id).not.toBeNull();
+      expect(outcome.diagnostics.filter((d) => d.severity === "error"), result.document.id).toEqual([]);
+    }
+  });
+
+  it("the list-returning examples return more than one plot", async () => {
+    const runner = createPlotScriptRunner({ engine: createEvalEngine() });
+    for (const id of ["example-v1-distribution", "example-v1-intervals", "example-v1-stacks"]) {
+      const script = EXAMPLE_SCRIPTS.find((s) => s.id === id)!;
+      await runner.run(id, script.source);
+      expect(runner.getState(id).lastGoodAll.length, id).toBeGreaterThan(1);
+    }
   });
 
   it("uses versioned ids so a revision never mutates a persisted example", () => {

@@ -13,4 +13,4 @@ export { ScriptTile } from "./ScriptTile";
 export type { ScriptTileProps } from "./ScriptTile";
 export { PlotTile } from "./PlotTile";
 export type { PlotTileProps } from "./PlotTile";
-export { BARS_SOURCE, EXAMPLE_SCRIPTS, SCATTER_SOURCE, TREND_SOURCE } from "./examples";
+export { AESTHETICS_SOURCE, BARS_SOURCE, DISTRIBUTION_SOURCE, EXAMPLE_SCRIPTS, FACETS_SOURCE, GUIDES_SOURCE, INTERVALS_SOURCE, SCATTER_SOURCE, STACKS_SOURCE, TREND_SOURCE } from "./examples";

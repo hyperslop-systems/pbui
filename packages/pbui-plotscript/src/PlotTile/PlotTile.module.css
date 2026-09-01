@@ -23,3 +23,21 @@
   min-height: 0;
   overflow: hidden;
 }
+
+/* A script that returned a list: independent plots, each in a bounded cell. */
+.grid {
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--pbui-space-2);
+  min-height: 0;
+  height: 100%;
+}
+
+.cell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  border: var(--pbui-border-hair);
+  padding: var(--pbui-space-1);
+}

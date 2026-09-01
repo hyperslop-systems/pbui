@@ -79,6 +79,17 @@ describe("the script tile and the plot tile over one document", () => {
     expect(container.querySelector('[data-part="plot-script-output"]')?.textContent).toContain("hello 42");
   });
 
+  test("a script that returns a list draws a grid, one plot per result", async () => {
+    const list = OK.replace("return {", "const one = {").replace(/\};\s*$/, "}; return [one, { ...one, document: { ...one.document, id: 'second', description: 'the second' } }];");
+    const { container, host } = mount(list);
+    await waitFor(() => expect(host.runner.getState("s1").status).toBe("ok"));
+    await waitFor(() => expect(container.querySelector('[data-part="plot-grid"]')).not.toBeNull());
+    expect(container.querySelector('[data-part="plot-grid"]')?.getAttribute("data-count")).toBe("2");
+    await waitFor(() => expect(container.querySelectorAll('[data-part="plot-grid"] svg').length).toBe(2));
+    expect(container.textContent).toContain("2 plots");
+    expect(container.textContent).toContain("the second");
+  });
+
   test("an unbound tile and a missing script each say so", () => {
     const host = createPlotScriptHost();
     const wb = createWorkbench({
