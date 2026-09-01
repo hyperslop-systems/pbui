@@ -103,7 +103,15 @@ export type WorkbenchVerb =
   | { kind: "app.place"; appId: string; from?: string }
   | { kind: "app.placeAt"; appId: string; target: string; zone: PlaceZone }
   | { kind: "view.setTitle"; viewId: string; title: string }
-  | { kind: "view.open"; appId: string; documents: Record<string, string>; near?: string; title?: string }
+  | {
+      kind: "view.open";
+      appId: string;
+      documents: Record<string, string>;
+      near?: string;
+      title?: string;
+      /** Land at a named zone of a named tile, instead of beside `near`. */
+      at?: { placementId: string; zone: PlaceZone };
+    }
   | { kind: "tile.replace"; placementId: string; appId: string; documents?: Record<string, string> }
   | { kind: "tile.link"; placementId: string; viewId: string }
   | { kind: "view.rebind"; viewId: string; documents: Record<string, string> }
@@ -137,7 +145,11 @@ export const workbenchVerbs = {
   place: (appId: string, from?: string): WorkbenchVerb => ({ kind: "app.place", appId, ...(from ? { from } : {}) }),
   placeAt: (appId: string, target: string, zone: PlaceZone): WorkbenchVerb => ({ kind: "app.placeAt", appId, target, zone }),
   setTitle: (viewId: string, title: string): WorkbenchVerb => ({ kind: "view.setTitle", viewId, title }),
-  open: (appId: string, documents: Record<string, string>, options: { near?: string; title?: string } = {}): WorkbenchVerb => ({
+  open: (
+    appId: string,
+    documents: Record<string, string>,
+    options: { near?: string; title?: string; at?: { placementId: string; zone: PlaceZone } } = {},
+  ): WorkbenchVerb => ({
     kind: "view.open",
     appId,
     documents,
@@ -210,8 +222,18 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
       );
     case "view.setTitle":
       return string("viewId") && typeof verb.title === "string";
-    case "view.open":
-      return string("appId") && stringMap("documents") && optionalString("near") && optionalString("title");
+    case "view.open": {
+      const at = verb.at as { placementId?: unknown; zone?: unknown } | undefined;
+      const atOk =
+        at === undefined ||
+        (Boolean(at) &&
+          typeof at === "object" &&
+          !Array.isArray(at) &&
+          typeof at.placementId === "string" &&
+          at.placementId.length > 0 &&
+          ["top", "right", "bottom", "left", "center", "replace"].includes(String(at.zone)));
+      return string("appId") && stringMap("documents") && optionalString("near") && optionalString("title") && atOk;
+    }
     case "tile.replace":
       return string("placementId") && string("appId") && stringMap("documents");
     case "tile.link":
@@ -272,7 +294,12 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
     case "view.setTitle":
       return verb.title ? `rename the tile to “${verb.title}”` : "clear the tile's name";
     case "view.open":
-      return `open ${verb.appId} in a new tile`;
+      if (!verb.at) return `open ${verb.appId} in a new tile`;
+      return verb.at.zone === "replace"
+        ? `show ${verb.appId} in that tile instead`
+        : verb.at.zone === "center"
+          ? `open ${verb.appId} beside that tile`
+          : `open ${verb.appId} at that tile's ${verb.at.zone} edge`;
     case "tile.replace":
       return `show ${verb.appId} in this tile instead`;
     case "tile.link":
@@ -348,8 +375,20 @@ export interface WorkbenchVerbHandlers {
    * Open an application on specific document bindings beside a tile. A
    * doc-bound application already showing identical bindings is gone to
    * rather than opened twice.
+   *
+   * With `at`, the caller has already decided WHERE — placement mode's
+   * commit for a bound document, the "open this file in that pane" gesture:
+   * an edge zone docks the new tile at that edge, `"center"` splits the
+   * target along its longer rendered side, and `"replace"` shows it in the
+   * target instead. `at` beats the de-dup as a POSITION but never as an
+   * identity: an existing view of the same document is LINKED into the aimed
+   * pane rather than duplicated, so the two tiles stay one thing.
    */
-  openView(appId: string, documents: Record<string, string>, options?: { near?: string; title?: string }): string | null;
+  openView(
+    appId: string,
+    documents: Record<string, string>,
+    options?: { near?: string; title?: string; at?: { placementId: string; zone: PlaceZone } },
+  ): string | null;
   /**
    * Change what ONE pane shows, in place. When the pane's view has a single
    * placement the view is retargeted (`viewConfigure`), so the pane keeps its
@@ -831,11 +870,68 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     return created;
   };
 
+  /**
+   * `openView`'s aimed half. Kept beside it rather than inside it because the
+   * two answer different questions: `near` asks "somewhere sensible", `at`
+   * asks "exactly here", and only the second has a zone to honour.
+   */
+  const openAt = (
+    current: WorkbenchDocument,
+    appId: string,
+    documents: Record<string, string>,
+    existing: AppView | undefined,
+    at: { placementId: string; zone: PlaceZone },
+    title?: string,
+  ): string | null => {
+    const { placementId, zone } = at;
+    if (!workspaceOfPlacement(current, placementId)) return null;
+    if (zone === "replace") {
+      // Already open somewhere: link that view in rather than mint a second
+      // view of one document, which is how two tiles silently drift apart.
+      const ok = existing ? link(placementId, existing.id) : replace(placementId, appId, documents);
+      if (!ok) return null;
+      activate(placementId);
+      return placementId;
+    }
+    const direction: SplitDirection =
+      zone === "left" || zone === "right" ? "row" : zone === "top" || zone === "bottom" ? "col" : splitDirectionFor(placementId, root());
+    const position: "before" | "after" = zone === "left" || zone === "top" ? "before" : "after";
+    if (!canSplitPlacement(placementId, direction)) return null;
+    let mutations: Mutation[];
+    if (existing) {
+      mutations = splitWithView(current, placementId, direction, existing.id, position);
+    } else {
+      const view = create(AppViewSchema, {
+        id: newId("v"),
+        appId,
+        documents: Object.keys(documents).length > 0 ? { ...documents } : defaultBindings(current, appId),
+        ...(title ? { title } : {}),
+      });
+      mutations = [
+        mutation({ case: "viewCreate", value: { view } }),
+        ...splitWithView(current, placementId, direction, view.id, position),
+      ];
+    }
+    const created = newPlacementIdOf(mutations);
+    if (!store.mutate(mutations)) return null;
+    if (created) activate(created);
+    return created;
+  };
+
   const openView: WorkbenchVerbHandlers["openView"] = (appId, documents, options = {}) => {
     const current = doc();
     const app = apps.get(appId);
+    // What this open would DUPLICATE if the document already has it: a
+    // doc-bound application on exactly these bindings, or a singleton's one
+    // view. Both mean "the same thing, already open".
+    const already = app?.docBound
+      ? viewsOfApp(current, appId).find((view) => sameBindings(view.documents, documents))
+      : app?.singleton
+        ? viewsOfApp(current, appId)[0]
+        : undefined;
+    if (options.at) return openAt(current, appId, documents, already, options.at, options.title);
     if (app?.docBound) {
-      const existing = viewsOfApp(current, appId).find((view) => sameBindings(view.documents, documents));
+      const existing = already;
       if (existing) {
         // `viewsOfApp` searches the whole document, so the match may live in
         // another workspace — where a workspace-local go-to fails and the
@@ -1185,6 +1281,7 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
         handlers.openView(verb.appId, verb.documents, {
           ...(verb.near ? { near: verb.near } : {}),
           ...(verb.title ? { title: verb.title } : {}),
+          ...(verb.at ? { at: verb.at } : {}),
         }) !== null
       );
     case "view.goTo":
