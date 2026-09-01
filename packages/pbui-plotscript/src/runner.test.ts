@@ -1,4 +1,5 @@
 import { createEvalEngine, type ProgramEngine } from "@hyperslop-systems/pbui-sandbox";
+import { createQuickJsDirectEngine } from "@hyperslop-systems/pbui-sandbox/quickjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPlotScriptRunner, IDLE_RUN } from "./runner";
 
@@ -91,6 +92,16 @@ describe("createPlotScriptRunner", () => {
     await runner.run("b", "return { secret: typeof secret };");
     expect(runner.getState("a").logs).toEqual([{ level: "log", text: "a ran" }]);
     expect(runner.getState("b")).toMatchObject({ status: "invalid", problem: { kind: "missing" } });
+  });
+
+  it("the same runner works over QuickJS — the engine is one line (design D5)", async () => {
+    const runner = createPlotScriptRunner({ engine: createQuickJsDirectEngine() });
+    await runner.run("q", OK);
+    expect(runner.getState("q").status).toBe("ok");
+    expect(runner.getState("q").lastGood?.data.rows).toHaveLength(2);
+    await runner.run("q", "return {");
+    expect(runner.getState("q").status).toBe("error");
+    expect(runner.getState("q").lastGood?.data.rows).toHaveLength(2);
   });
 
   it("dispose forgets state and the instance; a run after dispose reloads", async () => {
