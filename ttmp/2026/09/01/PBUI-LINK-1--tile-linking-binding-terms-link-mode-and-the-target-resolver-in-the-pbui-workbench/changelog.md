@@ -28,3 +28,12 @@ Step 3: review amendments — D2 amended (unified port declarations, bindings/do
 
 - ttmp/2026/09/01/PBUI-LINK-1--tile-linking-binding-terms-link-mode-and-the-target-resolver-in-the-pbui-workbench/design-doc/01-tile-linking-in-pbui-intern-analysis-design-and-implementation-guide.md — Amended guide
 
+
+## 2026-09-01
+
+Phase 0 (commit cc771ca): golden tests for cross-workspace doc-bound de-dup and a describeWorkbench snapshot; baseline 252 tests green; decision to merge the chat demo's gold-coin shop into pbui-ecommerce recorded for Phase 1
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/linkingGoldens.test.ts — Phase 0 golden tests
+

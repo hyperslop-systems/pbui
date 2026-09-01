@@ -9,7 +9,7 @@
 - [x] Relate files, update changelog, run docmgr doctor <!-- t:dhr5 -->
 - [x] Upload the guide and diary bundle to reMarkable <!-- t:xvrk -->
 - [x] Confirm Decision D6 (menu-first, connect mode second, no drop zones) with the user before Phase 3 <!-- t:c6fa -->
-- [ ] Phase 0: freeze current workbench binding behaviour with golden tests <!-- t:h6th -->
+- [x] Phase 0: freeze current workbench binding behaviour with golden tests <!-- t:h6th -->
 - [ ] Phase 1: ports and contracts on AppDescriptor, describeWorkbench ports <!-- t:10df -->
 - [ ] Phase 2: link kernel, pbui.links payload, runtime, Ambient/Constant/Follow/Hold, badge, menus, LinkLab story <!-- t:8n2z -->
 - [ ] Phase 3: connect-management mode (port rails, wire layer, port carry) <!-- t:wkfs -->

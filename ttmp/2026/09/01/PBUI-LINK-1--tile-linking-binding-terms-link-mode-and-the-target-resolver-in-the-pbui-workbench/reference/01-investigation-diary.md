@@ -267,3 +267,75 @@ Three review questions changed the guide: whether a hard cutover simplifies the 
 ### Technical details
 
 - Guide length after amendment: 1,360 lines, 10 decision records.
+
+## Step 4: Phase 0 — freeze the behaviour linking must not break
+
+Implementation started. Before any port or term exists, the two cases the existing suite did not freeze were written down as tests: a doc-bound `openView` whose twin lives in another workspace (the handler's `goToView` branch), and the exact object `describeWorkbench` reports for a doc-bound application, as a snapshot. Phase 1 rewrites the second (ports replace `bindings`/`docBound`) and Phase 7 extends it, so the reviewed diff of that snapshot is the contract for both.
+
+A review question also changed the demo plan: the pbui-chat demo already contains a gold-coin shop (products, orders, metals, categories, four tiles) that the guide's §11.1 did not know about. The user asked to merge the two worlds and expand the existing one, so the new package will own an expanded gold-coin shop and the chat demo will consume it later (recorded as D11 in Phase 1).
+
+### Prompt Context
+
+**User prompt (verbatim):** "ok, implement PBUI-LINK-1, take screenshots for the diary, make a fair amount of storybook stories, implement the ecommerce demo as you go along.
+
+commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)
+
+Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done."
+
+Follow-up mid-turn: "and update the design doc to merge both worlds, and expand the existing one to have richer data and all that"
+
+**Assistant interpretation:** Work through Phases 0–7 of the guide in order; build `pbui-ecommerce` alongside as the first consumer, on the gold-coin shop domain the chat demo already uses, with richer fixtures; write Storybook stories generously and screenshot them for the diary; commit per phase; print a plan slip, a start slip and a done slip per phase.
+
+**Inferred user intent:** Land tile linking in pbui as reviewable, demoable increments with a paper trail (diary, slips, screenshots) rather than one large drop.
+
+**Commit (code):** cc771ca — "PBUI-LINK-1 Phase 0: golden tests for cross-workspace doc-bound de-dup and the describeWorkbench shape" (ticket docs committed first as 3655210).
+
+### What I did
+
+- Printed the plan slip (eight phases) and the P0 start slip with `work_slip.py`.
+- Committed the untracked ticket workspace (`3655210`).
+- Ran `pnpm test` in `packages/pbui-workbench`: 25 files, 252 tests green — the baseline.
+- Read `workbench.test.ts`'s test list against the guide's Phase 0 list: replace retarget/mint (lines 874, 884), link orphan deletion (932), `BindingConfig` defaults (1027–1047) and single-workspace `openView` de-dup (361) were already covered.
+- Added `packages/pbui-workbench/src/linkingGoldens.test.ts` with three tests: cross-workspace doc-bound de-dup goes to the other workspace and mints nothing; different bindings mint here; `describeWorkbench` snapshot over a three-tile layout with a doc-bound `sku` app, ids normalised to `n-*`/`v-*`.
+- Printed the P0 done slip.
+
+### Why
+
+- The guide's Phase 0 exists so the Phase 1 cutover (deleting `bindings`/`docBound`) has a failing test to make green rather than a silent behaviour change; the snapshot is the cheapest way to make the `describeWorkbench` diff reviewable.
+
+### What worked
+
+- The `viewsOfApp` + `goToView` path in `openView` (verbs.ts:954–975) already handles the cross-workspace case; the new test passed first time.
+
+### What didn't work
+
+- The first snapshot normalisation regex `/"(n|v|s)-[a-z0-9]+"/` did not match, because `newId` mints `prefix-xxxxxxxx-xxxx` (a 13-character UUID slice with an inner hyphen). Fixed to `/"(n|v|s)-[a-z0-9]+-[a-z0-9]+"/`.
+- `src/rebalance/slate.perf.test.ts` failed once in the full run (`expected 93.3 to be less than 50`) while the baseline run was still warm in memory; it passed alone. A timing guard, unrelated to this change; noted, not touched.
+
+### What I learned
+
+- `layout(spec, { workspaceId, workspaceName })` lets a test pin the workspace id, which keeps the snapshot free of one more minted id.
+
+### What was tricky to build
+
+- Nothing structural; the only friction was the id shape in the snapshot.
+
+### What warrants a second pair of eyes
+
+- Whether the snapshot should also cover `describeWorkbench(wb, { document: true })`; left out because the protobuf JSON is large and the Phase 7 additions land in `apps`/`workspaces`, not in the raw document.
+
+### What should be done in the future
+
+- Phase 1 will update the snapshot deliberately when `docBound`/`bindings` become `ports`.
+
+### Code review instructions
+
+- `packages/pbui-workbench/src/linkingGoldens.test.ts` and its snapshot under `src/__snapshots__/`.
+- `cd packages/pbui-workbench && pnpm test`.
+
+### Technical details
+
+```bash
+python3 ~/.pi/agent/skills/brutalist-work-slip/scripts/work_slip.py plan --task PBUI-LINK-1 --label PLAN --title "Tile Linking In pbui" --phase "P0 golden tests, baseline" ... --next "P0 golden tests"
+cd packages/pbui-workbench && pnpm test      # 25 files, 252 tests (baseline), 26 files, 255 after
+```
