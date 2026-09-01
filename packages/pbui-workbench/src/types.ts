@@ -5,6 +5,7 @@ import type { AppDescriptor, AppRegistry } from "./apps";
 import type { LauncherRow, LauncherRowsContext, LauncherScope } from "./launcherRows";
 import type { PlacementController } from "./placement";
 import type { RebalanceConfig } from "./rebalance/config";
+import type { RebalanceBadgeProps } from "./components/RebalanceBadge";
 import type { RebalanceConfigStore } from "./rebalance/configStore";
 import type { WorkbenchState, WorkbenchStore } from "./store";
 import type { WorkbenchVerb, WorkbenchVerbHandlers } from "./verbs";
@@ -185,4 +186,12 @@ export interface Workbench {
   WorkspaceStrip: ComponentType<WorkspaceStripProps>;
   /** The rebalance dialog (PBUI-REBALANCE-1): Mod+Shift+K, or the `rebalance.open` verb. */
   Rebalance: ComponentType<RebalanceProps>;
+  /**
+   * The always-on diagnosis badge, rendering nothing while the layout is
+   * healthy. Bound to this workbench like every other component here, because
+   * the place it belongs — a status bar — is precisely where the Surface's
+   * context does not reach, and the bare `RebalanceStatusBadge` export throws
+   * there.
+   */
+  RebalanceBadge: ComponentType<RebalanceBadgeProps>;
 }

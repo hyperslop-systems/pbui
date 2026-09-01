@@ -1,6 +1,7 @@
 import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { createAppRegistry, isAppRegistry, type AppDescriptor, type AppRegistry } from "./apps";
 import { WorkbenchLauncher } from "./components/Launcher";
+import { RebalanceStatusBadge } from "./components/RebalanceBadge";
 import { WorkbenchRebalance } from "./components/RebalanceDialog";
 import { WorkbenchSurface } from "./components/Surface";
 import { WorkspaceStrip } from "./components/WorkspaceStrip";
@@ -8,6 +9,7 @@ import { WorkbenchContext } from "./context";
 import { parseDocument, serializeDocument } from "./document";
 import { createPlacementController } from "./placement";
 import { createWorkbenchStore, useWorkbenchStore, type WorkbenchStore, type WorkbenchStoreOptions } from "./store";
+import type { RebalanceBadgeProps } from "./components/RebalanceBadge";
 import type { LauncherProps, RebalanceProps, SurfaceProps, Workbench, WorkbenchPlan, WorkbenchPlanResult, WorkspaceStripProps } from "./types";
 import { createVerbHandlers, describeWorkbenchVerb, performWorkbenchVerb, type BindingConfig, type PaneConstraints, type SplitPolicy, type WorkbenchVerb } from "./verbs";
 
@@ -210,6 +212,13 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       return (
         <WorkbenchContext.Provider value={workbench}>
           <WorkbenchRebalance {...props} />
+        </WorkbenchContext.Provider>
+      );
+    },
+    RebalanceBadge: function Badge(props: RebalanceBadgeProps) {
+      return (
+        <WorkbenchContext.Provider value={workbench}>
+          <RebalanceStatusBadge {...props} />
         </WorkbenchContext.Provider>
       );
     },
