@@ -1,4 +1,5 @@
 import { Button, Chip, Dialog, DiffHunk, EmptyState, SelectInput, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { CodeEditor } from "@hyperslop-systems/pbui-editor";
 import { useWorkbench } from "@hyperslop-systems/pbui-workbench";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { useMemo, useState } from "react";
@@ -161,18 +162,16 @@ export function SourceTile({ view, host, playground }: SourceTileProps) {
   );
 }
 
+/**
+ * The source, read-only, with real highlighting (PBUI-PLOTKIT-1). This was a
+ * hand-built `<pre><ol><li>` with CSS-counter line numbers; the editor draws
+ * the gutter itself and keeps the text selectable and searchable.
+ */
 function SourceListing({ source }: { source: string }) {
-  const lines = source.split("\n");
   return (
-    <pre className={styles.code} data-part="source-listing" aria-label="program source">
-      <ol className={styles.lines}>
-        {lines.map((line, index) => (
-          <li key={index} className={styles.line}>
-            <code>{line || " "}</code>
-          </li>
-        ))}
-      </ol>
-    </pre>
+    <div className={styles.code} data-part="source-listing">
+      <CodeEditor readOnly language="javascript" value={source} onValueChange={() => {}} accessibleName="program source" />
+    </div>
   );
 }
 

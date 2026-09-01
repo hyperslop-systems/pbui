@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@hyperslop-systems/pbui": "workspace:^",
+    "@hyperslop-systems/pbui-editor": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
     "@hyperslop-systems/workbench-protocol": "workspace:^",
     "quickjs-emscripten": "0.23.0"
@@ -51,6 +52,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@hyperslop-systems/plot": "0.3.1",
     "@storybook/addon-a11y": "^10.5.4",
     "@storybook/addon-docs": "^10.5.4",
     "@storybook/react-vite": "^10.5.4",

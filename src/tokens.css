@@ -166,4 +166,20 @@
   --pbui-dialog-backdrop: rgb(35 38 43 / 28%);
   --pbui-dialog-radius: var(--pbui-radius);
   --pbui-dialog-space: var(--pbui-space-4);
+
+  /* ---- Syntax (PBUI-PLOTKIT-1) ------------------------------------------- */
+  /*
+   * Read by @hyperslop-systems/pbui-editor's CodeMirror theme. Defined here
+   * rather than in that package because a token an editor reads and nobody
+   * defines renders as no colour at all, silently — the exact failure this
+   * file exists to end. Six, not a full colour scheme: the family is
+   * monochrome with a few accents, and a code editor should read as part of
+   * it, not as a rainbow inside it.
+   */
+  --pbui-syntax-keyword: #3c5a8a;
+  --pbui-syntax-string: #317a53;
+  --pbui-syntax-number: #8a5a1f;
+  --pbui-syntax-function: #23262b;
+  --pbui-syntax-property: #5b4a8a;
+  --pbui-syntax-comment: var(--pbui-faint);
 }
