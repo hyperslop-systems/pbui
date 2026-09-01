@@ -1,0 +1,28 @@
+/*
+ * The host the EditorView mounts into. Geometry only — every colour is in
+ * theme.ts, where CodeMirror's own class names live.
+ */
+.root {
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  min-width: 0;
+  overflow: hidden;
+}
+
+/*
+ * Sized by the container (the tile case). The view is 100% tall and scrolls
+ * its own content, so the host must be a bounded box — a flex or grid child
+ * with `minmax(0, 1fr)`.
+ */
+.fill {
+  height: 100%;
+  min-height: 0;
+}
+
+/*
+ * Sized by `rows`: the dialog case. Line height and font size are the
+ * theme's, so the arithmetic matches what CodeMirror draws.
+ */
+.root:not(.fill) {
+  height: calc(var(--pbui-editor-rows, 8) * var(--pbui-fs-small) * var(--pbui-lh-tight) + 2 * var(--pbui-space-1) + 2px);
+}
