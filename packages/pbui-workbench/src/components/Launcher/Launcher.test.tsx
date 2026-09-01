@@ -375,6 +375,45 @@ describe("Launcher · rows scope (C1 finding 6)", () => {
     expect(rows.some((row) => row.includes("elsewhere") && row.includes("in another workspace"))).toBe(true);
   });
 
+  test("a view linked into two workspaces is local to BOTH (PR #23, P2)", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: workspaces([
+        { name: "one", spec: tile("counter") },
+        { name: "two", spec: tile("counter", { title: "over here" }) },
+      ]),
+    });
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Launcher scope="workspace" />
+      </>,
+    );
+    // Link workspace one's view into workspace two as well.
+    const [firstWorkspace, secondWorkspace] = wb.store.getState().document.workspaces;
+    const sharedView = (() => {
+      const leaf = leaves(firstWorkspace!.tree)[0]!;
+      return leaf.body.case === "leaf" ? leaf.body.value.viewId : "";
+    })();
+    act(() => {
+      wb.verbs.selectWorkspace(secondWorkspace!.id);
+      wb.verbs.split(leaves(secondWorkspace!.tree)[0]!.id, "row");
+    });
+    const newPane = leaves(wb.store.getState().document.workspaces[1]?.tree)[1]!.id;
+    act(() => {
+      wb.verbs.link(newPane, sharedView);
+    });
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    // The shared view IS on screen in workspace two. Deciding foreignness by
+    // "which workspace holds its FIRST placement" calls it foreign here and
+    // scoped rows drop it, so a view the user is looking at vanishes from the
+    // launcher.
+    const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.id);
+    expect(rows).toContain(`goto:${sharedView}`);
+  });
+
   test('scope="workspace" lists only what is in front of the user', () => {
     const wb = twoWorkspaces();
     const { baseElement } = render(

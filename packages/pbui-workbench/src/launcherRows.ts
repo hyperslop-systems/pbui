@@ -58,11 +58,19 @@ function hasView(node: Node | undefined, viewId: string): boolean {
   return false;
 }
 
-function viewWorkspace(document: WorkbenchDocument, viewId: string): string | null {
-  for (const workspace of document.workspaces) {
-    if (hasView(workspace.tree, viewId)) return workspace.id;
-  }
-  return null;
+/**
+ * Is this view somewhere OTHER than the workspace on screen?
+ *
+ * Asked of the CURRENT workspace's tree rather than by finding the view's
+ * first placement and comparing (PR #23, P2): one view linked into two
+ * workspaces has one first placement, so the second workspace would call a
+ * view it is displaying "foreign" — and a scoped launcher would drop a row
+ * for a tile the user is looking at, with no application row to fall back on
+ * for a doc-bound app.
+ */
+function isForeign(document: WorkbenchDocument, workspaceId: string, viewId: string): boolean {
+  const here = document.workspaces.find((workspace) => workspace.id === workspaceId);
+  return !hasView(here?.tree, viewId);
 }
 
 /**
@@ -88,7 +96,7 @@ export function defaultLauncherRows(context: LauncherRowsContext): LauncherRow[]
     const app = apps.get(view.appId);
     const title = view.title || app?.titleFor?.(view) || app?.title || view.appId;
     if (!matches(title, query) && !matches(view.appId, query)) continue;
-    const foreign = viewWorkspace(document, viewId) !== workspaceId;
+    const foreign = isForeign(document, workspaceId, viewId);
     // Scoped: a view of another workspace is not "on screen" at all. Linking
     // this pane to one would still be legal, which is exactly why the choice
     // is the product's — a scoped palette is smaller, not more correct.
@@ -125,7 +133,7 @@ export function defaultLauncherRows(context: LauncherRowsContext): LauncherRow[]
     // `placeAt`'s (link it in here).
     const placedWhereItCounts = document.viewOrder.some((id) => {
       if (document.views[id]?.appId !== app.id) return false;
-      return scope === "workspace" ? viewWorkspace(document, id) === workspaceId : true;
+      return scope === "workspace" ? !isForeign(document, workspaceId, id) : true;
     });
     if (app.singleton && placedWhereItCounts) continue;
     rows.push({

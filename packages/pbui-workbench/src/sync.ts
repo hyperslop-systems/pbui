@@ -13,7 +13,8 @@
  * package root: a product with no server should not pay for this, and
  * nothing here touches React or the DOM.
  */
-import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import { toJsonString } from "@bufbuild/protobuf";
+import { MutationSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutation, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 
 /**
@@ -165,9 +166,30 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     else console.warn("pbui-workbench/sync:", error);
   };
 
+  /**
+   * Install a server document, keeping what is still queued (PR #23, P1).
+   *
+   * A response is a snapshot of what the server had when it answered, and
+   * that is never the whole local truth: a user can commit B while A is in
+   * flight, and A's response contains A and not B. Installing it wholesale
+   * puts the UI — and anything persisting the store — a committed edit
+   * behind, and a tab closed inside that window loses B for good even though
+   * B was safely queued.
+   *
+   * So the outstanding queue is always replayed on top. This is the same
+   * `rebase` the 409 path uses and for the same reason: the local document is
+   * the server's, plus everything not yet acknowledged.
+   */
   const adopt = (result: SyncResult) => {
     revision = result.revision;
-    target?.store.replaceDocument(result.document);
+    if (!target) return;
+    if (outbox.length === 0) {
+      target.store.replaceDocument(result.document);
+      return;
+    }
+    const { document, kept } = rebase(result.document, outbox);
+    outbox = kept;
+    target.store.replaceDocument(document);
   };
 
   /**
@@ -175,9 +197,16 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
    * id the first attempt carried, or the server applies the batch twice; two
    * DIFFERENT batches must never share one, or the second is swallowed as a
    * replay. Hashing the batch gives both without any bookkeeping.
+   *
+   * The PAYLOADS, not just the mutation kinds (PR #23, P1). A 422 drops a
+   * batch without advancing the revision, so the correction that follows is
+   * built at the same revision with the same shape — and a hash over kinds
+   * alone hands it the key the server already refused. A server that rejects
+   * a reused key carrying a different body would then drop the correction as
+   * a replay, and the fix would silently never land.
    */
   const requestIdOf = (mutations: Mutation[]): string => {
-    const text = `${revision ?? ""}:${JSON.stringify(mutations.map((mutation) => mutation.body.case ?? ""))}:${mutations.length}`;
+    const text = `${revision ?? ""}:${mutations.map((mutation) => toJsonString(MutationSchema, mutation)).join("|")}:${mutations.length}`;
     let hash = 2166136261;
     for (let index = 0; index < text.length; index += 1) {
       hash ^= text.charCodeAt(index);
