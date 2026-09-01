@@ -36,6 +36,12 @@ export interface TileFrameProps {
   replaceLabel?: string;
   /** Attach useTileDrag's register here (ref callback for the hit test). */
   registerElement?(element: HTMLElement | null): void;
+  /**
+   * Extra buttons BEFORE ⬌/⬍/✕, inside the action group rather than the
+   * title. The title ellipsises (`chrome.css`), so a control appended there
+   * disappears on exactly the tiles with long names; this slot never does.
+   */
+  actions?: ReactNode;
   children: ReactNode;
 }
 
@@ -86,6 +92,7 @@ export function TileFrame({
   dockLabel,
   replaceLabel,
   registerElement,
+  actions,
   children,
 }: TileFrameProps) {
   return (
@@ -109,6 +116,7 @@ export function TileFrame({
         )}
         <span data-part="tile-title">{title}</span>
         <span data-part="tile-actions">
+          {actions}
           <IconButton
             variant="framed"
             size="tiny"

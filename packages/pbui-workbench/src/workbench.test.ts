@@ -436,6 +436,30 @@ describe("persistence", () => {
     expect(leafIds(fresh.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
   });
 
+  test("reset(factory) returns to a FRESH layout, not the one construction captured (C1 finding 3)", () => {
+    // The shape of a persisted product: `initial` is what came out of
+    // storage, so a plain reset() restores the layout the user is escaping.
+    const stored = layout(split("row", 0.5, tile("counter"), split("col", 0.5, tile("notes"), tile("counter"))));
+    const wb = createWorkbench({ apps: demoApps, initial: stored });
+    expect(leafIds(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
+    wb.reset();
+    expect(leafIds(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
+    let built = 0;
+    const factory = () => {
+      built += 1;
+      return singleTile("counter");
+    };
+    wb.reset(factory);
+    expect(built).toBe(1);
+    expect(leafIds(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
+    // Called again it builds again — a captured object would hand back the
+    // same document twice, which is the bug this argument exists to avoid.
+    wb.verbs.split(leafIds(wb.store.getState().document.workspaces[0]?.tree)[0]!, "row");
+    wb.reset(factory);
+    expect(built).toBe(2);
+    expect(leafIds(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
+  });
+
   test("store.subscribe fires once per committed batch", () => {
     const { wb, a } = threeTiles();
     const seen = vi.fn();

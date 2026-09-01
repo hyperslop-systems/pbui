@@ -14,7 +14,7 @@ import styles from "./Surface.module.css";
  * `data-launcher-open` so the active tile is outlined only while a keyboard
  * operation needs a target.
  */
-export function WorkbenchSurface({ renderTitle, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
+export function WorkbenchSurface({ renderTitle, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
@@ -24,9 +24,19 @@ export function WorkbenchSurface({ renderTitle, className, swapLabel, dockLabel,
   const renderNode = useCallback(
     function renderNode(node: Node): ReactNode {
       if (node.body.case === "split") return <SplitPane key={node.id} node={node} renderNode={renderNode} />;
-      return <Tile key={node.id} node={node} renderTitle={renderTitle} swapLabel={swapLabel} dockLabel={dockLabel} replaceLabel={replaceLabel} />;
+      return (
+        <Tile
+          key={node.id}
+          node={node}
+          renderTitle={renderTitle}
+          tileAction={tileAction}
+          swapLabel={swapLabel}
+          dockLabel={dockLabel}
+          replaceLabel={replaceLabel}
+        />
+      );
     },
-    [renderTitle, swapLabel, dockLabel, replaceLabel],
+    [renderTitle, tileAction, swapLabel, dockLabel, replaceLabel],
   );
 
   return (

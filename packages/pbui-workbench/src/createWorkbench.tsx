@@ -144,7 +144,11 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       store.replaceDocument(doc);
       return true;
     },
-    reset: () => store.replaceDocument(initial),
+    // A factory rather than a captured object: `initial` is whatever was
+    // passed at construction, and a persisted product passes the STORED
+    // document — so a plain `reset()` there would restore the layout the
+    // user is trying to escape. The factory is the product's "fresh".
+    reset: (factory) => store.replaceDocument(factory ? factory() : initial),
     activePlacementId: () => store.getState().activePlacementId,
     root,
     setRoot: (element) => {

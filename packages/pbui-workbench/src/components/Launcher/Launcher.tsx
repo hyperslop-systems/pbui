@@ -30,6 +30,7 @@ export function WorkbenchLauncher({
   rows,
   choose,
   renderDetail,
+  scope = "document",
 }: LauncherProps) {
   const workbench = useWorkbench();
   const open = workbench.useWorkbenchState((state) => state.launcherOpen);
@@ -130,6 +131,7 @@ export function WorkbenchLauncher({
           rows={rows}
           choose={choose}
           renderDetail={renderDetail}
+          scope={scope}
           returnFocusTo={returnFocusRef.current}
           beginCarry={beginCarry}
         />
@@ -150,9 +152,10 @@ function LauncherModal({
   rows,
   choose,
   renderDetail,
+  scope,
   returnFocusTo,
   beginCarry,
-}: Required<Pick<LauncherProps, "title">> &
+}: Required<Pick<LauncherProps, "title" | "scope">> &
   Pick<LauncherProps, "rows" | "choose" | "renderDetail"> & {
     returnFocusTo: HTMLElement | null;
     beginCarry(appId: string, title: string): void;
@@ -187,9 +190,9 @@ function LauncherModal({
   const direction = invocation.target ? splitDirectionFor(invocation.target, workbench.root()) : "row";
 
   const model = useMemo(() => {
-    const context = { document, apps: workbench.apps, workspaceId, invocation, query: query.trim().toLowerCase() };
+    const context = { document, apps: workbench.apps, workspaceId, invocation, query: query.trim().toLowerCase(), scope };
     return rows ? rows(context) : defaultLauncherRows(context);
-  }, [document, workbench, workspaceId, invocation, query, rows]);
+  }, [document, workbench, workspaceId, invocation, query, rows, scope]);
 
   const groups = useMemo(
     () => groupLauncherRows(model, workbench.apps, perPane, renderDetail),
@@ -212,7 +215,14 @@ function LauncherModal({
   const onChoose = (rowId: string) => {
     const row = rowOf(rowId, model);
     if (!row) return;
-    const claimed = choose?.(row, { document, apps: workbench.apps, workspaceId, invocation, query: query.trim().toLowerCase() });
+    const claimed = choose?.(row, {
+      document,
+      apps: workbench.apps,
+      workspaceId,
+      invocation,
+      query: query.trim().toLowerCase(),
+      scope,
+    });
     if (claimed) {
       close();
       return;

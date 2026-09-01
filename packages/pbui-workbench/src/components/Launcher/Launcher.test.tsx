@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { Button } from "@hyperslop-systems/pbui";
 import { leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { layout, split, tile, workspaces } from "../../document";
 import { counterApp, demoApps } from "../../stories/demoApps";
 
 afterEach(cleanup);
@@ -342,5 +342,50 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
       wb.verbs.openLauncher();
     });
     expect(baseElement.querySelector("#place\\:notes")?.textContent).toContain("[app]");
+  });
+});
+
+describe("Launcher · rows scope (C1 finding 6)", () => {
+  function twoWorkspaces() {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: workspaces([
+        { name: "one", spec: tile("counter") },
+        { name: "two", spec: tile("notes", { title: "elsewhere" }) },
+      ]),
+    });
+    return wb;
+  }
+
+  test("the default reaches the whole document, marking the foreign rows", () => {
+    const wb = twoWorkspaces();
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Launcher />
+      </>,
+    );
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.textContent ?? "");
+    expect(rows.some((row) => row.includes("elsewhere") && row.includes("in another workspace"))).toBe(true);
+  });
+
+  test('scope="workspace" lists only what is in front of the user', () => {
+    const wb = twoWorkspaces();
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Launcher scope="workspace" />
+      </>,
+    );
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.textContent ?? "");
+    expect(rows.some((row) => row.includes("elsewhere"))).toBe(false);
+    // The applications are unaffected: scope is about what is ON SCREEN.
+    expect(baseElement.querySelector("#place\\:notes")).not.toBeNull();
   });
 });

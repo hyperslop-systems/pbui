@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 import type { ShortcutContext } from "@hyperslop-systems/pbui";
 import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop-systems/workbench-protocol";
 import type { AppDescriptor, AppRegistry } from "./apps";
-import type { LauncherRow, LauncherRowsContext } from "./launcherRows";
+import type { LauncherRow, LauncherRowsContext, LauncherScope } from "./launcherRows";
 import type { RebalanceConfig } from "./rebalance/config";
 import type { RebalanceConfigStore } from "./rebalance/configStore";
 import type { WorkbenchState, WorkbenchStore } from "./store";
@@ -24,8 +24,22 @@ export interface SurfaceProps {
    * The title slot of every tile. A PBUI product wraps its `<tile>`
    * Presentation here so the object menu and the chrome buttons are two
    * doors to the same verbs; the default is the plain label.
+   *
+   * `defaultTitle` is the node this shell would have rendered — the label
+   * plus the ×N linked badge. It is passed in so a product may COMPOSE with
+   * the badge instead of re-implementing it: three products want a custom
+   * title AND the badge, and each one that re-derives `×N` by hand is a
+   * place the badge can silently drift out of the chrome's contract.
    */
-  renderTitle?(view: AppView, placement: TilePlacementInfo): ReactNode;
+  renderTitle?(view: AppView, placement: TilePlacementInfo, defaultTitle: ReactNode): ReactNode;
+  /**
+   * Extra controls in the tile bar's action group, beside ⬌/⬍/✕ and OUTSIDE
+   * the ellipsising title. Omitting the prop keeps the shell's own door to
+   * the per-pane launcher ("show something else in this tile"); return
+   * `undefined` from the function for the same default, and `null` for a
+   * tile bar with nothing but the three standard buttons.
+   */
+  tileAction?(placement: TilePlacementInfo): ReactNode;
   className?: string;
   /** Drop-overlay labels, for products that word them differently. */
   swapLabel?: string;
@@ -79,6 +93,15 @@ export interface LauncherProps {
   choose?(row: LauncherRow, context: LauncherRowsContext): boolean;
   /** Render a row's detail line; the default uses the row's own `detail`. */
   renderDetail?(row: LauncherRow): ReactNode;
+  /**
+   * How much of the document the "on screen" rows cover. `"document"` (the
+   * default, and the behaviour before this option) lists every placed view
+   * in every workspace, marking the foreign ones; `"workspace"` lists only
+   * the current workspace's. A product with four workspaces and thirteen
+   * tiles gets thirteen rows, nine of them elsewhere — right for a
+   * go-anywhere palette, wrong for "what is in front of me".
+   */
+  scope?: LauncherScope;
 }
 
 export interface RebalanceProps {
@@ -130,8 +153,13 @@ export interface Workbench {
   serialize(): string;
   /** Replace the layout from `serialize()` output; false (and untouched) when it does not parse. */
   restore(json: string): boolean;
-  /** Back to the layout the workbench was created with. */
-  reset(): void;
+  /**
+   * Back to a starting layout. With no argument, the document the workbench
+   * was CREATED with — which after a reload is the one restored from storage,
+   * so a persisted product must pass its own factory or "reset" restores the
+   * layout the user is trying to escape.
+   */
+  reset(factory?: () => WorkbenchDocument): void;
   activePlacementId(): string | null;
   /** The Surface's root element, once mounted. */
   root(): HTMLElement | null;

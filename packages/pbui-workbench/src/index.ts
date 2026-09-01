@@ -57,7 +57,7 @@ export type {
   VerbEnvironment,
 } from "./verbs";
 export { defaultLauncherRows, groupLauncherRows, rowOf, GOTO_PREFIX, PLACE_PREFIX } from "./launcherRows";
-export type { LauncherInvocation, LauncherRow, LauncherRowsContext } from "./launcherRows";
+export type { LauncherInvocation, LauncherRow, LauncherRowsContext, LauncherScope } from "./launcherRows";
 export { createTileDescriptor, tileRefOf } from "./tileDescriptor";
 export type { TileRef } from "./tileDescriptor";
 export { createWorkbench } from "./createWorkbench";
