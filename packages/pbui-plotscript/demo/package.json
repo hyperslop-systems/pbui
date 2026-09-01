@@ -1,0 +1,30 @@
+{
+  "name": "@hyperslop-systems/pbui-plotscript-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reference product for @hyperslop-systems/pbui-plotscript: a workbench with a script tile beside a plot tile, one workspace per example",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hyperslop-systems/pbui": "workspace:^",
+    "@hyperslop-systems/pbui-editor": "workspace:^",
+    "@hyperslop-systems/pbui-plotscript": "workspace:^",
+    "@hyperslop-systems/pbui-sandbox": "workspace:^",
+    "@hyperslop-systems/pbui-workbench": "workspace:^",
+    "@hyperslop-systems/plot": "0.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.13",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5"
+  }
+}
