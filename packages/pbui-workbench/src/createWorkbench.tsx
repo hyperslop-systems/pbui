@@ -38,6 +38,13 @@ export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
   binding?: BindingConfig;
   /** Runtime pane minima shared by pointer, keyboard, human and agent verbs. */
   paneConstraints?: Partial<PaneConstraints>;
+  /**
+   * The application a pane shows when it holds nothing yet. Aiming a new tile
+   * at the centre of such a pane FILLS it instead of splitting it. Defaults
+   * to the id in an object-form `splitPolicy`; pass `""` to switch the rule
+   * off, or an id when the policy is a function.
+   */
+  emptyPaneApp?: string;
 }
 
 /**
@@ -75,6 +82,7 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
     ...(options.binding ? { binding: options.binding } : {}),
     ...(options.paneConstraints ? { paneConstraints: options.paneConstraints } : {}),
+    ...(options.emptyPaneApp !== undefined ? { emptyPaneApp: options.emptyPaneApp } : {}),
   });
 
   const plan = (plannedVerbs: readonly WorkbenchVerb[]): WorkbenchPlanResult => {
@@ -98,6 +106,7 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
       ...(options.binding ? { binding: options.binding } : {}),
       ...(options.paneConstraints ? { paneConstraints: options.paneConstraints } : {}),
+      ...(options.emptyPaneApp !== undefined ? { emptyPaneApp: options.emptyPaneApp } : {}),
     });
     for (let index = 0; index < plannedVerbs.length; index += 1) {
       const verb = plannedVerbs[index]!;

@@ -470,6 +470,63 @@ describe("zone-aware open (5.E)", () => {
   });
 });
 
+describe("filling an empty pane (6.2)", () => {
+  const launcherApp = { ...notesApp, id: "launcher", title: "new tile", singleton: false, duplicable: true };
+
+  function withLauncherPolicy() {
+    const wb = createWorkbench({
+      apps: [counterApp, notesApp, launcherApp],
+      initial: layout(split("row", 0.5, tile("counter"), tile("counter"))),
+      splitPolicy: { app: "launcher" },
+    });
+    const tree = () => wb.store.getState().document.workspaces[0]?.tree;
+    return { wb, tree };
+  }
+
+  test("aiming at the centre of a pane that holds nothing FILLS it rather than splitting it", () => {
+    const { wb, tree } = withLauncherPolicy();
+    const [first] = leafIds(tree());
+    // A bare split opens an empty pane, per the policy.
+    const empty = wb.verbs.split(first!, "row")!;
+    expect(wb.store.getState().document.views[viewOf(tree(), empty)]!.appId).toBe("launcher");
+    const before = leafIds(tree()).length;
+
+    const landed = wb.verbs.placeAt("notes", empty, "center");
+    expect(landed).toBe(empty);
+    // Same number of tiles: splitting an empty pane to make room is absurd.
+    expect(leafIds(tree())).toHaveLength(before);
+    expect(wb.store.getState().document.views[viewOf(tree(), empty)]!.appId).toBe("notes");
+  });
+
+  test("a pane holding a real application still splits, and an edge zone always docks", () => {
+    const { wb, tree } = withLauncherPolicy();
+    const [first] = leafIds(tree());
+    const before = leafIds(tree()).length;
+    expect(wb.verbs.placeAt("notes", first!, "center")).not.toBeNull();
+    expect(leafIds(tree())).toHaveLength(before + 1);
+
+    const empty = wb.verbs.split(first!, "row")!;
+    const after = leafIds(tree()).length;
+    // An EDGE of an empty pane is still a dock: the user aimed at a side.
+    expect(wb.verbs.placeAt("counter", empty, "right")).not.toBeNull();
+    expect(leafIds(tree())).toHaveLength(after + 1);
+  });
+
+  test("emptyPaneApp: \"\" switches the rule off for a product that wants the split", () => {
+    const wb = createWorkbench({
+      apps: [counterApp, notesApp, launcherApp],
+      initial: layout(split("row", 0.5, tile("counter"), tile("counter"))),
+      splitPolicy: { app: "launcher" },
+      emptyPaneApp: "",
+    });
+    const tree = () => wb.store.getState().document.workspaces[0]?.tree;
+    const empty = wb.verbs.split(leafIds(tree())[0]!, "row")!;
+    const before = leafIds(tree()).length;
+    expect(wb.verbs.placeAt("notes", empty, "center")).not.toBeNull();
+    expect(leafIds(tree())).toHaveLength(before + 1);
+  });
+});
+
 describe("the launcher placement rule", () => {
   function mountPlacement(id: string, width: number, height: number) {
     const element = document.createElement("section");

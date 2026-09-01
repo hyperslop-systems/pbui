@@ -571,9 +571,27 @@ export interface VerbEnvironment {
   splitPolicy?: SplitPolicy;
   binding?: BindingConfig;
   paneConstraints?: Partial<PaneConstraints>;
+  emptyPaneApp?: string;
 }
 
-export function createVerbHandlers({ store, apps, root, splitPolicy, binding, paneConstraints }: VerbEnvironment): WorkbenchVerbHandlers {
+/**
+ * The application a pane shows when it holds NOTHING yet.
+ *
+ * Products whose split policy is `{ app: "launcher" }` fill every new pane
+ * with a picker, and "aim a new tile at that empty pane" then means FILL IT,
+ * not "split it in half and leave the picker in the other half". The policy
+ * already names the application, so the default is read from it; the option
+ * is for a product whose empty pane is something else, or whose policy is a
+ * function.
+ */
+function emptyPaneAppOf(splitPolicy: SplitPolicy | undefined, explicit: string | undefined): string | null {
+  if (explicit !== undefined) return explicit || null;
+  if (splitPolicy && typeof splitPolicy === "object") return splitPolicy.app;
+  return null;
+}
+
+export function createVerbHandlers({ store, apps, root, splitPolicy, binding, paneConstraints, emptyPaneApp }: VerbEnvironment): WorkbenchVerbHandlers {
+  const emptyApp = emptyPaneAppOf(splitPolicy, emptyPaneApp);
   const constraints: PaneConstraints = { ...DEFAULT_PANE_CONSTRAINTS, ...paneConstraints };
   if (
     !Number.isFinite(constraints.minInlinePx) || constraints.minInlinePx <= 0 ||
@@ -806,6 +824,16 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     return store.mutate(resizeSplit(doc(), splitId, final)) ? final : null;
   };
 
+  /** Which application a pane is showing, or null when it shows nothing usable. */
+  const appAt = (placementId: string): string | null => {
+    const current = doc();
+    const workspaceId = workspaceOfPlacement(current, placementId);
+    if (!workspaceId) return null;
+    const node = findNode(workspaceTree(current, workspaceId), placementId);
+    if (node?.body.case !== "leaf") return null;
+    return current.views[node.body.value.viewId]?.appId ?? null;
+  };
+
   const goTo = (current: WorkbenchDocument, viewId: string): string | null => {
     const placement = firstPlacementOfView(current, workspace(), viewId);
     if (placement) activate(placement);
@@ -848,7 +876,12 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
   };
 
   const placeAt: WorkbenchVerbHandlers["placeAt"] = (appId, target, zone) => {
-    if (zone === "replace") {
+    // Aiming at the CENTRE of a pane that holds nothing yet means "put it
+    // here", not "split the empty pane and leave the picker in half of it".
+    // Splitting an empty pane to make room is absurd, and it is what every
+    // product with a `{ app }` split policy had to special-case by hand.
+    const fillsEmptyPane = zone === "center" && emptyApp !== null && appAt(target) === emptyApp && appId !== emptyApp;
+    if (zone === "replace" || fillsEmptyPane) {
       // The target keeps its rectangle and identity; only what it shows changes.
       if (!replace(target, appId)) return null;
       activate(target);
