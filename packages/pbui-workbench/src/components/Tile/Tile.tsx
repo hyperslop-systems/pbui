@@ -4,12 +4,14 @@ import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { placementCount } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import type { SurfaceProps, TilePlacementInfo } from "../../types";
-import { canClose as canClosePlacement } from "../../verbs";
+import { canClose as canClosePlacement, type PlaceZone } from "../../verbs";
 import styles from "./Tile.module.css";
 
 export interface TileProps
   extends Pick<SurfaceProps, "renderTitle" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
   node: Node;
+  /** The active placement request's per-tile wording, from the Surface. */
+  placementLabelFor?(placementId: string, zone: PlaceZone): string | undefined;
 }
 
 /**
@@ -20,7 +22,7 @@ export interface TileProps
  * verbs, and hands the application a one-cell grid with a committed height.
  * It holds no application state and no layout logic of its own.
  */
-export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, replaceLabel }: TileProps) {
+export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const active = workbench.useWorkbenchState((state) => state.activePlacementId === node.id);
@@ -79,6 +81,11 @@ export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, repl
   // default; an explicit `null` is how a product says "no extra button".
   const custom = tileAction?.(info);
   const action = custom === undefined ? defaultAction : custom;
+  // A placement request words the overlay for THIS tile and THIS zone — "open
+  // Basic.lean in this editor" reads differently on the editor pane and on
+  // the goals pane, and naming the outcome before the click is the point.
+  // Only the hovered tile has a zone, so one label covers all three slots.
+  const aimed = placementLabelFor && drag.zone ? placementLabelFor(node.id, drag.zone) : undefined;
   const activate = () => workbench.verbs.activate(node.id);
 
   return (
@@ -107,10 +114,11 @@ export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, repl
         dropZone={drag.zone}
         dragging={drag.dragging}
         registerElement={drag.register}
-        swapLabel={drag.carrying ? (swapLabel ?? "place beside \u00b7 splits the longer side") : swapLabel}
-        dockLabel={drag.carrying ? (dockLabel ?? "place the new tile at this edge") : dockLabel}
+        swapLabel={aimed ?? (drag.carrying ? (swapLabel ?? "place beside \u00b7 splits the longer side") : swapLabel)}
+        dockLabel={aimed ?? (drag.carrying ? (dockLabel ?? "place the new tile at this edge") : dockLabel)}
         replaceLabel={
-          drag.carrying ? (replaceLabel ?? "\u2325 show it in this tile instead \u00b7 keeps the tile") : replaceLabel
+          aimed ??
+          (drag.carrying ? (replaceLabel ?? "\u2325 show it in this tile instead \u00b7 keeps the tile") : replaceLabel)
         }
       >
         <div className={styles.body}>

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button, Kbd, Text, Toolbar } from "@hyperslop-systems/pbui";
 import { createWorkbench } from "../../createWorkbench";
 import { layout, split, tile } from "../../document";
@@ -92,6 +92,71 @@ export const WithLauncherAndPersistence: StoryObj = {
         </Toolbar>
         <wb.Surface />
         <wb.Launcher />
+      </div>
+    );
+  },
+};
+
+export const PlacementMode: StoryObj = {
+  name: "placement mode: aim a document at a pane (5.E)",
+  render: function PlacementStory() {
+    const wb = useMemo(
+      () =>
+        createWorkbench({
+          apps: demoApps,
+          initial: layout(split("row", 0.55, tile("counter"), split("col", 0.5, tile("notes"), tile("counter")))),
+        }),
+      [],
+    );
+    const [log, setLog] = useState("nothing placed yet");
+
+    /**
+     * What a product's file list does: arm the mode, word the banner and the
+     * per-tile overlays in its own vocabulary, then turn the aim into a
+     * `view.open` with `at`. The controller places nothing itself.
+     */
+    const openHere = async (fileName: string) => {
+      const outcome = await wb.placement.begin({
+        prompt: `placing ${fileName}`,
+        defaultLabel: "beside the active tile",
+        labelFor: (_placementId, zone) => {
+          return zone === "replace"
+            ? `${fileName} takes over this pane`
+            : zone === "center"
+              ? `${fileName} opens beside this pane`
+              : `${fileName} docks at this pane's ${zone} edge`;
+        },
+      });
+      if (outcome.kind !== "aimed") {
+        setLog(outcome.kind === "default" ? `${fileName}: took the default spot` : `${fileName}: cancelled`);
+        if (outcome.kind === "default") wb.verbs.place("notes");
+        return;
+      }
+      wb.perform({
+        kind: "view.open",
+        appId: "notes",
+        documents: { source: fileName },
+        title: fileName,
+        at: { placementId: outcome.placementId, zone: outcome.zone },
+      });
+      setLog(`${fileName} → ${outcome.zone} of ${outcome.placementId}`);
+    };
+
+    return (
+      <div style={{ display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", height: 520, padding: 8, gap: 8 }}>
+        <Toolbar tight>
+          <Text size="small">open a file — then click the pane it should land in:</Text>
+          <Button variant="framed" onClick={() => void openHere("Basic.lean")}>
+            Basic.lean
+          </Button>
+          <Button variant="framed" onClick={() => void openHere("Tactics.lean")}>
+            Tactics.lean
+          </Button>
+          <Text size="tiny" tone="faint">
+            {log}
+          </Text>
+        </Toolbar>
+        <wb.Surface />
       </div>
     );
   },

@@ -1,7 +1,7 @@
 import { useCallback, type ReactNode } from "react";
 import { EmptyState } from "@hyperslop-systems/pbui";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
-import { useWorkbench } from "../../context";
+import { usePlacement, useWorkbench } from "../../context";
 import type { SurfaceProps } from "../../types";
 import { SplitPane } from "../SplitPane";
 import { Tile } from "../Tile";
@@ -19,6 +19,7 @@ export function WorkbenchSurface({ renderTitle, tileAction, className, swapLabel
   const document = workbench.useDocument();
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
   const launcherOpen = workbench.useWorkbenchState((state) => state.launcherOpen);
+  const placing = usePlacement(workbench);
   const tree = document.workspaces.find((workspace) => workspace.id === workspaceId)?.tree;
 
   const renderNode = useCallback(
@@ -33,10 +34,11 @@ export function WorkbenchSurface({ renderTitle, tileAction, className, swapLabel
           swapLabel={swapLabel}
           dockLabel={dockLabel}
           replaceLabel={replaceLabel}
+          placementLabelFor={placing?.labelFor}
         />
       );
     },
-    [renderTitle, tileAction, swapLabel, dockLabel, replaceLabel],
+    [renderTitle, tileAction, swapLabel, dockLabel, replaceLabel, placing],
   );
 
   return (
@@ -54,6 +56,14 @@ export function WorkbenchSurface({ renderTitle, tileAction, className, swapLabel
           <EmptyState message="this workbench has no workspace" hint="create it with layout() or singleTile() and pass it as `initial`" />
         </div>
       )}
+      {placing ? (
+        <div className={styles.placing} data-part="workbench-placing" role="status">
+          <b>{placing.prompt}</b>
+          {" — click a tile: edges dock, centre splits, hold Alt to replace what it shows"}
+          {placing.defaultLabel ? ` · Enter: ${placing.defaultLabel}` : ""}
+          {" · Esc: cancel"}
+        </div>
+      ) : null}
     </div>
   );
 }

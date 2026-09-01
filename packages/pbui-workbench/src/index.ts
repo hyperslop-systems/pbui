@@ -49,6 +49,7 @@ export {
 export type {
   BindingConfig,
   CrossWorkspace,
+  PlaceZone,
   SplitPolicy,
   SplitDirection,
   WorkbenchVerb,
@@ -71,7 +72,15 @@ export type {
   WorkspacePlacementInfo,
   WorkspaceStripProps,
 } from "./types";
-export { WorkbenchContext, useWorkbench } from "./context";
+export { WorkbenchContext, useWorkbench, usePlacement } from "./context";
+export { createPlacementController } from "./placement";
+export type {
+  ActivePlacement,
+  PlacementAim,
+  PlacementController,
+  PlacementOutcome,
+  PlacementRequest,
+} from "./placement";
 export { Tile } from "./components/Tile";
 export type { TileProps } from "./components/Tile";
 export { SplitPane } from "./components/SplitPane";

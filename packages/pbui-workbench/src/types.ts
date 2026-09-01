@@ -3,6 +3,7 @@ import type { ShortcutContext } from "@hyperslop-systems/pbui";
 import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop-systems/workbench-protocol";
 import type { AppDescriptor, AppRegistry } from "./apps";
 import type { LauncherRow, LauncherRowsContext, LauncherScope } from "./launcherRows";
+import type { PlacementController } from "./placement";
 import type { RebalanceConfig } from "./rebalance/config";
 import type { RebalanceConfigStore } from "./rebalance/configStore";
 import type { WorkbenchState, WorkbenchStore } from "./store";
@@ -172,6 +173,13 @@ export interface Workbench {
    * the verb returns.
    */
   focusPlacement(placementId: string): void;
+  /**
+   * Placement mode (§5.E): arm "aim at a pane" and learn where the user
+   * pointed. The controller performs nothing — a file list awaits an aim and
+   * then calls `view.open` with `at`, the launcher awaits one and calls
+   * `placeAt`. The Surface draws the banner and the per-tile labels.
+   */
+  placement: PlacementController;
   Surface: ComponentType<SurfaceProps>;
   Launcher: ComponentType<LauncherProps>;
   WorkspaceStrip: ComponentType<WorkspaceStripProps>;

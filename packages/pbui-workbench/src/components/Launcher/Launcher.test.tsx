@@ -9,7 +9,7 @@ import { counterApp, demoApps } from "../../stories/demoApps";
 afterEach(cleanup);
 
 describe("Launcher", () => {
-  test("Ctrl+K opens it; a placed singleton is offered as go-to, the rest as a new tile", () => {
+  test("Ctrl+K opens it; a placed singleton is offered as go-to, the rest as a new tile", async () => {
     const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
     const { container, baseElement } = render(
       <>
@@ -42,12 +42,13 @@ describe("Launcher", () => {
     });
     expect(wb.store.getState().launcherOpen).toBe(false);
     expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(2);
-    expect(baseElement.querySelector('[data-part="launcher-carry"]')?.textContent).toMatch(/placing/);
-    // Enter commits the old default spot: split the active tile.
-    act(() => {
+    expect(baseElement.querySelector('[data-part="workbench-placing"]')?.textContent).toMatch(/placing/);
+    // Enter commits the old default spot: split the active tile. The
+    // placement outcome is a promise, so the tile lands a microtask later.
+    await act(async () => {
       fireEvent.keyDown(window, { key: "Enter" });
     });
-    expect(baseElement.querySelector('[data-part="launcher-carry"]')).toBeNull();
+    expect(baseElement.querySelector('[data-part="workbench-placing"]')).toBeNull();
     expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
   });
@@ -121,11 +122,11 @@ describe("Launcher", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
-    expect(baseElement.querySelector('[data-part="launcher-carry"]')).not.toBeNull();
+    expect(baseElement.querySelector('[data-part="workbench-placing"]')).not.toBeNull();
     act(() => {
       fireEvent.keyDown(window, { key: "Escape" });
     });
-    expect(baseElement.querySelector('[data-part="launcher-carry"]')).toBeNull();
+    expect(baseElement.querySelector('[data-part="workbench-placing"]')).toBeNull();
     expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
   });
 
@@ -232,7 +233,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     expect(viewIds).toEqual([viewOfSecond, viewOfSecond]);
   });
 
-  test("a global choice never destroys a working tile", () => {
+  test("a global choice never destroys a working tile", async () => {
     const { wb } = twoTiles();
     const { container, baseElement } = render(
       <>
@@ -246,8 +247,10 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
-    // Placement mode is live; Enter commits the default (split the active tile).
-    act(() => {
+    // Placement mode is live; Enter commits the default (split the active
+    // tile). The outcome is a promise the launcher awaits, so the placement
+    // lands a microtask later.
+    await act(async () => {
       fireEvent.keyDown(window, { key: "Enter" });
     });
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
@@ -280,7 +283,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     expect(wb.store.getState().launcherOpen).toBe(false);
   });
 
-  test("choose returning false falls through to the default meaning", () => {
+  test("choose returning false falls through to the default meaning", async () => {
     const { wb } = twoTiles();
     const { container, baseElement } = render(
       <>
@@ -294,7 +297,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
-    act(() => {
+    await act(async () => {
       fireEvent.keyDown(window, { key: "Enter" });
     });
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
