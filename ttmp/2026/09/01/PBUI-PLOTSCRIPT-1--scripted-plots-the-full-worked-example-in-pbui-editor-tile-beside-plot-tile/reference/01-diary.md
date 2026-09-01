@@ -12,6 +12,10 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/pbui-plotscript/demo/src/App.tsx
+      Note: Strip, surface, launcher, rebalance (commit 48bb255)
+    - Path: repo://packages/pbui-plotscript/demo/src/workbench.ts
+      Note: One workspace per example; localStorage on every committed batch (commit 48bb255)
     - Path: repo://packages/pbui-plotscript/src/PlotTile/PlotTile.tsx
       Note: ResponsivePlot over lastGood, stale chip (commit 2ff7f91)
     - Path: repo://packages/pbui-plotscript/src/ScriptTile/ScriptTile.tsx
@@ -22,6 +26,8 @@ RelatedFiles:
       Note: PlotScriptDoc as DocumentPayload (commit 126832d)
     - Path: repo://packages/pbui-plotscript/src/draftStore.ts
       Note: The editor's live text outside the document (commit 126832d)
+    - Path: repo://packages/pbui-plotscript/src/examples.ts
+      Note: The three seeded scripts (commits 48bb255, ad79e72)
     - Path: repo://packages/pbui-plotscript/src/runner.ts
       Note: Ticket, runCount, lastGood (commit 126832d)
     - Path: repo://packages/pbui-plotscript/src/tiles.test.tsx
@@ -34,6 +40,7 @@ LastUpdated: 2026-09-01T14:11:52.0215631-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -241,3 +248,82 @@ left, a scatter on the right, `7 rows · complete`.
 ![A script that throws](./screenshots/04-p3-throwing-script.png)
 
 *The engine's own error in the pane.*
+
+## Step 4: The three examples and the demo app
+
+Phase 4 turns the guide's three worked scripts into seeded documents and
+wraps everything in a runnable reference product: one workspace per example,
+so the workspace strip is the example picker; the whole document — layout and
+scripts — persisted to `localStorage` on every committed batch and restorable
+to the seed with one button.
+
+The accessibility snapshot Playwright returns alongside a screenshot found
+something the picture did not: the plot was emitting
+`interaction.identity.missing` because none of the examples declared
+`data.identity`. One field per example fixed it and gave the marks stable
+interaction targets.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1; screenshots per "don't forget to take screenshots")
+
+**Assistant interpretation:** Phase 4 as designed (§12): `examples.ts`, an integration test per example, the demo app; screenshots of each workspace.
+
+**Inferred user intent:** The thing the original request described, running, in a browser.
+
+**Commit (code):** 48bb255 — "pbui-plotscript: the three worked examples and the demo app"
+**Commit (code):** ad79e72 — "pbui-plotscript: the examples declare data identity"
+
+### What I did
+- `src/examples.ts`: `SCATTER_SOURCE`, `BARS_SOURCE`, `TREND_SOURCE` and `EXAMPLE_SCRIPTS` under ids `example-v1-{scatter,bars,trend}`; the bars script `console.log`s its group count so the pane has something to show.
+- `src/examples.test.ts`: each example runs through the runner and `renderPlot` with no error diagnostics; ids are versioned and unique.
+- `demo/src/workbench.ts`: `seedDocument()` = `workspaces([...])` (one per example, `plot-script` beside `plot-view`, both bound to the example's id) plus the three `plotScriptMutation`s; `createDemoWorkbench()` restores from `localStorage` via `parseDocument`, and `onMutate` writes `serialize()` back.
+- `demo/src/App.tsx`: the strip (`WorkspaceStrip`, a status line, "reset to the examples"), `Surface`, `Launcher`, `Rebalance`.
+- `demo/src/main.tsx`: the stylesheet order — pbui, workbench, editor, sandbox, plot, this package, then the demo's own.
+- Demo build: 962 KB / 308 KB gzip (CodeMirror + plot + React); typecheck clean.
+- Three demo screenshots, one per workspace.
+
+### Why
+- D2 (a reference product proves the packages end to end where Storybook alone would not exercise `createWorkbench`, the launcher or the tile chrome) and the versioned-id discipline from datalab's `welcome.ts`.
+
+### What worked
+- All three examples rendered on the first run of the integration test; the demo came up with no console errors.
+
+### What didn't work
+- Adding `identity` broke the package build: `Expected a semicolon or an implicit semicolon after a statement` — I had written a comment containing backticks *inside* the template literal that holds the script, which terminated the literal. The example sources are template strings; anything in them is JavaScript-in-a-string, comments included. Removed the backticks. One collateral test failure in `tiles.test.tsx` vanished with the fix.
+- A Playwright click by snapshot ref failed (`Ref f13e8 not found`) because Vite's HMR had reloaded the page between snapshot and click; a text selector (`button:has-text("B · dodged bars")`) is stable across reloads.
+
+### What I learned
+- `workspaces()` wants an `id` per workspace or mints `ws-…`; giving each example's workspace `ws-<script id>` keeps the persisted layout stable across reseeds.
+- The plot's `interaction.identity.missing` notice is a `status` element in the DOM, easy to miss visually and obvious in the accessibility tree — worth checking snapshots, not only pixels.
+
+### What was tricky to build
+- **Persistence granularity.** `onMutate` fires once per committed batch, and the script tile writes the document only on a successful run, so `localStorage` sees one write per good run, not per keystroke. That was the point of the draft store (Step 2), and the demo is where it shows.
+
+### What warrants a second pair of eyes
+- The demo bundles QuickJS-free (`createEvalEngine` by default). The moment scripts are shareable, D5 says `createQuickJsEngine` — the demo would then need `worker: { format: "es" }` in its Vite config, as `pbui-chat/demo` has.
+- The 25.1 °C clipping (Step 3) is visible again in the scatter workspace.
+
+### What should be done in the future
+- Phase 5 items: QuickJS behind the same host, byte/row budget counters in the toolbar, a `serialize`/`restore` round-trip test at the demo level, version history.
+
+### Code review instructions
+- `src/examples.ts` beside the guide's §10; `demo/src/workbench.ts` (`seedDocument`, `onMutate`).
+- Validate: `pnpm --filter @hyperslop-systems/pbui-plotscript test`, then `pnpm --filter @hyperslop-systems/pbui-plotscript-demo dev` (port 5175).
+
+### Technical details
+- `STORAGE_KEY = "pbui-plotscript-demo.workbench.v1"`.
+
+### Screenshots
+
+![The demo: scatter workspace](./screenshots/05-p4-demo-scatter-workspace.png)
+
+*The demo at 1440×820: the strip with the three examples, `script · example-v1-scatter` beside `plot · example-v1-scatter`, `1 ms · 1220 bytes · 37 lines`, `7 rows · complete`.*
+
+![The demo: dodged bars workspace](./screenshots/06-p4-demo-bars-workspace.png)
+
+*Example B: the `Map`-and-loop aggregation, dodged bars by shift with a legend, and the script's own `console.log` — `5 groups after the QC filter` — in the pane.*
+
+![The demo: trend workspace](./screenshots/07-p4-demo-trend-workspace.png)
+
+*Example C: 240 humidity readings with an OLS trend, `240 rows · bounded · more` — the honest-coverage notice for a windowed series.*

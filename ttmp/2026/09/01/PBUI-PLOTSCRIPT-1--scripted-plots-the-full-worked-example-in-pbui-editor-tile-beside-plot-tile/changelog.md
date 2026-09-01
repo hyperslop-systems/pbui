@@ -36,3 +36,12 @@ Step 3: ScriptTile, PlotTile and createPlotScriptApps, tested inside a real work
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/src/ScriptTile/ScriptTile.tsx — The editor tile and its document-on-success rule
 
+
+## 2026-09-01
+
+Step 4: the three worked examples as seeded documents with an integration test each, and the demo app with one workspace per example persisted to localStorage (commits 48bb255, ad79e72); three demo screenshots. The accessibility snapshot exposed a missing data.identity in every example.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/demo/src/workbench.ts — seedDocument and persistence
+
