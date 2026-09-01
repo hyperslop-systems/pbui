@@ -1,0 +1,41 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+/* A bounded box for the editor to fill (pbui-editor: no `rows` → height 100%). */
+.editor {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  padding: var(--pbui-space-2);
+}
+
+.output {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 8em;
+  overflow: auto;
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-top: var(--pbui-border-hair);
+}
+
+.message,
+.log {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
