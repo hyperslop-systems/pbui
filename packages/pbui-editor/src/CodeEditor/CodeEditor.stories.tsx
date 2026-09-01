@@ -33,14 +33,22 @@ return {
 };
 `;
 
-/** A controlled editor needs a wrapper, or the story cannot be typed into. */
-function Live(props: Omit<CodeEditorProps, "value" | "onValueChange"> & { initial?: string }) {
-  const { initial = "", ...rest } = props;
+/**
+ * A controlled editor needs a wrapper, or the story cannot be typed into.
+ *
+ * The spread comes FIRST. Storybook passes the meta's `args` — including its
+ * placeholder `value: ""` and no-op `onValueChange` — into `rest`, and a
+ * spread after the explicit props silently overrode both: the editor showed
+ * one empty line under a status line claiming 836 characters. Found by a
+ * screenshot, not by a test.
+ */
+function Live(props: Partial<CodeEditorProps> & { initial?: string }) {
+  const { initial = "", value: _ignored, onValueChange: _alsoIgnored, ...rest } = props;
   const [value, setValue] = useState(initial);
   const [ran, setRan] = useState<string | null>(null);
   return (
     <div style={{ display: "grid", gap: 8 }}>
-      <CodeEditor value={value} onValueChange={setValue} {...rest} onRun={(v) => setRan(v)} />
+      <CodeEditor accessibleName="script" {...rest} value={value} onValueChange={setValue} onRun={(v) => setRan(v)} />
       <Text size="tiny" tone="faint">
         {value.length} chars · {value.split("\n").length} lines{ran !== null ? ` · ran ${ran.length} chars with Mod+Enter` : " · Mod+Enter runs"}
       </Text>

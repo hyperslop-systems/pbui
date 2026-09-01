@@ -1,3 +1,4 @@
+import { EditorView } from "@hyperslop-systems/pbui-editor";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createEvalEngine } from "../../engines/evalEngine";
@@ -39,8 +40,14 @@ describe("SourceTile", () => {
     const { container } = render(<SourceTile placementId="n-s" view={view({ program: "prg-1" })} host={host} />);
     expect(screen.getByText("Counter 3 · v3 · agent")).toBeTruthy();
     const listing = container.querySelector('[data-part="source-listing"]')!;
-    expect(listing.querySelectorAll("li").length).toBe(COUNTER_PROGRAM.split("\n").length);
-    expect(listing.textContent).toContain("Sum: ");
+    // A read-only CodeEditor since PBUI-PLOTKIT-1: assert on the document it
+    // holds rather than on rendered lines, which CodeMirror virtualises.
+    const editorView = EditorView.findFromDOM(listing.querySelector(".cm-editor") as HTMLElement)!;
+    // v3 is the current record, whose source is COUNTER_PROGRAM with "Total: " → "Sum: ".
+    expect(editorView.state.doc.lines).toBe(COUNTER_PROGRAM.split("\n").length);
+    expect(editorView.state.doc.toString()).toContain("Sum: ");
+    expect(editorView.state.readOnly).toBe(true);
+    expect(editorView.contentDOM.getAttribute("aria-label")).toBe("program source");
 
     fireEvent.click(screen.getByRole("button", { name: "versions" }));
     const versions = [...container.querySelectorAll('[data-part="program-version"]')].map((li) => li.getAttribute("data-version"));

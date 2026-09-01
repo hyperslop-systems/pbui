@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@hyperslop-systems/pbui": "workspace:^",
+    "@hyperslop-systems/pbui-editor": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
     "@hyperslop-systems/workbench-protocol": "workspace:^",
     "quickjs-emscripten": "0.23.0"

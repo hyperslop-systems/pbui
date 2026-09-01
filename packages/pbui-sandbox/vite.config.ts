@@ -7,6 +7,7 @@ const external = [
   "react-dom",
   "react/jsx-runtime",
   "@hyperslop-systems/pbui",
+  "@hyperslop-systems/pbui-editor",
   "@hyperslop-systems/pbui-workbench",
   "@hyperslop-systems/workbench-protocol",
   "@hyperslop-systems/workbench-protocol/client",
@@ -26,6 +27,7 @@ export default defineConfig({
       external: (id) =>
         external.includes(id) ||
         id.startsWith("@hyperslop-systems/pbui/") ||
+        id.startsWith("@hyperslop-systems/pbui-editor/") ||
         id.startsWith("@hyperslop-systems/pbui-workbench/") ||
         id.startsWith("@hyperslop-systems/workbench-protocol/") ||
         id.startsWith("quickjs-emscripten") ||
@@ -35,6 +37,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    setupFiles: ["src/test-setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "test/**/*.test.ts"],
   },
 });

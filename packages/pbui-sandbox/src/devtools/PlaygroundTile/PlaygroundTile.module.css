@@ -32,6 +32,16 @@
   }
 }
 
+/*
+ * The editor fills the column: PBUI-PLOTKIT-1 replaced the 24-row TextArea
+ * with a CodeEditor sized by its container, so the column is a bounded flex
+ * box and the editor takes what is left after the status line.
+ */
+.code {
+  flex: 1 1 auto;
+  min-height: 12em;
+}
+
 .editor,
 .side {
   display: flex;

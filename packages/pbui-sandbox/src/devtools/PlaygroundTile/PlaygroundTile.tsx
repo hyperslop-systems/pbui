@@ -1,4 +1,5 @@
-import { Button, Chip, Dialog, SelectInput, Text, TextArea, TextInput, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, Chip, Dialog, SelectInput, Text, TextInput, Toolbar } from "@hyperslop-systems/pbui";
+import { CodeEditor } from "@hyperslop-systems/pbui-editor";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { UIReference } from "../../contracts";
@@ -178,14 +179,12 @@ export function PlaygroundTile({ placementId, host, store, reloadMs = 400 }: Pla
 
       <div className={styles.split}>
         <div className={styles.editor}>
-          <TextArea
-            code
-            rows={24}
+          <CodeEditor
+            language="javascript"
             value={draft.source}
             onValueChange={(source) => store.set({ source })}
             accessibleName="draft source"
-            invalid={instance.status === "error" || tooBig}
-            spellCheck={false}
+            className={styles.code}
           />
           <div data-part="playground-status">
           <Text size="tiny" tone={instance.error || tooBig ? "danger" : "faint"} className={styles.status}>

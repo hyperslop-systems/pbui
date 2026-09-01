@@ -17,41 +17,13 @@
   flex: 1 1 auto;
 }
 
+/* A bounded box for the read-only editor to fill; the editor draws its own border and gutter. */
 .code {
-  margin: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
-  overflow: auto;
   flex: 1 1 auto;
-  border: var(--pbui-border-hair);
-  font-size: var(--pbui-fs-tiny);
-  line-height: 1.5;
-}
-
-.lines {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: line;
-}
-
-.line {
-  display: flex;
-  gap: var(--pbui-space-2);
-  min-width: 0;
-  white-space: pre;
-  counter-increment: line;
-}
-
-.line::before {
-  content: counter(line);
-  flex: 0 0 4ch;
-  text-align: right;
-  padding: 0 var(--pbui-space-1);
-  color: var(--pbui-ink-faint, inherit);
-  opacity: 0.6;
-  border-right: var(--pbui-border-hair);
-  user-select: none;
 }
 
 .versions {

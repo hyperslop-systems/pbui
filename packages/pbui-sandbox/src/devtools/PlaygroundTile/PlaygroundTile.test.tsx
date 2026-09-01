@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { EditorView } from "@hyperslop-systems/pbui-editor";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createEvalEngine } from "../../engines/evalEngine";
 import { COUNTER_PROGRAM, DAYS_OF_COVER_PROGRAM, PRODUCT_2049 } from "../../fixtures/programs";
@@ -38,7 +39,21 @@ function mount(host = makeHost(), storage = memoryStorage()) {
   return { host, store, storage, ...utils };
 }
 
-const editor = () => screen.getByLabelText("draft source") as HTMLTextAreaElement;
+/**
+ * Type into the CodeMirror editor by replacing its document, as a paste
+ * would. Goes through the view — not the store — so the test still proves the
+ * editor → `onValueChange` → store wiring that the TextArea's `change` event
+ * used to.
+ */
+function typeSource(container: HTMLElement, source: string) {
+  const dom = container.querySelector(".cm-editor") as HTMLElement | null;
+  const view = dom && EditorView.findFromDOM(dom);
+  if (!view) throw new Error("no editor mounted");
+  expect(view.contentDOM.getAttribute("aria-label")).toBe("draft source");
+  act(() => {
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: source } });
+  });
+}
 const status = (container: HTMLElement) => container.querySelector('[data-part="playground-status"]')!.textContent ?? "";
 
 describe("playgroundStore", () => {
@@ -68,11 +83,11 @@ describe("PlaygroundTile", () => {
     await waitFor(() => expect(within(preview).getByText("n = 1")).toBeTruthy());
     expect(status(container)).toMatch(/^ok · main · \d+ nodes/);
 
-    fireEvent.change(editor(), { target: { value: PLAYGROUND_TEMPLATE.replace('"n = "', '"count = "') } });
+    typeSource(container, PLAYGROUND_TEMPLATE.replace('"n = "', '"count = "'));
     await waitFor(() => expect(within(preview).getByText("count = 1")).toBeTruthy());
     expect(host.instances.get(PLAYGROUND_VIEW_ID)?.version).toBe(2);
 
-    fireEvent.change(editor(), { target: { value: "definePlugin(() => ({ widgets: { main: { render() { throw new Error('boom'); } } } }))" } });
+    typeSource(container, "definePlugin(() => ({ widgets: { main: { render() { throw new Error('boom'); } } } }))");
     await waitFor(() => expect(status(container)).toContain("render · RUNTIME_ERROR · Error: boom"));
     expect(screen.getByRole("button", { name: "save as new" }).hasAttribute("disabled")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "ask the agent" }));
@@ -80,7 +95,7 @@ describe("PlaygroundTile", () => {
   });
 
   test("save as new stores a human program and opens it; update bumps the version", async () => {
-    const { host, store } = mount();
+    const { host, store, container } = mount();
     await waitFor(() => expect(host.instances.get(PLAYGROUND_VIEW_ID)?.status).toBe("ready"));
     await waitFor(() => expect(screen.getByRole("button", { name: "save as new" }).hasAttribute("disabled")).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "save as new" }));
@@ -91,7 +106,7 @@ describe("PlaygroundTile", () => {
     expect(store.get().fromProgramId).toBe("prg-2");
     await waitFor(() => expect(screen.getByRole("button", { name: "update prg-2" })).toBeTruthy());
 
-    fireEvent.change(editor(), { target: { value: PLAYGROUND_TEMPLATE.replace('"My draft"', '"My draft 2"') } });
+    typeSource(container, PLAYGROUND_TEMPLATE.replace('"My draft"', '"My draft 2"'));
     await waitFor(() => expect(host.instances.get(PLAYGROUND_VIEW_ID)?.meta?.title).toBe("My draft 2"));
     await waitFor(() => expect(screen.getByRole("button", { name: "update prg-2" }).hasAttribute("disabled")).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "update prg-2" }));
@@ -113,7 +128,7 @@ describe("PlaygroundTile", () => {
     await waitFor(() => expect(within(preview).getByText("Draft a reorder")).toBeTruthy());
 
     // loading again over an edited draft asks first
-    fireEvent.change(editor(), { target: { value: COUNTER_PROGRAM } });
+    typeSource(container, COUNTER_PROGRAM);
     fireEvent.change(screen.getByLabelText("load a library program into the draft"), { target: { value: "prg-1" } });
     expect(screen.getByText("Replace the draft?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "keep my draft" }));
@@ -123,7 +138,7 @@ describe("PlaygroundTile", () => {
   test("a source over the limit disables saving and says why", async () => {
     const { host, container } = mount();
     await waitFor(() => expect(host.instances.get(PLAYGROUND_VIEW_ID)?.status).toBe("ready"));
-    fireEvent.change(editor(), { target: { value: `${PLAYGROUND_TEMPLATE}\n// ${"x".repeat(70 * 1024)}` } });
+    typeSource(container, `${PLAYGROUND_TEMPLATE}\n// ${"x".repeat(70 * 1024)}`);
     await waitFor(() => expect(status(container)).toContain("the limit is 65536"));
     expect(screen.getByRole("button", { name: "save as new" }).hasAttribute("disabled")).toBe(true);
   });

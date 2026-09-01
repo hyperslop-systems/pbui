@@ -342,6 +342,9 @@ importers:
       '@hyperslop-systems/pbui':
         specifier: workspace:^
         version: link:../..
+      '@hyperslop-systems/pbui-editor':
+        specifier: workspace:^
+        version: link:../pbui-editor
       '@hyperslop-systems/pbui-workbench':
         specifier: workspace:^
         version: link:../pbui-workbench
