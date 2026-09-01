@@ -49,3 +49,8 @@ Phase 6 built (c08d22e, 624164d): hyperblog renders on the package. Its blocker 
 
 Design doc gains §10, 'What this plan got wrong': the corrections three migrations produced (§1.3's absences, §5.G's signature, §2.1's split claim), the prerequisite §6.3 omitted (a product's package VERSION, not only its feature prerequisites — hyperblog was blocked by pbui 0.8.0's deletion of descriptor actions()), the Go-catalog rule a package-shipped tile implies, and why §6.4 is not executable as written: the remote 'codec' is a stage- and reachability-filtered projection of TWO slices, not a type converter, and its two steps are not separable (measured: 308 type errors from the type swap alone). §10.5 states the decision §6.4 assumed away, with a recommendation.
 
+
+## 2026-09-01
+
+Phase 7 superseded by PBUI-DATALAB-1 (small datalab-like demo in pbui over relation + plot documents) after the §10 analysis; datalab-ui frozen, not migrated
+

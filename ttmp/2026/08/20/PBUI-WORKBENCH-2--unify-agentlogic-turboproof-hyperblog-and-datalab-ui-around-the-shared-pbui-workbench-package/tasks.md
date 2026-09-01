@@ -28,3 +28,4 @@
 - [ ] hyperblog: adopt createTileDescriptor, and wire /v1/workbenches through the 5.F sync module (it has createLocalPersistence only) <!-- t:ygdt -->
 - [ ] 5.H still unbuilt: seedApp, registrySnapshot, exportLayout/importLayout <!-- t:4nu5 -->
 - [ ] DECISION NEEDED before 6.4: where datalab's documents live — design-doc 10.5 lays out (a) merge world.docs, (b) keep apart and rename the boundary, (c) put stage-sendability in the protocol. Recommendation is (b) <!-- t:5vgz -->
+- [ ] Phase 7 (datalab-ui migration) SUPERSEDED by PBUI-DATALAB-1: build a small datalab-like demo in pbui instead of migrating datalab-ui in place <!-- t:cryq -->
