@@ -19,9 +19,13 @@ RelatedFiles:
     - Path: repo://packages/pbui-workbench/src/placement.ts
       Note: 5.E placement mode as a promise a product awaits (1fb6f8c)
     - Path: repo://packages/pbui-workbench/src/sync.ts
-      Note: '5.F the server loop: outbox, 409 rebase, 422 isolate, SSE (7e67f9d)'
+      Note: |-
+        5.F the server loop: outbox, 409 rebase, 422 isolate, SSE (7e67f9d)
+        PR #23: adopt rebases the outbox; request ids hash payloads (2b91ccd)
     - Path: repo://packages/pbui-workbench/src/verbs.ts
       Note: view.open with at, and openAt beside openView (6e906be)
+    - Path: repo://packages/pbui-workbench/test/no-phantom-tokens.test.ts
+      Note: the token guard turboproof's build exposed (a92bc97)
     - Path: repo://pbui/packages/pbui-chat/demo/src/workbench.ts
       Note: 'Phase 1 acceptance: selected-workspace persistence, onMutate/onRejected wiring (cd13915)'
     - Path: repo://pbui/packages/pbui-workbench/src/components/WorkspaceStrip/WorkspaceStrip.tsx
@@ -36,12 +40,19 @@ RelatedFiles:
       Note: MutationError.detail restored for TS-Go parity (cd13915)
     - Path: repo://src/chrome/TileFrame.tsx
       Note: the actions slot the per-pane launcher door lives in (7d89732)
+    - Path: ws://turboproof/ui/src/apps/FilesApp.tsx
+      Note: 'C2: openNode awaits wb.placement.begin with per-tile wording (7265f98)'
+    - Path: ws://turboproof/ui/src/components/organisms/TileTitle.tsx
+      Note: 'C2: what survives of Tile.tsx — the presentation, the file chip, the composed badge (d503dd0)'
+    - Path: ws://turboproof/ui/src/store/workbenchShell.ts
+      Note: 'C2: the Redux boundary plus turboproof''s three policies (c5e3f3e, d503dd0)'
 ExternalSources: []
 Summary: 'Diary for PBUI-WORKBENCH-2: the analysis of the four product shells (agentlogic, turboproof, hyperblog, datalab-ui), the gap analysis against @hyperslop-systems/pbui-workbench, the core additions and the migration plan.'
 LastUpdated: 2026-08-20T14:29:03.657935947-04:00
 WhatFor: Record how the unification analysis was made and what was decided, so the migrations can be executed and reviewed per product.
 WhenToUse: Read before migrating any product onto pbui-workbench or extending the package.
 ---
+
 
 
 
@@ -871,4 +882,191 @@ create + switch + 6 resizes, immediately   writes: 0
 reload               { workspaceId: "ws-e49601f5-35bd", name: "scratch", workspaces: ["main","scratch"] }
 wb.reset()           workspaces: ["main","scratch"]        ← the finding-3 bug, on purpose
 "reset layout"       workspaces: ["main"], stored pointer: "main", tiles: 4
+```
+
+## Step 7: C2 — the turboproof migration, and a review that found three real defects
+
+turboproof renders on `@hyperslop-systems/pbui-workbench` now. `state/placement.ts` (195 lines), `organisms/NodeView.tsx` (95), `organisms/Tile.tsx` (143), the placement test (124) and the `.tp-split*` CSS are deleted; what replaced them is `store/workbenchShell.ts` (280 lines) — the Redux adapter plus this product's three policies — and a 66-line `TileTitle`. Net for `ui/`: **+711 / −968**. Six interpreter arms that built mutations became six one-line translations to `workbench.verbs`, and the product gained keyboard-resizable `role="separator"` dividers that announce a percentage, per-tile error boundaries, focus restoration, and Mod-K arbitration between several workbenches on a page.
+
+Mid-migration the user asked me to address the review on PR #23, which covers Phase 4. Three findings, all real, all reproduced with a test before being fixed — and the first is the kind of defect that only shows up in a window a naive test closes before looking.
+
+### Prompt Context
+
+**User prompt (verbatim):** "I checked them out now in this workspace. go ahead"
+
+**Assistant interpretation:** turboproof, agentlogic and datalab are now in the workspace; execute §7 Phase 5 / §6.2 — move turboproof's shell onto the package.
+
+**Inferred user intent:** Keep the unification moving product by product, now that the repos are reachable.
+
+**Second user prompt (verbatim):** "Address code review issues : https://github.com/hyperslop-systems/pbui/pull/23"
+
+**Assistant interpretation:** Verify each review finding against the source, fix what is real, and reply on the threads.
+
+**Commits (code):**
+- `d0347df` — release: pbui 0.10.0, pbui-workbench 0.4.0
+- `8ba3cbf` — aiming at an empty pane fills it, never splits it
+- `2b91ccd` — the three PR #23 findings
+- `a92bc97` — three tokens that do not exist, and a guard
+- `c5e3f3e` — the Redux `WorkbenchStore` adapter
+- `d503dd0` — the canvas is the package's Surface
+- `7265f98` — one placement mode; the split tree goes
+- `f573fe6` — restore the lockfile
+
+### What I did
+
+- **The blocker is gone.** `@hyperslop-systems/pbui-workbench@0.3.1` is published and in agentlogic's lockfile with a real tarball, so C1 reached CI after all. What replaces it is a smaller version of the same thing: §6.2 needs 5.E, which is only in 0.4.0, and publishing is a manual `workflow_dispatch` with a `CONFIRM_LATEST` gate — not mine to run.
+- Bumped pbui to 0.10.0 (a new `TileFrame` prop) and pbui-workbench to 0.4.0, then verified the migration against tarballs packed out of the pbui worktree, behind an untracked `ui/pnpm-workspace.yaml` overrides block.
+- `store/workbenchShell.ts`: `createReduxWorkbenchStore` (the five-method adapter) and `createWorkbenchShell` (registry + `splitPolicy: { app: "launcher" }` + `emptyPaneApp` + a lean-source `binding`).
+- `components/pages/Workbench.tsx`: `<workbench.Surface renderTitle={…} />`, six verb translations, `LauncherShortcut` deleted.
+- `organisms/Tile.tsx` → `organisms/TileTitle.tsx`; `LauncherDialog` → the package's launcher with turboproof's rows.
+- `apps/FilesApp.tsx`: `await workbench.placement.begin({ prompt, labelFor })`.
+- Package side: `emptyPaneApp`, the three PR #23 fixes, and a token guard.
+
+### Why
+
+- **The adapter holds no copy of anything Redux has.** `getState` derives, `setState` dispatches. The only two fields it owns are `activePlacementId` and `rebalanceOpen`, which the slice has no place for and should not grow one for — both are this tab's pointer, not the layout and not the server relationship.
+- **`mutate` pre-validates atomically.** The shell promises all-or-nothing; the slice's `perform` deliberately drops what it cannot apply and keeps the rest, because the rebase path depends on per-mutation survival. Pre-validating the batch with `applyMutations` and dispatching only if it holds keeps both stories, and means half a split can never reach the outbox.
+- **`openLeanFile`/`revealLeanFile`/`placeSourceView` are untouched.** The geometry that decides what a centre and an edge MEAN for a Lean source view is turboproof's, and `openLeanFile.test.ts` pins every zone's resulting graph. Only the aiming moved.
+- **`emptyPaneApp` went into the package rather than into turboproof's `choose`.** turboproof's launcher had the rule by hand ("splitting an empty pane to make room would be absurd; fill it") and agentlogic and hyperblog need it for the same reason — every product with `splitPolicy: { app: "launcher" }` fills new panes with a picker. Reimplementing it per product would have meant restating the whole carry.
+
+### What worked
+
+- **The browser pass met every gesture in §6.2's Verify list.** Against the real Go server (`:8666`, mock Lean, `--files-root demo=/tmp/leanfiles`) and the Vite dev server:
+  - the three workspaces, six tiles and every ratio (0.18 / 0.44 / 0.62 / 0.34 / 0.5) render exactly as before, with the file-name chip on every bound tile;
+  - double-clicking `Basic.lean` armed the mode, and the overlay carried the PRODUCT's words, not the shell's — *"open Basic.lean in this editor"* on the source pane, *"open Basic.lean here · replaces interactive goals"* on a proof pane, *"open Basic.lean — interactive goals keeps the other half"* on its right edge;
+  - clicking that right edge docked the editor exactly there (x 993, after goals at 702) **and every proof tile in the workspace followed to `Basic.lean`** while the original editor kept `Demo` — `followSourceDocument`, intact, in the same batch;
+  - the server took it: `POST /v1/workbenches/{id}/mutate status=200`, revision 1→2, **zero 422s** — `pkg/workbench.Validate` accepted a batch the migrated shell produced, which is the strongest single check in the migration;
+  - `Ctrl-K` opened turboproof's own rows (*ON SCREEN* / *NEW TILE*, "files · shown 1 place") with the status line naming the target;
+  - the new ⌕ door on the diagnostics tile opened *"diagnostics" shows it instead* with *SHOW HERE* / *REPLACE WITH*;
+  - the dividers are `role="separator"`, `tabindex="0"`, `aria-valuetext="18 percent"`, and respond to the keyboard — turboproof's own divider was a `<button>` with an aria-label and no value at all;
+  - switching to *inspect* showed its five tiles still bound to `Demo`, which is the rule ("only the TARGET workspace follows") holding;
+  - a reload restored all seven tiles with their bindings, `sync synced`.
+- `make ci-check` exit=0; `go test ./...` ok including `pkg/workbenchapp` (the catalog ↔ `registry.fixture.json` parity, unchanged); typecheck clean; 133 vitest in 17 files; `make ui-token-check` clean.
+- The registry adapter is twelve lines again. `AppProps` is the same `{ placementId, view }` on both sides — both came from DR-31 — so fifteen tiles were handed through untouched, exactly as in C1.
+
+### What didn't work
+
+- **`make ui-token-check` failed on the package's own CSS:**
+
+  ```
+  UNDEFINED pbui tokens read by the bundle:
+  --pbui-blue
+  --pbui-ink-faint
+  --pbui-mustard
+  ```
+
+  All three are in `RebalanceDialog.module.css`, and all three are named in pbui's own `tokens.css` as examples of this exact mistake: `--pbui-ink-faint` is agentlogic's typo for `--pbui-faint` (which meant its divider grip never rendered at all, and nothing reported it), `--pbui-blue`/`--pbui-mustard` two of hyperblog's seven invented from a design sketch. The package repeated a mistake its dependency had already written down. Fixed in `a92bc97`, and the check moved into the package as a test.
+- **I committed a poisoned lockfile.** `c5e3f3e` included `ui/pnpm-lock.yaml` carrying `file:../../../../../../../tmp/pbui-tgz/…` resolutions, which reproduce on exactly one machine. Restored in `f573fe6`, along with `pkg/webui/dist` — a bundle built against an unpublished package is not something CI could rebuild.
+- Five launcher/surface tests failed on the package side after the review fix, all mine to update, none behavioural.
+- The dev server 500'd once on a stale Vite resolver cache after rebuilding a workspace dependency; restarting the server is the fix (the same failure as in Step 6, from the same cause).
+
+### What I learned
+
+- **A window is not an end state, and a test that only checks the end state will not see it.** PR #23's first finding — a server response dropping a queued edit — passed my first three attempts at a regression test, because by the time the flush settled the queued batch had been re-sent and the document was right again. Subscribing to the store and asserting on the MINIMUM leaf count across every notification is what caught it (4 → 3 → 4). Any bug whose lifetime is shorter than the operation containing it needs this shape of test.
+- **The invariant was already written down, in the other branch.** The 409 path rebases the outbox onto the server document and says why in a comment; the success path installed the response wholesale. One loop, two beliefs about what "local" means. The fix was to make `adopt` the only door and give it the invariant — which also closed the same hole at bootstrap, where a mutation committed before `attach` was silently discarded.
+- **turboproof's placement mode and the package's disagree about when a click commits.** turboproof's committed on `click`; `startTileCarry` intercepts `pointerdown` in the capture phase. Invisible in use, and a real difference in a test.
+- **`emptyPaneApp` is the third sighting of one rule.** agentlogic, turboproof and hyperblog all fill new panes with a picker, and all three separately needed "placing into a picker pane replaces it". The design's §5.C named the split policy but not this consequence of it.
+
+### What was tricky to build
+
+**1. Both atomicity stories, in one method.**
+*Cause:* `WorkbenchStore.mutate` must be all-or-nothing (the shell's contract, and what makes a refused gesture leave the layout untouched). `workbenchActions.perform` must NOT be — it applies one mutation at a time and keeps what survives, because `rebased`/`rejected` replay the outbox that way and a rebase that dropped a whole queue for one stale entry would lose the user's work.
+*Symptom:* dispatching `perform` directly from the shell would let half a split reach both the document and the outbox, and the server would then be sent a `placementSplit` whose `viewCreate` had been dropped.
+*Fix:* the adapter pre-validates the whole batch with `applyMutations` against the current document and dispatches only if it holds; the slice keeps its per-mutation behaviour for the paths that need it. A test builds a batch of a good split plus a bogus `placementClose` and asserts the document is untouched by identity AND the outbox is empty.
+
+**2. The snapshot identity, again.**
+*Cause:* `useSyncExternalStore` compares snapshots by identity; a `getState` that mints a fresh object per call re-renders forever.
+*Symptom:* not observed here, because §5.A's comment named it and the adapter was written with the cache from the start — but the slice notifies for `fileSync` and for every `probing`/`flushing`/`flushed`, so an uncached adapter would have re-rendered the whole tile tree on every server round trip.
+*Fix:* `build()` compares six fields and returns the previous object when they all match. The test dispatches `probing()` and asserts `getState()` is identical by reference.
+
+**3. The adapter is read before the document exists.**
+*Cause:* `WorkbenchState.document` is not nullable, and the slice's document is null until `WorkbenchSync`'s probe returns.
+*Symptom:* the first draft threw "the workbench shell was read before bootstrap" — a Surface that explodes during the probe turns a slow network into a crash.
+*Fix:* one `emptyDocument()` minted per adapter and returned until the real one arrives. Minted once, so the snapshot identity above still holds; the page renders its own "Loading the workbench document…" over it.
+
+**4. Where `launcherFrom` and `activePlacementId` live.**
+*Cause:* the slice's `launcher: { placementId, activePlacementId } | null` conflates two things the package keeps apart: which pane a per-pane invocation targets (`launcherFrom`, meaningful only while open) and which tile a global operation aims at (`activePlacementId`, meaningful always).
+*Fix:* `launcherOpen`/`launcherFrom` map onto the slice's `launcher`; `activePlacementId` is tab-local in the adapter and RIDES ALONG into `launcherOpened` when the launcher opens, which is what the old `LauncherShortcut` did by reading the DOM at chord time.
+
+### What warrants a second pair of eyes
+
+- **The publish is the gate.** `ui/package.json` names `pbui@0.10.0` and `pbui-workbench@0.4.0`; the lockfile contains neither. `pnpm install` fails here pointing at the publish. Both workflows are `workflow_dispatch` with a CONFIRM gate and were deliberately left for a human.
+- **turboproof's `choose` is now the package's default.** The old dialog had its own four meanings; the shell's default table is the same four, so no `choose` is passed. If a meaning drifts, it drifts silently — `launcherSearch.test.ts` covers the rows, not the meanings.
+- **The global launcher now enters placement mode** rather than splitting the active tile immediately. That is the package's behaviour and an improvement, but it is a changed gesture for existing users.
+- **`state/filesTile.ts` was not touched** and still routes file verbs by placement id. A singleton view linked into two panes mounts two `FilesApp`s; the migration did not change that, and the browser pass did not exercise it.
+
+### What should be done in the future
+
+- Publish 0.10.0 and 0.4.0, then `make ui-install && make ui` in turboproof and commit the regenerated lockfile and `pkg/webui/dist`.
+- **hyperblog is not checked out in this workspace**, so §6.3 (Phase 6) is still blocked on that, not on code. Its prerequisites are all in the package now, and §6.3's split-policy assumption still needs re-reading first (task `t:77j8`).
+- `datalab-ui` (§6.4) lives in `pbui/packages/datalab-ui` and IS reachable; it is the largest and was always meant to go last.
+- The sync module still has no product using it. turboproof kept `store/sync.tsx`, which is one of the two loops §5.F was drafted from — the natural first adopter, and a deliberate non-goal of this migration.
+
+### Code review instructions
+
+- Read in this order: `turboproof/ui/src/store/workbenchShell.ts` (the whole boundary, 280 lines — start at `createReduxWorkbenchStore`), then `components/pages/Workbench.tsx`'s `perform`, then `apps/FilesApp.tsx`'s `openNode`, then `organisms/TileTitle.tsx`.
+- Check by hand: the adapter never holds a document; `mutate` dispatches only after `applyMutations` succeeded; `openLeanFile`/`placeSourceView` are byte-identical to before; `TileTitle` renders `defaultTitle` rather than re-deriving `×N`.
+- Validate, from `turboproof/`:
+  ```
+  make ci-check                # exit 0
+  cd ui && pnpm run typecheck && pnpm run test    # 133 in 17 files
+  cd .. && make ui && make ui-token-check
+  ```
+  `pnpm install` needs the publish; until then, pack the three packages out of the pbui worktree into `/tmp/pbui-tgz/` and add an untracked `ui/pnpm-workspace.yaml` `overrides:` block. Not the scratchpad: pnpm encodes a `file:` path into a store index filename and a long one blows past 255 bytes.
+- Run: `go run ./cmd/turboproof serve --addr :8666 --db /tmp/tp.db --lean-mode mock --files-root demo=/tmp/leanfiles`, `pnpm --dir ui run dev`, open `/static/`. Double-click a file and aim at each zone; Ctrl-K; the ⌕ on any tile; Tab to a divider and press the arrows.
+
+### Technical details
+
+turboproof's whole configuration of the shell:
+
+```ts
+createWorkbench({
+  apps: allApps().map(toDescriptor),
+  initial: emptyDocument({ id: "turboproof-initial", name: "proof workbench" }),  // reset() only
+  store: createReduxWorkbenchStore(store),
+  splitPolicy: { app: LAUNCHER_APP },
+  emptyPaneApp: LAUNCHER_APP,
+  binding: {
+    source: SOURCE_BINDING,                                  // "source"
+    isBindable: (payload) => leanSourceRefOf(payload) !== null,
+    unbound: [LAUNCHER_APP],
+  },
+});
+```
+
+Line counts, `ui/` only, `2c0c098..f573fe6`:
+
+```
+deleted   state/placement.ts             195
+deleted   state/placement.test.ts        124
+deleted   organisms/Tile.tsx             143
+deleted   organisms/NodeView.tsx          95
+deleted   styles/app.css (split rules)    41  (of 41 changed)
+deleted   Workbench.tsx (interpreter)    ~90
+added     store/workbenchShell.ts        280
+added     store/workbenchShell.test.ts   ~140
+added     organisms/TileTitle.tsx         66
+                                        ————
+15 files changed, +711 / −968
+```
+
+Browser evidence (`:5175` over `:8666`, mock Lean, one files root):
+
+```
+boot                 3 workspaces · 6 tiles · every ratio intact · file chip on each bound tile
+dbl-click Basic.lean banner "PLACING Basic.lean — click a tile: edges dock, centre splits,
+                     hold Alt to replace what it shows · Esc: cancel"
+hover source centre  "open Basic.lean in this editor"
+hover goals centre   "open Basic.lean here · replaces interactive goals"
+hover goals right    "open Basic.lean — interactive goals keeps the other half"
+click goals right    7 tiles; new editor at x=993 (goals at 702) — docked where aimed;
+                     goals/script/timeline/diagnostics all → Basic.lean, the first editor
+                     stays on Demo (source views are skipped)
+server               POST /v1/workbenches/{id}/mutate 200 · revision 1 → 2 · zero 422
+Ctrl-K               ON SCREEN / NEW TILE, "files · shown 1 place";
+                     status "choosing an application starts placement…"
+⌕ on diagnostics     "“diagnostics” shows it instead" · SHOW HERE / REPLACE WITH
+divider              role=separator tabindex=0 aria-valuetext="18 percent", keyboard-operable
+switch to inspect    5 tiles, all still Demo — only the target workspace follows
+reload               7 tiles, bindings intact, sync synced
 ```
