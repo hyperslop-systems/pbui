@@ -352,6 +352,9 @@ importers:
         specifier: 0.23.0
         version: 0.23.0
     devDependencies:
+      '@hyperslop-systems/plot':
+        specifier: 0.3.1
+        version: 0.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@storybook/addon-a11y':
         specifier: ^10.5.4
         version: 10.5.5(storybook@10.5.5(@types/react@19.2.17)(react@19.2.8))

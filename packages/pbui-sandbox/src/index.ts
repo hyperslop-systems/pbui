@@ -71,3 +71,6 @@ export {
   UNKNOWN_KIND_PROGRAM,
 } from "./fixtures/programs";
 export * from "./devtools";
+
+// The plot author shim and script contract (PBUI-PLOTKIT-1).
+export * from "./plot";
