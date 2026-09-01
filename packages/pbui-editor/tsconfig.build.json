@@ -7,8 +7,18 @@
     "noEmit": false,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["vite/client"]
+    "types": [
+      "vite/client"
+    ]
   },
-  "include": ["src"],
-  "exclude": ["src/**/*.stories.tsx", "src/**/*.test.ts", "src/**/*.test.tsx", "src/stories"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.stories.tsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/stories",
+    "src/test-setup.ts"
+  ]
 }
