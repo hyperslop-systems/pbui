@@ -29,7 +29,9 @@ return {
     ],
   },
 
-  data: { rows, coverage: { kind: "complete", rowCount: rows.length } },
+  // identity names the field(s) that make a row itself, so marks get
+  // stable interaction targets; without it the plot draws but says so.
+  data: { rows, coverage: { kind: "complete", rowCount: rows.length }, identity: { fields: ["field:month"] } },
 
   document: plot({
     id: "monthly-temperature",
@@ -83,7 +85,7 @@ return {
     ],
   },
 
-  data: { rows, coverage: { kind: "complete", rowCount: rows.length } },
+  data: { rows, coverage: { kind: "complete", rowCount: rows.length }, identity: { fields: ["field:line", "field:shift"] } },
 
   document: plot({
     id: "yield-by-line",
@@ -135,6 +137,7 @@ return {
   data: {
     rows,
     coverage: { kind: "bounded", rowCount: rows.length, hasMore: true, strategy: "latest" },
+    identity: { fields: ["field:t"] },
   },
 
   document: plot({

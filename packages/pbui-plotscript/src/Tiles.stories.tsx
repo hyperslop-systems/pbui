@@ -21,7 +21,7 @@ return {
     { id: "field:month", name: "month", column: "month", semanticType: "quantitative", nullable: false },
     { id: "field:temp",  name: "temperature", column: "temp", semanticType: "quantitative", nullable: false, unit: "°C" },
   ]},
-  data: { rows, coverage: { kind: "complete", rowCount: rows.length } },
+  data: { rows, coverage: { kind: "complete", rowCount: rows.length }, identity: { fields: ["field:month"] } },
   document: plot({
     id: "monthly-temperature",
     description: "Mean monthly temperature at the greenhouse sensor.",
