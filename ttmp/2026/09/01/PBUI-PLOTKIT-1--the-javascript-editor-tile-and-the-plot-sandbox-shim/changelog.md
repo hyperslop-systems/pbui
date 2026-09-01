@@ -27,3 +27,21 @@ Step 1-2: scaffolded packages/pbui-editor (commit 9bf8044) and implemented CodeE
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-editor/src/CodeEditor/CodeEditor.tsx — The component
 
+
+## 2026-09-01
+
+Step 3: plot author shim, ScriptResult guard and runPlotScript in pbui-sandbox, 99 new tests on both engines, plot as a devDependency with zero compiler code in the bundle (commit e3ae012). Design amendments found by reading the engine: scripts are synchronous and hand back a JSON string because __describe caps arrays at 200.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-sandbox/src/plot/plotScript.ts — buildPlotScriptCode and runPlotScript; the comment states both engine facts
+
+
+## 2026-09-01
+
+Step 4: PlaygroundTile and SourceTile migrated onto CodeEditor with tests driving the CodeMirror view (commit 549c325); sandbox Storybook config and devtools stories added so the change can be seen (commit 7f8223d); four screenshots in reference/screenshots. Styling audit in the diary lists seven hard-coded radius/shadow values outside this ticket's scope.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-sandbox/src/devtools/Devtools.stories.tsx — The stories the screenshots come from
+

@@ -22,6 +22,24 @@ RelatedFiles:
       Note: Token-only theme and highlight style (commit 73c99fb)
     - Path: repo://packages/pbui-editor/vite.config.ts
       Note: CodeMirror bundled, not externalised (commit 9bf8044)
+    - Path: repo://packages/pbui-sandbox/src/bootstrap.ts
+      Note: __pluginHost.evaluate is a direct eval and __describe caps arrays at 200; both shaped the runner
+    - Path: repo://packages/pbui-sandbox/src/devtools/Devtools.stories.tsx
+      Note: Playground and Source stories over an in-memory host (commit 7f8223d)
+    - Path: repo://packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.tsx
+      Note: TextArea to CodeEditor (commit 549c325)
+    - Path: repo://packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx
+      Note: SourceListing as a read-only CodeEditor (commit 549c325)
+    - Path: repo://packages/pbui-sandbox/src/plot/authorShim.test.ts
+      Note: The 63-case parity test (commit e3ae012)
+    - Path: repo://packages/pbui-sandbox/src/plot/authorShim.ts
+      Note: The injected authoring API (commit e3ae012)
+    - Path: repo://packages/pbui-sandbox/src/plot/plotScript.ts
+      Note: PLOT_HOST_PROGRAM, buildPlotScriptCode, runPlotScript (commit e3ae012)
+    - Path: repo://packages/pbui-sandbox/src/plot/scriptResult.ts
+      Note: checkScriptResult and its problem kinds (commit e3ae012)
+    - Path: repo://public/presentation-parts.css
+      Note: Two of the hard-coded shadow/radius values the styling audit found
     - Path: repo://src/tokens.css
       Note: Six --pbui-syntax-* tokens added (commit 73c99fb)
 ExternalSources: []
@@ -30,6 +48,8 @@ LastUpdated: 2026-09-01T13:40:07.686508511-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
+
 
 
 # Diary
@@ -172,3 +192,194 @@ had to be removed (the workbench owns it), and `Mod+Enter` is already
 ### Technical details
 - `dist/index.js` is 508 KB / 153 KB gzip with CodeMirror bundled (vite.config.ts explains why it is not externalised).
 - Removed binding: `defaultKeymap.filter(b => b.run !== deleteLine)`; the test asserts `pbuiKeymap.some(b => b.run === deleteLine) === false`.
+
+## Step 3: The plot author shim, the `ScriptResult` guard, and `runPlotScript` on both engines
+
+Phase 3 adds `packages/pbui-sandbox/src/plot/`: the `@hyperslop-systems/plot`
+authoring API as injectable source, a structural guard over an untrusted
+result, and a runner that evaluates a script inside a one-widget host program.
+Reading the engine before writing it changed the design in two ways, both
+recorded in the code: the script body is synchronous, and the result crosses
+the engine boundary as a JSON *string*.
+
+The parity test is the point of the phase. Sixty-three cases, one per
+exported constructor, evaluate an expression against the shim alone and
+compare it with the real package's output. That is what turns a hand-copied
+API into something that fails CI the day `plot` changes a field.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phase 3 as designed (§8): shim, guard, `buildPlotScriptCode`, parity test, `plot` as a devDependency with no runtime code in the bundle, proven under both engines.
+
+**Inferred user intent:** A sandboxed script can build a real `PlotDocument` and the host can trust the result's shape, so PBUI-PLOTSCRIPT-1 only has to wire tiles.
+
+**Commit (code):** e3ae012 — "pbui-sandbox: the plot author shim, ScriptResult guard and runPlotScript"
+
+### What I did
+- `src/plot/authorShim.ts` — `PLOT_AUTHOR_SHIM` (a `String.raw` constant mirroring `plot/src/author/{plot,layer,variable,value,composition,geom,stat,position,scale,algebra,presentation}.ts`), `PLOT_AUTHOR_SHIM_NAMES`, `PLOT_AUTHOR_SHIM_VERSION`.
+- `src/plot/scriptResult.ts` — `ScriptResult`, `ScriptResultProblem` (8 kinds), `checkScriptResult(value, limits)` returning `{ ok, result } | { ok, problem }`, `describeScriptResultProblem` for a one-line message.
+- `src/plot/plotScript.ts` — `PLOT_HOST_PROGRAM`, `buildPlotScriptCode(source)`, `runPlotScript(engine, { instanceId, source, limits })` → `{ status: "ok" | "invalid" | "error", ms }`.
+- Tests: `authorShim.test.ts` (63 parity cases + no-leak + no-import), `scriptResult.test.ts` (2 valid + 18 malformed + limit), `plotScript.test.ts` (7 cases × eval and QuickJS-direct, plus one for the code builder). 99 new tests; the package's full suite is 203/203.
+- `@hyperslop-systems/plot@0.3.1` as a **devDependency**; `src/index.ts` re-exports `./plot`.
+- Verified the built `dist/index.js` (94.8 KB) contains the shim (`hyperslop.plot` ×3) and none of the compiler (`compileGrammar|planPlot|materializePlotData` ×0).
+
+### Why
+- Design D2–D4 in the ticket guide. The shim is a string because under QuickJS there is no module loader; `plot` is a devDependency because only the parity test needs the real package.
+
+### What worked
+- All 99 tests passed on the first run, on both engines — the shim was correct as written, which is what the design's "pure object constructors over erased brands" argument predicted.
+- The 1000-row test proves the JSON-string boundary carries every row.
+
+### What didn't work
+- One TypeScript error after the tests passed: `ScriptResult.view?: unknown` did not satisfy `PlotRequest.view?: PlotViewState` when the test spread a result into `renderPlot`. Fixed by importing `PlotViewState` (type-only). Also simplified an over-clever conditional type for `PlotScriptRun.result` into plain `ScriptResult`.
+- A screenshot of the `WithDiagnostics` story showed **one empty line** under a status line saying "836 chars · 19 lines". Not the component: the story's `Live` wrapper spread Storybook's default `args` (`value: ""`, no-op `onValueChange`) *after* the explicit props. Fixed by spreading first. The component tests could never have caught it; the screenshot did in one look.
+
+### What I learned
+- `ProgramEngine.evaluate` is a **direct eval inside a loaded instance** (`bootstrap.ts`, `__pluginHost.evaluate`), so (a) a consumer must load a host program first and (b) the code must be an expression — a top-level `return` is a `SyntaxError`. Hence the IIFE wrapper and `PLOT_HOST_PROGRAM`.
+- `__describe` (the boundary describer) truncates arrays at 200 items and objects at depth 8 — right for a REPL, wrong for plot rows. Strings pass through untouched, so the result is `JSON.stringify`'d inside the sandbox and parsed outside. This is also exactly `contracts.ts`'s JSON-only rule, applied.
+- Neither engine's `evaluate` drives promise jobs, so `await` in a script body would come back as `{}`. The body is synchronous for now; the design doc's "async function body" is amended in the code comment and here. `sql` (deferred to PBUI-PLOTSCRIPT-1 OQ-3) is what will bring async with it.
+
+### What was tricky to build
+- **Scope discipline across runs.** A direct eval sees the instance's top-level declarations; without the arrow wrapper, a script's `const rows` would persist into the next evaluation and the second run's `const rows` would throw "already declared". The test "declarations do not leak into the next run" pins this.
+- **Getting the error out honestly.** `runPlotScript` returns `{ status: "error", error }` with the engine's own error object (name preserved across the QuickJS boundary by `toProgramError`), so a tile can map `SyntaxError` vs `ReferenceError` vs timeout to different diagnostics.
+
+### What warrants a second pair of eyes
+- The shim omits `guide`, `annotation`, `coordinate`, `transform` on purpose (§8.1 of the guide). A reviewer who expects a script to draw a reference line today will find it missing.
+- `checkScriptResult` validates only the envelope; a document with nonsense inside a layer reaches `renderPlot` and comes back as diagnostics. That is by design (renderPlot is total) but worth agreeing on.
+- The 200 000-row default limit is a guess.
+
+### What should be done in the future
+- Async script bodies once an engine can drive promise jobs (needed for `sql`).
+- The four omitted author namespaces, each with a parity case.
+
+### Code review instructions
+- Start at `src/plot/plotScript.ts` (the comment on `buildPlotScriptCode` states both engine facts), then `authorShim.ts` side by side with `plot/src/author/`, then `scriptResult.ts`.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-sandbox test typecheck build`, then `grep -c compileGrammar packages/pbui-sandbox/dist/index.js` → `0`.
+
+### Technical details
+- The evaluated code shape: `JSON.stringify((() => {<shim>\nreturn (() => {\n<source>\n})();\n})())`.
+- `PLOT_HOST_PROGRAM` is a `definePlugin` with one widget whose render returns an empty text node; its only job is to exist so `evaluate` has a scope.
+
+### Screenshots
+
+![P2 CodeEditor with diagnostics — the story defect the screenshot caught](./screenshots/01-p2-codeeditor-with-diagnostics.png)
+
+*The `WithDiagnostics` story before the fix: one empty line, an error marker on line 1 (every diagnostic clamped), and a status line claiming 836 characters. The editor was fine; the story overrode its own `value`.*
+
+## Step 4: `PlaygroundTile` and `SourceTile` onto `CodeEditor`, with Storybook to see it
+
+Phase 4 proves the editor on two real call sites in `pbui-sandbox` before
+anything outside the repo depends on it. The playground's 24-row `TextArea`
+becomes a container-sized `CodeEditor`; the source tile's hand-built
+`<pre><ol><li>` listing with CSS-counter line numbers becomes a read-only
+editor with a real gutter. Both tiles' tests were rewritten to drive the
+CodeMirror view instead of a `<textarea>` change event, so they still prove the
+editor → `onValueChange` → store wiring.
+
+Because the user asked for screenshots as I go, and the sandbox package had a
+`storybook` script but **no `.storybook/` directory at all**, this step also
+adds one plus `src/devtools/Devtools.stories.tsx` — two stories over an
+in-memory host, the same shape the tests build.
+
+### Prompt Context
+
+**User prompt (verbatim):** "take screenshots as you go so I can see your progress, add them to diary"
+
+**User prompt (verbatim):** "as you go through the plots, our colleague has added a bunch of styling that is too modern for the overall look, like dropshadows and rounded corners and stuff, did you find some of that? or found in the screenshots?"
+
+**Assistant interpretation:** Migrate the two sandbox tiles (phase 4 of the ticket); capture screenshots of the running result into the ticket and link them here; while looking at the UI, report any drop shadows / rounded corners that break the family's flat, zero-radius look.
+
+**Inferred user intent:** See the work rather than take the tests' word for it, and use the pass through the UI to catch styling drift the rules forbid.
+
+**Commit (code):** 549c325 — "pbui-sandbox: PlaygroundTile and SourceTile on pbui-editor's CodeEditor"
+**Commit (code):** 7f8223d — "pbui-sandbox: Storybook config and devtools stories for the playground and source tiles"
+
+### What I did
+- `packages/pbui-sandbox/package.json`: `@hyperslop-systems/pbui-editor: workspace:^`; `vite.config.ts`: externalised it and added `setupFiles: ["src/test-setup.ts"]` (the same jsdom `Range`/`elementFromPoint` stubs the editor package uses).
+- `PlaygroundTile.tsx`: `TextArea` → `CodeEditor language="javascript"`; the `invalid` prop had no equivalent and the status line already carries the error text, so it was dropped rather than faked. `.code { flex: 1 1 auto; min-height: 12em }` so the editor fills the column.
+- `SourceTile.tsx`: `SourceListing` now renders `<CodeEditor readOnly …>` inside the same `data-part="source-listing"` wrapper; `.lines`/`.line`/`.line::before` CSS deleted.
+- `packages/pbui-editor/src/index.ts`: re-exports `EditorView`, `EditorState`, `Compartment`, `Prec` — because the package bundles CodeMirror, a consumer (including a test) that needs the view class must use *this* copy.
+- Tests: `typeSource(container, text)` in the playground test finds the view with `EditorView.findFromDOM` and dispatches a whole-document replace under `act`; the source test asserts the document behind the listing (`doc.lines`, `toContain("Sum: ")`, `readOnly`, `aria-label`) instead of counting `<li>`s.
+- `.storybook/{main,preview}.ts` and `Devtools.stories.tsx` in the sandbox; Storybook on port 6009; four screenshots captured with Playwright into `reference/screenshots/`.
+- Sandbox suite 203/203; typecheck clean; build 94.7 KB.
+
+### Why
+- The design (§10 phase 4) wants the editor proven on a real consumer before PBUI-PLOTSCRIPT-1 depends on it. These two tiles were the ones the guide named.
+- Stories rather than a throwaway page: the sandbox devtools had none, and the user wants to see progress; a story is the reusable form of "let me look at it".
+
+### What worked
+- The migration itself was uneventful — three of the five initial failures were my own test-rewrite slips (below), not the tiles.
+- The screenshots read as the pbui family: monochrome, hairline borders, zero radius, the six syntax tokens as the only colour.
+
+### What didn't work
+- First test run after the rewrite: 5 failures. Two causes, both mine: (1) `ReferenceError: EditorView is not defined` ×4 — my rewrite script decided the import was already present because the new `typeSource` helper *mentioned* `EditorView` above the first `describe(`; (2) `Cannot access 'view' before initialization` in the source test — my local `const view` shadowed the file's existing `view(documents)` helper. Renamed to `editorView`.
+- Then one assertion failure: `expected '\ndefinePlugin(…' to be '\ndefinePlugin(…'` — I asserted the listing equals `COUNTER_PROGRAM`, but the test's current record is v3 with `"Total: "` → `"Sum: "`. The original test only checked line count and that substring; restored that intent.
+- The first `Devtools.stories.tsx` threw `Error: no program prg-2` at `library.putProgram`: an explicit `id` is an *update* and ids are minted sequentially, so `prg-2` did not exist yet when I tried to seed it. Reordered to mirror the test fixture.
+- A cwd drift bit twice: the shell's working directory persisted from an earlier `cd` in a parallel call, and two edits ran against the wrong root (`No such file or directory`). Every command now uses absolute paths.
+
+### What I learned
+- `library.putProgram` semantics: no `id` → create with the next sequential id; `id` given → update, and it throws if the program is missing. Worth a sentence in the library's doc comment.
+- vitest resolves `@hyperslop-systems/pbui-editor` through the package's `main: dist/index.js`, so the sandbox tests need the editor **built** first. Same as its existing dependence on `pbui-workbench`'s dist; the build order from Step 1 grows by one.
+
+### What was tricky to build
+- **Testing a CodeMirror-backed tile in jsdom.** `fireEvent.change` on a `contenteditable` does nothing. The honest replacement is a dispatch on the view (a paste, effectively); reaching the view needs `EditorView.findFromDOM`, and that must come from the *bundled* copy — hence the re-export. A separately installed `@codemirror/view` would be a second instance whose `findFromDOM` still works (it reads a plain `cmView` property on the DOM node) but whose extensions would not, which is a trap for the next person.
+- **Sizing.** The `TextArea` had `rows={24}`; the editor has no rows and fills its container, which means the column must be a bounded flex box. The playground's `.editor` column already was; `.code` just needed `flex: 1 1 auto`.
+
+### What warrants a second pair of eyes
+- Dropping `invalid` from the playground editor. The red dashed border is gone; the status line still says `render · RUNTIME_ERROR · …`. If the border mattered to somebody, the right fix is a diagnostic on a line, which needs the engine to report one.
+- The source tile no longer has `aria-label="program source"` on the wrapper; it is on the editor's content element instead. Screen-reader users get the same name, one level deeper.
+
+### What should be done in the future
+- Stories for the other three devtools tiles (inspector, REPL, timeline) now that the sandbox has a Storybook.
+- Map an engine error's line (when QuickJS reports one) to an `EditorDiagnostic` in the playground.
+
+### Code review instructions
+- Start at `PlaygroundTile.tsx` (the six-line diff), then `SourceTile.tsx` `SourceListing`, then the two test rewrites.
+- Validate: build `pbui-editor` first, then `pnpm --filter @hyperslop-systems/pbui-sandbox test typecheck build`; `pnpm --filter @hyperslop-systems/pbui-sandbox storybook` (port 6009) → `Sandbox/Devtools`.
+
+### Technical details
+- Storybook ids: `sandbox-devtools--playground`, `sandbox-devtools--source`; editor: `editor-codeeditor--with-diagnostics`.
+
+### Screenshots
+
+![The playground tile: the draft in a CodeEditor on the left, run live on the right](./screenshots/03-p4-playground-tile-on-codeeditor.png)
+
+*The playground after migration — `ok · main · 3 nodes · 482 bytes` in the status line, the rendered draft on the right, the six syntax tokens the only colour.*
+
+![The source tile as a read-only CodeEditor with versions and diff](./screenshots/04-p4-source-tile-on-codeeditor.png)
+
+*The source tile: `Counter · v2 · human`, the real gutter, and the `source / versions / diff` panes untouched.*
+
+![P2, fixed: highlighting, gutter markers and a dashed underline on `month`](./screenshots/02-p2-codeeditor-with-diagnostics-fixed.png)
+
+*The editor's own `WithDiagnostics` story after the story fix from Step 3: `×` on line 3 with `month` underlined at column 5, `!` on line 10, the line-400 diagnostic clamped to the last line.*
+
+### Styling audit, answering the user's question
+
+Nothing in the four screenshots shows a drop shadow or a rounded corner; the
+editor reads only tokens and `--pbui-radius` is `0`. A grep of the shipped
+stylesheets (`box-shadow|border-radius|backdrop-filter|blur|gradient|text-shadow`
+across `pbui/src`, `pbui/public`, `pbui/packages/*/src`, `plot/src`, excluding
+`var(--pbui-radius)` reads) found these hard-coded values — the foundation
+story's own rule is *"No border-radius, anywhere. `--pbui-radius: 0` exists so
+an exception must name itself"*:
+
+| File | Line | Value | Note |
+|---|---|---|---|
+| `pbui/public/presentation-parts.css` | 163 | `box-shadow: 0 8px 24px rgb(0 0 0 / 0.12)` | the accept-chooser popover; a literal, no token |
+| `pbui/public/presentation-parts.css` | 254–255 | `border-radius: var(--pbui-radius, 2px)`; `box-shadow: var(--pbui-shadow, 0 2px 8px rgba(31,36,48,.18))` | the context-help card; the fallbacks are the modern look, and `--pbui-shadow` is **not** defined in `tokens.css`, so the fallback is what renders |
+| `pbui/public/components.css` | 46 | `border-radius: 0.25rem` | dialog close button, literal |
+| `pbui/public/components.css` | 67 | `border-radius: 0.25rem` | `json-block`, literal |
+| `plot/src/styles.css` | 93 | `border-radius: 0.375rem` | the diagnostics strip |
+| `plot/src/styles.css` | 108 | `border-radius: 0.375rem` | loading / empty states |
+| `pbui-sandbox … InspectorTile.module.css` | 45 | `border-radius: 2px` | tree rows |
+
+Not flagged: `plot/src/styles.css:56` reads `var(--hs-plot-radius)` which
+defaults to `0`; datalab's marketing page uses `box-shadow: 4px 4px 0` (a hard
+offset, which is the brutalist idiom, not a blur); `RebalanceDialog` uses a
+`0 0 0 1px` ring as a focus outline. Not fixed here — out of this ticket's
+scope — but the two `presentation-parts.css` entries are the ones a user
+actually sees on every hover, and `--pbui-shadow` being undefined is exactly
+the token-fallback failure `tokens.css` documents.
