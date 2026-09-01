@@ -18,3 +18,12 @@ Created the ticket (superseding the short-lived PBUI-EDITOR-1, whose editor desi
 
 Uploaded to reMarkable at /ai/2026/09/01/PBUI-PLOTKIT-1.
 
+
+## 2026-09-01
+
+Step 1-2: scaffolded packages/pbui-editor (commit 9bf8044) and implemented CodeEditor with the token theme, diagnostics gutter and 12 tests (commit 73c99fb). Found a second defaultKeymap collision beyond the designed one: Mod+Enter is insertBlankLine, so the run chord is Prec.highest.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-editor/src/CodeEditor/CodeEditor.tsx — The component
+
