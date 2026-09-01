@@ -17,7 +17,9 @@ RelatedFiles:
     - Path: repo://packages/pbui-plotscript/demo/src/workbench.ts
       Note: One workspace per example; localStorage on every committed batch (commit 48bb255)
     - Path: repo://packages/pbui-plotscript/src/PlotTile/PlotTile.tsx
-      Note: ResponsivePlot over lastGood, stale chip (commit 2ff7f91)
+      Note: |-
+        ResponsivePlot over lastGood, stale chip (commit 2ff7f91)
+        The plot grid (commit daa55f1)
     - Path: repo://packages/pbui-plotscript/src/ScriptTile/ScriptTile.tsx
       Note: Editor, toolbar, run pane, document write (commit 2ff7f91)
     - Path: repo://packages/pbui-plotscript/src/apps.tsx
@@ -34,12 +36,17 @@ RelatedFiles:
       Note: Both tiles inside a real Surface (commit 2ff7f91)
     - Path: repo://packages/pbui-sandbox/src/plot/plotScript.ts
       Note: console capture inside the JSON string (commit 126832d)
+    - Path: repo://packages/pbui-sandbox/src/plot/scriptResult.ts
+      Note: checkScriptResults, the list contract (commit 8ece301)
+    - Path: ws://plot/src/react/PlotHost.stories.tsx
+      Note: The proven documents the examples mirror
 ExternalSources: []
 Summary: ""
 LastUpdated: 2026-09-01T14:11:52.0215631-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -327,3 +334,97 @@ interaction targets.
 ![The demo: trend workspace](./screenshots/07-p4-demo-trend-workspace.png)
 
 *Example C: 240 humidity readings with an OLS trend, `240 rows · bounded · more` — the honest-coverage notice for a windowed series.*
+
+## Step 5: The showcase — six more examples, and several plots in one tile
+
+Two user questions mid-run: *"can you do more examples that showcase more plot
+styles? what are all the kinds of things we could showcase?"* and *"could we
+display multiple plots in one tile?"* This step answers both with code. The
+example set grows from three to nine, chosen to cover the plot package's
+surface, and the script contract now accepts a **list** of results, which the
+plot tile draws as a grid — one `ResponsivePlot` per entry, each an
+independent request. Facets remain the grammar's answer when panels must share
+scales; the F example says so in its own comment, and D demonstrates the
+other way deliberately.
+
+Every new example mirrors a document the plot package's own Storybook already
+renders (`plot/src/react/PlotHost.stories.tsx`), so none of them explores
+undocumented territory.
+
+### Prompt Context
+
+**User prompt (verbatim):** "can you do more examples that showcase more plot styles? what are all the kinds of things we could showcase ?"
+
+**User prompt (verbatim):** "could we display multiple plots in one tile?"
+
+**Assistant interpretation:** Enumerate what plot 0.3.1 can draw, add examples covering it, and support multiple plots per tile — both by facets (one document) and by a list of results (independent plots).
+
+**Inferred user intent:** The demo should read as a tour of the plotting system, not three charts.
+
+**Commit (code):** 8ece301 — "pbui-sandbox: shim v2 (annotation, coordinate, guide, transform) and list results"
+**Commit (code):** daa55f1 — "pbui-plotscript: six showcase examples, and a grid for scripts that return a list"
+
+### What I did
+- Shim v2 in `pbui-sandbox`: `annotation` (rule/text/region/point), `coordinate` (cartesian/transpose/polar), `guide` (axis/legend), `transform` (variable/unary/binary/log/sqrt/cut), with 15 new parity cases. `checkScriptResults` accepts one result or a list (≤ 12; an element's problem carries its index; an empty list is its own problem); `runPlotScript` returns `results` beside `result`. Sandbox 224/224.
+- `runner.ts`: `lastGoodAll` beside `lastGood`.
+- `PlotTile`: a `data-part="plot-grid"` (1–2 columns ≤ 2 plots, 2 ≤ 4, else 3) with a caption per cell; the header says `N plots · M rows across N`.
+- Six examples: **D** histogram (`stat.bin`, `afterStat("count")`) + Gaussian density (`stat.density`, `afterStat("density")`) as a list; **E** mean ± SE (`stat.summary`, one statistic feeding ribbon + errorbar + point) beside a Tukey boxplot with jittered raw points; **F** facets (`facets: { columns, scales: "fixed" }`) with a reference rule; **G** the same bars stacked, filled to 100 % and polar (`coordinate.polar`); **H** a log axis with a configured title, axes (`ticks: { kind: "values" }`), frame, and all four annotation kinds; **I** a derived variable (`variable.derived(transform.sqrt(...))`) with colour (`color-linear`), size and shape from data.
+- The examples integration test renders **every plot of every example** and the three list-returning ones assert more than one; a tiles test asserts the grid. Package 26/26.
+- Six new demo screenshots (08–13).
+
+### Why
+- The showcase catalogue (what plot 0.3.1 owns): geoms point/line/bar/area/ribbon/errorbar/boxplot; stats summary/bin/regression/boxplot/density; positions stack/fill/dodge/jitter; scales linear/log/temporal/band/categorical(+palette)/color-linear/size/shape/opacity; facets fixed/free; coordinates transpose/polar; annotations rule/text/region/point; configured guides and titles; derived variables and the cross/nest/blend algebra; the sparkline preset; bounded-coverage notices; themes embedded/publication/dark. The nine examples cover all of it except the algebra composition, `free` facet scales, transpose, and the dark/publication themes (a tile-level choice) — listed as future examples.
+
+### What worked
+- Eight of the nine examples rendered on the first test run; the demo needed only "reset to the examples" to show all nine (persistence had faithfully restored the old three — working as designed).
+
+### What didn't work
+- Example I failed its first run with `scale.type.invalid — Scale "categorical" is incompatible with shape` (from a diagnostics probe): the `shape` channel wants `scale.shape`, not `scale.categorical`. The plot's own guard said so precisely.
+- `geom.point({ size: 2 })` in the earlier trend example was silently wrong — the option is `radius` (found while reading `GeomSpec`); fixed in the same commit.
+
+### What I learned
+- The two answers to "multiple plots in one tile" are genuinely different: facets share scales, legends and identity (one document, comparable panels); a list shares nothing (independent requests). The F and D examples each say which they are, so a user copying one gets the right tool.
+
+### What was tricky to build
+- **Keeping the list bounded and blamable.** `checkScriptResults` caps at `limits.plots` and wraps an element's problem as `{ kind: "in-list", index, problem }`, so the pane can say `plot 2: the result has no "document"` rather than pointing at nothing.
+
+### What warrants a second pair of eyes
+- The grid gives every cell its own `ResponsivePlot` and therefore its own ResizeObserver; nine plots in one tile is nine observers. Fine at 12; the cap is why.
+- The polar cell in G renders small — polar keeps its aspect, so a wide cell wastes width. Acceptable; a `coordinate`-aware cell aspect would be a refinement.
+
+### What should be done in the future
+- Examples for: `composition.algebra` (cross/nest/blend), `transpose`, `free-y` facets, the sparkline preset, `limits` (maxMarks) diagnostics, and a theme switcher on the plot tile (embedded/publication/dark).
+- The line/area/temporal case is covered by C and F but a dedicated dual-axis-free "many series" example would show `groups` at larger cardinality and the `maxCategories` limit.
+
+### Code review instructions
+- `pbui-sandbox/src/plot/scriptResult.ts` (`checkScriptResults`), `pbui-plotscript/src/PlotTile/PlotTile.tsx` (the grid), `src/examples.ts` D–I beside `plot/src/react/PlotHost.stories.tsx`.
+- Validate: both packages' suites; the demo → "reset to the examples" → walk workspaces D–I.
+
+### Technical details
+- Grid columns: 1–2 plots → n, 3–4 → 2, 5+ → 3; cap `limits.plots = 12`.
+
+### Screenshots
+
+![D: a histogram and a density from one script, as a grid](./screenshots/08-p4-demo-distribution-two-plots.png)
+
+*The list contract: `2 plots · 800 rows across 2`, each panel its own request with its own scales.*
+
+![E: mean ± standard error beside a Tukey boxplot with jittered points](./screenshots/09-p4-demo-intervals-boxplot.png)
+
+*One `stat.summary` feeds ribbon, errorbar and point, so they cannot disagree; the boxplot overlays the raw data with `position.jitter`.*
+
+![F: small multiples with shared scales and a repeated reference line](./screenshots/10-p4-demo-facets.png)
+
+*The grammar's answer to multiple plots: one document, `facets.columns`, a merged station legend, the comfort rule in every panel.*
+
+![G: stacked, filled-to-100 % and polar bars from one helper](./screenshots/11-p4-demo-stacks-three-ways.png)
+
+*Three positions/coordinates over identical data — the script builds the three documents with a local function.*
+
+![H: a log axis, configured guides, and all four annotation kinds](./screenshots/12-p4-demo-log-guides-annotations.png)
+
+*`scale.log`, a configured title, value ticks, the 1k-goal rule, a launch-week region, panel text and a data-anchored point.*
+
+![I: a derived variable with colour, size and shape from data](./screenshots/13-p4-demo-aesthetics.png)
+
+*`variable.derived(transform.sqrt(load))` on x; uptime → `color-linear`, load → size, kind → shape.*

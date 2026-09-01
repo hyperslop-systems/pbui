@@ -45,3 +45,12 @@ Step 4: the three worked examples as seeded documents with an integration test e
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/demo/src/workbench.ts — seedDocument and persistence
 
+
+## 2026-09-01
+
+Step 5: six showcase examples (D histogram+density, E intervals+boxplot, F facets, G stack/fill/polar, H log+guides+annotations, I derived+aesthetics) and multi-plot tiles — a script may return a list, drawn as a grid; shim v2 gained annotation/coordinate/guide/transform (commits 8ece301, daa55f1). Six more demo screenshots. Answers the two user questions in code.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript/src/examples.ts — The nine-example showcase
+
