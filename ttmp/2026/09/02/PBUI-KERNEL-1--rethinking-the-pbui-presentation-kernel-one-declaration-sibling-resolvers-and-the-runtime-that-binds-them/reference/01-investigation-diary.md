@@ -718,3 +718,51 @@ The compiler earned its keep twice on the way. In ecommerce it refused `runtime 
 
 ### Technical details
 - Link overrides used for verification: `"pnpm": { "overrides": { "@hyperslop-systems/pbui": "link:../../../../pbui", ... } }` then `pnpm install --offline`.
+
+## Step 11: Phase 7 — links read one relation evaluator
+
+Phase 7 closes the link side of the cutover. `LinkDeps` is now exactly the narrow projection §11.5 describes: the product's graph, the derivation-exposed relations as metadata, one detailed `relationEvaluation`, and a label function. The compat value-or-undefined `relation` callback is deleted from the type and from `links/evaluate.ts`, whose `Derived` branch now has one path (value / empty / diagnostic) and reports a `relation-missing` diagnostic when no evaluator is supplied. The remaining Phase 7 actions had already landed with Phase 2 and Phase 6: link palettes offer only `exposed("derivation")` relations, outputs are checked serializable before persisting, ecommerce's second graph is gone, and the workbench's `LinkEnvironment` is `LinkDeps`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Land guide Phase 7 and the last §20.2 deletion on the link side.
+
+**Inferred user intent:** A link kernel that cannot see a different graph or a different relation semantics than acceptance (§24).
+
+**Commit (code):** 5824f5a — "PBUI-KERNEL-1 P6b: workbench fragment — workspace opt-in by descriptor, unconstrained product verb; shop declares workspace"; 308037b — "PBUI-KERNEL-1 P7: links read one relation evaluator"
+
+### What I did
+- `src/presentation/links/evaluate.ts`: one evaluation path over `deps.relationEvaluation`.
+- `src/presentation/links/snapshot.ts`: `LinkDeps` without `relation`; doc rewritten as the narrow projection.
+- `src/presentation/links/world.test-helpers.ts` and `packages/pbui-workbench/src/links/derive.test.tsx`: fixtures supply `relationEvaluation`.
+- Validation: root typecheck, 368 tests, build; recursive typecheck green; workbench links 26; ecommerce 35.
+
+### Why
+- §12.1 step 5: preserve `empty` versus diagnostic failure through one evaluator; §20.2: no old link relation callback.
+
+### What worked
+- The prototype had already added `relationEvaluation` beside the compat callback, so the deletion was a subtraction with two fixture updates.
+
+### What didn't work
+- `pnpm -r`'s parallel run tripped pbui-workbench's "every generator over 12 skewed tiles stays interactive" perf test again (718 ms under load); it passes alone. Same load-sensitive test as Step 5.
+
+### What I learned
+- Nothing in the workbench components read the compat callback; only the two fixtures did.
+
+### What was tricky to build
+- Nothing beyond fixture shape: the evaluator must return `{ kind: "empty" }` rather than `undefined` for the partial case.
+
+### What warrants a second pair of eyes
+- `relation-missing` is now the outcome for a `Derived` term in a workbench built without a product projection (the derived-port-graph fallback of Step 10 supplies no evaluator). That is the intended honest failure, and it is visible in the badge.
+
+### What should be done in the future
+- Phase 11: README, playbook, link and facet docs; mark guide 01 superseded; screenshots; release checklist.
+
+### Code review instructions
+- `src/presentation/links/evaluate.ts` `evaluateExpression`; `snapshot.ts` `LinkDeps`.
+- `pnpm test -- links` and `cd packages/pbui-workbench && npx vitest run src/links`.
+
+### Technical details
+- `LinkDeps = { graph; relations?; relationEvaluation?(id, reference, snapshot): value | empty | error; label? }`.

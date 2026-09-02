@@ -70,8 +70,8 @@ Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–
 
 ## Phase 7: Link projection and dependency cleanup
 
-- [ ] model.linkDeps: derivation-exposed relations only; serializable output check <!-- t:gpsg -->
-- [ ] Remove empty-graph fallback and ecommerce's second graph <!-- t:p7b -->
+- [x] model.linkDeps: derivation-exposed relations only; serializable output check <!-- t:gpsg -->
+- [x] Remove empty-graph fallback and ecommerce's second graph <!-- t:p7b -->
 
 ## Phase 11: Release and deletion audit
 

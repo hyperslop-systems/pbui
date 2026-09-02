@@ -99,3 +99,12 @@ Step 10 / Phase 6: workbench, chat, sandbox fragments; ecommerce relations + lin
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/presentation.ts — createChatPresentationFragment (C18)
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/actions.ts — createWorkbenchPresentationFragment
 
+
+## 2026-09-02
+
+Step 11 / Phase 7: LinkDeps without the compat relation callback; one relationEvaluation path in links/evaluate.ts (commit 308037b)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/evaluate.ts — One relation evaluation path
+
