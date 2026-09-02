@@ -29,6 +29,10 @@ export { describeWorkbench } from "./describe";
 export type {
   DescribeOptions,
   DescribedApp,
+  DescribedBinding,
+  DescribedContext,
+  DescribedLink,
+  DescribedPort,
   DescribedSplit,
   DescribedTile,
   DescribedWorkspace,
@@ -127,6 +131,9 @@ export { PortBadge } from "./components/PortBadge";
 export type { PortBadgeProps } from "./components/PortBadge";
 export { ShowChooser } from "./components/ShowChooser";
 export { RelationPalette } from "./components/RelationPalette";
+export { LinkAnnouncer } from "./components/LinkAnnouncer";
+export { CoordinationInspector, coordinationInspectorApp, createCoordinationInspectorApp } from "./components/CoordinationInspector";
+export type { CoordinationInspectorAppOptions } from "./components/CoordinationInspector";
 export { PortRail } from "./components/PortRail";
 export type { PortRailProps } from "./components/PortRail";
 export { WireLayer } from "./components/WireLayer";

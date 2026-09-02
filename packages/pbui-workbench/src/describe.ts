@@ -6,7 +6,8 @@ import {
   type WorkbenchDocument,
   WorkbenchDocumentSchema,
 } from "@hyperslop-systems/workbench-protocol";
-import type { PortDeclaration, PortDirection } from "@hyperslop-systems/pbui";
+import { badgeOf, type BadgeState, type PortDeclaration, type PortDirection } from "@hyperslop-systems/pbui";
+import { linkRefsOf } from "./links/linkRef";
 import { leaves, placementCount } from "@hyperslop-systems/workbench-protocol/client";
 import { documentSlots, type AppDescriptor } from "./apps";
 import { MISSING_APP_ID, specOf, type LayoutSpec } from "./document";
@@ -77,6 +78,39 @@ export interface DescribedSplit {
   ratio: number;
 }
 
+/** One bound port of a placed view (PBUI-LINK-1 Phase 7): the same words its badge shows. */
+export interface DescribedBinding {
+  /** `viewId/name` — what the link verbs take. */
+  port: string;
+  viewId: string;
+  name: string;
+  state: BadgeState;
+  /** The badge's text, e.g. `→ Orders East`, `⏸ #1042`, `≡ selection · σ1`. */
+  badge: string;
+  explanation: string;
+  /** The port it reads, when it follows, derives, or holds a follow. */
+  source?: string;
+}
+
+/** One wire: a follow, a derivation, a held follow, or an identity link. */
+export interface DescribedLink {
+  linkId: string;
+  kind: "follow" | "derived" | "held" | "identity";
+  source: string;
+  destination: string;
+  relation?: string;
+  classId?: string;
+}
+
+export interface DescribedContext {
+  key: string;
+  valueType: string;
+  /** The out ports whose declarations drive it. */
+  drivenBy: string[];
+  /** Whether the cell currently holds a value. */
+  filled: boolean;
+}
+
 export interface DescribedWorkspace {
   id: string;
   name: string;
@@ -92,6 +126,8 @@ export interface WorkbenchDescription {
   activePlacementId: string | null;
   apps: DescribedApp[];
   workspaces: DescribedWorkspace[];
+  /** Tile linking (PBUI-LINK-1): every bound port of every view, every wire, every context. Absent when nothing is linked. */
+  links?: { bindings: DescribedBinding[]; links: DescribedLink[]; contexts: DescribedContext[] };
   /** The full protobuf JSON, only when `options.document` asked for it. */
   document?: unknown;
 }
@@ -128,10 +164,12 @@ export function describeWorkbench(wb: Workbench, options: DescribeOptions = {}):
     ? doc.workspaces.filter((workspace) => workspace.id === options.workspaceId)
     : doc.workspaces;
 
+  const links = describeLinks(wb);
   return {
     activeWorkspaceId: state.workspaceId,
     activePlacementId: state.activePlacementId,
     apps: wb.apps.list().map(describeApp),
+    ...(links ? { links } : {}),
     workspaces: selected.map((workspace) => ({
       id: workspace.id,
       name: workspace.name,
@@ -144,6 +182,43 @@ export function describeWorkbench(wb: Workbench, options: DescribeOptions = {}):
     })),
     ...(options.document ? { document: toJson(WorkbenchDocumentSchema, doc) } : {}),
   };
+}
+
+/** The link facts as an agent reads them: bindings with their badge words, wires, contexts. */
+function describeLinks(wb: Workbench): WorkbenchDescription["links"] | null {
+  const snapshot = wb.links.snapshot();
+  const bindings: DescribedBinding[] = [];
+  for (const definition of snapshot.ports.values()) {
+    if (definition.declaration.direction === "out") continue;
+    if (definition.declaration.documentSlot && !snapshot.bindings.has(definition.id)) continue;
+    const badge = badgeOf(definition, snapshot, wb.links.deps);
+    if (badge.state === "none") continue;
+    bindings.push({
+      port: definition.id,
+      viewId: definition.viewId,
+      name: definition.declaration.name,
+      state: badge.state,
+      badge: `${badge.glyph} ${badge.text}`.trim(),
+      explanation: badge.explanation,
+      ...(badge.sourcePort ? { source: badge.sourcePort } : {}),
+    });
+  }
+  const links: DescribedLink[] = linkRefsOf(snapshot).map((link) => ({
+    linkId: link.linkId,
+    kind: link.kind,
+    source: link.source,
+    destination: link.destination,
+    ...(link.relationId ? { relation: link.relationId } : {}),
+    ...(link.classId ? { classId: link.classId } : {}),
+  }));
+  const contexts: DescribedContext[] = [...snapshot.contexts.values()].map((context) => ({
+    key: context.key,
+    valueType: context.valueType,
+    drivenBy: [...context.drivenBy],
+    filled: Boolean(snapshot.values.context(context.key)),
+  }));
+  if (bindings.length === 0 && links.length === 0 && contexts.length === 0) return null;
+  return { bindings, links, contexts };
 }
 
 function describeApp(app: AppDescriptor): DescribedApp {

@@ -97,6 +97,19 @@ export const Scene6FollowVsIdentity: StoryObj = {
   render: () => <ShopStory spec={split("row", 0.5, plotTile(REVENUE_BY_CATEGORY), tile(APP_IDS.orders))} height={520} setup={followCategory("7")} />,
 };
 
+export const Scene8Inspector: StoryObj = {
+  name: "8 · the coordination inspector beside a linked pair: what an agent reads through workbench_describe, for a person (Phase 7)",
+  render: () => (
+    <ShopStory
+      spec={split("row", 0.5, split("col", 0.5, tile(APP_IDS.orders), tile(APP_IDS.orderDetail)), tile("coordination"))}
+      height={600}
+      setup={(shop, workbench, views) => {
+        followOrders("88213")?.(shop, workbench, views);
+      }}
+    />
+  ),
+};
+
 export const Scene7ConnectMode: StoryObj = {
   name: "7 · connect mode: every tile flips to its rail, every link is a wire; drag ▸ onto ◂, Shift to hold, Esc to leave (Phase 3)",
   render: () => (

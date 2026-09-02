@@ -5,6 +5,7 @@ import { usePlacement, useWorkbench } from "../../context";
 import type { SurfaceProps } from "../../types";
 import { SplitPane } from "../SplitPane";
 import { Tile } from "../Tile";
+import { LinkAnnouncer } from "../LinkAnnouncer";
 import { RelationPalette } from "../RelationPalette";
 import { ShowChooser } from "../ShowChooser";
 import { WireLayer } from "../WireLayer";
@@ -101,6 +102,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
       {linkMode ? <WireLayer {...(renderWire ? { renderWire } : {})} /> : null}
       <ShowChooser />
       <RelationPalette />
+      <LinkAnnouncer />
       {placing ? (
         <div className={styles.placing} data-part="workbench-placing" role="status">
           <b>{placing.prompt}</b>

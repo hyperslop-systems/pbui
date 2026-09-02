@@ -1,5 +1,5 @@
 import { documentSlotPort } from "@hyperslop-systems/pbui";
-import { defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems/pbui-workbench";
+import { coordinationInspectorApp, defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "./createShop";
 import { PLOT_SLOT, TABLE_SLOT, readPlotDocument } from "./document";
 import { INSPECTABLE } from "./presentation/types";
@@ -157,6 +157,8 @@ export function createShopApps(shop: Shop): AppDescriptor[] {
       },
       Component: (props: AppProps) => <ShopPlot {...props} shop={shop} />,
     }),
+    // The coordination inspector (Phase 7): the workbench's own tile, offered in the WORKBENCH group.
+    coordinationInspectorApp,
   ];
 }
 

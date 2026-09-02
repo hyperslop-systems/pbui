@@ -35,7 +35,7 @@ describe("the applications", () => {
   it("declare their ports, and describeWorkbench reports them", () => {
     const shop = createShop();
     const apps = createShopApps(shop);
-    expect(apps.map((app) => app.id)).toEqual(Object.values(APP_IDS));
+    expect(apps.map((app) => app.id)).toEqual([...Object.values(APP_IDS), "coordination"]);
     const wb = createShopWorkbench(shop);
     const description = describeWorkbench(wb);
     const byId = new Map(description.apps.map((app) => [app.id, app]));
@@ -44,6 +44,9 @@ describe("the applications", () => {
     expect(byId.get("inspector")?.ports?.[0]?.valueType).toBe("inspectable");
     // Only the plot is doc-bound; the two slots are its first two ports.
     expect(description.apps.filter((app) => app.docBound).map((app) => app.id)).toEqual(["plot"]);
+    // Ambient fallbacks are bindings too: the details read the workspace's order, which is empty at seed time.
+    expect(description.links?.bindings.map((b) => `${b.name}:${b.state}`)).toContain("order:empty");
+    expect(description.links?.contexts.map((c) => c.key)).toContain("workspace.order");
     expect(byId.get("plot")?.bindings).toEqual(["plot", "table"]);
     // The description is JSON, like everything an agent reads.
     expect(JSON.parse(JSON.stringify(description))).toEqual(description);
