@@ -28,6 +28,7 @@ import {
 } from "@hyperslop-systems/pbui";
 import { workbenchScopes } from "../actions";
 import { workbenchVerbs, type WorkbenchVerb } from "../verbs";
+import type { LinkRef } from "./linkRef";
 import type { PortRef } from "./portRef";
 
 /*
@@ -67,7 +68,7 @@ export interface WorkbenchLinkContributionOptions<ProductFacts> {
 
 const statusOf = (plan: LinkPlan): Availability => (plan.kind === "available" ? available() : plan.kind === "unavailable" ? unavailable(plan.because, plan.code) : unavailable("the choice is ambiguous", "ambiguous"));
 
-export function workbenchLinkContributions<Values extends { port: unknown }, ProductFacts>(
+export function workbenchLinkContributions<Values extends { port: unknown; link?: unknown; tile?: unknown }, ProductFacts>(
   options: WorkbenchLinkContributionOptions<ProductFacts>,
 ): readonly ActionContribution<Values, ProductFacts, WorkbenchVerb>[] {
   type PortValues = { port: PortRef };
@@ -147,6 +148,67 @@ export function workbenchLinkContributions<Values extends { port: unknown }, Pro
       bind: ({ subject }) => workbenchVerbs.goTo(parsePortId(subject.value.sourcePort ?? "")?.viewId ?? ""),
     }),
   ];
+
+  // Wires (connect mode, Phase 3): the same unlink policies, plus a way back to either end.
+  type LinkValues = { link: LinkRef };
+  const defineLink = defineActions<LinkValues, ProductFacts, WorkbenchVerb>();
+  const linkContributions: ActionContribution<LinkValues, ProductFacts, WorkbenchVerb>[] = [
+    ...(["freeze", "clear", "ambient"] as const).map((policy: UnlinkPolicy, index) =>
+      defineLink.exact("link", {
+        id: `workbench.link.unlink.${policy}`,
+        action: `link.unlink.${policy}`,
+        scopes,
+        test: ({ subject, snapshot }) => {
+          const links = facts(snapshot);
+          return links ? statusOf(planUnlink(subject.value.linkId, policy, links.snapshot, links.deps)) : NO_LINKS;
+        },
+        metadata: {
+          label: policy === "freeze" ? "Unlink · keep the last value" : policy === "clear" ? "Unlink · clear" : "Unlink · fall back to ambient",
+          description: policy === "freeze" ? "cut the wire; the destination holds what it shows now" : policy === "clear" ? "cut the wire; the destination shows nothing" : "cut the wire; the destination reads its ambient context again",
+          order: 10 + index,
+          danger: policy === "clear",
+        },
+        bind: ({ subject }) => ({ kind: "port.unlink", linkId: subject.value.linkId, policy }),
+      }),
+    ),
+    defineLink.exact("link", {
+      id: "workbench.link.go-to-source",
+      action: "link.go-to-source",
+      scopes,
+      metadata: { label: ({ subject }) => `Go to ${subject.value.sourceTitle}`, order: 20 },
+      bind: ({ subject }) => workbenchVerbs.goTo(parsePortId(subject.value.source)?.viewId ?? ""),
+    }),
+    defineLink.exact("link", {
+      id: "workbench.link.go-to-destination",
+      action: "link.go-to-destination",
+      scopes,
+      metadata: { label: ({ subject }) => `Go to ${subject.value.destinationTitle}`, order: 21 },
+      bind: ({ subject }) => workbenchVerbs.goTo(parsePortId(subject.value.destination)?.viewId ?? ""),
+    }),
+  ];
+  contributions.push(...(linkContributions as unknown as ActionContribution<PortValues, ProductFacts, WorkbenchVerb>[]));
+
+  // Doors into connect mode: from any badge, and from any tile.
+  contributions.push(
+    define.exact("port", {
+      id: "workbench.port.show-wiring",
+      action: "link.mode.open",
+      scopes,
+      metadata: { label: "Show wiring", description: "connect mode: every tile shows its ports, every link its wire (Mod+Shift+L)", order: 50 },
+      bind: () => ({ kind: "link.mode.open" }),
+    }),
+  );
+  type TileValues = { tile: unknown };
+  const defineTile = defineActions<TileValues, ProductFacts, WorkbenchVerb>();
+  contributions.push(
+    defineTile.exact("tile", {
+      id: "workbench.tile.connect",
+      action: "link.mode.open",
+      scopes,
+      metadata: { label: "Connect…", description: "connect mode: every tile shows its ports, every link its wire (Mod+Shift+L)", order: 25 },
+      bind: () => ({ kind: "link.mode.open" }),
+    }) as unknown as ActionContribution<PortValues, ProductFacts, WorkbenchVerb>,
+  );
 
   if (options.subjects && options.subjects.length > 0) {
     const familyDefine = defineActions<Values, ProductFacts, WorkbenchVerb>();

@@ -1,5 +1,5 @@
 import { createPresentationRegistry, type PresentationDescriptor } from "@hyperslop-systems/pbui";
-import { createPortDescriptor, createTileDescriptor, type PortRef, type TileRef } from "@hyperslop-systems/pbui-workbench";
+import { createLinkDescriptor, createPortDescriptor, createTileDescriptor, type LinkRef, type PortRef, type TileRef } from "@hyperslop-systems/pbui-workbench";
 import type { CategoryValue, CustomerValue, DatumValue, Environment, FieldValue, LineItemValue, MetalValue, OrderValue, ProductValue, Values, WorkspaceValue } from "./types";
 
 /*
@@ -78,4 +78,5 @@ export const registry = createPresentationRegistry<Values, Environment>({
   tile: createTileDescriptor() as PresentationDescriptor<TileRef, Environment>,
   workspace,
   port: createPortDescriptor() as PresentationDescriptor<PortRef, Environment>,
+  link: createLinkDescriptor() as PresentationDescriptor<LinkRef, Environment>,
 });

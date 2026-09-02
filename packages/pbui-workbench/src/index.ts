@@ -92,7 +92,9 @@ export {
   buildLinkSnapshot,
   createLinkHandlers,
   createLinkRuntime,
+  createLinkDescriptor,
   createPortDescriptor,
+  linkRefsOf,
   linkTypeDefinitions,
   linksChange,
   linksMutation,
@@ -112,6 +114,7 @@ export type {
   LinkEnvironment,
   LinkFacts,
   LinkHandlers,
+  LinkRef,
   LinkRuntime,
   LinkRuntimeState,
   LinksPayload,
@@ -122,6 +125,10 @@ export type {
 } from "./links";
 export { PortBadge } from "./components/PortBadge";
 export type { PortBadgeProps } from "./components/PortBadge";
+export { PortRail } from "./components/PortRail";
+export type { PortRailProps } from "./components/PortRail";
+export { WireLayer } from "./components/WireLayer";
+export type { WireLayerProps } from "./components/WireLayer";
 export { Tile } from "./components/Tile";
 export type { TileProps } from "./components/Tile";
 export { SplitPane } from "./components/SplitPane";

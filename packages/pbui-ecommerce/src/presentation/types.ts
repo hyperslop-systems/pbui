@@ -1,4 +1,4 @@
-import type { PortRef, TileRef, WorkbenchLinks } from "@hyperslop-systems/pbui-workbench";
+import type { LinkRef, PortRef, TileRef, WorkbenchLinks } from "@hyperslop-systems/pbui-workbench";
 import type { ShopHost } from "../host";
 
 /*
@@ -74,6 +74,8 @@ export interface Values {
   workspace: WorkspaceValue;
   /** A binding badge (PBUI-LINK-1): the port it stands for, with its state. */
   port: PortRef;
+  /** A wire in connect mode (PBUI-LINK-1 Phase 3). */
+  link: LinkRef;
 }
 
 export type ShopType = keyof Values;

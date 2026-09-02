@@ -36,7 +36,7 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
             <workbench.WorkspaceStrip addLabel="new workspace" />
             <span className={styles.spacer} />
             <Text size="tiny" tone="faint">
-              Mod+K opens the launcher · right-click anything to link it
+              Mod+K opens the launcher · right-click anything to link it · Mod+Shift+L shows the wiring
             </Text>
           </div>
         ) : null}
@@ -51,6 +51,16 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
                 </Presentation>
               );
             }}
+            renderPort={(port, node) => (
+              <Presentation reference={{ type: "port", value: port }} doc={port.doc} inComposite>
+                {node}
+              </Presentation>
+            )}
+            renderWire={(link, node) => (
+              <Presentation reference={{ type: "link", value: link }} doc={`${link.destinationTitle} ← ${link.sourceTitle}`} svg>
+                {node}
+              </Presentation>
+            )}
             renderBadges={(_view, _placement, badges) => {
               const snapshot = workbench.links.snapshot();
               return badges.map((badge) => {

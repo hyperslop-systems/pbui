@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { linkVerbs, portId } from "@hyperslop-systems/pbui";
 import { split, tile } from "@hyperslop-systems/pbui-workbench";
 import { APP_IDS } from "../apps";
 import { ORDERS_BY_STATUS, REVENUE_BY_CATEGORY } from "../plots/documents";
@@ -55,6 +56,19 @@ export const Scene6FollowVsIdentity: StoryObj = {
 };
 
 export const Scene7ConnectMode: StoryObj = {
-  name: "7 · connect mode: Mod+Shift+L over the seeded workspace shows every wire (Phase 3)",
-  render: () => <ShopStory height={640} strip setup={followOrders("88213")} />,
+  name: "7 · connect mode: every tile flips to its rail, every link is a wire; drag ▸ onto ◂, Shift to hold, Esc to leave (Phase 3)",
+  render: () => (
+    <ShopStory
+      spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail), tile(APP_IDS.inspector)))}
+      height={600}
+      strip
+      setup={(shop, workbench, views) => {
+        followOrders("88213")?.(shop, workbench, views);
+        const orders = views.orders?.[0];
+        const inspector = views.inspector?.[0];
+        if (orders && inspector) workbench.perform(linkVerbs.follow(portId(orders, "order"), portId(inspector, "subject")));
+        workbench.perform(linkVerbs.openMode());
+      }}
+    />
+  ),
 };

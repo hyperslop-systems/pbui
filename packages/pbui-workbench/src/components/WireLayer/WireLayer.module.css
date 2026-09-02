@@ -1,0 +1,87 @@
+/* One layer over the whole surface; only wire hit paths take the pointer. */
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: currentColor;
+}
+
+.wire {
+  pointer-events: none;
+}
+
+.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14px;
+  pointer-events: stroke;
+  cursor: context-menu;
+}
+
+/* A drag in flight must not be intercepted by a wire's wide hit area (audit §10.3). */
+.layer[data-carrying] .hit {
+  pointer-events: none;
+}
+
+.stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2px;
+}
+
+.wire[data-term="held"] .stroke {
+  stroke-dasharray: 3 4;
+  opacity: 0.6;
+}
+
+.wire[data-term="derived"] .stroke {
+  stroke-dasharray: 8 3;
+}
+
+.label {
+  font-size: 11px;
+  fill: currentColor;
+  font-family: inherit;
+}
+
+.portal {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2px;
+  stroke-dasharray: 2 2;
+}
+
+.band {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+  opacity: 0.8;
+}
+
+.band[data-acceptable="true"] {
+  stroke-dasharray: none;
+}
+
+.cursor {
+  position: absolute;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  background: var(--pbui-pane, inherit);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.cursor[data-acceptable="false"] {
+  border-style: dashed;
+  opacity: 0.8;
+}

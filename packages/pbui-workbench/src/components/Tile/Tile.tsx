@@ -5,12 +5,13 @@ import { placementCount } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import { useBadges } from "../../links/hooks";
 import { PortBadge } from "../PortBadge";
+import { PortRail } from "../PortRail";
 import type { SurfaceProps, TilePlacementInfo } from "../../types";
 import { canClose as canClosePlacement, type PlaceZone } from "../../verbs";
 import styles from "./Tile.module.css";
 
 export interface TileProps
-  extends Pick<SurfaceProps, "renderTitle" | "renderBadges" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
+  extends Pick<SurfaceProps, "renderTitle" | "renderBadges" | "renderPort" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
   node: Node;
   /** The active placement request's per-tile wording, from the Surface. */
   placementLabelFor?(placementId: string, zone: PlaceZone): string | undefined;
@@ -24,10 +25,11 @@ export interface TileProps
  * verbs, and hands the application a one-cell grid with a committed height.
  * It holds no application state and no layout logic of its own.
  */
-export function Tile({ node, renderTitle, renderBadges, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
+export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const active = workbench.useWorkbenchState((state) => state.activePlacementId === node.id);
+  const linkMode = workbench.useWorkbenchState((state) => state.linkModeOpen);
   const viewId = node.body.case === "leaf" ? node.body.value.viewId : "";
   const view = document.views[viewId];
   const app = view ? workbench.apps.get(view.appId) : null;
@@ -126,11 +128,15 @@ export function Tile({ node, renderTitle, renderBadges, tileAction, swapLabel, d
           (drag.carrying ? (replaceLabel ?? "\u2325 show it in this tile instead \u00b7 keeps the tile") : replaceLabel)
         }
       >
-        <div className={styles.body}>
+        <div className={styles.body} data-link-mode={linkMode || undefined}>
           {view && app ? (
-            <TileBoundary resetKey={`${view.id}:${view.appId}`} title={app.title}>
-              <app.Component placementId={node.id} view={view} />
-            </TileBoundary>
+            // In connect mode the application is INERT under its rail: the
+            // rail takes the pointer, and the app neither focuses nor clicks.
+            <div className={styles.app} inert={linkMode || undefined}>
+              <TileBoundary resetKey={`${view.id}:${view.appId}`} title={app.title}>
+                <app.Component placementId={node.id} view={view} />
+              </TileBoundary>
+            </div>
           ) : (
             <div className={styles.empty}>
               <EmptyState
@@ -139,6 +145,7 @@ export function Tile({ node, renderTitle, renderBadges, tileAction, swapLabel, d
               />
             </div>
           )}
+          {linkMode && view ? <PortRail view={view} {...(renderPort ? { renderPort } : {})} /> : null}
         </div>
       </TileFrame>
     </div>

@@ -1,10 +1,11 @@
-import { useCallback, type ReactNode } from "react";
-import { EmptyState } from "@hyperslop-systems/pbui";
+import { useCallback, useEffect, type ReactNode } from "react";
+import { EmptyState, isEditableTarget, routeWorkbenchKey, useAnyEscapeSurface } from "@hyperslop-systems/pbui";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { usePlacement, useWorkbench } from "../../context";
 import type { SurfaceProps } from "../../types";
 import { SplitPane } from "../SplitPane";
 import { Tile } from "../Tile";
+import { WireLayer } from "../WireLayer";
 import styles from "./Surface.module.css";
 
 /**
@@ -14,11 +15,47 @@ import styles from "./Surface.module.css";
  * `data-launcher-open` so the active tile is outlined only while a keyboard
  * operation needs a target.
  */
-export function WorkbenchSurface({ renderTitle, renderBadges, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
+export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, renderWire, linkModeShortcut = true, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
   const launcherOpen = workbench.useWorkbenchState((state) => state.launcherOpen);
+  const linkMode = workbench.useWorkbenchState((state) => state.linkModeOpen);
+  const anySurfaceOpen = useAnyEscapeSurface();
+
+  // Mod+Shift+L toggles connect mode (PBUI-LINK-1 Phase 3), under the same
+  // ownership rule as the launcher's and the rebalance dialog's chords.
+  useEffect(() => {
+    if (!linkModeShortcut) return;
+    const onKey = (event: KeyboardEvent) => {
+      const root = workbench.root();
+      if (!root) return;
+      const focused = window.document.activeElement;
+      const unowned = !focused || focused === window.document.body;
+      const ownsFocus = !unowned && root.contains(focused);
+      const lone = window.document.querySelectorAll("[data-workbench-shell]").length === 1;
+      if (!ownsFocus && !(unowned && lone)) return;
+      const open = workbench.store.getState().linkModeOpen;
+      const decision = routeWorkbenchKey(
+        event,
+        {
+          targetIsEditable: isEditableTarget(event.target as HTMLElement | null),
+          launcherOpen: workbench.store.getState().launcherOpen,
+          // The wire layer is itself an escape surface: closing must stay possible while it is open.
+          dialogOpen: anySurfaceOpen && !open,
+          objectMenuOpen: false,
+          acceptingPresentation: false,
+          renamingView: false,
+        },
+        navigator.platform,
+      );
+      if (decision.kind !== "toggle-link-mode") return;
+      event.preventDefault();
+      workbench.perform({ kind: open ? "link.mode.close" : "link.mode.open" });
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [linkModeShortcut, anySurfaceOpen, workbench]);
   const placing = usePlacement(workbench);
   const tree = document.workspaces.find((workspace) => workspace.id === workspaceId)?.tree;
 
@@ -31,6 +68,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, tileAction, classN
           node={node}
           renderTitle={renderTitle}
           renderBadges={renderBadges}
+          renderPort={renderPort}
           tileAction={tileAction}
           swapLabel={swapLabel}
           dockLabel={dockLabel}
@@ -39,7 +77,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, tileAction, classN
         />
       );
     },
-    [renderTitle, renderBadges, tileAction, swapLabel, dockLabel, replaceLabel, placing],
+    [renderTitle, renderBadges, renderPort, tileAction, swapLabel, dockLabel, replaceLabel, placing],
   );
 
   return (
@@ -48,6 +86,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, tileAction, classN
       data-part="workbench"
       data-workbench-shell=""
       data-launcher-open={launcherOpen || undefined}
+      data-link-mode={linkMode || undefined}
       className={[styles.surface, className ?? ""].filter(Boolean).join(" ")}
     >
       {tree ? (
@@ -57,6 +96,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, tileAction, classN
           <EmptyState message="this workbench has no workspace" hint="create it with layout() or singleTile() and pass it as `initial`" />
         </div>
       )}
+      {linkMode ? <WireLayer {...(renderWire ? { renderWire } : {})} /> : null}
       {placing ? (
         <div className={styles.placing} data-part="workbench-placing" role="status">
           <b>{placing.prompt}</b>
