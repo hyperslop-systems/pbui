@@ -1,4 +1,6 @@
 import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
+import { checkBinding } from "./check";
+import { sourcePortsOfBinding } from "./expression";
 import { checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
 import { labelOf, reaches, type LinkDeps, type LinkSnapshot, type PortDefinition } from "./snapshot";
 import { sourcePortOf, terms, type Binding, type SerializableReference } from "./terms";
@@ -21,6 +23,18 @@ export type LinkPlan =
 const unavailable = (because: string, code: string, alternatives?: LinkVerb[]): LinkPlan => ({ kind: "unavailable", because, code, ...(alternatives ? { alternatives } : {}) });
 const available = (verb: LinkVerb, explanation: string): LinkPlan => ({ kind: "available", verb, explanation });
 
+function checkedCandidate(
+  destination: PortId,
+  binding: Binding,
+  s: LinkSnapshot,
+  deps: LinkDeps,
+): LinkPlan | null {
+  const result = checkBinding(binding, s, deps, destination);
+  return result.kind === "invalid"
+    ? unavailable(result.diagnostic.message, result.diagnostic.code)
+    : null;
+}
+
 export function titleOfPort(definition: PortDefinition): string {
   return `${definition.tileTitle} · ${definition.declaration.name}`;
 }
@@ -31,8 +45,8 @@ export function dependsOn(port: PortId, target: PortId, s: LinkSnapshot, seen: S
   if (seen.has(port)) return false;
   seen.add(port);
   const binding = s.bindings.get(port);
-  const source = binding ? sourcePortOf(binding) : null;
-  return source ? dependsOn(source, target, s, seen) : false;
+  const sources = binding ? sourcePortsOfBinding(binding) : [];
+  return sources.some((source) => dependsOn(source, target, s, seen));
 }
 
 export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot, deps: LinkDeps): LinkPlan {
@@ -53,6 +67,8 @@ export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot,
     return unavailable(`${titleOfPort(S)} already reads from ${titleOfPort(D)}; that would be a cycle`, "cycle");
   }
   const replacing = current && sourcePortOf(current) ? ` (replacing ${current.kind === "follow" ? titleOfPort(s.ports.get(current.source) ?? S) : "its current source"})` : "";
+  const checked = checkedCandidate(destination, terms.follow(source, "__plan__"), s, deps);
+  if (checked) return checked;
   return available(linkVerbs.follow(source, destination), `${titleOfPort(D)} will follow ${titleOfPort(S)}${replacing}`);
 }
 
@@ -67,6 +83,8 @@ export function planBind(port: PortId, reference: SerializableReference, s: Link
   const current = s.bindings.get(port);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
   if (s.aliases.has(port)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(port)} cell; leave the class first`, "shared");
+  const checked = checkedCandidate(port, terms.constant(reference), s, deps);
+  if (checked) return checked;
   return available(linkVerbs.bind(port, reference), `${titleOfPort(D)} will show ${labelOf(reference, deps)}`);
 }
 
@@ -81,6 +99,8 @@ export function planAmbient(port: PortId, context: string, s: LinkSnapshot, deps
   }
   const current = s.bindings.get(port);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
+  const checked = checkedCandidate(port, terms.ambient(context), s, deps);
+  if (checked) return checked;
   return available(linkVerbs.ambient(port, context), `${titleOfPort(D)} will read the ${context} context`);
 }
 
@@ -199,7 +219,16 @@ export function legalRelations(source: PortId, destination: PortId, s: LinkSnaps
   const S = s.ports.get(source);
   const D = s.ports.get(destination);
   if (!S || !D) return [];
-  return (deps.relations ?? []).filter((relation) => reaches(S.declaration.contract.valueType, relation.from, deps.graph) && reaches(relation.to, D.declaration.contract.valueType, deps.graph));
+  return (deps.relations ?? []).filter((relation) => {
+    const sourceMatches =
+      relation.match === "exact"
+        ? S.declaration.contract.valueType === relation.from
+        : reaches(S.declaration.contract.valueType, relation.from, deps.graph);
+    return (
+      sourceMatches &&
+      reaches(relation.to, D.declaration.contract.valueType, deps.graph)
+    );
+  });
 }
 
 /**
@@ -228,6 +257,13 @@ export function planDerive(source: PortId, destination: PortId, relationId: stri
     if (current?.kind === "derived" && current.relationId === relationId && sourcePortOf(current) === source) {
       return unavailable(`${titleOfPort(D)} already derives through ${relation.label ?? relation.id} from ${titleOfPort(S)}`, "already");
     }
+    const candidate = terms.derived(
+      terms.follow(source, "__plan-source__"),
+      relationId,
+      "__plan-derived__",
+    );
+    const checked = checkedCandidate(destination, candidate, s, deps);
+    if (checked) return checked;
     return available({ kind: "port.derive", source, destination, relation: relationId }, `${titleOfPort(D)} will derive through ${relation.label ?? relation.id} from ${titleOfPort(S)}`);
   }
   if (legal.length === 1) return planDerive(source, destination, legal[0]!.id, s, deps);

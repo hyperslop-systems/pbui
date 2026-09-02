@@ -23,7 +23,7 @@ import type { PresentationReference, PresentationValues } from "../types";
  *   picks a translator.
  */
 
-export type TranslatorId = string;
+export type TranslatorId = string; // compatibility name; canonical identity is RelationId
 
 export interface PresentationTranslator<Values extends PresentationValues, ProductFacts> {
   id: TranslatorId;
@@ -43,7 +43,8 @@ export interface PresentationTranslator<Values extends PresentationValues, Produ
 
 /** One candidate outcome of an accept gesture. */
 export interface AcceptanceOption<Values extends PresentationValues> {
-  translator: TranslatorId | null; // null ⇒ direct (identity or subtype)
+  /** null means direct subtype satisfaction; otherwise this is a relation id. */
+  translator: TranslatorId | null;
   result: PresentationReference<Values>;
 }
 

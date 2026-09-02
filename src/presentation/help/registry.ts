@@ -1,12 +1,13 @@
-import { referencedPredicates } from "../actions/conditions";
-import type { PredicateDefinition, ProductPredicate } from "../actions/conditions";
-import type { PredicateId, ScopeId } from "../actions/ids";
+import type { PredicateDefinition } from "../actions/conditions";
+import type { ScopeId } from "../actions/ids";
 import type { PresentationTypeGraph } from "../actions/typeGraph";
 import type { SelectionSnapshot } from "../actions/types";
 import type { PresentationReference, PresentationValues } from "../types";
 import { resolveHelp } from "./resolve";
 import type { PreparedHelpRegistry } from "./resolve";
 import type { HelpContribution, HelpDiagnostic, HelpResolution } from "./types";
+import { createPredicateRegistry, validateConditionPredicates } from "../context/predicates";
+import type { PredicateRegistry } from "../context/predicates";
 
 /**
  * The help registry (design doc §11). Construction is fail-fast in the same
@@ -32,6 +33,8 @@ export interface CreateHelpRegistryOptions<Values extends PresentationValues, Pr
   /** Every scope any rule may declare; unknown scopes throw. */
   scopes: readonly ScopeId[];
   predicates?: readonly PredicateDefinition<Values, ProductFacts>[];
+  /** A prebuilt table supplied by PresentationKernel. Do not combine with predicates. */
+  predicateRegistry?: PredicateRegistry<Values, ProductFacts>;
   contributions: readonly HelpContribution<Values, ProductFacts>[];
   version?: string | number;
 }
@@ -43,13 +46,11 @@ export function createHelpRegistry<Values extends PresentationValues, ProductFac
   const declaredScopes = new Set(options.scopes);
   const version = options.version ?? 1;
 
-  const predicates = new Map<PredicateId, ProductPredicate<Values, ProductFacts>>();
-  for (const definition of options.predicates ?? []) {
-    if (predicates.has(definition.id)) {
-      throw new Error(`duplicate predicate id "${definition.id}"`);
-    }
-    predicates.set(definition.id, definition.evaluate);
+  if (options.predicates && options.predicateRegistry) {
+    throw new Error("createHelpRegistry accepts predicates or predicateRegistry, not both");
   }
+  const predicates =
+    options.predicateRegistry ?? createPredicateRegistry(options.predicates);
 
   const ruleIds = new Set<string>();
   for (const rule of contributions) {
@@ -80,11 +81,11 @@ export function createHelpRegistry<Values extends PresentationValues, ProductFac
     if (rule.priority !== undefined && !Number.isFinite(rule.priority)) {
       throw new Error(`help rule "${rule.id}" has a non-finite priority`);
     }
-    for (const id of rule.when ? referencedPredicates(rule.when) : []) {
-      if (!predicates.has(id)) {
-        throw new Error(`help rule "${rule.id}" references unknown predicate "${id}"`);
-      }
-    }
+    validateConditionPredicates(
+      `help rule "${rule.id}"`,
+      rule.when,
+      predicates,
+    );
   }
 
   const prepared: PreparedHelpRegistry<Values, ProductFacts> = {

@@ -36,6 +36,8 @@ import type {
 import { placeHelpCard } from "./help/place";
 import type { HelpRegistry } from "./help/registry";
 import type { HelpResolution } from "./help/types";
+import { SNAPSHOT_INPUT } from "./kernel/types";
+import type { PresentationKernel, SnapshotInput } from "./kernel/types";
 import { resolveAcceptance } from "./translators/resolve";
 import type {
   AcceptanceOption,
@@ -51,54 +53,68 @@ import type {
   PresentationValues,
 } from "./types";
 
-export interface CreatePbuiOptions<
+interface CreatePbuiCommonOptions<
   Values extends PresentationValues,
   Environment,
-  Verb,
-  ProductFacts,
 > {
-  registry: PresentationDescriptorRegistry<Values, Environment>;
   defaultEnvironment: Environment;
   renderMenuHeader?: (
     reference: PresentationReference<Values>,
     environment: Environment,
     label: ReactNode,
   ) => ReactNode;
-  /**
-   * The action-selection kernel (PBUI-ACTIONS-2). REQUIRED since 0.8.0:
-   * there is exactly one selection engine, and every menu row, primary
-   * click, and agent-visible action resolves through it.
-   *
-   * `actions` and `snapshotFor` come together: the kernel never reads live
-   * stores, so the product must say how a query's immutable fact snapshot
-   * is built from the environment.
-   */
+  helpRenderers?: HelpRendererRegistry;
+}
+
+/** Compatibility assembly retained while products migrate to one kernel. */
+export interface LegacyCreatePbuiOptions<
+  Values extends PresentationValues,
+  Environment,
+  Verb,
+  ProductFacts,
+> extends CreatePbuiCommonOptions<Values, Environment> {
+  registry: PresentationDescriptorRegistry<Values, Environment>;
   actions: ActionRegistry<Values, ProductFacts, Verb>;
   snapshotFor(
     query: ActionQuery<Values>,
     environment: Environment,
   ): SelectionSnapshot<ProductFacts>;
-  /**
-   * Typed accept translators (PBUI-ACTIONS-2 P6): declared source/target/
-   * scope edges resolved by the nearest-scope-then-priority ladder, with a
-   * genuine remainder opening the chooser. Acceptance always has
-   * graph-subtype satisfaction (the ORIGINAL reference settles the request)
-   * whether or not translators are declared. Mount `AcceptChooser` alongside
-   * `AcceptBanner` — a product whose translators can tie needs the chooser
-   * on screen.
-   */
   translators?: readonly PresentationTranslator<Values, ProductFacts>[];
-  /**
-   * The contextual help kernel (PBUI-HELP-001), OPTIONAL unlike `actions`:
-   * with neither `help` nor `helpRenderers` configured, `Presentation`
-   * allocates no help state, schedules no timers, and renders exactly the
-   * DOM it renders today. When configured, hovering or focusing a
-   * presentation resolves additive help rules lazily — against the same
-   * `snapshotFor` facts as action introspection — and shows them in the one
-   * `ContextHelp` surface the product mounts beside `ObjectMenu`.
-   */
   help?: HelpRegistry<Values, ProductFacts>;
-  helpRenderers?: HelpRendererRegistry;
+}
+
+/** Preferred assembly: one declaration-built kernel plus product facts. */
+export interface KernelCreatePbuiOptions<
+  Values extends PresentationValues,
+  Environment,
+  Verb,
+  ProductFacts,
+> extends CreatePbuiCommonOptions<Values, Environment> {
+  kernel: PresentationKernel<Values, Environment, ProductFacts, Verb>;
+  factsFor(
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ): ProductFacts | SnapshotInput<ProductFacts>;
+}
+
+export type CreatePbuiOptions<
+  Values extends PresentationValues,
+  Environment,
+  Verb,
+  ProductFacts,
+> =
+  | LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>
+  | KernelCreatePbuiOptions<Values, Environment, Verb, ProductFacts>;
+
+function isSnapshotInput<ProductFacts>(
+  value: ProductFacts | SnapshotInput<ProductFacts>,
+): value is SnapshotInput<ProductFacts> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    SNAPSHOT_INPUT in value &&
+    value[SNAPSHOT_INPUT] === true
+  );
 }
 
 /** How long the pointer rests on a presentation before its help opens. */
@@ -152,6 +168,14 @@ export interface PbuiHelpState<Values extends PresentationValues, ProductFacts> 
   trigger: "pointer" | "focus";
 }
 
+export interface PbuiRefusal<Values extends PresentationValues> {
+  readonly code: string;
+  readonly because?: string;
+  readonly action?: string;
+  readonly candidateId?: string;
+  readonly subject?: PresentationReference<Values>;
+}
+
 export interface PbuiProviderProps<
   Values extends PresentationValues,
   Environment,
@@ -179,6 +203,8 @@ export interface PbuiProviderProps<
    * gateways stay the security boundary.
    */
   actor?: string;
+  /** Fresh-revalidation refusals; absent preserves the legacy silent behavior. */
+  onRefuse?(refusal: PbuiRefusal<Values>): void;
 }
 
 /**
@@ -336,21 +362,32 @@ export function createPbui<
   Environment,
   Verb,
   ProductFacts,
->({
-  registry,
-  defaultEnvironment,
-  renderMenuHeader,
-  actions,
-  snapshotFor,
-  translators = [],
-  help,
-  helpRenderers,
-}: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
+>(options: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
-
-  const actionEngine = actions;
-  const snapshotOf = snapshotFor;
-  const helpEngine = help ?? null;
+  const { defaultEnvironment, renderMenuHeader, helpRenderers } = options;
+  const kernelEngine = "kernel" in options ? options.kernel : null;
+  const registry =
+    kernelEngine?.descriptors ??
+    (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).registry;
+  const actionEngine =
+    kernelEngine?.actions ??
+    (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).actions;
+  const translators =
+    "kernel" in options ? [] : options.translators ?? [];
+  const helpEngine =
+    kernelEngine?.help ?? ("kernel" in options ? null : options.help ?? null);
+  const snapshotOf = (
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ): SelectionSnapshot<ProductFacts> => {
+    if ("kernel" in options) {
+      const produced = options.factsFor(query, environment);
+      return isSnapshotInput(produced)
+        ? options.kernel.snapshot(produced.facts, produced.options)
+        : options.kernel.snapshot(produced);
+    }
+    return options.snapshotFor(query, environment);
+  };
   const helpRendererRegistry = helpRenderers ?? null;
   const helpEnabled = helpEngine !== null && helpRendererRegistry !== null;
 
@@ -367,12 +404,14 @@ export function createPbui<
     environment: Environment,
   ): AcceptanceResolution<Values> {
     const snapshot = snapshotOf({ subject: reference, invocation: "accept" }, environment);
-    return resolveAcceptance(
-      { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
-      request,
-      reference,
-      snapshot,
-    );
+    return kernelEngine
+      ? kernelEngine.accept(request, reference, snapshot)
+      : resolveAcceptance(
+          { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
+          request,
+          reference,
+          snapshot,
+        );
   }
 
   function Provider({
@@ -381,6 +420,7 @@ export function createPbui<
     onPerform,
     onAccept,
     actor,
+    onRefuse,
   }: PbuiProviderProps<Values, Environment, Verb>) {
     const [accepting, setAccepting] = useState<AcceptRequest<Values> | null>(null);
     const [acceptChooser, setAcceptChooser] = useState<readonly AcceptanceOption<Values>[] | null>(
@@ -539,7 +579,16 @@ export function createPbui<
           setMenu(null);
           const fresh = actionEngine.resolve(stale.query, snapshotOf(stale.query, environment));
           const decision = evaluateFresh(stale, fresh);
-          if (decision.kind !== "proceed") return decision;
+          if (decision.kind !== "proceed") {
+            onRefuse?.({
+              code: decision.code,
+              ...(decision.because !== undefined ? { because: decision.because } : {}),
+              action: stale.action,
+              candidateId: stale.candidateId,
+              subject: stale.query.subject,
+            });
+            return decision;
+          }
           try {
             // Called synchronously within the click segment; the fresh verb,
             // never the stale one — and the envelope is built from the FRESH
@@ -571,6 +620,7 @@ export function createPbui<
         helpDispatch,
         settle,
         onPerform,
+        onRefuse,
         actor,
       ],
     );
@@ -1266,6 +1316,7 @@ export function createPbui<
     ContextHelp,
     usePbui,
     registry,
+    kernel: kernelEngine,
   };
 }
 

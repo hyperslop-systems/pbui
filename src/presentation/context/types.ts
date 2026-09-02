@@ -4,16 +4,17 @@ import type { RuntimeTypeId, ScopeId } from "../actions/ids";
 /**
  * The shared contextual-matching contracts (PBUI-HELP-001, design doc §6).
  *
- * A ContextTarget is the part of a contribution that says WHERE it applies —
+ * A PresentationSelector is the part of a contribution that says WHERE it applies —
  * a declared type with exact/subtype reach, declared scopes, and optionally a
  * declarative condition. Both the action kernel and the help kernel declare
  * targets; only what happens AFTER a match differs (actions compete per
  * action id, help accumulates). Nothing here is action- or help-specific.
  */
 
-export interface ContextTarget {
+export interface PresentationSelector {
   subject: RuntimeTypeId;
   match: "exact" | "subtypes";
+  /** Empty means universal; action/help registries deliberately require explicit scopes. */
   scopes: readonly ScopeId[];
   /**
    * Optional declarative gate. The ACTION caller does not pass one: a failing
@@ -40,3 +41,6 @@ export interface ContextMatch {
 export type ContextMatchResult =
   | { kind: "matched"; match: ContextMatch }
   | { kind: "rejected"; stage: "type" | "scope" | "condition"; reason: string };
+
+/** Compatibility name retained for PBUI-HELP-001 consumers. */
+export type ContextTarget = PresentationSelector;

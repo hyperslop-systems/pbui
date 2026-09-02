@@ -5,7 +5,7 @@ import type { PresentationTypeGraph } from "../actions/typeGraph";
 import type { PresentationReference, PresentationValues } from "../types";
 import type { RuntimeTypeId } from "../actions/ids";
 import type { SelectionSnapshot } from "../actions/types";
-import type { ContextMatchResult, ContextTarget } from "./types";
+import type { ContextMatchResult, PresentationSelector } from "./types";
 
 /**
  * The shared contextual matcher (PBUI-HELP-001, design doc §6.1) — the front
@@ -39,8 +39,8 @@ export function activeScope(
   return best;
 }
 
-export function matchContext<Values extends PresentationValues, ProductFacts>(
-  target: ContextTarget,
+export function matchSelector<Values extends PresentationValues, ProductFacts>(
+  target: PresentationSelector,
   subject: PresentationReference<Values>,
   snapshot: SelectionSnapshot<ProductFacts>,
   graph: PresentationTypeGraph,
@@ -74,7 +74,10 @@ export function matchContext<Values extends PresentationValues, ProductFacts>(
 
   /* scope ----------------------------------------------------------------- */
 
-  const scope = activeScope(target.scopes, snapshot.scopes);
+  const scope =
+    target.scopes.length === 0
+      ? { scope: snapshot.scopes[0] ?? "__unscoped__", index: 0 }
+      : activeScope(target.scopes, snapshot.scopes);
   if (scope === null) {
     return { kind: "rejected", stage: "scope", reason: "no-active-scope" };
   }
@@ -108,3 +111,6 @@ export function matchContext<Values extends PresentationValues, ProductFacts>(
     },
   };
 }
+
+/** Compatibility name retained for existing action/help integrations. */
+export const matchContext = matchSelector;

@@ -14,8 +14,13 @@ export * from "./help";
  * A sibling of the action kernel; no React at runtime.
  */
 export * from "./links";
-export { activeScope, matchContext } from "./context/match";
-export type { ContextMatch, ContextMatchResult, ContextTarget } from "./context/types";
+export { activeScope, matchContext, matchSelector } from "./context/match";
+export { createPredicateRegistry, validateConditionPredicates } from "./context/predicates";
+export type { PredicateRegistry } from "./context/predicates";
+export type { ContextMatch, ContextMatchResult, ContextTarget, PresentationSelector } from "./context/types";
+/* Canonical typed semantic arrows and the one-declaration kernel. */
+export * from "./relations";
+export * from "./kernel";
 export { resolveAcceptance } from "./translators/resolve";
 export type {
   AcceptanceOption,
@@ -26,6 +31,9 @@ export type {
 export { createPresentationRegistry } from "./registry";
 export type {
   CreatePbuiOptions,
+  KernelCreatePbuiOptions,
+  LegacyCreatePbuiOptions,
+  PbuiRefusal,
   PbuiContextValue,
   PbuiInstance,
   PbuiProviderProps,

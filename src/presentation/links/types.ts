@@ -27,20 +27,27 @@ export type FanInPolicy = "single-producer" | "active-source" | "last-event";
 /** What a follower does when its source view closes (report §11.3). Default `freeze`. */
 export type SourceClosePolicy = "freeze" | "clear" | "ambient" | "reroute" | "prompt";
 
-/** The seven identity fields, normalized. Compared field by field by `contractMismatches`. */
-export interface PortContract {
+/** The value carried by a port, independent of its communication protocol. */
+export interface ValueContract {
   /** A runtime type id in the product's presentation type graph; compared nominally. */
   readonly valueType: RuntimeTypeId;
-  /** The semantic role, e.g. `order.current`, `selection`, `subject`. Defaults to the value type. */
+  /** The semantic role, e.g. `order.current`, `selection`, `subject`. */
   readonly semanticRole: string;
   readonly cardinality: PortCardinality;
+}
+
+/** Authority, update and lifetime semantics of the communication endpoint. */
+export interface PortProtocol {
   readonly mode: PortMode;
-  /** Who is allowed to write the cell; a table name, a relation id, or `workspace`. */
+  /** Who is allowed to write the cell; a table name, relation id, or `workspace`. */
   readonly authorityDomain: string;
   /** `replace` (the default) or a product-named algebra such as `union`. */
   readonly updateAlgebra: "replace" | (string & {});
   readonly lifetime: PortLifetime;
 }
+
+/** Normalized contract = value contract x endpoint protocol. */
+export interface PortContract extends ValueContract, PortProtocol {}
 
 /** What an application writes: only `valueType` is required. */
 export interface PortContractInput {
@@ -150,16 +157,43 @@ export function normalizeContract(input: PortContractInput | RuntimeTypeId, dire
   };
 }
 
-/** The identity fields in the fixed order P06 hashes them; the fingerprint is their join. */
-export const CONTRACT_IDENTITY_FIELDS: readonly (keyof PortContract)[] = [
+/** Fields relevant to value compatibility. */
+export const VALUE_CONTRACT_FIELDS: readonly (keyof ValueContract)[] = [
   "valueType",
   "semanticRole",
   "cardinality",
+];
+
+/** Fields relevant to endpoint protocol compatibility. */
+export const PORT_PROTOCOL_FIELDS: readonly (keyof PortProtocol)[] = [
   "mode",
   "authorityDomain",
   "updateAlgebra",
   "lifetime",
 ];
+
+/** The identity fields in the fixed order P06 hashes them. */
+export const CONTRACT_IDENTITY_FIELDS: readonly (keyof PortContract)[] = [
+  ...VALUE_CONTRACT_FIELDS,
+  ...PORT_PROTOCOL_FIELDS,
+];
+
+export function valueContractOf(contract: PortContract): ValueContract {
+  return {
+    valueType: contract.valueType,
+    semanticRole: contract.semanticRole,
+    cardinality: contract.cardinality,
+  };
+}
+
+export function portProtocolOf(contract: PortContract): PortProtocol {
+  return {
+    mode: contract.mode,
+    authorityDomain: contract.authorityDomain,
+    updateAlgebra: contract.updateAlgebra,
+    lifetime: contract.lifetime,
+  };
+}
 
 /** A stable string two contracts share exactly when they are identity-compatible. */
 export function contractFingerprint(contract: PortContract): string {

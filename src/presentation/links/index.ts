@@ -7,6 +7,8 @@
 
 export {
   CONTRACT_IDENTITY_FIELDS,
+  PORT_PROTOCOL_FIELDS,
+  VALUE_CONTRACT_FIELDS,
   DOCUMENT_VALUE_TYPE,
   contractFingerprint,
   contractMismatches,
@@ -16,6 +18,8 @@ export {
   documentSlotsOf,
   hasDocumentSlot,
   normalizeContract,
+  portProtocolOf,
+  valueContractOf,
   parsePortId,
   portId,
   refineDeclaration,
@@ -32,17 +36,35 @@ export type {
   PortId,
   PortLifetime,
   PortMode,
+  PortProtocol,
   SourceClosePolicy,
+  ValueContract,
 } from "./types";
 export { describeBinding, isBinding, isSerializableReference, linkIdOf, sameReference, sourcePortOf, terms } from "./terms";
 export type { Binding, Diagnostic, SerializableReference } from "./terms";
+export {
+  bindingOf,
+  dependenciesOfBinding,
+  dependenciesOfProgram,
+  normalizeBinding,
+  programOf,
+  sourcePortsOfBinding,
+} from "./expression";
+export type {
+  BindingDependencies,
+  BindingExpression,
+  BindingProgram,
+  BindingSource,
+} from "./expression";
+export { checkBinding } from "./check";
+export type { BindingCheckDiagnostic, BindingCheckResult } from "./check";
 export { LINK_VERB_KINDS, describeLinkVerb, isLinkVerb, linkVerbs } from "./verbs";
 export type { LinkVerb, LinkVerbKind, UnlinkPolicy } from "./verbs";
 export { EMPTY_LINK_STATE, labelOf, reaches } from "./snapshot";
-export type { ContextDefinition, LinkDeps, LinkSnapshot, LinkState, LinkValues, PortDefinition, RelationDefinition } from "./snapshot";
-export { checkIdentityCompatibility, compatibilityOf, compileIdentity } from "./identity";
-export type { ClassLineage, CompiledIdentity, Compatibility, IdentityClass, IdentityDeclaration, IdentityDiagnostic, MergePolicy, SplitPolicy } from "./identity";
-export { effectiveBinding, evaluateBinding, evaluatePort, valueToHold } from "./evaluate";
+export type { ContextDefinition, LinkDeps, LinkRelationEvaluation, LinkSnapshot, LinkState, LinkValues, PortDefinition, RelationDefinition } from "./snapshot";
+export { checkIdentityCompatibility, compatibilityOf, compileIdentity, compileIdentityQuotient, identityQuotientOf, logicalCellOf } from "./identity";
+export type { ClassLineage, CompiledIdentity, Compatibility, IdentityClass, IdentityDeclaration, IdentityDiagnostic, IdentityQuotient, LogicalCell, MergePolicy, SplitPolicy } from "./identity";
+export { effectiveBinding, effectiveProgram, evaluateBinding, evaluatePort, evaluateProgram, valueToHold } from "./evaluate";
 export type { Evaluation } from "./evaluate";
 export {
   dependsOn,

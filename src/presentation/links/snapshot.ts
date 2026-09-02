@@ -75,9 +75,19 @@ export interface RelationDefinition {
   readonly id: string;
   readonly from: RuntimeTypeId;
   readonly to: RuntimeTypeId;
+  /** Source matching discipline. Absent preserves the legacy subtype-reach behavior. */
+  readonly match?: "exact" | "subtypes";
   /** One line for the palette and the wire label; defaults to the id. */
   readonly label?: string;
 }
+
+export type LinkRelationEvaluation =
+  | { readonly kind: "value"; readonly reference: SerializableReference }
+  | { readonly kind: "empty" }
+  | {
+      readonly kind: "error";
+      readonly diagnostic: { readonly code: string; readonly message: string };
+    };
 
 export interface LinkDeps {
   readonly graph: PresentationTypeGraph;
@@ -88,6 +98,12 @@ export interface LinkDeps {
    * Absent ⇒ every `Derived` term evaluates to a diagnostic.
    */
   relation?(relationId: string, reference: SerializableReference, snapshot: LinkSnapshot): SerializableReference | undefined;
+  /** Detailed canonical evaluator; preferred over the compatibility callback. */
+  relationEvaluation?(
+    relationId: string,
+    reference: SerializableReference,
+    snapshot: LinkSnapshot,
+  ): LinkRelationEvaluation;
   /** How a value is named in a badge or menu row; defaults to `<type>`. */
   label?(reference: SerializableReference): string;
 }

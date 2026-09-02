@@ -81,12 +81,20 @@ export function checkIdentityCompatibility(a: PortId, b: PortId, s: LinkSnapshot
 
 class UnionFind {
   private readonly parent = new Map<PortId, PortId>();
+  private readonly rank = new Map<PortId, number>();
   find(x: PortId): PortId {
     let root = x;
-    while (this.parent.get(root) !== undefined && this.parent.get(root) !== root) root = this.parent.get(root)!;
-    // Path compression, for tidiness on small sets.
+    while (
+      this.parent.get(root) !== undefined &&
+      this.parent.get(root) !== root
+    ) {
+      root = this.parent.get(root)!;
+    }
     let cursor = x;
-    while (this.parent.get(cursor) !== undefined && this.parent.get(cursor) !== root) {
+    while (
+      this.parent.get(cursor) !== undefined &&
+      this.parent.get(cursor) !== root
+    ) {
       const next = this.parent.get(cursor)!;
       this.parent.set(cursor, root);
       cursor = next;
@@ -94,7 +102,10 @@ class UnionFind {
     return root;
   }
   add(x: PortId): void {
-    if (!this.parent.has(x)) this.parent.set(x, x);
+    if (!this.parent.has(x)) {
+      this.parent.set(x, x);
+      this.rank.set(x, 0);
+    }
   }
   union(a: PortId, b: PortId): void {
     this.add(a);
@@ -102,9 +113,23 @@ class UnionFind {
     const ra = this.find(a);
     const rb = this.find(b);
     if (ra === rb) return;
-    // Deterministic: the lexically smaller root wins.
-    if (ra < rb) this.parent.set(rb, ra);
-    else this.parent.set(ra, rb);
+
+    const rankA = this.rank.get(ra) ?? 0;
+    const rankB = this.rank.get(rb) ?? 0;
+    if (rankA < rankB) {
+      this.parent.set(ra, rb);
+      return;
+    }
+    if (rankB < rankA) {
+      this.parent.set(rb, ra);
+      return;
+    }
+
+    // Equal-rank ties use lexical order so compilation remains deterministic.
+    const root = ra < rb ? ra : rb;
+    const child = root === ra ? rb : ra;
+    this.parent.set(child, root);
+    this.rank.set(root, rankA + 1);
   }
   members(): Map<PortId, PortId[]> {
     const out = new Map<PortId, PortId[]>();
@@ -212,4 +237,42 @@ export function compileIdentity(declarations: readonly IdentityDeclaration[], po
   const aliases = new Map<PortId, string>();
   for (const cls of classes) for (const member of cls.members) aliases.set(member, cls.id);
   return { classes, aliases, lineage, diagnostics };
+}
+
+/** A logical shared cell is one equivalence class in the quotient Ports / ~. */
+export type LogicalCell = IdentityClass;
+
+/** Runtime quotient view: declarations induce cells; directed bindings do not. */
+export interface IdentityQuotient {
+  readonly cells: readonly LogicalCell[];
+  readonly cellByPort: ReadonlyMap<PortId, string>;
+  readonly lineage: ReadonlyMap<string, ClassLineage>;
+  readonly diagnostics: readonly IdentityDiagnostic[];
+}
+
+export function identityQuotientOf(
+  compiled: CompiledIdentity,
+): IdentityQuotient {
+  return {
+    cells: compiled.classes,
+    cellByPort: compiled.aliases,
+    lineage: compiled.lineage,
+    diagnostics: compiled.diagnostics,
+  };
+}
+
+export function compileIdentityQuotient(
+  declarations: readonly IdentityDeclaration[],
+  ports: ReadonlyMap<PortId, PortDefinition>,
+  previous: readonly IdentityClass[] = [],
+): IdentityQuotient {
+  return identityQuotientOf(compileIdentity(declarations, ports, previous));
+}
+
+export function logicalCellOf(
+  port: PortId,
+  quotient: IdentityQuotient,
+): LogicalCell | null {
+  const id = quotient.cellByPort.get(port);
+  return id ? quotient.cells.find((cell) => cell.id === id) ?? null : null;
 }

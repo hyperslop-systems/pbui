@@ -1,6 +1,7 @@
 import { evaluatePort } from "./evaluate";
 import type { LinkDeps, LinkSnapshot } from "./snapshot";
-import { linkIdOf, sourcePortOf } from "./terms";
+import { dependenciesOfBinding } from "./expression";
+import { linkIdOf } from "./terms";
 import { contractFingerprint } from "./types";
 
 /*
@@ -26,9 +27,10 @@ export function checkInvariants(s: LinkSnapshot, deps: LinkDeps): Violation[] {
     if (definition.declaration.documentSlot && binding.kind === "constant") {
       out.push({ code: "slot-constant", message: `${port} is a document slot; its constant belongs in view.documents` });
     }
-    const source = sourcePortOf(binding);
-    if (source && !s.ports.has(source) && binding.kind !== "hold") {
-      out.push({ code: "source-missing", message: `${port} reads ${source}, which is not a declared port` });
+    for (const source of dependenciesOfBinding(binding, { includeSuspended: false }).ports) {
+      if (!s.ports.has(source)) {
+        out.push({ code: "source-missing", message: `${port} reads ${source}, which is not a declared port` });
+      }
     }
     const linkId = linkIdOf(binding);
     if (linkId) {
