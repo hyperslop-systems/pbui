@@ -32,10 +32,10 @@ Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–
 
 ## Phase 2: Canonical relation system
 
-- [ ] Relation exposure metadata; discovery filtered by interpreter <!-- t:p2a -->
-- [ ] Abstract codomain allowed; abstract/undeclared runtime output rejected <!-- t:p2b -->
-- [ ] Composition validation (acyclic, endpoint compatibility, inferred from/to) <!-- t:p2c -->
-- [ ] Relation vocabulary projection; scenario + property tests <!-- t:p2d -->
+- [x] Relation exposure metadata; discovery filtered by interpreter <!-- t:p2a -->
+- [x] Abstract codomain allowed; abstract/undeclared runtime output rejected <!-- t:p2b -->
+- [x] Composition validation (acyclic, endpoint compatibility, inferred from/to) <!-- t:p2c -->
+- [x] Relation vocabulary projection; scenario + property tests <!-- t:p2d -->
 
 ## Phase 3: Compiled model and fragments
 

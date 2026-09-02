@@ -53,3 +53,12 @@ Step 5 / Phase 1: applied the prototype patch (d2ee0c2); one selector substrate 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/actions/typeGraph.ts — Closed world — undeclared subject types throw
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/context/selector.ts — The shared selector: selectorOf, matchSelector, requireScoped
 
+
+## 2026-09-02
+
+Step 6 / Phase 2: relation exposure, exposed(interpreter) discovery filter, abstract codomains with concrete outputs, unreachable-private diagnostic (commit 0309a70)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/relations/system.ts — Exposure normalization, filtered discovery, output validation
+

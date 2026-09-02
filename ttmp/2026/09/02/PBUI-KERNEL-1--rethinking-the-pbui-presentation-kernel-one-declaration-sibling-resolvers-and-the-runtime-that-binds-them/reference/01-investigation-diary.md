@@ -437,3 +437,55 @@ The action resolver's inline `"*"` path is deleted; families use `anyDeclaredTyp
 
 ### Technical details
 - Ranking change in `translators/resolve.ts`: `scopeIndex: candidate.match.scopeIndex ?? Number.POSITIVE_INFINITY`.
+
+## Step 6: Phase 2 — relations declare who may discover them
+
+The prototype's relation system already had the right shape (named contextual partial functions, explicit composition, detailed outcomes). Phase 2 adds what §10 says was missing: every relation and composition carries a required `exposure` naming the interpreters that may discover it (`acceptance`, `facet`, `derivation` with the serializable transport contract), discovery is filtered by exposure before any relation runs, and a relation that exposes nothing and is named by no composition is an advisory `diagnostics()` finding rather than a silent dead declaration. Abstract codomains became legal (C8): a relation may promise `party` and return a `customer`; evaluation rejects undeclared, abstract, and non-reaching outputs with three distinct messages. The prototype's `requireConcreteTargets` flag is gone.
+
+Acceptance now asks for `exposedTo: "acceptance"`; the kernel's link dependency projection offers only `exposed("derivation")` (one line of Phase 7 brought forward because it fell out of the same change). `relationFromTranslator` marks its output acceptance-exposed so the compatibility path keeps working until Phase 4 deletes it.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Land the relation-system deltas of guide §10 and §19.3 on the applied prototype.
+
+**Inferred user intent:** A relation registry where a convenient acceptance conversion can never silently become a persistent link operator (risk §21.2).
+
+**Commit (code):** 0309a70 — "PBUI-KERNEL-1 P2: canonical relations — interpreter exposure, abstract codomains, diagnostics"
+
+### What I did
+- `relations/types.ts`: `RelationInterpreter`, `RelationExposure`, `RelationDiscoveryOptions`, `RelationDiagnostic`; `exposure` required on `RelationDeclarationBase`; definitions carry exposure.
+- `relations/system.ts`: `normalizeExposure` (throws on missing exposure or a non-serializable derivation transport); `referenced` set while preparing compositions; `exposed(interpreter)`, `diagnostics()`, `applicable/matches(reference, snapshot, { targets, exposedTo })`; evaluation splits undeclared / abstract / non-reaching outputs.
+- `relations/system.test.ts`: rewritten around a `party` abstract node; adds exposure, private-step, orphan-diagnostic, "unexposed relation does not change acceptance", abstract-codomain, abstract-output, and outcome-kind tests.
+- `translators/resolve.ts`, `kernel/create.ts`, `relations/adapters.ts`, `kernel/kernel.test.ts` adjusted.
+- Validation: root typecheck clean; 357 tests; `pnpm build` + `pnpm -r typecheck` clean.
+
+### Why
+- C6: one relation system with per-relation exposure, rather than separate registries or everything-everywhere.
+- C8: abstract codomains are useful contracts for families of concrete results; the runtime still needs descriptor-bearing concrete types, so the check moves to evaluation.
+
+### What worked
+- Threading exposure through `PreparedPresentationRelation` meant `exposed()` is a filter over the prepared list; no second index.
+
+### What didn't work
+- The Write tool refused `relations/system.ts` ("modified since read") because an earlier `sed` had touched it; the edits went through a Python replace script instead. No behavior impact.
+
+### What I learned
+- Exposure and `referenced` interact: the orphan diagnostic must be computed after every composition is prepared, because a private relation is reachable only through a composition that names it.
+
+### What was tricky to build
+- Keeping composition endpoint checks honest under abstract codomains: an exact next step needs the previous step's exact codomain, a subtypes next step needs the promised codomain to reach its source. An abstract previous codomain into an exact concrete next step is correctly rejected.
+
+### What warrants a second pair of eyes
+- `matches()` without `exposedTo` returns every relation (the tests use it that way). Product code should always pass an interpreter; the model layer in Phase 3 should not expose the unfiltered form.
+
+### What should be done in the future
+- Phase 3: `model/` replaces `kernel/`; relation diagnostics join the model's `diagnostics()`.
+
+### Code review instructions
+- `relations/system.ts`: `normalizeExposure`, `discoverable`, `execute`; then `relations/system.test.ts` "exposure (C6)" and "codomains and outputs (C8)".
+- `pnpm test -- relations`.
+
+### Technical details
+- Discovery API: `relations.matches(reference, snapshot, { targets: ["account"], exposedTo: "acceptance" })`.
