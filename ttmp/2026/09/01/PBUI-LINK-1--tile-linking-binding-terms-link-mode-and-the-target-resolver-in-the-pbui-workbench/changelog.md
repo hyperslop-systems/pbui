@@ -111,3 +111,8 @@ Phase 7 (commit aede49f): describeWorkbench links/contexts, CoordinationInspecto
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.tsx — The inspector tile
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/pkg/workbench/links.go — Server-side structural validation of pbui.links
 
+
+## 2026-09-01
+
+Wrap-up: guide §17 (implementation record and deviations), index status IMPLEMENTED, guide + diary bundle re-uploaded to reMarkable /ai/2026/09/01/PBUI-LINK-1
+

@@ -1340,6 +1340,45 @@ Stories for `PortBadge` (every state), `PortRail`, `WireLayer` (every term style
 
 7. **Per-view contracts.** A plot tile's `selection` authority domain is the table it is bound to, which is a fact of the VIEW, while `PortContract` is declared per APP. Phase 1 declares `authorityDomain: "plot"`; Phase 5's identity check needs either a `refineContract(view)` hook on the declaration or a contract the shell computes from the document slots. Proposed: the hook, because the declaration stays the single place a reader looks.
 
+## 17. Implementation record (2026-09-01)
+
+All seven phases and the Phase 0 freeze were implemented on 2026-09-01 on branch `task/add-plot-editor`. The diary (`reference/01-investigation-diary.md`, steps 4–11) records each phase; this section records where the built system departs from the guide above, so a reader does not take the design text as the last word.
+
+| Phase | Commit | What landed |
+|---|---|---|
+| 0 | `cc771ca` | golden tests: cross-workspace doc-bound de-dup, `describeWorkbench` snapshot |
+| 1 | `4833208` | `links/types.ts`; `AppDescriptor.ports` replaces `bindings`/`docBound` in five packages; `pbui-ecommerce` scaffold on the gold-coin shop (D11) |
+| 2 | `cfa91b2` | kernel (terms, evaluate, plan, apply, lifecycle, badge, invariants), `pbui.links`, runtime, verbs in the union, `usePort`, badge, port menus, "Link to…" family; shop scenes 1–2 |
+| 3 | `cbcdf11` | `usePortCarry`, Mod+Shift+L, `PortRail`, `WireLayer`, wire menus; five real-pointer scenarios |
+| 4 | `f9b2444` | `resolveShow`, the `show` verb, `view.open` with `viewId`, spawn + follow in one plan, `ShowChooser`; "Show details…" |
+| 5 | `06b8c35` | `refineContract` per view (Q7), `identity.ts`, `LinkState`, merge/split policies as runtime effects, Ctrl-drag, double wire; shop shared selection and category filter |
+| 6 | `4e73712` | relations on `LinkDeps`, `planDerive`, `port.derive`, `RelationPalette`; the shop's relations serve accept mode and derived bindings |
+| 7 | `aede49f` | `describeWorkbench.links`, `CoordinationInspector`, `LinkAnnouncer`, agent test, Go `LinksDocumentValidator` |
+
+### 17.1 Deviations from the design text
+
+- **§6.8.1, badges for document slots.** `badgesOfView` hides a document-slot port whose only term is its slot constant (the tile title already names the document); it shows one only when an explicit term overrides the slot. The guide's `• Mass and yield` example is therefore not rendered by default.
+- **§6.8.1, badge placement.** Badges render BESIDE the product's `<tile>` presentation, never inside it (user review: no nested frames).
+- **§6.8.2, the family's fallback.** "Link to…" lists every compatible input on screen with no cap and no accept-mode fallback; unbound inputs have no badge to point at outside connect mode, so accept mode over `<port>` was not built. The rows bind `show` intents with candidate ids (Phase 4), as §8.6 asks.
+- **§6.8.3, keyboard connect mode.** Tab/Enter navigation of the rails (§6.8.7) was not built; the rails are pointer-driven, with Escape.
+- **§6.5, contexts.** Contexts come from `fallbackContext` and the new `drivesContext` declarations only; `context.create`/`context.drive` verbs and `kind: "context"` show candidates were not built.
+- **§6.6, verbs.** `port.follow` has no `replace` flag; a follow onto a followed port replaces the source (the planner explains it). `port.unlink` policies are `freeze | clear | ambient`; the identity split policies are on `identity.remove` (`copy | history | reset`).
+- **§6.8.3, identity instrument.** A merge-policy popover was not built: Ctrl-drag uses `prefer-left`; `planIdentityAdd` reports `cellsDiffer` for an instrument to use.
+- **§11.1, table tiles.** The three table tiles carry no `table` document slot; only the plot does. The plot's `selection` authority is refined per view from its `table` slot (Q7).
+- **§13.3 Q6.** Resolved lenient: the Go validator (`pkg/workbench/links.go`) checks the payload's SHAPE; semantic refusals stay in the client kernel.
+- **§12.4.** The real-interaction suite is `packages/pbui-ecommerce/e2e/scenes.mjs` on the `playwright` library against Storybook (nine scenarios), not a `@playwright/test` project.
+
+### 17.2 Kernel additions beyond the guide
+
+- `refineContract(view)` on `PortDeclarationInput` (Q7), `drivesContext` on outputs, `LinkState` as the persisted whole (bindings, identity, classes, history), `RuntimeEffect`s returned by `applyLinkVerb`, an unbound OUT/INOUT port evaluating to its own emission, `relation.palette.open/close` browser-local verbs, `view.open { viewId }` so a plan can name a new view's ports.
+
+### 17.3 Test inventory
+
+- Kernel: 59 tests in `src/presentation/links/*.test.ts` (plus the no-React fence).
+- pbui-workbench: 31 files, 281 tests (`links/*.test.tsx` cover follow/pin/resume, lifecycle, connect mode, show, identity, derive).
+- pbui-ecommerce: 7 files, 35 tests, and 9 real-pointer scenarios.
+- pbui-chat: 2 agent-linking tests; `pkg/workbench`: 3 Go tests.
+
 ## 14. File reference and reading order
 
 Read in this order:

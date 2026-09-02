@@ -26,7 +26,7 @@ WhenToUse: 'When starting Phase 0/1 of tile linking, or when a product wants to 
 
 Tile linking lets one pbui tile feed, follow, share, or derive its content from another, with a visible and inspectable representation of the coupling. This ticket studies the linked-tiles research (the formal report, the audited toy model, the agent-workbench prototype, the P06 identity compiler) against the real pbui codebase and produces one intern-level guide: what exists (action kernel, accept mode, workbench document bindings, verbs, chrome, product integrations), what is missing term by term, a design (ports and contracts on `AppDescriptor`, binding terms, a pure link kernel in `pbui/src/presentation/links/`, a `pbui.links` document payload plus a view-keyed runtime, link verbs in the `WorkbenchVerb` union), an unobtrusive interaction surface (header badge, "Link to…" object-menu family with accept mode as the chooser, a connect-management mode with wires and port-to-port drag, a `LauncherShell`-based "show" chooser), eight decision records, pseudocode, diagrams, seven implementation phases with file lists, five demo applications, a test strategy, and open questions.
 
-Status: analysis and design complete and reviewed; no code changed. Review outcomes recorded as D9 (kernel in core, glue in pbui-workbench) and D10 (hard cutover for new packages, self-contained `pbui-ecommerce` demo first, `datalab-ui` frozen). Phase 0/1 can start.
+Status: IMPLEMENTED. Phases 0–7 landed on 2026-09-01 (commits cc771ca … aede49f); the guide's §17 records the implementation and its deviations, the diary's steps 4–11 the work. The gold-coin shop package `packages/pbui-ecommerce` is the first consumer; nine real-pointer scenarios pass.
 
 ## Key Links
 
