@@ -657,3 +657,71 @@ cd ../pbui-ecommerce && pnpm e2e                                           # 5 s
 
 - `src/presentation/links/resolveShow.ts` and its test; `packages/pbui-workbench/src/links/handlers.ts` (`performShow`, `applyCandidate`), `components/ShowChooser`, `links/show.test.tsx`.
 - Storybook `Shop/Scenes/3` and `3b`, `Workbench/ShowChooser`; `pnpm e2e` (six scenarios).
+
+## Step 9: Phase 5 — identity classes over value ports
+
+The `≡` operator. Two contract-compatible ports may now share ONE cell: the declaration and its compiled class live in the link document, the cell lives in the runtime, both members read `Alias(σ)` and either member's emission writes the cell. Leaving a class initialises the fragments by policy — copy, restore private history, or reset. The compatibility check names the field that differs, which is scene 5's promise: the orders table's selection shares a cell with the orders-by-status plot but not with the revenue-by-category plot ("different authority domain: orders vs daily_sales"). Scene 6 shows the contrast with a plain follow: the orders filter follows the plot's category port. Screenshot: `various/screenshots/p5-shared-selection.png`.
+
+Two things changed on request during this step: the user asked for no nested border squares — the badges now render BESIDE the tile's `<tile>` presentation rather than inside it — and asked whether a presentation can be both a product and a line item; answered in the conversation (one concrete type per reference; nesting, an abstract supertype, or Phase 6 relations are the three ways to "mix").
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4); mid-turn: "don't do nested border squares" (with a screenshot of the detail's badge inside the title box), "can a presentation be both a product and a line item ?", "like can we mix the actions for it?"
+
+**Assistant interpretation:** Build Phase 5 (identity classes, P06 subset) across the three layers with scenes 5 and 6; fix the badge framing; explain the type model's answer to mixed actions.
+
+**Inferred user intent:** Shared selection between a table and a plot done as a real identity class — not two follows — with the refusal explaining itself; and a header that reads as one row of distinct objects.
+
+**Commit (code):** 06b8c35 — "PBUI-LINK-1 Phase 5: identity classes over value ports (P06 subset)"
+
+### What I did
+
+- **Core**: `types.ts` gains `refineContract(view)` on declarations and `refineDeclaration()` (Q7 resolved: the shell folds the per-view patch into the contract when it builds a `PortDefinition`); `identity.ts` — `compatibilityOf`/`checkIdentityCompatibility` (mismatches as a list with a sentence per field), `compileIdentity` (fibers by fingerprint, a small union-find with deterministic roots, classes of one dropped, persistent ids by largest overlap with the previous compile, `σN` minting, lineage new/unchanged/expanded/contracted/merged/split, diagnostics `port-missing`/`direction`/`incompatible`); `snapshot.ts` — `LinkState` (bindings, identity, classes, history), the snapshot's `identity`/`classes`/`aliases`/`history` and `values.classCell`; `evaluate.ts` — `Alias` is the derived effective binding of a member (explicit term → alias → slot → fallback), and an unbound OUT/INOUT port reads its own emission; `plan.ts` — `planIdentityAdd` (self, direction, already, bound, incompatible, `cells-differ` under `require-equal`, with `cellsDiffer` for the instrument) and `planIdentityRemove` (`no-history`); follow/bind refuse a shared port (`shared`); `apply.ts` returns the whole `LinkState` plus `RuntimeEffect`s (`seed-class`, `set-emitted`, `forget-class`); `identity.add` records each new member's pre-merge value, `identity.remove` initialises leavers by policy and forgets dissolved classes; `lifecycle.ts` `identityAfterViewsRemoved`; `invariants.ts` (class-homogeneous, alias in one class, declarations over existing ports); `verbs.ts` `identity.add`/`identity.remove`; `usePortCarry` reads Control/Meta live and passes both modifiers to `acceptable` and `onDrop`. 15 identity tests (55 kernel tests in all).
+- **pbui-workbench**: `document.ts` persists `identity`/`classes`/`history` with structural validation and `stateOf(doc)`; `runtime.ts` gains class cells, `setClass`, `apply(effects)`, `emit(…, { classId })`; `snapshot.ts` refines declarations per view and recompiles classes with the persisted ones as previous; `handlers.ts` writes the state and applies the effects after the mutation, and `maintenance` drops identity of closed views and prunes history; `hooks.ts` `useEmitPort` writes a member's class cell; `PortRail` Ctrl-drag → `identity.add` (acceptability from `planIdentityAdd` while Ctrl is down); `WireLayer` draws identity as a double line without arrowhead and names `Share(… ≡ …)` under the cursor; `linkRef.ts` lists identity links; `contributions.ts` adds the three split-policy rows for identity wires (and hides the follow unlink rows on them); `Tile.tsx` renders badges after the product's title node. `links/identity.test.tsx`: add/refuse/seed/read, remove with history, Ctrl-drag, close/serialize.
+- **pbui-ecommerce**: the plot's `selection` port refines `authorityDomain` from its table slot; `OrdersTable` gains Shift-click selection (`data-selected`, count in the toolbar), a category `filter` input (orders containing a product of the category, chip in the toolbar), and emits the selection as `orders` rows; `ShopPlot` keeps the outcome's interaction index, turns a brush into `selection` rows (deduplicated by identity), and draws an external selection by mapping row ids back to datum ids (`view.selection`); story setups `shareSelection`, `followCategory`; scenes 5, 5b (incompatible, opened in connect mode), 6; two DOM tests (shared cell through Shift-clicks and the refusal sentence; filter follows the catalog's category); two real-pointer scenarios (restore private values through the wire menu; Ctrl-drag refused with the field named) — eight passing.
+
+### Why
+
+- Alias is DERIVED, never written as a term (report §7.8): the declaration is the source of truth, the class its compilation; a term would be a second copy that could disagree.
+- Effects are returned by the kernel rather than performed by it, so the transition stays pure and testable, and the shell decides when runtime cells change (after the document write commits).
+- `refineContract` per view is the smallest resolution of Q7: the declaration remains the single place a reader looks, and the shell applies the view's facts when it builds the snapshot.
+
+### What worked
+
+- P06's shape transferred cleanly: fibers, union-find, canonical member order, persistent ids by overlap. Its counterexample "bidirectional = two arrows" is what `planFollow`'s `shared` refusal now prevents.
+- The plot's `PlotOutcome.interactions` index has everything the shop needs to map brushes to rows and rows to marks; no plot-package change was needed.
+
+### What didn't work
+
+- `apply.ts` was refused by the Write tool ("modified since read") after my own python edit; rewritten through the shell.
+- Two identity tests failed for one real reason: an INOUT port with no term evaluated as `unbound`, so a merge seeded an empty cell and "history" restored nothing. `evaluatePort` now reads an output's own emission when it has no term.
+- `readonly` on a method signature (`inCurrentWorkspace?(…)`) is invalid TypeScript — fixed in Phase 4's resolver, but the duplicate-key error it masked in `apply.ts` (`{ bindings, …patch, bindings }`) only surfaced here.
+- The scene test named order 88215, which does not exist (the book runs 88150–88214).
+- `pnpm test` in pbui-workbench hit the pre-existing `slate.perf.test.ts` timing guard again.
+
+### What I learned
+
+- A `filter` on the orders table through a plain follow and a `selection` through identity in the same workspace make the two operators visibly different: the follow badge says `→ plot`, the identity badge says `≡ selection · σ1` on both ends.
+- Playwright's `keyboard.down("Control")` before `mouse.move` is enough for the carry to read the modifier live; the cursor label switches on the keyup.
+
+### What was tricky to build
+
+- **What a class cell holds when members disagree.** The merge policy decides the seed; the kernel records each member's private value the moment it joins (not later), and only for members that were not already in a class, so a three-member class keeps three histories.
+- **Which ports are "fragments" on remove.** A remove can contract a class (one leaver), dissolve it (two leavers), or split it (two smaller classes). The transition compares each port's class before and after and only initialises ports that left every class; a surviving class under a new id is re-seeded from the old cell.
+- **The badge frame.** `Tile` composed badges into `defaultTitle`, so the product's `<tile>` presentation enclosed them; the fix renders the badge nodes after whatever `renderTitle` returned.
+
+### What warrants a second pair of eyes
+
+- `compileIdentity`'s lineage for the split case: the class that keeps the id is "contracted", the others "split"; the report's vocabulary may want "split" on all of them.
+- The runtime's `apply(effects)` runs after `store.mutate` returns; a plan that commits identity and then fails a later verb would leave the cell seeded — `plan()` uses a shadow store, whose effects hit the SAME runtime. Worth moving effects behind `applyPlan`.
+- `datumIdsFor` in `ShopPlot` scans every target per render; fine at 65 rows, worth an index on a real dataset.
+
+### What should be done in the future
+
+- Merge-policy popover when cells differ (the plan already reports `cellsDiffer`; the rail currently uses `prefer-left`).
+- Phase 6: `Derived` over translators, the relation palette, and the `lineItem → product` relation the user asked about.
+
+### Code review instructions
+
+- `src/presentation/links/identity.ts`, `apply.ts` (the two identity cases), `identity.test.ts`; `packages/pbui-workbench/src/links/{handlers,runtime,snapshot}.ts`, `identity.test.tsx`; `packages/pbui-ecommerce/src/tiles/{OrdersTable,ShopPlot}`.
+- Storybook `Shop/Scenes/5`, `5b`, `6`; `pnpm e2e` (eight scenarios).

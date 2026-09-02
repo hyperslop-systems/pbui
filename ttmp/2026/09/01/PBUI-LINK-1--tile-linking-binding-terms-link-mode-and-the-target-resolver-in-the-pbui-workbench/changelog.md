@@ -81,3 +81,13 @@ Phase 4 (commit f9b2444): resolveShow with the ranking tuple, held ports inappli
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/ShowChooser/ShowChooser.tsx — The chooser on LauncherShell
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/resolveShow.ts — The target resolver and its ranking tuple
 
+
+## 2026-09-01
+
+Phase 5 (commit 06b8c35): identity classes — refineContract per view (Q7), identity.ts compiler with persistent ids, LinkState with identity/classes/history, Alias as derived binding, merge/split policies as runtime effects (55 kernel tests); workbench persistence, class cells, Ctrl-drag, double wire, split menus (4 DOM tests); badges beside the tile title (user request); shop shared selection, category filter, brush↔selection, scenes 5/5b/6, eight e2e scenarios
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/src/tiles/ShopPlot/ShopPlot.tsx — Brush → selection rows; external selection → highlighted marks
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/identity.ts — The P06 subset: compatibility, fibers, union-find, persistent ids, lineage
+
