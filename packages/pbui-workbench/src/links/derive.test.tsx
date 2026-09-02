@@ -26,7 +26,10 @@ function scene() {
       graph,
       label: (r) => (r.type === "customer" ? String((r.value as { name: string }).name) : `#${(r.value as { id: string }).id}`),
       relations: [{ id: "order.customer", from: "order", to: "customer", label: "its customer" }],
-      relation: (id, reference) => (id === "order.customer" ? { type: "customer", value: { name: (reference.value as { customer: string }).customer } } : undefined),
+      relationEvaluation: (id, reference) =>
+        id === "order.customer"
+          ? { kind: "value", reference: { type: "customer", value: { name: (reference.value as { customer: string }).customer } } }
+          : { kind: "empty" },
     },
   });
   const [orders, customer] = leaves(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));

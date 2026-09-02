@@ -147,46 +147,28 @@ function evaluateExpression(
   const inner = evaluateExpression(expression.input, s, deps, path, provenance);
   if (inner.kind !== "value") return { ...inner, provenance };
 
-  if (deps.relationEvaluation) {
-    const result = deps.relationEvaluation(
-      expression.relationId,
-      inner.reference,
-      s,
-    );
-    if (result.kind === "value") {
-      return {
-        kind: "value",
-        reference: result.reference,
-        provenance,
-        path: inner.path,
-      };
-    }
-    if (result.kind === "empty") {
-      return { kind: "empty", provenance, path: inner.path };
-    }
-    return {
-      kind: "error",
-      diagnostic: result.diagnostic,
-      provenance,
-      path: inner.path,
-    };
-  }
-
-  if (!deps.relation) {
+  // One evaluator (PBUI-KERNEL-1 §12.1): the detailed canonical outcome the
+  // product projects from its compiled presentation. `empty` is ordinary
+  // partiality; anything else is a diagnostic; no evaluator is a diagnostic.
+  if (!deps.relationEvaluation) {
     return {
       kind: "error",
       diagnostic: {
         code: "relation-missing",
-        message: `no relation registry can apply ${expression.relationId}`,
+        message: `no relation evaluator can apply ${expression.relationId}`,
       },
       provenance,
       path: inner.path,
     };
   }
-  const output = deps.relation(expression.relationId, inner.reference, s);
-  return output
-    ? { kind: "value", reference: output, provenance, path: inner.path }
-    : { kind: "empty", provenance, path: inner.path };
+  const result = deps.relationEvaluation(expression.relationId, inner.reference, s);
+  if (result.kind === "value") {
+    return { kind: "value", reference: result.reference, provenance, path: inner.path };
+  }
+  if (result.kind === "empty") {
+    return { kind: "empty", provenance, path: inner.path };
+  }
+  return { kind: "error", diagnostic: result.diagnostic, provenance, path: inner.path };
 }
 
 function evaluateSource(

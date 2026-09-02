@@ -70,7 +70,7 @@ export interface LinkSnapshot {
   readonly values: LinkValues;
 }
 
-/** A direct relation a `Derived` term may name (Phase 6): the metadata of a product translator, without its function. */
+/** A relation a `Derived` term may name (Phase 6; PBUI-KERNEL-1: a derivation-exposed canonical relation), as metadata without its function. */
 export interface RelationDefinition {
   readonly id: string;
   readonly from: RuntimeTypeId;
@@ -89,16 +89,22 @@ export type LinkRelationEvaluation =
       readonly diagnostic: { readonly code: string; readonly message: string };
     };
 
+/**
+ * The narrow dependencies the link kernel reads (PBUI-KERNEL-1 §11.5): the
+ * product's type graph, the derivation-exposed relations as metadata, the
+ * one detailed evaluator for them, and a label function. A product with a
+ * compiled presentation obtains all of it from `presentation.linkDeps(...)`;
+ * the kernel never sees action or help registries, nor the whole model.
+ */
 export interface LinkDeps {
   readonly graph: PresentationTypeGraph;
-  /** The relations a `Derived` term may name (Phase 6). Absent ⇒ no derivations are offered. */
+  /** The relations a `Derived` term may name. Absent ⇒ no derivations are offered. */
   readonly relations?: readonly RelationDefinition[];
   /**
-   * A named relation applied to a value (Phase 6: the product's translators).
-   * Absent ⇒ every `Derived` term evaluates to a diagnostic.
+   * The canonical evaluator for a named relation on a value (§12.1): `value`,
+   * ordinary `empty`, or a diagnostic. Absent ⇒ every `Derived` term
+   * evaluates to a `relation-missing` diagnostic.
    */
-  relation?(relationId: string, reference: SerializableReference, snapshot: LinkSnapshot): SerializableReference | undefined;
-  /** Detailed canonical evaluator; preferred over the compatibility callback. */
   relationEvaluation?(
     relationId: string,
     reference: SerializableReference,
