@@ -518,6 +518,15 @@ These reuse `deriveFacets` with the kernel's `RelationDefinition` list mapped to
 - **Consequences:** `usePortCarry`'s acceptability treats an ambiguous plan as acceptable and the drop opens the palette when more than one option exists. Must validate: e2e drop of a line-item output onto a product input.
 - **Status:** proposed.
 
+### Decision D9: Translators move into the action registry; `createPbui` and the link kernel read them from there
+
+- **Context:** The same edges are handed to three consumers in three shapes: `createPbui({ translators })` for accept mode (`createPbui.tsx:82-90, 345, 371`), the shop's hand-mapped `RelationDefinition`s and `relation()` applier for the link kernel (`packages/pbui-ecommerce/src/createShop.ts:42-51`), and the proposed `FacetDeps.translators`. The registry validates contributions against the graph fail-fast (`registry.ts:81-179`) but never sees the translators, so an edge naming an unknown type is not caught at construction and the vocabulary cannot list edges.
+- **Options considered:** (a) keep translators as a `createPbui` option and pass them to the facet module and the link kernel separately; (b) `createActionRegistry({ …, translators })` owns and validates them; `createPbui` reads `actions.translators`; `deriveFacets` reads `prepared.translators`; the link kernel is handed `relationsOf(registry)` / `applyRelation(registry, id, reference, snapshot)`; the `translators` option on `createPbui` is deleted (hard cutover).
+- **Decision:** (b).
+- **Rationale:** One validation point (duplicate ids, unknown `from`/`to`, unknown scopes and predicates, a `facet` on an edge whose target has no contributions as a `diagnostics` warning), one vocabulary (types, actions, edges), one source for accept, facets and derive, and `explain` can name the edge behind a facet or an acceptance from the same prepared registry. ACTIONS-2 introduced translators last (P6) to keep the first kernel PR small, not because they belong outside the registry.
+- **Consequences:** `PreparedRegistry` gains `translators`; `vocabularyOf` gains `facets` from the registry rather than a second argument; `createShop.ts` and `runtime.tsx` drop their two mappings; pbui-chat, plotscript and sandbox declare no translators and are untouched. Must validate: `resolveAcceptance` behaviour is byte-identical (its tests move their fixtures to the registry); the link kernel's `LinkDeps.relations` is derived, not hand-built.
+- **Status:** proposed.
+
 ## 7. Pseudocode and key flows
 
 ### 7.1 Deriving facets
@@ -671,6 +680,7 @@ Each phase ends with a visible postcondition test, following the PBUI-LINK-1 wor
 ### Phase 1: the pure facet module (1–2 days)
 
 - `src/presentation/translators/types.ts`: `FacetDeclaration`, `facet?` on `PresentationTranslator`.
+- `src/presentation/actions/registry.ts`: `translators` in `CreateActionRegistryOptions` and `PreparedRegistry`, validated fail-fast (D9); `createPbui.tsx` reads `actions.translators` and drops its own option; `packages/pbui-ecommerce/src/createShop.ts` and `runtime.tsx` drop their mappings; the link kernel's `relations`/`relation` come from `relationsOf(registry)`.
 - `src/presentation/actions/facets.ts`: `deriveFacets`, `resolveWithFacets`, `evaluateFreshFaceted`, `FacetReference`, `FacetedAction`, `FacetedResolution`; `ResolutionTraceEntry.stage` gains `"facet"`; `explain.ts` gains the `facet:*` cases.
 - `actions/index.ts` exports; the no-React fence covers the file.
 - Tests (`facets.test.ts`): no facets ⇒ byte-identical to `resolveActions`; opt-in only; invocation filter (`primary`/`accept` yield none); exact vs subtypes source match; scope and condition; wrong-type yield dropped; no identity facet; depth one; permutation invariance across translator order; two edges to one type ⇒ two facets; shadowing default vs `subject-wins` with the trace entry; `evaluateFreshFaceted` codes including `facet-no-longer-resolves`.

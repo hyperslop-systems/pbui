@@ -19,3 +19,8 @@ Step 1: studied the action kernel, translators, menu path and link kernel; wrote
 
 Guide §5.3/§5.4: self-edge and two-edge rules, why depth one needs no cycle detection, and why facets are not folded into resolveActions (review question)
 
+
+## 2026-09-02
+
+Guide: D9 (translators owned by the action registry; createPbui and the link kernel read them from there) and the matching Phase 1 step (review question)
+
