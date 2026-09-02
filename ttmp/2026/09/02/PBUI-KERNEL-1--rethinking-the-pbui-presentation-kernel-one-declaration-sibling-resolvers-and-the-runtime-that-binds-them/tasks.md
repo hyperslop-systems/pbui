@@ -39,11 +39,11 @@ Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–
 
 ## Phase 3: Compiled model and fragments
 
-- [ ] `model/` replaces `kernel/`: definePresentation().fragment/create <!-- t:p3a -->
-- [ ] Fragment merge with origin tracking; duplicate/conflict diagnostics <!-- t:p3b -->
-- [ ] Closed-world cross-validation; strict descriptor completeness <!-- t:p3c -->
-- [ ] `snapshot(input)` with explicit revision / defaultActiveScopes / activeScopes validation <!-- t:4a96 -->
-- [ ] Static vocabulary + diagnostics() <!-- t:p3e -->
+- [x] `model/` replaces `kernel/`: definePresentation().fragment/create <!-- t:p3a -->
+- [x] Fragment merge with origin tracking; duplicate/conflict diagnostics <!-- t:p3b -->
+- [x] Closed-world cross-validation; strict descriptor completeness <!-- t:p3c -->
+- [x] `snapshot(input)` with explicit revision / defaultActiveScopes / activeScopes validation <!-- t:4a96 -->
+- [x] Static vocabulary + diagnostics() <!-- t:p3e -->
 
 ## Phase 4: Acceptance over relations
 

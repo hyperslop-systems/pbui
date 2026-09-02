@@ -489,3 +489,58 @@ Acceptance now asks for `exposedTo: "acceptance"`; the kernel's link dependency 
 
 ### Technical details
 - Discovery API: `relations.matches(reference, snapshot, { targets: ["account"], exposedTo: "acceptance" })`.
+
+## Step 7: Phase 3 — one compiled model from one declaration and named fragments
+
+The prototype's `kernel/` became `model/` (§6.1), and the aggregate gained the three things §7 and §8 asked for: named fragments merged with origin tracking, one explicit runtime context input, and the split between known scopes (declaration vocabulary), default active scopes (product convenience), and per-snapshot active scopes (runtime facts). `definePresentation()` now returns typed helpers and exactly one compiler method, `create`; `compilePresentation` is the lower-level function behind it. The compiler merges included fragments then the root, claims every type/predicate/action/relation/help id for its fragment, and throws fragment-aware messages on duplicates, conflicting descriptors, descriptors for undeclared or abstract types, and (by default) concrete types without descriptors. Advisory findings from the action registry, the relation system, empty fragments, and relaxed descriptor completeness are folded into one `diagnostics()` with severity, owner, fragment, and path.
+
+`createPbui` lost the prototype's symbol-marked `factsFor` union: its non-legacy branch is `{ presentation, contextFor }`, and the instance exposes `presentation`. The legacy option bag remains until Phase 5.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Land guide §7, §8, §15.1–§15.2 and the model half of §14.1 on top of the prototype's kernel.
+
+**Inferred user intent:** The "one validated statement of the product's presentation semantics" of §1: a product that includes a fragment cannot omit its companions, and every drift the guide lists in §24 is caught at construction.
+
+**Commit (code):** 94f6cb1 — "PBUI-KERNEL-1 P3: the compiled presentation model — fragments, one context input, closed-world compile"
+
+### What I did
+- New `model/types.ts` (PresentationFragment, PresentationDeclaration, PresentationContextInput, CompiledPresentation, vocabulary and link-deps types), `model/diagnostics.ts`, `model/compile.ts` (mergeFragments, checkedRevision, validateActiveScopes, compilePresentation), `model/vocabulary.ts`, `model/define.ts`, `model/index.ts`, `model/model.test.ts` (20 tests across construction, snapshot, structural rules, advisory diagnostics, universal family, link projection).
+- Deleted `kernel/` (create, define, types, index, kernel.test).
+- `createPbui.tsx`: `PresentationCreatePbuiOptions { presentation, contextFor }` replaces `KernelCreatePbuiOptions { kernel, factsFor }`; `SNAPSHOT_INPUT`/`isSnapshotInput` deleted; instance returns `presentation`.
+- `index.ts`: exports `model` instead of `kernel`.
+- Validation: root typecheck clean; 366 tests; build + recursive typecheck green.
+
+### Why
+- §1.2 items 6 and 7: reusable declarations are named fragments, and runtime context construction has one explicit shape rather than a bare-facts-or-symbol-wrapper union.
+- §15.2: structural errors prevent construction; advisory conditions are returned.
+
+### What worked
+- Origin tracking as a flat `kind:id → fragmentId` map made every diagnostic and the vocabulary's `fragment` tag one lookup.
+
+### What didn't work
+- Two of my new tests failed on first run and both were test errors, not model errors: (1) I asked acceptance for `customer` from a relation whose declared codomain is abstract; §11.3 filters discovery by declared codomain, so that is `none` by design — the test now documents both the abstract-codomain success (request `party`, receive a concrete `customer`) and the by-declared-codomain rule. (2) I assumed registration order for menu rows; rows are sorted for presentation, so the assertion became order-independent. In the first fixture I also made `customer` a subtype of the same abstract node as `order`, so a request for it was satisfied by SUBTYPING with the original reference before any relation ran — correct behavior that the fixture had to be changed to get out of the way of.
+
+### What I learned
+- Discovery by declared codomain is a real authoring rule: a relation that wants to satisfy `customer` requests must say `to: "customer"`, even if it could also be described as `inspectable`. The guide's §11.4 note ("add metadata to the relation's facet exposure rather than inventing parallel ids") points the same way.
+
+### What was tricky to build
+- Strict descriptor completeness by default (§15.2) versus the many small in-repo fixtures that build registries without descriptors. The compiler takes `strictDescriptors: false` and downgrades the finding to a warning with origin, so fixtures can opt out visibly; products get the throw.
+- `linkDeps` had to close over `snapshot` so that relation evaluation in the link world goes through the same revision and scope validation as acceptance (§12.1 step 2).
+
+### What warrants a second pair of eyes
+- `mergeFragments` treats the root declaration as the last fragment; an "empty root" is not reported as an empty fragment (a root that only includes is normal).
+- `knownScopes` first-declaration order comes from fragment order; scope ORDER never affects semantics (active scopes are ordered per snapshot), but vocabulary readers may notice it.
+
+### What should be done in the future
+- Phase 4: rename translators to acceptance and the option field to `relation`.
+- Phase 5: delete the legacy option bag; `onRefuse` required; no `registry` alias.
+
+### Code review instructions
+- `model/compile.ts` top to bottom (about 300 lines); then `model/model.test.ts` "structural rules" and "snapshot".
+- `pnpm test -- model`.
+
+### Technical details
+- Snapshot resolution: `revision = input.revision ?? declaration.revision?.(facts) ?? throw`; `activeScopes = input.activeScopes ?? declaration.defaultActiveScopes ?? throw`; both validated.

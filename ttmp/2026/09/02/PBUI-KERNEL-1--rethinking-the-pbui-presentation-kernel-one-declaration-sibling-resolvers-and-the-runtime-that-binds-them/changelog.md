@@ -62,3 +62,12 @@ Step 6 / Phase 2: relation exposure, exposed(interpreter) discovery filter, abst
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/relations/system.ts — Exposure normalization, filtered discovery, output validation
 
+
+## 2026-09-02
+
+Step 7 / Phase 3: model/ replaces kernel/ — fragments with origin tracking, explicit context input, known/default/active scopes, strict descriptors, diagnostics, vocabulary, linkDeps projection; createPbui takes { presentation, contextFor } (commit 94f6cb1)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/model/compile.ts — The compiler: fragment merge, closed-world validation, snapshot, linkDeps
+
