@@ -653,3 +653,68 @@ Every in-repo core fixture moved to `definePresentation().create(...)`: the runt
 
 ### Technical details
 - Provider tag repair rule: `re.sub(r'<(?:pbui|filePbui)\.Provider[^\n]*', insert-if-missing)`.
+
+## Step 10: Phase 6 — every consumer moves to the compiled presentation
+
+Phase 6 migrated the five in-repo packages, then the two external consumers from the sibling checkouts in this workspace. The in-repo half added the three fragment factories the guide asked for (`createWorkbenchPresentationFragment`, `createChatPresentationFragment`, `createGeneratedActionsFragment`), replaced the ecommerce shop's translators and second graph with canonical relations and `presentation.linkDeps(...)`, compiled datalab's declaration mechanically (C17), and rebuilt the chat demo on the chat fragment plus its thirteen product types. The external half pointed rag-ttc and hyperblog at the local workspace build through pnpm link-overrides, migrated both, and ran each repository's own typecheck, tests, and build.
+
+The compiler earned its keep twice on the way. In ecommerce it refused `runtime type "workspace" is declared by both fragment "pbui-workbench" and fragment "shop"` — my own duplicate, which led to making `workspace` opt-in on the workbench fragment (a product that presents workspace rows passes its descriptor; rag-ttc, which never does, gets no such type). In rag-ttc it refused `descriptor for type "unresolved" has no node in the presentation type graph` — a type the product had described for years but never declared, alive only because the old graph treated unknown types as isolated nodes. It is a chat-layer type, so it now enters through pbui-chat's fragment (C18).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Land guide Phase 6 in the order §18 gives (in-repo packages, then rag-ttc and hyperblog against the local build), keeping each repository's own gates green.
+
+**Inferred user intent:** No consumer anywhere still assembles registries by hand; the frozen wire ids and vocabulary survive; the external repositories are ready for the version bump.
+
+**Commit (code):** pbui c62ef27 — "PBUI-KERNEL-1 P6a: in-repo consumers on the compiled presentation"; rag-ttc 4658ef77 — "workbench web: one compiled pbui presentation (PBUI-KERNEL-1), document-slot ports"; hyperblog 6b5c58f — "ui: one compiled pbui presentation with a closed type world (PBUI-KERNEL-1)"; plus pbui follow-up edits to the workbench fragment (workspace opt-in, unconstrained Verb) in the Phase 7 commit.
+
+### What I did
+- pbui-workbench: `createWorkbenchPresentationFragment` (tile type + descriptor + menu; `workspace` iff described; with `links`: port/link types, descriptors, link rules, "Link to…"); `LinkEnvironment = LinkDeps`; without a projection the graph is derived from the port types the apps declare; `linkTypeDefinitions` drops `context`; `actions.test.ts` builds through the fragment; the RelationPalette story passes a graph and `relationEvaluation`.
+- pbui-chat: `createChatPresentationFragment(descriptors)`; `Provider` takes `onRefuse` (default console warning); `createPbuiChat` reads `presentation.descriptors`. Demo: `demoPresentation` in `actions.ts`, descriptor maps in `registry.ts`, `relations.ts`, `runtime.tsx` exports `registry`.
+- pbui-sandbox: `createGeneratedActionsFragment`.
+- pbui-ecommerce: `actions.ts` (types, scopes, `shopRevision`, `shopContextFor`), `relations.ts` (canonical, acceptance + derivation), `runtime.tsx` (`createShopPresentation`), `createShop.ts` (`links: presentation.linkDeps`), `registry.ts` (map), `ShopShell` refusal handler.
+- datalab-ui: `presentation.ts`, help factory, descriptor map, tests import resolvers from the presentation, `WorkbenchProviders` refusal handler.
+- rag-ttc: `presentation.ts`, `relations.ts` (ids unchanged), `runtime.tsx`, help factory, descriptor map, vocabulary conversions from relations, four apps and three tests re-pointed; `apps/index.ts` `docBound/bindings` → `documentSlotPort` (a pbui-workbench 0.3.1→0.4 drift, fifteen apps); refusal handler on `chat.Provider`.
+- hyperblog: `runtime.tsx` declares its ten types, bridges descriptor actions through `anyDeclaredType`, relations replace translators; refusal handlers; `adapt.tsx` reader as a document-slot port; `vite.config.ts` dedupes React.
+- Validation: pbui root 368; workbench 281; datalab 554; ecommerce 35; sandbox 224; chat 240 (+1 pre-existing CSS-policy failure); plotscript 31 (+1 pre-existing timing failure); rag-ttc typecheck clean, 167 tests, vite build; hyperblog typecheck clean, 28 tests, vite build. The Phase 6 legacy-symbol grep over pbui, rag-ttc and hyperblog returns nothing.
+
+### Why
+- C1/C18: shared packages contribute atomic fragments; C5/C6: relations are canonical with exposure; C10: link dependencies are a projection of the one presentation; C17: datalab moves mechanically.
+
+### What worked
+- Keeping `snapshotForDatalab`, `demoActionRegistry`, `workbenchActions` as thin aliases over the compiled presentation meant the golden tests changed only their import lines; every golden still matches.
+- The rag-ttc vocabulary artifact (`chat/vocabulary.json`) is byte-identical: relation ids equal the old translator ids and conversions read the same `from`/`to`.
+
+### What didn't work
+- My first `createLinkHandlers` guard threw when any app declared ports and no `links` was passed. That is the guide's letter (§20.2 "no empty-graph fallback") but it broke about 180 workbench test and story sites that mount demo apps. The replacement derives the graph from the declared port types (isolated nodes: equal-type reach only, no relations, no invented types). It is not an EMPTY graph and the closed world holds, but it cannot express subtyping; products with inheritance pass `presentation.linkDeps`. Recorded as a deviation to revisit (see below).
+- The ecommerce `workspace` duplicate and the rag-ttc `unresolved` gap, both caught by the compiler (above).
+- The workbench fragment's `Verb extends WorkbenchVerb` constraint was backwards (the product's union must ADMIT `WorkbenchVerb`); TypeScript cannot state that, so the parameter is unconstrained and the rules are widened on return, as `workbenchTileContributions` already did.
+- hyperblog's tests failed with `Cannot read properties of null (reading 'useState')` after linking: two React copies (hyperblog's and pbui's, same version, different paths). `resolve.dedupe: ["react", "react-dom"]` in `vite.config.ts` fixes it and is worth keeping.
+- hyperblog's `pnpm build` writes into the committed `pkg/webui/dist`; I reverted that output rather than commit a bundle built against unreleased packages.
+- Both external repositories needed a pbui-workbench 0.3.1/0.4.0 → current drift fixed first (`docBound`/`bindings` → document-slot ports), unrelated to KERNEL-1 but blocking compilation.
+
+### What I learned
+- The open world had been hiding real declaration gaps (`unresolved`), exactly the class of drift §24 lists.
+- A fragment's "companion" rule needs a symmetric escape: a shared fragment cannot declare a type it does not describe under strict descriptors, so `workspace` had to become opt-in by descriptor.
+
+### What was tricky to build
+- Ordering at module load: help rules that show the real action resolution need the compiled presentation, which needs the help rules. Every product now builds help through a factory that receives the resolver, and the callback dereferences the presentation lazily at resolution time.
+- The link projection for ecommerce: relation evaluation in the link world receives a `LinkSnapshot`, but the shop's relations read only the host, so `contextFor` supplies `{ hostRevision, links: null }` and the declared revision function computes the rest.
+
+### What warrants a second pair of eyes
+- The derived-port-graph fallback in `pbui-workbench/src/links/handlers.ts` versus the guide's "no empty-graph fallback" (§3.11, §20.2).
+- Refusal handlers in the demos, datalab, rag-ttc and hyperblog are console warnings; rag-ttc's should become a trace entry (its ADR K trace needs a verb, which a refusal does not have).
+- The pnpm `overrides` (link:) in rag-ttc's and hyperblog's `package.json` and lockfiles are NOT committed; they exist only in the working trees for local verification and must be replaced by version bumps at release.
+
+### What should be done in the future
+- Phase 7: delete the compat `relation` callback from core `LinkDeps` and its evaluation path.
+- Turboproof ticket (out of scope), agentlogic version bump at release.
+
+### Code review instructions
+- Start with `packages/pbui-workbench/src/actions.ts` (the fragment) and `links/handlers.ts` (the projection); then `packages/pbui-ecommerce/src/presentation/runtime.tsx` and `createShop.ts`; then rag-ttc `src/pbui/presentation.ts`.
+- Validate: `pnpm -r build && pnpm -r typecheck` in pbui; per-package `npx vitest run`; in each external repo `npx tsc --noEmit && npx vitest run && pnpm build` (with the link overrides in place).
+
+### Technical details
+- Link overrides used for verification: `"pnpm": { "overrides": { "@hyperslop-systems/pbui": "link:../../../../pbui", ... } }` then `pnpm install --offline`.

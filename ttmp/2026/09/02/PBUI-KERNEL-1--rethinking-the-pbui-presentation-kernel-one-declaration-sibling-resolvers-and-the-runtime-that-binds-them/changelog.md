@@ -89,3 +89,13 @@ Step 9 / Phase 5: strict createPbui({ presentation, contextFor }), onRefuse requ
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/createPbui.tsx — The strict runtime assembly
 
+
+## 2026-09-02
+
+Step 10 / Phase 6: workbench, chat, sandbox fragments; ecommerce relations + linkDeps; datalab mechanical; rag-ttc (4658ef77) and hyperblog (6b5c58f) migrated against the local build (pbui commit c62ef27)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/presentation.ts — createChatPresentationFragment (C18)
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/actions.ts — createWorkbenchPresentationFragment
+

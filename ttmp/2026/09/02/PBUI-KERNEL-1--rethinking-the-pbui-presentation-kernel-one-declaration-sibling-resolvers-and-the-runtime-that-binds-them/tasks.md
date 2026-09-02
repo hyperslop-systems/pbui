@@ -59,14 +59,14 @@ Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–
 
 ## Phase 6: Consumer and fragment cutover
 
-- [ ] pbui-workbench: createWorkbenchPresentationFragment; createWorkbench/defineApp stable <!-- t:p6a -->
-- [ ] pbui-chat: createChatPresentationFragment; presentation.descriptors; demo migrated <!-- t:p6b -->
-- [ ] pbui-ecommerce: canonical relations, one graph, linkDeps from model <!-- t:p6c -->
-- [ ] pbui-sandbox: fragment; anyDeclaredType <!-- t:p6d -->
-- [ ] datalab-ui: mechanical migration (C17) <!-- t:p6e -->
-- [ ] rag-ttc apps/workbench/web migrated against local pbui; vocabulary golden regenerated <!-- t:p6f -->
-- [ ] hyperblog ui migrated (declared types, anyDeclaredType, relations) <!-- t:p6g -->
-- [ ] Legacy-symbol grep across pbui/, rag-ttc/, hyperblog/ returns nothing <!-- t:krqf -->
+- [x] pbui-workbench: createWorkbenchPresentationFragment; createWorkbench/defineApp stable <!-- t:p6a -->
+- [x] pbui-chat: createChatPresentationFragment; presentation.descriptors; demo migrated <!-- t:p6b -->
+- [x] pbui-ecommerce: canonical relations, one graph, linkDeps from model <!-- t:p6c -->
+- [x] pbui-sandbox: fragment; anyDeclaredType <!-- t:p6d -->
+- [x] datalab-ui: mechanical migration (C17) <!-- t:p6e -->
+- [x] rag-ttc apps/workbench/web migrated against local pbui; vocabulary golden regenerated <!-- t:p6f -->
+- [x] hyperblog ui migrated (declared types, anyDeclaredType, relations) <!-- t:p6g -->
+- [x] Legacy-symbol grep across pbui/, rag-ttc/, hyperblog/ returns nothing <!-- t:krqf -->
 
 ## Phase 7: Link projection and dependency cleanup
 
