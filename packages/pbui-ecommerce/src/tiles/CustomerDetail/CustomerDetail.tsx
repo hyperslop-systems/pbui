@@ -1,26 +1,26 @@
 import { AppBody, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
-import type { AppProps } from "@hyperslop-systems/pbui-workbench";
+import { usePort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { useHostRevision } from "../../host";
 import { money } from "../../presentation/registry";
+import type { CustomerValue } from "../../presentation/types";
 import { customerValue, orderValue } from "../../presentation/values";
 import styles from "../tiles.module.css";
 
 export interface CustomerDetailProps extends AppProps {
   shop: Shop;
-  /** Phase 1 only: the customer to show, until the `customer` in port exists. */
-  preview?: string;
 }
 
-/** One customer and their orders; the orders are `<order>` presentations, so the loop closes. */
-export function CustomerDetail({ shop, preview }: CustomerDetailProps) {
+/** One customer and their orders, read through the `customer` in port; the orders are `<order>` presentations, so the loop closes. */
+export function CustomerDetail({ shop, view }: CustomerDetailProps) {
   useHostRevision(shop.host);
   const { Presentation } = shop.pbui;
-  const customer = preview ? shop.host.customer(preview) : undefined;
+  const port = usePort<CustomerValue>(view, "customer");
+  const customer = port.value ? (shop.host.customer(port.value.id) ?? null) : null;
   if (!customer) {
     return (
       <div data-part="customer-detail" className={styles.empty}>
-        <EmptyState message="no customer yet" hint="link a customer in, or derive one from an order through order.customer" />
+        <EmptyState message="no customer yet" hint={`${port.badge.explanation}. Click a customer, or right-click one and choose “Link to customer detail”.`} />
       </div>
     );
   }

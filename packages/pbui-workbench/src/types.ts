@@ -9,6 +9,8 @@ import type { RebalanceBadgeProps } from "./components/RebalanceBadge";
 import type { RebalanceConfigStore } from "./rebalance/configStore";
 import type { WorkbenchState, WorkbenchStore } from "./store";
 import type { WorkbenchVerb, WorkbenchVerbHandlers } from "./verbs";
+import type { Badge } from "@hyperslop-systems/pbui";
+import type { WorkbenchLinks } from "./links/handlers";
 
 /** What a product's `renderTitle` learns about the tile it is titling. */
 export interface TilePlacementInfo {
@@ -34,6 +36,13 @@ export interface SurfaceProps {
    * place the badge can silently drift out of the chrome's contract.
    */
   renderTitle?(view: AppView, placement: TilePlacementInfo, defaultTitle: ReactNode): ReactNode;
+  /**
+   * The binding badges of a tile (PBUI-LINK-1): one per bound port, after
+   * the title and the ×N marker. A product wraps each in its `<port>`
+   * presentation so the badge gets the object menu; the default renders
+   * the plain `PortBadge`. Called only when the view has badges.
+   */
+  renderBadges?(view: AppView, placement: TilePlacementInfo, badges: readonly Badge[]): ReactNode;
   /**
    * Extra controls in the tile bar's action group, beside ⬌/⬍/✕ and OUTSIDE
    * the ellipsising title. Omitting the prop keeps the shell's own door to
@@ -142,6 +151,8 @@ export interface Workbench {
   apps: AppRegistry;
   store: WorkbenchStore;
   verbs: WorkbenchVerbHandlers;
+  /** Tile linking (PBUI-LINK-1): the runtime values, the current snapshot, the kernel deps. */
+  links: WorkbenchLinks;
   useDocument(): WorkbenchDocument;
   useWorkbenchState<T>(selector: (state: WorkbenchState) => T): T;
   /** Apply raw protocol mutations; the verbs are the usual door. */

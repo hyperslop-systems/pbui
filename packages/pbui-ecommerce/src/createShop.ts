@@ -1,8 +1,11 @@
+import { createPresentationTypeGraph } from "@hyperslop-systems/pbui";
 import { createWorkbench, type AppDescriptor, type CreateWorkbenchOptions, type Workbench } from "@hyperslop-systems/pbui-workbench";
 import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { createShopApps } from "./apps";
 import { createShopHost, type ShopHost } from "./host";
+import { SHOP_TYPES } from "./presentation/actions";
 import { createShopPbui, type ShopPbui } from "./presentation/runtime";
+import { labelReference } from "./presentation/values";
 import { seedShopDocument } from "./seed";
 
 /**
@@ -35,5 +38,11 @@ export type CreateShopWorkbenchOptions = Omit<CreateWorkbenchOptions, "apps" | "
 /** A workbench over the shop's apps, seeded with the four scenes unless told otherwise. */
 export function createShopWorkbench(shop: Shop, options: CreateShopWorkbenchOptions = {}): Workbench {
   const { initial, ...rest } = options;
-  return createWorkbench({ apps: shop.apps, initial: initial ?? seedShopDocument(), ...rest });
+  return createWorkbench({
+    apps: shop.apps,
+    initial: initial ?? seedShopDocument(),
+    // The kernel types ports against the SAME graph the menus resolve on (D1).
+    links: { graph: createPresentationTypeGraph(SHOP_TYPES), label: labelReference },
+    ...rest,
+  });
 }

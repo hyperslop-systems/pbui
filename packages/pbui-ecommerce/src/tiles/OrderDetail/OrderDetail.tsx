@@ -1,35 +1,37 @@
 import { AppBody, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
-import type { AppProps } from "@hyperslop-systems/pbui-workbench";
+import { usePort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { useHostRevision } from "../../host";
 import { money } from "../../presentation/registry";
+import type { OrderValue } from "../../presentation/types";
 import { customerValue, lineItemValue, orderValue, productValue } from "../../presentation/values";
 import styles from "../tiles.module.css";
 
 export interface OrderDetailProps extends AppProps {
   shop: Shop;
-  /**
-   * Phase 1 only: the order to show, until the `order` in port exists
-   * (Phase 2's `usePort(view, "order")`). Stories pass it; the workbench
-   * never does, so a placed detail tile reads as "waiting" until linked.
-   */
-  preview?: string;
 }
 
 /**
- * One order: its facts and its line items. The customer and every line's
- * product are presentations of their own, which is what lets a customer
- * detail be DERIVED from this tile's order (Phase 6) and a product be sent
- * to the inspector from here.
+ * One order: its facts and its line items, read through the tile's `order`
+ * in port. The port's term decides where the order comes from — the
+ * workspace's current order by default, a followed table, a held value —
+ * and the tile never knows which; it reads the port and re-renders when
+ * the port's value changes. The customer and every line's product are
+ * presentations of their own, which is what lets a customer detail be
+ * DERIVED from this tile's order (Phase 6) and a product be sent to the
+ * inspector from here.
  */
-export function OrderDetail({ shop, preview }: OrderDetailProps) {
+export function OrderDetail({ shop, view }: OrderDetailProps) {
   useHostRevision(shop.host);
   const { Presentation } = shop.pbui;
-  const order = preview ? shop.host.order(preview) : undefined;
+  const port = usePort<OrderValue>(view, "order");
+  // The port carries the order as it was presented; the host has the facts as they are now.
+  const order = port.value ? (shop.host.order(port.value.id) ?? null) : null;
   if (!order) {
+    const why = port.evaluation.kind === "error" ? port.evaluation.diagnostic.message : port.badge.explanation;
     return (
       <div data-part="order-detail" className={styles.empty}>
-        <EmptyState message="no order yet" hint="click an order in a table and choose “Link to order detail”, or let it follow the workspace's current order" />
+        <EmptyState message={port.value ? `order #${port.value.id} is not in this shop` : "no order yet"} hint={`${why}. Click an order in a table, or right-click one and choose “Link to order detail”.`} />
       </div>
     );
   }

@@ -59,7 +59,7 @@ export function createShopApps(shop: Shop): AppDescriptor[] {
       group: SHOP_GROUP,
       blurb: "the order book; click a row to emit it, hover to attend it",
       ports: [
-        { name: "order", direction: "out", contract: { valueType: "order", semanticRole: "order.current" }, doc: "the order you clicked; hovering emits it as attended" },
+        { name: "order", direction: "out", contract: { valueType: "order", semanticRole: "order.current" }, doc: "the order you clicked; hovering emits it as attended", drivesContext: CONTEXTS.order },
         { name: "selection", direction: "inout", contract: { valueType: "datum", semanticRole: "selection", cardinality: "many", authorityDomain: "orders" }, doc: "the selected orders, as rows" },
         { name: "filter", direction: "in", contract: { valueType: "category", semanticRole: "filter" }, doc: "a category that narrows the rows" },
       ],
@@ -73,7 +73,7 @@ export function createShopApps(shop: Shop): AppDescriptor[] {
       group: SHOP_GROUP,
       blurb: "who buys; click a row to emit the customer",
       ports: [
-        { name: "customer", direction: "out", contract: { valueType: "customer", semanticRole: "customer.current" }, doc: "the customer you clicked" },
+        { name: "customer", direction: "out", contract: { valueType: "customer", semanticRole: "customer.current" }, doc: "the customer you clicked", drivesContext: CONTEXTS.customer },
         { name: "selection", direction: "inout", contract: { valueType: "datum", semanticRole: "selection", cardinality: "many", authorityDomain: "customers" }, doc: "the selected customers, as rows" },
       ],
       Component: (props: AppProps) => <CustomersTable {...props} shop={shop} />,

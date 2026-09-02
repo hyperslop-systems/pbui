@@ -1,9 +1,8 @@
 /**
- * The pure link kernel (PBUI-LINK-1): ports, contracts, binding terms and
- * their evaluation. A SIBLING of the action kernel (design D1): it shares the
- * type graph, scopes, availability and snapshot conventions from `actions/`
- * and never imports React, a store, or the workbench document. Phase 1 ships
- * the declarations; the terms, evaluator and planners follow in Phase 2.
+ * The pure link kernel (PBUI-LINK-1): ports, contracts, binding terms, their
+ * evaluation and planning. A SIBLING of the action kernel (design D1): it
+ * shares the type graph, availability and snapshot conventions from
+ * `actions/` and never imports React, a store, or the workbench document.
  */
 
 export {
@@ -34,3 +33,33 @@ export type {
   PortMode,
   SourceClosePolicy,
 } from "./types";
+export { describeBinding, isBinding, isSerializableReference, linkIdOf, sameReference, sourcePortOf, terms } from "./terms";
+export type { Binding, Diagnostic, SerializableReference } from "./terms";
+export { LINK_VERB_KINDS, describeLinkVerb, isLinkVerb, linkVerbs } from "./verbs";
+export type { LinkVerb, LinkVerbKind, UnlinkPolicy } from "./verbs";
+export { labelOf, reaches } from "./snapshot";
+export type { ContextDefinition, LinkDeps, LinkSnapshot, LinkValues, PortDefinition } from "./snapshot";
+export { effectiveBinding, evaluateBinding, evaluatePort, valueToHold } from "./evaluate";
+export type { Evaluation } from "./evaluate";
+export {
+  dependsOn,
+  findLink,
+  planAmbient,
+  planBind,
+  planClear,
+  planDetach,
+  planFollow,
+  planPin,
+  planResume,
+  planUnlink,
+  plansForPort,
+  titleOfPort,
+} from "./plan";
+export type { LinkPlan } from "./plan";
+export { applyLinkVerb } from "./apply";
+export type { ApplyOptions, ApplyResult } from "./apply";
+export { bindingsAfterAppReplaced, bindingsAfterClone, bindingsAfterViewsRemoved } from "./lifecycle";
+export { badgeOf, badgesOfView } from "./badge";
+export type { Badge, BadgeState } from "./badge";
+export { checkInvariants } from "./invariants";
+export type { Violation } from "./invariants";

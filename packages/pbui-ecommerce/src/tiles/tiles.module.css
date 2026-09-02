@@ -96,3 +96,11 @@
   place-items: center;
   padding: 12px;
 }
+
+.row {
+  cursor: default;
+}
+
+.row:hover td {
+  background: color-mix(in srgb, currentColor 5%, transparent);
+}

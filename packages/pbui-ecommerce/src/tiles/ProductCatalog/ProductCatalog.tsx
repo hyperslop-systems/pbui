@@ -1,5 +1,5 @@
 import { AppBody, Chip, Text, Toolbar } from "@hyperslop-systems/pbui";
-import type { AppProps } from "@hyperslop-systems/pbui-workbench";
+import { useEmitPort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { isLowStock } from "../../fixtures";
 import { useHostRevision } from "../../host";
@@ -14,11 +14,15 @@ export interface ProductCatalogProps extends AppProps {
 /**
  * The eight SKUs. Three presentation types per row — the product, its
  * category, its metal — so "Link to…" has three kinds of thing to offer
- * from one table, and a category click can drive an orders filter.
+ * from one table. A row click emits the product; a click on the category
+ * cell emits the category through the `cat` port (what an orders filter
+ * follows in scene 6).
  */
-export function ProductCatalog({ shop }: ProductCatalogProps) {
+export function ProductCatalog({ shop, view }: ProductCatalogProps) {
   useHostRevision(shop.host);
   const { Presentation } = shop.pbui;
+  const emitProduct = useEmitPort(view, "product");
+  const emitCategory = useEmitPort(view, "cat");
   const products = shop.host.rows("products");
   const low = products.filter(isLowStock).length;
   return (
@@ -49,17 +53,26 @@ export function ProductCatalog({ shop }: ProductCatalogProps) {
             {products.map((product) => {
               const category = shop.host.category(product.categoryId);
               const metal = shop.host.metal(product.metal);
+              const reference = { type: "product" as const, value: productValue(product, shop.host) };
+              const categoryReference = category ? { type: "category" as const, value: categoryValue(category) } : null;
               return (
-                <tr key={product.id} data-product-id={product.id}>
+                <tr key={product.id} data-product-id={product.id} className={styles.row} onClick={() => emitProduct(reference)} onContextMenuCapture={() => emitProduct(reference)} onPointerEnter={() => emitProduct(reference, { attended: true })}>
                   <td>{product.id}</td>
                   <td>
-                    <Presentation reference={{ type: "product", value: productValue(product, shop.host) }} doc={`${product.name}, ${product.qty} in stock`}>
+                    <Presentation reference={reference} doc={`${product.name}, ${product.qty} in stock`}>
                       {product.name}
                     </Presentation>
                   </td>
-                  <td>
-                    {category ? (
-                      <Presentation reference={{ type: "category", value: categoryValue(category) }} doc={`the ${category.name} category`}>
+                  <td
+                    onClick={(event) => {
+                      if (!categoryReference) return;
+                      event.stopPropagation();
+                      emitCategory(categoryReference);
+                    }}
+                    onPointerEnter={() => categoryReference && emitCategory(categoryReference, { attended: true })}
+                  >
+                    {categoryReference && category ? (
+                      <Presentation reference={categoryReference} doc={`the ${category.name} category`}>
                         {category.name}
                       </Presentation>
                     ) : (

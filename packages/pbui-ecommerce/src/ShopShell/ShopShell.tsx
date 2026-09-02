@@ -1,5 +1,5 @@
 import { Text } from "@hyperslop-systems/pbui";
-import { isWorkbenchVerb, tileRefOf, type Workbench } from "@hyperslop-systems/pbui-workbench";
+import { PortBadge, isWorkbenchVerb, portRefOf, tileRefOf, type Workbench } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../createShop";
 import styles from "./ShopShell.module.css";
 
@@ -13,7 +13,8 @@ export interface ShopShellProps {
 
 /**
  * The shop as a product: the pbui Provider whose router is the workbench,
- * the tile surface with every tile title a `<tile>` presentation, the
+ * the tile surface with every tile title a `<tile>` presentation and every
+ * binding badge a `<port>` presentation (so both get the object menu), the
  * launcher, and the object menu and accept banner the presentations need.
  * Stories and the demo both mount exactly this.
  */
@@ -21,7 +22,7 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
   const { Provider, Presentation, ObjectMenu, AcceptBanner } = shop.pbui;
   return (
     <Provider
-      environment={{ host: shop.host }}
+      environment={{ host: shop.host, links: workbench.links }}
       onPerform={(verb) => {
         if (isWorkbenchVerb(verb)) workbench.perform(verb);
       }}
@@ -35,7 +36,7 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
             <workbench.WorkspaceStrip addLabel="new workspace" />
             <span className={styles.spacer} />
             <Text size="tiny" tone="faint">
-              Mod+K opens the launcher
+              Mod+K opens the launcher · right-click anything to link it
             </Text>
           </div>
         ) : null}
@@ -49,6 +50,18 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
                   {defaultTitle}
                 </Presentation>
               );
+            }}
+            renderBadges={(_view, _placement, badges) => {
+              const snapshot = workbench.links.snapshot();
+              return badges.map((badge) => {
+                const port = portRefOf(badge, snapshot);
+                if (!port) return <PortBadge key={badge.port} badge={badge} />;
+                return (
+                  <Presentation key={badge.port} reference={{ type: "port", value: port }} doc={badge.explanation} inComposite>
+                    <PortBadge badge={badge} />
+                  </Presentation>
+                );
+              });
             }}
           />
         </div>

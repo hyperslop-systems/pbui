@@ -28,6 +28,8 @@ export interface WorkbenchState {
    * browser's business, never the layout's, and is not serialised.
    */
   rebalanceOpen: boolean;
+  /** Connect-management mode is showing (PBUI-LINK-1 Phase 3); browser-local like the rest. */
+  linkModeOpen: boolean;
 }
 
 /**
@@ -92,6 +94,7 @@ export function createWorkbenchStore(
     launcherOpen: false,
     launcherFrom: null,
     rebalanceOpen: false,
+    linkModeOpen: false,
   };
   const listeners = new Set<() => void>();
   const emit = () => {

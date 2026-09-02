@@ -5,4 +5,4 @@ export { createShopPbui } from "./runtime";
 export type { ShopPbui } from "./runtime";
 export { INSPECTABLE } from "./types";
 export type { CategoryValue, CustomerValue, DatumValue, Environment, FieldValue, JsonPrimitive, LineItemValue, MetalValue, OrderValue, ProductValue, ShopType, Values, WorkspaceValue } from "./types";
-export { categoryValue, customerValue, lineItemValue, metalValue, orderValue, productValue } from "./values";
+export { categoryValue, customerValue, labelReference, lineItemValue, metalValue, orderValue, productValue } from "./values";

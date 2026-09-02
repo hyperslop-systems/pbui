@@ -63,6 +63,13 @@ export interface PortDeclarationInput {
   readonly doc: string;
   /** Ambient fallback for an unbound INPUT: a context key. Absent ⇒ `Unresolved("unbound")`. */
   readonly fallbackContext?: string;
+  /**
+   * The context an OUTPUT drives by default, so an unlinked detail has
+   * something ambient to read: the orders table's `order` port drives
+   * `workspace.order`, and every detail declaring that fallback follows it.
+   * Symmetric with `fallbackContext`; a declaration, never a global.
+   */
+  readonly drivesContext?: string;
   readonly fanIn?: FanInPolicy;
   readonly onSourceClose?: SourceClosePolicy;
   /**
@@ -80,6 +87,7 @@ export interface PortDeclaration {
   readonly contract: PortContract;
   readonly doc: string;
   readonly fallbackContext?: string;
+  readonly drivesContext?: string;
   readonly fanIn: FanInPolicy;
   readonly onSourceClose: SourceClosePolicy;
   readonly documentSlot: boolean;
@@ -173,6 +181,7 @@ export function definePort(input: PortDeclarationInput): PortDeclaration {
     contract: normalizeContract(input.contract, input.direction),
     doc: input.doc,
     ...(input.fallbackContext ? { fallbackContext: input.fallbackContext } : {}),
+    ...(input.drivesContext ? { drivesContext: input.drivesContext } : {}),
     fanIn: input.fanIn ?? "single-producer",
     onSourceClose: input.onSourceClose ?? "freeze",
     documentSlot: input.documentSlot ?? false,

@@ -3,12 +3,12 @@ import { split, tile } from "@hyperslop-systems/pbui-workbench";
 import { APP_IDS } from "../apps";
 import { ORDERS_BY_STATUS, REVENUE_BY_CATEGORY } from "../plots/documents";
 import { plotTile } from "../seed";
-import { ShopStory } from "../stories/harness";
+import { followOrders, holdOrders, presentOrder, ShopStory } from "../stories/harness";
 
 /*
- * THE SCENES (PBUI-LINK-1 §11.1), in the order the phases land. Phase 1
- * shows the layouts; each later phase makes its scene do what its name
- * says and adds the Playwright scenario beside it.
+ * THE SCENES (PBUI-LINK-1 §11.1), in the order the phases land. Each opens
+ * on the postcondition its name promises; the later phases make the rest
+ * of the scene do what its name says and add the Playwright scenario.
  */
 
 const meta: Meta = { title: "Shop/Scenes" };
@@ -20,23 +20,28 @@ export const Seeded: StoryObj = {
 };
 
 export const Scene1Ambient: StoryObj = {
-  name: "1 · ambient: an unlinked detail follows the workspace's current order (Phase 2)",
-  render: () => <ShopStory spec={split("row", 0.6, tile(APP_IDS.orders), tile(APP_IDS.orderDetail))} height={520} />,
+  name: "1 · ambient: an unlinked detail follows the workspace's current order; click rows to move it (Phase 2)",
+  render: () => <ShopStory spec={split("row", 0.6, tile(APP_IDS.orders), tile(APP_IDS.orderDetail))} setup={presentOrder("88213")} height={520} />,
 };
 
-export const Scene2FollowHold: StoryObj = {
-  name: "2 · follow and hold: right-click an order → Link to order detail; pin; resume (Phase 2)",
-  render: () => <ShopStory spec={split("row", 0.55, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail), tile(APP_IDS.inspector)))} height={560} />,
+export const Scene2Follow: StoryObj = {
+  name: "2a · follow: right-click an order → Link to order detail · order; the badge reads → orders (Phase 2)",
+  render: () => <ShopStory spec={split("row", 0.55, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail), tile(APP_IDS.inspector)))} setup={followOrders("88214")} height={560} />,
+};
+
+export const Scene2Hold: StoryObj = {
+  name: "2b · hold: the detail is pinned on #88213; click the badge for Resume / Detach (Phase 2)",
+  render: () => <ShopStory spec={split("row", 0.55, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail), tile(APP_IDS.inspector)))} setup={holdOrders("88213", "88201")} height={560} />,
 };
 
 export const Scene3Show: StoryObj = {
   name: "3 · show with routing: two details, one held; “Show details…” picks the free one (Phase 4)",
-  render: () => <ShopStory spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail, { title: "detail A" }), tile(APP_IDS.orderDetail, { title: "detail B" })))} height={560} />,
+  render: () => <ShopStory spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail, { title: "detail A" }), tile(APP_IDS.orderDetail, { title: "detail B" })))} setup={followOrders("88213")} height={560} />,
 };
 
 export const Scene4Derived: StoryObj = {
   name: "4 · derived: the customer detail derives through order.customer (Phase 6)",
-  render: () => <ShopStory spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail), tile(APP_IDS.customerDetail)))} height={560} />,
+  render: () => <ShopStory spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail), tile(APP_IDS.customerDetail)))} setup={followOrders("88213")} height={560} />,
 };
 
 export const Scene5Identity: StoryObj = {
@@ -51,5 +56,5 @@ export const Scene6FollowVsIdentity: StoryObj = {
 
 export const Scene7ConnectMode: StoryObj = {
   name: "7 · connect mode: Mod+Shift+L over the seeded workspace shows every wire (Phase 3)",
-  render: () => <ShopStory height={640} strip />,
+  render: () => <ShopStory height={640} strip setup={followOrders("88213")} />,
 };

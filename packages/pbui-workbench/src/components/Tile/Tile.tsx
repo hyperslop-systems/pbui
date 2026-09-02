@@ -3,12 +3,14 @@ import { Button, Callout, EmptyState, IconButton, Text, TileFrame, useTileDrag }
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { placementCount } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
+import { useBadges } from "../../links/hooks";
+import { PortBadge } from "../PortBadge";
 import type { SurfaceProps, TilePlacementInfo } from "../../types";
 import { canClose as canClosePlacement, type PlaceZone } from "../../verbs";
 import styles from "./Tile.module.css";
 
 export interface TileProps
-  extends Pick<SurfaceProps, "renderTitle" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
+  extends Pick<SurfaceProps, "renderTitle" | "renderBadges" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
   node: Node;
   /** The active placement request's per-tile wording, from the Surface. */
   placementLabelFor?(placementId: string, zone: PlaceZone): string | undefined;
@@ -22,7 +24,7 @@ export interface TileProps
  * verbs, and hands the application a one-cell grid with a committed height.
  * It holds no application state and no layout logic of its own.
  */
-export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
+export function Tile({ node, renderTitle, renderBadges, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const active = workbench.useWorkbenchState((state) => state.activePlacementId === node.id);
@@ -30,6 +32,7 @@ export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, repl
   const view = document.views[viewId];
   const app = view ? workbench.apps.get(view.appId) : null;
   const canClose = canClosePlacement(document, node.id);
+  const badges = useBadges(view ?? { id: viewId, appId: "", documents: {} } as never);
 
   const drag = useTileDrag({
     id: node.id,
@@ -59,6 +62,8 @@ export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, repl
           {` ×${info.placementCount}`}
         </span>
       ) : null}
+      {/* The binding badges (PBUI-LINK-1): the always-on substrate of tile linking. */}
+      {view && badges.length > 0 ? (renderBadges ? renderBadges(view, info, badges) : badges.map((badge) => <PortBadge key={badge.port} badge={badge} />)) : null}
     </>
   );
   const title = view && renderTitle ? renderTitle(view, info, defaultTitle) : defaultTitle;

@@ -83,6 +83,45 @@ export type {
   PlacementOutcome,
   PlacementRequest,
 } from "./placement";
+// Tile linking (PBUI-LINK-1): the link document, runtime, hooks, port descriptor, menus.
+export {
+  LINKS_DOC_ID,
+  LINKS_FORMAT,
+  LINKS_SCHEMA_VERSION,
+  bindingsOf,
+  buildLinkSnapshot,
+  createLinkHandlers,
+  createLinkRuntime,
+  createPortDescriptor,
+  linkTypeDefinitions,
+  linksChange,
+  linksMutation,
+  portRefOf,
+  readLinks,
+  useBadges,
+  useEmitPort,
+  useLinkRuntime,
+  useLinkSnapshot,
+  usePort,
+  workbenchLinkContributions,
+} from "./links";
+export type {
+  CreateLinkHandlersOptions,
+  EmitOptions,
+  EmitPortOptions,
+  LinkEnvironment,
+  LinkFacts,
+  LinkHandlers,
+  LinkRuntime,
+  LinkRuntimeState,
+  LinksPayload,
+  PortReading,
+  PortRef,
+  WorkbenchLinkContributionOptions,
+  WorkbenchLinks,
+} from "./links";
+export { PortBadge } from "./components/PortBadge";
+export type { PortBadgeProps } from "./components/PortBadge";
 export { Tile } from "./components/Tile";
 export type { TileProps } from "./components/Tile";
 export { SplitPane } from "./components/SplitPane";

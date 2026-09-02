@@ -1,5 +1,5 @@
 import { AppBody, Text, Toolbar } from "@hyperslop-systems/pbui";
-import type { AppProps } from "@hyperslop-systems/pbui-workbench";
+import { useEmitPort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { useHostRevision } from "../../host";
 import { money } from "../../presentation/registry";
@@ -10,10 +10,11 @@ export interface CustomersTableProps extends AppProps {
   shop: Shop;
 }
 
-/** Who buys, with what they have spent this summer. Each name is a `<customer>` presentation. */
-export function CustomersTable({ shop }: CustomersTableProps) {
+/** Who buys, with what they have spent this summer. Each row emits its `<customer>` on click and as attended on hover. */
+export function CustomersTable({ shop, view }: CustomersTableProps) {
   useHostRevision(shop.host);
   const { Presentation } = shop.pbui;
+  const emit = useEmitPort(view, "customer");
   const customers = shop.host.rows("customers");
   return (
     <div data-part="customers-table" className={styles.app}>
@@ -41,10 +42,11 @@ export function CustomersTable({ shop }: CustomersTableProps) {
           <tbody>
             {customers.map((customer) => {
               const orders = shop.host.relations.customerOrders(customer.id).filter((order) => order.status !== "cancelled");
+              const reference = { type: "customer" as const, value: customerValue(customer) };
               return (
-                <tr key={customer.id} data-customer-id={customer.id}>
+                <tr key={customer.id} data-customer-id={customer.id} className={styles.row} onClick={() => emit(reference)} onContextMenuCapture={() => emit(reference)} onPointerEnter={() => emit(reference, { attended: true })}>
                   <td>
-                    <Presentation reference={{ type: "customer", value: customerValue(customer) }} doc={`${customer.name}, a ${customer.kind} customer in ${customer.city}`}>
+                    <Presentation reference={reference} doc={`${customer.name}, a ${customer.kind} customer in ${customer.city}`}>
                       {customer.name}
                     </Presentation>
                   </td>
