@@ -2,7 +2,7 @@ import { AppBody, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
 import { useEmitPort, usePort, useWorkbench, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { DatumId, InteractionIndex, InteractionTargetRecord, PlotEvent, PlotOutcome } from "@hyperslop-systems/plot";
 import { ResponsivePlot } from "@hyperslop-systems/plot/react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Shop } from "../../createShop";
 import { PLOT_SLOT, TABLE_SLOT, readPlotDocument, readTableName } from "../../document";
 import { IDENTITY_FIELDS, useHostRevision, type TableName } from "../../host";
@@ -65,14 +65,18 @@ export function ShopPlot({ shop, view, onEvent }: ShopPlotProps) {
   const emitCategory = useEmitPort(view, "cat");
   const emitSelection = useEmitPort(view, "selection");
   const selection = usePort<DatumValue[]>(view, "selection");
-  const [index, setIndex] = useState<InteractionIndex | null>(null);
+  // The interaction index arrives with every outcome and is a NEW object each time; kept in a ref, with a
+  // render only when the number of targets changes, or setting it in state would re-render the plot forever.
+  const indexRef = useRef<InteractionIndex | null>(null);
+  const [targetCount, setTargetCount] = useState(0);
   const plotId = view.documents[PLOT_SLOT] ?? "";
   const tableId = view.documents[TABLE_SLOT] ?? "";
   const plot = plotId ? readPlotDocument(doc, plotId) : null;
   const table = tableId ? readTableName(doc, tableId) : null;
   const data = useMemo(() => (table ? plotDataFor(shop.host, table) : null), [shop.host, table, revision]);
   const selectedRows = useMemo(() => new Set((selection.value ?? []).filter((d) => d.relation === table).map((d) => String(d.identity[IDENTITY_FIELDS[table ?? "orders"]]))), [selection.value, table]);
-  const highlighted = useMemo(() => (table ? datumIdsFor(index, table, selectedRows) : []), [index, table, selectedRows]);
+  const highlighted = useMemo(() => (table ? datumIdsFor(indexRef.current, table, selectedRows) : []), [targetCount, table, selectedRows]);
+  const plotView = useMemo(() => (highlighted.length > 0 ? { selection: highlighted } : undefined), [highlighted]);
 
   if (!plotId || !tableId) return <EmptyState message="this tile names no plot or no table" hint={`bind view.documents.${PLOT_SLOT} and view.documents.${TABLE_SLOT}`} />;
   if (!plot) return <EmptyState message={`no plot "${plotId}" in this workbench`} hint="seed one, or open a plot from the launcher" />;
@@ -101,7 +105,7 @@ export function ShopPlot({ shop, view, onEvent }: ShopPlotProps) {
       // The brushed marks, as rows of the plot's table (deduplicated by identity).
       const ids = new Set(event.selection?.datumIds ?? []);
       const rows = new Map<string, DatumValue>();
-      for (const record of index?.targets ?? []) {
+      for (const record of indexRef.current?.targets ?? []) {
         if (record.target.kind !== "mark" || !record.target.datumIds.some((id) => ids.has(id))) continue;
         const datum = datumOf(table, record);
         if (datum) rows.set(String(datum.identity[IDENTITY_FIELDS[table]]), datum);
@@ -109,7 +113,11 @@ export function ShopPlot({ shop, view, onEvent }: ShopPlotProps) {
       emitSelection({ type: "datum", value: [...rows.keys()].sort().map((key) => rows.get(key)!) });
     }
   };
-  const onOutcome = (outcome: PlotOutcome) => setIndex(outcome.interactions);
+  const onOutcome = (outcome: PlotOutcome) => {
+    indexRef.current = outcome.interactions;
+    const count = outcome.interactions?.targets.length ?? 0;
+    if (count !== targetCount) setTargetCount(count);
+  };
 
   return (
     <div data-part="shop-plot" className={styles.app} data-selected-count={selectedRows.size || undefined}>
@@ -128,7 +136,7 @@ export function ShopPlot({ shop, view, onEvent }: ShopPlotProps) {
           document={plot}
           schema={SCHEMAS[table]}
           data={data}
-          {...(highlighted.length > 0 ? { view: { selection: highlighted } } : {})}
+          {...(plotView ? { view: plotView } : {})}
           theme="embedded"
           resizeDelayMs={80}
           brush="xy"
