@@ -325,3 +325,115 @@ Frontmatter: valid
 reMarkable dry run: passed for the guide + diary bundle at `/ai/2026/09/02/PBUI-KERNEL-1`
 reMarkable upload: `OK: uploaded PBUI-KERNEL-1 Clean Cutover Composable Kernel Guide.pdf -> /ai/2026/09/02/PBUI-KERNEL-1`
 ```
+
+## Step 4: Assess the guide, redo the consumer inventory, confirm D3/D7, split the phases
+
+The user asked for an opinion on the clean-cutover guide and what to do. The assessment held that the design is right and the eight corrections in §1.2 are the valuable part, but that the scope was five projects in one ticket, that two open decisions blocked starting, and that the guide's external-consumer picture was wrong. A workspace-wide inventory then found the consumer the guide did not know about (rag-ttc's workbench web app, the largest kernel consumer in the org), reclassified turboproof (pre-kernel 0.6.0, not a participant) and agentlogic (components plus pbui-workbench only), and identified hyperblog as the sole consumer of the open-world wildcard family. The user confirmed D3 (hard cutover) and D7 (touch datalab-ui), asked for the phase split, and asked for implementation with diary, slips, and screenshots.
+
+The guide gained §0.1 (scope after the split), §3.13.1 (the inventory table and its consequences), C16–C18 (hard cutover, mechanical datalab-ui, pbui-chat as a fragment), a rewritten Phase 6 (in-repo packages first, then rag-ttc and hyperblog from the sibling checkouts, turboproof and agentlogic out), stubs for Phases 8–10 pointing at PBUI-KERNEL-2/3/4, a Phase 1 preamble that says to apply the prototype patch rather than rewrite it, and a §20.3 that names the two external repositories. tasks.md was rewritten to the new phases (it still carried the first guide's seven-phase plan with `kernel.translators`).
+
+### Prompt Context
+
+**User prompt (verbatim):** "Read PBUI-KERNEL-1  pbui/ttmp/2026/09/02/PBUI-KERNEL-1--rethinking-the-pbui-presentation-kernel-one-declaration-sibling-resolvers-and-the-run time-that-binds-them/design-doc/02-clean-cutover-composable-pbui-presentation-semantics-kernel-intern-analysis-design-and -implementation-guide.md And tell me what you think and what to do" — then "How do agentlogic and turboproof do their actions and such?" — then "what about rag-ttc/ ?" / "in this workspace." — then "k, update the design, split out the phases as tickets. D3 hard cutover yes, D7 yes touch datalab. Then implement, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill), Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done." — mid-turn: "do we need to adapt the pbui-chat as well to use the new kernel?" and "take screenshots as you work and test, to go with the diary, and later on to write our report."
+
+**Assistant interpretation:** Review the guide critically, ground it in what the consumers actually do, fold the corrections into the guide, split the out-of-scope phases into their own tickets, then implement KERNEL-1 phase by phase with commits, diary steps, printed slips at plan/phase-start/phase-end, and screenshots.
+
+**Inferred user intent:** Ship the consolidation boundary (compiled model, relations, strict runtime, every consumer migrated) as one reviewable branch, with enough written and printed evidence to write a report afterwards.
+
+**Commit (docs):** 4d49e37 — "PBUI-KERNEL-1: clean-cutover composable-kernel guide, imported research report and prototype patch"; 312bffd — "PBUI-KERNEL-1: consumer inventory, C16–C18, phase split into KERNEL-2/3/4, tasks rewritten"
+
+### What I did
+- Read the 2,400-line guide, tasks, changelog, the patch's file list, and the current `src/presentation` tree.
+- Grepped every repository in the workspace that depends on `@hyperslop-systems/pbui` for presentation-layer symbols; read rag-ttc's `apps/workbench/web/src/pbui/{runtime,actions,translators,help}` and `sink.ts`/`acceptBridge.tsx`, hyperblog's `ui/src/pbui/runtime.tsx`, turboproof's `ui/src/pbui/{runtime,verbs,types,descriptors/*}`, agentlogic's `store/workbenchShell.tsx`.
+- Edited the guide (§0.1, §3.13.1, C16–C18, Phase 1 preamble, Phase 6, Phase 8–10 stubs, §20.3); rewrote tasks.md; updated index.md.
+- Created PBUI-KERNEL-2/3/4 with docmgr and filled their index overviews, specification pointers and exit criteria.
+- Ran the baseline: root typecheck, 331 tests, recursive typecheck all green.
+- Printed the plan slip, a "P0 DONE" status slip (commit 312bffd), and a "P1 START" slip.
+
+### Why
+- The guide's Phase 6 and §20.3 optimized for two repositories that do not use the kernel and missed the one that does. Migration risk lives in rag-ttc (frozen wire ids, vocabulary golden, pbui-chat over the instance, accept from outside React), not in agentlogic.
+- Eleven phases in one ticket would have made the branch unreviewable; Phases 8–10 share no code with the consolidation.
+
+### What worked
+- The inventory grep across `~/workspaces/2026-09-01/add-plot-editor/*` was decisive in one pass once the pattern stopped requiring `createPbui(` on one line.
+
+### What didn't work
+- The first grep for `createPbui\(` missed turboproof, whose import and call are on different lines; I told the user no external repo used the kernel and had to correct it. Lesson: grep for the bare symbol, then read.
+
+### What I learned
+- rag-ttc is already shaped like the target (one facts type, composed semantic revision, abstract organizing types, unconditional translators with frozen ids), so its migration is mechanical.
+- hyperblog is the only consumer of `define.family("*")` over an empty graph; the closed world (C9) is a real behavior change for it, not a cleanup.
+- pbui-chat's package boundary is `PbuiInstance` + `pbui.registry`; under the fragment model the chat types belong in a fragment (C18).
+
+### What was tricky to build
+- Deciding where the patch's KERNEL-2/3 code goes: the patch is one green unit, so KERNEL-1 applies all of it and freezes the out-of-scope files rather than trying to carve them out.
+
+### What warrants a second pair of eyes
+- §3.13.1's claim that agentlogic needs only a version bump rests on `createWorkbench`/`defineApp` staying stable through Phase 6.
+
+### What should be done in the future
+- Turboproof upgrade ticket in that repository (0.6.0 → post-KERNEL-1).
+
+### Code review instructions
+- Guide §0.1, §3.13.1, C16–C18, Phase 6; `tasks.md`; the three new ticket `index.md` files.
+
+### Technical details
+- Inventory command: `rg -l '"@hyperslop-systems/pbui"' <workspace> --glob package.json`, then per repo `rg -n "createPbui|createActionRegistry|PresentationTranslator|defineActions|createPbuiChat|usePbui" src`.
+
+## Step 5: Phase 1 — apply the prototype, then one selector substrate with an explicit universal subject and a closed type world
+
+Phase 1 began by applying the imported 31-file prototype patch unchanged (commit d2ee0c2: root typecheck green, 347 tests). Everything after is a delta toward the guide. The delta in this step is the selector substrate of §9: `context/match.ts` became `context/selector.ts`; `PresentationSelector.subject` is now the explicit union `{ kind: "type", type, match } | { kind: "any-declared-type" }` built by `selectorOf` from the flat `subject`/`match` authoring shape every contribution keeps; provenance is `SelectorMatch` with `declaredType: RuntimeTypeId | null` and `scope`/`scopeIndex: … | null` for scope-universal selectors (the prototype's synthetic `"__unscoped__"` provenance is gone); `requireScoped` narrows for the two interpreters that require explicit scopes. The type graph is closed: `ancestors`, `isSubtype` and `distance` throw for an undeclared subject type, and `matchSelector` checks `graph.has` up front.
+
+The action resolver's inline `"*"` path is deleted; families use `anyDeclaredType` and go through the same selector. Vocabulary emits `subject: null` for a universal family. Acceptance ranks a scope-universal relation behind any scoped one (`scopeIndex ?? Infinity`), which the prototype got wrong (it gave universal relations index 0, the nearest). The `matchContext`/`ContextTarget`/`activeScope` compatibility exports are removed from the package index.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Land Phase 1 of the guide on top of the applied prototype, keeping the workspace green.
+
+**Inferred user intent:** A reviewable first semantic step that removes the two open-world escape hatches (`"*"`, isolated nodes) the guide's C9 names.
+
+**Commit (code):** d2ee0c2 — "PBUI-KERNEL-1 P1a: apply the composable-kernel prototype patch as the starting point"; 0007f6f — "PBUI-KERNEL-1 P1: one selector substrate — explicit universal subject, nullable scope provenance, closed type world"
+
+### What I did
+- `git apply` of `sources/pbui-composable-kernel.patch`; typecheck + tests; committed as-is.
+- New `src/presentation/context/types.ts` (SelectorSubject, anyDeclaredType, SelectorMatch, ScopedSelectorMatch), `context/selector.ts` (activeScope, selectorOf, requireScoped, matchSelector), `context/selector.test.ts` (adds universal-subject, universal-scope, and closed-world tests); deleted `context/match.ts` and its test.
+- `actions/typeGraph.ts`: undeclared subject throws; docs updated; test flipped.
+- `actions/types.ts`: `ActionFamily.subject: RuntimeTypeId | AnyDeclaredTypeSubject`.
+- `actions/registry.ts`, `actions/resolve.ts`, `actions/vocabulary.ts`, `help/resolve.ts`, `relations/system.ts`, `relations/types.ts`, `translators/resolve.ts`, `index.ts`: rewired to the selector; `"*"` checks replaced by `isAnyDeclaredType`.
+- `packages/pbui-sandbox/src/actions.ts`: generated-actions family subject → `anyDeclaredType`.
+- `createPbui.tsx`: `PbuiInstance`'s facts parameter defaults to `any` (see tricky).
+- `packages/datalab-ui/test/descriptors.test.ts`: the "unknown type degrades" test now expects the closed-world throw.
+- Validation: `pnpm typecheck` clean; `pnpm test` 349 passed; `pnpm build`; `pnpm -r typecheck` clean; `pnpm -r test`: datalab 554, workbench 281 (see didn't-work).
+
+### Why
+- §9.2 replaces string wildcard behavior with an explicit union so a universal family is a declared intent, not a spelling; §5.1 makes unknown types errors so one validated declaration can actually guarantee consistency.
+
+### What worked
+- Keeping the flat `subject`/`match` authoring shape on contributions and lifting it in one `selectorOf` meant no product declaration changed shape; only the sandbox's `"*"` moved.
+
+### What didn't work
+- `pnpm -r typecheck` failed in `pbui-chat/demo` with `Types of property 'kernel' are incompatible … PredicateRegistry<Values, DemoFacts> is not assignable to PredicateRegistry<Values, unknown>`. Cause: the prototype's instance exposes `kernel` typed by `ProductFacts`, invariant through predicates, while `PbuiInstance` defaulted `ProductFacts = unknown`. The diary's Step 2 "recursive typecheck passes" was measured against a stale `dist`; packages resolve pbui through `dist`, so `pnpm build` must precede `pnpm -r typecheck`.
+- `pnpm -r test` stopped at datalab's `no descriptor means no verbs, not a crash` (expected: closed world). `pbui-workbench`'s "every generator over 12 skewed tiles stays interactive" showed a × under the parallel run (849 ms) and passes alone: a load-sensitive perf test, not a regression.
+
+### What I learned
+- The prototype's universal relations ranked nearest in acceptance; §11.3's "retain nearest scope" only makes sense if universal means "no claim", so they now rank last.
+
+### What was tricky to build
+- The `PbuiInstance` default. Facts appear only in invariant positions on the instance, so `unknown` makes no concrete instance assignable to the facts-agnostic spelling pbui-chat uses. `any` is the correct default for that spelling (the same reason React's `ComponentType<any>` exists); Phase 5 will keep it when the instance exposes `presentation`.
+- Trace ordering in `actions/resolve.ts`: the selector checks type before scope but the trace must interleave invocation between them, so the rejection is still held and inspected by stage rather than acted on.
+
+### What warrants a second pair of eyes
+- `help/resolve.ts` maps a null `declaredType` to the concrete type for provenance; help rules cannot be universal today, so this is unreachable, but it is a silent default.
+- The closed world now throws from `matchSelector` during hover resolution. That is what C9 asks for ("unknown references fail visibly"), but hyperblog will throw on every reference until its Phase 6 migration declares its types.
+
+### What should be done in the future
+- Phase 2: relation exposure, abstract codomains, vocabulary; Phase 3: `model/` replacing `kernel/`.
+
+### Code review instructions
+- Start at `src/presentation/context/selector.ts` and `context/types.ts`; then the `resolve.ts` loop head in `actions/`; then `actions/typeGraph.ts` `ancestorsOf`.
+- Validate: `pnpm typecheck && pnpm test && pnpm build && pnpm -r typecheck && pnpm -r test`.
+
+### Technical details
+- Ranking change in `translators/resolve.ts`: `scopeIndex: candidate.match.scopeIndex ?? Number.POSITIVE_INFINITY`.

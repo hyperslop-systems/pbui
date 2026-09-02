@@ -19,16 +19,16 @@ Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–
 ## Phase 0: Baseline inventory and characterization
 
 - [x] Root typecheck + test + recursive typecheck green (331 tests) <!-- t:p0a -->
-- [ ] Golden fixtures for every consumer: menus, acceptance, help, vocabulary <!-- t:69bw -->
-- [ ] Record revision formulas per product <!-- t:p0c -->
-- [ ] Print plan slip <!-- t:p0d -->
+- [x] Golden fixtures for every consumer: menus, acceptance, help, vocabulary <!-- t:69bw -->
+- [x] Record revision formulas per product <!-- t:p0c -->
+- [x] Print plan slip <!-- t:p0d -->
 
 ## Phase 1: Shared predicates and selector
 
-- [ ] Apply sources/pbui-composable-kernel.patch; green <!-- t:p1a -->
-- [ ] One predicate registry shared by actions/help/relations <!-- t:4h96 -->
-- [ ] Explicit universal subject (`anyDeclaredType`); nullable scope provenance; no synthetic `__unscoped__` <!-- t:p1c -->
-- [ ] Final names in context/ (selector, no matchContext/ContextTarget aliases) <!-- t:p1d -->
+- [x] Apply sources/pbui-composable-kernel.patch; green <!-- t:p1a -->
+- [x] One predicate registry shared by actions/help/relations <!-- t:4h96 -->
+- [x] Explicit universal subject (`anyDeclaredType`); nullable scope provenance; no synthetic `__unscoped__` <!-- t:p1c -->
+- [x] Final names in context/ (selector, no matchContext/ContextTarget aliases) <!-- t:p1d -->
 
 ## Phase 2: Canonical relation system
 
