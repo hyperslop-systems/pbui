@@ -8,12 +8,30 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
     {
       "docBound": false,
       "id": "counter",
+      "ports": [
+        {
+          "direction": "out",
+          "doc": "the count, each time the button is pressed",
+          "name": "count",
+          "role": "number",
+          "valueType": "number",
+        },
+      ],
       "singleton": false,
       "title": "counter",
     },
     {
       "docBound": false,
       "id": "notes",
+      "ports": [
+        {
+          "direction": "in",
+          "doc": "anything at all; the tile shows what it was handed",
+          "name": "subject",
+          "role": "any",
+          "valueType": "any",
+        },
+      ],
       "singleton": true,
       "title": "notes",
     },
@@ -25,6 +43,16 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
       "docBound": true,
       "group": "shop",
       "id": "sku",
+      "ports": [
+        {
+          "direction": "in",
+          "doc": "the product this tile details",
+          "documentSlot": true,
+          "name": "product",
+          "role": "document.product",
+          "valueType": "document",
+        },
+      ],
       "singleton": false,
       "title": "SKU",
     },

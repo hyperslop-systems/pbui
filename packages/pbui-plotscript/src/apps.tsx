@@ -1,3 +1,4 @@
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { PLOT_BINDING, type PlotScriptHost } from "./host";
@@ -22,8 +23,7 @@ export function createPlotScriptApps(host: PlotScriptHost): AppDescriptor[] {
       blurb: "a JavaScript plot script, run as you type",
       tone: "var(--pbui-tone-field)",
       singleton: false,
-      docBound: true,
-      bindings: [PLOT_BINDING],
+      ports: [documentSlotPort(PLOT_BINDING, "the plot script this tile is a view of")],
       titleFor: titleFor("script"),
       Component: (props: AppProps) => <ScriptTile {...props} host={host} />,
     }),
@@ -33,8 +33,7 @@ export function createPlotScriptApps(host: PlotScriptHost): AppDescriptor[] {
       blurb: "the plot a script returns",
       tone: "var(--pbui-cat-3)",
       singleton: false,
-      docBound: true,
-      bindings: [PLOT_BINDING],
+      ports: [documentSlotPort(PLOT_BINDING, "the plot script this tile is a view of")],
       titleFor: titleFor("plot"),
       Component: (props: AppProps) => <PlotTile {...props} host={host} />,
     }),

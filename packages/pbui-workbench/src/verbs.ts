@@ -31,7 +31,7 @@ import {
   type DockZone,
 } from "@hyperslop-systems/workbench-protocol/client";
 import { splitDirectionFor } from "@hyperslop-systems/pbui";
-import type { AppDescriptor, AppRegistry } from "./apps";
+import { isDocBound, type AppDescriptor, type AppRegistry } from "./apps";
 import { buildLayout, workspaceCreateMutation, type LayoutSpec } from "./document";
 import type { WorkbenchStore } from "./store";
 
@@ -957,13 +957,13 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     // What this open would DUPLICATE if the document already has it: a
     // doc-bound application on exactly these bindings, or a singleton's one
     // view. Both mean "the same thing, already open".
-    const already = app?.docBound
+    const already = app && isDocBound(app)
       ? viewsOfApp(current, appId).find((view) => sameBindings(view.documents, documents))
       : app?.singleton
         ? viewsOfApp(current, appId)[0]
         : undefined;
     if (options.at) return openAt(current, appId, documents, already, options.at, options.title);
-    if (app?.docBound) {
+    if (app && isDocBound(app)) {
       const existing = already;
       if (existing) {
         // `viewsOfApp` searches the whole document, so the match may live in

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { leaves, viewsOfApp, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { defineApp } from "./apps";
 import { createWorkbench } from "./createWorkbench";
@@ -24,8 +25,7 @@ const skuApp = defineApp({
   tone: "var(--pbui-cat-1)",
   singleton: false,
   duplicable: false,
-  docBound: true,
-  bindings: ["product"],
+  ports: [documentSlotPort("product", "the product this tile details")],
   blurb: "one product, in detail",
   group: "shop",
   titleFor: (view) => `SKU ${view.documents["product"] ?? "?"}`,

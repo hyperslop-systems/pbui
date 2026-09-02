@@ -1,7 +1,7 @@
 import type { LauncherShellGroup } from "@hyperslop-systems/pbui";
 import type { Node, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { placementCount } from "@hyperslop-systems/workbench-protocol/client";
-import { isAppAvailable, type AppRegistry } from "./apps";
+import { isAppAvailable, isDocBound, type AppRegistry } from "./apps";
 
 export const GOTO_PREFIX = "goto:";
 export const PLACE_PREFIX = "place:";
@@ -124,7 +124,7 @@ export function defaultLauncherRows(context: LauncherRowsContext): LauncherRow[]
     if (!isAppAvailable(app, { workspaceId })) continue;
     // A doc-bound application is a view OF something; with no document to
     // bind it would open empty. Those arrive through `openView`.
-    if (app.docBound) continue;
+    if (isDocBound(app)) continue;
     // A placed singleton is already offered above, as the view it has —
     // but only if the row above actually exists. Scoped to the workspace, a
     // singleton living next door has no view row, so suppressing its

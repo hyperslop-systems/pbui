@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { definePorts, documentSlotsOf, hasDocumentSlot, type PortDeclaration, type PortDeclarationInput } from "@hyperslop-systems/pbui";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 
 /**
@@ -34,21 +35,16 @@ export interface AppDescriptor {
   /** Does the split button duplicate this application's tile? Defaults to `!singleton`. */
   duplicable?: boolean;
   /**
-   * The application is a view OF a document named in `view.documents`; the
-   * workbench then treats a second `openView` with identical bindings as
-   * "go to the existing tile" rather than a second one.
+   * Typed ports (PBUI-LINK-1). Absent or empty ⇒ the application takes part
+   * in no linking. A port marked `documentSlot` is a slot of `view.documents`
+   * and makes the application DOC-BOUND: the workbench then treats a second
+   * `openView` with identical bindings as "go to the existing tile", the
+   * launcher offers the application only through `openView`, and
+   * `describeWorkbench` reports the slot so an agent knows what to bind.
+   * The old `docBound` and `bindings` fields are derived: `isDocBound(app)`
+   * and `documentSlots(app)`.
    */
-  docBound?: boolean;
-  /**
-   * The binding keys a doc-bound application requires — the keys of
-   * `view.documents` without which it has nothing to show. Declaring them
-   * costs one optional field and turns the silently empty tile ("open a sku
-   * tile" with no sku) into something a caller can refuse before placing:
-   * `app "sku" needs a "product" binding; got {}`. Read by `describeWorkbench`
-   * so an agent knows what to bind; the workbench itself never enforces it,
-   * because a product may bind a tile after placing it.
-   */
-  bindings?: string[];
+  ports?: readonly PortDeclaration[];
   /** The title of ONE view; defaults to `title`. Receives the bindings so a doc-bound app can name its document. */
   titleFor?(view: AppView): string;
   /**
@@ -75,9 +71,10 @@ export interface AppAvailability {
   workspaceId: string;
 }
 
-export interface DefineAppInput extends Omit<AppDescriptor, "duplicable" | "docBound"> {
+export interface DefineAppInput extends Omit<AppDescriptor, "duplicable" | "ports"> {
   duplicable?: boolean;
-  docBound?: boolean;
+  /** Declarations as written; `defineApp` normalizes them (`definePorts`). */
+  ports?: readonly PortDeclarationInput[];
 }
 
 /** Is the application offered in this workspace's LAUNCHER? An app without a predicate always is. */
@@ -85,12 +82,23 @@ export function isAppAvailable(app: AppDescriptor, context: AppAvailability): bo
   return app.available?.(context) ?? true;
 }
 
+/** Is the application a view OF a document — does it declare a document-slot port? */
+export function isDocBound(app: AppDescriptor): boolean {
+  return hasDocumentSlot(app.ports);
+}
+
+/** The keys of `view.documents` the application reads: its document-slot port names, in declaration order. */
+export function documentSlots(app: AppDescriptor): string[] {
+  return documentSlotsOf(app.ports);
+}
+
 /** Normalise the optional fields so readers never branch on `undefined`. */
 export function defineApp(input: DefineAppInput): AppDescriptor {
+  const { ports, ...rest } = input;
   return {
-    ...input,
+    ...rest,
     duplicable: input.duplicable ?? !input.singleton,
-    docBound: input.docBound ?? false,
+    ...(ports && ports.length > 0 ? { ports: definePorts(ports) } : {}),
   };
 }
 

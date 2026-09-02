@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { defineApp } from "./apps";
 import { createWorkbench } from "./createWorkbench";
@@ -12,16 +13,15 @@ import { demoApps } from "./stories/demoApps";
  * narrower" becomes "rebuild the workspace from memory".
  */
 
-// A doc-bound application, which the demo pair has none of: `bindings` and
-// `docBound` are exactly what tells a caller a tile needs a document before
-// it is worth placing.
+// A doc-bound application, which the demo pair has none of: a document-slot
+// port is exactly what tells a caller a tile needs a document before it is
+// worth placing (`bindings`/`docBound` are derived from it since PBUI-LINK-1).
 const skuApp = defineApp({
   id: "sku",
   title: "SKU",
   tone: "var(--pbui-cat-1)",
   singleton: false,
-  docBound: true,
-  bindings: ["product"],
+  ports: [documentSlotPort("product", "the product this tile details")],
   blurb: "one product, in detail",
   group: "shop",
   titleFor: (view) => `SKU ${view.documents["product"] ?? "?"}`,
@@ -123,13 +123,23 @@ describe("describeWorkbench", () => {
       id: "sku",
       title: "SKU",
       singleton: false,
+      // Derived from the document-slot port (PBUI-LINK-1), so the reader who
+      // only asks "what must I bind" keeps its two fields…
       docBound: true,
       bindings: ["product"],
+      // …and the reader who links learns the port itself.
+      ports: [{ name: "product", direction: "in", valueType: "document", role: "document.product", doc: "the product this tile details", documentSlot: true }],
       blurb: "one product, in detail",
       group: "shop",
     });
-    // Absent fields stay absent rather than reading as `undefined`.
-    expect(description.apps[0]).toEqual({ id: "counter", title: "counter", singleton: false, docBound: false });
+    // Absent fields stay absent rather than reading as `undefined`; a value port is not a binding.
+    expect(description.apps[0]).toEqual({
+      id: "counter",
+      title: "counter",
+      singleton: false,
+      docBound: false,
+      ports: [{ name: "count", direction: "out", valueType: "number", role: "number", doc: "the count, each time the button is pressed" }],
+    });
   });
 
   it("names every tile with the id its verbs take and the title its chrome shows", () => {

@@ -9,6 +9,11 @@ export * from "./actions";
  * (PBUI-HELP-001). Additive sibling of the action kernel; no React at runtime.
  */
 export * from "./help";
+/*
+ * The pure link kernel (PBUI-LINK-1): ports, contracts, binding terms.
+ * A sibling of the action kernel; no React at runtime.
+ */
+export * from "./links";
 export { activeScope, matchContext } from "./context/match";
 export type { ContextMatch, ContextMatchResult, ContextTarget } from "./context/types";
 export { resolveAcceptance } from "./translators/resolve";

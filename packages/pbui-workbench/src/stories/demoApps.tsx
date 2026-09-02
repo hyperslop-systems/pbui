@@ -53,11 +53,18 @@ function NotesApp({ placementId, view }: AppProps) {
   );
 }
 
+/*
+ * Ports (PBUI-LINK-1 Phase 1): the counter EMITS its count, the notes tile
+ * ACCEPTS anything as its subject. Declared so the shell's own stories and
+ * tests have one out port and one in port to link; the demo apps do nothing
+ * with them until the LinkLab story wires them in Phase 2.
+ */
 export const counterApp = defineApp({
   id: "counter",
   title: "counter",
   tone: "var(--pbui-cat-3)",
   singleton: false,
+  ports: [{ name: "count", direction: "out", contract: "number", doc: "the count, each time the button is pressed" }],
   Component: CounterApp,
 });
 
@@ -66,6 +73,7 @@ export const notesApp = defineApp({
   title: "notes",
   tone: "var(--pbui-selected)",
   singleton: true,
+  ports: [{ name: "subject", direction: "in", contract: "any", doc: "anything at all; the tile shows what it was handed" }],
   Component: NotesApp,
 });
 

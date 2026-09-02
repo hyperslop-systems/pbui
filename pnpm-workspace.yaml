@@ -3,3 +3,4 @@ packages:
   - "packages/*"
   - "packages/pbui-chat/demo"
   - "packages/pbui-plotscript/demo"
+  - "packages/pbui-ecommerce/demo"

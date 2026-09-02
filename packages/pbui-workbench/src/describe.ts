@@ -6,8 +6,9 @@ import {
   type WorkbenchDocument,
   WorkbenchDocumentSchema,
 } from "@hyperslop-systems/workbench-protocol";
+import type { PortDeclaration, PortDirection } from "@hyperslop-systems/pbui";
 import { leaves, placementCount } from "@hyperslop-systems/workbench-protocol/client";
-import type { AppDescriptor } from "./apps";
+import { documentSlots, type AppDescriptor } from "./apps";
 import { MISSING_APP_ID, specOf, type LayoutSpec } from "./document";
 import type { Workbench } from "./types";
 
@@ -23,14 +24,31 @@ import type { Workbench } from "./types";
  * what it cannot see, and it cannot see a 40 kB document.
  */
 
+/** One declared port, as an agent reads it (PBUI-LINK-1). */
+export interface DescribedPort {
+  name: string;
+  direction: PortDirection;
+  valueType: string;
+  /** The semantic role the contract declares; equals `valueType` unless the app said otherwise. */
+  role: string;
+  doc: string;
+  /** Set on the ports that are `view.documents` slots. */
+  documentSlot?: true;
+  /** The context an unbound input reads, when it declares one. */
+  fallbackContext?: string;
+}
+
 /** One registered application, as offered to whoever is choosing what to place. */
 export interface DescribedApp {
   id: string;
   title: string;
   singleton: boolean;
+  /** Derived from the ports: does the application declare a document slot? */
   docBound: boolean;
-  /** The binding keys a doc-bound application needs; see `AppDescriptor.bindings`. */
+  /** The document-slot names a doc-bound application needs bound; derived from `ports`. */
   bindings?: string[];
+  /** Every declared port, document slots included. Absent when the app declares none. */
+  ports?: DescribedPort[];
   blurb?: string;
   group?: string;
 }
@@ -129,17 +147,30 @@ export function describeWorkbench(wb: Workbench, options: DescribeOptions = {}):
 }
 
 function describeApp(app: AppDescriptor): DescribedApp {
+  const slots = documentSlots(app);
   return {
     id: app.id,
     title: app.title,
     singleton: app.singleton,
-    // `defineApp` normalises this, but a registry may hold a hand-built
-    // descriptor; the description must never say `undefined` where the
-    // reader is deciding whether a tile needs a document.
-    docBound: app.docBound ?? false,
-    ...(app.bindings ? { bindings: [...app.bindings] } : {}),
+    // Derived, never stored: the description must never say `undefined`
+    // where the reader is deciding whether a tile needs a document.
+    docBound: slots.length > 0,
+    ...(slots.length > 0 ? { bindings: slots } : {}),
+    ...(app.ports && app.ports.length > 0 ? { ports: app.ports.map(describePort) } : {}),
     ...(app.blurb ? { blurb: app.blurb } : {}),
     ...(app.group ? { group: app.group } : {}),
+  };
+}
+
+function describePort(port: PortDeclaration): DescribedPort {
+  return {
+    name: port.name,
+    direction: port.direction,
+    valueType: port.contract.valueType,
+    role: port.contract.semanticRole,
+    doc: port.doc,
+    ...(port.documentSlot ? { documentSlot: true as const } : {}),
+    ...(port.fallbackContext ? { fallbackContext: port.fallbackContext } : {}),
   };
 }
 

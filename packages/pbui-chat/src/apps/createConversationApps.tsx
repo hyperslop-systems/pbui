@@ -1,3 +1,4 @@
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { defineApp, type AppDescriptor } from "@hyperslop-systems/pbui-workbench";
 import { CONVERSATION_BINDING } from "../conversations/bindings";
 import { ContextTile } from "../conversations/ContextTile";
@@ -101,9 +102,8 @@ export function createConversationApps(
       group,
       blurb: "what this agent was told: its tools, the last message it sent, its environment",
       singleton: false,
-      docBound: true,
       duplicable: true,
-      bindings: [CONVERSATION_BINDING],
+      ports: [documentSlotPort(CONVERSATION_BINDING, "the conversation this tile is a view of")],
       titleFor: (view) => {
         const id = view.documents[CONVERSATION_BINDING];
         if (!id) return view.title || "agent context";

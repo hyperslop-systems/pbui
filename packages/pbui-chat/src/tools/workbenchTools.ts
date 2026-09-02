@@ -1,3 +1,4 @@
+import { documentSlots } from "@hyperslop-systems/pbui-workbench";
 import type { FrontendTool, ToolDefinition } from "@go-go-golems/chat-provider";
 import {
   describeWorkbench,
@@ -357,7 +358,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       const app = wb.apps.get(node.appId)!;
       // A doc-bound application placed with nothing bound opens empty, which
       // reads as a broken tile rather than as a mistake in the request.
-      for (const key of app.bindings ?? []) {
+      for (const key of documentSlots(app)) {
         if (!node.documents?.[key]) {
           return `app "${node.appId}" needs a "${key}" binding; got ${JSON.stringify(node.documents ?? {})}`;
         }

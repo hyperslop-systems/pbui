@@ -1,3 +1,4 @@
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { describe, expect, it } from "vitest";
 import {
   createAppRegistry,
@@ -53,8 +54,7 @@ const apps = createAppRegistry([
     title: "SKU",
     tone: "var(--pbui-pane-alt)",
     singleton: false,
-    docBound: true,
-    bindings: ["product"],
+    ports: [documentSlotPort("product")],
     Component: Blank,
   }),
 ]);
