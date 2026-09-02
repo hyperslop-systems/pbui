@@ -783,3 +783,63 @@ The third operator. A port may now DERIVE from another through a named relation:
 
 - `src/presentation/links/plan.ts` (`legalRelations`, `planDerive`), `derive.test.ts`; `packages/pbui-workbench/src/components/RelationPalette`, `links/derive.test.tsx`; `packages/pbui-ecommerce/src/presentation/relations.ts`.
 - Storybook `Shop/Scenes/4`, `4b`, `Workbench/RelationPalette`; `pnpm e2e` (nine scenarios).
+
+## Step 11: Phase 7 — the inspector, the agent, notifications, and the server
+
+The last phase makes the coupling visible to everyone who is not looking at a badge: `describeWorkbench` now reports every bound port in the badge's own words, every wire and every context, so an agent reading `workbench_describe` sees what a person sees, and `workbench_perform` carries the link verbs it always could; a coordination inspector tile shows the same facts to a person, with the kernel's invariant check; a live region announces coordination changes coalesced per target; and the Go side validates the `pbui.links` payload's shape. Screenshot: `various/screenshots/p7-coordination-inspector.png`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Build the guide's Phase 7 across the four layers (workbench, chat tools, Go validator, shop), the last of the eight phases.
+
+**Inferred user intent:** Linking that an agent can describe and perform, a person can inspect, a screen reader can hear, and a server can refuse when malformed.
+
+**Commit (code):** aede49f — "PBUI-LINK-1 Phase 7: inspector, agent description, notifications, server validation"
+
+### What I did
+
+- **pbui-workbench**: `describe.ts` gains `DescribedBinding` (port, state, the badge's text, explanation, source), `DescribedLink` (kind, ends, relation, class) and `DescribedContext` (key, type, drivers, filled) under `description.links`, absent when nothing is bound; `components/CoordinationInspector` (PORTS / WIRES / CONTEXTS / VIOLATIONS tables, a "show wiring" button) with `createCoordinationInspectorApp()` and the `coordinationInspectorApp` singleton in the WORKBENCH launcher group; `components/LinkAnnouncer` (a visually hidden `role="status"` live region; diffs badge lines per port on every snapshot change and announces the coalesced burst after 150 ms), mounted by the Surface, with a story that makes it visible.
+- **pbui-chat**: no code change was needed — `isWorkbenchVerb` already admits link verbs and `describeWorkbench` already carries the facts. Added the guide's test: `workbench_describe` shows ports, `workbench_perform` with `port.follow` links two tiles, a later describe reports `{ state: "following", badge: "→ Orders East", source }`; a malformed link verb gets the tool's usual refusal.
+- **pkg/workbench**: `links.go` — `LinksFormat`, `LinksDocumentValidator{ Next }` (structural validation of bindings/identity/classes/history: term kinds, port-id shape, link ids, merge policies, classes of at least two, history entries as references or null; unknown fields refused; other formats handed to Next or accepted); `links_test.go` (every term kind and identity accepted, eight bad shapes refused, Next delegation).
+- **pbui-ecommerce**: the coordination tile in `createShopApps`; scene 8 story; the description test asserts ambient fallbacks appear as bindings and `workspace.order` as a context.
+
+### Why
+
+- One description for two readers (report §10.7, §14.10): the inspector renders `badgesOfView`/`linkRefsOf`/`checkInvariants`, the agent reads the same through `describeLinks`; neither invents a vocabulary.
+- Structural validation on the server, semantic validation on the client (open question Q6 resolved as "lenient"): the kernel refuses illegal states before they are written, the server refuses shapes it cannot read.
+
+### What worked
+
+- The agent tools needed no change; the two-line test proved the Phase 2 claim that link verbs join the union "for free".
+- `badgeOf`'s explanation strings are already sentence-shaped, so the live region reads naturally.
+
+### What didn't work
+
+- `go test ./pkg/workbench` refused to run under the workspace's `go.work` ("module ../agentlogic requires go >= 1.26.5"); `GOWORK=off` inside pbui runs it.
+- My Next-delegation test handed a `test.doc` payload to the test stub that only knows graphic documents; the test now expects the stub's refusal.
+- The shop's description test assumed `links` would be absent on the seeded document; ambient fallbacks are bindings (state `empty`), so it is present.
+
+### What I learned
+
+- `aria-atomic` on the live region matters: a coalesced burst is one sentence per tile, and a screen reader must read the whole replacement.
+
+### What was tricky to build
+
+- **Coalescing announcements.** The snapshot changes on every hover (attended values), so the announcer diffs badge LINES, not snapshots, and only speaks when a line changed; the 150 ms window folds a click's emission and its context drive into one sentence.
+
+### What warrants a second pair of eyes
+
+- The Go validator does not check that identity members appear in `bindings` or that class ids are referenced by declarations; the client compiles classes, so the server accepts any consistent-looking shape.
+- `LinkAnnouncer` mounts once per Surface; a page with two Surfaces of one workbench announces twice.
+
+### What should be done in the future
+
+- A chat-server follow-up to register `LinksDocumentValidator` in the products that validate documents server-side (datalab, hyperblog).
+- The `context.create`/`context.drive` verbs and context candidates in `resolveShow`.
+
+### Code review instructions
+
+- `packages/pbui-workbench/src/describe.ts` (`describeLinks`), `components/CoordinationInspector`, `components/LinkAnnouncer`; `packages/pbui-chat/src/tools/workbenchTools.test.ts` (last describe block); `pkg/workbench/links.go` (`GOWORK=off go test ./pkg/workbench/`).
+- Storybook `Shop/Scenes/8`, `Workbench/CoordinationInspector`, `Workbench/LinkAnnouncer`.

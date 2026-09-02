@@ -101,3 +101,13 @@ Phase 6 (commit 4e73712): Derived over translators — relations on LinkDeps, le
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/src/presentation/relations.ts — One relation registry for accept translators and derived bindings
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/RelationPalette/RelationPalette.tsx — The relation palette on LauncherShell
 
+
+## 2026-09-01
+
+Phase 7 (commit aede49f): describeWorkbench links/contexts, CoordinationInspector tile, LinkAnnouncer live region, agent test through workbench_perform, Go LinksDocumentValidator with tests, shop scene 8
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.tsx — The inspector tile
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/pkg/workbench/links.go — Server-side structural validation of pbui.links
+
