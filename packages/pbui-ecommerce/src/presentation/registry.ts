@@ -1,10 +1,11 @@
-import { createPresentationRegistry, type PresentationDescriptor } from "@hyperslop-systems/pbui";
-import { createLinkDescriptor, createPortDescriptor, createTileDescriptor, type LinkRef, type PortRef, type TileRef } from "@hyperslop-systems/pbui-workbench";
+import type { PresentationDescriptor, PresentationDescriptorMap } from "@hyperslop-systems/pbui";
 import type { CategoryValue, CustomerValue, DatumValue, Environment, FieldValue, LineItemValue, MetalValue, OrderValue, ProductValue, Values, WorkspaceValue } from "./types";
 
 /*
- * Representation only (pbui 0.8.0): how each type labels, narrates and tones
- * itself. Verbs live in the action registry (`./actions.ts`).
+ * Representation only (pbui 0.8.0): how each SHOP type labels, narrates and
+ * tones itself. The tile, port and link descriptors come with the workbench
+ * fragment (PBUI-KERNEL-1); the map below is the shop fragment's half, and
+ * the compiled presentation is the one registry (`presentation.descriptors`).
  */
 
 export const money = (n: number): string => `$${n.toLocaleString("en-US", { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`;
@@ -66,7 +67,7 @@ const workspace: PresentationDescriptor<WorkspaceValue, Environment> = {
   tone: "neutral",
 };
 
-export const registry = createPresentationRegistry<Values, Environment>({
+export const shopDescriptors: PresentationDescriptorMap<Values, Environment> = {
   order,
   customer,
   product,
@@ -75,8 +76,5 @@ export const registry = createPresentationRegistry<Values, Environment>({
   category,
   metal,
   field,
-  tile: createTileDescriptor() as PresentationDescriptor<TileRef, Environment>,
   workspace,
-  port: createPortDescriptor() as PresentationDescriptor<PortRef, Environment>,
-  link: createLinkDescriptor() as PresentationDescriptor<LinkRef, Environment>,
-});
+};

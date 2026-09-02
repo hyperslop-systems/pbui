@@ -90,7 +90,7 @@ export type HelpSurfaceEvent<Values extends PresentationValues> =
 export interface HelpSurfaceDeps<Values extends PresentationValues, ProductFacts> {
   /**
    * Lazy resolution, pure (registry + snapshot in, data out) — injected the
-   * way `matchContext` receives its predicate map. `null` means no rule
+   * way `matchSelector` receives its predicate map. `null` means no rule
    * contributed: nothing opens.
    */
   resolve(

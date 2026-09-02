@@ -1,6 +1,7 @@
 import { anyDeclaredType, unavailable } from "@hyperslop-systems/pbui";
 import type {
   ActionFamily,
+  PresentationFragment,
   PresentationReference,
   PresentationValues,
 } from "@hyperslop-systems/pbui";
@@ -92,5 +93,25 @@ export function createGeneratedActionsFamily<
             bind: () => options.toVerb(record, subject),
           };
         }),
+  };
+}
+
+/**
+ * The generated-actions family as ONE named fragment (PBUI-KERNEL-1 C1): the
+ * family plus the `global` scope it is declared in. It declares no types —
+ * the family applies to every DECLARED type of the product that includes it
+ * (`anyDeclaredType`, §9.2) — and no descriptors.
+ */
+export function createGeneratedActionsFragment<
+  Values extends PresentationValues,
+  ProductFacts extends GeneratedActionFacts,
+  Verb,
+>(
+  options: GeneratedActionsFamilyOptions<Values, Verb>,
+): PresentationFragment<Values, unknown, ProductFacts, Verb> {
+  return {
+    id: "pbui-sandbox.generated-actions",
+    knownScopes: ["global"],
+    actions: [createGeneratedActionsFamily<Values, ProductFacts, Verb>(options)],
   };
 }

@@ -1,10 +1,7 @@
-import { createPresentationTypeGraph } from "@hyperslop-systems/pbui";
 import { createWorkbench, type AppDescriptor, type CreateWorkbenchOptions, type Workbench } from "@hyperslop-systems/pbui-workbench";
 import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { createShopApps } from "./apps";
 import { createShopHost, type ShopHost } from "./host";
-import { SHOP_TYPES } from "./presentation/actions";
-import { createShopRelations } from "./presentation/relations";
 import { createShopPbui, type ShopPbui } from "./presentation/runtime";
 import { labelReference } from "./presentation/values";
 import { seedShopDocument } from "./seed";
@@ -39,17 +36,19 @@ export type CreateShopWorkbenchOptions = Omit<CreateWorkbenchOptions, "apps" | "
 /** A workbench over the shop's apps, seeded with the four scenes unless told otherwise. */
 export function createShopWorkbench(shop: Shop, options: CreateShopWorkbenchOptions = {}): Workbench {
   const { initial, ...rest } = options;
-  const relations = createShopRelations(shop.host);
   return createWorkbench({
     apps: shop.apps,
     initial: initial ?? seedShopDocument(),
-    // The kernel types ports against the SAME graph the menus resolve on (D1), and derives through the same relations accept mode uses (D7).
-    links: {
-      graph: createPresentationTypeGraph(SHOP_TYPES),
+    // The link kernel's dependencies are a PROJECTION of the one compiled
+    // presentation (PBUI-KERNEL-1 C10): the same graph the menus resolve on
+    // (D1), the derivation-exposed relations accept mode also uses (D7), and
+    // a relation evaluator that reads the product's facts. The shop's
+    // relations read only the host, so the projected context carries the
+    // host revision and no link facts.
+    links: shop.pbui.presentation.linkDeps({
+      contextFor: () => ({ facts: { hostRevision: shop.host.revision(), links: null } }),
       label: labelReference,
-      relations: relations.map(({ id, from, to, label }) => ({ id, from, to, ...(label ? { label } : {}) })),
-      relation: (id, reference) => relations.find((relation) => relation.id === id)?.apply(reference, shop.host),
-    },
+    }),
     ...rest,
   });
 }

@@ -1,7 +1,5 @@
 import {
   available,
-  createActionRegistry,
-  createPresentationTypeGraph,
   defineActions,
   inapplicable,
   unavailable,
@@ -9,7 +7,8 @@ import {
 import type {
   ActionContribution,
   ActionQuery,
-  SelectionSnapshot,
+  PresentationContextInput,
+  PresentationTypeDefinition,
 } from "@hyperslop-systems/pbui/presentation";
 import { CHANNELS, CHANNEL_ACCEPTS } from "../model/graphic";
 import type { Mark } from "../model/graphic";
@@ -63,10 +62,21 @@ export interface DatalabFacts {
   categoricalFields: readonly string[];
 }
 
-export function snapshotForDatalab(
+/** The semantic revision (C4): names exactly the derived facts, so it moves iff they move. */
+export function datalabRevision(facts: Readonly<DatalabFacts>): string {
+  return [
+    facts.activeDocId ?? "",
+    facts.targetDocId ?? "",
+    facts.fieldType ?? "",
+    facts.categoricalFields.join("|"),
+  ].join("::");
+}
+
+/** The product's context projection (PBUI-KERNEL-1): the derived facts one query reads. */
+export function datalabContextFor(
   query: ActionQuery<PresentationValues>,
   environment: PbuiEnvironment,
-): SelectionSnapshot<DatalabFacts> {
+): PresentationContextInput<DatalabFacts> {
   let targetDocId: DocId | null = environment.activeDocId;
   let fieldType: FieldType | null = null;
   let categoricalFields: readonly string[] = [];
@@ -91,17 +101,7 @@ export function snapshotForDatalab(
 
   const targetName = environment.nameOf(targetDocId);
   return {
-    // The revision names exactly the derived facts: it moves iff they move.
-    revision: [
-      environment.activeDocId ?? "",
-      targetDocId ?? "",
-      fieldType ?? "",
-      categoricalFields.join("|"),
-    ].join("::"),
-    scopes: ["datalab", "global"],
-    modes: new Set(),
-    capabilities: new Set(),
-    product: {
+    facts: {
       environment,
       activeDocId: environment.activeDocId,
       targetDocId,
@@ -336,7 +336,7 @@ function stageContributions(): ActionContribution<PresentationValues, DatalabFac
  * offered Watch, and inheritance must not add rows as a side effect of
  * refactoring. Growing stage a Watch row is a product decision.
  */
-const TYPE_DEFINITIONS = [
+export const datalabTypeDefinitions: readonly PresentationTypeDefinition[] = [
   { id: "inspectable", abstract: true },
   { id: "watchable", abstract: true },
   { id: "field", parents: ["inspectable", "watchable"] },
@@ -800,10 +800,9 @@ function inheritedContributions(): ActionContribution<PresentationValues, Datala
   ];
 }
 
-export const datadropActionRegistry = createActionRegistry<PresentationValues, DatalabFacts, Verb>({
-  graph: createPresentationTypeGraph(TYPE_DEFINITIONS),
-  scopes: ["datalab", "global"],
-  contributions: [
+/** Every rule; compiled into the one presentation in ./presentation.ts. */
+export function datalabContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
+  return [
     // PBUI-ACTIONS-2 P7: every type is kernel-native; the legacy descriptor
     // family is gone from this product entirely.
     ...fieldContributions(),
@@ -816,5 +815,5 @@ export const datadropActionRegistry = createActionRegistry<PresentationValues, D
     ...accountContributions(),
     ...layoutContributions(),
     ...inheritedContributions(),
-  ],
-});
+  ];
+}

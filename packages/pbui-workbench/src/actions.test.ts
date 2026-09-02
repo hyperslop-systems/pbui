@@ -1,13 +1,6 @@
-import {
-  createActionRegistry,
-  createPresentationTypeGraph,
-} from "@hyperslop-systems/pbui";
+import { definePresentation } from "@hyperslop-systems/pbui";
 import { describe, expect, test } from "vitest";
-import {
-  workbenchScopes,
-  workbenchTileContributions,
-  workbenchTypeDefinitions,
-} from "./actions";
+import { createWorkbenchPresentationFragment } from "./actions";
 import type { TileRef } from "./tileDescriptor";
 import { workbenchVerbs, type WorkbenchVerb } from "./verbs";
 
@@ -20,14 +13,21 @@ import { workbenchVerbs, type WorkbenchVerb } from "./verbs";
  * labels, reasons, verbs, and order.
  */
 
-type Values = { tile: TileRef };
+type Values = { tile: TileRef; workspace: { name: string } };
 type Facts = Record<string, never>;
 
-const registry = createActionRegistry<Values, Facts, WorkbenchVerb>({
-  graph: createPresentationTypeGraph(workbenchTypeDefinitions),
-  scopes: [...workbenchScopes, "global"],
-  contributions: workbenchTileContributions<Values, Facts>(),
-});
+/** The fragment as a product includes it; the product describes `workspace`. */
+function presentationWith(options: Parameters<typeof createWorkbenchPresentationFragment<Values, unknown, Facts>>[0] = {}) {
+  return definePresentation<Values, unknown, Facts, WorkbenchVerb>().create({
+    id: "test.workbench",
+    include: [createWorkbenchPresentationFragment<Values, unknown, Facts>(options)],
+    knownScopes: ["global"],
+    descriptors: { workspace: { label: (workspace) => workspace.name } },
+    defaultActiveScopes: ["workbench", "global"],
+    revision: () => 0,
+  });
+}
+const registry = presentationWith().actions;
 
 function ref(over: Partial<TileRef> = {}): TileRef {
   return {
@@ -99,11 +99,7 @@ describe("workbenchTileContributions — the shared tile menu, spelled out", () 
   });
 
   test("without the launcher, the replace row is absent", () => {
-    const noLauncher = createActionRegistry<Values, Facts, WorkbenchVerb>({
-      graph: createPresentationTypeGraph(workbenchTypeDefinitions),
-      scopes: [...workbenchScopes, "global"],
-      contributions: workbenchTileContributions<Values, Facts>({ launcher: false }),
-    });
+    const noLauncher = presentationWith({ tile: { launcher: false } }).actions;
     const result = noLauncher.resolve(
       { subject: { type: "tile", value: ref() }, invocation: "menu" },
       { revision: 0, scopes: ["workbench"], modes: new Set(), capabilities: new Set(), product: {} },

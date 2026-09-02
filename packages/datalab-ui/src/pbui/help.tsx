@@ -6,12 +6,13 @@ import {
   markdownHelp,
 } from "@hyperslop-systems/pbui";
 import type { HelpRendererProps } from "@hyperslop-systems/pbui";
-import { createHelpRegistry, defineHelp } from "@hyperslop-systems/pbui/presentation";
+import { defineHelp } from "@hyperslop-systems/pbui/presentation";
+import type { ActionQuery, HelpContribution, ResolutionResult, SelectionSnapshot } from "@hyperslop-systems/pbui/presentation";
 import { TYPE_LABEL } from "../model/table";
 import type { FieldType } from "../model/table";
-import { datadropActionRegistry } from "./actions";
 import type { DatalabFacts } from "./actions";
 import type { PresentationValues } from "./types";
+import type { Verb } from "./verbs";
 
 /**
  * Datalab's contextual help (PBUI-HELP-001 P6): the product proof that the
@@ -49,7 +50,18 @@ export const fieldSummaryHelp = defineHelpItem<FieldSummaryPayload>(
 
 const define = defineHelp<PresentationValues, DatalabFacts>();
 
-export const datalabHelpContributions = [
+/**
+ * The help rules, given the REAL action resolver (the compiled presentation's,
+ * see ./presentation.ts) so the actions item displays availability rather
+ * than reconstructing it (§9.5).
+ */
+export function createDatalabHelpContributions(
+  resolveActions: (
+    query: ActionQuery<PresentationValues>,
+    snapshot: SelectionSnapshot<DatalabFacts>,
+  ) => ResolutionResult<PresentationValues, Verb>,
+): HelpContribution<PresentationValues, DatalabFacts>[] {
+  return [
   define.exact("field", {
     id: "datalab.field.help",
     scopes: ["datalab"],
@@ -81,20 +93,13 @@ export const datalabHelpContributions = [
         title: "Actions",
         order: 20,
         payload: {
-          actions: datadropActionRegistry.resolve({ subject, invocation: "menu" }, snapshot)
-            .actions,
+          actions: resolveActions({ subject, invocation: "menu" }, snapshot).actions,
         },
       }),
     ],
   }),
-];
-
-export const datalabHelpRegistry = createHelpRegistry<PresentationValues, DatalabFacts>({
-  graph: datadropActionRegistry.graph,
-  scopes: ["datalab", "global"],
-  contributions: datalabHelpContributions,
-  version: "datalab-help-1",
-});
+  ];
+}
 
 export const datadropHelpRenderers = createHelpRendererRegistry([
   ...builtinHelpItems,

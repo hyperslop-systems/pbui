@@ -26,6 +26,9 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
       onPerform={(verb) => {
         if (isWorkbenchVerb(verb)) workbench.perform(verb);
       }}
+      // A row that failed fresh revalidation (PBUI-KERNEL-1 §14.2): the shop
+      // demo has no status line, so refusals are telemetry only.
+      onRefuse={(refusal) => console.warn(`shop: refused ${refusal.action ?? "action"} (${refusal.code})${refusal.because ? ` — ${refusal.because}` : ""}`)}
     >
       <div data-part="shop-shell" className={styles.shell} data-strip={strip || undefined}>
         {strip ? (

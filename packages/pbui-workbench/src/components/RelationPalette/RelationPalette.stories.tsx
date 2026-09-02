@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { linkVerbs } from "@hyperslop-systems/pbui";
+import { createPresentationTypeGraph, linkVerbs } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useMemo } from "react";
 import { createWorkbench } from "../../createWorkbench";
@@ -15,12 +15,21 @@ function Palette() {
     const workbench = createWorkbench({
       apps: demoApps,
       initial: layout(split("row", 0.5, tile("counter", { title: "Counter A" }), tile("notes"))),
+      // The narrow link dependencies a product projects from its compiled
+      // presentation (PBUI-KERNEL-1 §11.5); the story builds them by hand.
       links: {
+        graph: createPresentationTypeGraph([{ id: "number" }, { id: "string" }]),
         relations: [
           { id: "number.double", from: "number", to: "any", label: "doubled" },
           { id: "number.label", from: "number", to: "any", label: "as a label" },
         ],
-        relation: (id, reference) => (id === "number.double" ? { type: "number", value: Number(reference.value) * 2 } : { type: "string", value: `count ${String(reference.value)}` }),
+        relationEvaluation: (id, reference) => ({
+          kind: "value",
+          reference:
+            id === "number.double"
+              ? { type: "number", value: Number(reference.value) * 2 }
+              : { type: "string", value: `count ${String(reference.value)}` },
+        }),
       },
     });
     const [, notes] = leaves(workspaceTree(workbench.store.getState().document, workbench.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));

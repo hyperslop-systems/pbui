@@ -1,6 +1,6 @@
 import { Presentation, usePbui } from "../../../pbui";
 import type { DatadropPresentationReference, PresentationType } from "../../../pbui";
-import { datadropRegistry } from "../../../pbui/registry";
+import { datadropRegistry } from "../../../pbui/presentation";
 import { Button, Chip, IconButton, Text, AppBody, Stack, Toolbar } from "@hyperslop-systems/pbui";
 import styles from "./WatchlistPanel.module.css";
 

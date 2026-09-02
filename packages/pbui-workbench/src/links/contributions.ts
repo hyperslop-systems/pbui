@@ -51,7 +51,8 @@ import type { PortRef } from "./portRef";
  * `snapshotFor` fills from `workbench.links`. Nothing here reads a store.
  */
 
-export const linkTypeDefinitions: readonly PresentationTypeDefinition[] = [{ id: "port" }, { id: "link" }, { id: "context" }];
+/** The link world's presented types. (`context` cells are not presented as references and declare no type.) */
+export const linkTypeDefinitions: readonly PresentationTypeDefinition[] = [{ id: "port" }, { id: "link" }];
 
 export interface LinkFacts {
   snapshot: LinkSnapshot;

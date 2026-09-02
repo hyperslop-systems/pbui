@@ -6,26 +6,36 @@ import {
 } from "@hyperslop-systems/pbui";
 import type {
   ActionContribution,
+  PresentationDescriptor,
+  PresentationDescriptorMap,
+  PresentationFragment,
   PresentationTypeDefinition,
+  PresentationValues,
   ScopeId,
 } from "@hyperslop-systems/pbui";
-import type { TileRef } from "./tileDescriptor";
+import { linkTypeDefinitions, workbenchLinkContributions, type WorkbenchLinkContributionOptions } from "./links/contributions";
+import { createLinkDescriptor, type LinkRef } from "./links/linkRef";
+import { createPortDescriptor, type PortRef } from "./links/portRef";
+import { createTileDescriptor, type TileRef } from "./tileDescriptor";
 import { workbenchVerbs, type WorkbenchVerb } from "./verbs";
 
 /**
  * The shared workbench action contributions (PBUI-ACTIONS-2 Amendment C).
  *
- * This is how a SHARED package contributes to a PRODUCT-OWNED action
- * registry: exported fragments the product spreads into its own
- * `createActionRegistry`, instead of the `TileDescriptorOptions.extra`
- * callback (now deprecated). A product adding tile actions registers its own
- * rules for subject `"tile"` under its own rule ids — no merge owner, and
- * the kernel's override and ambiguity machinery arbitrates.
+ * This is how a SHARED package contributes to a PRODUCT-OWNED presentation:
+ * one named fragment (`createWorkbenchPresentationFragment`, below) the
+ * product INCLUDES in its compiled presentation (PBUI-KERNEL-1 C1), instead
+ * of the `TileDescriptorOptions.extra` callback (now deprecated) or the
+ * pre-KERNEL-1 pair of arrays it had to spread correctly. A product adding
+ * tile actions registers its own rules for subject `"tile"` under its own
+ * rule ids — no merge owner, and the kernel's override and ambiguity
+ * machinery arbitrates.
  *
- *     const registry = createActionRegistry({
- *       graph: createPresentationTypeGraph([...workbenchTypeDefinitions, ...productTypes]),
- *       scopes: [...productScopes, ...workbenchScopes, "global"],
- *       contributions: [...workbenchTileContributions(), ...productContributions],
+ *     const presentation = p.create({
+ *       id: "product.presentation",
+ *       include: [createWorkbenchPresentationFragment(), productFragment],
+ *       defaultActiveScopes: [...productScopes, ...workbenchScopes, "global"],
+ *       ...
  *     });
  *
  * The rules reproduce `createTileDescriptor`'s rows exactly — same labels,
@@ -179,4 +189,91 @@ export function workbenchTileContributions<
     ProductFacts,
     WorkbenchVerb
   >[];
+}
+
+/* ------------------------------------------------------------- fragment --- */
+
+export interface WorkbenchPresentationFragmentOptions<
+  Values extends PresentationValues,
+  Environment,
+  ProductFacts,
+> {
+  /** The tile menu options (launcher row, `project` for non-`TileRef` tile values). */
+  tile?: WorkbenchTileContributionOptions<Values extends { tile: infer T } ? T : never>;
+  /**
+   * Include the link menus and the `port`/`link` types (PBUI-LINK-1). The
+   * product says where its link facts live; absent ⇒ no link types, no link
+   * rules, and no `port`/`link` descriptors.
+   */
+  links?: WorkbenchLinkContributionOptions<ProductFacts>;
+  /**
+   * Descriptor overrides. The fragment supplies the canonical `tile`, `port`
+   * and `link` descriptors; a product whose tile value is not a `TileRef`
+   * passes its own `tile` descriptor here. `workspace` is DECLARED by this
+   * fragment but described by the product (its shape is product-owned), so a
+   * product must supply it in its own fragment.
+   */
+  descriptors?: PresentationDescriptorMap<Values, Environment>;
+}
+
+/**
+ * The workbench as ONE named fragment (PBUI-KERNEL-1 C1, §7.2): the `tile`
+ * and `workspace` types, the `workbench` scope, the tile menu rules, and —
+ * when the product enables links — the `port`/`link` types, their
+ * descriptors, and the link rules and "Link to…" family. A product includes
+ * it and cannot forget a companion: including the tile rules without the
+ * `tile` type, or the link rules without the link types, is no longer a
+ * representable declaration.
+ *
+ *     const presentation = p.create({
+ *       id: "shop.presentation",
+ *       include: [
+ *         createWorkbenchPresentationFragment<Values, Environment, Facts>({
+ *           links: { links: (snapshot) => snapshot.product.links, subjects: ["inspectable"], scopes: ["shop"] },
+ *         }),
+ *         shopFragment,
+ *       ],
+ *       ...
+ *     });
+ *
+ * `Verb` must include `WorkbenchVerb`; the fragment is typed on the product's
+ * `Values` and widened where the compiler cannot see the constraint, exactly
+ * as `workbenchTileContributions` is.
+ */
+export function createWorkbenchPresentationFragment<
+  Values extends PresentationValues & { tile: unknown; workspace: unknown },
+  Environment,
+  ProductFacts,
+  Verb extends WorkbenchVerb = WorkbenchVerb,
+>(
+  options: WorkbenchPresentationFragmentOptions<Values, Environment, ProductFacts> = {},
+): PresentationFragment<Values, Environment, ProductFacts, Verb> {
+  const withLinks = options.links !== undefined;
+  const descriptors: Record<string, PresentationDescriptor<unknown, Environment>> = {
+    tile: createTileDescriptor() as PresentationDescriptor<unknown, Environment>,
+    ...(withLinks
+      ? {
+          port: createPortDescriptor() as PresentationDescriptor<unknown, Environment>,
+          link: createLinkDescriptor() as PresentationDescriptor<unknown, Environment>,
+        }
+      : {}),
+    ...((options.descriptors ?? {}) as Record<string, PresentationDescriptor<unknown, Environment>>),
+  };
+  const actions: ActionContribution<Values, ProductFacts, Verb>[] = [
+    ...(workbenchTileContributions<Values, ProductFacts>(
+      (options.tile ?? {}) as WorkbenchTileContributionOptions<Values["tile"]>,
+    ) as readonly ActionContribution<Values, ProductFacts, Verb>[]),
+    ...(withLinks
+      ? (workbenchLinkContributions<Values & { port: PortRef; link?: LinkRef; tile?: unknown }, ProductFacts>(
+          options.links as WorkbenchLinkContributionOptions<ProductFacts>,
+        ) as unknown as readonly ActionContribution<Values, ProductFacts, Verb>[])
+      : []),
+  ];
+  return {
+    id: "pbui-workbench",
+    types: [...workbenchTypeDefinitions, ...(withLinks ? linkTypeDefinitions : [])],
+    knownScopes: [...workbenchScopes, ...(options.links?.scopes ?? [])],
+    descriptors: descriptors as PresentationDescriptorMap<Values, Environment>,
+    actions,
+  };
 }

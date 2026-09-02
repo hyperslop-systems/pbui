@@ -1,6 +1,6 @@
-import {
-  createPresentationRegistry,
-  type PresentationDescriptor as GenericPresentationDescriptor,
+import type {
+  PresentationDescriptor as GenericPresentationDescriptor,
+  PresentationDescriptorMap,
 } from "@hyperslop-systems/pbui";
 import { actionDescriptor } from "./descriptors/action";
 import { appDescriptor } from "./descriptors/app";
@@ -43,7 +43,8 @@ function bind<Type extends PresentationType>(
   };
 }
 
-export const registry = createPresentationRegistry<Values, Environment>({
+/** The product's own thirteen types (PBUI-KERNEL-1): declared and described in ./actions.ts. */
+export const demoDescriptors: PresentationDescriptorMap<Values, Environment> = {
   product: bind(productDescriptor),
   category: bind(categoryDescriptor),
   metal: bind(metalDescriptor),
@@ -57,13 +58,17 @@ export const registry = createPresentationRegistry<Values, Environment>({
   chatEvent: bind(chatEventDescriptor),
   field: bind(fieldDescriptor),
   row: bind(rowDescriptor),
+};
+
+/** The chat layer's six types: handed to `createChatPresentationFragment`, which declares them (C18). */
+export const chatDescriptors: PresentationDescriptorMap<Values, Environment> = {
   source: bind(sourceDescriptor),
   widget: bind(widgetDescriptor),
   tool: bind(toolDescriptor),
   proposal: bind(proposalDescriptor),
   traceEntry: bind(traceEntryDescriptor),
   unresolved: bind(unresolvedDescriptor),
-});
+};
 
 /*
  * PBUI-ACTIONS-2 P4: the `withGeneratedActions` wrapper is gone — generated

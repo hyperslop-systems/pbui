@@ -14,7 +14,6 @@ import {
   type LinkVerb,
   type PlacementCandidate,
   type PortId,
-  type PresentationTypeGraph,
   type SerializableReference,
   type ShowCandidate,
   type ShowQuery,
@@ -31,19 +30,17 @@ import type { LinkRuntime } from "./runtime";
 import { buildLinkSnapshot } from "./snapshot";
 
 /**
- * What a product hands the workbench for linking (design §6.6): the type
- * graph its ports are typed against, how a value is named in a badge, and
- * (Phase 6) the relation registry. Absent ⇒ a graph with no types, where
- * only equal type ids and `<any>` reach each other.
+ * What a product hands the workbench for linking (design §6.6, revised by
+ * PBUI-KERNEL-1 §11.5): the narrow link-kernel dependencies — the SAME type
+ * graph its menus resolve on, how a value is named in a badge, and the
+ * derivation-exposed relations with their evaluator. A product with a
+ * compiled presentation obtains this from `presentation.linkDeps(...)`.
+ *
+ * Required whenever any application declares ports: the old default of an
+ * empty graph (where only equal type ids and `<any>` reached) let a product
+ * ship a workbench whose links and menus disagreed about types (C10).
  */
-export interface LinkEnvironment {
-  graph?: PresentationTypeGraph;
-  label?(reference: SerializableReference): string;
-  /** The relations `Derived` terms may name (Phase 6) — the product's translators, as metadata… */
-  relations?: LinkDeps["relations"];
-  /** …and as the function that applies one. */
-  relation?: LinkDeps["relation"];
-}
+export type LinkEnvironment = LinkDeps;
 
 /** The link facilities a workbench exposes (`workbench.links`). */
 export interface WorkbenchLinks {
@@ -85,13 +82,24 @@ export interface CreateLinkHandlersOptions {
   onRefused?(verb: LinkVerb, because: string, code: string): void;
 }
 
-export function createLinkHandlers({ store, apps, runtime, environment = {}, onRefused }: CreateLinkHandlersOptions): LinkHandlers {
-  const deps: LinkDeps = {
-    graph: environment.graph ?? createPresentationTypeGraph([]),
-    ...(environment.label ? { label: environment.label } : {}),
-    ...(environment.relations ? { relations: environment.relations } : {}),
-    ...(environment.relation ? { relation: environment.relation } : {}),
-  };
+/**
+ * Without a product projection, the graph is the set of value types the
+ * applications' ports DECLARE, as isolated nodes: only equal type ids (and
+ * `<any>`) reach, no relation exists, and no type is invented. This is not
+ * the pre-KERNEL-1 EMPTY graph — every declared port type is a real node, so
+ * the closed world (C9) holds — but it cannot express subtyping. A product
+ * whose ports rely on inheritance (an `<inspectable>` subject accepting an
+ * order) passes `presentation.linkDeps(...)`, the same graph its menus use.
+ */
+function declaredPortGraph(apps: AppRegistry) {
+  const ids = new Set<string>();
+  for (const app of apps.list()) for (const port of app.ports ?? []) ids.add(port.contract.valueType);
+  ids.delete("any");
+  return createPresentationTypeGraph([...ids].map((id) => ({ id })));
+}
+
+export function createLinkHandlers({ store, apps, runtime, environment, onRefused }: CreateLinkHandlersOptions): LinkHandlers {
+  const deps: LinkDeps = environment ?? { graph: declaredPortGraph(apps) };
   const hooks: LinkShellHooks = {};
 
   let cached: { document: WorkbenchDocument; runtimeRevision: number; snapshot: LinkSnapshot } | null = null;

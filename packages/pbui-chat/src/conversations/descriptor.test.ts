@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { chat } from "../../demo/src/chat";
 import { demoActionRegistry, snapshotForDemo } from "../../demo/src/pbui/actions";
-import { registry } from "../../demo/src/pbui/registry";
+import { registry } from "../../demo/src/pbui/runtime";
 import { DEFAULT_ENVIRONMENT } from "../../demo/src/pbui/types";
 
 /**

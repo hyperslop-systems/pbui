@@ -1,11 +1,12 @@
 import "./styles.css";
 
 export {
+  createWorkbenchPresentationFragment,
   workbenchScopes,
   workbenchTileContributions,
   workbenchTypeDefinitions,
 } from "./actions";
-export type { WorkbenchTileContributionOptions } from "./actions";
+export type { WorkbenchPresentationFragmentOptions, WorkbenchTileContributionOptions } from "./actions";
 export { defineApp, createAppRegistry, isAppAvailable, isDocBound, documentSlots } from "./apps";
 export type { AppAvailability, AppDescriptor, AppProps, AppRegistry, DefineAppInput } from "./apps";
 export {

@@ -7,14 +7,16 @@ export type {
   PbuiContextValue,
 } from "./runtime";
 export { AcceptBanner, ContextHelp, MouseDocLine } from "./runtime";
-export {
-  datalabHelpRegistry,
-  datalabHelpContributions,
-  datadropHelpRenderers,
-  fieldSummaryHelp,
-} from "./help";
+export { createDatalabHelpContributions, datadropHelpRenderers, fieldSummaryHelp } from "./help";
 export { PARTS, STATES } from "./parts";
-export { datadropRegistry } from "./registry";
+export { datadropDescriptors } from "./registry";
+export {
+  datadropActionRegistry,
+  datadropRegistry,
+  datalabHelpRegistry,
+  datalabPresentation,
+  snapshotForDatalab,
+} from "./presentation";
 export type { PresentationDescriptor } from "./registry";
 export type { Verb, Action } from "./verbs";
 export { describeVerb } from "./verbs";
