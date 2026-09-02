@@ -12,7 +12,7 @@
 - [x] Phase 0: freeze current workbench binding behaviour with golden tests <!-- t:h6th -->
 - [x] Phase 1: ports and contracts on AppDescriptor, describeWorkbench ports <!-- t:10df -->
 - [x] Phase 2: link kernel, pbui.links payload, runtime, Ambient/Constant/Follow/Hold, badge, menus, LinkLab story <!-- t:8n2z -->
-- [ ] Phase 3: connect-management mode (port rails, wire layer, port carry) <!-- t:wkfs -->
+- [x] Phase 3: connect-management mode (port rails, wire layer, port carry) <!-- t:wkfs -->
 - [ ] Phase 4: resolveShow and the show chooser <!-- t:18fy -->
 - [ ] Phase 5: identity classes over value ports (P06 subset) <!-- t:0o9w -->
 - [ ] Phase 6: Derived over translators and the relation palette <!-- t:sf7p -->

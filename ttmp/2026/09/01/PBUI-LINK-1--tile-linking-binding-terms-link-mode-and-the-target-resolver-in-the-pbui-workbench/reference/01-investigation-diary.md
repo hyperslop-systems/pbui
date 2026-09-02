@@ -520,3 +520,77 @@ cd packages/pbui-workbench && pnpm test && pnpm build              # 27 files, 2
 cd ../pbui-ecommerce && pnpm test && pnpm build                    # 7 files, 30 tests
 # scene 2 by hand: Storybook Shop/Scenes → "2a · follow", right-click #88152, choose "Link to inspector · subject"
 ```
+
+## Step 7: Phase 3 — connect-management mode
+
+The patch bay. With Mod+Shift+L (or "Connect…" on a tile, or "Show wiring" on a badge) every tile flips to its back side: a rail listing inputs on the left and outputs on the right, over an inert application; one SVG over the surface draws a wire per declared term; dragging an output onto an input performs `port.follow`, with Shift at release adding `port.pin`; wires are `<link>` presentations with the same unlink policies as badges; Escape leaves the mode. The gold-coin shop's scene 7 opens in the mode with two wires, and five real-pointer scenarios (native mouse and keyboard through Playwright against Storybook, a fresh page each) pass. Screenshot: `various/screenshots/p3-connect-mode.png`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Build the guide's Phase 3: the gesture surface, confined to a mode (D6), reusing the carry lifecycle, with the audit's real-interaction harness.
+
+**Inferred user intent:** The "back of the Reason rack" the ticket asked for, and proof that it does not intrude on the everyday workspace.
+
+**Commit (code):** cbcdf11 — "PBUI-LINK-1 Phase 3: connect-management mode (port rails, wire layer, port-to-port drag)"
+
+### What I did
+
+- **Core**: `src/chrome/usePortCarry.ts` — a port element registry (`registerPort`, `portElement`), `startPortCarry({ from, origin, acceptable, onDrop, onCancel })` with the tile carry's lifecycle (one `finish`, capture-phase window listeners, Escape/blur/`pointercancel` cancel, a second carry cancels the first), the modifier read from every pointer and key event (a modifier-less synthetic event keeps the keyboard's last word), hit-testing by the element under the pointer (`closest("[data-port-id]")`, then `elementFromPoint`), and `usePortCarry()` over a module store. `shortcutRouting.ts` gains the `l`+Shift chord → `toggle-link-mode`.
+- **pbui-workbench**: `components/PortRail` (inputs/outputs columns, `data-acceptable` from `planFollow` while a carry is in flight, `data-over`, `data-carrying`; pointerdown on an output starts the carry; `renderPort` wraps each port); `components/WireLayer` (wires from `linkRefsOf(snapshot)` between registered elements' rectangles, the toy's cubic path, `data-term` follow/held/derived styles, portal stubs when one end is unmounted, rubber band and a cursor badge naming `Follow(…)`/`Hold(…)`, re-measure on rAF/resize/ResizeObserver, `useEscapeSurface` + Escape → `link.mode.close` unless a carry is in flight, `renderWire` wraps each `<g>`); `links/linkRef.ts` (`LinkRef`, `linkRefsOf`, `createLinkDescriptor`); `contributions.ts` gains rules for subject `"link"` (three unlink policies, go to source/destination), `Show wiring` on ports and `Connect…` on tiles; `Tile` renders the rail over the app (`inert`), `Surface` mounts the layer and the chord with the launcher's focus-ownership rule, `SurfaceProps` gains `renderPort`/`renderWire`/`linkModeShortcut`. Stories for the rail and the wire styles. `links/connect.test.tsx`: four DOM tests (open/Escape/chord and inert app; drag → follow, wire, badge; Shift at release pins, Shift released mid-drag does not; wrong drops and Escape mid-drag declare nothing).
+- **pbui-ecommerce**: `Values.link` + descriptor; `ShopShell` wraps rail ports as `<port>` and wires as `<link svg>` presentations; scene 7 opens in connect mode with two wires; `e2e/scenes.mjs` (plain `playwright`, five scenarios: right-click → Link to; Pin/Resume from the badge; Mod+Shift+L drag → wire + badge, Escape → app clickable again; Shift released mid-drag switches the cursor badge; wire menu → Unlink freeze → Resume unavailable with its reason) and `pnpm e2e`.
+- Printed the P3 slips.
+
+### Why
+
+- Wires and drag exist only in the mode (D6): outside it the workspace is exactly Phase 2's — one badge per bound port.
+- Hit-testing by the element under the pointer rather than by rectangles is what makes the same carry run under jsdom and in a browser; wide wire hit paths are disabled while a carry is in flight (audit §10.3) so they never become that element.
+- The cursor badge names the term that WILL be committed, read live: the audit's anti-pattern was a modifier read only at drag start.
+
+### What worked
+
+- `startTileCarry` was a complete template; the port carry differs only in its registry and its drop predicate.
+- `Presentation svg` renders a `<g>`, so a wire's `<g>` wrapped in the product's `<link>` presentation gets the object menu with no SVG-specific menu code.
+- The Playwright accessibility tree names the disabled menu row with its reason, so the e2e asserts the explanation through `getByRole("menuitem", { name: /^Resume.*nothing to resume/ })`.
+
+### What didn't work
+
+- jsdom has no `PointerEvent`: Testing Library's `fireEvent.pointerDown` falls back to a plain `Event` with no `button`, `clientX` or `shiftKey`. The rail's `event.button !== 0` guard silently rejected every synthetic pointerdown (all four tests failed with nulls). Fixed with `button !== undefined && button !== 0`, `clientX ?? 0`, and a `shiftOf(event)` that keeps the keyboard's state when the event has no modifier; the test drives Shift through `keyDown`/`keyUp`.
+- The first test's `document.querySelector("button")` found the tile bar's split button (not inert) instead of the app's; then the no-raw-controls fence flagged the raw `<button>` in the test. Now a pbui `Button`, found by text.
+- `pnpm install --offline` refused `playwright@^1.62.0` (metadata for the range is not in the store) even though `playwright@1.62.0` is; `--prefer-offline` resolved it.
+- Three e2e scenarios failed on assertion wording: the badge's glyph and text are separate spans (`→orders`, no space), and the disabled row's reason is in the accessible name, not the text.
+
+### What I learned
+
+- `useEscapeSurface(true)` in the wire layer makes connect mode a proper Escape owner; the launcher chord's `dialogOpen` guard then has to exclude the layer's own surface, or Mod+Shift+L could not close the mode it opened.
+- React 19 renders `inert={true}` as the bare attribute; `closest("[inert]")` is a fine assertion.
+
+### What was tricky to build
+
+- **Escape with a carry in flight.** Both the carry (capture, cancels the drag) and the wire layer (bubble, closes the mode) listen on `window`; `stopPropagation` on the target node does not stop the other listener. The layer's handler ignores Escape while `carry` is non-null (the state re-renders the layer, so the closure is fresh), which the "Escape mid-drag keeps the mode open" test pins.
+- **Geometry without layout.** Wire anchors come from `getBoundingClientRect` of registered elements; under jsdom every rectangle is zero, so the DOM tests assert the wire's `data-term` and existence, and the real geometry is what the e2e and the screenshot check.
+
+### What warrants a second pair of eyes
+
+- The chord's ownership rule duplicates the rebalance dialog's (a third copy); a shared `useWorkbenchChord` helper would remove it.
+- `WireLayer` re-measures on every snapshot change with one rAF; a workspace with many wires and a resizing pane may want a throttle.
+- `PortRail` renders every port's badge via `badgeOf` per render; fine for the shop, worth memoizing per (snapshot, view) in a bigger product.
+
+### What should be done in the future
+
+- Phase 4: the family's ">6 targets → accept mode over the rails" fallback now that unbound inputs have something to click.
+- Keyboard-only connect mode (Tab between jacks, Enter to start/complete) per §6.8.7 — not built.
+- A held wire's dotted style and the derived label are drawn; the identity double segment waits for Phase 5.
+
+### Code review instructions
+
+- `src/chrome/usePortCarry.ts`; `packages/pbui-workbench/src/components/{PortRail,WireLayer}`; `links/connect.test.tsx`.
+- `pnpm --filter @hyperslop-systems/pbui-ecommerce storybook` then `pnpm --filter @hyperslop-systems/pbui-ecommerce e2e` (five scenarios); Storybook `Shop/Scenes/7`, `Workbench/PortRail`, `Workbench/WireLayer`.
+
+### Technical details
+
+```bash
+cd packages/pbui-workbench && npx vitest run src/links/connect.test.tsx     # 4 tests
+cd ../pbui-ecommerce && pnpm e2e                                           # 5 scenarios, needs Storybook on :6012
+```

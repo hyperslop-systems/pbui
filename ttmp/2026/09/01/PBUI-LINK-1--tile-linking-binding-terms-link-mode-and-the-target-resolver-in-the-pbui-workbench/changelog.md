@@ -60,3 +60,14 @@ Phase 2 (commit cfa91b2): pure link kernel in core (terms, evaluate, plan, apply
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/links/handlers.ts — Link handlers; per-batch maintenance appended by the mutate wrapper
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/apply.ts — applyLinkVerb, the one transition every instrument calls
 
+
+## 2026-09-01
+
+Phase 3 (commit cbcdf11): connect-management mode — usePortCarry and the Mod+Shift+L chord in core, PortRail/WireLayer/link menus/renderPort/renderWire in pbui-workbench (4 DOM tests), the shop's scene 7 and five passing real-pointer scenarios (e2e/scenes.mjs); screenshot p3-connect-mode
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/e2e/scenes.mjs — Real-pointer scenarios per the audit
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx — One SVG per surface; owns Escape in the mode
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/chrome/usePortCarry.ts — The port carry: registry, live modifier, one exit
+
