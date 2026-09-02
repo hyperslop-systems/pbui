@@ -51,9 +51,19 @@ The original guide remains the detailed evidence map. The authoritative implemen
 - Persisted link terms remain stable and compile to an internal binding-program representation.
 - Identity is exposed as a quotient of compatible ports, separate from directed value flow.
 
+## Scope split (2026-09-02)
+
+This ticket ships guide §18 Phases 0–7 and 11. The rest moved to follow-up tickets (guide §0.1):
+
+- PBUI-KERNEL-2 — binding programs: internal link IR, static checker, planner integration (Phase 8).
+- PBUI-KERNEL-3 — identity quotient and operation-specific port compatibility (Phase 9).
+- PBUI-KERNEL-4 — interaction policy and introspection (Phase 10).
+
+Confirmed decisions: hard runtime cutover (C16), mechanical migration of the frozen datalab-ui (C17), pbui-chat as a fragment (C18). Consumer inventory: guide §3.13.1 (rag-ttc is the primary external target; hyperblog the open-world consumer; turboproof and agentlogic out of scope).
+
 ## Status
 
-Research and design are complete. Implementation remains planned in the phased checklist in the authoritative guide and in [tasks.md](./tasks.md).
+Research and design are complete. Implementation is in progress on the `task/add-plot-editor` workspace branch; progress is tracked in [tasks.md](./tasks.md) and the [diary](./reference/01-investigation-diary.md).
 
 ## Ticket bookkeeping
 

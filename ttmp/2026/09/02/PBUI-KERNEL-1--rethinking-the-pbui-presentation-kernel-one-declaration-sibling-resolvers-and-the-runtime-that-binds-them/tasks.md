@@ -1,21 +1,84 @@
 # Tasks
 
-## TODO
+Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–10 live in PBUI-KERNEL-2/3/4.
+
+## Research and design (done)
 
 - [x] Map the kernel (core reads with line anchors) and survey consumers + prior tickets <!-- t:mj9s -->
 - [x] Write the intern guide (current state, gaps, design, decisions, phases, tests) <!-- t:u9zf -->
 - [x] Write diary step 1 <!-- t:a4n7 -->
 - [x] Relate files, changelog, doctor <!-- t:fdth -->
 - [x] Upload the guide + diary bundle to reMarkable <!-- t:y10y -->
-- [ ] Confirm D3 (hard cutover of createPbui) and D7 (mechanical change to frozen datalab-ui) with the user <!-- t:7b5t -->
-- [ ] Phase 0: goldens for every consumer (menus, acceptance, help, vocabulary) <!-- t:69bw -->
-- [ ] Phase 1: createPresentationKernel + definePresentation, cross-validation, shared predicates (C1, FACETS D9) <!-- t:4h96 -->
-- [ ] Phase 2: kernel.snapshot with derived revision (C4) <!-- t:4a96 -->
-- [ ] Phase 3: createPbui takes the kernel; onRefuse (C2); clickOutcome function; accept machine <!-- t:ucdo -->
-- [ ] Phase 4: introspection row (C6); vocabulary edges + help kinds <!-- t:08gz -->
-- [ ] Phase 5: link kernel from kernel.links; remove empty-graph fallback; correct LINK-1 §17 <!-- t:gpsg -->
-- [ ] Phase 6: consumer cutover; playbook rewrite; ticket hygiene (ACTIONS-PORT dirs, HELP-001 index, stub overviews) <!-- t:krqf -->
-- [ ] Phase 7 (parked): per-type order on inherited rules (C5) <!-- t:rawd -->
 - [x] Import and evaluate the composable-kernel research report and patch <!-- t:hn4v -->
 - [x] Write the clean-cutover composable-kernel intern guide from the imported report and validated patch <!-- t:hcb4 -->
 - [x] Validate and upload the clean-cutover guide and investigation diary to reMarkable <!-- t:u74f -->
+- [x] Confirm D3 (hard cutover of createPbui) and D7 (mechanical change to frozen datalab-ui) with the user — both yes, C16/C17 <!-- t:7b5t -->
+- [x] Redo the external consumer inventory (rag-ttc, hyperblog, turboproof, agentlogic) and fold it into §3.13.1, Phase 6, §20.3 <!-- t:inv1 -->
+- [x] Split phases 8–10 into PBUI-KERNEL-2/3/4 <!-- t:spl1 -->
+
+## Phase 0: Baseline inventory and characterization
+
+- [x] Root typecheck + test + recursive typecheck green (331 tests) <!-- t:p0a -->
+- [ ] Golden fixtures for every consumer: menus, acceptance, help, vocabulary <!-- t:69bw -->
+- [ ] Record revision formulas per product <!-- t:p0c -->
+- [ ] Print plan slip <!-- t:p0d -->
+
+## Phase 1: Shared predicates and selector
+
+- [ ] Apply sources/pbui-composable-kernel.patch; green <!-- t:p1a -->
+- [ ] One predicate registry shared by actions/help/relations <!-- t:4h96 -->
+- [ ] Explicit universal subject (`anyDeclaredType`); nullable scope provenance; no synthetic `__unscoped__` <!-- t:p1c -->
+- [ ] Final names in context/ (selector, no matchContext/ContextTarget aliases) <!-- t:p1d -->
+
+## Phase 2: Canonical relation system
+
+- [ ] Relation exposure metadata; discovery filtered by interpreter <!-- t:p2a -->
+- [ ] Abstract codomain allowed; abstract/undeclared runtime output rejected <!-- t:p2b -->
+- [ ] Composition validation (acyclic, endpoint compatibility, inferred from/to) <!-- t:p2c -->
+- [ ] Relation vocabulary projection; scenario + property tests <!-- t:p2d -->
+
+## Phase 3: Compiled model and fragments
+
+- [ ] `model/` replaces `kernel/`: definePresentation().fragment/create <!-- t:p3a -->
+- [ ] Fragment merge with origin tracking; duplicate/conflict diagnostics <!-- t:p3b -->
+- [ ] Closed-world cross-validation; strict descriptor completeness <!-- t:p3c -->
+- [ ] `snapshot(input)` with explicit revision / defaultActiveScopes / activeScopes validation <!-- t:4a96 -->
+- [ ] Static vocabulary + diagnostics() <!-- t:p3e -->
+
+## Phase 4: Acceptance over relations
+
+- [ ] translators/ → acceptance/; `AcceptanceOption.relation` <!-- t:p4a -->
+- [ ] Delete PresentationTranslator, relationFromTranslator, old resolver branch <!-- t:p4b -->
+
+## Phase 5: Runtime strict cutover
+
+- [ ] createPbui({ presentation, defaultEnvironment, contextFor }); delete option bag <!-- t:ucdo -->
+- [ ] `onRefuse` required on Provider <!-- t:p5b -->
+- [ ] Instance exposes `presentation`; no `registry`/`kernel` aliases <!-- t:p5c -->
+- [ ] Core stories, runtime tests, consumer-smoke migrated <!-- t:p5d -->
+
+## Phase 6: Consumer and fragment cutover
+
+- [ ] pbui-workbench: createWorkbenchPresentationFragment; createWorkbench/defineApp stable <!-- t:p6a -->
+- [ ] pbui-chat: createChatPresentationFragment; presentation.descriptors; demo migrated <!-- t:p6b -->
+- [ ] pbui-ecommerce: canonical relations, one graph, linkDeps from model <!-- t:p6c -->
+- [ ] pbui-sandbox: fragment; anyDeclaredType <!-- t:p6d -->
+- [ ] datalab-ui: mechanical migration (C17) <!-- t:p6e -->
+- [ ] rag-ttc apps/workbench/web migrated against local pbui; vocabulary golden regenerated <!-- t:p6f -->
+- [ ] hyperblog ui migrated (declared types, anyDeclaredType, relations) <!-- t:p6g -->
+- [ ] Legacy-symbol grep across pbui/, rag-ttc/, hyperblog/ returns nothing <!-- t:krqf -->
+
+## Phase 7: Link projection and dependency cleanup
+
+- [ ] model.linkDeps: derivation-exposed relations only; serializable output check <!-- t:gpsg -->
+- [ ] Remove empty-graph fallback and ecommerce's second graph <!-- t:p7b -->
+
+## Phase 11: Release and deletion audit
+
+- [ ] §20 checklist walked; README/playbook/link docs updated; doc 01 marked superseded <!-- t:p11 -->
+- [ ] Screenshots (Storybook, ecommerce, rag-ttc, hyperblog) filed under various/screenshots and linked from the diary <!-- t:shot -->
+
+## Parked
+
+- [ ] Per-type order on inherited rules (first guide C5) <!-- t:rawd -->
+- [ ] Turboproof upgrade 0.6.0 → post-KERNEL-1 (own ticket in that repo) <!-- t:tp1 -->

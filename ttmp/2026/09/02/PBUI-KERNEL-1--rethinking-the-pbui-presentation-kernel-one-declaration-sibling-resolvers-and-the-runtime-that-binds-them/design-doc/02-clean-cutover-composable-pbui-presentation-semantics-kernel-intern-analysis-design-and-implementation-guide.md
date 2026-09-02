@@ -56,6 +56,23 @@ A new engineer should read in this order:
 
 The words **declaration**, **model**, **interpreter**, **snapshot**, **relation**, **binding program**, and **identity quotient** have precise meanings in this guide. The glossary in §22 is authoritative.
 
+### 0.1 Scope after the 2026-09-02 split
+
+On 2026-09-02 the eleven phases in §18 were split across four tickets so that each ticket ships one reviewable semantic boundary:
+
+| Ticket | Phases from §18 | Ships |
+|---|---|---|
+| **PBUI-KERNEL-1** (this ticket) | 0–7 and 11 | The compiled model, fragments, predicates and selector, canonical relations with exposure, acceptance over relations, the strict runtime, every consumer migrated, link dependency projection, and the release audit. This is the "consolidation boundary worth shipping" of §24. |
+| PBUI-KERNEL-2 | 8 | Binding-program IR, static checker, evaluation migration, planner integration (§12.3–§12.7). |
+| PBUI-KERNEL-3 | 9 | Identity quotient API and operation-specific port compatibility (§13). |
+| PBUI-KERNEL-4 | 10 | Activation function, request-identified accept machine, refusal presentation, original-query introspection with disclosure (§14.4, §14.5, §15.3–§15.5). |
+
+The prototype patch in `sources/` already contains first versions of the KERNEL-2 and KERNEL-3 code (`links/expression.ts`, `links/check.ts`, the identity quotient). KERNEL-1 applies the patch as its starting point and keeps that code where it is green, but does not extend it; finishing it is the later tickets' work.
+
+Two decisions that the first guide left open were confirmed by the user on 2026-09-02 and are recorded as C16 and C17 in §17: the runtime cutover is hard (no compatibility option family), and the frozen `packages/datalab-ui` is touched, mechanically, so the workspace stays green.
+
+The consumer inventory in §3.13 was redone the same day against every repository in the workspace. It found one large external consumer (rag-ttc) the first guide did not know about and corrected the roles of the two it named. Phase 6 and §20.3 were rewritten from that inventory.
+
 ---
 
 ## 1. Executive summary
@@ -375,7 +392,24 @@ The known in-repository consumers are:
 - core stories and runtime tests;
 - `scripts/consumer-smoke.mjs`.
 
-External first-party consumers named by prior tickets include agentlogic and turboproof. A clean cutover is not complete until repository-wide and organization-wide searches find no legacy construction symbols.
+The `packages/pbui-chat` package itself is also a consumer: `createPbuiChat` takes the product's `PbuiInstance` and reads `pbui.registry` for descriptors, and the chat layer's own presentation types (conversation, widget, trace entry) are today merged into the product's `Values` by hand.
+
+#### 3.13.1 External consumers (inventory of 2026-09-02)
+
+Every repository in the workspace that depends on `@hyperslop-systems/pbui` was searched for presentation-layer symbols. The first guide named agentlogic and turboproof; the inventory corrects both and adds two.
+
+| Repository | pbui version | What it uses | Exposure to this cutover |
+|---|---|---|---|
+| **rag-ttc** (`apps/workbench/web`) | 0.9.0 + pbui-workbench 0.3.1 + pbui-chat 0.3.1 | The full current kernel: 42-type graph with three abstract nodes, 46 rules plus the `workbenchTileContributions` spread, a facts type with a composed semantic revision, 7 unconditional translators with frozen wire ids, a help registry over the action graph, the whole `createPbui` option bag, `createPbuiChat` over the instance, and an accept bridge that calls `pbui.accept` from outside React. A vocabulary golden freezes rule, action and translator ids. No link kernel. | **The primary migration target.** Touches every symbol in §20.2. Mechanical (about five files) because it is already shaped like the target. Relation ids must equal the old translator ids; the vocabulary golden is regenerated deliberately. |
+| **hyperblog** (`ui`) | 0.10.0 (current) | `createPbui` with `actions`, `snapshotFor`, and 4 translators. Its action registry is one `define.family("*")` over an **empty graph** that republishes each descriptor's `actions()` rows. | **The only consumer of the open-world exception** (§3.2, C9). Must declare its 10 types in the graph and use `anyDeclaredType`. Static revision stays. |
+| **turboproof** (`ui`) | **0.6.0** | Pre-kernel descriptor `actions()` callbacks and `PresentationAction` rows, deleted in 0.8.0 (PBUI-ACTIONS-3 A1). Own tile tree, no pbui-workbench. | **Not a cutover participant.** Already two breaking releases behind. Its migration (descriptor actions to the compiled model) is a separate ticket in that repository, run once, after this cutover, straight to the final API. |
+| **agentlogic** (`ui`) | 0.9.0 + pbui-workbench 0.3.1 | Components only (Text, AppBody, Callout, ...) and `createWorkbench`/`defineApp`. Tiles are plain React with store dispatches. No descriptors, verbs, or object menu. | **Indirect only**, through pbui-workbench's public entry points. If `createWorkbench` and `defineApp` keep their signatures, agentlogic needs a version bump and nothing else. |
+
+Consequences for the design:
+
+- pbui-workbench's `createWorkbench`/`defineApp` are a public boundary this cutover keeps stable.
+- pbui-chat must export one **fragment** carrying its types, descriptors and any contributions, and must read descriptors from `pbui.presentation.descriptors` rather than a top-level `registry` alias.
+- The "no unknown external consumer" exit criterion of Phase 0 is met by this table, not by a search of two named repositories.
 
 ---
 
@@ -1723,6 +1757,33 @@ resolve same query
 - **Consequences:** Relation/action provenance must retain structured data. Full generic provenance can evolve later.
 - **Status:** accepted.
 
+### Decision C16: The runtime cutover is hard (confirms the first guide's open D3)
+
+- **Context:** The first guide asked whether `createPbui` should carry the old option family for one release.
+- **Options considered:** One-release union; permanent union; hard cutover.
+- **Decision:** Hard cutover. `createPbui` accepts only `{ presentation, defaultEnvironment, contextFor, ... }`.
+- **Rationale:** Confirmed by the user on 2026-09-02. The §3.13.1 inventory shows every in-scope consumer is either in this repository or in a sibling workspace checkout that can be migrated in the same sitting.
+- **Consequences:** Same as C13. Turboproof stays on 0.6.0 until its own ticket.
+- **Status:** accepted.
+
+### Decision C17: The frozen datalab-ui is touched, mechanically (confirms D7)
+
+- **Context:** PBUI-DATALAB-1 (2026-09-01) froze `packages/datalab-ui`; the datalab demo is being rebuilt on pbui-workbench instead. But datalab-ui is a workspace package and the recursive typecheck/test gate includes it.
+- **Options considered:** Pin datalab-ui to an old pbui; drop it from the workspace gates; migrate its pbui integration mechanically.
+- **Decision:** Mechanical migration of `packages/datalab-ui/src/pbui/` (five source files, three tests). No feature work.
+- **Rationale:** Confirmed by the user on 2026-09-02. The edit is smaller than either alternative's bookkeeping, and it keeps one workspace-wide green.
+- **Consequences:** datalab-ui's menu/help/descriptor goldens are regenerated where field names change. The freeze otherwise stands.
+- **Status:** accepted.
+
+### Decision C18: pbui-chat contributes a fragment and reads descriptors from the model
+
+- **Context:** `createPbuiChat` reads `pbui.registry`, and products merge the chat layer's presentation types into their `Values` by hand. Under the fragment model that is exactly the "parallel arrays a product must spread correctly" §1.2 item 6 forbids.
+- **Options considered:** Keep a `registry` alias on the instance; have pbui-chat build its own compiled presentation; export a chat fragment and read `pbui.presentation.descriptors`.
+- **Decision:** The third option. pbui-chat exports `createChatPresentationFragment(p)`; `createPbuiChat` reads `options.registry ?? pbui.presentation.descriptors`.
+- **Rationale:** A second compiled presentation would be a second graph, the assembly C1 exists to prevent. A fragment keeps the chat types, descriptors and any chat contributions atomic and origin-tagged in diagnostics.
+- **Consequences:** rag-ttc and the chat demo include the chat fragment instead of hand-merging types. `PbuiInstance.registry` is deleted with the rest of the option bag.
+- **Status:** accepted.
+
 ---
 
 ## 18. Clean-cutover implementation plan
@@ -1762,6 +1823,8 @@ Exit criteria:
 - No unknown external PBUI consumer.
 
 ### Phase 1: Shared predicates and selector
+
+Phase 1 begins by applying `sources/pbui-composable-kernel.patch` on the integration branch (it applies cleanly and is green, §4.1). Everything after that in Phases 1–7 is a delta on the applied prototype toward this guide: renames (`kernel` → `model`, `translator` → `relation`), additions (fragments, exposure, abstract codomains, explicit universal subject, one context input), and deletions (every compatibility branch, §20.2). Rewriting the 31 files from prose would cost more and prove less.
 
 **Files:**
 
@@ -1877,18 +1940,20 @@ Exit criteria:
 
 ### Phase 6: Consumer and fragment cutover
 
-**Datalab:**
+Order: in-repo packages first (they gate the workspace build), then the two external consumers from the sibling checkouts in the same workspace, using a `file:`/workspace link to the local pbui build.
 
-- combine descriptor, action, help, predicate, and `cat → field` relation declarations;
-- retain the current semantic revision components;
-- provide explicit active scopes;
-- choose user/agent refusal behavior.
+**Workbench (`packages/pbui-workbench`):**
 
-**Chat demo:**
+- export one fragment factory `createWorkbenchPresentationFragment(p, options)` replacing the `workbenchScopes` + `workbenchTileContributions` pair;
+- keep `createWorkbench`/`defineApp` signatures stable (agentlogic depends on them, §3.13.1);
+- require link dependencies when links are enabled;
+- remove the empty-graph fallback.
 
-- combine declarations and generated-action fragment;
-- retain revisions for conversation/program/generated action state;
-- replace conversion pairs with relations.
+**pbui-chat (`packages/pbui-chat`, C18):**
+
+- export `createChatPresentationFragment(p)` carrying the chat layer's types and descriptors;
+- read `options.registry ?? pbui.presentation.descriptors`;
+- migrate the demo: combine declarations and the generated-action fragment, retain revisions for conversation/program/generated action state, replace conversion pairs with relations.
 
 **Ecommerce:**
 
@@ -1897,27 +1962,43 @@ Exit criteria:
 - remove the second graph;
 - build workbench link dependencies through `shopPresentation.linkDeps`.
 
-**Workbench:**
-
-- export one fragment factory;
-- require link dependencies when links are enabled;
-- remove empty-graph fallback.
-
 **Sandbox:**
 
 - export one fragment;
 - replace legacy `"*"` family subject with explicit any-declared-type.
 
-**External repos:**
+**Datalab (`packages/datalab-ui`, C17, mechanical only):**
 
-- test agentlogic, turboproof, and every organization search result against the exact prerelease artifact;
-- update package versions and lockfiles;
-- run repository-native builds and tests.
+- combine descriptor, action, help, predicate, and `cat → field` relation declarations;
+- retain the current semantic revision components;
+- provide explicit active scopes;
+- choose a refusal behavior (status line);
+- regenerate goldens where field names changed; no feature work.
+
+**rag-ttc (`../rag-ttc/apps/workbench/web`, primary external target):**
+
+- one `definePresentation` root including the workbench and chat fragments plus a `ragttc` fragment built from the existing type definitions, contributions, help rules and descriptors;
+- translators become relations with `exposure: { acceptance: true }` and **unchanged ids** (frozen wire names);
+- `createSnapshotFor` becomes the declaration's `revision` function plus `defaultActiveScopes`;
+- `createPbui({ presentation, defaultEnvironment, contextFor })`; `onRefuse` writes to the trace;
+- `createPbuiChat` unchanged at the call site;
+- regenerate the vocabulary golden deliberately and bump the agent-facing vocabulary version;
+- run that repository's typecheck, tests and build.
+
+**hyperblog (`../hyperblog/ui`, open-world consumer):**
+
+- declare the ten types in the graph; the descriptor-bridge family uses `anyDeclaredType`;
+- translators become acceptance-exposed relations;
+- static revision stays;
+- run that repository's typecheck, tests and build.
+
+**turboproof and agentlogic:** not part of this phase (§3.13.1). Agentlogic gets a version bump once pbui-workbench is released; turboproof gets its own ticket.
 
 Exit criteria:
 
 ```bash
-rg -n "PresentationTranslator|relationFromTranslator|LegacyCreatePbuiOptions|snapshotFor:|translators:|matchContext|ContextTarget" <all-consumer-roots>
+rg -n "PresentationTranslator|relationFromTranslator|LegacyCreatePbuiOptions|snapshotFor:|translators:|matchContext|ContextTarget|workbenchTileContributions|pbui\.registry" \
+  pbui/ rag-ttc/apps/workbench/web/ hyperblog/ui/ --glob '!node_modules/**' --glob '!ttmp/**'
 ```
 
 returns no semantic legacy usage.
@@ -1944,62 +2025,23 @@ Exit criteria:
 - Acceptance-only relations never enter link palettes.
 - Nonserializable relation output becomes a diagnostic and no persisted mutation occurs.
 
-### Phase 8: Binding-program compiler and checker
+### Phase 8: Binding-program compiler and checker — moved to PBUI-KERNEL-2
 
-**Files:**
+Specification: §12.3–§12.7 and §19.6. The prototype's `links/expression.ts` and `links/check.ts` land with the patch in Phase 1 and stay as-is; KERNEL-2 migrates evaluation onto the IR, centralizes dependency extraction, integrates candidate checking into the planners, and deletes the superseded per-verb structural checks after parity.
 
-- `src/presentation/links/program.ts`;
-- `check.ts`;
-- `evaluate.ts`;
-- `plan.ts`;
-- `invariants.ts`.
+Exit criteria (for KERNEL-2): wire round-trip fixtures unchanged; normalization idempotence; hold/resume law; cycle/type errors match or improve current diagnostics.
 
-Actions:
+### Phase 9: Identity and operation compatibility — moved to PBUI-KERNEL-3
 
-- implement program compilation/lowering;
-- migrate evaluation;
-- centralize dependency extraction;
-- integrate candidate checking;
-- delete superseded per-verb structural checks after parity.
+Specification: §13 and §19.7. The prototype's quotient view lands with the patch; KERNEL-3 adds the order/duplicate invariance properties, the value/protocol projections, and the named `canFlow`/`canShareCell` policies.
 
-Exit criteria:
+Exit criteria (for KERNEL-3): existing class ids and lineage fixtures stable; quotient partition order-independent; identity and flow compatibility tests separate.
 
-- Wire round-trip fixtures unchanged.
-- Normalization idempotence property passes.
-- Hold/resume law passes.
-- Cycle/type errors match or improve current diagnostics.
+### Phase 10: Interaction policy and introspection — moved to PBUI-KERNEL-4
 
-### Phase 9: Identity and operation compatibility
+Specification: §14.4, §14.5, §15.3–§15.5, §19.8. KERNEL-4 adds the table-tested `activationOutcome` function, the request-identified accept machine, refusal presentation, and original-query introspection with disclosure. Constraint from §3.13.1: `pbui.accept` stays a promise-returning call usable outside React (rag-ttc's accept bridge).
 
-Actions:
-
-- expose quotient terminology over existing compiler;
-- add order/duplicate invariance properties;
-- add value/protocol projections;
-- add named `canFlow` and `canShareCell` policies.
-
-Exit criteria:
-
-- Existing class ids and lineage fixtures remain stable.
-- Quotient partition is order-independent.
-- Identity and flow compatibility tests are separate.
-
-### Phase 10: Interaction policy and introspection
-
-Actions:
-
-- add `activationOutcome` table-tested function;
-- add request-identified accept machine;
-- add refusal presentation;
-- add original-query introspection with disclosure;
-- add relation and binding provenance where available.
-
-Exit criteria:
-
-- Pointer and keyboard paths call the same activation function.
-- Accept machine properties hold under generated event sequences.
-- Public introspection omits hidden detail.
-- Developer introspection explains the same rows as the menu query.
+Exit criteria (for KERNEL-4): pointer and keyboard paths call one activation function; accept-machine properties hold under generated event sequences; public introspection omits hidden detail; developer introspection explains the same rows as the menu query.
 
 ### Phase 11: Release and deletion audit
 
@@ -2188,7 +2230,9 @@ Run consumer-native commands in external repositories as well. A PBUI-only green
 - [ ] Recursive workspace typecheck, tests, and builds pass.
 - [ ] Consumer smoke tests pass.
 - [ ] Storybook/browser tests pass.
-- [ ] External consumer CI passes against final artifact.
+- [ ] rag-ttc `apps/workbench/web` typecheck, tests and build pass against the local pbui build; vocabulary golden regenerated deliberately.
+- [ ] hyperblog `ui` typecheck, tests and build pass against the local pbui build.
+- [ ] agentlogic needs only a version bump (pbui-workbench entry points unchanged).
 - [ ] Persisted document fixtures round-trip.
 - [ ] No-effect-on-refusal laws pass.
 - [ ] Performance benchmarks show no hover/menu regression.
