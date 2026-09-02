@@ -64,11 +64,18 @@ export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, 
           {` ×${info.placementCount}`}
         </span>
       ) : null}
-      {/* The binding badges (PBUI-LINK-1): the always-on substrate of tile linking. */}
-      {view && badges.length > 0 ? (renderBadges ? renderBadges(view, info, badges) : badges.map((badge) => <PortBadge key={badge.port} badge={badge} />)) : null}
     </>
   );
-  const title = view && renderTitle ? renderTitle(view, info, defaultTitle) : defaultTitle;
+  // The binding badges (PBUI-LINK-1): the always-on substrate of tile linking.
+  // BESIDE the product's title presentation, never inside it: a badge is its
+  // own presentation and must not sit in another one's frame.
+  const badgeNodes = view && badges.length > 0 ? (renderBadges ? renderBadges(view, info, badges) : badges.map((badge) => <PortBadge key={badge.port} badge={badge} />)) : null;
+  const title = (
+    <>
+      {view && renderTitle ? renderTitle(view, info, defaultTitle) : defaultTitle}
+      {badgeNodes}
+    </>
+  );
 
   // The chrome's own door to the per-pane launcher. Without it a product with
   // no `<tile>` presentation cannot reach `launcher.open({ placementId })` at

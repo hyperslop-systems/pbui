@@ -78,6 +78,13 @@ export interface PortDeclarationInput {
    * application is then "doc-bound" in the workbench's sense.
    */
   readonly documentSlot?: boolean;
+  /**
+   * Refine the contract per VIEW (open question Q7): a plot tile's selection
+   * has the authority of whichever table the view is bound to, which only the
+   * view knows. Returns the fields that differ; the rest stay as declared.
+   * Must be pure and cheap; it runs whenever the snapshot is rebuilt.
+   */
+  readonly refineContract?: (view: { readonly documents: Readonly<Record<string, string>> }) => Partial<PortContractInput>;
 }
 
 /** A declaration after `definePort`: every optional policy filled in, the contract normalized. */
@@ -91,6 +98,15 @@ export interface PortDeclaration {
   readonly fanIn: FanInPolicy;
   readonly onSourceClose: SourceClosePolicy;
   readonly documentSlot: boolean;
+  readonly refineContract?: (view: { readonly documents: Readonly<Record<string, string>> }) => Partial<PortContractInput>;
+}
+
+/** The declaration as it applies to ONE view: `refineContract` folded into the contract. */
+export function refineDeclaration(declaration: PortDeclaration, view: { readonly documents: Readonly<Record<string, string>> }): PortDeclaration {
+  if (!declaration.refineContract) return declaration;
+  const patch = declaration.refineContract(view);
+  if (!patch || Object.keys(patch).length === 0) return declaration;
+  return { ...declaration, contract: normalizeContract({ ...declaration.contract, ...patch }, declaration.direction) };
 }
 
 /**
@@ -185,6 +201,7 @@ export function definePort(input: PortDeclarationInput): PortDeclaration {
     fanIn: input.fanIn ?? "single-producer",
     onSourceClose: input.onSourceClose ?? "freeze",
     documentSlot: input.documentSlot ?? false,
+    ...(input.refineContract ? { refineContract: input.refineContract } : {}),
   };
 }
 

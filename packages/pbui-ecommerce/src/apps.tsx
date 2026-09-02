@@ -49,6 +49,12 @@ export const CONTEXTS = {
   inspected: "workspace.inspected",
 } as const;
 
+/** The authority domain of a plot's table slot: the table's name (`table:orders` → `orders`), else the slot value itself. */
+function tableAuthority(tableId: string | undefined): string {
+  if (!tableId) return "plot";
+  return tableId.startsWith("table:") ? tableId.slice("table:".length) : tableId;
+}
+
 export function createShopApps(shop: Shop): AppDescriptor[] {
   return [
     defineApp({
@@ -133,7 +139,15 @@ export function createShopApps(shop: Shop): AppDescriptor[] {
       ports: [
         documentSlotPort(PLOT_SLOT, "the hyperslop.plot document this tile draws"),
         documentSlotPort(TABLE_SLOT, "the table the plot draws rows from"),
-        { name: "selection", direction: "inout", contract: { valueType: "datum", semanticRole: "selection", cardinality: "many", authorityDomain: "plot" }, doc: "the brushed marks, as rows of the plot's table" },
+        {
+          name: "selection",
+          direction: "inout",
+          contract: { valueType: "datum", semanticRole: "selection", cardinality: "many", authorityDomain: "plot" },
+          doc: "the brushed marks, as rows of the plot's table",
+          // Q7: the authority is the table this VIEW draws — orders for the orders plot, daily_sales for the revenue
+          // plots — so an orders table's selection is identity-compatible with the former and not the latter.
+          refineContract: (view) => ({ authorityDomain: tableAuthority(view.documents[TABLE_SLOT]) }),
+        },
         { name: "datum", direction: "out", contract: { valueType: "datum", semanticRole: "datum.current" }, doc: "the mark you clicked" },
         { name: "cat", direction: "out", contract: { valueType: "category", semanticRole: "category.current" }, doc: "the category of the bar or legend entry you clicked" },
       ],

@@ -1,4 +1,5 @@
 import { evaluatePort } from "./evaluate";
+import { compileIdentity, type IdentityClass, type IdentityDeclaration } from "./identity";
 import type { LinkDeps, LinkSnapshot } from "./snapshot";
 import { sourcePortOf, terms, type Binding } from "./terms";
 import { parsePortId, type PortId } from "./types";
@@ -59,6 +60,18 @@ export function bindingsAfterViewsRemoved(removed: ReadonlySet<string>, s: LinkS
     }
   }
   return next;
+}
+
+/** Identity declarations that touch a removed view are dropped; the classes are recompiled with their ids kept. */
+export function identityAfterViewsRemoved(removed: ReadonlySet<string>, s: LinkSnapshot): { identity: IdentityDeclaration[]; classes: IdentityClass[] } {
+  const gone = (port: string) => {
+    const view = parsePortId(port)?.viewId;
+    return view !== undefined && removed.has(view);
+  };
+  const identity = s.identity.filter((entry) => !gone(entry.left) && !gone(entry.right));
+  if (identity.length === s.identity.length) return { identity: [...s.identity], classes: [...s.classes.values()] };
+  const ports = new Map([...s.ports].filter(([, definition]) => !removed.has(definition.viewId)));
+  return { identity, classes: [...compileIdentity(identity, ports, [...s.classes.values()]).classes] };
 }
 
 /** Drop terms for ports the view's new application does not declare. */

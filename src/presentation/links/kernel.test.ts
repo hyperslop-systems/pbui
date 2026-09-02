@@ -263,6 +263,6 @@ describe("badges", () => {
     expect(badgesOfView("v-plot", s, deps)).toEqual([]);
     expect(badgesOfView("v-east", s, deps)).toEqual([]);
     expect(badgesOfView("v-a", s, deps).map((b) => b.state)).toEqual(["empty"]);
-    expect(PORTS.length).toBe(10);
+    expect(PORTS.length).toBe(14);
   });
 });

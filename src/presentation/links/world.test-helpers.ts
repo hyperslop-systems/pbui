@@ -1,4 +1,5 @@
 import { createPresentationTypeGraph } from "../actions/typeGraph";
+import { compileIdentity, type IdentityClass, type IdentityDeclaration } from "./identity";
 import type { LinkDeps, LinkSnapshot, PortDefinition } from "./snapshot";
 import type { Binding, SerializableReference } from "./terms";
 import { definePort, portId, type PortDeclarationInput, type PortId } from "./types";
@@ -25,6 +26,10 @@ export const deps: LinkDeps = {
 
 export interface WorldOptions {
   bindings?: Record<PortId, Binding>;
+  identity?: IdentityDeclaration[];
+  classes?: IdentityClass[];
+  classCells?: Record<string, SerializableReference | null>;
+  history?: Record<PortId, SerializableReference | null>;
   emitted?: Record<PortId, SerializableReference>;
   attended?: Record<PortId, SerializableReference>;
   contexts?: Record<string, SerializableReference | null>;
@@ -56,6 +61,11 @@ export const PORTS: readonly PortDefinition[] = [
   declare("v-plot", "plot", "Plot", { name: "datum", direction: "out", contract: "datum", doc: "the activated mark" }),
   declare("v-notes", "notes", "Notes", { name: "subject", direction: "in", contract: "any", doc: "anything at all" }),
   declare("v-cust", "customer-detail", "Customer", { name: "customer", direction: "in", contract: "customer", doc: "the customer shown" }),
+  // Selections (Phase 5): the two orders tables and an orders plot share a contract; the sales plot has another authority.
+  declare("v-east", "orders", "Orders East", { name: "selection", direction: "inout", contract: { valueType: "datum", semanticRole: "selection", cardinality: "many", authorityDomain: "orders" }, doc: "the selected orders" }),
+  declare("v-west", "orders", "Orders West", { name: "selection", direction: "inout", contract: { valueType: "datum", semanticRole: "selection", cardinality: "many", authorityDomain: "orders" }, doc: "the selected orders" }),
+  declare("v-plot", "plot", "Plot", { name: "selection", direction: "inout", contract: { valueType: "datum", semanticRole: "selection", cardinality: "many", authorityDomain: "orders" }, doc: "the brushed marks" }),
+  declare("v-sales", "plot", "Sales", { name: "selection", direction: "inout", contract: { valueType: "datum", semanticRole: "selection", cardinality: "many", authorityDomain: "daily_sales" }, doc: "the brushed cells" }),
 ];
 
 export function world(options: WorldOptions = {}): LinkSnapshot {
@@ -74,18 +84,58 @@ export function world(options: WorldOptions = {}): LinkSnapshot {
   const attended = new Map(Object.entries(options.attended ?? {}));
   const cells = new Map(Object.entries(options.contexts ?? {}));
   const documentSlots = new Map(Object.entries(options.documentSlots ?? { "v-plot/plot": { type: "document", value: "revenue-by-day" } }));
+  const identity = options.identity ?? [];
+  const compiled = compileIdentity(identity, ports, options.classes ?? []);
+  const classCells = new Map(Object.entries(options.classCells ?? {}));
+  const classes = new Map(compiled.classes.map((cls) => [cls.id, cls]));
   return {
     documentRevision: 1,
     runtimeRevision: 1,
     ports,
     bindings: new Map(Object.entries(options.bindings ?? {})),
+    identity,
+    classes,
+    aliases: compiled.aliases,
+    history: new Map(Object.entries(options.history ?? {})),
     documentSlots,
     contexts,
     values: {
       emitted: (port) => emitted.get(port),
       context: (key) => (cells.has(key) ? cells.get(key) : contexts.has(key) ? null : undefined),
       attended: (port) => attended.get(port),
+      classCell: (id) => (classCells.has(id) ? classCells.get(id) : classes.has(id) ? null : undefined),
     },
+  };
+}
+
+/** The same world after an apply: state and (simulated) runtime effects folded in. */
+export function withState(s: LinkSnapshot, result: { state: { bindings: ReadonlyMap<PortId, Binding>; identity: readonly IdentityDeclaration[]; classes: readonly IdentityClass[]; history: ReadonlyMap<PortId, SerializableReference | null> }; effects: readonly { kind: string; classId?: string; port?: PortId; reference?: SerializableReference | null }[] }): LinkSnapshot {
+  const compiled = compileIdentity(result.state.identity, s.ports, result.state.classes);
+  const classCells = new Map<string, SerializableReference | null>();
+  for (const cls of compiled.classes) classCells.set(cls.id, s.values.classCell?.(cls.id) ?? null);
+  const emitted = new Map<PortId, SerializableReference>();
+  for (const port of s.ports.keys()) {
+    const value = s.values.emitted(port);
+    if (value) emitted.set(port, value);
+  }
+  for (const effect of result.effects) {
+    if (effect.kind === "seed-class" && effect.classId) classCells.set(effect.classId, effect.reference ?? null);
+    if (effect.kind === "forget-class" && effect.classId) classCells.delete(effect.classId);
+    if (effect.kind === "set-emitted" && effect.port) {
+      if (effect.reference) emitted.set(effect.port, effect.reference);
+      else emitted.delete(effect.port);
+    }
+  }
+  const classes = new Map(compiled.classes.map((cls) => [cls.id, cls]));
+  return {
+    ...s,
+    documentRevision: Number(s.documentRevision) + 1,
+    bindings: result.state.bindings,
+    identity: result.state.identity,
+    classes,
+    aliases: compiled.aliases,
+    history: result.state.history,
+    values: { ...s.values, emitted: (port) => emitted.get(port), classCell: (id) => (classCells.has(id) ? classCells.get(id) : classes.has(id) ? null : undefined) },
   };
 }
 

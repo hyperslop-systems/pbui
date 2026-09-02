@@ -1,7 +1,9 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { linkVerbs, portId } from "@hyperslop-systems/pbui";
+import { linkVerbs, planIdentityAdd, portId } from "@hyperslop-systems/pbui";
 import { LINKS_DOC_ID, bindingsOf, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { ORDERS_BY_STATUS, REVENUE_BY_CATEGORY } from "./plots/documents";
+import { plotTile } from "./seed";
 import { APP_IDS } from "./apps";
 import { createShop, createShopWorkbench } from "./createShop";
 import { seedShopDocument } from "./seed";
@@ -23,6 +25,15 @@ function scene(spec = split("row", 0.55, tile(APP_IDS.orders), split("col", 0.5,
   const workbench = createShopWorkbench(shop, { initial: seedShopDocument({ spec }) });
   render(<ShopShell shop={shop} workbench={workbench} strip={false} />);
   return { shop, workbench, views: viewsByApp(workbench) };
+}
+
+/** Run a state change inside act and hand back its result. */
+function performed<T>(run: () => T): T {
+  let result!: T;
+  act(() => {
+    result = run();
+  });
+  return result;
 }
 
 /** The badges of one view's ports (the inspector beside the detail has a badge of its own). */
@@ -79,6 +90,46 @@ describe("scene 3 · show with routing", () => {
     const detail = Object.values(workbench.store.getState().document.views).find((view) => view.appId === APP_IDS.orderDetail);
     expect(detail).toBeTruthy();
     expect(bindingsOf(workbench.store.getState().document).get(portId(detail!.id, "order"))).toMatchObject({ kind: "follow", source: portId(views.orders![0]!, "order") });
+  });
+});
+
+describe("scenes 5 and 6 · identity and follow", () => {
+  it("Shift-click selects rows; sharing the selection with the orders plot puts both on one cell; the sales plot is refused with the field named", () => {
+    const { workbench, views } = scene(split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, plotTile(ORDERS_BY_STATUS), plotTile(REVENUE_BY_CATEGORY))));
+    const orders = views.orders![0]!;
+    const [byStatus, byCategory] = views.plot!;
+    fireEvent.click(row("88213"), { shiftKey: true });
+    fireEvent.click(row("88214"), { shiftKey: true });
+    expect(document.querySelectorAll('[data-part="orders-table"] tr[data-selected]')).toHaveLength(2);
+    // Incompatible: different authority domain — refused, nothing written.
+    expect(performed(() => workbench.perform(linkVerbs.identityAdd(portId(orders, "selection"), portId(byCategory!, "selection"))))).toBe(false);
+    const refusal = planIdentityAdd(portId(orders, "selection"), portId(byCategory!, "selection"), "prefer-left", workbench.links.snapshot(), workbench.links.deps);
+    expect(refusal).toMatchObject({ kind: "unavailable", code: "incompatible", because: expect.stringContaining("different authority domain: orders vs daily_sales") });
+    // Compatible: one cell for both.
+    expect(performed(() => workbench.perform(linkVerbs.identityAdd(portId(orders, "selection"), portId(byStatus!, "selection"))))).toBe(true);
+    expect(badges(orders)).toEqual(["shared:≡selection · σ1"]);
+    expect(badges(byStatus!)).toEqual(["shared:≡selection · σ1"]);
+    expect(workbench.links.runtime.getState().classes.get("σ1")).toMatchObject({ type: "datum", value: [{ identity: { id: "88213" } }, { identity: { id: "88214" } }] });
+    // A third row toggled in the table writes the shared cell; the plot reads it as its own selection.
+    fireEvent.click(row("88160"), { shiftKey: true });
+    expect(workbench.links.runtime.getState().classes.get("σ1")).toMatchObject({ value: [{ identity: { id: "88160" } }, { identity: { id: "88213" } }, { identity: { id: "88214" } }] });
+    expect(document.querySelector('[data-part="shop-plot"]')?.getAttribute("data-selected-count")).toBe("3");
+  });
+
+  it("the orders filter follows the catalog's category port: a category click narrows the rows, badge → catalog", () => {
+    const { workbench, views } = scene(split("row", 0.5, tile(APP_IDS.products), tile(APP_IDS.orders)));
+    const orders = views.orders![0]!;
+    const catalog = views.products![0]!;
+    const all = document.querySelectorAll('[data-part="orders-table"] tbody tr').length;
+    // Link through the verb (the menu path is covered by scene 2) and click a category cell.
+    act(() => void workbench.perform(linkVerbs.follow(portId(catalog, "cat"), portId(orders, "filter"))));
+    const cell = document.querySelector('[data-part="product-catalog"] tr[data-product-id="2049"] [data-ptype="category"]')!.closest("td") as HTMLElement;
+    fireEvent.click(cell);
+    expect(badges(orders)).toEqual(["following:→catalog"]);
+    const narrowed = document.querySelectorAll('[data-part="orders-table"] tbody tr').length;
+    expect(narrowed).toBeGreaterThan(0);
+    expect(narrowed).toBeLessThan(all);
+    expect(document.querySelector('[data-part="orders-table"]')?.textContent).toContain("in American Gold Eagles");
   });
 });
 

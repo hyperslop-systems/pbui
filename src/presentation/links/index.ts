@@ -18,6 +18,7 @@ export {
   normalizeContract,
   parsePortId,
   portId,
+  refineDeclaration,
 } from "./types";
 export type {
   ContractMismatch,
@@ -37,8 +38,10 @@ export { describeBinding, isBinding, isSerializableReference, linkIdOf, sameRefe
 export type { Binding, Diagnostic, SerializableReference } from "./terms";
 export { LINK_VERB_KINDS, describeLinkVerb, isLinkVerb, linkVerbs } from "./verbs";
 export type { LinkVerb, LinkVerbKind, UnlinkPolicy } from "./verbs";
-export { labelOf, reaches } from "./snapshot";
-export type { ContextDefinition, LinkDeps, LinkSnapshot, LinkValues, PortDefinition } from "./snapshot";
+export { EMPTY_LINK_STATE, labelOf, reaches } from "./snapshot";
+export type { ContextDefinition, LinkDeps, LinkSnapshot, LinkState, LinkValues, PortDefinition } from "./snapshot";
+export { checkIdentityCompatibility, compatibilityOf, compileIdentity } from "./identity";
+export type { ClassLineage, CompiledIdentity, Compatibility, IdentityClass, IdentityDeclaration, IdentityDiagnostic, MergePolicy, SplitPolicy } from "./identity";
 export { effectiveBinding, evaluateBinding, evaluatePort, valueToHold } from "./evaluate";
 export type { Evaluation } from "./evaluate";
 export {
@@ -49,6 +52,8 @@ export {
   planClear,
   planDetach,
   planFollow,
+  planIdentityAdd,
+  planIdentityRemove,
   planPin,
   planResume,
   planUnlink,
@@ -57,8 +62,8 @@ export {
 } from "./plan";
 export type { LinkPlan } from "./plan";
 export { applyLinkVerb } from "./apply";
-export type { ApplyOptions, ApplyResult } from "./apply";
-export { bindingsAfterAppReplaced, bindingsAfterClone, bindingsAfterViewsRemoved } from "./lifecycle";
+export type { ApplyOptions, ApplyResult, RuntimeEffect } from "./apply";
+export { bindingsAfterAppReplaced, bindingsAfterClone, bindingsAfterViewsRemoved, identityAfterViewsRemoved } from "./lifecycle";
 export { badgeOf, badgesOfView } from "./badge";
 export type { Badge, BadgeState } from "./badge";
 export { checkInvariants } from "./invariants";

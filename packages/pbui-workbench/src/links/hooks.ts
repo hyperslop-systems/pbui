@@ -63,7 +63,9 @@ export function useEmitPort(view: AppView, name: string): (reference: Serializab
       const id = portId(view.id, name);
       const declaration = workbench.apps.get(view.appId)?.ports?.find((port) => port.name === name);
       const drives = declaration?.drivesContext ? [declaration.drivesContext] : [];
-      workbench.links.runtime.emit(id, reference, { ...(options.attended ? { attended: true } : {}), drives });
+      // A member of an identity class writes the shared cell (Phase 5).
+      const classId = workbench.links.snapshot().aliases.get(id);
+      workbench.links.runtime.emit(id, reference, { ...(options.attended ? { attended: true } : {}), drives, ...(classId ? { classId } : {}) });
     },
     [workbench, view.id, view.appId, name],
   );

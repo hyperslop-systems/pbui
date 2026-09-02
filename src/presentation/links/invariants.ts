@@ -1,6 +1,7 @@
 import { evaluatePort } from "./evaluate";
 import type { LinkDeps, LinkSnapshot } from "./snapshot";
 import { linkIdOf, sourcePortOf } from "./terms";
+import { contractFingerprint } from "./types";
 
 /*
  * The system invariants of report §7.11 that Phase 2 can already check
@@ -9,7 +10,7 @@ import { linkIdOf, sourcePortOf } from "./terms";
  */
 
 export interface Violation {
-  readonly code: "term-without-port" | "source-missing" | "duplicate-link-id" | "cycle" | "slot-constant" | "type";
+  readonly code: "term-without-port" | "source-missing" | "duplicate-link-id" | "cycle" | "slot-constant" | "type" | "class-heterogeneous" | "alias-multiple" | "identity-port-missing";
   readonly message: string;
 }
 
@@ -38,6 +39,28 @@ export function checkInvariants(s: LinkSnapshot, deps: LinkDeps): Violation[] {
     const evaluation = evaluatePort(port, s, deps);
     if (evaluation.kind === "error" && evaluation.diagnostic.code === "cycle") {
       out.push({ code: "cycle", message: evaluation.diagnostic.message });
+    }
+  }
+  // Identity (Phase 5): every alias port in exactly one class; classes contract-homogeneous; declarations over existing ports.
+  const seen = new Map<string, string>();
+  for (const cls of s.classes.values()) {
+    for (const member of cls.members) {
+      const definition = s.ports.get(member);
+      if (!definition) {
+        out.push({ code: "identity-port-missing", message: `${member} is in ${cls.id} but is not a declared port` });
+        continue;
+      }
+      if (contractFingerprint(definition.declaration.contract) !== cls.fingerprint) {
+        out.push({ code: "class-heterogeneous", message: `${member} does not match ${cls.id}'s contract` });
+      }
+      const previous = seen.get(member);
+      if (previous) out.push({ code: "alias-multiple", message: `${member} is in both ${previous} and ${cls.id}` });
+      seen.set(member, cls.id);
+    }
+  }
+  for (const declaration of s.identity) {
+    for (const port of [declaration.left, declaration.right]) {
+      if (!s.ports.has(port)) out.push({ code: "identity-port-missing", message: `identity ${declaration.linkId} names ${port}, which is not a declared port` });
     }
   }
   return out;

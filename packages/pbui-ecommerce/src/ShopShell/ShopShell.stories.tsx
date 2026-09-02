@@ -4,7 +4,7 @@ import { split, tile } from "@hyperslop-systems/pbui-workbench";
 import { APP_IDS } from "../apps";
 import { ORDERS_BY_STATUS, REVENUE_BY_CATEGORY } from "../plots/documents";
 import { plotTile } from "../seed";
-import { followOrders, holdOrders, presentOrder, ShopStory } from "../stories/harness";
+import { followCategory, followOrders, holdOrders, presentOrder, shareSelection, ShopStory } from "../stories/harness";
 
 /*
  * THE SCENES (PBUI-LINK-1 §11.1), in the order the phases land. Each opens
@@ -59,13 +59,18 @@ export const Scene4Derived: StoryObj = {
 };
 
 export const Scene5Identity: StoryObj = {
-  name: "5 · identity: the orders table and the orders-by-status plot share a selection (Phase 5)",
-  render: () => <ShopStory spec={split("row", 0.55, tile(APP_IDS.orders), plotTile(ORDERS_BY_STATUS))} height={520} />,
+  name: "5 · identity: the orders table and the orders-by-status plot share a selection ≡ σ1 — Shift-click rows, brush the plot (Phase 5)",
+  render: () => <ShopStory spec={split("row", 0.55, tile(APP_IDS.orders), plotTile(ORDERS_BY_STATUS))} height={520} setup={shareSelection()} />,
+};
+
+export const Scene5Incompatible: StoryObj = {
+  name: "5b · not identity-compatible: the revenue-by-category plot selects daily_sales cells, not orders — Ctrl-drag in connect mode says why (Phase 5)",
+  render: () => <ShopStory spec={split("row", 0.55, tile(APP_IDS.orders), plotTile(REVENUE_BY_CATEGORY))} height={520} setup={(_s, wb) => wb.perform(linkVerbs.openMode())} />,
 };
 
 export const Scene6FollowVsIdentity: StoryObj = {
-  name: "6 · follow versus identity: a category bar drives the orders filter (Phase 5)",
-  render: () => <ShopStory spec={split("row", 0.5, plotTile(REVENUE_BY_CATEGORY), tile(APP_IDS.orders))} height={520} />,
+  name: "6 · follow versus identity: the orders filter FOLLOWS the plot's category (badge → plot), a follow rather than a shared cell (Phase 5)",
+  render: () => <ShopStory spec={split("row", 0.5, plotTile(REVENUE_BY_CATEGORY), tile(APP_IDS.orders))} height={520} setup={followCategory("7")} />,
 };
 
 export const Scene7ConnectMode: StoryObj = {

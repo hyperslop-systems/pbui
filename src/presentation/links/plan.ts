@@ -1,4 +1,5 @@
-import { effectiveBinding, valueToHold } from "./evaluate";
+import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
+import { checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
 import { labelOf, reaches, type LinkDeps, type LinkSnapshot, type PortDefinition } from "./snapshot";
 import { sourcePortOf, terms, type Binding, type SerializableReference } from "./terms";
 import type { PortId } from "./types";
@@ -46,6 +47,7 @@ export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot,
   }
   const current = s.bindings.get(destination);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
+  if (s.aliases.has(destination)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(destination)} cell; leave the class first`, "shared");
   if (current?.kind === "follow" && current.source === source) return unavailable(`${titleOfPort(D)} already follows ${titleOfPort(S)}`, "already");
   if (dependsOn(source, destination, s)) {
     return unavailable(`${titleOfPort(S)} already reads from ${titleOfPort(D)}; that would be a cycle`, "cycle");
@@ -64,6 +66,7 @@ export function planBind(port: PortId, reference: SerializableReference, s: Link
   }
   const current = s.bindings.get(port);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
+  if (s.aliases.has(port)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(port)} cell; leave the class first`, "shared");
   return available(linkVerbs.bind(port, reference), `${titleOfPort(D)} will show ${labelOf(reference, deps)}`);
 }
 
@@ -144,6 +147,51 @@ export function planUnlink(linkId: string, policy: UnlinkPolicy, s: LinkSnapshot
   }
   const outcome = policy === "freeze" ? "keeps its last value" : policy === "clear" ? "is cleared" : `falls back to ${D.declaration.fallbackContext}`;
   return available(linkVerbs.unlink(linkId, policy), `${titleOfPort(D)} ${outcome}`);
+}
+
+/**
+ * May `left` and `right` share one cell (Phase 5)? Both must exist, be
+ * readable, carry no explicit term, and agree on every contract field; the
+ * refusal names the field. `cellsDiffer` tells the instrument to ask for a
+ * merge policy rather than guess.
+ */
+export function planIdentityAdd(left: PortId, right: PortId, mergePolicy: MergePolicy, s: LinkSnapshot, deps: LinkDeps): LinkPlan & { cellsDiffer?: boolean } {
+  const L = s.ports.get(left);
+  const R = s.ports.get(right);
+  if (!L || !R) return unavailable("that port no longer exists", "port-missing");
+  if (left === right) return unavailable("a port cannot share a cell with itself", "self");
+  if (L.declaration.direction === "out" || R.declaration.direction === "out") return unavailable("an output-only port cannot share a cell", "direction");
+  const already = s.aliases.get(left);
+  if (already && already === s.aliases.get(right)) return unavailable(`${titleOfPort(L)} and ${titleOfPort(R)} already share ${already}`, "already");
+  for (const [port, definition] of [[left, L], [right, R]] as const) {
+    const term = s.bindings.get(port);
+    if (term) return unavailable(`${titleOfPort(definition)} is ${term.kind === "hold" ? "held" : term.kind === "follow" ? "following a source" : "bound"}; unlink it first`, "bound");
+  }
+  const compatibility = checkIdentityCompatibility(left, right, s);
+  if (!compatibility.ok) return unavailable(`${titleOfPort(L)} and ${titleOfPort(R)} cannot be identified: ${compatibility.because}`, "incompatible");
+  const a = evaluatePort(left, s, deps);
+  const b = evaluatePort(right, s, deps);
+  const va = a.kind === "value" ? JSON.stringify(a.reference) : null;
+  const vb = b.kind === "value" ? JSON.stringify(b.reference) : null;
+  const cellsDiffer = va !== vb && va !== null && vb !== null;
+  if (cellsDiffer && mergePolicy === "require-equal") {
+    return { ...unavailable(`${titleOfPort(L)} and ${titleOfPort(R)} show different values; choose which one wins`, "cells-differ"), cellsDiffer };
+  }
+  const seed = mergePolicy === "prefer-right" ? (b.kind === "value" ? "the right value" : "the left value") : a.kind === "value" ? "the left value" : b.kind === "value" ? "the right value" : "an empty cell";
+  return { ...available({ kind: "identity.add", left, right, mergePolicy }, `${titleOfPort(L)} ≡ ${titleOfPort(R)}, starting from ${seed}`), cellsDiffer };
+}
+
+export function planIdentityRemove(linkId: string, splitPolicy: SplitPolicy, s: LinkSnapshot): LinkPlan {
+  const declaration = s.identity.find((entry) => entry.linkId === linkId);
+  if (!declaration) return unavailable("that identity link no longer exists", "link-missing");
+  const L = s.ports.get(declaration.left);
+  const R = s.ports.get(declaration.right);
+  const names = `${L ? titleOfPort(L) : declaration.left} and ${R ? titleOfPort(R) : declaration.right}`;
+  if (splitPolicy === "history" && !s.history.has(declaration.left) && !s.history.has(declaration.right)) {
+    return unavailable(`${names} have no private history to restore`, "no-history");
+  }
+  const outcome = splitPolicy === "copy" ? "each keeps the shared value" : splitPolicy === "history" ? "each gets its pre-merge value back" : "both are cleared";
+  return available({ kind: "identity.remove", linkId, splitPolicy }, `${names} part ways; ${outcome}`);
 }
 
 /** Every plan a badge menu shows for one port, in menu order. */

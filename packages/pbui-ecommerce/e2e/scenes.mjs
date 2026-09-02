@@ -122,6 +122,42 @@ scenario("Show details… with no detail open: tile count +1, the new tile follo
   if (!(await detailTitle(page))?.includes("order #88155")) throw new Error("spawned detail does not show #88155");
 });
 
+scenario("identity: the shared selection is a double wire; Unlink · restore private values gives each side its own selection back", async (page) => {
+  await page.goto(story("shop-scenes--scene-5-identity"));
+  await page.waitForSelector('[data-part="port-badge"][data-state="shared"]');
+  if ((await page.locator('[data-part="port-badge"][data-state="shared"]').count()) !== 2) throw new Error("both members should show ≡");
+  await page.locator("body").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("Control+Shift+L");
+  await page.waitForSelector('[data-part="wire"][data-term="identity"]');
+  await page.locator('[data-part="wire"][data-term="identity"] [data-part="wire-hit"]').first().click({ button: "right", force: true });
+  await page.getByRole("menuitem", { name: /^Unlink · restore private values/ }).click();
+  await page.waitForSelector('[data-part="wire"][data-term="identity"]', { state: "detached" });
+  await page.keyboard.press("Escape");
+  await page.waitForSelector('[data-part="port-rail"]', { state: "detached" });
+  if ((await page.locator('[data-part="port-badge"][data-state="shared"]').count()) !== 0) throw new Error("≡ badges should be gone");
+  // The table keeps its two pre-merge rows selected (its private history).
+  if ((await page.locator('[data-part="orders-table"] tr[data-selected]').count()) !== 2) throw new Error("the table did not get its private selection back");
+});
+
+scenario("Ctrl-drag onto an incompatible port is refused with the field named", async (page) => {
+  await page.goto(story("shop-scenes--scene-5-incompatible"));
+  await page.waitForSelector('[data-part="port-rail"]');
+  const from = page.locator('[data-part="port-rail-port"][data-side="out"][data-port-id$="/selection"]').first();
+  const to = page.locator('[data-part="port-rail-port"][data-side="in"][data-port-id$="/selection"]').last();
+  const a = await from.boundingBox();
+  const b = await to.boundingBox();
+  await page.keyboard.down("Control");
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
+  const label = await page.locator('[data-part="wire-cursor"]').textContent();
+  if (!label?.startsWith("cannot share with")) throw new Error(`cursor said: ${label}`);
+  if ((await to.getAttribute("data-acceptable")) !== "false") throw new Error("the sales plot should not be acceptable");
+  await page.mouse.up();
+  await page.keyboard.up("Control");
+  if ((await page.locator('[data-part="wire"]').count()) !== 0) throw new Error("no wire should have been declared");
+});
+
 const browser = await chromium.launch();
 let failed = 0;
 for (const { name, run } of scenarios) {

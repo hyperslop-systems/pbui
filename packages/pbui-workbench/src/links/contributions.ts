@@ -8,6 +8,7 @@ import {
   planClear,
   planDetach,
   planFollow,
+  planIdentityRemove,
   planPin,
   planResume,
   planUnlink,
@@ -161,6 +162,7 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
         action: `link.unlink.${policy}`,
         scopes,
         test: ({ subject, snapshot }) => {
+          if (subject.value.kind === "identity") return inapplicable();
           const links = facts(snapshot);
           return links ? statusOf(planUnlink(subject.value.linkId, policy, links.snapshot, links.deps)) : NO_LINKS;
         },
@@ -171,6 +173,26 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
           danger: policy === "clear",
         },
         bind: ({ subject }) => ({ kind: "port.unlink", linkId: subject.value.linkId, policy }),
+      }),
+    ),
+    // Identity wires (Phase 5): the split policies of the audit's unlink scenario.
+    ...(["copy", "history", "reset"] as const).map((splitPolicy, index) =>
+      defineLink.exact("link", {
+        id: `workbench.link.identity-remove.${splitPolicy}`,
+        action: `link.identity-remove.${splitPolicy}`,
+        scopes,
+        test: ({ subject, snapshot }) => {
+          if (subject.value.kind !== "identity") return inapplicable();
+          const links = facts(snapshot);
+          return links ? statusOf(planIdentityRemove(subject.value.linkId, splitPolicy, links.snapshot)) : NO_LINKS;
+        },
+        metadata: {
+          label: splitPolicy === "copy" ? "Unlink · each keeps the shared value" : splitPolicy === "history" ? "Unlink · restore private values" : "Unlink · reset both",
+          description: splitPolicy === "copy" ? "the cell splits into two equal copies" : splitPolicy === "history" ? "each side gets back what it showed before the merge" : "both sides start empty",
+          order: 14 + index,
+          danger: splitPolicy === "reset",
+        },
+        bind: ({ subject }) => ({ kind: "identity.remove", linkId: subject.value.linkId, splitPolicy }),
       }),
     ),
     defineLink.exact("link", {

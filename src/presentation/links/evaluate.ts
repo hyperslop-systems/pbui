@@ -20,6 +20,9 @@ export type Evaluation =
 export function effectiveBinding(port: PortId, s: LinkSnapshot): Binding {
   const explicit = s.bindings.get(port);
   if (explicit) return explicit;
+  // A member of an identity class reads the shared cell (never written as a term; derived here).
+  const classId = s.aliases.get(port);
+  if (classId) return terms.alias(classId);
   const slot = s.documentSlots.get(port);
   if (slot) return terms.constant(slot);
   const definition = s.ports.get(port);
@@ -34,6 +37,14 @@ export function evaluatePort(port: PortId, s: LinkSnapshot, deps: LinkDeps, visi
     return { kind: "error", diagnostic: { code: "cycle", message: `cycle through ${path.join(" → ")}` }, provenance: terms.unresolved("cycle", "cycle"), path };
   }
   const binding = effectiveBinding(port, s);
+  // An OUTPUT or INOUT port with no term is its own source: it reads what it last emitted.
+  if (binding.kind === "unresolved" && binding.diagnostic.code === "unbound") {
+    const definition = s.ports.get(port);
+    if (definition && definition.declaration.direction !== "in") {
+      const own = s.values.emitted(port);
+      return own ? { kind: "value", reference: own, provenance: binding, path: [...visiting, port] } : { kind: "empty", provenance: binding, path: [...visiting, port] };
+    }
+  }
   return evaluateBinding(binding, s, deps, [...visiting, port]);
 }
 

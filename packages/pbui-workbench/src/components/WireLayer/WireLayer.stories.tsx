@@ -21,12 +21,15 @@ function EveryStyle() {
     const [a, notes, b] = ids;
     if (a && notes && b) {
       workbench.mutate([
-        linksMutation(
-          new Map([
+        linksMutation({
+          bindings: new Map([
             [`${notes}/subject`, terms.hold({ type: "number", value: 3 }, terms.follow(`${a}/count`, "L1"))],
             [`${b}/count`, terms.derived(terms.follow(`${a}/count`, "L2"), "double", "L2")],
           ]),
-        ),
+          identity: [],
+          classes: [],
+          history: new Map(),
+        }),
       ]);
     }
     workbench.perform(linkVerbs.openMode());

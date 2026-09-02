@@ -104,3 +104,8 @@
 .row:hover td {
   background: color-mix(in srgb, currentColor 5%, transparent);
 }
+
+.table tr[data-selected] td {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font-weight: 600;
+}

@@ -24,6 +24,8 @@ export interface PortCarryState {
   x: number;
   y: number;
   shift: boolean;
+  /** Control (or Meta on Apple): the toy's "Alias" modifier — identity instead of follow. */
+  ctrl: boolean;
 }
 
 const PORTS = new Map<string, HTMLElement>();
@@ -67,9 +69,9 @@ function hitTest(target: EventTarget | null, x: number, y: number): string | nul
 export interface PortCarryOptions {
   from: string;
   origin: { x: number; y: number };
-  /** May `from` be dropped on this port? Re-asked on every move; the answer is shown, not assumed. */
-  acceptable(target: string): boolean;
-  onDrop(target: string, modifiers: { shift: boolean }): void;
+  /** May `from` be dropped on this port with these modifiers? Re-asked on every move; the answer is shown, not assumed. */
+  acceptable(target: string, modifiers: { shift: boolean; ctrl: boolean }): boolean;
+  onDrop(target: string, modifiers: { shift: boolean; ctrl: boolean }): void;
   onCancel(): void;
 }
 
@@ -78,7 +80,7 @@ let activeCancel: (() => void) | null = null;
 export function startPortCarry(options: PortCarryOptions): () => void {
   activeCancel?.();
   let finished = false;
-  let last: PortCarryState = { from: options.from, over: null, acceptable: false, x: options.origin.x, y: options.origin.y, shift: false };
+  let last: PortCarryState = { from: options.from, over: null, acceptable: false, x: options.origin.x, y: options.origin.y, shift: false, ctrl: false };
 
   const publish = (patch: Partial<PortCarryState>) => {
     last = { ...last, ...patch };
@@ -96,7 +98,7 @@ export function startPortCarry(options: PortCarryOptions): () => void {
     window.removeEventListener("keydown", key, true);
     window.removeEventListener("keyup", key, true);
     window.removeEventListener("blur", onBlur);
-    if (drop) options.onDrop(drop, { shift: last.shift });
+    if (drop) options.onDrop(drop, { shift: last.shift, ctrl: last.ctrl });
     else options.onCancel();
   };
   const cancel = () => finish(null);
@@ -104,20 +106,26 @@ export function startPortCarry(options: PortCarryOptions): () => void {
   // Pointer events report the modifier live; an event without one (a synthetic
   // Event under jsdom) leaves the keyboard's last word standing.
   const shiftOf = (event: PointerEvent) => (typeof event.shiftKey === "boolean" ? event.shiftKey : last.shift);
+  const ctrlOf = (event: PointerEvent) => (typeof event.ctrlKey === "boolean" ? event.ctrlKey || event.metaKey : last.ctrl);
   const move = (event: PointerEvent) => {
+    publish({ shift: shiftOf(event), ctrl: ctrlOf(event) });
     const over = hitTest(event.target, event.clientX, event.clientY);
-    const acceptable = over !== null && over !== options.from && options.acceptable(over);
-    publish({ over, acceptable, x: event.clientX, y: event.clientY, shift: shiftOf(event) });
+    const acceptable = over !== null && over !== options.from && options.acceptable(over, { shift: last.shift, ctrl: last.ctrl });
+    publish({ over, acceptable, x: event.clientX, y: event.clientY });
   };
   const up = (event: PointerEvent) => {
     const over = hitTest(event.target, event.clientX, event.clientY) ?? last.over;
-    publish({ shift: shiftOf(event) });
-    finish(over && over !== options.from && options.acceptable(over) ? over : null);
+    publish({ shift: shiftOf(event), ctrl: ctrlOf(event) });
+    finish(over && over !== options.from && options.acceptable(over, { shift: last.shift, ctrl: last.ctrl }) ? over : null);
   };
   const onCancelEvent = () => cancel();
   const key = (event: KeyboardEvent) => {
     if (event.key === "Shift") {
       publish({ shift: event.type === "keydown" });
+      return;
+    }
+    if (event.key === "Control" || event.key === "Meta") {
+      publish({ ctrl: event.type === "keydown" });
       return;
     }
     if (event.type === "keydown" && event.key === "Escape") {

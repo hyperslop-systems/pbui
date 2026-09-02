@@ -73,6 +73,29 @@ export function followOrders(orderId: string, detailApp = "order-detail", portNa
   };
 }
 
+/** The orders table and the orders-by-status plot share one selection (identity.add), with two rows selected. */
+export function shareSelection(orderIds: string[] = ["88213", "88214"]): ShopStoryProps["setup"] {
+  return (_shop, workbench, views) => {
+    const orders = views.orders?.[0];
+    const plot = views.plot?.[0];
+    if (!orders || !plot) return;
+    workbench.links.runtime.emit(portId(orders, "selection"), { type: "datum", value: orderIds.map((id) => ({ relation: "orders", identity: { id } })) });
+    workbench.perform(linkVerbs.identityAdd(portId(orders, "selection"), portId(plot, "selection"), "prefer-left"));
+  };
+}
+
+/** The orders table's filter follows the plot's (or catalog's) category port; a category is presented. */
+export function followCategory(categoryId = "7", sourceApp = "plot"): ShopStoryProps["setup"] {
+  return (shop, workbench, views) => {
+    const source = views[sourceApp]?.[0];
+    const orders = views.orders?.[0];
+    const category = shop.host.category(categoryId);
+    if (!source || !orders || !category) return;
+    workbench.perform(linkVerbs.follow(portId(source, "cat"), portId(orders, "filter")));
+    workbench.links.runtime.emit(portId(source, "cat"), { type: "category", value: { id: category.id, name: category.name } });
+  };
+}
+
 /** Follow, present, then pin — the held state, with a later order presented that the detail ignores. */
 export function holdOrders(heldId: string, laterId: string): ShopStoryProps["setup"] {
   return (shop, workbench, views) => {

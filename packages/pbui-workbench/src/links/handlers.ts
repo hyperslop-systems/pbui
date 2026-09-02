@@ -5,6 +5,7 @@ import {
   bindingsAfterViewsRemoved,
   createPresentationTypeGraph,
   freshCandidate,
+  identityAfterViewsRemoved,
   linkVerbs,
   resolveShow,
   type Binding,
@@ -122,8 +123,11 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
       return refuse(verb, plan.kind === "unavailable" ? plan.because : "the choice is ambiguous", plan.kind === "unavailable" ? plan.code : "ambiguous");
     }
     if (result.kind === "browser-local") return true;
-    const change = linksChange(current, result.bindings);
-    return change ? store.mutate([change]) : true;
+    const change = linksChange(current, result.state);
+    if (change && !store.mutate([change])) return false;
+    // Runtime effects (class cells seeded on merge, private values restored on split) follow the document write.
+    runtime.apply(result.effects);
+    return true;
   };
 
   /* ---- show: the target resolver (Phase 4) ------------------------------- */
@@ -216,7 +220,7 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
 
   const maintenance: LinkHandlers["maintenance"] = (current, mutations) => {
     const snapshot = snapshotOf(current);
-    if (snapshot.bindings.size === 0) return null;
+    if (snapshot.bindings.size === 0 && snapshot.identity.length === 0) return null;
     const removed = new Set<string>();
     const replaced: Array<{ viewId: string; appId: string }> = [];
     const cloned = new Map<string, string>();
@@ -235,7 +239,9 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
       next = bindingsAfterAppReplaced(viewId, kept, next);
     }
     if (cloned.size > 0) next = bindingsAfterClone(cloned, next);
-    return linksChange(current, next);
+    const identity = removed.size > 0 ? identityAfterViewsRemoved(removed, snapshot) : { identity: [...snapshot.identity], classes: [...snapshot.classes.values()] };
+    const history = new Map([...snapshot.history].filter(([port]) => identity.classes.some((cls) => cls.members.includes(port))));
+    return linksChange(current, { bindings: next, identity: identity.identity, classes: identity.classes, history });
   };
 
   return {

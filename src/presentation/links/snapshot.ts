@@ -1,5 +1,6 @@
 import type { RuntimeTypeId } from "../actions/ids";
 import type { PresentationTypeGraph } from "../actions/typeGraph";
+import type { IdentityClass, IdentityDeclaration } from "./identity";
 import type { Binding, SerializableReference } from "./terms";
 import type { PortDeclaration, PortId } from "./types";
 
@@ -34,9 +35,21 @@ export interface LinkValues {
   context(key: string): SerializableReference | null | undefined;
   /** The last value PRESENTED as attended on a port (toy pattern 8), for Pin. */
   attended(port: PortId): SerializableReference | undefined;
-  /** Identity class cells (Phase 5). */
+  /** Identity class cells (Phase 5): `null` when the class exists but is empty, `undefined` when there is no such class. */
   classCell?(classId: string): SerializableReference | null | undefined;
 }
+
+/** Everything the link document holds (Phase 5 adds identity): the persisted half of the kernel's facts. */
+export interface LinkState {
+  readonly bindings: ReadonlyMap<PortId, Binding>;
+  readonly identity: readonly IdentityDeclaration[];
+  /** Compiled from `identity`, persisted for id stability. */
+  readonly classes: readonly IdentityClass[];
+  /** Pre-merge private values, for the "history" split policy. */
+  readonly history: ReadonlyMap<PortId, SerializableReference | null>;
+}
+
+export const EMPTY_LINK_STATE: LinkState = { bindings: new Map(), identity: [], classes: [], history: new Map() };
 
 export interface LinkSnapshot {
   readonly documentRevision: string | number;
@@ -45,6 +58,12 @@ export interface LinkSnapshot {
   readonly ports: ReadonlyMap<PortId, PortDefinition>;
   /** Explicit terms from the link document. */
   readonly bindings: ReadonlyMap<PortId, Binding>;
+  /** Identity declarations, compiled classes, and pre-merge history (Phase 5). */
+  readonly identity: readonly IdentityDeclaration[];
+  readonly classes: ReadonlyMap<string, IdentityClass>;
+  /** Member port → class id: the derived `Alias` of every member. */
+  readonly aliases: ReadonlyMap<PortId, string>;
+  readonly history: ReadonlyMap<PortId, SerializableReference | null>;
   /** `view.documents[slot]` projected as constants for document-slot ports (design D2). */
   readonly documentSlots: ReadonlyMap<PortId, SerializableReference>;
   readonly contexts: ReadonlyMap<string, ContextDefinition>;

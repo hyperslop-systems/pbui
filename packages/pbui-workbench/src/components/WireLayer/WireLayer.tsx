@@ -80,12 +80,15 @@ export function WireLayer({ renderWire }: WireLayerProps) {
   const band = carry && root ? { from: anchor(carry.from, "out", root), to: rootBox ? { x: carry.x - rootBox.left, y: carry.y - rootBox.top } : null } : null;
   const sourceOfCarry = carry ? snapshot.ports.get(carry.from) : undefined;
   const overDefinition = carry?.over ? snapshot.ports.get(carry.over) : undefined;
+  const term = carry ? (carry.ctrl ? "Share" : carry.shift ? "Hold" : "Follow") : "";
   const cursorLabel = carry
     ? carry.over && carry.acceptable && sourceOfCarry
-      ? `${carry.shift ? "Hold" : "Follow"}(${sourceOfCarry.tileTitle} · ${sourceOfCarry.declaration.name}${carry.shift ? ", then pin" : ""}) → ${overDefinition?.tileTitle ?? ""} · ${overDefinition?.declaration.name ?? ""}`
+      ? carry.ctrl
+        ? `Share(${sourceOfCarry.tileTitle} · ${sourceOfCarry.declaration.name} ≡ ${overDefinition?.tileTitle ?? ""} · ${overDefinition?.declaration.name ?? ""})`
+        : `${term}(${sourceOfCarry.tileTitle} · ${sourceOfCarry.declaration.name}${carry.shift ? ", then pin" : ""}) → ${overDefinition?.tileTitle ?? ""} · ${overDefinition?.declaration.name ?? ""}`
       : carry.over && overDefinition
-        ? `cannot land on ${overDefinition.tileTitle} · ${overDefinition.declaration.name}`
-        : `${carry.shift ? "Hold" : "Follow"}(${sourceOfCarry?.tileTitle ?? carry.from}) — drop on an input`
+        ? `cannot ${carry.ctrl ? "share with" : "land on"} ${overDefinition.tileTitle} · ${overDefinition.declaration.name}`
+        : `${term}(${sourceOfCarry?.tileTitle ?? carry.from}) — drop on an input${carry.ctrl ? " to share one cell" : ""}`
     : null;
 
   return (
@@ -103,7 +106,8 @@ export function WireLayer({ renderWire }: WireLayerProps) {
               {path ? (
                 <>
                   <path d={path} className={styles.hit} data-part="wire-hit" />
-                  <path d={path} className={styles.stroke} markerEnd="url(#pbui-wire-arrow)" />
+                  <path d={path} className={styles.stroke} {...(link.kind === "identity" ? {} : { markerEnd: "url(#pbui-wire-arrow)" })} />
+                  {link.kind === "identity" ? <path d={path} className={styles.inner} /> : null}
                   {link.kind === "derived" && from && to ? (
                     <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 6} className={styles.label} textAnchor="middle">
                       {link.relationId}

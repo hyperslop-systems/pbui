@@ -1,3 +1,4 @@
+import type { MergePolicy, SplitPolicy } from "./identity";
 import { isSerializableReference, type SerializableReference } from "./terms";
 import type { PortId } from "./types";
 
@@ -28,7 +29,10 @@ export type LinkVerb =
    * a context, or a spawned tile (Phase 4). With `candidateId` the caller has
    * chosen a candidate; it is re-resolved on a fresh snapshot, never replayed.
    */
-  | { kind: "show"; subject: SerializableReference; role?: string; disposition?: "follow" | "hold" | "ambient"; from?: PortId; candidateId?: string };
+  | { kind: "show"; subject: SerializableReference; role?: string; disposition?: "follow" | "hold" | "ambient"; from?: PortId; candidateId?: string }
+  /** Identity (Phase 5): two contract-compatible ports share one cell; leaving initialises the fragments by policy. */
+  | { kind: "identity.add"; left: PortId; right: PortId; mergePolicy: MergePolicy; linkId?: string }
+  | { kind: "identity.remove"; linkId: string; splitPolicy: SplitPolicy };
 
 export type LinkVerbKind = LinkVerb["kind"];
 
@@ -43,6 +47,8 @@ export const linkVerbs = {
   clear: (port: PortId): LinkVerb => ({ kind: "port.clear", port }),
   openMode: (): LinkVerb => ({ kind: "link.mode.open" }),
   closeMode: (): LinkVerb => ({ kind: "link.mode.close" }),
+  identityAdd: (left: PortId, right: PortId, mergePolicy: MergePolicy = "prefer-left", linkId?: string): LinkVerb => ({ kind: "identity.add", left, right, mergePolicy, ...(linkId ? { linkId } : {}) }),
+  identityRemove: (linkId: string, splitPolicy: SplitPolicy): LinkVerb => ({ kind: "identity.remove", linkId, splitPolicy }),
   show: (subject: SerializableReference, options: { role?: string; disposition?: "follow" | "hold" | "ambient"; from?: PortId | null; candidateId?: string } = {}): LinkVerb => ({
     kind: "show",
     subject,
@@ -65,6 +71,8 @@ export const LINK_VERB_KINDS: readonly LinkVerbKind[] = [
   "link.mode.open",
   "link.mode.close",
   "show",
+  "identity.add",
+  "identity.remove",
 ];
 
 export function isLinkVerb(value: unknown): value is LinkVerb {
@@ -89,6 +97,10 @@ export function isLinkVerb(value: unknown): value is LinkVerb {
     case "link.mode.open":
     case "link.mode.close":
       return true;
+    case "identity.add":
+      return string("left") && string("right") && ["prefer-left", "prefer-right", "require-equal"].includes(String(verb.mergePolicy)) && optionalString("linkId");
+    case "identity.remove":
+      return string("linkId") && ["copy", "history", "reset"].includes(String(verb.splitPolicy));
     case "show":
       return (
         isSerializableReference(verb.subject) &&
@@ -124,6 +136,10 @@ export function describeLinkVerb(verb: LinkVerb): string {
       return "open connect mode";
     case "link.mode.close":
       return "close connect mode";
+    case "identity.add":
+      return `make ${verb.left} and ${verb.right} share one cell (${verb.mergePolicy})`;
+    case "identity.remove":
+      return `split the identity ${verb.linkId} (${verb.splitPolicy === "copy" ? "each keeps the shared value" : verb.splitPolicy === "history" ? "restore private values" : "reset"})`;
     case "show":
       return verb.candidateId ? `show the <${verb.subject.type}> in ${verb.candidateId.replace(/^(existing|spawn):/, "")}` : `show the <${verb.subject.type}>${verb.role ? ` as ${verb.role}` : ""}`;
   }

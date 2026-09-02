@@ -45,6 +45,17 @@
   stroke-dasharray: 8 3;
 }
 
+/* Identity: a double line, no arrowhead — symmetric, one cell. */
+.wire[data-term="identity"] .stroke {
+  stroke-width: 5px;
+}
+
+.inner {
+  fill: none;
+  stroke: var(--pbui-pane, currentColor);
+  stroke-width: 1.5px;
+}
+
 .label {
   font-size: 11px;
   fill: currentColor;

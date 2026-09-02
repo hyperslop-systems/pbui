@@ -1,14 +1,16 @@
-import { DOCUMENT_VALUE_TYPE, portId, type ContextDefinition, type LinkSnapshot, type PortDefinition, type PortId, type SerializableReference } from "@hyperslop-systems/pbui";
+import { compileIdentity, DOCUMENT_VALUE_TYPE, portId, refineDeclaration, type ContextDefinition, type LinkSnapshot, type PortDefinition, type PortId, type SerializableReference } from "@hyperslop-systems/pbui";
 import type { AppView, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import type { AppRegistry } from "../apps";
-import { bindingsOf } from "./document";
+import { stateOf } from "./document";
 import type { LinkRuntimeState } from "./runtime";
 
 /**
  * Build the kernel's immutable facts from the three things the shell owns:
  * the document (views, their apps, their slots, the link payload), the app
- * registry (the port declarations), and the runtime (values). Cheap: ports
- * are enumerated once, values are read lazily through closures.
+ * registry (the port declarations, refined per view — Q7), and the runtime
+ * (values). Identity classes are recompiled from the persisted declarations
+ * with the persisted classes as the previous compile, so ids are stable.
+ * Cheap: ports are enumerated once, values are read lazily through closures.
  */
 export function buildLinkSnapshot(document: WorkbenchDocument, apps: AppRegistry, runtime: LinkRuntimeState, revision: string | number): LinkSnapshot {
   const ports = new Map<PortId, PortDefinition>();
@@ -18,7 +20,8 @@ export function buildLinkSnapshot(document: WorkbenchDocument, apps: AppRegistry
     const app = apps.get(view.appId);
     if (!app?.ports) continue;
     const tileTitle = titleOf(view, app.titleFor, app.title);
-    for (const declaration of app.ports) {
+    for (const declared of app.ports) {
+      const declaration = refineDeclaration(declared, view);
       const id = portId(view.id, declaration.name);
       ports.set(id, { id, viewId: view.id, appId: view.appId, declaration, tileTitle });
       if (declaration.documentSlot) {
@@ -33,17 +36,25 @@ export function buildLinkSnapshot(document: WorkbenchDocument, apps: AppRegistry
       }
     }
   }
+  const state = stateOf(document);
+  const compiled = compileIdentity(state.identity, ports, state.classes);
+  const classes = new Map(compiled.classes.map((cls) => [cls.id, cls]));
   return {
     documentRevision: revision,
     runtimeRevision: runtime.revision,
     ports,
-    bindings: bindingsOf(document),
+    bindings: state.bindings,
+    identity: state.identity,
+    classes,
+    aliases: compiled.aliases,
+    history: state.history,
     documentSlots,
     contexts: contexts as ReadonlyMap<string, ContextDefinition>,
     values: {
       emitted: (port) => runtime.emitted.get(port),
       context: (key) => (runtime.contexts.has(key) ? runtime.contexts.get(key) : contexts.has(key) ? null : undefined),
       attended: (port) => runtime.attended.get(port),
+      classCell: (id) => (runtime.classes.has(id) ? runtime.classes.get(id) : classes.has(id) ? null : undefined),
     },
   };
 }
