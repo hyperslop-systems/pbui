@@ -143,6 +143,21 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
       ...planned((port, { snapshot }) => planClear(port.port, snapshot)),
     }),
     define.exact("port", {
+      id: "workbench.port.derive",
+      action: "port.derive",
+      scopes,
+      test: ({ subject, snapshot }) => {
+        if (subject.value.direction === "out") return inapplicable();
+        const links = facts(snapshot);
+        if (!links) return NO_LINKS;
+        if (subject.value.state === "held") return unavailable("held; resume or detach it first", "held");
+        if (subject.value.state === "shared") return unavailable("shares a class; leave it first", "shared");
+        return (links.deps.relations?.length ?? 0) > 0 ? available() : unavailable("this product declares no relations", "no-relations");
+      },
+      metadata: { label: "Derive through…", description: "read another tile's output through a named relation", order: 35 },
+      bind: ({ subject }) => ({ kind: "relation.palette.open", destination: subject.value.port }),
+    }),
+    define.exact("port", {
       id: "workbench.port.go-to-source",
       action: "port.go-to-source",
       scopes,
@@ -195,6 +210,18 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
         bind: ({ subject }) => ({ kind: "identity.remove", linkId: subject.value.linkId, splitPolicy }),
       }),
     ),
+    defineLink.exact("link", {
+      id: "workbench.link.change-to-derived",
+      action: "link.change-to-derived",
+      scopes,
+      test: ({ subject, snapshot }) => {
+        if (subject.value.kind !== "follow") return inapplicable();
+        const links = facts(snapshot);
+        return links ? ((links.deps.relations?.length ?? 0) > 0 ? available() : unavailable("this product declares no relations", "no-relations")) : NO_LINKS;
+      },
+      metadata: { label: "Change to Derived…", description: "keep the source; read it through a relation", order: 18 },
+      bind: ({ subject }) => ({ kind: "relation.palette.open", destination: subject.value.destination, source: subject.value.source }),
+    }),
     defineLink.exact("link", {
       id: "workbench.link.go-to-source",
       action: "link.go-to-source",

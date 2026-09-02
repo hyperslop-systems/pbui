@@ -2,6 +2,7 @@ import { createPbui, type ActionContribution, type PbuiInstance } from "@hypersl
 import type { ShopHost } from "../host";
 import { createShopActionRegistry, snapshotForShop, type ShopFacts, type ShopVerb } from "./actions";
 import { registry } from "./registry";
+import { createShopRelations, shopTranslators } from "./relations";
 import type { Environment, Values } from "./types";
 
 export type ShopPbui = PbuiInstance<Values, Environment, ShopVerb, ShopFacts>;
@@ -17,6 +18,8 @@ export function createShopPbui(host: ShopHost, extra: readonly ActionContributio
     defaultEnvironment: { host },
     actions: createShopActionRegistry(extra),
     snapshotFor: snapshotForShop,
+    // The relations, as accept translators (D7): "show this order as its customer" in accept mode.
+    translators: shopTranslators(createShopRelations(host), host),
     renderMenuHeader: (reference, _environment, label) => (
       <>
         &lt;{reference.type}&gt; {label}

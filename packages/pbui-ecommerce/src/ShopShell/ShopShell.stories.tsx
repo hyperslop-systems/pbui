@@ -4,7 +4,7 @@ import { split, tile } from "@hyperslop-systems/pbui-workbench";
 import { APP_IDS } from "../apps";
 import { ORDERS_BY_STATUS, REVENUE_BY_CATEGORY } from "../plots/documents";
 import { plotTile } from "../seed";
-import { followCategory, followOrders, holdOrders, presentOrder, shareSelection, ShopStory } from "../stories/harness";
+import { deriveCustomer, followCategory, followOrders, holdOrders, presentOrder, shareSelection, ShopStory } from "../stories/harness";
 
 /*
  * THE SCENES (PBUI-LINK-1 §11.1), in the order the phases land. Each opens
@@ -54,8 +54,32 @@ export const Scene3Spawn: StoryObj = {
 };
 
 export const Scene4Derived: StoryObj = {
-  name: "4 · derived: the customer detail derives through order.customer (Phase 6)",
-  render: () => <ShopStory spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail), tile(APP_IDS.customerDetail)))} setup={followOrders("88213")} height={560} />,
+  name: "4 · derived: the customer detail derives through order.customer from the orders table (badge customer ← its customer); the order detail follows (Phase 6)",
+  render: () => (
+    <ShopStory
+      spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail), tile(APP_IDS.customerDetail)))}
+      height={560}
+      setup={(shop, workbench, views) => {
+        followOrders("88213")?.(shop, workbench, views);
+        deriveCustomer("88213")?.(shop, workbench, views);
+      }}
+    />
+  ),
+};
+
+export const Scene4Palette: StoryObj = {
+  name: "4b · the relation palette: click the customer detail's badge → “Derive through…”, or open it here (Phase 6)",
+  render: () => (
+    <ShopStory
+      spec={split("row", 0.5, tile(APP_IDS.orders), tile(APP_IDS.customerDetail))}
+      height={520}
+      setup={(shop, workbench, views) => {
+        presentOrder("88214")?.(shop, workbench, views);
+        const detail = views["customer-detail"]?.[0];
+        if (detail) workbench.perform(linkVerbs.openPalette(portId(detail, "customer")));
+      }}
+    />
+  ),
 };
 
 export const Scene5Identity: StoryObj = {

@@ -70,8 +70,19 @@ export interface LinkSnapshot {
   readonly values: LinkValues;
 }
 
+/** A direct relation a `Derived` term may name (Phase 6): the metadata of a product translator, without its function. */
+export interface RelationDefinition {
+  readonly id: string;
+  readonly from: RuntimeTypeId;
+  readonly to: RuntimeTypeId;
+  /** One line for the palette and the wire label; defaults to the id. */
+  readonly label?: string;
+}
+
 export interface LinkDeps {
   readonly graph: PresentationTypeGraph;
+  /** The relations a `Derived` term may name (Phase 6). Absent ⇒ no derivations are offered. */
+  readonly relations?: readonly RelationDefinition[];
   /**
    * A named relation applied to a value (Phase 6: the product's translators).
    * Absent ⇒ every `Derived` term evaluates to a diagnostic.

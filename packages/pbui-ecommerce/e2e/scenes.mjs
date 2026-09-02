@@ -158,6 +158,17 @@ scenario("Ctrl-drag onto an incompatible port is refused with the field named", 
   if ((await page.locator('[data-part="wire"]').count()) !== 0) throw new Error("no wire should have been declared");
 });
 
+scenario("derived: badge → Derive through… → its customer; the customer detail follows the order's customer", async (page) => {
+  await page.goto(story("shop-scenes--scene-4-palette"));
+  await page.waitForSelector('[data-part="customers-table"], [data-part="customer-detail"]');
+  await page.getByRole("dialog").getByText("its customer").first().click();
+  await page.waitForSelector('[data-part="port-badge"][data-state="derived"]');
+  if ((await badge(page, "/customer")) !== "derived:←customer ← its customer") throw new Error(`badge was ${await badge(page, "/customer")}`);
+  if (!(await page.locator('[data-part="customer-detail"]').textContent())?.includes("Northgate Capital")) throw new Error("the customer detail does not show the order's customer");
+  await page.locator('tr[data-order-id="88213"]').click();
+  if (!(await page.locator('[data-part="customer-detail"]').textContent())?.includes("J. Alvarez")) throw new Error("the derived customer did not follow the table");
+});
+
 const browser = await chromium.launch();
 let failed = 0;
 for (const { name, run } of scenarios) {

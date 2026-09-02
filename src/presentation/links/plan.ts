@@ -194,6 +194,46 @@ export function planIdentityRemove(linkId: string, splitPolicy: SplitPolicy, s: 
   return available({ kind: "identity.remove", linkId, splitPolicy }, `${names} part ways; ${outcome}`);
 }
 
+/** The relations legal from a source port's type into a destination port's type. */
+export function legalRelations(source: PortId, destination: PortId, s: LinkSnapshot, deps: LinkDeps) {
+  const S = s.ports.get(source);
+  const D = s.ports.get(destination);
+  if (!S || !D) return [];
+  return (deps.relations ?? []).filter((relation) => reaches(S.declaration.contract.valueType, relation.from, deps.graph) && reaches(relation.to, D.declaration.contract.valueType, deps.graph));
+}
+
+/**
+ * May `destination` derive from `source` through a relation (Phase 6)? With
+ * `relationId` absent, one legal relation is chosen and several are an
+ * ambiguity the palette resolves; none is a refusal that says so.
+ */
+export function planDerive(source: PortId, destination: PortId, relationId: string | undefined, s: LinkSnapshot, deps: LinkDeps): LinkPlan {
+  const S = s.ports.get(source);
+  const D = s.ports.get(destination);
+  if (!S || !D) return unavailable("that port no longer exists", "port-missing");
+  if (source === destination) return unavailable("a port cannot derive from itself", "self");
+  if (S.declaration.direction === "in") return unavailable(`${titleOfPort(S)} is an input; only outputs can be derived from`, "direction");
+  if (D.declaration.direction === "out") return unavailable(`${titleOfPort(D)} is an output`, "direction");
+  const current = s.bindings.get(destination);
+  if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
+  if (s.aliases.has(destination)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(destination)} cell; leave the class first`, "shared");
+  if (dependsOn(source, destination, s)) return unavailable(`${titleOfPort(S)} already reads from ${titleOfPort(D)}; that would be a cycle`, "cycle");
+  const legal = legalRelations(source, destination, s, deps);
+  if (legal.length === 0) {
+    return unavailable(`no relation turns a <${S.declaration.contract.valueType}> into a <${D.declaration.contract.valueType}>`, "no-relation");
+  }
+  if (relationId) {
+    const relation = legal.find((entry) => entry.id === relationId);
+    if (!relation) return unavailable(`${relationId} does not relate <${S.declaration.contract.valueType}> to <${D.declaration.contract.valueType}>`, "relation");
+    if (current?.kind === "derived" && current.relationId === relationId && sourcePortOf(current) === source) {
+      return unavailable(`${titleOfPort(D)} already derives through ${relation.label ?? relation.id} from ${titleOfPort(S)}`, "already");
+    }
+    return available({ kind: "port.derive", source, destination, relation: relationId }, `${titleOfPort(D)} will derive through ${relation.label ?? relation.id} from ${titleOfPort(S)}`);
+  }
+  if (legal.length === 1) return planDerive(source, destination, legal[0]!.id, s, deps);
+  return { kind: "ambiguous", options: legal.map((relation) => ({ verb: { kind: "port.derive", source, destination, relation: relation.id }, label: relation.label ?? relation.id })) };
+}
+
 /** Every plan a badge menu shows for one port, in menu order. */
 export function plansForPort(port: PortId, s: LinkSnapshot, deps: LinkDeps): { pin: LinkPlan; resume: LinkPlan; detach: LinkPlan; clear: LinkPlan } {
   return { pin: planPin(port, s, deps), resume: planResume(port, s), detach: planDetach(port, s, deps), clear: planClear(port, s) };

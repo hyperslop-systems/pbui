@@ -73,6 +73,16 @@ export function followOrders(orderId: string, detailApp = "order-detail", portNa
   };
 }
 
+/** The customer detail DERIVES through order.customer from the orders table's order port; an order is presented. */
+export function deriveCustomer(orderId = "88213"): ShopStoryProps["setup"] {
+  return (shop, workbench, views) => {
+    const orders = views.orders?.[0];
+    const detail = views["customer-detail"]?.[0];
+    if (orders && detail) workbench.perform(linkVerbs.derive(portId(orders, "order"), portId(detail, "customer"), "order.customer"));
+    presentOrder(orderId)?.(shop, workbench, views);
+  };
+}
+
 /** The orders table and the orders-by-status plot share one selection (identity.add), with two rows selected. */
 export function shareSelection(orderIds: string[] = ["88213", "88214"]): ShopStoryProps["setup"] {
   return (_shop, workbench, views) => {

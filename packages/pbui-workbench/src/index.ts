@@ -126,6 +126,7 @@ export type {
 export { PortBadge } from "./components/PortBadge";
 export type { PortBadgeProps } from "./components/PortBadge";
 export { ShowChooser } from "./components/ShowChooser";
+export { RelationPalette } from "./components/RelationPalette";
 export { PortRail } from "./components/PortRail";
 export type { PortRailProps } from "./components/PortRail";
 export { WireLayer } from "./components/WireLayer";

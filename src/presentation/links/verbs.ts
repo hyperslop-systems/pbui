@@ -16,6 +16,8 @@ export type UnlinkPolicy = "freeze" | "clear" | "ambient";
 export type LinkVerb =
   | { kind: "port.follow"; source: PortId; destination: PortId; linkId?: string }
   | { kind: "port.bind"; port: PortId; reference: SerializableReference }
+  /** Derived (Phase 6): the destination reads the source through a named relation (a product translator). */
+  | { kind: "port.derive"; source: PortId; destination: PortId; relation: string; linkId?: string }
   | { kind: "port.ambient"; port: PortId; context: string }
   | { kind: "port.pin"; port: PortId }
   | { kind: "port.resume"; port: PortId }
@@ -24,6 +26,9 @@ export type LinkVerb =
   | { kind: "port.clear"; port: PortId }
   | { kind: "link.mode.open" }
   | { kind: "link.mode.close" }
+  /** The relation palette (Phase 6): choose a source and a relation for a destination port; browser-local. */
+  | { kind: "relation.palette.open"; destination: PortId; source?: PortId }
+  | { kind: "relation.palette.close" }
   /**
    * "Show this value": resolved by the target resolver into an existing port,
    * a context, or a spawned tile (Phase 4). With `candidateId` the caller has
@@ -39,6 +44,7 @@ export type LinkVerbKind = LinkVerb["kind"];
 export const linkVerbs = {
   follow: (source: PortId, destination: PortId, linkId?: string): LinkVerb => ({ kind: "port.follow", source, destination, ...(linkId ? { linkId } : {}) }),
   bind: (port: PortId, reference: SerializableReference): LinkVerb => ({ kind: "port.bind", port, reference }),
+  derive: (source: PortId, destination: PortId, relation: string, linkId?: string): LinkVerb => ({ kind: "port.derive", source, destination, relation, ...(linkId ? { linkId } : {}) }),
   ambient: (port: PortId, context: string): LinkVerb => ({ kind: "port.ambient", port, context }),
   pin: (port: PortId): LinkVerb => ({ kind: "port.pin", port }),
   resume: (port: PortId): LinkVerb => ({ kind: "port.resume", port }),
@@ -46,6 +52,8 @@ export const linkVerbs = {
   unlink: (linkId: string, policy: UnlinkPolicy): LinkVerb => ({ kind: "port.unlink", linkId, policy }),
   clear: (port: PortId): LinkVerb => ({ kind: "port.clear", port }),
   openMode: (): LinkVerb => ({ kind: "link.mode.open" }),
+  openPalette: (destination: PortId, source?: PortId): LinkVerb => ({ kind: "relation.palette.open", destination, ...(source ? { source } : {}) }),
+  closePalette: (): LinkVerb => ({ kind: "relation.palette.close" }),
   closeMode: (): LinkVerb => ({ kind: "link.mode.close" }),
   identityAdd: (left: PortId, right: PortId, mergePolicy: MergePolicy = "prefer-left", linkId?: string): LinkVerb => ({ kind: "identity.add", left, right, mergePolicy, ...(linkId ? { linkId } : {}) }),
   identityRemove: (linkId: string, splitPolicy: SplitPolicy): LinkVerb => ({ kind: "identity.remove", linkId, splitPolicy }),
@@ -62,6 +70,7 @@ export const linkVerbs = {
 export const LINK_VERB_KINDS: readonly LinkVerbKind[] = [
   "port.follow",
   "port.bind",
+  "port.derive",
   "port.ambient",
   "port.pin",
   "port.resume",
@@ -70,6 +79,8 @@ export const LINK_VERB_KINDS: readonly LinkVerbKind[] = [
   "port.clear",
   "link.mode.open",
   "link.mode.close",
+  "relation.palette.open",
+  "relation.palette.close",
   "show",
   "identity.add",
   "identity.remove",
@@ -85,6 +96,8 @@ export function isLinkVerb(value: unknown): value is LinkVerb {
       return string("source") && string("destination") && optionalString("linkId");
     case "port.bind":
       return string("port") && isSerializableReference(verb.reference);
+    case "port.derive":
+      return string("source") && string("destination") && string("relation") && optionalString("linkId");
     case "port.ambient":
       return string("port") && string("context");
     case "port.pin":
@@ -96,7 +109,10 @@ export function isLinkVerb(value: unknown): value is LinkVerb {
       return string("linkId") && ["freeze", "clear", "ambient"].includes(String(verb.policy));
     case "link.mode.open":
     case "link.mode.close":
+    case "relation.palette.close":
       return true;
+    case "relation.palette.open":
+      return string("destination") && optionalString("source");
     case "identity.add":
       return string("left") && string("right") && ["prefer-left", "prefer-right", "require-equal"].includes(String(verb.mergePolicy)) && optionalString("linkId");
     case "identity.remove":
@@ -120,6 +136,8 @@ export function describeLinkVerb(verb: LinkVerb): string {
       return `make ${verb.destination} follow ${verb.source}`;
     case "port.bind":
       return `fix ${verb.port} on a <${verb.reference.type}>`;
+    case "port.derive":
+      return `make ${verb.destination} derive through ${verb.relation} from ${verb.source}`;
     case "port.ambient":
       return `let ${verb.port} read the ${verb.context} context`;
     case "port.pin":
@@ -136,6 +154,10 @@ export function describeLinkVerb(verb: LinkVerb): string {
       return "open connect mode";
     case "link.mode.close":
       return "close connect mode";
+    case "relation.palette.open":
+      return `choose a relation for ${verb.destination}`;
+    case "relation.palette.close":
+      return "close the relation palette";
     case "identity.add":
       return `make ${verb.left} and ${verb.right} share one cell (${verb.mergePolicy})`;
     case "identity.remove":

@@ -39,7 +39,7 @@ export type { Binding, Diagnostic, SerializableReference } from "./terms";
 export { LINK_VERB_KINDS, describeLinkVerb, isLinkVerb, linkVerbs } from "./verbs";
 export type { LinkVerb, LinkVerbKind, UnlinkPolicy } from "./verbs";
 export { EMPTY_LINK_STATE, labelOf, reaches } from "./snapshot";
-export type { ContextDefinition, LinkDeps, LinkSnapshot, LinkState, LinkValues, PortDefinition } from "./snapshot";
+export type { ContextDefinition, LinkDeps, LinkSnapshot, LinkState, LinkValues, PortDefinition, RelationDefinition } from "./snapshot";
 export { checkIdentityCompatibility, compatibilityOf, compileIdentity } from "./identity";
 export type { ClassLineage, CompiledIdentity, Compatibility, IdentityClass, IdentityDeclaration, IdentityDiagnostic, MergePolicy, SplitPolicy } from "./identity";
 export { effectiveBinding, evaluateBinding, evaluatePort, valueToHold } from "./evaluate";
@@ -47,9 +47,11 @@ export type { Evaluation } from "./evaluate";
 export {
   dependsOn,
   findLink,
+  legalRelations,
   planAmbient,
   planBind,
   planClear,
+  planDerive,
   planDetach,
   planFollow,
   planIdentityAdd,

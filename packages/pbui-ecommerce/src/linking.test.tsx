@@ -93,6 +93,26 @@ describe("scene 3 · show with routing", () => {
   });
 });
 
+describe("scene 4 · derived", () => {
+  it("the customer detail derives through order.customer: badge ←, the customer of the presented order, live as the table moves", async () => {
+    const { workbench, views } = scene(split("row", 0.5, tile(APP_IDS.orders), tile(APP_IDS.customerDetail)));
+    const orders = views.orders![0]!;
+    const detail = views["customer-detail"]![0]!;
+    fireEvent.click(row("88213"));
+    expect(screen.getByText("no customer yet")).toBeTruthy();
+    // The badge menu opens the palette; the palette's row derives.
+    fireEvent.click(badgeEl(detail));
+    fireEvent.click(await screen.findByText("Derive through…"));
+    expect(await screen.findByText(/^DERIVE customer detail · customer THROUGH/)).toBeTruthy();
+    fireEvent.click(screen.getByText("its customer"));
+    expect(bindingsOf(workbench.store.getState().document).get(portId(detail, "customer"))).toMatchObject({ kind: "derived", relationId: "order.customer", source: { kind: "follow", source: portId(orders, "order") } });
+    expect(badges(detail)).toEqual(["derived:←customer ← its customer"]);
+    expect(document.querySelector('[data-part="customer-detail"]')?.textContent).toContain("J. Alvarez");
+    fireEvent.click(row("88214"));
+    expect(document.querySelector('[data-part="customer-detail"]')?.textContent).toContain("Northgate Capital");
+  });
+});
+
 describe("scenes 5 and 6 · identity and follow", () => {
   it("Shift-click selects rows; sharing the selection with the orders plot puts both on one cell; the sales plot is refused with the field named", () => {
     const { workbench, views } = scene(split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, plotTile(ORDERS_BY_STATUS), plotTile(REVENUE_BY_CATEGORY))));

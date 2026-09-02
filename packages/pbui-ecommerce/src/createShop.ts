@@ -4,6 +4,7 @@ import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { createShopApps } from "./apps";
 import { createShopHost, type ShopHost } from "./host";
 import { SHOP_TYPES } from "./presentation/actions";
+import { createShopRelations } from "./presentation/relations";
 import { createShopPbui, type ShopPbui } from "./presentation/runtime";
 import { labelReference } from "./presentation/values";
 import { seedShopDocument } from "./seed";
@@ -38,11 +39,17 @@ export type CreateShopWorkbenchOptions = Omit<CreateWorkbenchOptions, "apps" | "
 /** A workbench over the shop's apps, seeded with the four scenes unless told otherwise. */
 export function createShopWorkbench(shop: Shop, options: CreateShopWorkbenchOptions = {}): Workbench {
   const { initial, ...rest } = options;
+  const relations = createShopRelations(shop.host);
   return createWorkbench({
     apps: shop.apps,
     initial: initial ?? seedShopDocument(),
-    // The kernel types ports against the SAME graph the menus resolve on (D1).
-    links: { graph: createPresentationTypeGraph(SHOP_TYPES), label: labelReference },
+    // The kernel types ports against the SAME graph the menus resolve on (D1), and derives through the same relations accept mode uses (D7).
+    links: {
+      graph: createPresentationTypeGraph(SHOP_TYPES),
+      label: labelReference,
+      relations: relations.map(({ id, from, to, label }) => ({ id, from, to, ...(label ? { label } : {}) })),
+      relation: (id, reference) => relations.find((relation) => relation.id === id)?.apply(reference, shop.host),
+    },
     ...rest,
   });
 }

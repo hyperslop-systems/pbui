@@ -1,6 +1,6 @@
 import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
 import { compileIdentity, type IdentityDeclaration } from "./identity";
-import { findLink, planAmbient, planBind, planClear, planDetach, planFollow, planIdentityAdd, planIdentityRemove, planPin, planResume, planUnlink, type LinkPlan } from "./plan";
+import { findLink, planAmbient, planBind, planClear, planDerive, planDetach, planFollow, planIdentityAdd, planIdentityRemove, planPin, planResume, planUnlink, type LinkPlan } from "./plan";
 import type { LinkDeps, LinkSnapshot, LinkState } from "./snapshot";
 import { terms, type Binding, type SerializableReference } from "./terms";
 import type { PortId } from "./types";
@@ -62,6 +62,13 @@ export function applyLinkVerb(verb: LinkVerb, s: LinkSnapshot, deps: LinkDeps, o
       const plan = planBind(verb.port, verb.reference, s, deps);
       if (plan.kind !== "available") return refuse(plan);
       next.set(verb.port, terms.constant(verb.reference));
+      return ok(s, next, plan.explanation);
+    }
+    case "port.derive": {
+      const plan = planDerive(verb.source, verb.destination, verb.relation, s, deps);
+      if (plan.kind !== "available") return refuse(plan);
+      const linkId = verb.linkId ?? newLinkId();
+      next.set(verb.destination, terms.derived(terms.follow(verb.source, linkId), verb.relation, linkId));
       return ok(s, next, plan.explanation);
     }
     case "port.ambient": {
@@ -175,6 +182,8 @@ export function applyLinkVerb(verb: LinkVerb, s: LinkSnapshot, deps: LinkDeps, o
     }
     case "link.mode.open":
     case "link.mode.close":
+    case "relation.palette.open":
+    case "relation.palette.close":
       return { kind: "browser-local" };
     case "show":
       // Resolved by the shell (it needs placements and the app registry); never a bare transition.

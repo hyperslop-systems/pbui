@@ -33,6 +33,8 @@ export interface WorkbenchState {
   linkModeOpen: boolean;
   /** A "show" that resolved to several targets awaits the user's choice (PBUI-LINK-1 Phase 4). */
   showChooser: { query: ShowQuery; resolution: ShowResolution } | null;
+  /** The relation palette is open for a destination port (PBUI-LINK-1 Phase 6). */
+  relationPalette: { destination: string; source?: string } | null;
 }
 
 /**
@@ -99,6 +101,7 @@ export function createWorkbenchStore(
     rebalanceOpen: false,
     linkModeOpen: false,
     showChooser: null,
+    relationPalette: null,
   };
   const listeners = new Set<() => void>();
   const emit = () => {

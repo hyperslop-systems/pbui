@@ -22,6 +22,15 @@ export const graph = createPresentationTypeGraph([
 export const deps: LinkDeps = {
   graph,
   label: (reference) => (reference.type === "order" ? `#${(reference.value as { id: string }).id}` : `<${reference.type}>`),
+  relations: [
+    { id: "order.customer", from: "order", to: "customer", label: "its customer" },
+    { id: "order.self", from: "order", to: "order", label: "itself" },
+  ],
+  relation: (id, reference) => {
+    if (id === "order.customer" && reference.type === "order") return { type: "customer", value: { id: `c-${(reference.value as { customer: string }).customer.toLowerCase()}`, name: (reference.value as { customer: string }).customer } };
+    if (id === "order.self") return reference;
+    return undefined;
+  },
 };
 
 export interface WorldOptions {

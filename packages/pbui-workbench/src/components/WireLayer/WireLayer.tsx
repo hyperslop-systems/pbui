@@ -110,7 +110,7 @@ export function WireLayer({ renderWire }: WireLayerProps) {
                   {link.kind === "identity" ? <path d={path} className={styles.inner} /> : null}
                   {link.kind === "derived" && from && to ? (
                     <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 6} className={styles.label} textAnchor="middle">
-                      {link.relationId}
+                      {workbench.links.deps.relations?.find((r) => r.id === link.relationId)?.label ?? link.relationId}
                     </text>
                   ) : null}
                 </>

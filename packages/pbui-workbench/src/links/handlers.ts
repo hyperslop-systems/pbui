@@ -39,6 +39,9 @@ import { buildLinkSnapshot } from "./snapshot";
 export interface LinkEnvironment {
   graph?: PresentationTypeGraph;
   label?(reference: SerializableReference): string;
+  /** The relations `Derived` terms may name (Phase 6) — the product's translators, as metadata… */
+  relations?: LinkDeps["relations"];
+  /** …and as the function that applies one. */
   relation?: LinkDeps["relation"];
 }
 
@@ -86,6 +89,7 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
   const deps: LinkDeps = {
     graph: environment.graph ?? createPresentationTypeGraph([]),
     ...(environment.label ? { label: environment.label } : {}),
+    ...(environment.relations ? { relations: environment.relations } : {}),
     ...(environment.relation ? { relation: environment.relation } : {}),
   };
   const hooks: LinkShellHooks = {};
@@ -113,6 +117,14 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
     }
     if (verb.kind === "link.mode.close") {
       store.setState({ linkModeOpen: false });
+      return true;
+    }
+    if (verb.kind === "relation.palette.open") {
+      store.setState({ relationPalette: { destination: verb.destination, ...(verb.source ? { source: verb.source } : {}) } });
+      return true;
+    }
+    if (verb.kind === "relation.palette.close") {
+      store.setState({ relationPalette: null });
       return true;
     }
     if (verb.kind === "show") return performShow(verb);

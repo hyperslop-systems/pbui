@@ -85,7 +85,14 @@ export function badgeOf(definition: PortDefinition, s: LinkSnapshot, deps: LinkD
       const title = source ? (s.ports.get(source)?.tileTitle ?? source) : "its source";
       return evaluation.kind === "error"
         ? { ...base, state: "unresolved", glyph: "⚠", text: name, explanation: `${name}: ${evaluation.diagnostic.message}`, ...(source ? { sourcePort: source } : {}) }
-        : { ...base, state: "derived", glyph: "←", text: `${name} ← ${binding.relationId}`, explanation: `${name} derives through ${binding.relationId} from ${title}`, ...(source ? { sourcePort: source } : {}) };
+        : {
+            ...base,
+            state: "derived",
+            glyph: "←",
+            text: `${name} ← ${deps.relations?.find((r) => r.id === binding.relationId)?.label ?? binding.relationId}`,
+            explanation: evaluation.kind === "value" ? `${name} derives through ${binding.relationId} from ${title}, now ${shown}` : `${name} derives through ${binding.relationId} from ${title}, which has shown nothing yet`,
+            ...(source ? { sourcePort: source } : {}),
+          };
     }
   }
 }
