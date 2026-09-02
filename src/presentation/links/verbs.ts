@@ -22,7 +22,13 @@ export type LinkVerb =
   | { kind: "port.unlink"; linkId: string; policy: UnlinkPolicy }
   | { kind: "port.clear"; port: PortId }
   | { kind: "link.mode.open" }
-  | { kind: "link.mode.close" };
+  | { kind: "link.mode.close" }
+  /**
+   * "Show this value": resolved by the target resolver into an existing port,
+   * a context, or a spawned tile (Phase 4). With `candidateId` the caller has
+   * chosen a candidate; it is re-resolved on a fresh snapshot, never replayed.
+   */
+  | { kind: "show"; subject: SerializableReference; role?: string; disposition?: "follow" | "hold" | "ambient"; from?: PortId; candidateId?: string };
 
 export type LinkVerbKind = LinkVerb["kind"];
 
@@ -37,6 +43,14 @@ export const linkVerbs = {
   clear: (port: PortId): LinkVerb => ({ kind: "port.clear", port }),
   openMode: (): LinkVerb => ({ kind: "link.mode.open" }),
   closeMode: (): LinkVerb => ({ kind: "link.mode.close" }),
+  show: (subject: SerializableReference, options: { role?: string; disposition?: "follow" | "hold" | "ambient"; from?: PortId | null; candidateId?: string } = {}): LinkVerb => ({
+    kind: "show",
+    subject,
+    ...(options.role ? { role: options.role } : {}),
+    ...(options.disposition ? { disposition: options.disposition } : {}),
+    ...(options.from ? { from: options.from } : {}),
+    ...(options.candidateId ? { candidateId: options.candidateId } : {}),
+  }),
 };
 
 export const LINK_VERB_KINDS: readonly LinkVerbKind[] = [
@@ -50,6 +64,7 @@ export const LINK_VERB_KINDS: readonly LinkVerbKind[] = [
   "port.clear",
   "link.mode.open",
   "link.mode.close",
+  "show",
 ];
 
 export function isLinkVerb(value: unknown): value is LinkVerb {
@@ -74,6 +89,14 @@ export function isLinkVerb(value: unknown): value is LinkVerb {
     case "link.mode.open":
     case "link.mode.close":
       return true;
+    case "show":
+      return (
+        isSerializableReference(verb.subject) &&
+        optionalString("role") &&
+        optionalString("from") &&
+        optionalString("candidateId") &&
+        (verb.disposition === undefined || ["follow", "hold", "ambient"].includes(String(verb.disposition)))
+      );
     default:
       return false;
   }
@@ -101,5 +124,7 @@ export function describeLinkVerb(verb: LinkVerb): string {
       return "open connect mode";
     case "link.mode.close":
       return "close connect mode";
+    case "show":
+      return verb.candidateId ? `show the <${verb.subject.type}> in ${verb.candidateId.replace(/^(existing|spawn):/, "")}` : `show the <${verb.subject.type}>${verb.role ? ` as ${verb.role}` : ""}`;
   }
 }

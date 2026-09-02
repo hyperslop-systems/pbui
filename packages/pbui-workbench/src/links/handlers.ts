@@ -4,18 +4,27 @@ import {
   bindingsAfterClone,
   bindingsAfterViewsRemoved,
   createPresentationTypeGraph,
+  freshCandidate,
+  linkVerbs,
+  resolveShow,
   type Binding,
   type LinkDeps,
   type LinkSnapshot,
   type LinkVerb,
+  type PlacementCandidate,
   type PortId,
   type PresentationTypeGraph,
   type SerializableReference,
+  type ShowCandidate,
+  type ShowQuery,
+  type SpawnableApp,
 } from "@hyperslop-systems/pbui";
 import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
-import { newId } from "@hyperslop-systems/workbench-protocol/client";
+import { leaves, newId, viewsOfApp, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import type { AppRegistry } from "../apps";
 import type { WorkbenchStore } from "../store";
+import type { WorkbenchPlan, WorkbenchPlanResult } from "../types";
+import type { PlaceZone, WorkbenchVerb } from "../verbs";
 import { linksChange } from "./document";
 import type { LinkRuntime } from "./runtime";
 import { buildLinkSnapshot } from "./snapshot";
@@ -42,6 +51,12 @@ export interface WorkbenchLinks {
   sourceOf(reference: SerializableReference): PortId | null;
 }
 
+/** What the show handler borrows from the shell: an atomic planner, and the aimed open for when there is none. */
+export interface LinkShellHooks {
+  planner?: { plan(verbs: readonly WorkbenchVerb[]): WorkbenchPlanResult; applyPlan(plan: WorkbenchPlan): boolean };
+  openView?(appId: string, documents: Record<string, string>, options: { at: { placementId: string; zone: PlaceZone }; viewId: string }): string | null;
+}
+
 export interface LinkHandlers extends WorkbenchLinks {
   /** Apply one link verb: fresh snapshot → kernel → one `documentPut`; false with `onRejected` on refusal. */
   perform(verb: LinkVerb): boolean;
@@ -54,6 +69,8 @@ export interface LinkHandlers extends WorkbenchLinks {
   maintenance(current: WorkbenchDocument, mutations: readonly Mutation[]): Mutation | null;
   /** After a committed batch: forget runtime values of deleted views. */
   afterCommit(mutations: readonly Mutation[]): void;
+  /** The shell wires its planner and aimed open in after construction (Phase 4 spawn). */
+  attach(hooks: LinkShellHooks): void;
 }
 
 export interface CreateLinkHandlersOptions {
@@ -70,6 +87,7 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
     ...(environment.label ? { label: environment.label } : {}),
     ...(environment.relation ? { relation: environment.relation } : {}),
   };
+  const hooks: LinkShellHooks = {};
 
   let cached: { document: WorkbenchDocument; runtimeRevision: number; snapshot: LinkSnapshot } | null = null;
   let documentRevision = 0;
@@ -82,6 +100,11 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
     return snapshot;
   };
 
+  const refuse = (verb: LinkVerb, because: string, code: string): false => {
+    onRefused?.(verb, because, code);
+    return false;
+  };
+
   const perform = (verb: LinkVerb): boolean => {
     if (verb.kind === "link.mode.open") {
       store.setState({ linkModeOpen: true });
@@ -91,16 +114,104 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
       store.setState({ linkModeOpen: false });
       return true;
     }
+    if (verb.kind === "show") return performShow(verb);
     const current = store.getState().document;
     const result = applyLinkVerb(verb, snapshotOf(current), deps, { newLinkId: () => newId("link") });
     if (result.kind === "refused") {
       const plan = result.plan;
-      onRefused?.(verb, plan.kind === "unavailable" ? plan.because : "the choice is ambiguous", plan.kind === "unavailable" ? plan.code : "ambiguous");
-      return false;
+      return refuse(verb, plan.kind === "unavailable" ? plan.because : "the choice is ambiguous", plan.kind === "unavailable" ? plan.code : "ambiguous");
     }
     if (result.kind === "browser-local") return true;
     const change = linksChange(current, result.bindings);
     return change ? store.mutate([change]) : true;
+  };
+
+  /* ---- show: the target resolver (Phase 4) ------------------------------- */
+
+  /** Where a new tile could go: beside the source's tile, else beside the active tile, else beside the first. */
+  const placementsFor = (current: WorkbenchDocument, from: PortId | null): PlacementCandidate[] => {
+    const state = store.getState();
+    const tree = workspaceTree(current, state.workspaceId);
+    const all = leaves(tree);
+    const fromView = from ? from.split("/")[0] : null;
+    const leaf = (fromView ? all.find((node) => node.body.case === "leaf" && node.body.value.viewId === fromView) : undefined) ?? all.find((node) => node.id === state.activePlacementId) ?? all[0];
+    if (!leaf || leaf.body.case !== "leaf") return [];
+    const view = current.views[leaf.body.value.viewId];
+    const app = view ? apps.get(view.appId) : null;
+    const title = view ? view.title || app?.titleFor?.(view) || app?.title || view.appId : "that tile";
+    return [
+      { id: `${leaf.id}:right`, label: `split right of ${title}`, placementId: leaf.id, zone: "right", scopeIndex: 0 },
+      { id: `${leaf.id}:bottom`, label: `split below ${title}`, placementId: leaf.id, zone: "bottom", scopeIndex: 0 },
+    ];
+  };
+
+  /** Every (app, input port) that could be opened to show a value; placed singletons are already on screen. */
+  const spawnableFor = (current: WorkbenchDocument): SpawnableApp[] => {
+    const out: SpawnableApp[] = [];
+    for (const app of apps.list()) {
+      if (app.singleton && viewsOfApp(current, app.id).length > 0) continue;
+      for (const port of app.ports ?? []) {
+        if (port.direction === "out" || port.documentSlot) continue;
+        out.push({ appId: app.id, title: app.title, portName: port.name, valueType: port.contract.valueType, semanticRole: port.contract.semanticRole });
+      }
+    }
+    return out;
+  };
+
+  const resolve = (verb: Extract<LinkVerb, { kind: "show" }>) => {
+    const current = store.getState().document;
+    const snapshot = snapshotOf(current);
+    const query: ShowQuery = {
+      subject: verb.subject,
+      ...(verb.role ? { role: verb.role } : {}),
+      ...(verb.disposition ? { disposition: verb.disposition } : {}),
+      from: verb.from ?? runtime.sourceOf(verb.subject),
+    };
+    const state = store.getState();
+    const currentViews = new Set(leaves(workspaceTree(current, state.workspaceId)).map((node) => (node.body.case === "leaf" ? node.body.value.viewId : "")));
+    const resolution = resolveShow(query, snapshot, deps, {
+      placements: placementsFor(current, query.from ?? null),
+      spawnable: spawnableFor(current),
+      inCurrentWorkspace: (port) => currentViews.has(port.viewId),
+    });
+    return { query, resolution };
+  };
+
+  const applyCandidate = (verb: LinkVerb, candidate: ShowCandidate, query: ShowQuery): boolean => {
+    if (candidate.kind === "existing-port") {
+      // No verb ⇒ the target already shows the source (an available no-op).
+      return candidate.verb ? perform(candidate.verb) : true;
+    }
+    // A spawn: open the tile under a pre-minted view id and link its port, in ONE plan
+    // when the shell lent its planner; else two batches (a shadow store inside a plan).
+    const viewId = newId("v");
+    const port = `${viewId}/${candidate.app.portName}`;
+    const open: WorkbenchVerb = { kind: "view.open", appId: candidate.app.appId, documents: {}, at: { placementId: candidate.placement.placementId, zone: candidate.placement.zone }, viewId };
+    const link: LinkVerb = query.from ? linkVerbs.follow(query.from, port) : linkVerbs.bind(port, query.subject);
+    if (hooks.planner) {
+      const planned = hooks.planner.plan([open, link]);
+      if (!planned.ok) return refuse(verb, planned.error, "spawn-refused");
+      return hooks.planner.applyPlan(planned.plan);
+    }
+    if (!hooks.openView) return refuse(verb, "this workbench cannot open tiles from a show", "no-shell");
+    const placed = hooks.openView(candidate.app.appId, {}, { at: { placementId: candidate.placement.placementId, zone: candidate.placement.zone }, viewId });
+    if (!placed) return refuse(verb, "the tile could not be opened", "spawn-refused");
+    return perform(link);
+  };
+
+  const performShow = (verb: Extract<LinkVerb, { kind: "show" }>): boolean => {
+    const { query, resolution } = resolve(verb);
+    if (verb.candidateId) {
+      const fresh = freshCandidate(verb.candidateId, resolution);
+      if (fresh.kind === "refused") return refuse(verb, fresh.because, fresh.code);
+      store.setState({ showChooser: null });
+      return applyCandidate(verb, fresh.candidate, query);
+    }
+    if (resolution.winners.length === 1) return applyCandidate(verb, resolution.winners[0]!, query);
+    if (resolution.winners.length === 0) return refuse(verb, "nothing on screen can show this, and nothing can be opened for it", "no-target");
+    // Several targets tie: the chooser, never a guess (report §8.9).
+    store.setState({ showChooser: { query, resolution } });
+    return true;
   };
 
   const maintenance: LinkHandlers["maintenance"] = (current, mutations) => {
@@ -138,6 +249,9 @@ export function createLinkHandlers({ store, apps, runtime, environment = {}, onR
       for (const mutation of mutations) {
         if (mutation.body.case === "viewDelete") runtime.forgetView(mutation.body.value.viewId);
       }
+    },
+    attach(extra) {
+      Object.assign(hooks, extra);
     },
   };
 }

@@ -113,6 +113,8 @@ export type WorkbenchVerb =
       title?: string;
       /** Land at a named zone of a named tile, instead of beside `near`. */
       at?: { placementId: string; zone: PlaceZone };
+      /** Mint the view under THIS id, so a plan may name its ports in a later verb (PBUI-LINK-1 show → spawn + follow). */
+      viewId?: string;
     }
   | { kind: "tile.replace"; placementId: string; appId: string; documents?: Record<string, string> }
   | { kind: "tile.link"; placementId: string; viewId: string }
@@ -236,7 +238,7 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
           typeof at.placementId === "string" &&
           at.placementId.length > 0 &&
           ["top", "right", "bottom", "left", "center", "replace"].includes(String(at.zone)));
-      return string("appId") && stringMap("documents") && optionalString("near") && optionalString("title") && atOk;
+      return string("appId") && stringMap("documents") && optionalString("near") && optionalString("title") && optionalString("viewId") && atOk;
     }
     case "tile.replace":
       return string("placementId") && string("appId") && stringMap("documents");
@@ -396,7 +398,7 @@ export interface WorkbenchVerbHandlers {
   openView(
     appId: string,
     documents: Record<string, string>,
-    options?: { near?: string; title?: string; at?: { placementId: string; zone: PlaceZone } },
+    options?: { near?: string; title?: string; at?: { placementId: string; zone: PlaceZone }; viewId?: string },
   ): string | null;
   /**
    * Change what ONE pane shows, in place. When the pane's view has a single
@@ -950,6 +952,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     existing: AppView | undefined,
     at: { placementId: string; zone: PlaceZone },
     title?: string,
+    viewId?: string,
   ): string | null => {
     const { placementId, zone } = at;
     if (!workspaceOfPlacement(current, placementId)) return null;
@@ -970,7 +973,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       mutations = splitWithView(current, placementId, direction, existing.id, position);
     } else {
       const view = create(AppViewSchema, {
-        id: newId("v"),
+        id: viewId ?? newId("v"),
         appId,
         documents: Object.keys(documents).length > 0 ? { ...documents } : defaultBindings(current, appId),
         ...(title ? { title } : {}),
@@ -987,6 +990,10 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
   };
 
   const openView: WorkbenchVerbHandlers["openView"] = (appId, documents, options = {}) => {
+    links.attach({ openView: (id, docs, opts) => openViewInner(id, docs, opts) });
+    return openViewInner(appId, documents, options);
+  };
+  const openViewInner: WorkbenchVerbHandlers["openView"] = (appId, documents, options = {}) => {
     const current = doc();
     const app = apps.get(appId);
     // What this open would DUPLICATE if the document already has it: a
@@ -997,7 +1004,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       : app?.singleton
         ? viewsOfApp(current, appId)[0]
         : undefined;
-    if (options.at) return openAt(current, appId, documents, already, options.at, options.title);
+    if (options.at) return openAt(current, appId, documents, already, options.at, options.title, options.viewId);
     if (app && isDocBound(app)) {
       const existing = already;
       if (existing) {
@@ -1015,7 +1022,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     const direction = splitDirectionFor(target, root());
     if (!canSplitPlacement(target, direction)) return null;
     const view = create(AppViewSchema, {
-      id: newId("v"),
+      id: options.viewId ?? newId("v"),
       appId,
       documents: Object.keys(documents).length > 0 ? { ...documents } : defaultBindings(current, appId),
       ...(options.title ? { title: options.title } : {}),
@@ -1353,6 +1360,7 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
           ...(verb.near ? { near: verb.near } : {}),
           ...(verb.title ? { title: verb.title } : {}),
           ...(verb.at ? { at: verb.at } : {}),
+          ...(verb.viewId ? { viewId: verb.viewId } : {}),
         }) !== null
       );
     case "view.goTo":

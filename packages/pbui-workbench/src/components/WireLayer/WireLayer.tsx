@@ -99,7 +99,7 @@ export function WireLayer({ renderWire }: WireLayerProps) {
         {wires.map(({ link, from, to }) => {
           const path = from && to ? cubic(from, to) : null;
           const node = (
-            <g data-part="wire" data-link-id={link.linkId} data-term={link.kind} className={styles.wire}>
+            <g data-part="wire" data-link-id={link.linkId} data-term={link.kind} data-source={link.source} data-destination={link.destination} className={styles.wire}>
               {path ? (
                 <>
                   <path d={path} className={styles.hit} data-part="wire-hit" />

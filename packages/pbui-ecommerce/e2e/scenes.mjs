@@ -96,7 +96,8 @@ scenario("Shift released mid-drag: the cursor badge switches from Hold to Follow
 scenario("wire menu → Unlink · keep the last value: badge ⏸, wire gone, Resume unavailable with its reason", async (page) => {
   await page.goto(story("shop-scenes--scene-7-connect-mode"));
   await page.waitForSelector('[data-part="wire"]');
-  const wire = page.locator('[data-part="wire-hit"]').first();
+  // Two wires are on screen (detail and inspector); the one into the detail's order port is the subject.
+  const wire = page.locator('[data-part="wire"][data-destination$="/order"] [data-part="wire-hit"]').first();
   await wire.click({ button: "right", force: true });
   await page.getByRole("menuitem", { name: /^Unlink · keep the last value/ }).click();
   await page.waitForSelector('[data-part="port-badge"][data-state="held"]');
@@ -107,6 +108,18 @@ scenario("wire menu → Unlink · keep the last value: badge ⏸, wire gone, Res
   const resume = page.getByRole("menuitem", { name: /^Resume/ });
   if (!(await resume.isDisabled())) throw new Error("Resume should be unavailable after an unlink");
   if ((await page.getByRole("menuitem", { name: /^Resume.*nothing to resume/ }).count()) !== 1) throw new Error("Resume does not explain itself");
+});
+
+scenario("Show details… with no detail open: tile count +1, the new tile follows the table in one batch", async (page) => {
+  await page.goto(story("shop-scenes--scene-3-spawn"));
+  await page.waitForSelector('[data-part="orders-table"]');
+  const before = await page.locator("[data-placement-id]").count();
+  await page.locator('tr[data-order-id="88155"] [data-ptype="order"]').click({ button: "right" });
+  await page.getByRole("menuitem", { name: /^Show details…/ }).click();
+  await page.waitForSelector('[data-part="order-detail"]');
+  if ((await page.locator("[data-placement-id]").count()) !== before + 1) throw new Error("tile count did not grow by one");
+  if ((await badge(page)) !== "following:→orders") throw new Error(`badge was ${await badge(page)}`);
+  if (!(await detailTitle(page))?.includes("order #88155")) throw new Error("spawned detail does not show #88155");
 });
 
 const browser = await chromium.launch();

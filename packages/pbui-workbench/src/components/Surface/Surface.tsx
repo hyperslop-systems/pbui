@@ -5,6 +5,7 @@ import { usePlacement, useWorkbench } from "../../context";
 import type { SurfaceProps } from "../../types";
 import { SplitPane } from "../SplitPane";
 import { Tile } from "../Tile";
+import { ShowChooser } from "../ShowChooser";
 import { WireLayer } from "../WireLayer";
 import styles from "./Surface.module.css";
 
@@ -97,6 +98,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
         </div>
       )}
       {linkMode ? <WireLayer {...(renderWire ? { renderWire } : {})} /> : null}
+      <ShowChooser />
       {placing ? (
         <div className={styles.placing} data-part="workbench-placing" role="status">
           <b>{placing.prompt}</b>

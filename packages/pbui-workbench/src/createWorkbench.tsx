@@ -153,6 +153,9 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     return true;
   };
 
+  // The show handler spawns a tile AND links its port in one plan (Phase 4).
+  verbs.links.attach({ planner: { plan, applyPlan } });
+
   const workbench: Workbench = {
     apps,
     store,

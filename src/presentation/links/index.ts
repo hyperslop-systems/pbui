@@ -62,4 +62,6 @@ export { bindingsAfterAppReplaced, bindingsAfterClone, bindingsAfterViewsRemoved
 export { badgeOf, badgesOfView } from "./badge";
 export type { Badge, BadgeState } from "./badge";
 export { checkInvariants } from "./invariants";
+export { existingCandidateId, freshCandidate, resolveShow, spawnCandidateId } from "./resolveShow";
+export type { PlacementCandidate, ResolveShowOptions, ShowCandidate, ShowDisposition, ShowQuery, ShowRank, ShowResolution, ShowStatus, SpawnableApp } from "./resolveShow";
 export type { Violation } from "./invariants";

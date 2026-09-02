@@ -1,7 +1,9 @@
 import {
   available,
   defineActions,
+  existingCandidateId,
   inapplicable,
+  linkVerbs,
   planBind,
   planClear,
   planDetach,
@@ -213,6 +215,22 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
   if (options.subjects && options.subjects.length > 0) {
     const familyDefine = defineActions<Values, ProductFacts, WorkbenchVerb>();
     for (const subject of options.subjects) {
+      // "Show details…": the generic route (Phase 4) — the resolver picks the best target, spawns one, or asks.
+      contributions.push(
+        familyDefine.inherited(subject, {
+          id: `workbench.show.${subject}`,
+          action: "presentation.show",
+          scopes,
+          test: ({ snapshot }) => (facts(snapshot) ? available() : NO_LINKS),
+          metadata: { label: "Show details…", description: "in the best matching tile on screen, or a new one beside this", group: "link", order: 90 },
+          bind: ({ subject: reference, snapshot }) => {
+            const links = facts(snapshot);
+            const value = reference as unknown as SerializableReference;
+            const from = links?.sourceOf?.(value) ?? null;
+            return linkVerbs.show(value, from ? { from } : {});
+          },
+        }) as unknown as ActionContribution<PortValues, ProductFacts, WorkbenchVerb>,
+      );
       contributions.push(
         familyDefine.family(subject, {
           id: `workbench.link-to.${subject}`,
@@ -239,7 +257,8 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
                   group: "link",
                   order: 100,
                 },
-                bind: () => (plan.kind === "available" ? plan.verb : { kind: "link.mode.close" }),
+                // A SHOW intent naming the candidate (design §8.6): the handler re-resolves it fresh, never replays the row.
+                bind: () => linkVerbs.show(value, { ...(from ? { from } : {}), role: target.declaration.contract.semanticRole, candidateId: existingCandidateId(target.id) }),
               };
             });
           },

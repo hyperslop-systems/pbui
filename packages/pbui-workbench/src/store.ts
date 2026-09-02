@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { ShowQuery, ShowResolution } from "@hyperslop-systems/pbui";
 import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 
@@ -30,6 +31,8 @@ export interface WorkbenchState {
   rebalanceOpen: boolean;
   /** Connect-management mode is showing (PBUI-LINK-1 Phase 3); browser-local like the rest. */
   linkModeOpen: boolean;
+  /** A "show" that resolved to several targets awaits the user's choice (PBUI-LINK-1 Phase 4). */
+  showChooser: { query: ShowQuery; resolution: ShowResolution } | null;
 }
 
 /**
@@ -95,6 +98,7 @@ export function createWorkbenchStore(
     launcherFrom: null,
     rebalanceOpen: false,
     linkModeOpen: false,
+    showChooser: null,
   };
   const listeners = new Set<() => void>();
   const emit = () => {

@@ -52,6 +52,36 @@ describe("scene 1 · ambient", () => {
   });
 });
 
+describe("scene 3 · show with routing", () => {
+  it("“Show details…” on an order goes to the free detail, leaving the held one alone", async () => {
+    const { workbench, views } = scene(split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail, { title: "detail A" }), tile(APP_IDS.orderDetail, { title: "detail B" }))));
+    const [a, b] = views["order-detail"]!;
+    const orders = views.orders![0]!;
+    act(() => void workbench.perform(linkVerbs.follow(portId(orders, "order"), portId(a!, "order"))));
+    fireEvent.click(row("88213"));
+    act(() => void workbench.perform(linkVerbs.pin(portId(a!, "order"))));
+    fireEvent.pointerEnter(row("88214"));
+    fireEvent.contextMenu(row("88214").querySelector('[data-ptype="order"]')!);
+    fireEvent.click(await screen.findByText("Show details…"));
+    expect(bindingsOf(workbench.store.getState().document).get(portId(b!, "order"))).toMatchObject({ kind: "follow", source: portId(orders, "order") });
+    expect(bindingsOf(workbench.store.getState().document).get(portId(a!, "order"))?.kind).toBe("hold");
+    expect(badges(b!)).toEqual(["following:→orders"]);
+  });
+
+  it("with no detail open, “Show details…” spawns one beside the table and links it", async () => {
+    const { workbench, views } = scene(tile(APP_IDS.orders));
+    const before = document.querySelectorAll("[data-placement-id]").length;
+    fireEvent.pointerEnter(row("88214"));
+    fireEvent.contextMenu(row("88214").querySelector('[data-ptype="order"]')!);
+    fireEvent.click(await screen.findByText("Show details…"));
+    expect(document.querySelectorAll("[data-placement-id]").length).toBe(before + 1);
+    expect(detailTitle()).toContain("order #88214");
+    const detail = Object.values(workbench.store.getState().document.views).find((view) => view.appId === APP_IDS.orderDetail);
+    expect(detail).toBeTruthy();
+    expect(bindingsOf(workbench.store.getState().document).get(portId(detail!.id, "order"))).toMatchObject({ kind: "follow", source: portId(views.orders![0]!, "order") });
+  });
+});
+
 describe("scene 2 · follow and hold", () => {
   it("right-click an order → “Link to order detail · order” makes the detail follow the table, badge →", async () => {
     const { workbench, views } = scene();

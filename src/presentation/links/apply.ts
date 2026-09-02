@@ -108,6 +108,9 @@ export function applyLinkVerb(verb: LinkVerb, s: LinkSnapshot, deps: LinkDeps, o
     case "link.mode.open":
     case "link.mode.close":
       return { kind: "browser-local" };
+    case "show":
+      // Resolved by the shell (it needs placements and the app registry); never a bare transition.
+      return { kind: "refused", plan: { kind: "unavailable", because: "show is resolved by the workbench, not applied as a term", code: "shell-handled" } };
   }
 }
 

@@ -36,8 +36,21 @@ export const Scene2Hold: StoryObj = {
 };
 
 export const Scene3Show: StoryObj = {
-  name: "3 · show with routing: two details, one held; “Show details…” picks the free one (Phase 4)",
-  render: () => <ShopStory spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail, { title: "detail A" }), tile(APP_IDS.orderDetail, { title: "detail B" })))} setup={followOrders("88213")} height={560} />,
+  name: "3 · show with routing: detail A is held; right-click an order → “Show details…” goes to detail B; with no detail open it spawns one (Phase 4)",
+  render: () => (
+    <ShopStory
+      spec={split("row", 0.5, tile(APP_IDS.orders), split("col", 0.5, tile(APP_IDS.orderDetail, { title: "detail A" }), tile(APP_IDS.orderDetail, { title: "detail B" })))}
+      height={560}
+      setup={(shop, workbench, views) => {
+        holdOrders("88213", "88201")?.(shop, workbench, views);
+      }}
+    />
+  ),
+};
+
+export const Scene3Spawn: StoryObj = {
+  name: "3b · show with nothing to take it: “Show details…” opens a detail beside the table and links it in one plan (Phase 4)",
+  render: () => <ShopStory spec={tile(APP_IDS.orders)} height={520} setup={presentOrder("88214")} />,
 };
 
 export const Scene4Derived: StoryObj = {
