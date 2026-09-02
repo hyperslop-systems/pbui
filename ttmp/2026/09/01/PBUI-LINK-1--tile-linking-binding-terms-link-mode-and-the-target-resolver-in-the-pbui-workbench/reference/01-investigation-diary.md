@@ -594,3 +594,66 @@ The patch bay. With Mod+Shift+L (or "Connect…" on a tile, or "Show wiring" on 
 cd packages/pbui-workbench && npx vitest run src/links/connect.test.tsx     # 4 tests
 cd ../pbui-ecommerce && pnpm e2e                                           # 5 scenarios, needs Storybook on :6012
 ```
+
+## Step 8: Phase 4 — the target resolver and the "show" chooser
+
+"Show details…" now has a principled answer for zero, one or several targets. The kernel's `resolveShow` ranks existing input ports and spawnable (application, placement) pairs by the report's tuple; the workbench's `show` handler performs a lone winner, refuses when nothing can show the value, spawns a tile beside the source AND links it in one plan when nothing on screen can take it, and opens a chooser on the launcher's shell when several targets tie. The "Link to …" rows now bind show intents with a candidate id that is re-resolved fresh, never replayed. Screenshot: `various/screenshots/p4-show-details-menu.png` (scene 3: detail A held, "Show details…" beside the explicit "Link to" rows).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Build the guide's Phase 4: the resolver, the show verb with fresh revalidation, spawn-plus-follow atomically, the `LauncherShell` chooser, and the shop's scene 3.
+
+**Inferred user intent:** "Show details for this order" behaves the same whether zero, one or three details are open, and never overwrites a pinned comparison.
+
+**Commit (code):** f9b2444 — "PBUI-LINK-1 Phase 4: the target resolver and the show chooser"
+
+### What I did
+
+- **Core** `links/resolveShow.ts`: `ShowQuery`, `PlacementCandidate`, `SpawnableApp`, `ShowCandidate` (existing-port | spawn), `ShowResolution` with `winners` and `ambiguous`; the tuple `(typeDistance, roleDistance, dispositionDistance, scopeIndex, sourceAffinity, placementIndex)`; a held port is `inapplicable` under a generic route; "already follows that source" is available with no verb (a no-op); spawns carry `dispositionDistance 2` and never tie among themselves; `freshCandidate(id, fresh)` refuses `target-no-longer-resolves` / `target-no-longer-available`. The `show` verb joins `LinkVerb` (validated, described; `applyLinkVerb` refuses it as shell-handled). Seven tests, including registration-order independence.
+- **pbui-workbench**: `view.open` and `openView` accept `viewId` so a plan can name the new view's port in a later verb; `WorkbenchState.showChooser`; `createLinkHandlers` gains `attach({ planner, openView })` (the shell lends `plan`/`applyPlan` after construction; a shadow handler without a planner falls back to two batches), `placementsFor` (right of / below the source's tile, else the active or first tile), `spawnableFor` (every input port of every app, skipping placed singletons), `performShow` (fresh resolution → candidate by id, lone winner, refusal, or chooser state), `applyCandidate` (existing port → its verb; spawn → `[view.open(at, viewId), port.follow|bind]` as one plan); `components/ShowChooser` on `LauncherShell` (EXISTING TARGETS / NEW TARGETS, disabled rows keep their reason, Enter's verb named); `contributions.ts`: the family rows bind `show` with `candidateId`, and a `presentation.show` rule ("Show details…") per subject type; `WireLayer` stamps `data-source`/`data-destination`. Six DOM tests: one free target, held target skipped, chooser row performs, spawn in ONE batch (`onMutate` called once), role/type ranking, stale candidate refused.
+- **pbui-ecommerce**: scene 3 (A held on #88213, table moved to #88201; "Show details…" goes to B) and 3b (only the table; a detail is spawned and linked), DOM tests, a sixth real-pointer scenario (tile count +1, badge → orders, the new detail shows the order).
+
+### Why
+
+- Fresh revalidation by candidate id is the report's §8.10: the chooser's row, the family's row and the agent all name a target; the handler re-resolves it against the current document and runtime, and applies only if it is still available.
+- Spawn-plus-follow through the shell's own `plan`/`applyPlan` keeps "open a detail beside the table and make it follow" one batch — one `onMutate`, one undo — rather than a tile that might come up unlinked.
+
+### What worked
+
+- `LauncherShell` is exactly the chooser the guide asked for: groups, filter, status line, `enterVerb`; the toy's centered routing modal never had to be ported.
+- `plan()` runs the shadow handlers, whose own link handlers rebuild the snapshot from the shadow document, so `port.follow` onto a view minted earlier IN THE SAME PLAN resolves normally.
+
+### What didn't work
+
+- `readonly inCurrentWorkspace?(port): boolean` is not valid TypeScript (a `readonly` method signature); the core build silently stayed stale and every downstream typecheck reported "no exported member `resolveShow`". Rewritten as a readonly function-typed property.
+- The first resolver draft turned "already follows that source" into a `port.clear` verb — wrong; a target that already shows the source is a no-op success. Fixed in the resolver and the handler.
+- My test expectation for spawns was wrong, not the resolver: with `typeDistance` as the first key, a spawnable exact-type detail outranks an on-screen inspector reached through `<inspectable>`. The test now documents that.
+- The Phase 3 unlink e2e went flaky: scene 7 has two wires and `[data-part="wire-hit"]` picked whichever binding sorted first by random view id. Wires now carry their endpoints and the scenario selects the detail's wire.
+- Four console errors during a capture were Vite HMR 404s while `pbui-workbench/dist` was being rewritten; Storybook recovered on the next request.
+
+### What I learned
+
+- `view.open` with a caller-supplied `viewId` is the smallest change that makes multi-step plans expressible; the applier already accepted any id.
+
+### What was tricky to build
+
+- **Where the planner lives.** The show handler runs inside `createVerbHandlers`, which has no `plan`/`applyPlan` (those are built in `createWorkbench` over the handlers). Injecting them afterwards through `links.attach` avoids a circular construction; the shadow handlers used by `plan()` simply have none and fall back to `openView` + `perform`.
+- **Type distance versus "prefer what is on screen".** The tuple puts type first, so an exact-type spawn beats a supertype target on screen. That is the report's rule and it reads right for "Show DETAILS", but a product wanting "reuse anything already open" would reorder the tuple — which is why it is one declared array.
+
+### What warrants a second pair of eyes
+
+- The chooser is mounted by `Surface` unconditionally (it renders null when idle); a product mounting two Surfaces of one workbench would get two choosers.
+- `spawnableFor` offers every input port of every non-placed app; a big product may want `AppDescriptor.available()` respected here too.
+- The shadow-handler fallback (two batches) is untested because the workbench always attaches a planner.
+
+### What should be done in the future
+
+- Context candidates (`kind: "context"`) in the resolver, once `context.create`/`context.drive` verbs exist.
+- Placement rows through `startTileCarry` ("aim where the new tile goes") instead of the two fixed spots.
+
+### Code review instructions
+
+- `src/presentation/links/resolveShow.ts` and its test; `packages/pbui-workbench/src/links/handlers.ts` (`performShow`, `applyCandidate`), `components/ShowChooser`, `links/show.test.tsx`.
+- Storybook `Shop/Scenes/3` and `3b`, `Workbench/ShowChooser`; `pnpm e2e` (six scenarios).

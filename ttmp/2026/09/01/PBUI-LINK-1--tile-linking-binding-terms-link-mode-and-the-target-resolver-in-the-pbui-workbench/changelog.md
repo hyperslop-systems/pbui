@@ -71,3 +71,13 @@ Phase 3 (commit cbcdf11): connect-management mode — usePortCarry and the Mod+S
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx — One SVG per surface; owns Escape in the mode
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/chrome/usePortCarry.ts — The port carry: registry, live modifier, one exit
 
+
+## 2026-09-01
+
+Phase 4 (commit f9b2444): resolveShow with the ranking tuple, held ports inapplicable, ties as ambiguity, fresh candidate revalidation (7 tests); show verb; view.open viewId; show handler with spawn+follow in one plan and the LauncherShell chooser (6 DOM tests); Link-to rows bind show intents; Show details… rule; shop scenes 3/3b, DOM tests, sixth e2e scenario
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/ShowChooser/ShowChooser.tsx — The chooser on LauncherShell
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/resolveShow.ts — The target resolver and its ranking tuple
+
