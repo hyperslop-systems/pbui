@@ -36,8 +36,7 @@ import type {
 import { placeHelpCard } from "./help/place";
 import type { HelpRegistry } from "./help/registry";
 import type { HelpResolution } from "./help/types";
-import { SNAPSHOT_INPUT } from "./kernel/types";
-import type { PresentationKernel, SnapshotInput } from "./kernel/types";
+import type { CompiledPresentation, PresentationContextInput } from "./model/types";
 import { resolveAcceptance } from "./translators/resolve";
 import type {
   AcceptanceOption,
@@ -83,18 +82,23 @@ export interface LegacyCreatePbuiOptions<
   help?: HelpRegistry<Values, ProductFacts>;
 }
 
-/** Preferred assembly: one declaration-built kernel plus product facts. */
-export interface KernelCreatePbuiOptions<
+/**
+ * The final assembly (PBUI-KERNEL-1 §14.1): one compiled presentation plus
+ * the product's context projection. `createPbui` calls
+ * `presentation.snapshot(contextFor(query, environment))` for actions, help,
+ * acceptance, and introspection.
+ */
+export interface PresentationCreatePbuiOptions<
   Values extends PresentationValues,
   Environment,
   Verb,
   ProductFacts,
 > extends CreatePbuiCommonOptions<Values, Environment> {
-  kernel: PresentationKernel<Values, Environment, ProductFacts, Verb>;
-  factsFor(
+  presentation: CompiledPresentation<Values, Environment, ProductFacts, Verb>;
+  contextFor(
     query: ActionQuery<Values>,
     environment: Environment,
-  ): ProductFacts | SnapshotInput<ProductFacts>;
+  ): PresentationContextInput<ProductFacts>;
 }
 
 export type CreatePbuiOptions<
@@ -104,18 +108,7 @@ export type CreatePbuiOptions<
   ProductFacts,
 > =
   | LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>
-  | KernelCreatePbuiOptions<Values, Environment, Verb, ProductFacts>;
-
-function isSnapshotInput<ProductFacts>(
-  value: ProductFacts | SnapshotInput<ProductFacts>,
-): value is SnapshotInput<ProductFacts> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    SNAPSHOT_INPUT in value &&
-    value[SNAPSHOT_INPUT] === true
-  );
-}
+  | PresentationCreatePbuiOptions<Values, Environment, Verb, ProductFacts>;
 
 /** How long the pointer rests on a presentation before its help opens. */
 const HELP_POINTER_DELAY_MS = 350;
@@ -365,26 +358,23 @@ export function createPbui<
 >(options: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
   const { defaultEnvironment, renderMenuHeader, helpRenderers } = options;
-  const kernelEngine = "kernel" in options ? options.kernel : null;
+  const presentation = "presentation" in options ? options.presentation : null;
   const registry =
-    kernelEngine?.descriptors ??
+    presentation?.descriptors ??
     (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).registry;
   const actionEngine =
-    kernelEngine?.actions ??
+    presentation?.actions ??
     (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).actions;
   const translators =
-    "kernel" in options ? [] : options.translators ?? [];
+    "presentation" in options ? [] : options.translators ?? [];
   const helpEngine =
-    kernelEngine?.help ?? ("kernel" in options ? null : options.help ?? null);
+    presentation?.help ?? ("presentation" in options ? null : options.help ?? null);
   const snapshotOf = (
     query: ActionQuery<Values>,
     environment: Environment,
   ): SelectionSnapshot<ProductFacts> => {
-    if ("kernel" in options) {
-      const produced = options.factsFor(query, environment);
-      return isSnapshotInput(produced)
-        ? options.kernel.snapshot(produced.facts, produced.options)
-        : options.kernel.snapshot(produced);
+    if ("presentation" in options) {
+      return options.presentation.snapshot(options.contextFor(query, environment));
     }
     return options.snapshotFor(query, environment);
   };
@@ -404,8 +394,8 @@ export function createPbui<
     environment: Environment,
   ): AcceptanceResolution<Values> {
     const snapshot = snapshotOf({ subject: reference, invocation: "accept" }, environment);
-    return kernelEngine
-      ? kernelEngine.accept(request, reference, snapshot)
+    return presentation
+      ? presentation.accept(request, reference, snapshot)
       : resolveAcceptance(
           { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
           request,
@@ -1316,7 +1306,7 @@ export function createPbui<
     ContextHelp,
     usePbui,
     registry,
-    kernel: kernelEngine,
+    presentation,
   };
 }
 

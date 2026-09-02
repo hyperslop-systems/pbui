@@ -27,9 +27,9 @@ export type {
   SelectorMatchResult,
   SelectorSubject,
 } from "./context/types";
-/* Canonical typed semantic arrows and the one-declaration kernel. */
+/* Canonical typed semantic arrows and the compiled presentation model. */
 export * from "./relations";
-export * from "./kernel";
+export * from "./model";
 export { resolveAcceptance } from "./translators/resolve";
 export type {
   AcceptanceOption,
@@ -40,7 +40,7 @@ export type {
 export { createPresentationRegistry } from "./registry";
 export type {
   CreatePbuiOptions,
-  KernelCreatePbuiOptions,
+  PresentationCreatePbuiOptions,
   LegacyCreatePbuiOptions,
   PbuiRefusal,
   PbuiContextValue,
