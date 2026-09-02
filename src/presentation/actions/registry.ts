@@ -13,6 +13,7 @@ import type { PreparedRegistry } from "./resolve";
 import type { PresentationTypeGraph } from "./typeGraph";
 import { createPredicateRegistry, validateConditionPredicates } from "../context/predicates";
 import type { PredicateRegistry } from "../context/predicates";
+import { isAnyDeclaredType } from "../context/types";
 
 /**
  * The action registry (PBUI-ACTIONS-2, source guide §13).
@@ -36,7 +37,8 @@ export interface ReachableContribution {
   contributionId: string;
   kind: "rule" | "family";
   action?: string;
-  declaredType: RuntimeTypeId | "*";
+  /** null: a universal (any-declared-type) family. */
+  declaredType: RuntimeTypeId | null;
   distance: number;
 }
 
@@ -117,14 +119,17 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
         );
       }
     }
-    if (contribution.subject !== "*" && !graph.has(contribution.subject)) {
+    if (isAnyDeclaredType(contribution.subject)) {
+      if (contribution.kind !== "family") {
+        throw new Error(
+          `only families may target anyDeclaredType (contribution "${contribution.id}")`,
+        );
+      }
+    } else if (!graph.has(contribution.subject)) {
       throw new Error(
         `contribution "${contribution.id}" targets type "${contribution.subject}" ` +
-          `which is not in the type graph — declare the type (or use "*" for the legacy family)`,
+          `which is not in the type graph — declare the type first`,
       );
-    }
-    if (contribution.subject === "*" && contribution.kind !== "family") {
-      throw new Error(`only families may target "*" (contribution "${contribution.id}")`);
     }
     if (
       contribution.priority !== undefined &&
@@ -224,7 +229,7 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
     const out: ReachableContribution[] = [];
     for (const contribution of contributions) {
       let distance: number;
-      if (contribution.subject === "*") distance = 0;
+      if (isAnyDeclaredType(contribution.subject)) distance = 0;
       else if (contribution.match === "exact") {
         if (contribution.subject !== type) continue;
         distance = 0;
@@ -238,7 +243,7 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
         contributionId: contribution.id,
         kind: contribution.kind,
         ...(contribution.kind === "rule" ? { action: contribution.action } : {}),
-        declaredType: contribution.subject,
+        declaredType: isAnyDeclaredType(contribution.subject) ? null : contribution.subject,
         distance,
       });
     }

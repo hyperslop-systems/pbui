@@ -2,8 +2,8 @@ import type { ProductPredicate } from "../actions/conditions";
 import type { PredicateId } from "../actions/ids";
 import type { PresentationTypeGraph } from "../actions/typeGraph";
 import type { InheritedRuleContext, SelectionSnapshot } from "../actions/types";
-import { matchContext } from "../context/match";
-import type { ContextMatch } from "../context/types";
+import { matchSelector, requireScoped, selectorOf } from "../context/selector";
+import type { ScopedSelectorMatch } from "../context/types";
 import type { PresentationReference, PresentationValues } from "../types";
 import type { Availability } from "../actions/availability";
 import type { HelpContribution, HelpItem, HelpResolution, ResolvedHelpItem } from "./types";
@@ -33,15 +33,16 @@ export function resolveHelp<Values extends PresentationValues, ProductFacts>(
   const collected: ResolvedHelpItem[] = [];
 
   for (const rule of prepared.contributions) {
-    const target = {
-      subject: rule.subject,
-      match: rule.match,
-      scopes: rule.scopes,
-      ...(rule.when !== undefined ? { when: rule.when } : {}),
-      ...(rule.priority !== undefined ? { priority: rule.priority } : {}),
-    };
-    const result = matchContext(target, subject, snapshot, prepared.graph, prepared.predicates);
+    const result = matchSelector(
+      selectorOf(rule),
+      subject,
+      snapshot,
+      prepared.graph,
+      prepared.predicates,
+    );
     if (result.kind === "rejected") continue;
+    // Help rules declare explicit scopes (registry rule), so this never throws.
+    const match = requireScoped(result.match, `help rule "${rule.id}"`);
 
     if (rule.test) {
       // Exact and inherited contexts are the same object at runtime; the
@@ -59,7 +60,7 @@ export function resolveHelp<Values extends PresentationValues, ProductFacts>(
     )(context);
     for (const item of items) {
       validateItem(rule.id, item);
-      collected.push(withProvenance(item, rule.id, result.match));
+      collected.push(withProvenance(item, rule.id, match));
     }
   }
 
@@ -110,13 +111,14 @@ function validateItem(ruleId: string, item: HelpItem): void {
 function withProvenance(
   item: HelpItem,
   ruleId: string,
-  match: ContextMatch,
+  match: ScopedSelectorMatch,
 ): ResolvedHelpItem {
   return {
     ...item,
     provenance: {
       ruleId,
-      declaredType: match.declaredType,
+      // A help rule always names a type (no universal help rules in v1).
+      declaredType: match.declaredType ?? match.concreteType,
       concreteType: match.concreteType,
       typeDistance: match.typeDistance,
       scope: match.scope,

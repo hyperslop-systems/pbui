@@ -1,8 +1,8 @@
 import type { RuntimeTypeId, ScopeId } from "../actions/ids";
 import type { PresentationTypeGraph } from "../actions/typeGraph";
 import type { SelectionSnapshot } from "../actions/types";
-import type { ContextMatch } from "../context/types";
-import { matchSelector } from "../context/match";
+import type { SelectorMatch } from "../context/types";
+import { matchSelector, selectorOf } from "../context/selector";
 import {
   createPredicateRegistry,
   validateConditionPredicates,
@@ -232,13 +232,13 @@ export function createRelationSystem<
           for (const step of steps) {
             if (!current) return undefined;
             const applicability = matchSelector(
-              {
+              selectorOf({
                 subject: step.from,
                 match: step.match,
                 scopes: step.scopes,
                 ...(step.when ? { when: step.when } : {}),
                 priority: step.priority,
-              },
+              }),
               current,
               snapshot,
               options.graph,
@@ -272,13 +272,13 @@ export function createRelationSystem<
     snapshot: SelectionSnapshot<ProductFacts>,
   ) {
     return matchSelector(
-      {
+      selectorOf({
         subject: relation.from,
         match: relation.match,
         scopes: relation.scopes,
         ...(relation.when ? { when: relation.when } : {}),
         priority: relation.priority,
-      },
+      }),
       reference,
       snapshot,
       options.graph,
@@ -317,7 +317,7 @@ export function createRelationSystem<
     relation: PreparedPresentationRelation<Values, ProductFacts>,
     reference: PresentationReference<Values>,
     snapshot: SelectionSnapshot<ProductFacts>,
-    match: ContextMatch,
+    match: SelectorMatch,
   ): RelationEvaluation<Values> {
     let output: PresentationReference<Values> | undefined;
     try {

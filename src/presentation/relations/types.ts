@@ -1,7 +1,7 @@
 import type { Condition } from "../actions/conditions";
 import type { RuntimeTypeId, ScopeId } from "../actions/ids";
 import type { SelectionSnapshot } from "../actions/types";
-import type { ContextMatch } from "../context/types";
+import type { SelectorMatch } from "../context/types";
 import type { PresentationReference, PresentationValues } from "../types";
 
 /** Stable identity for a semantic arrow in the presentation system. */
@@ -82,7 +82,7 @@ export interface ApplicableRelation<
   ProductFacts,
 > {
   readonly relation: PreparedPresentationRelation<Values, ProductFacts>;
-  readonly match: ContextMatch;
+  readonly match: SelectorMatch;
 }
 
 export interface RelationMatch<
@@ -97,12 +97,12 @@ export type RelationEvaluation<Values extends PresentationValues> =
       readonly kind: "value";
       readonly relationId: RelationId;
       readonly reference: PresentationReference<Values>;
-      readonly match: ContextMatch;
+      readonly match: SelectorMatch;
     }
   | {
       readonly kind: "empty";
       readonly relationId: RelationId;
-      readonly match: ContextMatch;
+      readonly match: SelectorMatch;
     }
   | {
       readonly kind: "unavailable";

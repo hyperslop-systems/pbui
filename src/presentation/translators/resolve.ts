@@ -117,7 +117,9 @@ export function resolveAcceptance<
       candidates.push({
         translator: candidate.relation.id,
         result: candidate.result,
-        scopeIndex: candidate.match.scopeIndex,
+        // A scope-universal relation makes no nearness claim: it ranks behind
+        // any relation that matched an active scope (design doc §11.3).
+        scopeIndex: candidate.match.scopeIndex ?? Number.POSITIVE_INFINITY,
         priority: candidate.match.priority,
       });
     }

@@ -1,3 +1,4 @@
+import type { AnyDeclaredTypeSubject } from "../context/types";
 import type { ReactNode } from "react";
 import type { PresentationReference, PresentationType, PresentationValues } from "../types";
 import type { Availability } from "./availability";
@@ -173,10 +174,13 @@ export interface ActionFamily<Values extends PresentationValues, ProductFacts, V
   kind: "family";
   id: FamilyId;
   /**
-   * A runtime type, or `"*"` to match every concrete type exactly — the
-   * legacy-adapter escape hatch; new product code declares real types.
+   * A declared runtime type, or the explicit `anyDeclaredType` subject to
+   * match every DECLARED concrete type exactly (PBUI-KERNEL-1 §9.2). The
+   * pre-KERNEL-1 `"*"` string spelling and the open-world graph it rode on
+   * are gone: a universal family still requires every reference type to be
+   * declared.
    */
-  subject: RuntimeTypeId | "*";
+  subject: RuntimeTypeId | AnyDeclaredTypeSubject;
   match: "exact" | "subtypes";
   scopes: readonly ScopeId[];
   invocations?: readonly ActionInvocation[];

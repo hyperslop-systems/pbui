@@ -1,4 +1,4 @@
-import { unavailable } from "@hyperslop-systems/pbui";
+import { anyDeclaredType, unavailable } from "@hyperslop-systems/pbui";
 import type {
   ActionFamily,
   PresentationReference,
@@ -66,7 +66,7 @@ export function createGeneratedActionsFamily<
   return {
     kind: "family",
     id: options.id ?? "sandbox.generated-actions",
-    subject: "*",
+    subject: anyDeclaredType,
     match: "exact",
     scopes: ["global"],
     expand: ({ subject, snapshot }) =>

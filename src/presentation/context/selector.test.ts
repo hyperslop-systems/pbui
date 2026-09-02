@@ -4,11 +4,14 @@ import { all, capability, definePredicate, modeOn, predicate } from "../actions/
 import type { ProductPredicate } from "../actions/conditions";
 import { createPresentationTypeGraph } from "../actions/typeGraph";
 import type { SelectionSnapshot } from "../actions/types";
-import { activeScope, matchContext } from "./match";
+import { activeScope, matchSelector, requireScoped, selectorOf } from "./selector";
+import { anyDeclaredType } from "./types";
 
 /**
- * PBUI-HELP-001 Phase 2 (design doc §18 "pure matcher tests"): the shared
- * matcher answers reachability the same way for the action and help callers.
+ * PBUI-HELP-001 Phase 2 ("pure matcher tests"), revised by PBUI-KERNEL-1 §9:
+ * the shared selector answers reachability the same way for the action, help,
+ * and relation callers; universal subjects and universal scopes are explicit
+ * values with nullable provenance; the type world is closed.
  */
 
 type Values = {
@@ -43,10 +46,10 @@ const imageFile = { type: "image-file", value: { id: "i1", format: "png" } } as 
 
 describe("type stage", () => {
   test("exact accepts only the concrete type", () => {
-    const target = { subject: "image-file", match: "exact", scopes: ["global"] } as const;
-    expect(matchContext(target, imageFile, snapshot(), graph, NO_PREDICATES).kind).toBe("matched");
-    const onFile = matchContext(
-      { subject: "file", match: "exact", scopes: ["global"] },
+    const target = selectorOf({ subject: "image-file", match: "exact", scopes: ["global"] });
+    expect(matchSelector(target, imageFile, snapshot(), graph, NO_PREDICATES).kind).toBe("matched");
+    const onFile = matchSelector(
+      selectorOf({ subject: "file", match: "exact", scopes: ["global"] }),
       imageFile,
       snapshot(),
       graph,
@@ -56,8 +59,8 @@ describe("type stage", () => {
   });
 
   test("subtypes matches through ancestors at shortest distance", () => {
-    const result = matchContext(
-      { subject: "document", match: "subtypes", scopes: ["global"] },
+    const result = matchSelector(
+      selectorOf({ subject: "document", match: "subtypes", scopes: ["global"] }),
       imageFile,
       snapshot(),
       graph,
@@ -65,17 +68,13 @@ describe("type stage", () => {
     );
     expect(result).toMatchObject({
       kind: "matched",
-      match: {
-        declaredType: "document",
-        concreteType: "image-file",
-        typeDistance: 2,
-      },
+      match: { declaredType: "document", concreteType: "image-file", typeDistance: 2 },
     });
   });
 
   test("an unrelated type rejects at the type stage", () => {
-    const result = matchContext(
-      { subject: "note", match: "subtypes", scopes: ["global"] },
+    const result = matchSelector(
+      selectorOf({ subject: "note", match: "subtypes", scopes: ["global"] }),
       imageFile,
       snapshot(),
       graph,
@@ -83,26 +82,62 @@ describe("type stage", () => {
     );
     expect(result).toMatchObject({ kind: "rejected", stage: "type" });
   });
+
+  test("the universal subject matches every declared type at distance 0 with null declaredType", () => {
+    const universal = selectorOf({ subject: anyDeclaredType, match: "exact", scopes: ["global"] });
+    expect(universal.subject).toEqual({ kind: "any-declared-type" });
+    const result = matchSelector(universal, imageFile, snapshot(), graph, NO_PREDICATES);
+    expect(result).toEqual({
+      kind: "matched",
+      match: {
+        declaredType: null,
+        concreteType: "image-file",
+        typeDistance: 0,
+        scope: "global",
+        scopeIndex: 2,
+        priority: 0,
+      },
+    });
+  });
+
+  test("an undeclared concrete type is an error, not an isolated node (closed world)", () => {
+    const stray = { type: "stray", value: { id: "s" } } as const;
+    expect(() =>
+      matchSelector(
+        selectorOf({ subject: anyDeclaredType, match: "exact", scopes: ["global"] }),
+        stray as never,
+        snapshot(),
+        graph,
+        NO_PREDICATES,
+      ),
+    ).toThrow(/"stray" is not declared/);
+    expect(() =>
+      matchSelector(
+        selectorOf({ subject: "stray", match: "exact", scopes: ["global"] }),
+        stray as never,
+        snapshot(),
+        graph,
+        NO_PREDICATES,
+      ),
+    ).toThrow(/closed world/);
+  });
 });
 
 describe("scope stage", () => {
   test("the nearest active scope wins from the inner-to-outer stack order", () => {
-    const result = matchContext(
-      { subject: "image-file", match: "exact", scopes: ["global", "workbench"] },
+    const result = matchSelector(
+      selectorOf({ subject: "image-file", match: "exact", scopes: ["global", "workbench"] }),
       imageFile,
       snapshot(),
       graph,
       NO_PREDICATES,
     );
-    expect(result).toMatchObject({
-      kind: "matched",
-      match: { scope: "workbench", scopeIndex: 1 },
-    });
+    expect(result).toMatchObject({ kind: "matched", match: { scope: "workbench", scopeIndex: 1 } });
   });
 
   test("unknown or inactive scopes reject at the scope stage", () => {
-    const result = matchContext(
-      { subject: "image-file", match: "exact", scopes: ["sidebar"] },
+    const result = matchSelector(
+      selectorOf({ subject: "image-file", match: "exact", scopes: ["sidebar"] }),
       imageFile,
       snapshot(),
       graph,
@@ -111,7 +146,31 @@ describe("scope stage", () => {
     expect(result).toEqual({ kind: "rejected", stage: "scope", reason: "no-active-scope" });
   });
 
-  test("activeScope is exported for the resolver's wildcard families", () => {
+  test("an empty scope list is scope-universal: matches with null scope provenance", () => {
+    const result = matchSelector(
+      selectorOf({ subject: "image-file", match: "exact" }),
+      imageFile,
+      snapshot({ scopes: [] }),
+      graph,
+      NO_PREDICATES,
+    );
+    expect(result).toEqual({
+      kind: "matched",
+      match: {
+        declaredType: "image-file",
+        concreteType: "image-file",
+        typeDistance: 0,
+        scope: null,
+        scopeIndex: null,
+        priority: 0,
+      },
+    });
+    expect(() => {
+      if (result.kind === "matched") requireScoped(result.match, 'rule "r"');
+    }).toThrow(/requires explicit scopes/);
+  });
+
+  test("activeScope picks the lowest stack index among declared scopes", () => {
     expect(activeScope(["global", "editor"], ["editor", "global"])).toEqual({
       scope: "editor",
       index: 0,
@@ -127,7 +186,7 @@ describe("condition stage", () => {
   const predicates = new Map([[isOwner.id, isOwner.evaluate]]);
 
   test("conditions and named predicates evaluate exactly as the action kernel's", () => {
-    const target = {
+    const target = selectorOf({
       subject: "image-file",
       match: "exact",
       scopes: ["global"],
@@ -136,15 +195,11 @@ describe("condition stage", () => {
         capability("can-edit", unavailable("no edit capability")),
         predicate("product.is-owner"),
       ),
-    } as const;
-    const failing = matchContext(target, imageFile, snapshot(), graph, predicates);
-    // `all` fails with the FIRST non-available child, same as evaluateCondition.
-    expect(failing).toEqual({
-      kind: "rejected",
-      stage: "condition",
-      reason: "enable editing first",
     });
-    const passing = matchContext(
+    const failing = matchSelector(target, imageFile, snapshot(), graph, predicates);
+    // `all` fails with the FIRST non-available child, same as evaluateCondition.
+    expect(failing).toEqual({ kind: "rejected", stage: "condition", reason: "enable editing first" });
+    const passing = matchSelector(
       target,
       imageFile,
       snapshot({ modes: new Set(["editing"]), capabilities: new Set(["can-edit"]) }),
@@ -159,13 +214,13 @@ describe("condition stage", () => {
       kind: "hidden",
       because: "not-disclosed",
     }));
-    const result = matchContext(
-      {
+    const result = matchSelector(
+      selectorOf({
         subject: "image-file",
         match: "exact",
         scopes: ["global"],
         when: predicate("always-hidden"),
-      },
+      }),
       imageFile,
       snapshot(),
       graph,
@@ -176,13 +231,13 @@ describe("condition stage", () => {
 
   test("an unknown predicate throws — never defaults to available", () => {
     expect(() =>
-      matchContext(
-        {
+      matchSelector(
+        selectorOf({
           subject: "image-file",
           match: "exact",
           scopes: ["global"],
           when: predicate("missing"),
-        },
+        }),
         imageFile,
         snapshot(),
         graph,
@@ -194,13 +249,8 @@ describe("condition stage", () => {
 
 describe("provenance", () => {
   test("a match carries full provenance including the echoed priority", () => {
-    const result = matchContext(
-      {
-        subject: "file",
-        match: "subtypes",
-        scopes: ["global"],
-        priority: 7,
-      },
+    const result = matchSelector(
+      selectorOf({ subject: "file", match: "subtypes", scopes: ["global"], priority: 7 }),
       imageFile,
       snapshot(),
       graph,
@@ -217,17 +267,5 @@ describe("provenance", () => {
         priority: 7,
       },
     });
-  });
-
-  test("an undeclared concrete type still matches itself exactly (isolated node)", () => {
-    const stray = { type: "stray", value: { id: "s" } } as const;
-    const result = matchContext(
-      { subject: "stray", match: "exact", scopes: ["global"] },
-      stray as never,
-      snapshot(),
-      graph,
-      NO_PREDICATES,
-    );
-    expect(result).toMatchObject({ kind: "matched", match: { typeDistance: 0 } });
   });
 });

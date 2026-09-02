@@ -1320,11 +1320,19 @@ export function createPbui<
   };
 }
 
+/**
+ * The instance type as consumers that do not know the product's facts name
+ * it (pbui-chat takes `PbuiInstance<Values, Environment, Verb>`). The facts
+ * parameter appears only in invariant positions (predicates read it), so the
+ * facts-agnostic spelling must default to `any`, not `unknown` — with
+ * `unknown` no concrete instance is assignable to it.
+ */
 export type PbuiInstance<
   Values extends PresentationValues,
   Environment,
   Verb,
-  ProductFacts = unknown,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ProductFacts = any,
 > = ReturnType<typeof createPbui<Values, Environment, Verb, ProductFacts>>;
 
 export function presentationTypes<Values extends PresentationValues>(

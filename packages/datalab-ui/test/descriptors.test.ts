@@ -164,12 +164,12 @@ describe("<source> and <doc>", () => {
   });
 });
 
-describe("an unknown presentation type degrades rather than throws", () => {
-  test("no descriptor means no verbs, not a crash", () => {
+describe("an undeclared presentation type is an error (closed world, PBUI-KERNEL-1 C9)", () => {
+  test("action resolution refuses a type the graph never declared; labels still fall back", () => {
     // `chart` rather than `tile`: DATADROP-8 gave `tile`, `workspace` and
-    // `stage` descriptors, which is the whole point of the ticket — before it,
-    // right-clicking a tile produced this empty menu.
-    expect(actionsFor("chart", "c7", env())).toEqual([]);
+    // `stage` descriptors. Before KERNEL-1 an undeclared type was an isolated
+    // graph node that produced an empty menu; now it is a visible defect.
+    expect(() => actionsFor("chart", "c7", env())).toThrow(/"chart" is not declared/);
     expect(labelFor("chart", "c7", env())).toBe("c7");
   });
 });
