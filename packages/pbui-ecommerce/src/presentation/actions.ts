@@ -23,6 +23,8 @@ export const SHOP_TYPES: readonly PresentationTypeDefinition[] = [
   { id: "category", parents: [INSPECTABLE] },
   { id: "metal", parents: [INSPECTABLE] },
   { id: "field" },
+  // The workspace strip presents `<workspace>` rows; the shop describes them.
+  { id: "workspace" },
 ];
 
 /** The active inner-to-outer stack every shop query resolves in. */

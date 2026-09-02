@@ -20,9 +20,13 @@ type Facts = Record<string, never>;
 function presentationWith(options: Parameters<typeof createWorkbenchPresentationFragment<Values, unknown, Facts>>[0] = {}) {
   return definePresentation<Values, unknown, Facts, WorkbenchVerb>().create({
     id: "test.workbench",
-    include: [createWorkbenchPresentationFragment<Values, unknown, Facts>(options)],
+    include: [
+      createWorkbenchPresentationFragment<Values, unknown, Facts>({
+        ...options,
+        descriptors: { workspace: { label: (workspace) => workspace.name } },
+      }),
+    ],
     knownScopes: ["global"],
-    descriptors: { workspace: { label: (workspace) => workspace.name } },
     defaultActiveScopes: ["workbench", "global"],
     revision: () => 0,
   });

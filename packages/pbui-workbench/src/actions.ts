@@ -207,11 +207,12 @@ export interface WorkbenchPresentationFragmentOptions<
    */
   links?: WorkbenchLinkContributionOptions<ProductFacts>;
   /**
-   * Descriptor overrides. The fragment supplies the canonical `tile`, `port`
-   * and `link` descriptors; a product whose tile value is not a `TileRef`
-   * passes its own `tile` descriptor here. `workspace` is DECLARED by this
-   * fragment but described by the product (its shape is product-owned), so a
-   * product must supply it in its own fragment.
+   * Descriptor overrides and additions. The fragment supplies the canonical
+   * `tile`, `port` and `link` descriptors; a product whose tile value is not
+   * a `TileRef` passes its own `tile` descriptor here. A product that presents
+   * `<workspace>` references (the workspace strip's rows) passes a
+   * `workspace` descriptor here and the fragment DECLARES the type; a product
+   * that never presents one (rag-ttc) omits it and no `workspace` type exists.
    */
   descriptors?: PresentationDescriptorMap<Values, Environment>;
 }
@@ -241,10 +242,13 @@ export interface WorkbenchPresentationFragmentOptions<
  * as `workbenchTileContributions` is.
  */
 export function createWorkbenchPresentationFragment<
-  Values extends PresentationValues & { tile: unknown; workspace: unknown },
+  Values extends PresentationValues & { tile: unknown },
   Environment,
   ProductFacts,
-  Verb extends WorkbenchVerb = WorkbenchVerb,
+  // The product's verb union must ADMIT WorkbenchVerb (a supertype), which
+  // TypeScript cannot state as a constraint; the rules are widened on return
+  // exactly as `workbenchTileContributions` does.
+  Verb = WorkbenchVerb,
 >(
   options: WorkbenchPresentationFragmentOptions<Values, Environment, ProductFacts> = {},
 ): PresentationFragment<Values, Environment, ProductFacts, Verb> {
@@ -269,9 +273,13 @@ export function createWorkbenchPresentationFragment<
         ) as unknown as readonly ActionContribution<Values, ProductFacts, Verb>[])
       : []),
   ];
+  const withWorkspace = Object.hasOwn(descriptors, "workspace");
   return {
     id: "pbui-workbench",
-    types: [...workbenchTypeDefinitions, ...(withLinks ? linkTypeDefinitions : [])],
+    types: [
+      ...workbenchTypeDefinitions.filter((type) => type.id !== "workspace" || withWorkspace),
+      ...(withLinks ? linkTypeDefinitions : []),
+    ],
     knownScopes: [...workbenchScopes, ...(options.links?.scopes ?? [])],
     descriptors: descriptors as PresentationDescriptorMap<Values, Environment>,
     actions,
