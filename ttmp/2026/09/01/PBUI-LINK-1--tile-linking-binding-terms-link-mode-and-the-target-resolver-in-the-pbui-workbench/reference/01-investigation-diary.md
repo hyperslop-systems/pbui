@@ -23,18 +23,23 @@ RelatedFiles:
       Note: Wire reference precedent that resolved the serializability question
     - Path: repo://packages/pbui-ecommerce/src/fixtures/orders.ts
       Note: Seeded order generator with the eight chat-demo anchors
+    - Path: repo://packages/pbui-ecommerce/src/linking.test.tsx
+      Note: Scenes 1 and 2 as DOM postconditions
     - Path: repo://packages/pbui-ecommerce/src/plots/documents.ts
       Note: Three seeded plot documents; branded ids
     - Path: repo://packages/pbui-workbench/src/verbs.ts
       Note: Largest file read; grep-then-range strategy recorded
     - Path: repo://src/chrome/useTileDrag.ts
       Note: startTileCarry recognized as the port-drag lifecycle
+    - Path: repo://src/presentation/links/plan.ts
+      Note: Refusal codes and explanations the badges and menus show
 ExternalSources: []
 Summary: 'Chronological record of the PBUI-LINK-1 investigation: where the linked-tiles research lives, how the toy and the audit were read, what was found in pbui (kernel, accept mode, document bindings, verbs, chrome, products), what was tricky, and how the design guide was produced and delivered.'
 LastUpdated: 2026-09-01T16:40:00-04:00
 WhatFor: Continue or review the PBUI-LINK-1 analysis without re-deriving where the evidence is.
 WhenToUse: Before extending the design guide, before starting Phase 1, or when checking why a design decision cites a particular file.
 ---
+
 
 
 
@@ -425,4 +430,93 @@ pnpm build                                            # pbui core: dist/presenta
 cd packages/pbui-workbench && pnpm build && pnpm test  # 26 files, 255 tests
 cd ../pbui-ecommerce && pnpm test                       # 6 files, 25 tests (fixtures, shop render, fences)
 tmux new-session -d -s ecommerce-sb 'pnpm storybook'    # port 6012; screenshots via Playwright at 1400×800
+```
+
+## Step 6: Phase 2 — the kernel, the link document, the badge, and "Link to…"
+
+Phase 2 is the centre of the design: the pure link kernel in pbui core, the `pbui.links` payload and the view-keyed runtime in pbui-workbench, the link verbs in the `WorkbenchVerb` union, the badge in every tile header, and the two menus (the `<port>` badge's own, and the "Link to…" family on any presentation). By the end of the step the gold-coin shop does scenes 1 and 2 for real: an unlinked detail follows the workspace's current order; right-clicking an order offers "Link to order detail · order" and "Link to inspector · subject"; the badge reads `→ orders`, Pin holds it (`⏸ #88213`), Resume catches up, Detach fixes it, and closing the table freezes the follower with a resume that explains itself.
+
+The screenshots under `various/screenshots/p2-*.png`: the seeded scene 2a with the detail following the table (`→ ORDERS` in its header) and the inspector still ambient (`○ SUBJECT · NONE`), the object menu on an order with the inspector row available and the detail row disabled with its reason ("already follows orders · order"), the inspector linked through `<inspectable>`, and the badge's own menu.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Implement the guide's Phase 2 end to end — kernel, document, runtime, verbs, hooks, badge, menus — in the three layers, and make scenes 1 and 2 of the shop demo work with stories and tests.
+
+**Inferred user intent:** The first visible linking behaviour, reviewable on screen, before the patch bay (Phase 3) is built on top of it.
+
+**Commit (code):** cfa91b2 — "PBUI-LINK-1 Phase 2: link kernel, pbui.links document, runtime, Ambient/Constant/Follow/Hold, badge, menus"
+
+### What I did
+
+- **Core `src/presentation/links/`** (pure, no React; the `no-react.test.ts` fence strips comments before checking): `terms.ts` (the seven terms, `isBinding` structural validation for what is read back from a document, `sourcePortOf`, `linkIdOf`), `verbs.ts` (`LinkVerb`, `linkVerbs`, `isLinkVerb`, `describeLinkVerb`), `snapshot.ts` (`LinkSnapshot`, `PortDefinition`, `LinkDeps` with `graph`, optional `label` and `relation`; `reaches()` treats `<any>` as reachable), `evaluate.ts` (`effectiveBinding` with the D2 precedence; `evaluatePort` with a `visiting` path so a cycle is a diagnostic; following a follower reads the input's evaluation; `valueToHold` prefers the attended value), `plan.ts` (`planFollow` refuses with codes `port-missing`/`self`/`direction`/`type`/`held`/`already`/`cycle`; `planBind`, `planAmbient`, `planPin`, `planResume` — a hold over `Unresolved` says why it cannot resume — `planDetach`, `planClear`, `planUnlink` per policy), `apply.ts` (`applyLinkVerb`: plan then transition on a copy of the bindings map; `resume` restores an implicit term as the ABSENCE of a term so the document ends where it started), `lifecycle.ts` (`bindingsAfterViewsRemoved` applying `onSourceClose` — freeze holds with `Unresolved("source-closed")`, clear, ambient; `bindingsAfterAppReplaced`; `bindingsAfterClone` re-keys sources and suffixes link ids), `badge.ts` (`badgeOf` with the report's glyphs; `badgesOfView` hides outputs, untouched document slots and unbound ports), `invariants.ts`. 40 kernel tests over a ten-port world (`world.test-helpers.ts`).
+- **pbui-workbench `src/links/`**: `document.ts` (`pbui.links` payload, sorted keys, `linksChange` returns null when nothing changes and deletes the payload when empty), `runtime.ts` (`createLinkRuntime`: emitted/contexts/attended, `emit` also attends and drives declared contexts, `forgetView`, `sourceOf`), `snapshot.ts` (`buildLinkSnapshot` from document + apps + runtime; contexts from `fallbackContext`/`drivesContext` declarations), `handlers.ts` (`createLinkHandlers`: cached snapshot per (document identity, runtime revision); `perform` = fresh snapshot → kernel → one `documentPut`; `maintenance` scans a batch for `viewDelete`/`viewConfigure(appId)`/`viewClone` and appends ONE links mutation), `hooks.ts` (`useLinkSnapshot` over both stores, `usePort`, `useEmitPort`, `useBadges`), `portRef.ts` (`PortRef`, `createPortDescriptor`), `contributions.ts` (`workbenchLinkContributions`: rules for `"port"` — Pin, Resume, Detach, three Unlink rows, Return-to-fallback, Go to source — and the `Link to…` family per subject type, following from `sourceOf(subject)` when known, else `port.bind`).
+- **Wiring**: `verbs.ts` — `WorkbenchVerb | LinkVerb`, `isWorkbenchVerb` falls through to `isLinkVerb`, `describeWorkbenchVerb` delegates, `VerbEnvironment` gains `runtime`/`linkEnvironment`/`onLinkRefused`, every `store.mutate(` inside `createVerbHandlers` became `mutate(` (a wrapper that appends the link maintenance and forgets runtime values of deleted views), `performWorkbenchVerb` routes link verbs; `store.ts` gains `linkModeOpen`; `createWorkbench` creates one runtime shared by the real and the shadow handlers and exposes `workbench.links`; `types.ts` gains `Workbench.links` and `SurfaceProps.renderBadges`; `Tile.tsx` renders badges after the ×N marker (default `PortBadge`, or the product's `renderBadges`); `Surface.tsx` passes it through. `components/PortBadge/` with a story of every state. `stories/demoApps.tsx` uses the hooks; `stories/LinkLab.stories.tsx`. `links/links.test.tsx`: 10 tests asserting badge text and tile content.
+- **pbui-ecommerce**: `Values.port`, `Environment.links`, `snapshotForShop` puts `{ snapshot, deps, sourceOf }` in the facts and the two link revisions in the snapshot revision; `createShopActionRegistry` spreads the link contributions with `subjects: [INSPECTABLE]`; `createShopWorkbench` passes `links: { graph, label }`; `ShopShell` passes `links: workbench.links` in the environment and wraps each badge in a `<port>` presentation; tables emit on click, on right-click (capture phase) and as attended on hover, and the `order`/`customer` out ports declare `drivesContext`; `OrderDetail`/`CustomerDetail`/`Inspector` read `usePort`; `ShopPlot` emits `datum` on activate and `cat` on legend or category-bearing marks; the story harness gained `setup` with `presentOrder`/`followOrders`/`holdOrders`; `linking.test.tsx` covers scenes 1 and 2 through the DOM (right-click → menu row → badge; badge → Pin/Resume/Detach; serialize/restore; close → freeze).
+- Printed the P2 start slip; screenshots of scene 2a, the "Link to…" menu, the linked inspector, and the badge menu.
+
+### Why
+
+- `applyLinkVerb` as a pure transition (rather than logic in handlers) is the toy's "one core, many instruments" invariant: the kernel tests exercise the same function the badge menu, the family, the agent and (Phase 3) the drag will call.
+- One `mutate` wrapper instead of editing `close`/`replace`/`link`/`deleteWorkspace`/`cloneWorkspace` separately: the maintenance is a function of the batch, so it cannot be forgotten by a future handler, and `plan()`'s shadow store gets it for free.
+- The right-click emits in the CAPTURE phase because the `Presentation` inside the row stops the bubbling `contextmenu` (it owns the menu); a row must present itself before its menu opens so "Link to…" shows that order immediately.
+
+### What worked
+
+- The action kernel's shapes transferred directly: `available`/`unavailable(because, code)` are the plan statuses, `defineActions().family` is the "Link to…" family, `metadata.label` as a function gives "Unfix" versus "Return to its fallback".
+- `useSyncExternalStore` over two stores with one cached snapshot keyed by `(document identity, runtime revision)` — every hook in a render shares one `LinkSnapshot`.
+- The Playwright accessibility snapshot showed the menu rows with their disabled reason (`menuitem "Link to order detail · order — … already follows orders · order" [disabled]`), which is the report's "unavailable stays visible and explains itself" rule working through pbui's existing menu.
+
+### What didn't work
+
+- `no-react.test.ts` first flagged `index.ts`, `snapshot.ts` and `types.ts`: the regex matched "document." inside comments ("the workbench document."). Fixed by stripping comments before matching.
+- `restore()` in `apply.ts` failed `tsc` with `Property 'key' does not exist on type 'Binding'` inside a chained `||`; rewritten as a nested conditional that narrows per kind.
+- The law test for an EXPLICIT ambient term expected the document to be byte-identical after pin/resume; the resume deliberately normalizes a redundant term to no term. The test now asserts the effective binding is identical and the document is normalized (empty) for that case.
+- `pnpm test` in pbui-workbench then failed `test/no-hex.test.ts`: the badge story's `"#1042"` matches the hex-colour regex. The labels became "order 1042".
+- The workbench RTL tests asserted badge text right after `wb.perform(...)`; React had not flushed. Wrapped in `act`; and `act(() => wb.perform(...))` returns a thenable, so a `performed()` helper captures the boolean.
+- The shop's scene tests failed twice for real reasons: the orders app's `order` port had no `drivesContext`, so ambient never moved (fixed in `apps.tsx`); and the right-click's `onContextMenu` on the row never fired because the presentation stops propagation (moved to `onContextMenuCapture`).
+- The first Phase 2 commit failed silently: the message's `"Link to…"` closed the shell's double-quoted string. Committed again with `git commit -F`.
+- Storybook logged `Failed to reload /src/tiles/ShopPlot/ShopPlot.tsx` once during a multi-file write; it recovered on the next save (the served module was current).
+
+### What I learned
+
+- `WorkbenchVerb | LinkVerb` needs no change in `workbenchTools.ts`: the agent's `workbench_perform` validates with `isWorkbenchVerb`, which now falls through to `isLinkVerb`.
+- React's `act` returns a thenable even for synchronous callbacks in React 19; capture the result in a closure.
+- The Playwright right-click on a table row landed on a different row once (the story had re-rendered under HMR); the second attempt on a visible id worked.
+
+### What was tricky to build
+
+- **Provenance of a right-clicked value.** The family must know which out port an order came from to bind `port.follow` rather than `port.bind`. Values are flat JSON with no provenance (D4), so the runtime answers `sourceOf(reference)` by deep-equality against its attended and emitted cells — which is why hovering a row emits it as attended, and why `snapshotForShop` threads `sourceOf` into the facts.
+- **Where badges get their menu.** `Tile` is in pbui-workbench and has no pbui instance; the product wraps badges through `renderBadges` (the `renderTitle` pattern). The default plain badge still explains itself through `title`/`aria-label`.
+- **`resume(pin(b))` and the document.** Restoring the suspended term literally would leave an explicit `ambient(workspace.order)` where the declared fallback used to be implicit — two states that read the same. `restore()` collapses a redundant suspended term to no term, so serialize() before and after pin/resume is byte-identical (asserted).
+- **Per-batch maintenance timing.** Freeze needs the follower's value BEFORE the source view disappears, so `maintenance(current, mutations)` builds the snapshot from the pre-batch document and appends its mutation to the same batch; `afterCommit` then forgets the runtime cells.
+
+### What warrants a second pair of eyes
+
+- `linksChange` deletes the payload when the map is empty; a server that treats `documentDelete` of a missing id as an error would refuse the batch — the client applier accepts it (`restore()` round-trip test), the Go side is Phase 7's concern.
+- `badgesOfView` hides document-slot constants unless overridden (deviation from the guide's `• Mass and yield` example) to keep plot tile headers short.
+- The `Link to…` family lists EVERY compatible input on screen (no cap, no accept-mode fallback yet) because unbound inputs have no badge to point at; Phase 3's port rails give accept mode something to click.
+- `useEmitPort` looks up the declaration on every emit through `workbench.apps.get(view.appId)`; cheap, but a hot hover path could memoize it.
+
+### What should be done in the future
+
+- Phase 3: rails + wires + port carry; then the family's ">6 targets → accept mode" fallback.
+- Phase 4 replaces the family's direct `port.follow`/`port.bind` with `show` intents through `resolveShow`.
+- `context.create`/`context.drive` verbs (declared contexts beyond port declarations) when a product needs a context no port declares.
+
+### Code review instructions
+
+- Kernel: `src/presentation/links/{terms,evaluate,plan,apply,lifecycle,badge}.ts` with `kernel.test.ts` beside them (`npx vitest run src/presentation/links`).
+- Shell: `packages/pbui-workbench/src/links/{handlers,hooks,contributions}.ts`, the `mutate` wrapper in `verbs.ts` (search `links.maintenance`), `Tile.tsx`; `links.test.tsx`.
+- Product: `packages/pbui-ecommerce/src/{presentation/actions.ts,ShopShell/ShopShell.tsx,tiles/OrdersTable/OrdersTable.tsx,tiles/OrderDetail/OrderDetail.tsx}`; `linking.test.tsx`.
+- `pnpm build` at the root, then `packages/pbui-workbench` (`pnpm test && pnpm build`), then `packages/pbui-ecommerce` (`pnpm test`); Storybook `Shop/Scenes/2a` and `Workbench/LinkLab`.
+
+### Technical details
+
+```bash
+cd pbui && pnpm build && npx vitest run src/presentation/links     # 40 tests
+cd packages/pbui-workbench && pnpm test && pnpm build              # 27 files, 265 tests
+cd ../pbui-ecommerce && pnpm test && pnpm build                    # 7 files, 30 tests
+# scene 2 by hand: Storybook Shop/Scenes → "2a · follow", right-click #88152, choose "Link to inspector · subject"
 ```

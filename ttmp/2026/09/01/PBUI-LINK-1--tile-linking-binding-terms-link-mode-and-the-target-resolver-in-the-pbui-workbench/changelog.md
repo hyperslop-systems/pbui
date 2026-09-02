@@ -49,3 +49,14 @@ Phase 1 (commit 4833208): ports and contracts in pbui core (links/types.ts); App
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/apps.ts — AppDescriptor.ports; isDocBound/documentSlots derived
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/types.ts — Port contracts, declarations, ids, fingerprints
 
+
+## 2026-09-01
+
+Phase 2 (commit cfa91b2): pure link kernel in core (terms, evaluate, plan, applyLinkVerb, lifecycle, badge, invariants; 40 tests); pbui.links payload, LinkRuntime, link handlers with per-batch maintenance, LinkVerb in the WorkbenchVerb union, usePort/useEmitPort, PortBadge in Tile, port menus and the Link-to family in pbui-workbench (10 tests); the shop does scenes 1 and 2 (ambient, follow, pin/resume/detach, close→freeze) with stories and DOM tests (30 tests); screenshots p2-*
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/links/contributions.ts — Port menu rules and the Link-to family
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/links/handlers.ts — Link handlers; per-batch maintenance appended by the mutate wrapper
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/apply.ts — applyLinkVerb, the one transition every instrument calls
+
