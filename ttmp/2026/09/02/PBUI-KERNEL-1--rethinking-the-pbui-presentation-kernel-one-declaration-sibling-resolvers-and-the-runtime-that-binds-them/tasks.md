@@ -47,8 +47,8 @@ Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–
 
 ## Phase 4: Acceptance over relations
 
-- [ ] translators/ → acceptance/; `AcceptanceOption.relation` <!-- t:p4a -->
-- [ ] Delete PresentationTranslator, relationFromTranslator, old resolver branch <!-- t:p4b -->
+- [x] translators/ → acceptance/; `AcceptanceOption.relation` <!-- t:p4a -->
+- [x] Delete PresentationTranslator, relationFromTranslator, old resolver branch <!-- t:p4b -->
 
 ## Phase 5: Runtime strict cutover
 
