@@ -37,3 +37,15 @@ Phase 0 (commit cc771ca): golden tests for cross-workspace doc-bound de-dup and 
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/linkingGoldens.test.ts — Phase 0 golden tests
 
+
+## 2026-09-01
+
+Phase 1 (commit 4833208): ports and contracts in pbui core (links/types.ts); AppDescriptor.ports replaces bindings/docBound across five packages; describeWorkbench reports ports; packages/pbui-ecommerce scaffolded on the gold-coin shop (D11) with fixtures, host, seven tiles with ports, three plots, shell, stories, demo; guide gains D11, a rewritten §11.1, and Q7
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/src/apps.tsx — The seven shop tiles and their port declarations
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/src/host.ts — ShopHost, the interface pbui-datalab will implement
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/apps.ts — AppDescriptor.ports; isDocBound/documentSlots derived
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/types.ts — Port contracts, declarations, ids, fingerprints
+

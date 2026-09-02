@@ -884,6 +884,15 @@ Every badge and rail port is a focusable `Presentation` with an accessible name 
 - **Consequences:** §11 is rewritten around the e-commerce package; the "two coordination vocabularies during migration" risk disappears; Phase 0's golden tests shrink to the workbench verbs; the interim "ports as host cells" step in PBUI-DATALAB-1 is dropped in favour of writing tiles against `usePort` once Phase 2 lands. Must validate: the e-commerce package has no dependency on `datalab-ui`, and `pbui-datalab` (DATALAB-1) can implement the same host interface.
 - **Status:** accepted (2026-09-01).
 
+### Decision D11: One world — the gold-coin shop; `pbui-ecommerce` owns it, the chat demo consumes it
+
+- **Context:** The pbui-chat demo (`packages/pbui-chat/demo`) already contains a gold-coin shop: eight SKUs, six categories, three metals and four orders, mirrored by hand from the Go chat server's `pkg/chatserver/demo/data.go`, with `product`/`order`/`category`/`metal` presentation types and four tiles (inventory, SKU, metals, notes). §11.1 as first written specified a generic orders/customers world and did not know about it.
+- **Options considered:** (a) a generic fixture in the new package, leaving two shop worlds in the repo; (b) the new package owns an EXPANDED gold-coin shop — the eight SKUs verbatim, plus twelve customers, a sixty-five order book with line items, and a derived daily sales series — and the chat demo switches to consuming it in Phase 7 (scene 8); (c) build the linking demo inside the chat demo.
+- **Decision:** (b), on user review (2026-09-01: "merge both worlds, and expand the existing one to have richer data").
+- **Rationale:** (a) adds a third copy of the product table; (c) makes the linking package depend on pbui-chat and on the Go server. (b) keeps the Go mirror true for the eight SKUs and the `lastOrder` ids, and gives the chat demo richer data for free once it consumes the package.
+- **Consequences:** `fixtures/products.ts` is `world.ts` verbatim; the eight anchor orders (88150, 88177, 88190, 88201, 88209, 88210, 88213, 88214) keep the chat demo's customer, total, item count, date and status where it had them; customers, the other fifty-seven orders, line items and `daily_sales` are new and exist only in the package until `data.go` grows (a chat-server follow-up, not this ticket). Must validate: `fixtures.test.ts` pins the four chat-demo orders and every foreign key; scene 8 is the chat demo hosting the package's apps.
+- **Status:** accepted (2026-09-01).
+
 ## 8. Pseudocode and key flows
 
 ### 8.1 Effective binding and evaluation
@@ -1187,35 +1196,45 @@ Files: `describe.ts` (+links, +contexts), `vocabularyOf` additions, a `Coordinat
 
 ## 11. Demo applications, in order
 
-### 11.1 `pbui-ecommerce`: the self-contained first consumer (Phases 1–6)
+### 11.1 `pbui-ecommerce`: the gold-coin shop as the first consumer (Phases 1–6)
 
-`pbui/packages/pbui-ecommerce` (`@hyperslop-systems/pbui-ecommerce`) is a demo product in the shape of `pbui-plotscript`: a package with apps, a Vite demo app, Storybook stories, and the audit-style Playwright suite. It depends on `pbui`, `pbui-workbench`, and `@hyperslop-systems/plot`; never on `datalab-ui` or DuckDB.
+`pbui/packages/pbui-ecommerce` (`@hyperslop-systems/pbui-ecommerce`) is a demo product in the shape of `pbui-plotscript`: a package with apps, a Vite demo app, Storybook stories, and (from Phase 3) the audit-style Playwright suite. It depends on `pbui`, `pbui-workbench`, `workbench-protocol` and `@hyperslop-systems/plot`; never on `datalab-ui`, `pbui-chat` or DuckDB. Its world is the gold-coin shop (D11). As scaffolded in Phase 1:
 
 ```text
 packages/pbui-ecommerce/
 ├── src/
-│   ├── fixtures/         orders, customers, products, line_items, daily_sales — deterministic, a few hundred rows each,
-│   │                     every table with a declared identity field (order_id, customer_id, product_id, …)
-│   ├── host.ts           ShopHost: in-memory tables, primary-key lookups, and the relations the demo derives through
-│   │                     (order.customer, order.lineItems, product.orders, customer.orders); subscribe/revision
-│   ├── presentation/     the product's Values: order, customer, product, lineItem, datum, cat, field, plot, port, link, context;
-│   │                     type graph with abstract `inspectable`; translators = the host relations (ids order.customer, …)
-│   ├── apps.tsx          createEcommerceApps(host): the tiles below, each with `ports`
-│   ├── tiles/            OrdersTable, CustomersTable, ProductCatalog, OrderDetail, CustomerDetail, Inspector, Plot
-│   ├── plots/            seeded `hyperslop.plot` payloads: revenue over time, revenue by category, orders by status
-│   └── index.ts
-├── demo/                 Vite app copied from pbui-plotscript/demo: createWorkbench + local persistence + seeded workspaces
-└── src/*.stories.tsx     one story per scene (below)
+│   ├── fixtures/         products (the chat demo's eight SKUs, categories, metals, verbatim), customers (12),
+│   │                     orders (65, ids 88150–88214, eight hand-written anchors + a seeded generator) with
+│   │                     line_items, daily_sales (derived per day × category; cancelled orders excluded).
+│   │                     fixtures.test.ts: every row survives JSON round-trip (D4); every foreign key resolves
+│   ├── host.ts           ShopHost: rows(table), primary-key lookups, the relations the demo derives through
+│   │                     (orderCustomer, orderLineItems, customerOrders, productOrders), revision/subscribe
+│   ├── document.ts       two payload formats in the workbench document: `hyperslop.plot` (a PlotDocument verbatim)
+│   │                     and `pbui-ecommerce.table` (names one host table; the seam DATALAB-1 replaces with a relation)
+│   ├── presentation/     Values (order, customer, product, lineItem, datum, category, metal, field, tile, workspace),
+│   │                     descriptors, type graph with abstract `inspectable`, action registry, snapshotFor, createShopPbui
+│   ├── apps.tsx          createShopApps(shop): the seven tiles below, each with `ports`
+│   ├── tiles/            OrdersTable, CustomersTable, ProductCatalog, OrderDetail, CustomerDetail, Inspector, ShopPlot
+│   ├── plots/            schemas per table; three seeded plots: revenue-by-day, revenue-by-category, orders-by-status
+│   ├── seed.ts           seedShopDocument(): four workspaces (orders, customers, sales, catalog) + every plot and table payload
+│   ├── createShop.ts     createShop() → { host, pbui, apps }; createShopWorkbench(shop)
+│   ├── ShopShell/        the product shell: Provider (router = workbench), Surface with <tile> titles, launcher, menus
+│   └── stories/          harness (ShopStory over a layout, DirectStory for one tile); scenes in ShopShell.stories.tsx
+├── test/                 fences: component folders, no hex, no raw controls, and the D10 cutover rules
+└── demo/                 Vite app (port 5176) with local persistence; Storybook on port 6012
 ```
 
 | tile | document slots | ports | what it shows |
 |---|---|---|---|
-| `orders` | `table` (fixture name) | out `order : <order>` (role `order.current`; row click emits, row hover emits attended); inout `selection : <datum[]>` (role `selection`, authority = table name); in `filter : <cat>` (role `filter`) | the orders table; a category arriving on `filter` narrows the rows |
-| `customers`, `products` | `table` | out `customer`/`product`; inout `selection` | the other two tables |
-| `order-detail` | — | in `order : <order>` (`fallbackContext: "workspace.order"`, `onSourceClose: "freeze"`) | one order's facts and line items |
-| `customer-detail` | — | in `customer : <customer>` (`fallbackContext: "workspace.customer"`) | one customer; typically `Derived(orders.order, order.customer)` |
-| `inspector` | — | in `subject : <inspectable>` (`fallbackContext: "workspace.inspected"`) | whatever was last inspected or linked in |
-| `plot` | `plot` (a `hyperslop.plot` payload), `table` | inout `selection : <datum[]>`; out `datum : <datum>` (activate), `cat : <cat>` (legend click, bar click) | `ResponsivePlot` over the fixture rows through `@hyperslop-systems/plot`; brush emits selection |
+| `orders` | — | out `order : <order>` (role `order.current`); inout `selection : <datum[]>` (role `selection`, authority `orders`); in `filter : <category>` (role `filter`) | the order book; every id is an `<order>` presentation |
+| `customers` | — | out `customer`; inout `selection` (authority `customers`) | twelve customers with their summer spend |
+| `products` | — | out `product`, out `cat : <category>`; inout `selection` (authority `products`) | the eight SKUs; product, category and metal are three presentation types in one row |
+| `order-detail` | — | in `order : <order>` (role `order.detail`, `fallbackContext: "workspace.order"`, `onSourceClose: "freeze"`) | one order's facts and line items; customer and products are presentations |
+| `customer-detail` | — | in `customer : <customer>` (role `customer.detail`, `fallbackContext: "workspace.customer"`) | one customer and their orders |
+| `inspector` | — | in `subject : <inspectable>` (`fallbackContext: "workspace.inspected"`, `onSourceClose: "clear"`) | whatever was last inspected or linked in, as JSON |
+| `plot` | `plot` (a `hyperslop.plot` payload), `table` (a `pbui-ecommerce.table` payload) | inout `selection : <datum[]>` (authority `plot`, see Q7); out `datum : <datum>` (activate); out `cat : <category>` (bar or legend click) | `ResponsivePlot` over the host's rows for the named table; rows never enter the document |
+
+Two deliberate deviations from the first draft of this table: the three table tiles carry no `table` document slot (each is bound to its table by construction, so the launcher offers them directly; DATALAB-1 adds the slot when a table becomes a relation document), and the plot's `selection` authority is the static string `plot` because a contract is declared per app while the bound table is per view (open question Q7).
 
 Scenes, each a Storybook story and a Playwright scenario, in the order the phases land:
 
@@ -1318,6 +1337,8 @@ Stories for `PortBadge` (every state), `PortRail`, `WireLayer` (every term style
 4. **Cross-workspace follow**: a follower whose source is in another workspace evaluates fine (terms key on view id) but the wire cannot be drawn; the portal marker is Phase 7. Should the badge say "Orders East · Fulfillment"? Proposed: yes.
 5. **Undo granularity**: the workbench has `plan`/`applyPlan` but no history stack; products own undo. Should `pbui-workbench` gain a small history of applied plans? Out of scope here; note for a follow-up ticket.
 6. **Server validation timing**: validate `pbui.links` on the server from Phase 2 (strict) or accept unknown payloads until Phase 7 (lenient)? Proposed: lenient; the client kernel refuses illegal states before they are written.
+
+7. **Per-view contracts.** A plot tile's `selection` authority domain is the table it is bound to, which is a fact of the VIEW, while `PortContract` is declared per APP. Phase 1 declares `authorityDomain: "plot"`; Phase 5's identity check needs either a `refineContract(view)` hook on the declaration or a contract the shell computes from the document slots. Proposed: the hook, because the declaration stays the single place a reader looks.
 
 ## 14. File reference and reading order
 

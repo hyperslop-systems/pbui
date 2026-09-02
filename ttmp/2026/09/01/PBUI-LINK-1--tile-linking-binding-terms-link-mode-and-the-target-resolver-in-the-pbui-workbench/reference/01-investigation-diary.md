@@ -21,6 +21,10 @@ RelatedFiles:
       Note: Read in full as the executable reference for the binding transitions
     - Path: repo://packages/pbui-chat/src/types.ts
       Note: Wire reference precedent that resolved the serializability question
+    - Path: repo://packages/pbui-ecommerce/src/fixtures/orders.ts
+      Note: Seeded order generator with the eight chat-demo anchors
+    - Path: repo://packages/pbui-ecommerce/src/plots/documents.ts
+      Note: Three seeded plot documents; branded ids
     - Path: repo://packages/pbui-workbench/src/verbs.ts
       Note: Largest file read; grep-then-range strategy recorded
     - Path: repo://src/chrome/useTileDrag.ts
@@ -31,6 +35,7 @@ LastUpdated: 2026-09-01T16:40:00-04:00
 WhatFor: Continue or review the PBUI-LINK-1 analysis without re-deriving where the evidence is.
 WhenToUse: Before extending the design guide, before starting Phase 1, or when checking why a design decision cites a particular file.
 ---
+
 
 
 # Diary
@@ -338,4 +343,86 @@ Follow-up mid-turn: "and update the design doc to merge both worlds, and expand 
 ```bash
 python3 ~/.pi/agent/skills/brutalist-work-slip/scripts/work_slip.py plan --task PBUI-LINK-1 --label PLAN --title "Tile Linking In pbui" --phase "P0 golden tests, baseline" ... --next "P0 golden tests"
 cd packages/pbui-workbench && pnpm test      # 25 files, 252 tests (baseline), 26 files, 255 after
+```
+
+## Step 5: Phase 1 — ports on the descriptor, and the gold-coin shop package
+
+Phase 1 puts the port vocabulary into the codebase without changing any behaviour: a pure `links/` module in pbui core defines contracts, declarations and ids; `AppDescriptor.ports` replaces `bindings` and `docBound` everywhere (design D10's hard cutover), with the two old facts derived from document-slot ports; `describeWorkbench` reports ports. The second half of the step is the first consumer, `packages/pbui-ecommerce`: the gold-coin shop from the chat demo, expanded (D11), with seven tiles that declare the ports every later phase will link through, three seeded plots, a shell, stories, and a Vite demo.
+
+The screenshots under `various/screenshots/p1-*.png` show the seeded workbench (orders beside a waiting detail and inspector), the sales workspace with its three plots, and the order-detail tile over order 88213 rendered directly.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4) — plus, mid-turn: "and update the design doc to merge both worlds, and expand the existing one to have richer data and all that"
+
+**Assistant interpretation:** Do the guide's Phase 1 (ports and contracts, no behaviour), scaffold the demo package on the gold-coin shop domain with richer fixtures, and record the merge decision in the guide.
+
+**Inferred user intent:** One world for the shop across pbui, with data rich enough for every linking scene, before any linking behaviour exists.
+
+**Commit (code):** 4833208 — "PBUI-LINK-1 Phase 1: ports and contracts on AppDescriptor; pbui-ecommerce (gold-coin shop) scaffold"
+
+### What I did
+
+- `src/presentation/links/types.ts` (+ `index.ts`, re-exported from `presentation/index.ts`): `PortDirection`, `PortContract` (seven identity fields), `PortContractInput`, `PortDeclaration(Input)`, `PortId` with `portId`/`parsePortId`, `normalizeContract` (mode follows direction), `CONTRACT_IDENTITY_FIELDS`, `contractFingerprint`, `contractMismatches` (a list of fields, never a boolean), `definePort`/`definePorts` (fail-fast on `/` in names, empty docs, duplicates), `documentSlotPort`, `documentSlotsOf`, `hasDocumentSlot`. Thirteen unit tests.
+- `pbui-workbench/src/apps.ts`: `ports?: readonly PortDeclaration[]` on `AppDescriptor`; `bindings` and `docBound` deleted; `isDocBound(app)` and `documentSlots(app)` exported; `defineApp` normalizes ports. Callers switched: `verbs.ts` (`openView` de-dup), `launcherRows.ts`, `describe.ts` (+ `DescribedPort`, `ports` per app, `docBound`/`bindings` kept as derived fields for agent readers), the demo `counter` (out `count:<number>`) and `notes` (in `subject:<any>`), and the tests that built widget/sku apps by hand.
+- Other packages: `pbui-chat` (chat, widget, conversation-context apps; `workbenchTools.ts` reads `documentSlots(app)`; two test fixtures), `pbui-plotscript` (script, plot-view), `pbui-sandbox` (script, inspector, source), the chat demo (sku, notes). Each `docBound: true` + `bindings: [X]` pair became `ports: [documentSlotPort(X, "…")]`.
+- The `describeWorkbench` golden snapshot updated deliberately: the diff is purely additive (`ports` on three apps).
+- `packages/pbui-ecommerce`: package config in the plotscript shape (Storybook port 6012, demo port 5176), `fixtures/` (products verbatim from `world.ts`; twelve customers; sixty-five orders from eight hand-written anchors plus a seeded LCG, with line items; `daily_sales` derived), `host.ts` (`ShopHost` interface + fixture implementation + `useHostRevision`), `document.ts` (`hyperslop.plot` and `pbui-ecommerce.table` payloads), `presentation/` (values, descriptors, type graph with abstract `inspectable`, registry, `snapshotFor`, `createShopPbui`), `apps.tsx` (seven apps with ports), `tiles/` (OrdersTable, CustomersTable, ProductCatalog, OrderDetail, CustomerDetail, Inspector, ShopPlot), `plots/` (schemas, three plot documents), `seed.ts`, `createShop.ts`, `ShopShell/`, `stories/harness.tsx`, `test/` fences (component folders, no hex, no raw controls, D10 cutover rules), `demo/`. Twenty-five tests.
+- Guide: D11 added, §11.1 rewritten around the package as built (with the two deviations), Q7 added to §13.3.
+- Registered `packages/pbui-ecommerce/demo` in `pnpm-workspace.yaml`; `pnpm install --offline`.
+
+### Why
+
+- D10: no compatibility layer, so the descriptor loses two fields rather than gaining a third way to say the same thing; the derived helpers keep the readers (`openView`, launcher rows, agent tools) one-line changes.
+- The chat demo's gold-coin shop already existed with a Go mirror; a second shop world would have been a third copy of the product table (D11).
+- Fixtures are generated by a seeded LCG at module load so there is no JSON file to keep in step with the generator and every screenshot shows the same book.
+
+### What worked
+
+- `definePorts` in `defineApp` means every reader sees normalized declarations; no caller branches on `undefined`.
+- The plotscript package was a complete template: config, Storybook, demo, test setup (the ResizeObserver stub is what lets `ResponsivePlot` render under jsdom).
+- `git stash` around the plotscript test run showed its one failing test (`tiles.test.tsx`, "typing schedules a run…") fails on a clean tree too.
+
+### What didn't work
+
+- Downstream packages consume `dist`, so the first typecheck of pbui-plotscript/sandbox/chat reported `'ports' does not exist in type 'DefineAppInput'` until `pnpm build` ran in pbui core and then in pbui-workbench. Order matters: core build → workbench build → package typechecks.
+- The plot author helpers take branded ids (`VariableId`, `LayerId`, `FieldId`, `PlotId`); the first draft of `plots/documents.ts` failed with seventeen `TS2345`/`TS2353` errors. Fixed with three one-line casters and a `variables()` helper.
+- `pbui-chat`'s `test/grid-columns.test.ts` fails on a clean tree (it points at `pbui-sandbox/src/devtools/SourceTile/SourceTile.module.css`); not touched.
+- The demo's typecheck ran before the package's `dist` existed and reported `Cannot find module '@hyperslop-systems/pbui-ecommerce'`; it passed after `pnpm build`.
+
+### What I learned
+
+- `PresentationTypeDefinition` has `abstract?: boolean`; a `subject : <inspectable>` port is one line in the graph.
+- `Chip` has no free-form colour; status tones are expressed through `state` ("stale", "disabled").
+- A `DocumentPayload` body is a plain JSON object in the generated TS; a `PlotDocument` stores verbatim after one `JSON.parse(JSON.stringify(…))`.
+
+### What was tricky to build
+
+- **Where the derived facts live.** Deleting `docBound`/`bindings` from the descriptor but keeping them in `DescribedApp` looks inconsistent until one notices the two readers differ: the descriptor is written by products (one vocabulary: ports), the description is read by agents whose prompts say "bind". Keeping `docBound`/`bindings` derived in the description avoided touching `workbenchTools.ts`'s prompt text.
+- **Per-view contracts (Q7).** The plot's `selection` authority should be its bound table, but a contract is declared per app. Declared `"plot"` for now and recorded the hook proposal rather than inventing a mechanism Phase 5 may not want.
+- **The order generator's anchors.** The chat demo's four orders had to keep their totals; the eight anchors are hand-written and the generator skips their ids, so a change to the seed cannot move them.
+
+### What warrants a second pair of eyes
+
+- The `DescribedApp` shape: `docBound`/`bindings` kept as derived fields plus `ports`. If agent prompts should speak only of ports, they can be dropped in Phase 7 with the vocabulary work.
+- `plots/documents.ts`: the revenue-by-day scatter draws one point per (day, category); a line per metal needs a summary stat the author API exposes as `stat.summary`, not tried.
+- The three table tiles have no `table` slot (deviation from the first §11.1); DATALAB-1 adds it.
+
+### What should be done in the future
+
+- Phase 2 replaces `preview` props on the detail tiles with `usePort`.
+- A chat-server follow-up to grow `data.go` with customers/orders if the chat demo consumes the package (scene 8).
+
+### Code review instructions
+
+- Start with `src/presentation/links/types.ts` and `packages/pbui-workbench/src/apps.ts`; then `packages/pbui-ecommerce/src/apps.tsx` for the port declarations and `host.ts` for the interface.
+- `pnpm build` (root) → `cd packages/pbui-workbench && pnpm build && pnpm test` → `cd ../pbui-ecommerce && pnpm typecheck && pnpm test` → `pnpm storybook` and open `Shop/Scenes/Seeded`.
+
+### Technical details
+
+```bash
+pnpm build                                            # pbui core: dist/presentation/links/
+cd packages/pbui-workbench && pnpm build && pnpm test  # 26 files, 255 tests
+cd ../pbui-ecommerce && pnpm test                       # 6 files, 25 tests (fixtures, shop render, fences)
+tmux new-session -d -s ecommerce-sb 'pnpm storybook'    # port 6012; screenshots via Playwright at 1400×800
 ```
