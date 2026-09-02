@@ -316,7 +316,9 @@ Rules of `deriveFacets`, each a unit test:
 
 - An edge is considered only when `facet` is set and `invocation` is in its `invocations` (default `menu | agent | introspection`).
 - Source match follows the translator's `match` (`exact` or `subtypes`), scope follows `scopes` as `resolveAcceptance` does, `when` is evaluated with the same predicate map.
-- A subject whose type equals the edge's `to` is not its own facet (no identity facet).
+- A yielded reference that deep-equals the subject is not a facet (no identity facet). The test is reference equality, not type equality: a self-edge such as `product → product` ("its replacement SKU") is a legitimate facet when it yields a different product. Deep equality is well-defined because port values are JSON (PBUI-LINK-1 D4).
+- Two edges that yield the same reference produce two facets, distinguished by relation id; nothing merges them.
+- No cycle detection is needed at depth one: a facet's resolution runs `resolveActions` on the facet reference and never calls `deriveFacets` again, families cannot re-enter the resolver (`expand` receives only the context), and translators are pure over a snapshot. An edge pair `lineItem → product` and `product → lineItems` simply produces a product section on a line and a line-items section on a product. If depth ever exceeds one (D2), the visited set is keyed by the deep-equal reference and the bound is a declared depth, never a discovered fixpoint. Cycles in the FOLLOW/DERIVE graph are the link kernel's concern and are already refused by `dependsOn` in `planFollow`/`planDerive` and reported by `evaluatePort`'s visiting path.
 - The output is ordered by relation id; the order carries no meaning and a permutation test asserts it.
 - Depth is one: facets of facets are never derived.
 - The same target type reached through two edges yields two facets, distinguished by relation id.
@@ -354,7 +356,9 @@ export function resolveWithFacets<Values, ProductFacts, Verb>(
 ): FacetedResolution<Values, Verb>;
 ```
 
-`resolveWithFacets` calls `resolveActions` for the subject, then `deriveFacets`, then `resolveActions` once per facet with `{ ...query, subject: facet.reference }`. It does not modify the resolver. Facet rows whose `metadata.primary` is set are kept in the rows (they are ordinary menu rows) but `primary` is reported as `false` on the faceted row, so no consumer can mistake them for the subject's primary (§5.6).
+`resolveWithFacets` calls `resolveActions` for the subject, then `deriveFacets`, then `resolveActions` once per facet with `{ ...query, subject: facet.reference }`. It does not modify the resolver. Facets are deliberately NOT folded into `resolveActions`: the resolver partitions candidates by action id and runs one override ladder per partition, so subject and facet candidates in one call would compete on type distance and scope and the ladder would pick between two different objects (the option D6 rejects). Folding them in would require a `(facet, action)` partition key, which is this function with the bookkeeping hidden inside the resolver. Keeping the resolver single-subject also keeps its permutation, bind-only-selected and hidden/inapplicable tests untouched, and the registry does not own the translators (they are passed to `createPbui` separately, `createPbui.tsx:82-90`).
+
+The public entry point stays one per invocation: `pbui.resolve(query)` returns the faceted result for `menu`, `agent` and `introspection` (the flat subject result is its `.subject`), and the plain `resolveActions` result for `primary` and `accept`, for which `deriveFacets` yields nothing. Facet rows whose `metadata.primary` is set are kept in the rows (they are ordinary menu rows) but `primary` is reported as `false` on the faceted row, so no consumer can mistake them for the subject's primary (§5.6).
 
 Shadowing (`subject-wins`) is applied after both resolutions: a facet row whose action id appears among the subject's rows is dropped and a trace entry `{ stage: "facet", result: "shadowed", reasonCode: "shadowed-by-subject", related: [subjectCandidateId] }` is recorded. The default keeps both, because "inspect this line" and "inspect its product" are different operations with the same action id.
 
