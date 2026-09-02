@@ -90,7 +90,6 @@ export function createPresentationKernel<
     predicateRegistry: predicates,
     relations: relationDeclarations,
     version,
-    requireConcreteTargets: true,
   });
 
   for (const type of Object.keys(declaration.descriptors)) {
@@ -176,7 +175,8 @@ export function createPresentationKernel<
     linkDeps(options) {
       return {
         graph,
-        relations: relations.definitions().map((relation) => ({
+        // Only derivation-exposed relations enter link palettes (C6, §12.1).
+        relations: relations.exposed("derivation").map((relation) => ({
           id: relation.id,
           from: relation.from,
           to: relation.to,

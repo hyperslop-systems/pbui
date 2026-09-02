@@ -19,6 +19,8 @@ export function relationFromTranslator<
     ...(translator.priority !== undefined
       ? { priority: translator.priority }
       : {}),
+    // A translator was only ever an acceptance edge.
+    exposure: { acceptance: true },
     apply: translator.translate,
   };
 }

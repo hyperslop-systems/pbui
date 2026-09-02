@@ -106,11 +106,11 @@ export function resolveAcceptance<
 
   const candidates: RankedOption<Values>[] = [];
   if ("relations" in options) {
-    for (const candidate of options.relations.matches(
-      reference,
-      snapshot,
-      wanted,
-    )) {
+    // Only acceptance-exposed relations participate (§11.3, C6).
+    for (const candidate of options.relations.matches(reference, snapshot, {
+      targets: wanted,
+      exposedTo: "acceptance",
+    })) {
       if (!reachesWanted(candidate.result.type) || !passes(candidate.result)) {
         continue;
       }

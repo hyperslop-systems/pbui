@@ -16,10 +16,30 @@ import type {
   PreparedPresentationRelation,
   PresentationRelationDeclaration,
   PresentationRelationDefinition,
+  RelationDiagnostic,
+  RelationDiscoveryOptions,
   RelationEvaluation,
+  RelationExposure,
   RelationId,
+  RelationInterpreter,
   RelationMatch,
 } from "./types";
+
+/**
+ * The canonical relation system (PBUI-KERNEL-1 §10): validate, prepare,
+ * discover, evaluate, compose. Pure; no React.
+ *
+ * Construction is fail-fast on STRUCTURE — duplicate or empty ids, unknown
+ * source/target types, unknown scopes or predicates, non-finite priorities,
+ * empty or cyclic compositions, incompatible composition endpoints, missing
+ * exposure. Advisory findings (a private relation no composition references)
+ * are returned by `diagnostics()`.
+ *
+ * Discovery is filtered by interpreter EXPOSURE before any relation runs
+ * (C6): acceptance sees only acceptance-exposed relations, link palettes only
+ * derivation-exposed ones. Exposure never gates execution — a public
+ * composition runs its private steps.
+ */
 
 export interface CreateRelationSystemOptions<
   Values extends PresentationValues,
@@ -31,8 +51,6 @@ export interface CreateRelationSystemOptions<
   readonly predicateRegistry?: PredicateRegistry<Values, ProductFacts>;
   readonly relations: readonly PresentationRelationDeclaration<Values, ProductFacts>[];
   readonly version?: string | number;
-  /** A kernel relation must declare a concrete result type. */
-  readonly requireConcreteTargets?: boolean;
 }
 
 export interface RelationSystem<
@@ -45,17 +63,23 @@ export interface RelationSystem<
   readonly version: string | number;
   has(id: RelationId): boolean;
   get(id: RelationId): PreparedPresentationRelation<Values, ProductFacts> | null;
+  /** Every prepared relation in declaration order, public and private. */
   list(): readonly PreparedPresentationRelation<Values, ProductFacts>[];
+  /** The relations one interpreter may discover, in declaration order. */
+  exposed(
+    interpreter: RelationInterpreter,
+  ): readonly PreparedPresentationRelation<Values, ProductFacts>[];
   definitions(): readonly PresentationRelationDefinition[];
+  diagnostics(): readonly RelationDiagnostic[];
   applicable(
     reference: PresentationReference<Values>,
     snapshot: SelectionSnapshot<ProductFacts>,
-    targets?: readonly RuntimeTypeId[],
+    options?: RelationDiscoveryOptions,
   ): readonly ApplicableRelation<Values, ProductFacts>[];
   matches(
     reference: PresentationReference<Values>,
     snapshot: SelectionSnapshot<ProductFacts>,
-    targets?: readonly RuntimeTypeId[],
+    options?: RelationDiscoveryOptions,
   ): readonly RelationMatch<Values, ProductFacts>[];
   evaluate(
     id: RelationId,
@@ -77,6 +101,46 @@ function reaches(
   return from === to || graph.isSubtype(from, to);
 }
 
+export function isExposedTo(exposure: RelationExposure, interpreter: RelationInterpreter): boolean {
+  switch (interpreter) {
+    case "acceptance":
+      return exposure.acceptance === true;
+    case "facet":
+      return exposure.facet === true;
+    case "derivation":
+      return exposure.derivation !== undefined;
+  }
+}
+
+function hasAnyExposure(exposure: RelationExposure): boolean {
+  return (
+    exposure.acceptance === true ||
+    exposure.facet === true ||
+    exposure.derivation !== undefined
+  );
+}
+
+function normalizeExposure(id: RelationId, exposure: RelationExposure | undefined): RelationExposure {
+  if (exposure === undefined || exposure === null || typeof exposure !== "object") {
+    throw new Error(
+      `relation "${id}" declares no exposure — every relation must say which ` +
+        `interpreters may discover it (exposure: {} for a private composition step)`,
+    );
+  }
+  if (exposure.derivation !== undefined && exposure.derivation.transport !== "serializable") {
+    throw new Error(
+      `relation "${id}" exposes derivation without the serializable transport contract`,
+    );
+  }
+  return {
+    ...(exposure.acceptance === true ? { acceptance: true } : {}),
+    ...(exposure.facet === true ? { facet: true } : {}),
+    ...(exposure.derivation !== undefined
+      ? { derivation: { transport: "serializable" as const } }
+      : {}),
+  };
+}
+
 /** Build and validate the canonical typed relation registry. */
 export function createRelationSystem<
   Values extends PresentationValues,
@@ -96,6 +160,7 @@ export function createRelationSystem<
     RelationId,
     PresentationRelationDeclaration<Values, ProductFacts>
   >();
+  const exposures = new Map<RelationId, RelationExposure>();
 
   for (const declaration of options.relations) {
     if (declaration.id.length === 0) throw new Error("a relation has an empty id");
@@ -120,6 +185,7 @@ export function createRelationSystem<
       declaration.when,
       predicates,
     );
+    exposures.set(declaration.id, normalizeExposure(declaration.id, declaration.exposure));
     if (declaration.kind !== "composition") {
       if (!options.graph.has(declaration.from)) {
         throw new Error(
@@ -131,14 +197,8 @@ export function createRelationSystem<
           `relation "${declaration.id}" names unknown target type "${declaration.to}"`,
         );
       }
-      if (
-        options.requireConcreteTargets &&
-        options.graph.isAbstract(declaration.to)
-      ) {
-        throw new Error(
-          `relation "${declaration.id}" targets abstract type "${declaration.to}"`,
-        );
-      }
+      // An abstract codomain is legal (C8); abstract OUTPUTS are rejected at
+      // evaluation, where the concrete type is known.
     } else if (declaration.steps.length === 0) {
       throw new Error(
         `composed relation "${declaration.id}" declares no steps`,
@@ -152,6 +212,8 @@ export function createRelationSystem<
     PreparedPresentationRelation<Values, ProductFacts>
   >();
   const state = new Map<RelationId, "visiting" | "done">();
+  /** Relations named as a step by at least one composition. */
+  const referenced = new Set<RelationId>();
 
   function prepare(
     id: RelationId,
@@ -169,6 +231,7 @@ export function createRelationSystem<
       );
     }
     state.set(id, "visiting");
+    const exposure = exposures.get(id) as RelationExposure;
 
     let relation: PreparedPresentationRelation<Values, ProductFacts>;
     if (declaration.kind !== "composition") {
@@ -178,12 +241,14 @@ export function createRelationSystem<
         steps: [],
         scopes: declaration.scopes ?? [],
         priority: declaration.priority ?? 0,
+        exposure,
       };
     } else {
       const composition: ComposedPresentationRelation = declaration;
-      const steps = composition.steps.map((step) =>
-        prepare(step, [...path, id]),
-      );
+      const steps = composition.steps.map((step) => {
+        referenced.add(step);
+        return prepare(step, [...path, id]);
+      });
       for (let index = 1; index < steps.length; index += 1) {
         const previous = steps[index - 1] as PreparedPresentationRelation<
           Values,
@@ -193,6 +258,9 @@ export function createRelationSystem<
           Values,
           ProductFacts
         >;
+        // Every value the previous step promises must be admissible to the
+        // next step's source: an exact next step needs the exact type; a
+        // subtypes next step needs the promised codomain to reach its source.
         const compatible =
           next.match === "exact"
             ? previous.to === next.from
@@ -212,12 +280,6 @@ export function createRelationSystem<
         Values,
         ProductFacts
       >;
-      if (
-        options.requireConcreteTargets &&
-        options.graph.isAbstract(last.to)
-      ) {
-        throw new Error(`relation "${id}" ends at abstract type "${last.to}"`);
-      }
       relation = {
         ...composition,
         kind: "composition",
@@ -227,10 +289,13 @@ export function createRelationSystem<
         steps: [...composition.steps],
         scopes: composition.scopes ?? [],
         priority: composition.priority ?? 0,
+        exposure,
         apply(reference, snapshot) {
           let current: PresentationReference<Values> | undefined = reference;
           for (const step of steps) {
             if (!current) return undefined;
+            // Each step's own selector gates its execution (§10.6); the
+            // composition's selector gated discovery.
             const applicability = matchSelector(
               selectorOf({
                 subject: step.from,
@@ -286,10 +351,24 @@ export function createRelationSystem<
     );
   }
 
-  function targetMatches(
+  const staticDiagnostics: RelationDiagnostic[] = ordered
+    .filter((relation) => !hasAnyExposure(relation.exposure) && !referenced.has(relation.id))
+    .map((relation) => ({
+      code: "unreachable-private-relation",
+      relationId: relation.id,
+      detail:
+        `relation "${relation.id}" exposes nothing and no composition names it as a step; ` +
+        `no interpreter can ever discover or run it`,
+    }));
+
+  function discoverable(
     relation: PreparedPresentationRelation<Values, ProductFacts>,
-    targets: readonly RuntimeTypeId[] | undefined,
+    discovery: RelationDiscoveryOptions | undefined,
   ): boolean {
+    if (discovery?.exposedTo !== undefined && !isExposedTo(relation.exposure, discovery.exposedTo)) {
+      return false;
+    }
+    const targets = discovery?.targets;
     return (
       !targets ||
       targets.length === 0 ||
@@ -300,11 +379,11 @@ export function createRelationSystem<
   function applicable(
     reference: PresentationReference<Values>,
     snapshot: SelectionSnapshot<ProductFacts>,
-    targets?: readonly RuntimeTypeId[],
+    discovery?: RelationDiscoveryOptions,
   ): readonly ApplicableRelation<Values, ProductFacts>[] {
     const found: ApplicableRelation<Values, ProductFacts>[] = [];
     for (const relation of ordered) {
-      if (!targetMatches(relation, targets)) continue;
+      if (!discoverable(relation, discovery)) continue;
       const result = applicabilityOf(relation, reference, snapshot);
       if (result.kind === "matched") {
         found.push({ relation, match: result.match });
@@ -334,17 +413,32 @@ export function createRelationSystem<
     if (!output) {
       return { kind: "empty", relationId: relation.id, match };
     }
-    if (
-      !options.graph.has(output.type) ||
-      !reaches(output.type, relation.to, options.graph)
-    ) {
+    const outputType = output.type as RuntimeTypeId;
+    if (!options.graph.has(outputType)) {
+      return {
+        kind: "error",
+        relationId: relation.id,
+        code: "invalid-result-type",
+        because: `relation "${relation.id}" produced undeclared type <${String(outputType)}>`,
+      };
+    }
+    if (options.graph.isAbstract(outputType)) {
       return {
         kind: "error",
         relationId: relation.id,
         code: "invalid-result-type",
         because:
-          `relation "${relation.id}" declares <${relation.to}> but produced ` +
-          `<${String(output.type)}>`,
+          `relation "${relation.id}" produced abstract type <${outputType}>; ` +
+          `runtime references must carry a concrete type`,
+      };
+    }
+    if (!reaches(outputType, relation.to, options.graph)) {
+      return {
+        kind: "error",
+        relationId: relation.id,
+        code: "invalid-result-type",
+        because:
+          `relation "${relation.id}" declares <${relation.to}> but produced <${outputType}>`,
       };
     }
     return {
@@ -389,6 +483,8 @@ export function createRelationSystem<
     has: (id) => prepared.has(id),
     get: (id) => prepared.get(id) ?? null,
     list: () => ordered,
+    exposed: (interpreter) =>
+      ordered.filter((relation) => isExposedTo(relation.exposure, interpreter)),
     definitions: () =>
       ordered.map((relation) => ({
         id: relation.id,
@@ -397,17 +493,19 @@ export function createRelationSystem<
         to: relation.to,
         match: relation.match,
         steps: [...relation.steps],
-        scopes: [...(relation.scopes ?? [])],
+        scopes: [...relation.scopes],
         priority: relation.priority,
+        exposure: relation.exposure,
         ...(relation.label !== undefined ? { label: relation.label } : {}),
         ...(relation.description !== undefined
           ? { description: relation.description }
           : {}),
       })),
+    diagnostics: () => staticDiagnostics,
     applicable,
-    matches(reference, snapshot, targets) {
+    matches(reference, snapshot, discovery) {
       const found: RelationMatch<Values, ProductFacts>[] = [];
-      for (const candidate of applicable(reference, snapshot, targets)) {
+      for (const candidate of applicable(reference, snapshot, discovery)) {
         const result = execute(
           candidate.relation,
           reference,

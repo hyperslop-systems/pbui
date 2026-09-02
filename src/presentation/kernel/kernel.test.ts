@@ -47,6 +47,7 @@ const customer = p.relations.direct({
   to: "customer",
   match: "exact",
   when: predicate("can-read"),
+  exposure: { acceptance: true, derivation: { transport: "serializable" } },
   apply(reference, snapshot) {
     if (reference.type !== "order") return undefined;
     const value = snapshot.product.customers[reference.value.customerId];

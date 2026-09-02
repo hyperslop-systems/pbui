@@ -1,6 +1,6 @@
 export { relationFromTranslator } from "./adapters";
 export { defineRelations } from "./define";
-export { createRelationSystem } from "./system";
+export { createRelationSystem, isExposedTo } from "./system";
 export type {
   CreateRelationSystemOptions,
   RelationSystem,
@@ -13,7 +13,11 @@ export type {
   PresentationRelationDeclaration,
   PresentationRelationDefinition,
   RelationDeclarationBase,
+  RelationDiagnostic,
+  RelationDiscoveryOptions,
   RelationEvaluation,
+  RelationExposure,
   RelationId,
+  RelationInterpreter,
   RelationMatch,
 } from "./types";
