@@ -52,10 +52,10 @@ Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–
 
 ## Phase 5: Runtime strict cutover
 
-- [ ] createPbui({ presentation, defaultEnvironment, contextFor }); delete option bag <!-- t:ucdo -->
-- [ ] `onRefuse` required on Provider <!-- t:p5b -->
-- [ ] Instance exposes `presentation`; no `registry`/`kernel` aliases <!-- t:p5c -->
-- [ ] Core stories, runtime tests, consumer-smoke migrated <!-- t:p5d -->
+- [x] createPbui({ presentation, defaultEnvironment, contextFor }); delete option bag <!-- t:ucdo -->
+- [x] `onRefuse` required on Provider <!-- t:p5b -->
+- [x] Instance exposes `presentation`; no `registry`/`kernel` aliases <!-- t:p5c -->
+- [x] Core stories, runtime tests, consumer-smoke migrated <!-- t:p5d -->
 
 ## Phase 6: Consumer and fragment cutover
 

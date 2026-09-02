@@ -598,3 +598,58 @@ One real gap surfaced through the typechecker: `AcceptRequest.types` only admitt
 
 ### Technical details
 - `AcceptableType<Values> = PresentationType<Values> | (string & {})`.
+
+## Step 9: Phase 5 — the strict runtime
+
+`createPbui` now has one construction path: `{ presentation, defaultEnvironment, contextFor, renderMenuHeader?, helpRenderers? }`. The pre-KERNEL-1 option bag (descriptor registry + action registry + `snapshotFor` + translators + help registry) is deleted along with the relation adapters that kept it alive through Phase 4. `PbuiProviderProps.onRefuse` is required: a stale row that fails fresh revalidation is always reported to the product. The instance exposes `presentation` and no longer a `registry` alias; pbui-chat reads `pbui.presentation.descriptors`.
+
+Every in-repo core fixture moved to `definePresentation().create(...)`: the runtime, chrome, help, and action tests, the Pbui and FileBrowser stories, and the consumer smoke script. The Pbui stories now share one presentation between the plain example and the help example, which is the guide's point — help is a sibling interpreter over the same declaration, switched on by renderers, not a second registry.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Land guide §14.1–§14.3 and the Phase 5 deletions; keep the root package green and accept that workspace packages are red until Phase 6.
+
+**Inferred user intent:** No compatibility branch in the released runtime (C13/C16), and no silent refusals (§14.2).
+
+**Commit (code):** 9102723 — "PBUI-KERNEL-1 P5: strict runtime — createPbui takes one compiled presentation, onRefuse is required"
+
+### What I did
+- `createPbui.tsx`: single `CreatePbuiOptions`; engine reads from `presentation`; `onRefuse` required and called unconditionally on refusal; instance returns `presentation`.
+- Deleted `relations/adapters.ts`; `index.ts` and `relations/index.ts` no longer export `PresentationTranslator`, `relationFromTranslator`, `LegacyCreatePbuiOptions`, `PresentationCreatePbuiOptions`.
+- Migrated `createPbui.test.tsx`, `createPbui.help.test.tsx`, `createPbui.actions.test.tsx` (its `mount` helper now takes contributions and compiles a presentation per test; the accept tests use `PresentationRelation`s), `instanceChrome.test.tsx`, `Pbui.stories.tsx`, `FileBrowser.stories.tsx`, `FileBrowser.test.tsx`, `scripts/consumer-smoke.mjs`.
+- Added `onRefuse` to every `Provider` in those files (`ignoreRefuse` in tests, a `console.warn` handler in stories and the smoke script).
+- `packages/pbui-chat/src/createPbuiChat.tsx`: `options.registry ?? pbui.presentation.descriptors`.
+- Validation: root typecheck clean, 368 tests, `pnpm build` green. `pnpm -r typecheck` stops at `packages/datalab-ui` (expected; Phase 6).
+
+### Why
+- C13/C16: the final runtime supports only the compiled presentation.
+- §14.2: making the callback required avoids recreating silent failure by omission.
+
+### What worked
+- Because Phase 3 had already retargeted the non-legacy branch, Phase 5 was mostly deletion plus fixture migration.
+
+### What didn't work
+- My first pass inserted `onRefuse={ignoreRefuse}` with a regex that treated the first `>` after `<pbui.Provider` as the tag end, which broke three props of the form `onPerform={() => ...}` into `onPerform={() = onRefuse={ignoreRefuse}> ...`. tsc reported `TS1109: Expression expected` at those three sites. The repair rule inserts the prop directly after the tag name and only when the tag's line lacks `onRefuse`.
+- Two follow-up errors: the FileBrowser story's Provider lacked `onRefuse`, and an unused `defineActions` import in the action tests.
+
+### What I learned
+- `vi.spyOn(presentation.help, "resolve")` still works as the help test's laziness probe: the runtime reads `presentation.help` once and calls `.resolve` on that object at gesture time.
+
+### What was tricky to build
+- The action tests' `mount(registry, facts)` helper took a prebuilt `ActionRegistry`; every test built one with the same graph and scopes. Under the model each test compiles a presentation from its contributions (`presentationWith(contributions)`), and the registry-builder helpers collapsed to arrays via one regex over the file.
+
+### What warrants a second pair of eyes
+- Stories and the smoke script log refusals with `console.warn`; that is a deliberate "telemetry only" choice for demos (§14.2) and should not be copied into products.
+- `PbuiInstance`'s facts default stays `any` (Step 5) so pbui-chat's facts-agnostic spelling remains assignable.
+
+### What should be done in the future
+- Phase 6: workbench fragment factory, chat fragment, ecommerce relations and single graph, sandbox fragment, datalab mechanical migration, then rag-ttc and hyperblog.
+
+### Code review instructions
+- `createPbui.tsx` lines 56–90 (options) and 360–380 (engine reads); then `createPbui.actions.test.tsx` `presentationWith`/`mount`.
+- `pnpm typecheck && pnpm test && pnpm build`.
+
+### Technical details
+- Provider tag repair rule: `re.sub(r'<(?:pbui|filePbui)\.Provider[^\n]*', insert-if-missing)`.

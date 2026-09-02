@@ -80,3 +80,12 @@ Step 8 / Phase 4: acceptance/ over relations, AcceptanceOption.relation, transla
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/acceptance/resolve.ts — Acceptance over acceptance-exposed relations
 
+
+## 2026-09-02
+
+Step 9 / Phase 5: strict createPbui({ presentation, contextFor }), onRefuse required, legacy option bag and adapters deleted, core tests/stories/smoke migrated (commit 9102723)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/createPbui.tsx — The strict runtime assembly
+
