@@ -30,13 +30,9 @@ export type {
 /* Canonical typed semantic arrows and the compiled presentation model. */
 export * from "./relations";
 export * from "./model";
-export { resolveAcceptance } from "./translators/resolve";
-export type {
-  AcceptanceOption,
-  AcceptanceResolution,
-  PresentationTranslator,
-  TranslatorId,
-} from "./translators/types";
+export * from "./acceptance";
+/* Legacy translator declaration: deleted with the legacy option bag in Phase 5. */
+export type { PresentationTranslator } from "./relations/adapters";
 export { createPresentationRegistry } from "./registry";
 export type {
   CreatePbuiOptions,
@@ -50,6 +46,7 @@ export type {
 } from "./createPbui";
 export type { PresentationDescriptorRegistry } from "./registry";
 export type {
+  AcceptableType,
   AcceptRequest,
   MenuState,
   PresentationDescriptor,

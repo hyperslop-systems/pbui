@@ -124,13 +124,13 @@ describe("compiled presentation", () => {
     // the original reference and no relation runs.
     expect(model.accept({ types: "inspectable", prompt: "choose" }, order, snapshot)).toEqual({
       kind: "accepted",
-      option: { translator: null, result: order },
+      option: { relation: null, result: order },
     });
     // The relation promises the abstract `party`; a request for that codomain
     // is satisfied by the concrete customer it returns (C8, §11.3).
     expect(model.accept({ types: "party", prompt: "choose" }, order, snapshot)).toEqual({
       kind: "accepted",
-      option: { translator: "order.customer", result: { type: "customer", value: { id: "c1" } } },
+      option: { relation: "order.customer", result: { type: "customer", value: { id: "c1" } } },
     });
     // Discovery is by DECLARED codomain: a request for `customer` does not
     // find a relation that only promises `party` (§11.3 "skip unless

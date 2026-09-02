@@ -16,7 +16,7 @@ import type {
   PresentationRelationDefinition,
 } from "../relations/types";
 import type { PresentationDescriptorRegistry } from "../registry";
-import type { AcceptanceResolution } from "../translators/types";
+import type { AcceptanceResolution } from "../acceptance/types";
 import type {
   AcceptRequest,
   PresentationDescriptorMap,

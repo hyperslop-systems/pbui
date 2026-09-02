@@ -37,12 +37,12 @@ import { placeHelpCard } from "./help/place";
 import type { HelpRegistry } from "./help/registry";
 import type { HelpResolution } from "./help/types";
 import type { CompiledPresentation, PresentationContextInput } from "./model/types";
-import { resolveAcceptance } from "./translators/resolve";
-import type {
-  AcceptanceOption,
-  AcceptanceResolution,
-  PresentationTranslator,
-} from "./translators/types";
+import { resolveAcceptance } from "./acceptance/resolve";
+import type { AcceptanceOption, AcceptanceResolution } from "./acceptance/types";
+import { relationFromTranslator } from "./relations/adapters";
+import type { PresentationTranslator } from "./relations/adapters";
+import { createRelationSystem } from "./relations/system";
+import type { RelationSystem } from "./relations/system";
 import type { PresentationDescriptorRegistry } from "./registry";
 import type {
   AcceptRequest,
@@ -365,8 +365,16 @@ export function createPbui<
   const actionEngine =
     presentation?.actions ??
     (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).actions;
-  const translators =
-    "presentation" in options ? [] : options.translators ?? [];
+  // Legacy branch only: translators become an acceptance-exposed relation
+  // system over the action registry's graph, with no product predicates.
+  const legacyRelations: RelationSystem<Values, ProductFacts> | null =
+    "presentation" in options
+      ? null
+      : createRelationSystem<Values, ProductFacts>({
+          graph: options.actions.graph,
+          scopes: [...new Set((options.translators ?? []).flatMap((t) => t.scopes ?? []))],
+          relations: (options.translators ?? []).map(relationFromTranslator),
+        });
   const helpEngine =
     presentation?.help ?? ("presentation" in options ? null : options.help ?? null);
   const snapshotOf = (
@@ -380,8 +388,6 @@ export function createPbui<
   };
   const helpRendererRegistry = helpRenderers ?? null;
   const helpEnabled = helpEngine !== null && helpRendererRegistry !== null;
-
-  const EMPTY_PREDICATES = new Map<string, never>();
 
   /**
    * One resolution for highlighting AND clicking: graph subtyping (the
@@ -397,7 +403,7 @@ export function createPbui<
     return presentation
       ? presentation.accept(request, reference, snapshot)
       : resolveAcceptance(
-          { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
+          { relations: legacyRelations as RelationSystem<Values, ProductFacts> },
           request,
           reference,
           snapshot,
@@ -1177,14 +1183,14 @@ export function createPbui<
         {options.map((option) => (
           <button
             type="button"
-            key={option.translator ?? "direct"}
+            key={option.relation ?? "direct"}
             data-part="accept-chooser-option"
             onClick={() => pbui.chooseAcceptance(option)}
           >
             {registry.labelFor(option.result, pbui.environment)}
             <span data-part="accept-chooser-via">
               {" "}
-              — as &lt;{option.result.type}&gt;{option.translator ? ` via ${option.translator}` : ""}
+              — as &lt;{option.result.type}&gt;{option.relation ? ` via ${option.relation}` : ""}
             </span>
           </button>
         ))}

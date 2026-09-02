@@ -12,7 +12,7 @@ import type { LinkDeps } from "../links/snapshot";
 import { createRelationSystem } from "../relations/system";
 import type { PresentationRelationDeclaration } from "../relations/types";
 import { createPresentationRegistry } from "../registry";
-import { resolveAcceptance } from "../translators/resolve";
+import { resolveAcceptance } from "../acceptance/resolve";
 import type {
   PresentationDescriptorMap,
   PresentationReference,
