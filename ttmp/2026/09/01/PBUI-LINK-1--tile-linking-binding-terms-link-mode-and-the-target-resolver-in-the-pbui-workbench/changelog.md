@@ -91,3 +91,13 @@ Phase 5 (commit 06b8c35): identity classes — refineContract per view (Q7), ide
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/src/tiles/ShopPlot/ShopPlot.tsx — Brush → selection rows; external selection → highlighted marks
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/identity.ts — The P06 subset: compatibility, fibers, union-find, persistent ids, lineage
 
+
+## 2026-09-01
+
+Phase 6 (commit 4e73712): Derived over translators — relations on LinkDeps, legalRelations/planDerive, port.derive, palette verbs (59 kernel tests); RelationPalette on LauncherShell, Derive through… and Change to Derived… menus (2 DOM tests); the shop's relations serve accept mode and derived bindings alike (D7), scenes 4/4b, ninth e2e scenario; plot render-loop fix (dc72829)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/src/presentation/relations.ts — One relation registry for accept translators and derived bindings
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/RelationPalette/RelationPalette.tsx — The relation palette on LauncherShell
+

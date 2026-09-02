@@ -15,7 +15,7 @@
 - [x] Phase 3: connect-management mode (port rails, wire layer, port carry) <!-- t:wkfs -->
 - [x] Phase 4: resolveShow and the show chooser <!-- t:18fy -->
 - [x] Phase 5: identity classes over value ports (P06 subset) <!-- t:0o9w -->
-- [ ] Phase 6: Derived over translators and the relation palette <!-- t:sf7p -->
+- [x] Phase 6: Derived over translators and the relation palette <!-- t:sf7p -->
 - [ ] Phase 7: inspector, agent vocabulary, notifications, server validation <!-- t:zhvo -->
 - [x] Scaffold packages/pbui-ecommerce (fixtures, ShopHost, apps with ports, Vite demo, scene stories) as the first consumer (D10) <!-- t:wzjy -->
 - [ ] Re-upload the amended guide + diary bundle to reMarkable when implementation starts <!-- t:ylgh -->

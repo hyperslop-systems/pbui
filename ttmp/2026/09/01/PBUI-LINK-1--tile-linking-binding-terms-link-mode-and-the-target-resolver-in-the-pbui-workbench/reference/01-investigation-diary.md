@@ -725,3 +725,61 @@ Two things changed on request during this step: the user asked for no nested bor
 
 - `src/presentation/links/identity.ts`, `apply.ts` (the two identity cases), `identity.test.ts`; `packages/pbui-workbench/src/links/{handlers,runtime,snapshot}.ts`, `identity.test.tsx`; `packages/pbui-ecommerce/src/tiles/{OrdersTable,ShopPlot}`.
 - Storybook `Shop/Scenes/5`, `5b`, `6`; `pnpm e2e` (eight scenarios).
+
+## Step 10: Phase 6 — Derived over translators and the relation palette
+
+The third operator. A port may now DERIVE from another through a named relation: the customer detail reads the orders table's `order` port through `order.customer` and shows the customer of whatever order the table presents, with the badge `customer ← its customer`. The relations are the product's translators (D7): one registry serves accept mode ("show this order as its customer") and standing bindings, so the two cannot disagree. The palette on `LauncherShell` lists every (source output on screen, legal relation) pair for a destination; a follow wire's menu offers "Change to Derived…" with the source fixed. This also answers the user's mid-turn question: `lineItem.product` is now a declared relation, so a line item can be shown as, or derived into, its product.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Build the guide's Phase 6 — `planDerive`, `Derived` evaluation through the translator registry, the `port.derive` verb, the relation palette, the labelled wire and badge — and the shop's scene 4.
+
+**Inferred user intent:** The derive operator as a first-class, named, inspectable relation, not a hidden callback.
+
+**Commit (code):** 4e73712 — "PBUI-LINK-1 Phase 6: Derived over translators and the relation palette"
+
+### What I did
+
+- **Core**: `RelationDefinition` (id, from, to, label) and `LinkDeps.relations` beside the existing `relation(id, ref)` applier; `legalRelations(source, destination)` by type reachability on both ends; `planDerive` (self, direction, held, shared, cycle, `no-relation` naming both types, `relation` when the named one does not fit, `already`; one legal relation is chosen, several are an `ambiguous` plan with labelled options); `port.derive` verb → `Derived(Follow(source, linkId), ρ, linkId)`; the badge shows the relation's label and the current value; `relation.palette.open/close` as browser-local verbs. `derive.test.ts`: legality, ambiguity, the term written, evaluation through the relation, the badge, pin/resume over a derivation, empty-not-stale, missing registry as a diagnostic.
+- **pbui-workbench**: `LinkEnvironment.relations`/`relation`; `relationPalette` state; `components/RelationPalette` (groups per source tile, rows per legal relation, Enter derives); "Derive through…" on `<port>` (inapplicable on outputs, unavailable when held/shared/no relations) and "Change to Derived…" on follow wires; the wire label reads the relation's label. `derive.test.tsx`.
+- **pbui-ecommerce**: `presentation/relations.ts` (`createShopRelations(host)`: `order.customer`, `lineItem.product`, `product.category`, each applying through the host; `shopTranslators` turns them into `PresentationTranslator`s for `createPbui`); `createShopWorkbench` passes the same relations to the kernel; harness `deriveCustomer`; scenes 4 (derived beside a following detail) and 4b (the palette open); a DOM test that goes badge → "Derive through…" → palette row → badge `←` → the customer follows the table; a ninth real-pointer scenario.
+- Committed the plot tile's render-loop fix separately (dc72829) after the Phase 5 capture surfaced it.
+
+### Why
+
+- One registry for accept and derive is the argument `resolveAcceptance` already makes for highlighting versus clicking: what the chooser offers is what the standing binding does.
+- The palette is the toy's pattern 6 on the shell pbui already has; ambiguity ("two relations fit") is resolved by the user, never by registration order.
+
+### What worked
+
+- `Derived` evaluation, pin over a derived term and resume were already correct from Phase 2's evaluator; Phase 6 added the planner and the instrument, not new semantics.
+- The nine-scenario e2e suite ran green on the first try for the derive scenario, because the palette is a `LauncherShell` the earlier scenarios had already driven.
+
+### What didn't work
+
+- Nothing failed in this phase's code. The Playwright MCP browser had crashed on the Phase 5 render loop and refused new tabs until closed and reopened.
+
+### What I learned
+
+- `LauncherShell`'s `getByRole("dialog")` scoping is what keeps the e2e click on "its customer" from hitting the same words in a tile.
+
+### What was tricky to build
+
+- **Relation identity across two registries.** The translator and the kernel relation must have the same id, from, to and function, or the badge could say "its customer" while accept mode converts differently. `createShopRelations` is the single source both are derived from.
+
+### What warrants a second pair of eyes
+
+- `planDerive` treats a follow already in place as replaceable (the derive overwrites it) — consistent with follow-replaces-follow, but "Change to Derived…" keeps the source and changes the term, which a user may read as an edit rather than a replacement.
+- Relations are synchronous and cheap by contract (D7); the host's `orderCustomer` is a map lookup, but a DuckDB-backed host would need the async story the guide defers.
+
+### What should be done in the future
+
+- A relation whose `to` is a collection (`order.lineItems`) needs the `many`-cardinality selection operator (open question Q3).
+- The user's "mix the actions" question: an abstract supertype shared by `lineItem` and `product` if a merged menu is wanted.
+
+### Code review instructions
+
+- `src/presentation/links/plan.ts` (`legalRelations`, `planDerive`), `derive.test.ts`; `packages/pbui-workbench/src/components/RelationPalette`, `links/derive.test.tsx`; `packages/pbui-ecommerce/src/presentation/relations.ts`.
+- Storybook `Shop/Scenes/4`, `4b`, `Workbench/RelationPalette`; `pnpm e2e` (nine scenarios).
