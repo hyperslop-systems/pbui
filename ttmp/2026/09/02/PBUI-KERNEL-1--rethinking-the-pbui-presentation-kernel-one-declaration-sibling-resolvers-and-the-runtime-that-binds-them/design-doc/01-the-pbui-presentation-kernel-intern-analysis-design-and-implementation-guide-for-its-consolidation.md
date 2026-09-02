@@ -52,6 +52,9 @@ WhenToUse: Before adding a fourth registry, a fifth snapshot convention, or a ne
 
 # The pbui presentation kernel: intern analysis, design, and implementation guide for its consolidation
 
+> [!NOTE]
+> This document remains the evidence-rich map of the current system and the first consolidation proposal. Its proposed API and implementation phases are superseded by `02-clean-cutover-composable-pbui-presentation-semantics-kernel-intern-analysis-design-and-implementation-guide.md`, which incorporates the imported composable-kernel research and the decision to coordinate a clean cutover across all PBUI consumers.
+
 ## 0. How to read this guide
 
 The pbui presentation kernel is the part of `@hyperslop-systems/pbui` that decides what a typed value on screen is, what can be done with it, what it can be converted into, what help it carries, and how it binds to other values. It is spread over `src/presentation/` (about 13,000 lines including tests) and two page-wide coordination modules, `src/surfaces.ts` and `src/focus.ts`. It was built in four tickets over five weeks (PBUI-ACTIONS-1/2/3, PBUI-HELP-001/002, PBUI-LINK-1), each adding a sibling resolver beside the last. The resolvers are sound and tested. What has not been designed as a whole is the product-facing declaration: every product builds the same graph, the same scope list, the same registries, and the same snapshot conventions by hand, in slightly different ways, and three prior tickets recorded the consolidation items they did not have a puller for.

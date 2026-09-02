@@ -16,3 +16,6 @@
 - [ ] Phase 5: link kernel from kernel.links; remove empty-graph fallback; correct LINK-1 §17 <!-- t:gpsg -->
 - [ ] Phase 6: consumer cutover; playbook rewrite; ticket hygiene (ACTIONS-PORT dirs, HELP-001 index, stub overviews) <!-- t:krqf -->
 - [ ] Phase 7 (parked): per-type order on inherited rules (C5) <!-- t:rawd -->
+- [x] Import and evaluate the composable-kernel research report and patch <!-- t:hn4v -->
+- [x] Write the clean-cutover composable-kernel intern guide from the imported report and validated patch <!-- t:hcb4 -->
+- [x] Validate and upload the clean-cutover guide and investigation diary to reMarkable <!-- t:u74f -->
