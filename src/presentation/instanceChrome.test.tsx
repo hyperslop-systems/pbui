@@ -6,9 +6,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
-import { createActionRegistry, createPresentationTypeGraph } from "./actions";
 import { createPbui } from "./createPbui";
-import { createPresentationRegistry } from "./registry";
+import { definePresentation } from "./model";
 
 interface Values {
   person: { id: string; name: string };
@@ -19,29 +18,21 @@ type Verb = { type: "select"; id: string };
 afterEach(cleanup);
 
 const ignorePerform = () => {};
+const ignoreRefuse = () => {};
 
 function makePbui() {
-  const registry = createPresentationRegistry<Values, Record<string, never>>({
-    person: {
-      label: (person) => person.name,
-    },
-  });
-  const actions = createActionRegistry<Values, Record<string, never>, Verb>({
-    graph: createPresentationTypeGraph([{ id: "person" }]),
-    scopes: ["global"],
-    contributions: [],
+  const presentation = definePresentation<Values, Record<string, never>, Record<string, never>, Verb>().create({
+    id: "test.chrome",
+    types: [{ id: "person" }],
+    knownScopes: ["global"],
+    defaultActiveScopes: ["global"],
+    revision: () => 0,
+    descriptors: { person: { label: (person) => person.name } },
   });
   return createPbui({
-    registry,
+    presentation,
     defaultEnvironment: {},
-    actions,
-    snapshotFor: () => ({
-      revision: 0,
-      scopes: ["global"],
-      modes: new Set(),
-      capabilities: new Set(),
-      product: {},
-    }),
+    contextFor: () => ({ facts: {} }),
   });
 }
 
@@ -49,7 +40,7 @@ describe("MouseDocLine", () => {
   test("shows READY, the idle doc, and the ambient", () => {
     const pbui = makePbui();
     render(
-      <pbui.Provider onPerform={ignorePerform}>
+      <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
         <pbui.MouseDocLine ambient="3 workspaces" />
       </pbui.Provider>,
     );
@@ -72,7 +63,7 @@ describe("MouseDocLine", () => {
     }
 
     render(
-      <pbui.Provider onPerform={ignorePerform}>
+      <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
         <pbui.Presentation reference={reference} doc="<person> Ada">
           Ada
         </pbui.Presentation>
@@ -115,7 +106,7 @@ describe("AcceptBanner", () => {
     }
 
     render(
-      <pbui.Provider onPerform={ignorePerform}>
+      <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
         <Arm />
         <pbui.AcceptBanner />
       </pbui.Provider>,

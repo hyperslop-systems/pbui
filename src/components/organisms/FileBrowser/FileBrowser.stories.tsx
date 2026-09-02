@@ -204,13 +204,9 @@ export const DeepNesting: Story = {
 /* ------------------------------------------------------------------ */
 /* The presentation-protocol seam: file rows as PRESENTATIONS.        */
 /* ------------------------------------------------------------------ */
-import {
-  createActionRegistry,
-  createPresentationTypeGraph,
-} from "../../../presentation/actions";
 import type { ActionFamilyInstance } from "../../../presentation/actions";
 import { createPbui } from "../../../presentation/createPbui";
-import { createPresentationRegistry } from "../../../presentation/registry";
+import { definePresentation } from "../../../presentation/model";
 
 interface FileEntryValues {
   "file.entry": FileNode;
@@ -221,20 +217,22 @@ type FileVerb =
   | { type: "delete"; id: string }
   | { type: "create"; parentId: string; kind: "file" | "directory" };
 
-const fileEntryRegistry = createPresentationRegistry<FileEntryValues, Record<string, never>>({
-  "file.entry": {
-    label: (node) => node.name,
-    describe: (node) => ({ id: node.id, kind: node.kind }),
-    tone: "neutral",
-  },
-});
-
 /* One bounded family: the row set differs per node kind, which is exactly the
  * dynamic-membership case families exist for. */
-const fileEntryActions = createActionRegistry<FileEntryValues, Record<string, never>, FileVerb>({
-  graph: createPresentationTypeGraph([{ id: "file.entry" }]),
-  scopes: ["global"],
-  contributions: [
+const fileEntryPresentation = definePresentation<FileEntryValues, Record<string, never>, Record<string, never>, FileVerb>().create({
+  id: "story.file-entry",
+  types: [{ id: "file.entry" }],
+  knownScopes: ["global"],
+  defaultActiveScopes: ["global"],
+  revision: () => 0,
+  descriptors: {
+    "file.entry": {
+      label: (node) => node.name,
+      describe: (node) => ({ id: node.id, kind: node.kind }),
+      tone: "neutral",
+    },
+  },
+  actions: [
     {
       kind: "family",
       id: "story.file-entry.menu",
@@ -289,16 +287,9 @@ const fileEntryActions = createActionRegistry<FileEntryValues, Record<string, ne
 });
 
 const filePbui = createPbui({
-  registry: fileEntryRegistry,
+  presentation: fileEntryPresentation,
   defaultEnvironment: {},
-  actions: fileEntryActions,
-  snapshotFor: () => ({
-    revision: 0,
-    scopes: ["global"],
-    modes: new Set<string>(),
-    capabilities: new Set<string>(),
-    product: {},
-  }),
+  contextFor: () => ({ facts: {} }),
 });
 
 /**
@@ -318,7 +309,7 @@ export const WithPresentation: Story = {
       if (verb.type === "rename") setRenamingId(verb.id);
     };
     return (
-      <filePbui.Provider onPerform={perform}>
+      <filePbui.Provider onPerform={perform} onRefuse={(refusal) => console.warn("refused", refusal)}>
         <div style={{ width: 360, display: "grid", gap: 8 }}>
           <div style={{ height: 380, display: "flex", border: "1px solid #cbd5e1" }}>
             <FileBrowser

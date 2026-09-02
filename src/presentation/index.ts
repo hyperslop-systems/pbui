@@ -31,13 +31,9 @@ export type {
 export * from "./relations";
 export * from "./model";
 export * from "./acceptance";
-/* Legacy translator declaration: deleted with the legacy option bag in Phase 5. */
-export type { PresentationTranslator } from "./relations/adapters";
 export { createPresentationRegistry } from "./registry";
 export type {
   CreatePbuiOptions,
-  PresentationCreatePbuiOptions,
-  LegacyCreatePbuiOptions,
   PbuiRefusal,
   PbuiContextValue,
   PbuiInstance,

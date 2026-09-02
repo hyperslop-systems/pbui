@@ -103,19 +103,10 @@ import {
   builtinHelpItems,
   createHelpRendererRegistry,
   createPbui,
-  createPresentationRegistry,
   textHelp,
   type ResultLine,
 } from "@hyperslop-systems/pbui";
-import {
-  available,
-  createActionRegistry,
-  createHelpRegistry,
-  createPresentationTypeGraph,
-  defineActions,
-  defineHelp,
-  type SelectionSnapshot,
-} from "@hyperslop-systems/pbui/presentation";
+import { available, definePresentation } from "@hyperslop-systems/pbui/presentation";
 import "@hyperslop-systems/pbui/styles.css";
 import "@hyperslop-systems/pbui/components.css";
 
@@ -125,18 +116,20 @@ type Values = {
 type Environment = { prefix: string };
 type Verb = { type: "select"; personId: string };
 
-const registry = createPresentationRegistry<Values, Environment>({
-  person: {
-    label: (person, environment) => environment.prefix + person.name,
+const p = definePresentation<Values, Environment, Environment, Verb>();
+const presentation = p.create({
+  id: "smoke",
+  types: [{ id: "person" }],
+  knownScopes: ["global"],
+  defaultActiveScopes: ["global"],
+  revision: (facts) => facts.prefix,
+  descriptors: {
+    person: {
+      label: (person, environment) => environment.prefix + person.name,
+    },
   },
-});
-const graph = createPresentationTypeGraph([{ id: "person" }]);
-const define = defineActions<Values, Environment, Verb>();
-const actions = createActionRegistry<Values, Environment, Verb>({
-  graph,
-  scopes: ["global"],
-  contributions: [
-    define.exact("person", {
+  actions: [
+    p.actions.exact("person", {
       id: "smoke.person.select",
       action: "person.select",
       scopes: ["global"],
@@ -145,12 +138,8 @@ const actions = createActionRegistry<Values, Environment, Verb>({
       bind: ({ subject }) => ({ type: "select", personId: subject.value.id }),
     }),
   ],
-});
-const help = createHelpRegistry<Values, Environment>({
-  graph,
-  scopes: ["global"],
-  contributions: [
-    defineHelp<Values, Environment>().exact("person", {
+  help: [
+    p.help.exact("person", {
       id: "smoke.person.help",
       scopes: ["global"],
       help: ({ subject }) => [
@@ -159,28 +148,20 @@ const help = createHelpRegistry<Values, Environment>({
     }),
   ],
 });
-const snapshotFor = (_query: unknown, environment: Environment): SelectionSnapshot<Environment> => ({
-  revision: environment.prefix,
-  scopes: ["global"],
-  modes: new Set<string>(),
-  capabilities: new Set<string>(),
-  product: environment,
-});
+const contextFor = (_query: unknown, environment: Environment) => ({ facts: environment });
 const helpRenderers = createHelpRendererRegistry(builtinHelpItems);
 const first = createPbui({
-  registry,
+  presentation,
   defaultEnvironment: { prefix: "A: " },
-  actions,
-  snapshotFor,
-  help,
+  contextFor,
   helpRenderers,
 });
 const second = createPbui({
-  registry,
+  presentation,
   defaultEnvironment: { prefix: "B: " },
-  actions,
-  snapshotFor,
+  contextFor,
 });
+const onRefuse = (refusal: unknown) => console.warn("refused", refusal);
 const person = { id: "p1", name: "Ada" };
 const lines: ResultLine<"person">[] = [{
   id: "result-1",
@@ -195,14 +176,14 @@ const lines: ResultLine<"person">[] = [{
 function App() {
   return (
     <>
-      <first.Provider onPerform={() => {}}>
+      <first.Provider onPerform={() => {}} onRefuse={onRefuse}>
         <first.Presentation reference={{ type: "person", value: person }}>
           <Button>First instance</Button>
         </first.Presentation>
         <first.ObjectMenu />
         <first.ContextHelp />
       </first.Provider>
-      <second.Provider onPerform={() => {}}>
+      <second.Provider onPerform={() => {}} onRefuse={onRefuse}>
         <second.Presentation reference={{ type: "person", value: person }}>
           <Button>Second instance</Button>
         </second.Presentation>

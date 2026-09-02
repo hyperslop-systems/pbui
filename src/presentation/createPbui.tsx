@@ -17,7 +17,6 @@ import type { HelpRendererRegistry } from "../components/ContextHelp";
 import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
-import type { ActionRegistry } from "./actions/registry";
 import { evaluateFresh } from "./actions/perform";
 import type {
   ActionQuery,
@@ -34,16 +33,9 @@ import type {
   HelpSurfaceState,
 } from "./help/machine";
 import { placeHelpCard } from "./help/place";
-import type { HelpRegistry } from "./help/registry";
 import type { HelpResolution } from "./help/types";
 import type { CompiledPresentation, PresentationContextInput } from "./model/types";
-import { resolveAcceptance } from "./acceptance/resolve";
 import type { AcceptanceOption, AcceptanceResolution } from "./acceptance/types";
-import { relationFromTranslator } from "./relations/adapters";
-import type { PresentationTranslator } from "./relations/adapters";
-import { createRelationSystem } from "./relations/system";
-import type { RelationSystem } from "./relations/system";
-import type { PresentationDescriptorRegistry } from "./registry";
 import type {
   AcceptRequest,
   MenuState,
@@ -52,11 +44,27 @@ import type {
   PresentationValues,
 } from "./types";
 
-interface CreatePbuiCommonOptions<
+/**
+ * The one assembly (PBUI-KERNEL-1 §14.1, C13/C16): a compiled presentation
+ * plus the product's context projection. `createPbui` calls
+ * `presentation.snapshot(contextFor(query, environment))` for actions, help,
+ * acceptance, and introspection. There is no other construction path — the
+ * pre-KERNEL-1 option bag (registry + actions + snapshotFor + translators +
+ * help) is gone, because a runtime that accepted separately built registries
+ * could not guarantee they agreed on a graph or a predicate table.
+ */
+export interface CreatePbuiOptions<
   Values extends PresentationValues,
   Environment,
+  Verb,
+  ProductFacts,
 > {
+  presentation: CompiledPresentation<Values, Environment, ProductFacts, Verb>;
   defaultEnvironment: Environment;
+  contextFor(
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ): PresentationContextInput<ProductFacts>;
   renderMenuHeader?: (
     reference: PresentationReference<Values>,
     environment: Environment,
@@ -64,51 +72,6 @@ interface CreatePbuiCommonOptions<
   ) => ReactNode;
   helpRenderers?: HelpRendererRegistry;
 }
-
-/** Compatibility assembly retained while products migrate to one kernel. */
-export interface LegacyCreatePbuiOptions<
-  Values extends PresentationValues,
-  Environment,
-  Verb,
-  ProductFacts,
-> extends CreatePbuiCommonOptions<Values, Environment> {
-  registry: PresentationDescriptorRegistry<Values, Environment>;
-  actions: ActionRegistry<Values, ProductFacts, Verb>;
-  snapshotFor(
-    query: ActionQuery<Values>,
-    environment: Environment,
-  ): SelectionSnapshot<ProductFacts>;
-  translators?: readonly PresentationTranslator<Values, ProductFacts>[];
-  help?: HelpRegistry<Values, ProductFacts>;
-}
-
-/**
- * The final assembly (PBUI-KERNEL-1 §14.1): one compiled presentation plus
- * the product's context projection. `createPbui` calls
- * `presentation.snapshot(contextFor(query, environment))` for actions, help,
- * acceptance, and introspection.
- */
-export interface PresentationCreatePbuiOptions<
-  Values extends PresentationValues,
-  Environment,
-  Verb,
-  ProductFacts,
-> extends CreatePbuiCommonOptions<Values, Environment> {
-  presentation: CompiledPresentation<Values, Environment, ProductFacts, Verb>;
-  contextFor(
-    query: ActionQuery<Values>,
-    environment: Environment,
-  ): PresentationContextInput<ProductFacts>;
-}
-
-export type CreatePbuiOptions<
-  Values extends PresentationValues,
-  Environment,
-  Verb,
-  ProductFacts,
-> =
-  | LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>
-  | PresentationCreatePbuiOptions<Values, Environment, Verb, ProductFacts>;
 
 /** How long the pointer rests on a presentation before its help opens. */
 const HELP_POINTER_DELAY_MS = 350;
@@ -196,8 +159,14 @@ export interface PbuiProviderProps<
    * gateways stay the security boundary.
    */
   actor?: string;
-  /** Fresh-revalidation refusals; absent preserves the legacy silent behavior. */
-  onRefuse?(refusal: PbuiRefusal<Values>): void;
+  /**
+   * Fresh-revalidation refusals (PBUI-KERNEL-1 §14.2). REQUIRED: a displayed
+   * row is a proposal, and when the fresh resolution no longer agrees the
+   * product must decide what the user sees — a status line, a toast,
+   * telemetry, an agent-visible error. Pass `() => {}` only with a
+   * documented reason; silence by omission is what this parameter removes.
+   */
+  onRefuse(refusal: PbuiRefusal<Values>): void;
 }
 
 /**
@@ -358,34 +327,15 @@ export function createPbui<
 >(options: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
   const { defaultEnvironment, renderMenuHeader, helpRenderers } = options;
-  const presentation = "presentation" in options ? options.presentation : null;
-  const registry =
-    presentation?.descriptors ??
-    (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).registry;
-  const actionEngine =
-    presentation?.actions ??
-    (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).actions;
-  // Legacy branch only: translators become an acceptance-exposed relation
-  // system over the action registry's graph, with no product predicates.
-  const legacyRelations: RelationSystem<Values, ProductFacts> | null =
-    "presentation" in options
-      ? null
-      : createRelationSystem<Values, ProductFacts>({
-          graph: options.actions.graph,
-          scopes: [...new Set((options.translators ?? []).flatMap((t) => t.scopes ?? []))],
-          relations: (options.translators ?? []).map(relationFromTranslator),
-        });
-  const helpEngine =
-    presentation?.help ?? ("presentation" in options ? null : options.help ?? null);
+  const { presentation } = options;
+  const registry = presentation.descriptors;
+  const actionEngine = presentation.actions;
+  const helpEngine = presentation.help;
   const snapshotOf = (
     query: ActionQuery<Values>,
     environment: Environment,
-  ): SelectionSnapshot<ProductFacts> => {
-    if ("presentation" in options) {
-      return options.presentation.snapshot(options.contextFor(query, environment));
-    }
-    return options.snapshotFor(query, environment);
-  };
+  ): SelectionSnapshot<ProductFacts> =>
+    presentation.snapshot(options.contextFor(query, environment));
   const helpRendererRegistry = helpRenderers ?? null;
   const helpEnabled = helpEngine !== null && helpRendererRegistry !== null;
 
@@ -400,14 +350,7 @@ export function createPbui<
     environment: Environment,
   ): AcceptanceResolution<Values> {
     const snapshot = snapshotOf({ subject: reference, invocation: "accept" }, environment);
-    return presentation
-      ? presentation.accept(request, reference, snapshot)
-      : resolveAcceptance(
-          { relations: legacyRelations as RelationSystem<Values, ProductFacts> },
-          request,
-          reference,
-          snapshot,
-        );
+    return presentation.accept(request, reference, snapshot);
   }
 
   function Provider({
@@ -576,7 +519,7 @@ export function createPbui<
           const fresh = actionEngine.resolve(stale.query, snapshotOf(stale.query, environment));
           const decision = evaluateFresh(stale, fresh);
           if (decision.kind !== "proceed") {
-            onRefuse?.({
+            onRefuse({
               code: decision.code,
               ...(decision.because !== undefined ? { because: decision.because } : {}),
               action: stale.action,
@@ -1311,7 +1254,6 @@ export function createPbui<
     AcceptChooser,
     ContextHelp,
     usePbui,
-    registry,
     presentation,
   };
 }

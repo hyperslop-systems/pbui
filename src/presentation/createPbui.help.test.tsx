@@ -5,16 +5,10 @@ import {
   createHelpRendererRegistry,
   textHelp,
 } from "../components/ContextHelp";
-import {
-  available,
-  createActionRegistry,
-  createPresentationTypeGraph,
-  defineActions,
-} from "./actions";
-import type { SelectionSnapshot } from "./actions";
+import { available, defineActions } from "./actions";
 import { createPbui } from "./createPbui";
-import { createHelpRegistry, defineHelp } from "./help";
-import { createPresentationRegistry } from "./registry";
+import { defineHelp } from "./help";
+import { definePresentation } from "./model";
 
 /**
  * PBUI-HELP-001 Phase 5 (design doc §18 "runtime tests"): the optional
@@ -35,6 +29,7 @@ afterEach(() => {
 });
 
 const ignorePerform = () => {};
+const ignoreRefuse = () => {};
 const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
 
 /**
@@ -45,26 +40,19 @@ const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
 const byKeyboard = () => fireEvent.keyDown(window, { key: "Tab" });
 const byPointer = (target: Element) => fireEvent.pointerDown(target);
 
-function snapshotOf(environment: Facts): SelectionSnapshot<Facts> {
-  return {
-    revision: 0,
-    scopes: ["global"],
-    modes: new Set(),
-    capabilities: new Set(),
-    product: environment,
-  };
-}
+const p = definePresentation<Values, Facts, Facts, Verb>();
 
 function makePbui(options: { withHelp: boolean; helpText?: string } = { withHelp: true }) {
-  const registry = createPresentationRegistry<Values, Facts>({
-    person: { label: (person) => person.name },
-  });
   const define = defineActions<Values, Facts, Verb>();
-  const graph = createPresentationTypeGraph([{ id: "person" }]);
-  const actions = createActionRegistry<Values, Facts, Verb>({
-    graph,
-    scopes: ["global"],
-    contributions: [
+  const defineH = defineHelp<Values, Facts>();
+  const presentation = p.create({
+    id: "test.help",
+    types: [{ id: "person" }],
+    knownScopes: ["global"],
+    defaultActiveScopes: ["global"],
+    revision: () => 0,
+    descriptors: { person: { label: (person) => person.name } },
+    actions: [
       define.exact("person", {
         id: "test.person.select",
         action: "person.select",
@@ -74,13 +62,7 @@ function makePbui(options: { withHelp: boolean; helpText?: string } = { withHelp
         bind: ({ subject }) => ({ type: "select", id: subject.value.id }),
       }),
     ],
-  });
-
-  const defineH = defineHelp<Values, Facts>();
-  const helpRegistry = createHelpRegistry<Values, Facts>({
-    graph,
-    scopes: ["global"],
-    contributions: [
+    help: [
       defineH.exact("person", {
         id: "test.person.help",
         scopes: ["global"],
@@ -94,23 +76,23 @@ function makePbui(options: { withHelp: boolean; helpText?: string } = { withHelp
       }),
     ],
   });
-  const resolveSpy = vi.spyOn(helpRegistry, "resolve");
+  // The help registry is always compiled; the surface is enabled only when
+  // the runtime receives renderers, so "no help configured" is the same
+  // presentation without `helpRenderers`.
+  const resolveSpy = vi.spyOn(presentation.help as NonNullable<typeof presentation.help>, "resolve");
 
   const pbui = createPbui({
-    registry,
+    presentation,
     defaultEnvironment: { prefix: "" },
-    actions,
-    snapshotFor: (_query, environment) => snapshotOf(environment),
-    ...(options.withHelp
-      ? { help: helpRegistry, helpRenderers: createHelpRendererRegistry(builtinHelpItems) }
-      : {}),
+    contextFor: (_query, environment) => ({ facts: environment }),
+    ...(options.withHelp ? { helpRenderers: createHelpRendererRegistry(builtinHelpItems) } : {}),
   });
   return { pbui, resolveSpy };
 }
 
 function renderWithHelp(pbui: ReturnType<typeof makePbui>["pbui"]) {
   return render(
-    <pbui.Provider onPerform={ignorePerform}>
+    <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
       <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
       <pbui.ObjectMenu />
       <pbui.ContextHelp />
@@ -377,7 +359,7 @@ describe("surface interplay", () => {
     const { pbui } = makePbui();
     vi.useFakeTimers();
     const view = (show: boolean) => (
-      <pbui.Provider onPerform={ignorePerform}>
+      <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
         {show && <pbui.Presentation reference={reference}>Ada</pbui.Presentation>}
         <pbui.ContextHelp />
       </pbui.Provider>
@@ -413,19 +395,17 @@ describe("surface interplay", () => {
   });
 
   test("an empty resolution opens no card at all", () => {
-    const registry = createPresentationRegistry<Values, Facts>({
-      person: { label: (person) => person.name },
-    });
-    const graph = createPresentationTypeGraph([{ id: "person" }]);
     const define = defineActions<Values, Facts, Verb>();
     const defineH = defineHelp<Values, Facts>();
     const pbui = createPbui({
-      registry,
-      defaultEnvironment: { prefix: "" },
-      actions: createActionRegistry<Values, Facts, Verb>({
-        graph,
-        scopes: ["global"],
-        contributions: [
+      presentation: p.create({
+        id: "test.help.empty",
+        types: [{ id: "person" }],
+        knownScopes: ["global"],
+        defaultActiveScopes: ["global"],
+        revision: () => 0,
+        descriptors: { person: { label: (person) => person.name } },
+        actions: [
           define.exact("person", {
             id: "test.person.select",
             action: "person.select",
@@ -434,12 +414,7 @@ describe("surface interplay", () => {
             bind: ({ subject }) => ({ type: "select", id: subject.value.id }),
           }),
         ],
-      }),
-      snapshotFor: (_query, environment) => snapshotOf(environment),
-      help: createHelpRegistry<Values, Facts>({
-        graph,
-        scopes: ["global"],
-        contributions: [
+        help: [
           defineH.exact("person", {
             id: "test.person.help",
             scopes: ["global"],
@@ -449,6 +424,8 @@ describe("surface interplay", () => {
           }),
         ],
       }),
+      defaultEnvironment: { prefix: "" },
+      contextFor: (_query, environment) => ({ facts: environment }),
       helpRenderers: createHelpRendererRegistry(builtinHelpItems),
     });
     renderWithHelp(pbui);

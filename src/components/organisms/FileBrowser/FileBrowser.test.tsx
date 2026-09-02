@@ -2,13 +2,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { FileBrowser, type FileNode, type RootState } from "./FileBrowser";
-import {
-  createActionRegistry,
-  createPresentationTypeGraph,
-} from "../../../presentation/actions";
-import { createPbui } from "../../../presentation/createPbui";
-import { createPresentationRegistry } from "../../../presentation/registry";
 
+import { createPbui } from "../../../presentation/createPbui";
+import { definePresentation } from "../../../presentation/model";
+
+const ignoreRefuse = () => {};
 afterEach(cleanup);
 
 const TREE: FileNode = {
@@ -425,22 +423,16 @@ describe("FileBrowser presentation seam", () => {
    * this file, and it is why the fix belonged in pbui rather than in a product.
    */
   const filePbui = createPbui<{ "file.entry": string }, object, { kind: "noop" }, object>({
-    registry: createPresentationRegistry<{ "file.entry": string }, object>({
-      "file.entry": { label: (id) => id },
+    presentation: definePresentation<{ "file.entry": string }, object, object, { kind: "noop" }>().create({
+      id: "test.file-entry",
+      types: [{ id: "file.entry" }],
+      knownScopes: ["global"],
+      defaultActiveScopes: ["global"],
+      revision: () => 0,
+      descriptors: { "file.entry": { label: (id) => id } },
     }),
     defaultEnvironment: {},
-    actions: createActionRegistry<{ "file.entry": string }, object, { kind: "noop" }>({
-      graph: createPresentationTypeGraph([{ id: "file.entry" }]),
-      scopes: ["global"],
-      contributions: [],
-    }),
-    snapshotFor: () => ({
-      revision: 0,
-      scopes: ["global"],
-      modes: new Set<string>(),
-      capabilities: new Set<string>(),
-      product: {},
-    }),
+    contextFor: () => ({ facts: {} }),
   });
 
   describe("a row wrapped in a Presentation keeps the row's own gesture", () => {
@@ -448,7 +440,7 @@ describe("FileBrowser presentation seam", () => {
       const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set(["project:"]));
       const [selectedId, setSelectedId] = useState<string | null>(null);
       return (
-        <filePbui.Provider onPerform={() => {}}>
+        <filePbui.Provider onRefuse={ignoreRefuse} onPerform={() => {}}>
         <FileBrowser
           roots={[{ name: "project" }]}
           trees={{ project: { status: "ready", tree: TREE } }}

@@ -50,7 +50,7 @@ import { WIDGET_BINDING } from "./apps/WidgetApp";
 export interface CreatePbuiChatOptions<Values extends PresentationValues, Environment, Verb extends VerbLike> {
   /** The product's `createPbui()` instance. */
   pbui: PbuiInstance<Values, Environment, Verb>;
-  /** Defaults to `pbui.registry`. */
+  /** Defaults to `pbui.presentation.descriptors`. */
   registry?: PresentationDescriptorRegistry<Values, Environment>;
   vocabulary: Vocabulary;
   router: VerbRouter<Verb>;
@@ -152,7 +152,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   options: CreatePbuiChatOptions<Values, Environment, Verb>,
 ) {
   const { pbui, vocabulary } = options;
-  const registry = options.registry ?? pbui.registry;
+  const registry = options.registry ?? pbui.presentation.descriptors;
   const referenceAdapter = options.referenceAdapter ?? identityReferenceAdapter<Values>();
   const router = options.router as unknown as VerbRouter<VerbLike>;
   const store = options.store ?? createPbuiChatStore();

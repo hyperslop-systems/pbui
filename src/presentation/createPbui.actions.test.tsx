@@ -1,15 +1,10 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import {
-  available,
-  createActionRegistry,
-  createPresentationTypeGraph,
-  defineActions,
-  unavailable,
-} from "./actions";
-import type { SelectionSnapshot } from "./actions";
+import { available, unavailable } from "./actions";
+import type { ActionContribution } from "./actions";
 import { createPbui } from "./createPbui";
-import { createPresentationRegistry } from "./registry";
+import { definePresentation } from "./model";
+import type { PresentationRelation } from "./relations";
 
 /**
  * PBUI-ACTIONS-2 P2 — the NEW capabilities, tested through the real
@@ -23,36 +18,35 @@ type Values = { file: { id: string } };
 type Facts = { canOpen: boolean; version: number };
 type Verb = { kind: string; version?: number };
 
-const descriptors = createPresentationRegistry<Values, { name: string }>({
-  file: { label: (value) => value.id },
-});
+const p = definePresentation<Values, { name: string }, Facts, Verb>();
+const define = p.actions;
+const ignoreRefuse = () => {};
 
-const graph = createPresentationTypeGraph([{ id: "file" }]);
-const define = defineActions<Values, Facts, Verb>();
-
-function snapshotFrom(facts: () => Facts) {
-  return (): SelectionSnapshot<Facts> => ({
-    revision: facts().version,
-    scopes: ["global"],
-    modes: new Set(),
-    capabilities: new Set(),
-    product: facts(),
+/** One compiled presentation per test: the `file` type and the given rules. */
+function presentationWith(contributions: readonly ActionContribution<Values, Facts, Verb>[]) {
+  return p.create({
+    id: "test.actions",
+    types: [{ id: "file" }],
+    knownScopes: ["global"],
+    defaultActiveScopes: ["global"],
+    revision: (facts) => facts.version,
+    descriptors: { file: { label: (value) => value.id } },
+    actions: contributions,
   });
 }
 
 function mount(
-  registry: ReturnType<typeof createActionRegistry<Values, Facts, Verb>>,
+  contributions: readonly ActionContribution<Values, Facts, Verb>[],
   facts: () => Facts,
   onPerform = vi.fn(),
 ) {
   const pbui = createPbui<Values, { name: string }, Verb, Facts>({
-    registry: descriptors,
+    presentation: presentationWith(contributions),
     defaultEnvironment: { name: "α" },
-    actions: registry,
-    snapshotFor: snapshotFrom(facts),
+    contextFor: () => ({ facts: facts() }),
   });
   render(
-    <pbui.Provider onPerform={onPerform}>
+    <pbui.Provider onPerform={onPerform} onRefuse={ignoreRefuse}>
       <pbui.Presentation reference={{ type: "file", value: { id: "f1" } }}>
         f1
       </pbui.Presentation>
@@ -75,11 +69,7 @@ describe("a product-supplied kernel drives the menu", () => {
     bind: ({ snapshot }) => ({ kind: "open", version: snapshot.product.version }),
   });
   const registry = () =>
-    createActionRegistry<Values, Facts, Verb>({
-      graph,
-      scopes: ["global"],
-      contributions: [open],
-    });
+    [open];
 
   test("clicking a resolved row delegates the FRESH verb", () => {
     const facts = { canOpen: true, version: 1 };
@@ -121,11 +111,7 @@ describe("ambiguity is data in the menu", () => {
         metadata: { label: "Open" },
         bind: () => ({ kind: "open", version: 0 }),
       });
-    const registry = createActionRegistry<Values, Facts, Verb>({
-      graph,
-      scopes: ["global"],
-      contributions: [contested("plugin-a.open"), contested("plugin-b.open")],
-    });
+    const registry = [contested("plugin-a.open"), contested("plugin-b.open")];
     const { onPerform } = mount(registry, () => ({ canOpen: true, version: 1 }));
     fireEvent.contextMenu(screen.getByText("f1"));
 
@@ -150,11 +136,7 @@ describe("the primary invocation (PBUI-ACTIONS-3 A4)", () => {
   });
 
   test("a left click performs the unique available primary action with the fresh verb", () => {
-    const registry = createActionRegistry<Values, Facts, Verb>({
-      graph,
-      scopes: ["global"],
-      contributions: [primaryOpen],
-    });
+    const registry = [primaryOpen];
     const facts = { canOpen: true, version: 1 };
     const { onPerform } = mount(registry, () => ({ ...facts }));
     facts.version = 2;
@@ -164,11 +146,7 @@ describe("the primary invocation (PBUI-ACTIONS-3 A4)", () => {
   });
 
   test("an unavailable primary falls back to opening the menu", () => {
-    const registry = createActionRegistry<Values, Facts, Verb>({
-      graph,
-      scopes: ["global"],
-      contributions: [primaryOpen],
-    });
+    const registry = [primaryOpen];
     const { onPerform } = mount(registry, () => ({ canOpen: false, version: 1 }));
     fireEvent.click(screen.getByText("f1"));
     expect(onPerform).not.toHaveBeenCalled();
@@ -184,11 +162,7 @@ describe("the primary invocation (PBUI-ACTIONS-3 A4)", () => {
       metadata: { label: "Preview", primary: true },
       bind: () => ({ kind: "preview" }),
     });
-    const registry = createActionRegistry<Values, Facts, Verb>({
-      graph,
-      scopes: ["global"],
-      contributions: [primaryOpen, second],
-    });
+    const registry = [primaryOpen, second];
     const { onPerform } = mount(registry, () => ({ canOpen: true, version: 1 }));
     fireEvent.click(screen.getByText("f1"));
     expect(onPerform).not.toHaveBeenCalled();
@@ -205,44 +179,25 @@ describe("typed accept and the chooser (PBUI-ACTIONS-2 P6)", () => {
   type AFacts = Record<string, never>;
   type AVerb = { kind: string };
 
-  const aDescriptors = createPresentationRegistry<AValues, Record<string, never>>({
-    doc: { label: (value) => value.id },
-    "image-doc": { label: (value) => value.id },
-    tag: { label: (value) => value.name },
-  });
-  const aGraph = createPresentationTypeGraph([
-    { id: "doc" },
-    { id: "image-doc", parents: ["doc"] },
-    { id: "tag" },
-  ]);
-  const aRegistry = createActionRegistry<AValues, AFacts, AVerb>({
-    graph: aGraph,
-    scopes: ["global"],
-    contributions: [],
-  });
-  const aSnapshot = () => ({
-    revision: 0,
-    scopes: ["global"] as const,
-    modes: new Set<string>(),
-    capabilities: new Set<string>(),
-    product: {},
-  });
+  const ap = definePresentation<AValues, Record<string, never>, AFacts, AVerb>();
 
-  function mountAccept(
-    translators: readonly {
-      id: string;
-      from: string;
-      to: string;
-      match: "exact" | "subtypes";
-      translate: (r: unknown) => unknown;
-    }[],
-  ) {
+  function mountAccept(relations: readonly PresentationRelation<AValues, AFacts>[]) {
     const pbui = createPbui<AValues, Record<string, never>, AVerb, AFacts>({
-      registry: aDescriptors,
+      presentation: ap.create({
+        id: "test.accept",
+        types: [{ id: "doc" }, { id: "image-doc", parents: ["doc"] }, { id: "tag" }],
+        knownScopes: ["global"],
+        defaultActiveScopes: ["global"],
+        revision: () => 0,
+        descriptors: {
+          doc: { label: (value) => value.id },
+          "image-doc": { label: (value) => value.id },
+          tag: { label: (value) => value.name },
+        },
+        relations,
+      }),
       defaultEnvironment: {},
-      actions: aRegistry,
-      snapshotFor: aSnapshot,
-      translators: translators as never,
+      contextFor: () => ({ facts: {} }),
     });
     const onAccept = vi.fn();
     let acceptResult: unknown = "unset";
@@ -258,7 +213,7 @@ describe("typed accept and the chooser (PBUI-ACTIONS-2 P6)", () => {
       );
     }
     render(
-      <pbui.Provider onPerform={vi.fn()} onAccept={onAccept}>
+      <pbui.Provider onPerform={vi.fn()} onAccept={onAccept} onRefuse={ignoreRefuse}>
         <Trigger />
         <pbui.Presentation reference={{ type: "image-doc", value: { id: "img-1" } }}>
           img-1
@@ -279,17 +234,16 @@ describe("typed accept and the chooser (PBUI-ACTIONS-2 P6)", () => {
     expect(onAccept).toHaveBeenCalledWith({ type: "image-doc", value: { id: "img-1" } });
   });
 
-  test("one translator edge settles; highlighting and clicking agree", () => {
+  test("one relation settles; highlighting and clicking agree", () => {
     const { onAccept } = mountAccept([
       {
         id: "tag-to-doc",
         from: "tag",
         to: "doc",
         match: "exact",
-        translate: (r) => {
-          const reference = r as { type: string; value: { docId: string } };
-          return { type: "doc", value: { id: reference.value.docId } };
-        },
+        exposure: { acceptance: true },
+        apply: (reference) =>
+          reference.type === "tag" ? { type: "doc", value: { id: reference.value.docId } } : undefined,
       },
     ]);
     fireEvent.click(screen.getByText("want-doc"));
@@ -300,15 +254,14 @@ describe("typed accept and the chooser (PBUI-ACTIONS-2 P6)", () => {
   });
 
   test("two tied edges open the chooser; Escape keeps the accept pending; a pick settles", () => {
-    const edge = (id: string, suffix: string) => ({
+    const edge = (id: string, suffix: string): PresentationRelation<AValues, AFacts> => ({
       id,
       from: "tag",
       to: "doc",
-      match: "exact" as const,
-      translate: (r: unknown) => {
-        const reference = r as { type: string; value: { docId: string } };
-        return { type: "doc", value: { id: reference.value.docId + suffix } };
-      },
+      match: "exact",
+      exposure: { acceptance: true },
+      apply: (reference) =>
+        reference.type === "tag" ? { type: "doc", value: { id: reference.value.docId + suffix } } : undefined,
     });
     const { onAccept } = mountAccept([edge("a.edge", "-a"), edge("b.edge", "-b")]);
     fireEvent.click(screen.getByText("want-doc"));
@@ -346,22 +299,17 @@ describe("the perform envelope (PBUI-ACTIONS-3 B1)", () => {
     bind: ({ snapshot }) => ({ kind: "open", version: snapshot.product.version }),
   });
   const registry = () =>
-    createActionRegistry<Values, Facts, Verb>({
-      graph,
-      scopes: ["global"],
-      contributions: [open],
-    });
+    [open];
 
   function mountWithActor(actor?: string) {
     const onPerform = vi.fn();
     const pbui = createPbui<Values, { name: string }, Verb, Facts>({
-      registry: descriptors,
+      presentation: presentationWith(registry()),
       defaultEnvironment: { name: "α" },
-      actions: registry(),
-      snapshotFor: snapshotFrom(() => ({ canOpen: true, version: 7 })),
+      contextFor: () => ({ facts: { canOpen: true, version: 7 } }),
     });
     render(
-      <pbui.Provider onPerform={onPerform} actor={actor}>
+      <pbui.Provider onPerform={onPerform} actor={actor} onRefuse={ignoreRefuse}>
         <pbui.Presentation reference={{ type: "file", value: { id: "f1" } }}>
           f1
         </pbui.Presentation>

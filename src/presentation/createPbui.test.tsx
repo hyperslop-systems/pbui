@@ -1,15 +1,9 @@
 import { useState, type ReactElement } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
-import {
-  available,
-  createActionRegistry,
-  createPresentationTypeGraph,
-  defineActions,
-} from "./actions";
-import type { SelectionSnapshot } from "./actions";
+import { available, defineActions } from "./actions";
 import { createPbui } from "./createPbui";
-import { createPresentationRegistry } from "./registry";
+import { definePresentation } from "./model";
 
 interface Values {
   person: { id: string; name: string };
@@ -20,30 +14,22 @@ type Verb = { type: "select"; id: string };
 afterEach(cleanup);
 
 const ignorePerform = () => {};
-
-const personGraph = () => createPresentationTypeGraph([{ id: "person" }]);
-
-function snapshotOf<Environment>(environment: Environment): SelectionSnapshot<Environment> {
-  return {
-    revision: 0,
-    scopes: ["global"],
-    modes: new Set(),
-    capabilities: new Set(),
-    product: environment,
-  };
-}
+const ignoreRefuse = () => {};
 
 function makePbui() {
-  const registry = createPresentationRegistry<Values, { prefix: string }>({
-    person: {
-      label: (person, environment) => `${environment.prefix}${person.name}`,
-    },
-  });
   const define = defineActions<Values, { prefix: string }, Verb>();
-  const actions = createActionRegistry<Values, { prefix: string }, Verb>({
-    graph: personGraph(),
-    scopes: ["global"],
-    contributions: [
+  const presentation = definePresentation<Values, { prefix: string }, { prefix: string }, Verb>().create({
+    id: "test.person",
+    types: [{ id: "person" }],
+    knownScopes: ["global"],
+    defaultActiveScopes: ["global"],
+    revision: () => 0,
+    descriptors: {
+      person: {
+        label: (person, environment) => `${environment.prefix}${person.name}`,
+      },
+    },
+    actions: [
       define.exact("person", {
         id: "test.person.select",
         action: "person.select",
@@ -56,10 +42,9 @@ function makePbui() {
   });
 
   return createPbui({
-    registry,
+    presentation,
     defaultEnvironment: { prefix: "" },
-    actions,
-    snapshotFor: (_query, environment) => snapshotOf(environment),
+    contextFor: (_query, environment) => ({ facts: environment }),
   });
 }
 
@@ -70,10 +55,10 @@ describe("createPbui", () => {
 
     render(
       <>
-        <pbui.Provider environment={{ prefix: "A: " }} onPerform={ignorePerform}>
+        <pbui.Provider environment={{ prefix: "A: " }} onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           <pbui.Presentation reference={reference}>A: Ada</pbui.Presentation>
         </pbui.Provider>
-        <pbui.Provider environment={{ prefix: "B: " }} onPerform={ignorePerform}>
+        <pbui.Provider environment={{ prefix: "B: " }} onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           <pbui.Presentation reference={reference}>B: Ada</pbui.Presentation>
         </pbui.Provider>
       </>,
@@ -89,7 +74,7 @@ describe("createPbui", () => {
     const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
 
     render(
-      <pbui.Provider
+      <pbui.Provider onRefuse={ignoreRefuse}
         onPerform={(verb) => {
           performed.push(verb);
         }}
@@ -117,7 +102,7 @@ describe("createPbui", () => {
     const reference = { type: "person", value: { id: "1", name: "Ada" } } as const;
     render(
       <main>
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
           <pbui.ObjectMenu />
         </pbui.Provider>
@@ -143,7 +128,7 @@ describe("createPbui", () => {
       const [visible, setVisible] = useState(true);
       return (
         <main data-testid="menu-owner">
-          <pbui.Provider onPerform={() => setVisible(false)}>
+          <pbui.Provider onRefuse={ignoreRefuse} onPerform={() => setVisible(false)}>
             {visible ? <pbui.Presentation reference={reference}>Ada</pbui.Presentation> : null}
             <pbui.ObjectMenu />
           </pbui.Provider>
@@ -177,7 +162,7 @@ describe("createPbui", () => {
     }
 
     render(
-      <pbui.Provider onPerform={ignorePerform}>
+      <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
         <Acceptor />
         <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
       </pbui.Provider>,
@@ -205,7 +190,7 @@ describe("createPbui", () => {
     test("is a button with a tab stop when it stands alone", () => {
       const pbui = makePbui();
       render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
         </pbui.Provider>,
       );
@@ -216,7 +201,7 @@ describe("createPbui", () => {
     test("yields role and tab stop to the container when inComposite", () => {
       const pbui = makePbui();
       const { container } = render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           <div role="tree">
             <div role="treeitem" tabIndex={-1}>
               <pbui.Presentation reference={reference} inComposite>
@@ -256,7 +241,7 @@ describe("createPbui", () => {
       const activated: string[] = [];
 
       render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div onClick={() => hostClicks.push("host")}>
             <pbui.Presentation
@@ -280,7 +265,7 @@ describe("createPbui", () => {
       const hostClicks: string[] = [];
 
       render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div onClick={() => hostClicks.push("host")}>
             <pbui.Presentation reference={reference}>Ada</pbui.Presentation>
@@ -305,7 +290,7 @@ describe("createPbui", () => {
       const activated: string[] = [];
 
       render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div onClick={() => hostClicks.push("host")}>
             <pbui.Presentation
@@ -331,7 +316,7 @@ describe("createPbui", () => {
       const hostClicks: string[] = [];
 
       render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div onClick={() => hostClicks.push("host")}>
             <pbui.Presentation reference={reference} activate={{ doc: "select" }}>
@@ -350,7 +335,7 @@ describe("createPbui", () => {
       const runs: string[] = [];
 
       render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           <pbui.Presentation
             reference={{ type: "person", value: { id: "outer", name: "Outer" } }}
             activate={{ run: () => runs.push("outer") }}
@@ -372,7 +357,7 @@ describe("createPbui", () => {
       const runs: string[] = [];
 
       render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           <pbui.Presentation reference={reference} activate={{ run: () => runs.push("outer") }}>
             <input aria-label="rename person" />
           </pbui.Presentation>
@@ -396,7 +381,7 @@ describe("createPbui", () => {
   describe("the mouse-doc line describes what a left click will do", () => {
     function hover(node: ReactElement, pbui: ReturnType<typeof makePbui>) {
       const { container } = render(
-        <pbui.Provider onPerform={ignorePerform}>
+        <pbui.Provider onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           {node}
           <pbui.MouseDocLine />
         </pbui.Provider>,
@@ -460,16 +445,15 @@ describe("createPbui", () => {
     type MenuVerb = { type: "focus"; id: string };
 
     function menuPbui() {
-      const registry = createPresentationRegistry<Values, { focused: string }>({
-        person: {
-          label: (person) => person.name,
-        },
-      });
       const define = defineActions<Values, { focused: string }, MenuVerb>();
-      const actions = createActionRegistry<Values, { focused: string }, MenuVerb>({
-        graph: personGraph(),
-        scopes: ["global"],
-        contributions: [
+      const presentation = definePresentation<Values, { focused: string }, { focused: string }, MenuVerb>().create({
+        id: "test.menu",
+        types: [{ id: "person" }],
+        knownScopes: ["global"],
+        defaultActiveScopes: ["global"],
+        revision: () => 0,
+        descriptors: { person: { label: (person) => person.name } },
+        actions: [
           define.exact("person", {
             id: "test.person.focus",
             action: "person.focus",
@@ -490,17 +474,16 @@ describe("createPbui", () => {
         ],
       });
       return createPbui({
-        registry,
+        presentation,
         defaultEnvironment: { focused: "" },
-        actions,
-        snapshotFor: (_query, environment) => snapshotOf(environment),
+        contextFor: (_query, environment) => ({ facts: environment }),
       });
     }
 
     function openMenuFor(focused: string) {
       const pbui = menuPbui();
       render(
-        <pbui.Provider environment={{ focused }} onPerform={ignorePerform}>
+        <pbui.Provider environment={{ focused }} onPerform={ignorePerform} onRefuse={ignoreRefuse}>
           <pbui.Presentation reference={{ type: "person", value: { id: "1", name: "Ada" } }}>
             Ada
           </pbui.Presentation>

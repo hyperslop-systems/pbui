@@ -1,4 +1,3 @@
-export { relationFromTranslator } from "./adapters";
 export { defineRelations } from "./define";
 export { createRelationSystem, isExposedTo } from "./system";
 export type {
