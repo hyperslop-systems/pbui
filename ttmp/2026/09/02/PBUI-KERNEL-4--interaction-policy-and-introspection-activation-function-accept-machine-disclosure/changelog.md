@@ -50,3 +50,8 @@ Step 5: explainResolution and pbui.explain with public/developer disclosure (com
 
 Step 6: §19.8 DOM tests, Interaction stories, seven screenshots, README section, cross-package verification (commit e56e3da)
 
+
+## 2026-09-02
+
+Project report written to the go-go-parc vault: 'PROJECT REPORT - PBUI Interaction Policy - One Activation Ladder, a Request-Identified Accept Machine, Refusals with a Face, and Explaining the Menu' with seven screenshots; committed and pushed
+

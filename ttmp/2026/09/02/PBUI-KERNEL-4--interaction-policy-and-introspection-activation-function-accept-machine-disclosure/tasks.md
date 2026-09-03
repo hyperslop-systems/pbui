@@ -2,7 +2,7 @@
 
 ## TODO
 
-- [ ] REPORT: write the PBUI-KERNEL-4 project report in the go-go-parc vault (PROJECT REPORT naming, textbook style, screenshots in _assets/), commit and push the vault <!-- t:byk0 -->
+- [x] REPORT: write the PBUI-KERNEL-4 project report in the go-go-parc vault (PROJECT REPORT naming, textbook style, screenshots in _assets/), commit and push the vault <!-- t:byk0 -->
 - [x] P1: activationOutcome pure function with a table test; pointer and keyboard ladders call it <!-- t:l1py -->
 - [x] P2: accept state machine (AcceptState/AcceptEffect, request ids) with fuzzed invariants <!-- t:egso -->
 - [x] P3: Provider dispatches events and executes effects; pbui.accept stays a promise outside React <!-- t:acm8 -->
