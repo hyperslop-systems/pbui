@@ -130,3 +130,13 @@ Phase 7: batch-preserving sync outbox (whole entries, per-batch rebase and isola
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/sync/index.ts — The batch-preserving outbox
 
+
+## 2026-09-03
+
+Phase 8 (in-repo): sandbox, plotscript, ecommerce, chat and the chat demo on workbench-core; connectDocumentSource and openBindings for host-owned bindings (commits cc19b38, d2a182c)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/tools/workbenchTools.ts — The agent tools on the command vocabulary
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/sources.ts — Stub documents for host-owned resources
+

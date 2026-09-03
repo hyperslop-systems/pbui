@@ -13,10 +13,14 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/pbui-chat/demo/src/workbench.ts
+      Note: Wiring order of sources, restore and persistence in the largest consumer
     - Path: repo://packages/pbui-workbench/src/goldens/transitions.test.ts
       Note: Phase 0 goldens (commit 9822ba8)
     - Path: repo://packages/pbui-workbench/src/rebalance/slate.ts
       Note: Evidence that rebalance algorithms are pure and should be preserved while integration moves
+    - Path: repo://packages/workbench-core/src/sources.ts
+      Note: Document sources, the one new core facility of Phase 8
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/01-intern-guide-to-the-pbui-workbench-core-consolidation-and-hard-cutover.md
       Note: Final evidence-backed architecture and implementation guide produced by the investigation
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/01-plan-purity-probe.output.txt
@@ -31,6 +35,7 @@ LastUpdated: 2026-09-03T15:00:00-04:00
 WhatFor: Preserve how the consolidation design was derived so an implementer or reviewer can reproduce findings and continue without repeating the investigation.
 WhenToUse: Read before resuming PBUI-WORKBENCH-CORE-1, reviewing its architecture recommendations, or reproducing the planner-purity finding.
 ---
+
 
 
 
@@ -1101,3 +1106,79 @@ Phase 7 rewrote the sync outbox so the atomicity a local transition promises sur
 ### Technical details
 
 - Concurrency statement (guide §15.5) is in the module header: optimistic single-user / multi-client persistence with batch-level conflict detection; no collaborative editing.
+
+## Step 15: Phase 8 (in-repo) — every consumer on the core, and documents for what tiles bind
+
+Phase 8's in-repo half moved pbui-sandbox, pbui-plotscript, pbui-ecommerce, pbui-chat and the chat demo onto `createWorkbench` / `defineWorkbenchApp` and the command vocabulary, and deleted nothing more from the shell because Phase 6 had already deleted it: the consumers were the last holders of `defineApp`, `wb.verbs.*`, `wb.store`, `describeWorkbench(wb)` and the `tile.*` verb kinds. Each package was converted mechanically (a manifest/presentation split per app, a command builder per verb call) and then run against the core, and the runs are where the real work was: the core validates every binding against the document store, and three of the four products bind things that live somewhere else.
+
+That finding produced the one new facility of this phase, `connectDocumentSource` in workbench-core: a host-owned set of resources (a program library, a conversation registry, a product catalogue) is mirrored into the workbench document as stub documents, kept in step with the source and with the document itself, so a `chat` tile can bind a conversation and a `script` tile a program without either resource moving house. The `script` application additionally declares `openBindings`, because a program names its own bindings beyond the one slot the manifest can declare.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Phase 8 of the guide: migrate the in-repo consumers to the core and the thin shell, delete legacy APIs, no compatibility aliases.
+
+**Inferred user intent:** A repo where nothing still speaks the old verb vocabulary or reaches into the old store, so the cutover is real and the external consumers have worked examples to copy.
+
+**Commit (code):** cc19b38 — "PBUI-WORKBENCH-CORE-1 P8: migrate in-repo consumers to workbench-core; document sources"; d2a182c — lockfile.
+
+### What I did
+
+- pbui-sandbox: `createScriptApp` and the devtools apps became `defineWorkbenchApp` pairs; the tiles execute `commands.open("script", …)`; the `script` manifest declares `openBindings: true`; new `connect.ts` (`programDocumentSource`, `connectProgramLibrary`) mirrors the library as `sandbox.program` stubs; `@bufbuild/protobuf` and workbench-core added as dependencies.
+- pbui-plotscript: apps converted; `connectPlotScriptDocuments(core, host)` now takes the core and writes through `core.apply`; tests, stories and the demo use `parseWorkbenchDocument` and `wb.core`.
+- pbui-ecommerce: the seven apps converted line-wise; `createShop` takes `WorkbenchApp[]` and returns a `WorkbenchShell`; the presentation environment's `links` is the shell (`linkSnapshot()`, `links.deps`, `links.sourceOf`); the demo restores through `parseWorkbenchDocument(stored, { apps: createManifestCatalog(manifestsOf(shop.apps)) })`.
+- pbui-chat: `createChatApps` / `createConversationApps` converted; `createPbuiChat` holds a `WorkbenchShell`, opens widget tiles with `commands.open("widget", …)` after putting a `chat.widget` stub, and `attachWorkbench` connects the conversation registry as a `chat.conversation` document source (disconnected on detach); `conversations/verbs.ts` executes `commands.open("chat", …)`; `sandboxTools` reads `wb.describe`.
+- `src/tools/workbenchTools.ts` rewritten on the new surface: `DEFAULT_POLICY` keyed by command kind with `view.show.replace` as the confirm-gated form (`policyKindOf`); `performWithPolicy` guards on `core.getState().revision` instead of document identity; `verbProblem` switches on the new kinds and uses `canSplitPlacement` / `splitRatioBounds` with `wb.measure()`; `workbenchVerbTargetIds` reads one level into `view` / `placement`; `validateLayout` uses `layoutFits(spec, wb.measure(), wb.core.policy.split)`; the perform tool refuses shell-action kinds ("is not something the assistant may do"), preflights with `wb.preview` and executes with `wb.execute` inside the gateway; the raw tool applies through `wb.apply`; `WORKBENCH_COMMAND_KINDS` replaces `WORKBENCH_VERB_KINDS`.
+- Chat demo: `workbench.ts` builds one apps array, restores with `readWorkbenchSnapshot(key, { migrate, apps })`, passes `initialSession`, connects the world (`shop.product|category|metal|order`) and the program library as document sources, persists with `createLocalPersistence(workbench.core, …)`; `pbui/verbs.ts` carries zod schemas for the command kinds and `launcher.open{from?}/close`; `chat.ts` routes the command kinds as local verbs through `wb.perform`; `pbui/actions.ts` and `vocabulary.ts` emit `view.show` / `session.selectWorkspace` literals; `pkg/chatserver/demo/vocabulary.json` regenerated with `pnpm vocab`.
+- Tests: `workbenchTools.test.ts` ported (apps as `defineWorkbenchApp`, `wb.perform` in the router seam, `wb.core.getState()`, a `withProduct` seed because the core validates the `sku` binding); `sandboxTools.test.ts` harness connects the program library and a static product source; `conversations/verbs.test.ts` fakes `execute`; core `sources.test.ts` (five cases incl. `openBindings`); refusal goldens updated for `index` / `command`.
+- `test/grid-columns.test.ts` had been failing since PBUI-LINK-1: three module stylesheets (CoordinationInspector `.app`/`.pad`, PortRail `.column`, SourceTile `.code`) now state `grid-template-columns: minmax(0, 1fr)`.
+
+### Why
+
+- Guide §17 Phase 8; the agent tools are the product's only path from the model to the layout, so they had to keep every guarantee (revision check, policy, trace) while changing vocabulary.
+- The document-store rule is the Go validator's rule (`pkg/workbench/validate.go`: `unknown_binding`, `unknown_document`); relaxing it in TypeScript would have reopened the parity gap the guide closes in §13.1. Mirroring identities keeps AGENT-3's D5 (the library is not the workbench document) while satisfying the rule.
+
+### What worked
+
+- Line-wise converters for the app declarations (keyed on the six-space-indented fields) were reliable where a regex over the whole object was not.
+- The agent tools' tests carried over almost verbatim once the harness performed through `wb.perform`: the behaviours (stale revision, deny, confirm ledger, limits, atomic batches) are vocabulary-independent.
+- 241 pbui-chat tests, 224 sandbox, 35 ecommerce, 32 plotscript, 114 shell, 189 core (one timing test flaky under load, green alone).
+
+### What didn't work
+
+- The first rewrite of `workbenchTools.ts` aborted on its own leftover check: comment lines mentioning `wb.verbs.*` and the tool's `input.verbs` field matched the old-API pattern. Narrowed the check to code lines and the actual old symbols.
+- `sandbox_open` with `{ product: "2049" }` was refused twice: first `unknown_document` (no product document — the test's world is a resolver, not a store), then `unknown_binding` (the test harness declares its own `script` manifest without `openBindings`). Both are the rule working; the fixes are a static source in the harness and the flag on the harness manifest.
+- `pnpm vocab` crashed on a stale `pbui-chat/dist` importing `defineApp`; rebuilding the package first fixed it.
+- The fence test flagged `sources.ts` for a parameter named `document`; renamed to `doc`, as elsewhere in the core.
+
+### What I learned
+
+- Every product in this repo binds at least one host-owned id: conversations and widgets (chat), programs (sandbox), products (both demos). The old store never noticed because its validation ran without a catalog. The core's strictness surfaced a real modelling gap, and the document source is a small, uniform answer to it.
+- A restored layout from before this change carries bindings without stubs and is discarded by `readWorkbenchSnapshot` (with `apps`); the demo falls back to its default layout once. Stubs persist with the document from then on.
+
+### What was tricky to build
+
+- Stub deletion: a `documentDelete` of a bound document is refused by the applier (`document_in_use`), so a source that drops a resource while a tile still shows it must leave the stub and try again when the view goes. `documentSourceMutations` skips bound stubs, and the core subscription re-runs the sync after the closing commit — which is also what stops the subscription feeding itself: a sync that computes no mutations applies nothing.
+- The chat demo's `Verb` union is zod-inferred, so `commands.*` (typed as the wide `WorkbenchCommand`) is not assignable in `bind:`; the demo's action rules emit literal `view.show` / `session.selectWorkspace` objects instead.
+
+### What warrants a second pair of eyes
+
+- `openBindings` has no Go counterpart yet: `pkg/workbench` `ApplicationDescriptor.DocumentBindings` would still refuse a `script` view with a `product` binding if the server validated the chat demo's document with a catalog. Today the chat server does not; the flag should be mirrored into the Go descriptor before it does.
+- Widget stubs are never removed (a widget that left the timeline is what the tile's empty state reports); the document grows by one small stub per "Open in tile".
+- `DEFAULT_POLICY` gates `view.show.replace` and `placement.replaceWith` on confirmation but allows `view.show` otherwise; the old policy gated `tile.replace` only, so this is the same surface under new names.
+
+### What should be done in the future
+
+- Mirror `openBindings` into the Go `ApplicationDescriptor` and the protocol fixtures.
+- The external consumers (Step 16).
+
+### Code review instructions
+
+- Start at `packages/workbench-core/src/sources.ts` and `sources.test.ts`; then `packages/pbui-chat/src/tools/workbenchTools.ts` (`policyKindOf`, `verbProblem`, the perform tool) against its test; then `packages/pbui-chat/demo/src/workbench.ts` for the wiring order (sources before `bootstrapConversations`).
+- Validate: `pnpm --filter @hyperslop-systems/workbench-core build && pnpm --filter @hyperslop-systems/pbui-sandbox build && cd packages/pbui-chat && pnpm typecheck && npx vitest run && pnpm build && cd demo && pnpm build`.
+
+### Technical details
+
+- Stub formats: `sandbox.program` (body `{ title }`), `chat.conversation`, `chat.widget`, `shop.product` (body `{ name }`), `shop.category`, `shop.metal`, `shop.order`.
+- Old verb → command mapping used throughout: `tile.split{dir}` → `placement.duplicate{axis}`; `tile.split{appId}` → `view.show{application, split{target}}`; `tile.close` → `placement.close`; `tile.activate` → `session.activatePlacement`; `tile.replace` → `view.show{…, replace{target}}`; `tile.link` → `view.show{existing, split}`; `split.resize` → `placement.resize`; `app.place` / `view.open` → `view.show{application, auto}`; `view.setTitle` / `view.rebind` → `view.configure`; `view.goTo` → `view.show{existing, navigate}`; `workspace.select` → `session.selectWorkspace`.
