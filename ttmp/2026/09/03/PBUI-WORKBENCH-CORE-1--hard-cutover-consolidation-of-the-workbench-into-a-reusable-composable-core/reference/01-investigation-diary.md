@@ -1386,3 +1386,70 @@ The reach-back was rag-ttc's: pbui-chat's `attachWorkbench` mirrored conversatio
 
 - Consumer test counts: hyperblog 29, agentlogic 128 (+1 skipped), turboproof 129, rag-ttc 167.
 - Brief's key line: "The core refuses a view whose `documents` binding names a document not in `document.documents` (`unknown_document`), or a slot the manifest does not declare (`unknown_binding`, unless `openBindings`)."
+
+## Step 17: Phase 9 — release audit, baselines, versions
+
+Phase 9 is the audit the guide asks for before a publish: every package's suite, the Go tests, protocol generation parity, the bundle fence, a browser smoke, performance baselines, the migration note, and version bumps in dependency order. Everything that can be run without publishing was run and is green; the publish itself is left to the user, since it is outward-facing and the four external consumers' lockfiles and embedded bundles wait on it by their own convention.
+
+The one result worth reading is the baseline table: index build and link snapshot are effectively free at 12 tiles, a plan costs under a millisecond, a plan-and-commit pair about two, and the full rebalance slate (every generator, the relax gradient, the cubic assignment) about sixteen — the same order as the Phase 6 guard's lab number.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Guide §17 Phase 9: run all suites and consumer suites, Go and protocol checks, confirm the core bundle carries no React or DOM, write the READMEs and migration note, record baselines, bump versions in order.
+
+**Inferred user intent:** A branch that can be published as protocol → core → shell with confidence, and numbers to compare against later.
+
+**Commit (code):** 83074c5 — "PBUI-WORKBENCH-CORE-1 P9: versions, migration note, performance baselines"
+
+### What I did
+
+- Whole-workspace audit: `pnpm -r typecheck` (13 projects), `pnpm -r test` (10 suites, 1,454 tests: protocol 40, pbui 554, core 189, shell 114, ecommerce 35, editor 12, sandbox 224, chat 241, plotscript 32, datalab 13), `pnpm -r build` (12 builds), Storybook builds for workbench, chat, sandbox, ecommerce, plotscript; `make protocol-check` (buf lint, regenerate, no diff); `GOWORK=off go test ./pkg/workbench/... ./pkg/workbenchapi/...` (the workspace `go.work` refuses sibling modules' Go versions, an environment matter).
+- Consumer suites: hyperblog 29, agentlogic 128, turboproof 129, rag-ttc 167 (Step 16).
+- Bundle fence: `packages/workbench-core/dist/*.js` import only `@bufbuild/protobuf`, `workbench-protocol`, `workbench-protocol/client` and `@hyperslop-systems/pbui` (port helpers); no `react`, `window` or `document.body` in the output. The source fence test stays.
+- Browser smoke: the ecommerce demo served from its `dist` with `vite preview`; the seeded workspace renders three tiles, the tile object menu opens, "Split beside" produces a nested pair, zero console warnings or errors.
+- Baselines: `scripts/05-perf-baselines.test.ts` (12 tiles, 3 apps, 20 links; medians of 25 after a warm-up) writes `05-perf-baselines.output.txt`.
+- `packages/pbui-workbench/MIGRATION.md`: old verbs and store → commands and core, persistence, sync, validated bindings, object menus.
+- Versions: workbench-protocol 0.4.1 → 0.5.0; pbui-workbench 0.4.0 → 0.5.0; workbench-core 0.1.0 (new); root pbui 0.10.0 → 0.11.0. All internal deps are `workspace:^`, so nothing else moved; the lockfile did not change.
+
+### Why
+
+- Guide §17 Phase 9, item by item. The root bump answers turboproof's finding that its `0.10.0` pin names two incompatible APIs.
+
+### What worked
+
+- The audit had been running in the background since Phase 8 closed in-repo, so Phase 9 mostly read results.
+
+### What didn't work
+
+- `import.meta.url` under the ticket's vitest config is not a `file:` URL; the baseline script writes through `__dirname` instead.
+- The guide lists property/fuzz tests; none exist in this repo (`fast-check` is not a dependency). The goldens and the purity probe are the closest thing. Recorded, not invented.
+- `pkill -f "vite preview"` matched the shell that ran it; a `[v]ite` pattern does not.
+
+### What I learned
+
+- `preview placement.duplicate` costs about 30× `preview view.show auto` at 12 tiles because a duplicate consults geometry for the longer axis and runs the split feasibility check; both are still under a millisecond.
+
+### What was tricky to build
+
+- Nothing in this phase; the numbering collision (`04-` was taken by the implementation-review probes) was the only correction.
+
+### What warrants a second pair of eyes
+
+- The publish order and the two consumer conventions that depend on it (agentlogic/turboproof commit neither the lockfile nor the embedded bundle until the packages are on the registry).
+- `@hyperslop-systems/pbui` is a runtime dependency of the core for `definePorts` / `documentSlotsOf`; the package's root entry also exports React components. The core's bundle imports only the helpers, but a stricter fence would give pbui a pure `ports` subpath.
+
+### What should be done in the future
+
+- Publish protocol 0.5.0 → core 0.1.0 → shell 0.5.0 (and pbui 0.11.0 first, since the core depends on it), then let the consumers commit their lockfiles and bundles.
+- Follow-ups carried from Steps 15–16: `openBindings` in the Go descriptor; an optional document slot that does not make an app doc-bound; a pure ports subpath on pbui.
+
+### Code review instructions
+
+- `packages/pbui-workbench/MIGRATION.md`; `scripts/05-perf-baselines.test.ts` and its output; the three `package.json` version lines.
+- Validate: `pnpm -r typecheck && pnpm -r test && pnpm -r build && make protocol-check && GOWORK=off go test ./pkg/workbench/... ./pkg/workbenchapi/...`; `npx vitest run --config <ticket>/scripts/01-vitest.config.ts <ticket>/scripts/05-perf-baselines.test.ts`.
+
+### Technical details
+
+- Baselines (medians, ms): index 0.014; preview duplicate 0.849; preview show 0.030; execute duplicate+close 2.056; links snapshot 0.000; slate 15.602 (n=5). Node v24.18.0.

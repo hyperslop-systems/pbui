@@ -168,3 +168,12 @@ Phase 8 (external): hyperblog 6358676, agentlogic e3b69e0, turboproof 68ed102, r
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/createPbuiChat.tsx — Conversation stubs configurable or off
 
+
+## 2026-09-03
+
+Phase 9: whole-workspace audit green (1,454 tests, 12 builds, 5 storybooks, protocol parity, Go), browser smoke, baselines, MIGRATION.md, versions protocol 0.5.0 / shell 0.5.0 / pbui 0.11.0 (commit 83074c5); publish left to the user
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/MIGRATION.md — The consumer migration note
+
