@@ -1,4 +1,4 @@
-import type { RuntimeEffect } from "@hyperslop-systems/pbui";
+import type { RuntimeEffect } from "@hyperslop-systems/pbui/link-kernel";
 
 /**
  * Explicit non-durable consequences of a transition (guide K1): planned as

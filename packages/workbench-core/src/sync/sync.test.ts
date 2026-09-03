@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { createPresentationTypeGraph, linkVerbs } from "@hyperslop-systems/pbui";
+import { createPresentationTypeGraph, linkVerbs } from "@hyperslop-systems/pbui/link-kernel";
 import type { Mutation, Node, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { defineAppManifest } from "../apps";

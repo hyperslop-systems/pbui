@@ -72,6 +72,10 @@ A transaction has three stages (design doc 04 §6.1): **prepare** (plan or apply
 
 Every document that enters the core — `initial`, a replacement, a restore, a server adoption — is cloned, so a caller's later edits to what it passed in reach nothing. What the core exposes through `getState()` is deep-frozen (the document, the session, and the index's maps) unless `ownership: "trust"` is set or `NODE_ENV` is `production`; a caller that mutates it fails at the assignment. `core.snapshot()` returns a clone to write on. Preview never consumes ids: plans read them through a lookahead pool and only a committed execution consumes what its plan drew, so `execute` after `preview` mints the ids the preview reported. A transition that reproduces the current document with an unchanged session is `changed: false` and installs nothing.
 
+## Package boundary
+
+The core's only PBUI import is `@hyperslop-systems/pbui/link-kernel`, the pure semantic entry (ports, terms, link planning and evaluation, identity, badges, the type graph), and PBUI declares React as an OPTIONAL peer, so a consumer that installs workbench-core alone gets no React. Three checks keep that true: the source fence (`fence.test.ts`: no `react`, no DOM, no PBUI root entry), the declaration test (`packageGraph.test.ts`: runtime, peer and dev dependencies by kind), and `pnpm boundary`, which packs pbui, workbench-protocol and workbench-core, installs the core alone into an empty project with scripts disabled, asserts React is absent, imports the core and plans a command, and scans the built output's imports.
+
 ## Invariants
 
 - Planning never touches anything observable; `preview` leaves the document, the session, and the link runtime exactly as they were.

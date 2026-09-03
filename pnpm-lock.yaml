@@ -727,12 +727,6 @@ importers:
       '@types/node':
         specifier: ^24.10.13
         version: 24.13.3
-      react:
-        specifier: ^19.2.8
-        version: 19.2.8
-      react-dom:
-        specifier: ^19.2.8
-        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

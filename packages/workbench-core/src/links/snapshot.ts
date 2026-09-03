@@ -1,4 +1,4 @@
-import { compileIdentity, DOCUMENT_VALUE_TYPE, portId, refineDeclaration, type ContextDefinition, type LinkSnapshot, type PortDefinition, type PortId, type SerializableReference } from "@hyperslop-systems/pbui";
+import { compileIdentity, DOCUMENT_VALUE_TYPE, portId, refineDeclaration, type ContextDefinition, type LinkSnapshot, type PortDefinition, type PortId, type SerializableReference } from "@hyperslop-systems/pbui/link-kernel";
 import type { AppView, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import type { ManifestCatalog } from "../apps";
 import { stateOf } from "./document";

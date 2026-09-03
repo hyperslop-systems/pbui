@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { create, toJson } from "@bufbuild/protobuf";
-import { createPresentationTypeGraph, documentSlotPort, linkVerbs } from "@hyperslop-systems/pbui";
+import { createPresentationTypeGraph, documentSlotPort, linkVerbs } from "@hyperslop-systems/pbui/link-kernel";
 import { DocumentPayloadSchema, MutationSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, leaves, type IdGenerator } from "@hyperslop-systems/workbench-protocol/client";
 import { defineAppManifest } from "../apps";

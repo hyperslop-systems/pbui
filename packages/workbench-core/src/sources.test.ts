@@ -4,7 +4,7 @@ import { commands } from "./commands";
 import { createWorkbenchCore } from "./createWorkbenchCore";
 import { layout, split, tile } from "./document";
 import { connectDocumentSource, documentSourceMutations, type DocumentSource } from "./sources";
-import { documentSlotPort } from "@hyperslop-systems/pbui";
+import { documentSlotPort } from "@hyperslop-systems/pbui/link-kernel";
 
 const apps = [defineAppManifest({ id: "chat", ports: [documentSlotPort("conversation")] }), defineAppManifest({ id: "notes" })];
 

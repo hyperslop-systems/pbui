@@ -1,4 +1,4 @@
-import type { PortId, RuntimeEffect, SerializableReference } from "@hyperslop-systems/pbui";
+import type { PortId, RuntimeEffect, SerializableReference } from "@hyperslop-systems/pbui/link-kernel";
 import { attemptAll, reportFailures, type ObserverErrorSink, type WorkbenchObserverError } from "../publication";
 
 /**

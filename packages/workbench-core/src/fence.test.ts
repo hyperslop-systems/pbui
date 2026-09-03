@@ -39,6 +39,11 @@ describe("workbench-core imports no React and reads no DOM", () => {
     expect(files.length).toBeGreaterThan(0);
   });
 
+  it("no module imports PBUI's root entry (only the pure link-kernel subpath)", () => {
+    const offenders = files.filter((file) => /from ["']@hyperslop-systems\/pbui["']/.test(stripComments(readFileSync(file, "utf8"))));
+    expect(offenders.map((file) => relative(root, file))).toEqual([]);
+  });
+
   it("no module imports react or react-dom", () => {
     const offenders = files.filter((file) => /from ["']react(-dom)?(\/|["'])/.test(stripComments(readFileSync(file, "utf8"))));
     expect(offenders.map((file) => relative(root, file))).toEqual([]);

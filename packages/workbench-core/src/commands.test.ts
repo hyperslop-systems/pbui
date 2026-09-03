@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkVerbs } from "@hyperslop-systems/pbui";
+import { linkVerbs } from "@hyperslop-systems/pbui/link-kernel";
 import { commands, describeWorkbenchCommand, isWorkbenchCommand } from "./commands";
 
 describe("command validation", () => {

@@ -1,4 +1,4 @@
-import { describeLinkVerb, isLinkVerb, type LinkVerb } from "@hyperslop-systems/pbui";
+import { describeLinkVerb, isLinkVerb, type LinkVerb } from "@hyperslop-systems/pbui/link-kernel";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import type { LayoutSpec } from "./document";
 import type { Axis } from "./policy";

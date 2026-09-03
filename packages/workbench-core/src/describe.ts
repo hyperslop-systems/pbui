@@ -1,6 +1,6 @@
 import { toJson } from "@bufbuild/protobuf";
 import { Direction, type AppView, type Node, type WorkbenchDocument, WorkbenchDocumentSchema } from "@hyperslop-systems/workbench-protocol";
-import { badgeOf, type BadgeState, type PortDeclaration, type PortDirection } from "@hyperslop-systems/pbui";
+import { badgeOf, type BadgeState, type PortDeclaration, type PortDirection } from "@hyperslop-systems/pbui/link-kernel";
 import { documentSlots, type WorkbenchAppManifest } from "./apps";
 import type { WorkbenchCore } from "./createWorkbenchCore";
 import { MISSING_APP_ID, specOf, type LayoutSpec } from "./document";

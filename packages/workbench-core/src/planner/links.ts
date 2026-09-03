@@ -1,4 +1,4 @@
-import { freshCandidate, linkVerbs, resolveShow, type PlacementCandidate, type ShowCandidate, type ShowQuery, type SpawnableApp } from "@hyperslop-systems/pbui";
+import { freshCandidate, linkVerbs, resolveShow, type PlacementCandidate, type ShowCandidate, type ShowQuery, type SpawnableApp } from "@hyperslop-systems/pbui/link-kernel";
 import type { WorkbenchCommand, WorkbenchLinkCommand } from "../commands";
 import { leavesOfWorkspace, placementCount } from "../queries";
 import { prepared, refuse, unchanged, type Choice, type FragmentOutcome, type PlanWorld } from "./world";

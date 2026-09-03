@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createPresentationTypeGraph, linkVerbs } from "@hyperslop-systems/pbui";
+import { createPresentationTypeGraph, linkVerbs } from "@hyperslop-systems/pbui/link-kernel";
 import { toJson } from "@bufbuild/protobuf";
 import { MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { closePlacement } from "@hyperslop-systems/workbench-protocol/client";

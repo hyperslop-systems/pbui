@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createPresentationTypeGraph, linkVerbs } from "@hyperslop-systems/pbui";
+import { createPresentationTypeGraph, linkVerbs } from "@hyperslop-systems/pbui/link-kernel";
 import { defineAppManifest } from "./apps";
 import { commands, type WorkbenchCommand } from "./commands";
 import { createWorkbenchCore } from "./createWorkbenchCore";

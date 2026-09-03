@@ -10,7 +10,7 @@ import {
   type LinkSnapshot,
   type PortId,
   type SerializableReference,
-} from "@hyperslop-systems/pbui";
+} from "@hyperslop-systems/pbui/link-kernel";
 import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import type { IdGenerator } from "@hyperslop-systems/workbench-protocol/client";
 import type { ManifestCatalog } from "../apps";

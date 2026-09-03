@@ -1,4 +1,4 @@
-import { definePorts, documentSlotsOf, hasDocumentSlot, type PortDeclaration, type PortDeclarationInput } from "@hyperslop-systems/pbui";
+import { definePorts, documentSlotsOf, hasDocumentSlot, type PortDeclaration, type PortDeclarationInput } from "@hyperslop-systems/pbui/link-kernel";
 
 /**
  * The semantic half of an application (guide §8.1, §16.8): what the engine

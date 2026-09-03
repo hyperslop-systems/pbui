@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { create } from "@bufbuild/protobuf";
-import { documentSlotPort } from "@hyperslop-systems/pbui";
+import { documentSlotPort } from "@hyperslop-systems/pbui/link-kernel";
 import { DocumentPayloadSchema, MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { defineAppManifest } from "./apps";

@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { EMPTY_LINK_STATE, isBinding, isSerializableReference, type Binding, type IdentityClass, type IdentityDeclaration, type LinkState, type PortId, type SerializableReference } from "@hyperslop-systems/pbui";
+import { EMPTY_LINK_STATE, isBinding, isSerializableReference, type Binding, type IdentityClass, type IdentityDeclaration, type LinkState, type PortId, type SerializableReference } from "@hyperslop-systems/pbui/link-kernel";
 import { DocumentPayloadSchema, MutationSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 
 /**
