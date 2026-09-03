@@ -42,4 +42,12 @@ export {
   workspaces,
 } from "./document";
 export type { BuildLayoutOptions, BuiltLayout, LayoutOptions, LayoutSpec, ParseOptions, ParseWorkbenchResult, WorkspaceSpec } from "./document";
+export { compilePolicy, DEFAULT_PANE_CONSTRAINTS } from "./policy";
+export type { Axis, DuplicatePolicy, PaneConstraints, WorkbenchPolicy, WorkbenchPolicyInput } from "./policy";
+export { bindRequestedOnly, followTheCrowd, resolveInitialDocuments } from "./binding";
+export type { FollowTheCrowdOptions, InitialDocumentInput, InitialDocumentPolicy, InitialDocumentResolution } from "./binding";
+export { repairSession } from "./session";
+export type { WorkbenchSession } from "./session";
+export { createWorkbenchCore } from "./createWorkbenchCore";
+export type { ApplyResult, CommitReceipt, CreateWorkbenchCoreOptions, ReplaceResult, WorkbenchCore, WorkbenchCoreState } from "./createWorkbenchCore";
 export { sequentialIds } from "./testing";

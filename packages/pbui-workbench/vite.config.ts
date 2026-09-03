@@ -8,6 +8,7 @@ const external = [
   "react/jsx-runtime",
   "@bufbuild/protobuf",
   "@hyperslop-systems/pbui",
+  "@hyperslop-systems/workbench-core",
   "@hyperslop-systems/workbench-protocol",
   "@hyperslop-systems/workbench-protocol/client",
 ];
@@ -29,6 +30,7 @@ export default defineConfig({
         external.includes(id) ||
         id.startsWith("@bufbuild/protobuf/") ||
         id.startsWith("@hyperslop-systems/pbui/") ||
+        id.startsWith("@hyperslop-systems/workbench-core/") ||
         id.startsWith("@hyperslop-systems/workbench-protocol/"),
     },
     sourcemap: true,

@@ -635,6 +635,9 @@ importers:
       '@hyperslop-systems/pbui':
         specifier: workspace:^
         version: link:../..
+      '@hyperslop-systems/workbench-core':
+        specifier: workspace:^
+        version: link:../workbench-core
       '@hyperslop-systems/workbench-protocol':
         specifier: workspace:^
         version: link:../workbench-protocol
