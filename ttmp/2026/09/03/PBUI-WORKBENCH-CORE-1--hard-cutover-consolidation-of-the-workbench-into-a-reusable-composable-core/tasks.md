@@ -8,7 +8,7 @@
 - [x] Write the detailed intern-facing consolidation design and hard-cutover implementation guide <!-- t:avan -->
 - [x] Relate evidence files, update diary and changelog, and validate the ticket <!-- t:019l -->
 - [x] Dry-run, upload, and verify the ticket bundle on reMarkable <!-- t:vjup -->
-- [ ] Phase 0: Freeze command-to-transition goldens, consumer inventory, public boundaries, and headless import guards <!-- t:fugt -->
+- [x] Phase 0: Freeze command-to-transition goldens, consumer inventory, public boundaries, and headless import guards <!-- t:fugt -->
 - [ ] Phase 1: Create workbench-core with essential validation, the structural index, on-demand document queries, and protocol cleanup <!-- t:foa7 -->
 - [ ] Phase 2: Add the small manifest/presentation app model, slot-aware binding policy, and core/shell constructors <!-- t:r5l4 -->
 - [ ] Phase 3: Implement pure planning, explicit local effects, generalized view.show, advisory preview, and fresh core.execute <!-- t:ld9q -->

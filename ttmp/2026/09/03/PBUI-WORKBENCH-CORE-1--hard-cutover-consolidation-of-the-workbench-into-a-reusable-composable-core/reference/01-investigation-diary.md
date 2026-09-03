@@ -13,6 +13,8 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/pbui-workbench/src/goldens/transitions.test.ts
+      Note: Phase 0 goldens (commit 9822ba8)
     - Path: repo://packages/pbui-workbench/src/rebalance/slate.ts
       Note: Evidence that rebalance algorithms are pure and should be preserved while integration moves
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/01-intern-guide-to-the-pbui-workbench-core-consolidation-and-hard-cutover.md
@@ -29,6 +31,7 @@ LastUpdated: 2026-09-03T15:00:00-04:00
 WhatFor: Preserve how the consolidation design was derived so an implementer or reviewer can reproduce findings and continue without repeating the investigation.
 WhenToUse: Read before resuming PBUI-WORKBENCH-CORE-1, reviewing its architecture recommendations, or reproducing the planner-purity finding.
 ---
+
 
 
 # Diary
@@ -588,3 +591,69 @@ Decisions for §23:
 5. headless automatic axis: `policy.split.headlessAxis`, default `"row"`.
 6. no-op success: `{ ok: true, changed: false }`.
 7. imported orphans: accepted; core-generated commands never create new ones.
+
+## Step 7: Phase 0 — goldens, inventory, and the core package fence
+
+Phase 0 froze the behaviour worth keeping before any extraction. Forty-four goldens now pin the exact protocol batch, session, returned value, view order, and leaf→view map that every current verb produces on a document with deterministic ids. The `workbench-core` package exists with nothing in it except the fence that will keep React and the DOM out of it.
+
+The consumer inventory and target export map live in `reference/02-consumer-inventory-and-public-surface.md`; the ticket documents themselves were committed for the first time in this step.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Deliver guide §17 Phase 0: goldens, inventory, public-boundary record, and the headless import guard scaffold.
+
+**Inferred user intent:** Make the later phases measurable against a frozen contract rather than against memory.
+
+**Commit (code):** 9822ba8 — "PBUI-WORKBENCH-CORE-1 P0: transition goldens, workbench-core skeleton with React/DOM fence"
+
+**Commit (docs):** e9ce3ed — "PBUI-WORKBENCH-CORE-1: ticket workspace, design, decisions, diary steps 1-6, inventory"
+
+### What I did
+
+- Added `packages/pbui-workbench/src/goldens/transitions.test.ts` (44 cases) and its snapshot: placement verbs, every identity/placement combination that `view.show` will absorb, view/workspace verbs, and the link lifecycle (follow, close-source maintenance, app replacement, clone re-keying, identity.add, show spawn).
+- Stubbed `crypto.randomUUID` with a zero-padded counter so `newId` yields `v-00000001-0000`-style ids; the initial layout is built under the same stub, so leaf ids are stable too.
+- Created `packages/workbench-core` (package.json, tsconfig, tsconfig.build, vite/vitest config with `environment: "node"`, empty `src/index.ts`) and `src/fence.test.ts`.
+- Ran `pnpm install --offline` to link the new workspace package; core tests 5/5, typecheck clean; pbui-workbench typecheck clean.
+
+### Why
+
+- §20.1 and §17 Phase 0: behaviour first, folders second.
+- The fence must exist before the first module lands or it is never enforced.
+
+### What worked
+
+- The goldens captured everything in one harness by hooking `onMutate` and reading the store after each verb.
+- The rendered-axis rule could be frozen with a fake root whose `getBoundingClientRect` is stubbed per placement.
+
+### What didn't work
+
+- Nothing failed in this step.
+
+### What I learned
+
+- `place()` on a singleton that lives in another workspace produces an EMPTY batch and a workspace switch; `view.show { existing, navigate }` must therefore be a session-only transition.
+- The `show` spawn golden shows the current two-batch coupling (`viewCreate`+`placementSplit`, then the links `documentPut`) arriving as ONE batch through the shell planner hook; the core must keep that atomicity without the hook.
+
+### What was tricky to build
+
+- The identity.add golden also records the runtime revision delta and class ids, because that is the defect F1 makes visible; the same fields flip in Phase 3 when planning becomes pure.
+
+### What warrants a second pair of eyes
+
+- Read the snapshot file once as a whole: it is the semantic contract. Any row that looks wrong today is a bug to fix deliberately in Phase 3, not something to reproduce.
+
+### What should be done in the future
+
+- Phase 3 ports these 44 cases to the core planner; the snapshot names stay so the diff is legible.
+
+### Code review instructions
+
+- `packages/pbui-workbench/src/goldens/transitions.test.ts` and its `__snapshots__`.
+- `packages/workbench-core/src/fence.test.ts`.
+- Validate: `pnpm --filter @hyperslop-systems/pbui-workbench test -- src/goldens` and `pnpm --filter @hyperslop-systems/workbench-core test`.
+
+### Technical details
+
+- The fence exempts `persistence/` and `sync/` from the DOM-global regex (host adapters by design) but still forbids React there and forbids bare `window.`/`document.` access.

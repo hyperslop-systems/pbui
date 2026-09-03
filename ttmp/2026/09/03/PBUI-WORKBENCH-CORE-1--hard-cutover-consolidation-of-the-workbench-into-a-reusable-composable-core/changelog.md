@@ -50,3 +50,13 @@ Adopted the structural-index simplification, separated ideal design from the aut
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/01-intern-guide-to-the-pbui-workbench-core-consolidation-and-hard-cutover.md — Now distinguishes ideal §§6-15 from chosen §16 and aligned implementation phases
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/02-version-one-simplification-decisions.md — Records the structural index plus on-demand query decision
 
+
+## 2026-09-03
+
+Phase 0: 44 command→transition goldens with deterministic ids, consumer inventory, workbench-core package skeleton with React/DOM fence (commit 9822ba8)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/goldens/transitions.test.ts — The behavioural contract the core planner must reproduce
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/fence.test.ts — No React, no DOM, node environment
+
