@@ -12,7 +12,7 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: "Phase 9 of the PBUI-KERNEL-1 clean-cutover guide: split out of PBUI-KERNEL-1; see KERNEL-1 guide §0.1"
-LastUpdated: 2026-09-02T18:47:29.981272147-04:00
+LastUpdated: 2026-09-02T21:30:00-04:00
 WhatFor: "Find the scope, specification pointer, and exit criteria for this follow-up to PBUI-KERNEL-1."
 WhenToUse: "After PBUI-KERNEL-1 Phase 7 has landed."
 ---
@@ -43,7 +43,9 @@ Split out of PBUI-KERNEL-1 on 2026-09-02 (guide §0.1) so that KERNEL-1 ships on
 
 ## Status
 
-Current status: **active**
+Implementation complete on the `task/add-plot-editor` branch (pbui d9fc64a → P5 commit). Phases: P1 §19.7 properties as 136 seeded tests against a reference partition; P2 `links/compatibility.ts` with `canFlow`, `canAccept`, `canShareCell`, `canMergeUpdates`; P3 identity on `canShareCell`, checker and `legalRelations` on `canFlow`, `resolveShow` and the workbench "Link to…" family on `canAccept`; P4 `quotientOf(snapshot)` and `cellOf`, one word for a cell; P5 the IdentityLab story, five screenshots, README section. Exit criteria: existing class ids and lineage fixtures stable (identity.test.ts unchanged and green); the quotient partition is order-independent (P1); identity and flow compatibility tests are separate (compatibility.test.ts, grouped by question). Evidence: [diary](./reference/01-diary.md) Steps 1–5, [screenshots](./various/screenshots/README.md), [tasks](./tasks.md).
+
+Not in scope, recorded for later: cardinality-aware flow (`many` into `one`); lineage in the snapshot; `canAccept` for spawnable apps once they declare contracts.
 
 ## Topics
 

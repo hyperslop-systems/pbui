@@ -176,6 +176,33 @@ order already reads from Detail B · order; that would be a cycle` has one
 source. The program's constructors (`programOf`, `bindingOf`, the
 `BindingProgram` types) are internal to `src/presentation/links/`.
 
+### Identity and port compatibility (PBUI-KERNEL-3)
+
+Identity declarations are undirected edges between ports; the kernel exposes
+them as a quotient of ports into logical cells. `quotientOf(snapshot)` returns
+the cells a snapshot carries and `cellByPort`; `cellOf(port, snapshot)` names
+a member's cell. `Alias(classId)` stays the wire representation and the
+effective binding of a member. The partition is a function of the set of
+admitted edges only: flipping, duplicating or reordering edges (or the port
+map) changes nothing, and an untouched cell keeps its id across recompiles.
+
+A port contract is a value contract (`valueType`, `semanticRole`,
+`cardinality`) times a protocol (`mode`, `authorityDomain`, `updateAlgebra`,
+`lifetime`), and the operations ask different questions of it:
+
+| Question | Predicate | Consults |
+|---|---|---|
+| may a value flow into this port | `canFlow(from, into, graph)` | value reachability |
+| may this reference be written here | `canAccept(reference, into, graph)` | value reachability |
+| may two ports be one cell | `canShareCell(left, right)` | every field, value and protocol reported apart |
+| do two endpoints combine writes alike | `canMergeUpdates(left, right)` | the update algebra |
+
+Callers name the question: the checker and `legalRelations` ask `canFlow`,
+`resolveShow` and the workbench "Link to…" family ask `canAccept`, identity
+asks `canShareCell`. A subtype flows but cannot share a cell; a different
+authority cannot share but flows; do not answer one question with the other's
+test.
+
 ## Datalab UI workspace package
 
 `packages/datalab-ui` contains `@hyperslop-systems/datalab-ui`, the complete
