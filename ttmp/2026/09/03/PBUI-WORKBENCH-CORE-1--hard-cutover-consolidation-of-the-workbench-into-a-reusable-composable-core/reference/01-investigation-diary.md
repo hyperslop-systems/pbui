@@ -657,3 +657,71 @@ The consumer inventory and target export map live in `reference/02-consumer-inve
 ### Technical details
 
 - The fence exempts `persistence/` and `sync/` from the DOM-global regex (host adapters by design) but still forbids React there and forbids bare `window.`/`document.` access.
+
+## Step 8: Phase 1 — protocol hygiene and the core's foundations
+
+Phase 1 gave the protocol client injectable ids and removed the configured client that duplicated engine policy, then laid the core's first four modules: manifests, the six-map structural index, the on-demand queries, and essential validation with Go's codes and paths. Layout builders moved into the core with a deterministic-id option, and parsing now returns diagnostics instead of `null`.
+
+Nothing in the shell changed yet; the old `pbui-workbench` modules keep running side by side until Phase 6 cuts over. That duplication is deliberate and temporary.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Deliver guide §17 Phase 1.
+
+**Inferred user intent:** A core whose index, queries, and validation can be trusted before any planner is written on top of them.
+
+**Commit (code):** 54beaf4 — "PBUI-WORKBENCH-CORE-1 P1: protocol IdGenerator, delete createWorkbenchClient; core index, queries, validation, layout builders"
+
+### What I did
+
+- `workbench-protocol/client/builders.ts`: added `IdGenerator`; `leafNode`, `splitNode`, `splitPlacement`, `dockPlacement` take an optional generator (default `newId`); deleted `ClientConfig`, `WorkbenchClient`, `createWorkbenchClient` and their eight tests (protocol suite now 40 tests).
+- `workbench-core/src/apps.ts`: `WorkbenchAppManifest`, `defineAppManifest` (defaults `many`/`clone`, `one` ⇒ `link`, refuses `one`+`clone`), `createManifestCatalog`, `isDocBound`, `documentSlots`.
+- `graph.ts`: `buildWorkbenchIndex` with the six maps; duplicate node ids throw `WorkbenchDiagnosticError(duplicate_id)`.
+- `queries.ts`: `viewsUsingDocument`, `documentsWithFormat`, `orphanViewIds`, `placementCount`, `firstPlacementOfView`, `workspaceOfView`, `isPlacement`, `leavesOfWorkspace`, `canClose`, `sameBindings`.
+- `validation.ts`: `validateWorkbenchDocument` (format/version, workspace and node shape, global node ids, leaf→view, view/viewOrder bijection, key mismatches, trimmed titles, count limits, and — with a catalog — `unknown_application`, `duplicate_singleton`, `unknown_binding`, `unknown_document`).
+- `document.ts`: builders with `ids`, `parseWorkbenchDocument` → `{ ok, document } | { ok: false, diagnostics }`, `specOf`.
+- `testing.ts`: `sequentialIds()` producing the same thirteen-character shape as the Phase 0 goldens.
+- Tests: `graph.test.ts` (index equals slow traversal for every join; duplicate refusal; orphans), `queries.test.ts`, `validation.test.ts` (every code), `document.test.ts`.
+
+### Why
+
+- F7: two implementations of binding/replacement policy had drifted; the protocol keeps only policy-neutral primitives.
+- F14: one index per revision replaces 179 scattered tree walks.
+- F8: replacement will validate through this module in Phase 2.
+
+### What worked
+
+- Reference-traversal tests caught nothing wrong, which is the point: the index is a cache of what `findNode`/`leaves`/`viewsOfApp` already compute.
+
+### What didn't work
+
+- `pnpm --filter @hyperslop-systems/workbench-core test` first failed with `Module '"@hyperslop-systems/workbench-protocol/client"' has no exported member 'IdGenerator'` and ids that ignored the generator: the core resolves the protocol package through its built `dist/`, which was stale. Fixed by `pnpm --filter @hyperslop-systems/workbench-protocol build`. Rule for the rest of the ticket: rebuild `workbench-protocol` (and later `workbench-core`) after changing them before testing a dependant.
+- The fence flagged `graph.ts`, `queries.ts`, `validation.ts` because a parameter named `document` matched the DOM regex (`document.views`). Renamed the parameter to `doc` in all core modules rather than weakening the fence; one missed rename (`document = fromJson(...)` against `let doc`) surfaced as `invalid_json: document is not defined` and was fixed.
+- `slate.perf.test.ts` in pbui-workbench failed once more while another suite ran in parallel and passed on rerun; it is a wall-clock guard, not a regression.
+
+### What I learned
+
+- `viewsByAppId` must be built from `viewOrder`, not from the placement walk, or an unplaced view disappears from the catalog view of the document.
+
+### What was tricky to build
+
+- Matching Go's paths exactly (`views["v-1"].documents["slot"]`, `workspaces[0].tree.split.a.leaf.viewId`) so a refusal from either side reads the same; the tests pin the strings.
+
+### What warrants a second pair of eyes
+
+- `validateWorkbenchDocument` collects every diagnostic while Go returns the first; the first entry is the one to compare with a Go refusal.
+
+### What should be done in the future
+
+- Wire the `contracts/workbench/v1/{valid,invalid}` fixtures into a core parity test once the catalog shape for fixtures is decided (deferred by S7).
+
+### Code review instructions
+
+- Start at `packages/workbench-core/src/graph.ts` and `validation.ts`; then the protocol diff in `builders.ts`.
+- Validate: `pnpm --filter @hyperslop-systems/workbench-protocol build && pnpm --filter @hyperslop-systems/workbench-protocol test && pnpm --filter @hyperslop-systems/workbench-core test`.
+
+### Technical details
+
+- Core modules never name a variable `document`; the fence's DOM regex depends on it.

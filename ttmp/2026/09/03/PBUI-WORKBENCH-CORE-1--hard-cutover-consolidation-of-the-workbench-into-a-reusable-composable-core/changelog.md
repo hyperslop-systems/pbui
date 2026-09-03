@@ -60,3 +60,13 @@ Phase 0: 44 command→transition goldens with deterministic ids, consumer invent
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/goldens/transitions.test.ts — The behavioural contract the core planner must reproduce
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/fence.test.ts — No React, no DOM, node environment
 
+
+## 2026-09-03
+
+Phase 1: protocol IdGenerator and createWorkbenchClient deletion; core manifests, six-map index, on-demand queries, essential validation, layout builders, structured parse (commit 54beaf4)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/graph.ts — The structural index
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/validation.ts — Essential validation with Go codes
+
