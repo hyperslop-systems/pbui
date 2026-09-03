@@ -7,3 +7,4 @@
 - [ ] P3: identity compatibilityOf on canShareCell; checker and planBind on canFlow/canAccept <!-- t:edwz -->
 - [ ] P4: identityQuotientOf(snapshot) view; logical-cell wording in planner explanations <!-- t:9f06 -->
 - [ ] P5: PortRail/LinkLab screenshots, docs, changelog <!-- t:u4yb -->
+- [ ] REPORT: write the PBUI-KERNEL-3 project report in the go-go-parc vault (Projects/2026/09/02, PROJECT REPORT naming, textbook style, screenshots in _assets/), commit and push the vault <!-- t:i49c -->
