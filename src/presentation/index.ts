@@ -54,3 +54,7 @@ export type {
 } from "./types";
 export { activationOutcome, stopsPropagation } from "./interaction/activation";
 export type { ActivationInput, ActivationOutcome } from "./interaction/activation";
+export { describeRefusal } from "./interaction/refusal";
+export type { RefusalFacts, RefusalPresentation } from "./interaction/refusal";
+export { acceptStep, chooserOptions, pendingRequest } from "./interaction/accept";
+export type { AcceptEffect, AcceptEvent, AcceptState, AcceptStepResult } from "./interaction/accept";

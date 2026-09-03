@@ -18,6 +18,7 @@ import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
 import { activationOutcome } from "./interaction/activation";
+import { describeRefusal } from "./interaction/refusal";
 import { acceptStep, chooserOptions, pendingRequest, type AcceptEffect, type AcceptEvent, type AcceptState } from "./interaction/accept";
 import { evaluateFresh } from "./actions/perform";
 import type {
@@ -130,6 +131,8 @@ export interface PbuiRefusal<Values extends PresentationValues> {
   readonly code: string;
   readonly because?: string;
   readonly action?: string;
+  /** The refused row's label, when it was plain text. */
+  readonly label?: string;
   readonly candidateId?: string;
   readonly subject?: PresentationReference<Values>;
 }
@@ -162,13 +165,16 @@ export interface PbuiProviderProps<
    */
   actor?: string;
   /**
-   * Fresh-revalidation refusals (PBUI-KERNEL-1 §14.2). REQUIRED: a displayed
-   * row is a proposal, and when the fresh resolution no longer agrees the
-   * product must decide what the user sees — a status line, a toast,
-   * telemetry, an agent-visible error. Pass `() => {}` only with a
-   * documented reason; silence by omission is what this parameter removes.
+   * Fresh-revalidation refusals (PBUI-KERNEL-1 §14.2; presentation added by
+   * PBUI-KERNEL-4). A displayed row is a proposal, and when the fresh
+   * resolution no longer agrees the user must see why. Every refusal lands
+   * in `pbui.refusal`, which the instance's `RefusalNotice` renders; this
+   * handler is for products that route refusals elsewhere as well — a
+   * status line, telemetry, an agent-visible error. A refusal that neither
+   * a mounted `RefusalNotice` nor this handler observes is logged as a
+   * warning: silence by omission is still what this design removes.
    */
-  onRefuse(refusal: PbuiRefusal<Values>): void;
+  onRefuse?(refusal: PbuiRefusal<Values>): void;
 }
 
 /**
@@ -287,6 +293,11 @@ export interface PbuiContextValue<
   dismissAcceptChooser(): void;
   /** The accept machine's event input (PBUI-KERNEL-4 §14.5); chrome dispatches, the machine decides. */
   acceptDispatch(event: AcceptEvent<Values>): void;
+  /** The most recent fresh-revalidation refusal, until dismissed or the next menu opens. */
+  refusal: PbuiRefusal<Values> | null;
+  dismissRefusal(): void;
+  /** RefusalNotice registers itself so an unobserved refusal can be warned about. */
+  refusalNotices: { current: number };
   mouseDoc: string | null;
   setMouseDoc(text: string | null): void;
   /**
@@ -383,6 +394,8 @@ export function createPbui<
     const acceptChooser = chooserOptions(acceptState);
     const [menu, setMenu] = useState<MenuState<Values> | null>(null);
     const [mouseDoc, setMouseDoc] = useState<string | null>(null);
+    const [refusal, setRefusal] = useState<PbuiRefusal<Values> | null>(null);
+    const refusalNotices = useRef(0);
     const helpSurfaceId = useId();
     useEffect(() => {
       if (helpEnabled) trackInputModality();
@@ -516,7 +529,9 @@ export function createPbui<
         openMenu: (reference, x, y, invoker) => {
           // The menu supersedes the hover card AND any pending arm — the
           // machine's menu-opened transition handles both, driven by the
-          // menu mirror effect above.
+          // menu mirror effect above. A new menu also retires the last
+          // refusal: the user is looking at what applies now.
+          setRefusal(null);
           setMenu({ reference, x, y, returnFocus: captureFocusReturn(invoker) });
         },
         closeMenu: () => setMenu(null),
@@ -524,6 +539,9 @@ export function createPbui<
         chooseAcceptance: (option) => acceptDispatch({ type: "choose", option }),
         dismissAcceptChooser: () => acceptDispatch({ type: "dismiss-chooser" }),
         acceptDispatch,
+        refusal,
+        dismissRefusal: () => setRefusal(null),
+        refusalNotices,
         mouseDoc,
         setMouseDoc,
         helpEnabled,
@@ -551,13 +569,19 @@ export function createPbui<
           const fresh = actionEngine.resolve(stale.query, snapshotOf(stale.query, environment));
           const decision = evaluateFresh(stale, fresh);
           if (decision.kind !== "proceed") {
-            onRefuse({
+            const refused: PbuiRefusal<Values> = {
               code: decision.code,
               ...(decision.because !== undefined ? { because: decision.because } : {}),
               action: stale.action,
               candidateId: stale.candidateId,
               subject: stale.query.subject,
-            });
+              ...(typeof stale.label === "string" ? { label: stale.label } : {}),
+            };
+            setRefusal(refused);
+            onRefuse?.(refused);
+            if (!onRefuse && refusalNotices.current === 0) {
+              console.warn(`pbui: a refusal (${refused.code}) was observed by nothing — mount <RefusalNotice /> or pass onRefuse`);
+            }
             return decision;
           }
           try {
@@ -586,6 +610,7 @@ export function createPbui<
         satisfyAccept,
         menu,
         mouseDoc,
+        refusal,
         helpSurface,
         helpSurfaceId,
         helpDispatch,
@@ -1285,6 +1310,43 @@ export function createPbui<
     );
   }
 
+  /**
+   * The runtime's own presentation of a refusal (PBUI-KERNEL-4 P4): one
+   * sentence naming the row and the subject, the product's reason when the
+   * fresh status carried one, and what to do next. Shown until dismissed or
+   * until the next menu opens. A product with a status line of its own may
+   * leave this unmounted and pass `onRefuse` instead.
+   */
+  function RefusalNotice() {
+    const pbui = usePbui();
+    const notices = pbui.refusalNotices;
+    useEffect(() => {
+      notices.current += 1;
+      return () => {
+        notices.current -= 1;
+      };
+    }, [notices]);
+    const refusal = pbui.refusal;
+    if (!refusal) return null;
+    const subjectLabel = refusal.subject ? registry.labelFor(refusal.subject, pbui.environment) : null;
+    const presentation = describeRefusal({
+      code: refusal.code,
+      ...(refusal.because !== undefined ? { because: refusal.because } : {}),
+      ...(refusal.label !== undefined ? { label: refusal.label } : {}),
+      ...(typeof subjectLabel === "string" || typeof subjectLabel === "number" ? { subjectLabel: String(subjectLabel) } : {}),
+    });
+    return (
+      <div data-pbui="refusal-notice" data-part="refusal-notice" role="alert" data-code={refusal.code}>
+        <span data-part="refusal-notice-headline">{presentation.headline}</span>
+        {presentation.detail ? <span data-part="refusal-notice-detail">{presentation.detail}</span> : null}
+        <span data-part="refusal-notice-hint">{presentation.hint}</span>
+        <button type="button" data-part="refusal-notice-dismiss" onClick={pbui.dismissRefusal} aria-label="dismiss">
+          ✕
+        </button>
+      </div>
+    );
+  }
+
   return {
     Provider,
     Presentation,
@@ -1292,6 +1354,7 @@ export function createPbui<
     MouseDocLine,
     AcceptBanner,
     AcceptChooser,
+    RefusalNotice,
     ContextHelp,
     usePbui,
     presentation,
