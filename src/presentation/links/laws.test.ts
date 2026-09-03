@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyLinkVerb } from "./apply";
+import { PLAN_LINK_ID, candidateTermOf, destinationOf, type TermVerb } from "./candidate";
 import { checkBinding } from "./check";
 import { effectiveBinding, evaluatePort, evaluateProgram } from "./evaluate";
 import { bindingOf, dependenciesOfBinding, normalizeBinding, programOf } from "./expression";
@@ -255,4 +256,42 @@ describe("§12.5 the wire-level projections agree with the IR", () => {
       if (linkId !== null) expect(d.links.has(linkId)).toBe(true);
     });
   }
+});
+
+describe("§12.7 a planner checks the term apply persists", () => {
+  const s = world({ emitted: { "v-east/order": ORDER_1042 }, contexts: { "workspace.order": ORDER_1042 } });
+  const verbs: TermVerb[] = [
+    linkVerbs.follow("v-east/order", "v-a/order") as TermVerb,
+    linkVerbs.bind("v-a/order", ORDER_1060) as TermVerb,
+    linkVerbs.derive("v-east/order", "v-cust/customer", "order.customer") as TermVerb,
+    linkVerbs.ambient("v-insp/subject", "workspace.order") as TermVerb,
+  ];
+  for (const verb of verbs) {
+    it(`${verb.kind}: the persisted term is candidateTermOf(verb) under the minted id`, () => {
+      let minted = "";
+      const result = applyLinkVerb(verb, s, deps, { newLinkId: () => (minted = "L-minted") });
+      expect(result.kind).toBe("ok");
+      if (result.kind !== "ok") return;
+      const written = result.bindings.get(destinationOf(verb));
+      expect(written).toEqual(candidateTermOf(verb, minted || PLAN_LINK_ID));
+      // The planner's candidate is the same term up to the link id.
+      expect(normalizeBinding(candidateTermOf(verb))).toEqual(candidateTermOf(verb));
+      expect(setsOf(candidateTermOf(verb)).ports).toEqual(setsOf(written!).ports);
+      expect(setsOf(candidateTermOf(verb)).relations).toEqual(setsOf(written!).relations);
+    });
+  }
+
+  it("a verb that carries its own link id persists under it", () => {
+    const verb = linkVerbs.follow("v-east/order", "v-a/order", "L-mine") as TermVerb;
+    const result = applyLinkVerb(verb, s, deps);
+    if (result.kind !== "ok") throw new Error("refused");
+    expect(result.bindings.get("v-a/order")).toEqual(terms.follow("v-east/order", "L-mine"));
+  });
+
+  it("bind and ambient mint no id", () => {
+    let calls = 0;
+    applyLinkVerb(linkVerbs.bind("v-a/order", ORDER_1060), s, deps, { newLinkId: () => `L${(calls += 1)}` });
+    applyLinkVerb(linkVerbs.ambient("v-insp/subject", "workspace.order"), s, deps, { newLinkId: () => `L${(calls += 1)}` });
+    expect(calls).toBe(0);
+  });
 });

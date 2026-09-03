@@ -1,4 +1,5 @@
 import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
+import { candidateTermOf, type TermVerb } from "./candidate";
 import { checkBinding, dependsOn } from "./check";
 import { checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
 import { labelOf, reaches, titleOfPort, type LinkDeps, type LinkSnapshot } from "./snapshot";
@@ -22,16 +23,10 @@ export type LinkPlan =
 const unavailable = (because: string, code: string, alternatives?: LinkVerb[]): LinkPlan => ({ kind: "unavailable", because, code, ...(alternatives ? { alternatives } : {}) });
 const available = (verb: LinkVerb, explanation: string): LinkPlan => ({ kind: "available", verb, explanation });
 
-function checkedCandidate(
-  destination: PortId,
-  binding: Binding,
-  s: LinkSnapshot,
-  deps: LinkDeps,
-): LinkPlan | null {
-  const result = checkBinding(binding, s, deps, destination);
-  return result.kind === "invalid"
-    ? unavailable(result.diagnostic.message, result.diagnostic.code)
-    : null;
+/** The checker's verdict on THE term `verb` would persist (§12.7), as a refusal, or null when it is admissible. */
+function checkedCandidate(verb: TermVerb, destination: PortId, s: LinkSnapshot, deps: LinkDeps): LinkPlan | null {
+  const result = checkBinding(candidateTermOf(verb), s, deps, destination);
+  return result.kind === "invalid" ? unavailable(result.diagnostic.message, result.diagnostic.code) : null;
 }
 
 export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot, deps: LinkDeps): LinkPlan {
@@ -52,9 +47,10 @@ export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot,
     return unavailable(`${titleOfPort(S)} already reads from ${titleOfPort(D)}; that would be a cycle`, "cycle");
   }
   const replacing = current && sourcePortOf(current) ? ` (replacing ${current.kind === "follow" ? titleOfPort(s.ports.get(current.source) ?? S) : "its current source"})` : "";
-  const checked = checkedCandidate(destination, terms.follow(source, "__plan__"), s, deps);
+  const verb = linkVerbs.follow(source, destination) as TermVerb;
+  const checked = checkedCandidate(verb, destination, s, deps);
   if (checked) return checked;
-  return available(linkVerbs.follow(source, destination), `${titleOfPort(D)} will follow ${titleOfPort(S)}${replacing}`);
+  return available(verb, `${titleOfPort(D)} will follow ${titleOfPort(S)}${replacing}`);
 }
 
 export function planBind(port: PortId, reference: SerializableReference, s: LinkSnapshot, deps: LinkDeps): LinkPlan {
@@ -68,9 +64,10 @@ export function planBind(port: PortId, reference: SerializableReference, s: Link
   const current = s.bindings.get(port);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
   if (s.aliases.has(port)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(port)} cell; leave the class first`, "shared");
-  const checked = checkedCandidate(port, terms.constant(reference), s, deps);
+  const verb = linkVerbs.bind(port, reference) as TermVerb;
+  const checked = checkedCandidate(verb, port, s, deps);
   if (checked) return checked;
-  return available(linkVerbs.bind(port, reference), `${titleOfPort(D)} will show ${labelOf(reference, deps)}`);
+  return available(verb, `${titleOfPort(D)} will show ${labelOf(reference, deps)}`);
 }
 
 export function planAmbient(port: PortId, context: string, s: LinkSnapshot, deps: LinkDeps): LinkPlan {
@@ -84,9 +81,10 @@ export function planAmbient(port: PortId, context: string, s: LinkSnapshot, deps
   }
   const current = s.bindings.get(port);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
-  const checked = checkedCandidate(port, terms.ambient(context), s, deps);
+  const verb = linkVerbs.ambient(port, context) as TermVerb;
+  const checked = checkedCandidate(verb, port, s, deps);
   if (checked) return checked;
-  return available(linkVerbs.ambient(port, context), `${titleOfPort(D)} will read the ${context} context`);
+  return available(verb, `${titleOfPort(D)} will read the ${context} context`);
 }
 
 export function planPin(port: PortId, s: LinkSnapshot, deps: LinkDeps): LinkPlan {
@@ -242,14 +240,10 @@ export function planDerive(source: PortId, destination: PortId, relationId: stri
     if (current?.kind === "derived" && current.relationId === relationId && sourcePortOf(current) === source) {
       return unavailable(`${titleOfPort(D)} already derives through ${relation.label ?? relation.id} from ${titleOfPort(S)}`, "already");
     }
-    const candidate = terms.derived(
-      terms.follow(source, "__plan-source__"),
-      relationId,
-      "__plan-derived__",
-    );
-    const checked = checkedCandidate(destination, candidate, s, deps);
+    const verb = linkVerbs.derive(source, destination, relationId) as TermVerb;
+    const checked = checkedCandidate(verb, destination, s, deps);
     if (checked) return checked;
-    return available({ kind: "port.derive", source, destination, relation: relationId }, `${titleOfPort(D)} will derive through ${relation.label ?? relation.id} from ${titleOfPort(S)}`);
+    return available(verb, `${titleOfPort(D)} will derive through ${relation.label ?? relation.id} from ${titleOfPort(S)}`);
   }
   if (legal.length === 1) return planDerive(source, destination, legal[0]!.id, s, deps);
   return { kind: "ambiguous", options: legal.map((relation) => ({ verb: { kind: "port.derive", source, destination, relation: relation.id }, label: relation.label ?? relation.id })) };

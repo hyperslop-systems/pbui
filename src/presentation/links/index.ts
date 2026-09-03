@@ -57,6 +57,8 @@ export type {
   BindingSource,
 } from "./expression";
 export { checkBinding } from "./check";
+export { PLAN_LINK_ID, candidateTermOf, destinationOf, isTermVerb, linkIdFor } from "./candidate";
+export type { TermVerb } from "./candidate";
 export type { BindingCheckDiagnostic, BindingCheckResult } from "./check";
 export { LINK_VERB_KINDS, describeLinkVerb, isLinkVerb, linkVerbs } from "./verbs";
 export type { LinkVerb, LinkVerbKind, UnlinkPolicy } from "./verbs";

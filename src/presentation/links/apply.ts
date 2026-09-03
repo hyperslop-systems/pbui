@@ -1,3 +1,4 @@
+import { candidateTermOf, linkIdFor } from "./candidate";
 import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
 import { compileIdentity, type IdentityDeclaration } from "./identity";
 import { findLink, planAmbient, planBind, planClear, planDerive, planDetach, planFollow, planIdentityAdd, planIdentityRemove, planPin, planResume, planUnlink, type LinkPlan } from "./plan";
@@ -55,20 +56,19 @@ export function applyLinkVerb(verb: LinkVerb, s: LinkSnapshot, deps: LinkDeps, o
     case "port.follow": {
       const plan = planFollow(verb.source, verb.destination, s, deps);
       if (plan.kind !== "available") return refuse(plan);
-      next.set(verb.destination, terms.follow(verb.source, verb.linkId ?? newLinkId()));
+      next.set(verb.destination, candidateTermOf(verb, linkIdFor(verb, newLinkId)));
       return ok(s, next, plan.explanation);
     }
     case "port.bind": {
       const plan = planBind(verb.port, verb.reference, s, deps);
       if (plan.kind !== "available") return refuse(plan);
-      next.set(verb.port, terms.constant(verb.reference));
+      next.set(verb.port, candidateTermOf(verb));
       return ok(s, next, plan.explanation);
     }
     case "port.derive": {
       const plan = planDerive(verb.source, verb.destination, verb.relation, s, deps);
       if (plan.kind !== "available") return refuse(plan);
-      const linkId = verb.linkId ?? newLinkId();
-      next.set(verb.destination, terms.derived(terms.follow(verb.source, linkId), verb.relation, linkId));
+      next.set(verb.destination, candidateTermOf(verb, linkIdFor(verb, newLinkId)));
       return ok(s, next, plan.explanation);
     }
     case "port.ambient": {
@@ -78,7 +78,7 @@ export function applyLinkVerb(verb: LinkVerb, s: LinkSnapshot, deps: LinkDeps, o
       // The declared fallback is the absence of a term, not a term: writing
       // it would make "clear" and "ambient" two states that read the same.
       if (declared === verb.context) next.delete(verb.port);
-      else next.set(verb.port, terms.ambient(verb.context));
+      else next.set(verb.port, candidateTermOf(verb));
       return ok(s, next, plan.explanation);
     }
     case "port.pin": {
