@@ -3,12 +3,12 @@ import { useSyncExternalStore } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { createWorkbench } from "../../createWorkbench";
 import { layout, split, tile } from "../../document";
-import { DEFAULT_REBALANCE_CONFIG, profileConfig, type RebalanceConfig } from "../../rebalance/config";
+import { DEFAULT_REBALANCE_CONFIG, profileConfig, type RebalanceConfig } from "@hyperslop-systems/workbench-core/rebalance";
 import {
   readRebalanceConfig,
   rebalanceConfigMutation,
   REBALANCE_CONFIG_DOC_ID,
-} from "../../rebalance/configDocument";
+} from "@hyperslop-systems/workbench-core/rebalance";
 import type { RebalanceConfigStore } from "../../rebalance/configStore";
 import { demoApps } from "../../stories/demoApps";
 import { createRebalanceSettingsApp, rebalanceSettingsApp } from "./RebalanceSettings";

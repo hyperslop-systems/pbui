@@ -1,4 +1,4 @@
-import { DEFAULT_PANE_CONSTRAINTS } from "../verbs";
+import { DEFAULT_PANE_CONSTRAINTS } from "../policy";
 
 /**
  * Configuration for the rebalance slate (PBUI-REBALANCE-1, design-doc/01 §4.2).

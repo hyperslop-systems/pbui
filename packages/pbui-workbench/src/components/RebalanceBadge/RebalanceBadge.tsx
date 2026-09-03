@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@hyperslop-systems/pbui";
 import { workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
-import type { Rect } from "../../rebalance/analysisTree";
-import type { RebalanceConfig } from "../../rebalance/config";
+import type { Rect } from "@hyperslop-systems/workbench-core/rebalance";
+import type { RebalanceConfig } from "@hyperslop-systems/workbench-core/rebalance";
 import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
-import { detectOnly } from "../../rebalance/slate";
+import { detectOnly } from "@hyperslop-systems/workbench-core/rebalance";
 import { measureDividerPx, measureRect } from "../RebalanceDialog/RebalanceDialog";
 import styles from "./RebalanceBadge.module.css";
 

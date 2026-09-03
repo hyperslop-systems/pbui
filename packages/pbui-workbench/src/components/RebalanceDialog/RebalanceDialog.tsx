@@ -4,11 +4,11 @@ import { Button, Dialog, isEditableTarget, routeWorkbenchKey, useAnyEscapeSurfac
 import type { Node as PlacementNode, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { resizeSplit, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
-import { panesOf, toAnalysis, layoutBinary, type Rect } from "../../rebalance/analysisTree";
-import type { RebalanceConfig } from "../../rebalance/config";
+import { panesOf, toAnalysis, layoutBinary, type Rect } from "@hyperslop-systems/workbench-core/rebalance";
+import type { RebalanceConfig } from "@hyperslop-systems/workbench-core/rebalance";
 import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
-import { TIERS } from "../../rebalance/measure";
-import { buildSlate, type Proposal, type RebalanceSlate } from "../../rebalance/slate";
+import { TIERS } from "@hyperslop-systems/workbench-core/rebalance";
+import { buildSlate, type Proposal, type RebalanceSlate } from "@hyperslop-systems/workbench-core/rebalance";
 import type { RebalanceProps } from "../../types";
 import { DEFAULT_DIVIDER_PX } from "../../verbs";
 import styles from "./RebalanceDialog.module.css";

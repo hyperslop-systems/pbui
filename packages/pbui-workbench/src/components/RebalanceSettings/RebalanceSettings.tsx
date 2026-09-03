@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Button, CheckboxRow, Text, TextInput } from "@hyperslop-systems/pbui";
 import { defineApp, type AppDescriptor, type AppProps } from "../../apps";
 import { useWorkbench } from "../../context";
-import { profileConfig, REBALANCE_PROFILES, RELAX_ITERS_MAX, RELAX_ITERS_MIN, type RebalanceConfig, type RebalanceProfileName } from "../../rebalance/config";
+import { profileConfig, REBALANCE_PROFILES, RELAX_ITERS_MAX, RELAX_ITERS_MIN, type RebalanceConfig, type RebalanceProfileName } from "@hyperslop-systems/workbench-core/rebalance";
 import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
-import { GENERATORS } from "../../rebalance/slate";
+import { GENERATORS } from "@hyperslop-systems/workbench-core/rebalance";
 import styles from "./RebalanceSettings.module.css";
 
 /**

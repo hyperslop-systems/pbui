@@ -156,33 +156,5 @@ export {
   createLocalStorageRebalanceConfigStore,
 } from "./rebalance/configStore";
 export type { RebalanceConfigHost, RebalanceConfigStore } from "./rebalance/configStore";
-export {
-  readRebalanceConfig,
-  rebalanceConfigMutation,
-  REBALANCE_CONFIG_DOC_ID,
-  REBALANCE_CONFIG_FORMAT,
-  REBALANCE_CONFIG_SCHEMA_VERSION,
-} from "./rebalance/configDocument";
-// The rebalance engine (PBUI-REBALANCE-1): pure logic a product or agent can
-// call without the dialog — diagnose a layout, or build the proposal slate.
-export { buildSlate, GENERATORS, polScore } from "./rebalance/slate";
-export type { Proposal, ProposalApply, RebalanceInput, RebalanceSlate } from "./rebalance/slate";
-export { diagnose, propagate, violations } from "./rebalance/propagate";
-export type { Diagnosis, MinReq, PropagateConfig, Violation } from "./rebalance/propagate";
-export { DEFAULT_REBALANCE_CONFIG, REBALANCE_PROFILES, normalizeConfig, profileConfig } from "./rebalance/config";
-export type { RebalanceConfig, RebalanceProfileName } from "./rebalance/config";
-export { layoutBinary, toAnalysis, layoutAnalysis, analysisToResizes, panesOf } from "./rebalance/analysisTree";
-export type { AnalysisNode, APane, ASplit, ChainStep, Rect, SplitResize } from "./rebalance/analysisTree";
-export { TIERS, classify, layoutStats } from "./rebalance/measure";
-export type { Classification, GeneratorKind, LayoutStats, Tier } from "./rebalance/measure";
-export {
-  algoRebuild,
-  algoReshape,
-  emitBinary,
-  hungarian,
-  normalizeAnalysis,
-  REBUILD_TARGETS,
-  scoreTree,
-  structuralMutationsOf,
-} from "./rebalance/structural";
-export type { RebuildTarget, StructuralConfig, StructuralMutation, TreeScore } from "./rebalance/structural";
+// The rebalance engine lives in workbench-core/rebalance; re-exported whole until the Phase 6 barrel cut.
+export * from "@hyperslop-systems/workbench-core/rebalance";

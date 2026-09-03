@@ -14,6 +14,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./rebalance": {
+      "types": "./dist/rebalance/index.d.ts",
+      "import": "./dist/rebalance.js"
     }
   },
   "publishConfig": {

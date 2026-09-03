@@ -4,7 +4,7 @@ import type { AppView, Mutation, WorkbenchDocument, Workspace } from "@hyperslop
 import type { AppDescriptor, AppRegistry } from "./apps";
 import type { LauncherRow, LauncherRowsContext, LauncherScope } from "./launcherRows";
 import type { PlacementController } from "./placement";
-import type { RebalanceConfig } from "./rebalance/config";
+import type { RebalanceConfig } from "@hyperslop-systems/workbench-core/rebalance";
 import type { RebalanceBadgeProps } from "./components/RebalanceBadge";
 import type { RebalanceConfigStore } from "./rebalance/configStore";
 import type { WorkbenchState, WorkbenchStore } from "./store";

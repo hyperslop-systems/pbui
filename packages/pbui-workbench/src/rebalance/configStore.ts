@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
-import { DEFAULT_REBALANCE_CONFIG, normalizeConfig, type RebalanceConfig } from "./config";
-import { readRebalanceConfig, rebalanceConfigMutation } from "./configDocument";
+import { DEFAULT_REBALANCE_CONFIG, normalizeConfig, type RebalanceConfig } from "@hyperslop-systems/workbench-core/rebalance";
+import { readRebalanceConfig, rebalanceConfigMutation } from "@hyperslop-systems/workbench-core/rebalance";
 
 /**
  * WHERE the rebalance config lives is the importing product's decision
