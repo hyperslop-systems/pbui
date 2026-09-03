@@ -49,3 +49,8 @@ Step 5: cross-package typecheck/tests, LinkLab and shop screenshots, README link
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/README.md — Link kernel section
 
+
+## 2026-09-02
+
+Project report written to the go-go-parc vault: 'PROJECT REPORT - PBUI Binding Programs - The Link IR as the One Authority for Evaluation, Dependencies, and Planning' with six screenshots in _assets/; committed and pushed
+
