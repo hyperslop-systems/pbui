@@ -974,3 +974,74 @@ The React components are still on the old assembly; Phase 6 rewires them. The sh
 ### Technical details
 
 - Shell test count dropped from 328 to 274 because the rebalance suites moved to the core (158 there).
+
+## Step 13: Phase 6 — the React shell cutover
+
+Phase 6 turned `pbui-workbench` into what the guide calls a shell: an adapter and renderer over a `WorkbenchCore`, with no semantic code of its own. The 1,407-line verb module, the mixed store, the god constructor with its shadow planner, and the link handlers with their live runtime writes are gone. Components read core selectors and the shell-local store, issue `placement.*` / `view.show` / `session.*` commands through `workbench.execute`, and dispatch dialogs and modes as shell actions.
+
+The shell's test corpus was ported rather than rewritten: every Surface, Launcher, WorkspaceStrip, placement, rebalance, link, connect, derive, identity, and show test runs against the new API, with the same DOM assertions. The two suites that tested engine behaviour through the shell (the verb tests and the persistence/describe tests) moved to the core, where they belong.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Deliver guide §17 Phase 6, taking the persistence/sync file moves of Phase 7 with it because the old modules could not compile against the new shell.
+
+**Inferred user intent:** A React package that cannot contain layout policy, because it has no store to put it in.
+
+**Commit (code):** 4fa53f1 — "PBUI-WORKBENCH-CORE-1 P6: React shell over the core; old assembly, store, verbs, and shell-state mixing deleted"
+
+### What I did
+
+- `createWorkbenchShell.tsx`: `createWorkbenchShell({ core, apps })` → `WorkbenchShell` (core, presentations, shell store, placement, `execute`/`preview`/`dispatch`/`perform`/`apply`, `useDocument`/`useCoreState`/`useShellState`, `linkSnapshot`, root/measure/focus, `describe`, five bound components); `createWorkbench({ apps: WorkbenchApp[], initial, links?: LinkDeps | WorkbenchLinks, …core options })` as the convenience. `execute` measures geometry only for commands that read it and opens the show chooser from an ambiguous result.
+- `types.ts`: `WorkbenchShell`, `WorkbenchVerb = WorkbenchCommand | WorkbenchShellAction`, props unchanged except `TilePlacementInfo.app: AppPresentation | null`.
+- `app.ts`: `labelOfView`, the one title spelling; `defineWorkbenchApp` now puts the manifest id last so a spread presentation cannot override it.
+- Components: Surface, Tile, SplitPane (bounds from `measureSplitGeometry`), Launcher (placement mode through `commands.placeAt`/`place`, rows over presentations + manifests), WorkspaceStrip, ShowChooser (over `choices`), RelationPalette, WireLayer, PortRail, LinkAnnouncer, CoordinationInspector and RebalanceSettings (now `WorkbenchApp`s), RebalanceDialog (`rebalanceGeometry` from the measured snapshot; apply via `core.apply` for resize batches and `commands.rebalance` for trees; undo via the command), RebalanceBadge.
+- `links/hooks.ts` over the shell; `launcherRows.ts` takes `apps` (presentations) and `manifests`; `tileDescriptor.ts` reads the index; `actions.ts` and `links/contributions.ts` bind commands and shell actions.
+- Core: `describe.ts` (presentations and geometry as inputs; `revision`, `viewCardinality`, `duplicatePlacement` added to the shape), `persistence/index.ts` (`readWorkbenchSnapshot({ apps, onDiscard })`, `createLocalPersistence(core, { onHide })`), `sync/index.ts` (moved, target is the core), subpath exports `./persistence` and `./sync`; `describe.test.ts` and `persistence/persistence.test.ts` ported.
+- Deleted from the shell: `createWorkbench.tsx`, `store.ts`, `verbs.ts`, `apps.ts`, `document.ts`, `describe.ts`, `persistence.ts`, `sync.ts`, `links/{handlers,runtime,snapshot,document}.ts`, `workbench.test.ts`, the old goldens (snapshot preserved as ticket `scripts/03-phase0-goldens.snap`); the old probe is kept as `01-plan-purity-probe.historical.ts`.
+- New barrel (60 lines), package README for both packages, the shell's `sync` build entry and `./sync` export removed.
+
+### Why
+
+- F2, F3, F4, F13, F15: shell state out of the semantic store, no bypassing door, no object-identity precondition, presentations separate from manifests, a barrel that communicates stability.
+
+### What worked
+
+- Keeping `createWorkbench({ apps, initial, links })` as the name and shape of the convenience meant most stories and tests changed only in what they read (`core.getState()`, `shell.getState()`) and how they act (`execute(commands.*)`, `dispatch`).
+
+### What didn't work
+
+- The test-port script asserted `"verbs" not in file` and stopped on a test NAME ("the rebalance verbs are data…"), so four test files were silently not written on the first pass; a second pass with a narrower check finished them.
+- `defineWorkbenchApp` spread the presentation AFTER the id, so `{ ...counterApp.presentation, title: "widget" }` produced a second "counter" and the registry threw `registered twice`; fixed by spreading first.
+- Three link tests seeded views bound to documents that did not exist (`table: "orders"`) on an app that declared no such slot; the core now validates at the door, so the tests declare the slot and put the documents in the seed.
+- The folder-convention test listed `createWorkbench.tsx` as a non-component by name; updated to `createWorkbenchShell.tsx`.
+
+### What I learned
+
+- Measuring the whole Surface on every divider pointer-move is wasteful; `measureSplitGeometry(element, splitId)` gives the engine exactly the one rect its ratio math reads, and the keyboard/pointer tests pass unchanged (41 % / 59 %).
+- The old shell rendered an empty tile for an application that no longer exists; the core refuses that document at construction. `readWorkbenchSnapshot({ apps })` is the door that falls back instead, so products must pass their manifests to it (Phase 8).
+
+### What was tricky to build
+
+- The show chooser: the old code kept a `ShowResolution` in the store; the new one keeps the `show` command and the `choices` the core returned, groups them by candidate-id prefix (`spawn:`), and re-executes the command with `candidateId`. No kernel object crosses the shell boundary.
+- The rebalance config store's host: `RebalanceConfigHost` is now `{ useDocument(); apply(mutations) }`, which the shell satisfies; a product with its own settings backend still passes its own store.
+
+### What warrants a second pair of eyes
+
+- `WorkbenchShell.perform` returns true for an ambiguous show (the chooser opened), matching the old boolean; agents should read `execute`'s result instead.
+- `createWorkbenchShell` throws when the core has no links collaborator; `createWorkbench` always installs one.
+- In-repo consumers (pbui-chat, sandbox, ecommerce, plotscript, editor) do not compile at this commit; Phase 8 migrates them. The root `pnpm -r typecheck` is red until then.
+
+### What should be done in the future
+
+- Phase 7: batch-preserving sync; Phase 8: consumers and the deletion audit.
+
+### Code review instructions
+
+- Start at `packages/pbui-workbench/src/createWorkbenchShell.tsx`, then `components/Tile/Tile.tsx` and `components/Launcher/Launcher.tsx`; then `packages/workbench-core/src/describe.ts` and `persistence/index.ts`.
+- Validate: `pnpm --filter @hyperslop-systems/workbench-core build && pnpm --filter @hyperslop-systems/workbench-core test && pnpm --filter @hyperslop-systems/pbui-workbench typecheck && pnpm --filter @hyperslop-systems/pbui-workbench test && pnpm --filter @hyperslop-systems/pbui-workbench build`.
+
+### Technical details
+
+- Shell suite: 22 files, 114 tests; core suite: 24 files, 171 tests (Phase 0 baseline was 31 files / 281 tests in the shell alone, before the goldens and the moves).

@@ -111,3 +111,13 @@ Phase 5: rebalance engine moved to workbench-core/rebalance with the preservatio
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/shellState.ts — One shell-local store
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/rebalance/law.ts — The placement→view preservation law
 
+
+## 2026-09-03
+
+Phase 6: React shell cut over to the core (createWorkbenchShell/createWorkbench, shell store, commands everywhere); old assembly/store/verbs/links handlers deleted; describe, persistence, sync in the core; READMEs (commit 4fa53f1)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/createWorkbenchShell.tsx — The shell over the core and the convenience constructor
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/describe.ts — Agent-facing description with presentations and geometry as inputs
+

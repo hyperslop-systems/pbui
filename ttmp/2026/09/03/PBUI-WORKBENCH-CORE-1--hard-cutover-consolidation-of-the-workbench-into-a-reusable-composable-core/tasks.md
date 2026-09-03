@@ -14,7 +14,7 @@
 - [x] Phase 3: Implement pure planning, explicit local effects, generalized view.show, advisory preview, and fresh core.execute <!-- t:ld9q -->
 - [x] Phase 4: Route every durable operation through one execution gateway with explicit links lifecycle integration <!-- t:e2n6 -->
 - [x] Phase 5: Move pure geometry/rebalance logic, pass geometry at execution time, and extract shell-local state <!-- t:ofwb -->
-- [ ] Phase 6: Cut the React shell over to WorkbenchCore, placement commands, view.show, and small execution results <!-- t:i3vo -->
+- [x] Phase 6: Cut the React shell over to WorkbenchCore, placement commands, view.show, and small execution results <!-- t:i3vo -->
 - [ ] Phase 7: Cut persistence and sync over to complete atomic outbox batches with destructive-operation conflicts <!-- t:yj61 -->
 - [ ] Phase 8: Migrate all PBUI and external consumers and delete legacy APIs without compatibility aliases <!-- t:i09x -->
 - [ ] Phase 9: Run release audit, browser smokes, package documentation, and publish protocol/core/shell in order <!-- t:lnzs -->
