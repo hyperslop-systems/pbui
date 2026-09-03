@@ -1,0 +1,98 @@
+import type { LayoutState, Node, Stage, Workspace } from "../../src/store/layout";
+
+/**
+ * An id-free description of a layout, for migration goldens
+ * (PBUI-DATALAB-WORKBENCH-1 Phase 0).
+ *
+ * Runtime ids are minted per store, so a golden that carried them would fail
+ * on every run. What must survive the cutover to workbench-core is the
+ * SHAPE: which stages exist and in what order, which workspaces belong to
+ * each, every tree's arrangement, and — the part a naive port loses — which
+ * leaves share one logical view. Views are therefore named by first
+ * appearance (`v1`, `v2`, …): a singleton placed in three workspaces shows
+ * the same alias three times, and a chart placed twice in one workspace is
+ * one alias placed twice.
+ *
+ * Pinned workspaces keep their ids because those are code-defined and MUST
+ * match across builds; user-owned workspaces are described by name only.
+ */
+export type TreeShape =
+  | { view: string; app: string; title?: string; doc?: string }
+  | { dir: "row" | "col"; ratio: number; a: TreeShape; b: TreeShape };
+
+export interface WorkspaceShape {
+  id?: string;
+  name: string;
+  pinned: boolean;
+  apps?: string[] | null;
+  tree: TreeShape;
+}
+
+export interface StageShape {
+  id: string;
+  name: string;
+  apps: string[] | null;
+  chrome: Stage["chrome"];
+  audience?: Stage["audience"];
+  pinned: boolean;
+  /** Which workspace the stage remembers, by name (pinned) or ordinal. */
+  current: string;
+  workspaces: WorkspaceShape[];
+}
+
+export interface LayoutShape {
+  currentStage: string;
+  currentWorkspace: string;
+  stages: StageShape[];
+}
+
+/** A stable, id-free name for a workspace: its id when pinned, else its name. */
+const workspaceLabel = (space: Workspace | undefined): string =>
+  space ? (space.pinned ? space.id : space.name) : "";
+
+export function shapeOfLayout(layout: LayoutState): LayoutShape {
+  const aliases = new Map<string, string>();
+  const alias = (viewId: string): string => {
+    let name = aliases.get(viewId);
+    if (!name) {
+      name = `v${aliases.size + 1}`;
+      aliases.set(viewId, name);
+    }
+    return name;
+  };
+  const tree = (node: Node): TreeShape => {
+    if (node.type === "leaf") {
+      const view = layout.views[node.viewId];
+      return {
+        view: alias(node.viewId),
+        app: view?.appId ?? "?",
+        ...(view?.title ? { title: view.title } : {}),
+        ...(view?.documents.primary ? { doc: view.documents.primary } : {}),
+      };
+    }
+    return { dir: node.dir, ratio: node.ratio, a: tree(node.a), b: tree(node.b) };
+  };
+  const byId = new Map(layout.spaces.map((space) => [space.id, space]));
+  return {
+    currentStage: layout.currentStageId,
+    currentWorkspace: workspaceLabel(byId.get(layout.currentSpaceId)),
+    stages: layout.stages.map((stage) => ({
+      id: stage.id,
+      name: stage.name,
+      apps: stage.apps,
+      chrome: stage.chrome,
+      ...(stage.audience ? { audience: stage.audience } : {}),
+      pinned: stage.pinned === true,
+      current: workspaceLabel(byId.get(stage.currentSpaceId)),
+      workspaces: layout.spaces
+        .filter((space) => space.stageId === stage.id)
+        .map((space) => ({
+          ...(space.pinned ? { id: space.id } : {}),
+          name: space.name,
+          pinned: space.pinned === true,
+          ...(space.apps !== undefined ? { apps: space.apps } : {}),
+          tree: tree(space.tree),
+        })),
+    })),
+  };
+}

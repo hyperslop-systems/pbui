@@ -1,0 +1,537 @@
+{
+  "currentStage": "stage-work",
+  "currentWorkspace": "build",
+  "stages": [
+    {
+      "id": "stage-signin",
+      "name": "sign in",
+      "apps": [
+        "signin",
+        "signup",
+        "about"
+      ],
+      "chrome": {
+        "masthead": true,
+        "workspaces": false,
+        "stageBar": true
+      },
+      "audience": "anonymous",
+      "pinned": true,
+      "current": "ws-signin",
+      "workspaces": [
+        {
+          "id": "ws-signin",
+          "name": "sign in",
+          "pinned": true,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.4,
+            "a": {
+              "view": "v1",
+              "app": "signin"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.6,
+              "a": {
+                "view": "v2",
+                "app": "signup"
+              },
+              "b": {
+                "view": "v3",
+                "app": "about"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stage-welcome",
+      "name": "welcome",
+      "apps": [
+        "about",
+        "tut1",
+        "tut2",
+        "tut3",
+        "tut4",
+        "lessons",
+        "cheat",
+        "modules",
+        "brief",
+        "sources",
+        "inspector",
+        "chart",
+        "table",
+        "pipeline",
+        "encode",
+        "launcher",
+        "signin",
+        "signup"
+      ],
+      "chrome": {
+        "masthead": true,
+        "workspaces": true,
+        "stageBar": true
+      },
+      "audience": "any",
+      "pinned": true,
+      "current": "ws-welcome",
+      "workspaces": [
+        {
+          "id": "ws-welcome",
+          "name": "start here",
+          "pinned": true,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.62,
+            "a": {
+              "dir": "col",
+              "ratio": 0.52,
+              "a": {
+                "view": "v4",
+                "app": "chart",
+                "title": "Temperature by station",
+                "doc": "demo-v2-temperature"
+              },
+              "b": {
+                "view": "v5",
+                "app": "chart",
+                "title": "Yield by production line",
+                "doc": "demo-v2-yield-by-line"
+              }
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.54,
+              "a": {
+                "view": "v6",
+                "app": "chart",
+                "title": "Population by region",
+                "doc": "demo-v2-population-bars"
+              },
+              "b": {
+                "dir": "col",
+                "ratio": 0.45,
+                "a": {
+                  "view": "v7",
+                  "app": "sources"
+                },
+                "b": {
+                  "view": "v8",
+                  "app": "table",
+                  "title": "Regional totals",
+                  "doc": "demo-v2-population-bars"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "ws-tour-1",
+          "name": "1·objects",
+          "pinned": true,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.44,
+            "a": {
+              "view": "v9",
+              "app": "tut1"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.55,
+              "a": {
+                "view": "v7",
+                "app": "sources"
+              },
+              "b": {
+                "view": "v10",
+                "app": "inspector"
+              }
+            }
+          }
+        },
+        {
+          "id": "ws-tour-2",
+          "name": "2·pipeline",
+          "pinned": true,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.42,
+            "a": {
+              "view": "v11",
+              "app": "tut2"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.5,
+              "a": {
+                "view": "v12",
+                "app": "pipeline"
+              },
+              "b": {
+                "view": "v13",
+                "app": "table"
+              }
+            }
+          }
+        },
+        {
+          "id": "ws-tour-3",
+          "name": "3·encode",
+          "pinned": true,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.42,
+            "a": {
+              "view": "v14",
+              "app": "tut3"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.45,
+              "a": {
+                "view": "v15",
+                "app": "encode"
+              },
+              "b": {
+                "view": "v16",
+                "app": "chart"
+              }
+            }
+          }
+        },
+        {
+          "id": "ws-tour-4",
+          "name": "4·docs",
+          "pinned": true,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.42,
+            "a": {
+              "view": "v17",
+              "app": "tut4"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.55,
+              "a": {
+                "view": "v18",
+                "app": "charts"
+              },
+              "b": {
+                "view": "v19",
+                "app": "gallery"
+              }
+            }
+          }
+        },
+        {
+          "id": "ws-demo-5",
+          "name": "5·climate",
+          "pinned": true,
+          "tree": {
+            "dir": "col",
+            "ratio": 0.7,
+            "a": {
+              "dir": "row",
+              "ratio": 0.5,
+              "a": {
+                "view": "v20",
+                "app": "chart",
+                "title": "Temperature by station",
+                "doc": "demo-v2-temperature"
+              },
+              "b": {
+                "view": "v21",
+                "app": "chart",
+                "title": "Humidity by station",
+                "doc": "demo-v2-humidity"
+              }
+            },
+            "b": {
+              "dir": "row",
+              "ratio": 0.56,
+              "a": {
+                "view": "v22",
+                "app": "pipeline",
+                "title": "Climate pipeline",
+                "doc": "demo-v2-temperature"
+              },
+              "b": {
+                "view": "v23",
+                "app": "table",
+                "title": "Climate readings",
+                "doc": "demo-v2-temperature"
+              }
+            }
+          }
+        },
+        {
+          "id": "ws-demo-6",
+          "name": "6·operations",
+          "pinned": true,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.72,
+            "a": {
+              "dir": "col",
+              "ratio": 0.5,
+              "a": {
+                "view": "v24",
+                "app": "chart",
+                "title": "Yield by line · 85% target",
+                "doc": "demo-v2-yield-by-line"
+              },
+              "b": {
+                "view": "v25",
+                "app": "chart",
+                "title": "Mass versus yield",
+                "doc": "demo-v2-mass-yield"
+              }
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.45,
+              "a": {
+                "view": "v26",
+                "app": "encode",
+                "title": "Yield encoding",
+                "doc": "demo-v2-yield-by-line"
+              },
+              "b": {
+                "view": "v27",
+                "app": "table",
+                "title": "Production batches",
+                "doc": "demo-v2-mass-yield"
+              }
+            }
+          }
+        },
+        {
+          "id": "ws-demo-7",
+          "name": "7·compare",
+          "pinned": true,
+          "tree": {
+            "dir": "col",
+            "ratio": 0.7,
+            "a": {
+              "dir": "row",
+              "ratio": 0.23,
+              "a": {
+                "view": "v7",
+                "app": "sources"
+              },
+              "b": {
+                "dir": "row",
+                "ratio": 0.5,
+                "a": {
+                  "view": "v28",
+                  "app": "chart",
+                  "title": "Population and land area",
+                  "doc": "demo-v2-population-scatter"
+                },
+                "b": {
+                  "view": "v29",
+                  "app": "chart",
+                  "title": "Population by region",
+                  "doc": "demo-v2-population-bars"
+                }
+              }
+            },
+            "b": {
+              "dir": "row",
+              "ratio": 0.46,
+              "a": {
+                "view": "v10",
+                "app": "inspector"
+              },
+              "b": {
+                "view": "v30",
+                "app": "table",
+                "title": "Regional census",
+                "doc": "demo-v2-population-scatter"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stage-account",
+      "name": "account",
+      "apps": [
+        "profile",
+        "tokens",
+        "upload",
+        "templates",
+        "about",
+        "launcher"
+      ],
+      "chrome": {
+        "masthead": true,
+        "workspaces": true,
+        "stageBar": true
+      },
+      "audience": "authenticated",
+      "pinned": true,
+      "current": "ws-account",
+      "workspaces": [
+        {
+          "id": "ws-account",
+          "name": "profile",
+          "pinned": true,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.38,
+            "a": {
+              "view": "v31",
+              "app": "profile"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.55,
+              "a": {
+                "view": "v32",
+                "app": "tokens"
+              },
+              "b": {
+                "view": "v33",
+                "app": "upload"
+              }
+            }
+          }
+        },
+        {
+          "id": "ws-templates",
+          "name": "templates",
+          "pinned": true,
+          "tree": {
+            "view": "v34",
+            "app": "templates"
+          }
+        }
+      ]
+    },
+    {
+      "id": "stage-work",
+      "name": "work",
+      "apps": null,
+      "chrome": {
+        "masthead": true,
+        "workspaces": true,
+        "stageBar": true
+      },
+      "audience": "authenticated",
+      "pinned": true,
+      "current": "build",
+      "workspaces": [
+        {
+          "name": "build",
+          "pinned": false,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.4,
+            "a": {
+              "dir": "col",
+              "ratio": 0.55,
+              "a": {
+                "view": "v35",
+                "app": "pipeline"
+              },
+              "b": {
+                "view": "v36",
+                "app": "encode"
+              }
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.6,
+              "a": {
+                "view": "v37",
+                "app": "chart"
+              },
+              "b": {
+                "view": "v38",
+                "app": "table"
+              }
+            }
+          }
+        },
+        {
+          "name": "explore",
+          "pinned": false,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.34,
+            "a": {
+              "view": "v7",
+              "app": "sources"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.6,
+              "a": {
+                "view": "v39",
+                "app": "chart"
+              },
+              "b": {
+                "view": "v10",
+                "app": "inspector"
+              }
+            }
+          }
+        },
+        {
+          "name": "gallery",
+          "pinned": false,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.4,
+            "a": {
+              "view": "v18",
+              "app": "charts"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.5,
+              "a": {
+                "view": "v19",
+                "app": "gallery"
+              },
+              "b": {
+                "view": "v40",
+                "app": "compare"
+              }
+            }
+          }
+        },
+        {
+          "name": "help",
+          "pinned": false,
+          "tree": {
+            "dir": "row",
+            "ratio": 0.55,
+            "a": {
+              "view": "v3",
+              "app": "about"
+            },
+            "b": {
+              "dir": "col",
+              "ratio": 0.45,
+              "a": {
+                "view": "v41",
+                "app": "watch"
+              },
+              "b": {
+                "view": "v42",
+                "app": "trace"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
