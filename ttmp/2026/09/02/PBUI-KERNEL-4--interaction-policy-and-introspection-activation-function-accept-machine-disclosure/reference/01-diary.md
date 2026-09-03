@@ -13,6 +13,8 @@ Owners: []
 RelatedFiles:
     - Path: repo://src/presentation/createPbui.tsx
       Note: The runtime this ticket restructures
+    - Path: repo://src/presentation/interaction/accept.ts
+      Note: The accept machine (Step 2)
     - Path: repo://src/presentation/interaction/activation.ts
       Note: activationOutcome (Step 1)
 ExternalSources: []
@@ -21,6 +23,7 @@ LastUpdated: 2026-09-02T21:16:26.475584895-04:00
 WhatFor: Continue or review the interaction-policy work without re-deriving why the activation function, the accept machine and the disclosure rules are shaped as they are.
 WhenToUse: Before touching createPbui.tsx handlers, the accept flow, RefusalNotice or explain().
 ---
+
 
 
 # Diary
@@ -75,3 +78,47 @@ The primary resolution is a thunk so that it runs only when the ladder reaches i
 ### Code review instructions
 - `interaction/activation.ts`, then the two `switch (outcome.kind)` blocks in `createPbui.tsx`.
 - `npx vitest run src/presentation/interaction src/presentation/createPbui.test.tsx`.
+
+## Step 2: The accept flow as a request-identified machine
+
+The accept flow lived in three pieces of React state (`accepting`, `acceptChooser`, and a `pending` ref holding the promise's resolver) and four callbacks that each knew part of the policy. Guide §14.5 asks for one state carrying a request id, a step function, and effects, with the invariants listed. `interaction/accept.ts` is that machine: `AcceptState` is `idle`, `pending {requestId, request}` or `choosing {requestId, request, options}`; `AcceptEvent` is `request`, `offer` (a clicked reference with its acceptance resolution), `choose`, `escape`, `dismiss-chooser`, `abort`; `AcceptEffect` is `close-menu`, `settle {requestId, reference}` or `resolve-null {requestId, reason}`.
+
+The `reason` on `resolve-null` was added after the first draft: the old code resolved a second request with null WITHOUT telling the product's `onAccept`, and aborted the pending one WITH it; the effect has to say which, since the Provider executing it no longer knows.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 2: the pure machine and its fuzzed invariants, before wiring it into the Provider.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 65ae198 — "PBUI-KERNEL-4 P2: the accept flow as a request-identified pure machine"
+
+### What I did
+- `interaction/accept.ts` and `accept.test.ts`: eight transition tests and 200 seeded sequences of 40 random events; each run checks that a second request is refused for its own id and leaves the first state object identical, that a chooser only exists with options under a pending request, that a terminal effect for the current request leaves the machine idle, that chooser Escape keeps the request id and pending Escape ends it, and after draining that every admitted and every refused request has exactly one terminal.
+- `tsc` clean; interaction suite 218 tests.
+
+### Why
+- Promise correlation. A resolver held in one ref can be settled by whichever callback runs last; a settle effect naming its request id cannot.
+
+### What worked
+- The machine's tests needed no React: the Provider's job in P3 is reduced to executing three effect kinds.
+
+### What didn't work
+- `TS7022` on the fuzz loop's destructured `after` (referenced in its own initializer through `state`); annotated with `AcceptStepResult<V>`.
+
+### What I learned
+- `offer` while `choosing` behaves as if pending: a click elsewhere while the chooser is open re-resolves and may settle or replace the options. The old code behaved the same since the chooser was not modal; now it is a stated transition.
+
+### What was tricky to build
+- Terminal accounting in the fuzz: requests refused on arrival get their terminal in the same step; admitted ones get it when settled, aborted, or at the drain. Counting both sets separately is what proves "exactly once".
+
+### What warrants a second pair of eyes
+- Whether a `request` while `choosing` should instead queue. The guide says refuse; the machine refuses.
+
+### What should be done in the future
+- N/A.
+
+### Code review instructions
+- `interaction/accept.ts` top comment lists the invariants; `accept.test.ts` "§14.5 invariants" is the fuzz.
