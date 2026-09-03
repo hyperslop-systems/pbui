@@ -788,3 +788,70 @@ The binding policy is the visible semantic change of this phase: default documen
 ### Technical details
 
 - Rebuild rule: `pnpm --filter @hyperslop-systems/workbench-core build` before running pbui-workbench, which resolves the core through `dist/`.
+
+## Step 10: Phase 3 — the pure planner, generalized `view.show`, and fresh execution
+
+Phase 3 is the heart of the cutover: the 1,407-line verb module's policy now lives in a planner that reads values and returns data. Every old identity/placement verb is one `view.show` with a `ViewRequest` and a `PlacementRequest`; identity is resolved by `resolveView`, space by `resolvePlacement`, and `materialize` joins them. `core.execute` plans fresh against the captured state, checks the coarse revision, applies and validates the complete batch, installs once, and only then runs the planned effects. `core.preview` is the same planning with nothing installed and no effect run.
+
+The proof is the golden replay: all 44 Phase 0 scenarios produce the same protocol batches, leaf→view maps, view orders, and sessions through the core, with three deliberate differences recorded below. The ticket's purity probe now has an inverted twin for the core, and it passes.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Deliver guide §17 Phase 3.
+
+**Inferred user intent:** Planning that agents, tests, and sync can trust because it cannot touch anything live.
+
+**Commit (code):** 98d34a6 — "PBUI-WORKBENCH-CORE-1 P3: commands, pure planner, generalized view.show, execute/preview, links as data"
+
+### What I did
+
+- `commands.ts`: `WorkbenchCommand`, `ViewRequest`, `PlacementRequest` (`navigate` / `auto` / `split` / `replace`), `isWorkbenchCommand` (complete shapes, shell-local link verbs excluded), `describeWorkbenchCommand`, and `commands.*` builders (`split`, `place`, `placeAt`, `open`, `replace`, `link`, `goTo`, …) that compile to the normal form.
+- `geometry.ts`: `GeometrySnapshot` and the pure math (`paneRatioBounds`, `canSplitPlacement`, `splitRatioBounds`, `longerAxis`, `layoutFits`).
+- `effects.ts`: `LocalEffect` = `link-runtime` | `forget-view-values`.
+- `links/`: `runtime.ts` (no React), `document.ts`, `snapshot.ts` (labels injected), `collaborator.ts` — `createWorkbenchLinks({ deps?, labels?, runtime? })` with `bind`, `snapshot`, `plan` (data only), `maintenance`, `afterCommit`, `sourceOf`.
+- `planner/`: `world.ts`, `placement.ts` (duplicate/close/swap/dock/replaceWith/resize), `show.ts` (`resolveView`, `resolvePlacement`, `materialize`), `workspace.ts` (create/rename/delete/clone/rebalance with the preservation law), `session.ts`, `links.ts` (term commands; `show` resolves on a fresh snapshot and expands a spawn into `view.show` + follow/bind inside the same plan), `plan.ts` (sequential drafts, one orphan sweep, one links maintenance, forget effects).
+- `createWorkbenchCore`: `links`, `execute`, `preview`, `onRefused`; `ExecuteResult` is the small `{ ok, changed, placementId?, viewId?, workspaceId? }` / `{ ok: false, code, because, choices? }`.
+- Tests: `goldens/transitions.test.ts` (45), `execute.test.ts` (purity, atomic batches, session-only commands, ambiguity → choices, onRefused), `commands.test.ts`; ticket `scripts/02-plan-purity-probe-core.test.ts` with captured output.
+
+### Why
+
+- F1, F2, F3, F9, F11, F12: one pipeline, no shadow store, no live writes during planning, placement vocabulary, centralized orphan cleanup.
+
+### What worked
+
+- A diff of the two snapshot files (ignoring the `returned` value, which changed shape by design) shows identical batches in 41 of 44 cases; the remaining three are intentional.
+
+### What didn't work
+
+- Two first-run test expectations were mine, not the code's: the orphan sweep appends `viewDelete` after the LAST command's mutations (not right after the close), and an ambiguous `show` offers every ranked candidate (six), not only the two winners. Both expectations were corrected and the behaviour kept.
+
+### What I learned
+
+- The old code activated the target pane after `placeAt`/`openAt` replace but NOT after `tile.link` / `tile.replace`; the unified `replace` materialization always activates it. Three goldens show `activePlacementId` set where it used to stay null. Kept: the pane the user just changed is the natural active one.
+- `followTheCrowd` reproduces the old `BindingConfig` golden exactly for a single-slot app.
+
+### What was tricky to build
+
+- `show`'s spawn had to become an expansion inside the same plan: the follow verb's snapshot must include the just-minted view's ports, so the planner runs `view.show` first, rebuilds the draft index and link snapshot, then plans the follow. This is what the old shell "planner hook" did through a shadow store; here it is the ordinary sequential draft loop.
+- The fence flagged `world.document.views` as DOM access; the regex now ignores property access preceded by a dot.
+
+### What warrants a second pair of eyes
+
+- `resolvePlacement`'s empty-pane fill applies to any `split` without an edge or axis (the old code applied it only to `placeAt`, not to `openView … at center`).
+- Rebinding an application that declares no document slot is now refused (`unknown_binding`); the old code wrote it and the server would have rejected the batch.
+
+### What should be done in the future
+
+- Phase 4 routes the raw-batch and replacement doors through links maintenance and adds `afterReplace` runtime cleanup.
+
+### Code review instructions
+
+- Read `planner/show.ts` first, then `planner/plan.ts`, then `createWorkbenchCore.ts` `execute`.
+- Compare `packages/pbui-workbench/src/goldens/__snapshots__` with `packages/workbench-core/src/goldens/__snapshots__`.
+- Validate: `pnpm --filter @hyperslop-systems/workbench-core test`; `npx vitest run --config ttmp/…/scripts/01-vitest.config.ts` in `pbui/`.
+
+### Technical details
+
+- Id minting order inside a split: view id (if created) → split id → new leaf id, matching the old handlers so the goldens' ids line up.

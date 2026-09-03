@@ -80,3 +80,14 @@ Phase 2: policy, slot-aware initial document policy, session repair, createWorkb
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/app.ts — One declaration, two projections
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/createWorkbenchCore.ts — State, the raw-batch gateway, validated replacement
 
+
+## 2026-09-03
+
+Phase 3: command algebra, pure planner with generalized view.show, execute/preview, links planned as data; goldens replay identically; purity probe inverted for the core (commit 98d34a6)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/planner/plan.ts — Sequential drafts, orphan sweep, links maintenance
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/planner/show.ts — resolveView / resolvePlacement / materialize
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/02-plan-purity-probe-core.test.ts — The inverted probe
+
