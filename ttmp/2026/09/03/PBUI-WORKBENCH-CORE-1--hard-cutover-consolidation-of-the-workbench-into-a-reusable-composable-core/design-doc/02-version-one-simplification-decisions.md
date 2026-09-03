@@ -13,14 +13,14 @@ DocType: design-doc
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - Path: repo://packages/pbui-workbench/src/apps.ts
-      Note: Current mixed app declaration motivating the small manifest and presentation projections
-    - Path: repo://packages/pbui-workbench/src/createWorkbench.tsx
-      Note: Current assembly and plan API simplified by the first-version constructor and fresh execution decisions
-    - Path: repo://packages/pbui-workbench/src/sync.ts
-      Note: Current sync implementation constrained to preserve complete batches in the first pass
     - Path: repo://packages/pbui-workbench/src/types.ts
       Note: Current plan, effect-adjacent, and result surface being reduced
+    - Path: repo://packages/workbench-core/src/apps.ts
+      Note: Implemented small semantic manifest
+    - Path: repo://packages/workbench-core/src/createWorkbenchCore.ts
+      Note: Implemented fresh execution and coarse revision
+    - Path: repo://packages/workbench-core/src/sync/index.ts
+      Note: Implemented whole-batch outbox
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/01-intern-guide-to-the-pbui-workbench-core-consolidation-and-hard-cutover.md
       Note: Full design whose first-version scope this companion document constrains
 ExternalSources: []
@@ -29,6 +29,7 @@ LastUpdated: 2026-09-03T18:45:00-04:00
 WhatFor: Prevent first-version scope decisions from being lost while the larger Workbench architecture is discussed and revised.
 WhenToUse: Read beside design-doc/01 before implementing or reviewing PBUI-WORKBENCH-CORE-1; update this document whenever a simplification is accepted, rejected, or revisited.
 ---
+
 
 
 # Version one simplification decisions

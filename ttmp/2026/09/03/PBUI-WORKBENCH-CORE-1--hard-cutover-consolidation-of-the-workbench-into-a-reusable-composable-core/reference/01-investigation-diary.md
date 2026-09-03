@@ -15,18 +15,20 @@ Owners: []
 RelatedFiles:
     - Path: repo://packages/pbui-chat/demo/src/workbench.ts
       Note: Wiring order of sources, restore and persistence in the largest consumer
-    - Path: repo://packages/pbui-workbench/src/goldens/transitions.test.ts
-      Note: Phase 0 goldens (commit 9822ba8)
-    - Path: repo://packages/pbui-workbench/src/rebalance/slate.ts
-      Note: Evidence that rebalance algorithms are pure and should be preserved while integration moves
+    - Path: repo://packages/workbench-core/src/goldens/transitions.test.ts
+      Note: Phase 0 behavior goldens ported to the core
+    - Path: repo://packages/workbench-core/src/rebalance/slate.ts
+      Note: Pure rebalance engine after package move
     - Path: repo://packages/workbench-core/src/sources.ts
       Note: Document sources, the one new core facility of Phase 8
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/01-intern-guide-to-the-pbui-workbench-core-consolidation-and-hard-cutover.md
       Note: Final evidence-backed architecture and implementation guide produced by the investigation
+    - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/03-post-implementation-architecture-and-code-review.md
+      Note: Step 16 implementation assessment and stabilization plan
+    - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/01-plan-purity-probe.historical.ts
+      Note: Historical reproduction retained after the cutover
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/01-plan-purity-probe.output.txt
       Note: Captured successful probe output and Vitest evidence
-    - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/01-plan-purity-probe.test.ts
-      Note: Executable reproduction of live link-runtime mutation during plan
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/sources/01-workbench-architectural-assessment.md
       Note: Verbatim supplied assessment used as the investigation hypothesis map
 ExternalSources: []
@@ -35,6 +37,8 @@ LastUpdated: 2026-09-03T15:00:00-04:00
 WhatFor: Preserve how the consolidation design was derived so an implementer or reviewer can reproduce findings and continue without repeating the investigation.
 WhenToUse: Read before resuming PBUI-WORKBENCH-CORE-1, reviewing its architecture recommendations, or reproducing the planner-purity finding.
 ---
+
+
 
 
 
@@ -1182,3 +1186,203 @@ That finding produced the one new facility of this phase, `connectDocumentSource
 
 - Stub formats: `sandbox.program` (body `{ title }`), `chat.conversation`, `chat.widget`, `shop.product` (body `{ name }`), `shop.category`, `shop.metal`, `shop.order`.
 - Old verb → command mapping used throughout: `tile.split{dir}` → `placement.duplicate{axis}`; `tile.split{appId}` → `view.show{application, split{target}}`; `tile.close` → `placement.close`; `tile.activate` → `session.activatePlacement`; `tile.replace` → `view.show{…, replace{target}}`; `tile.link` → `view.show{existing, split}`; `split.resize` → `placement.resize`; `app.place` / `view.open` → `view.show{application, auto}`; `view.setTitle` / `view.rebind` → `view.configure`; `view.goTo` → `view.show{existing, navigate}`; `workspace.select` → `session.selectWorkspace`.
+
+## Step 16: Perform the post-implementation architecture and code review
+
+This step reviewed the implemented Phase 0–8 code against the chosen design, the simplification record, the implementation diary, and the current consumers. It produced a new intern-facing assessment that explains the resulting architecture, records what succeeded, audits every completion gate, and prioritizes nineteen concrete findings with stabilization pseudocode and tests.
+
+Seven executable probes verified the most important findings rather than leaving them as source-reading hypotheses. The review concludes that the protocol/core/shell architecture should be retained, but transaction publication, document-source reentrancy, sync bootstrap, mutable state ownership, and TypeScript/Go binding parity need work before release.
+
+### Prompt Context
+
+**User prompt (verbatim):** "We have implemented the ticket (a colleague has), read their diary, read the design documents, analyze the source code that was written, and write a detailed code review / architecture review / assessment of where we are now, what could be improved, what went well, what got exposed as needing work, etc... Create  a detailed analysis / design / code review that is for a new intern, explaining all the parts of the system needed to understand what it is, with prose paragraphs and bullet point sand pseudocode and diagrams and api references and file references. It should be very clear and technical. Store in the ticket and the nupload to remarkable.
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Independently audit the delivered architecture and code, teach the resulting system to a new engineer, preserve executable evidence for discovered defects, store the review in the ticket, and deliver the refreshed documentation bundle to reMarkable.
+
+**Inferred user intent:** Obtain an honest handoff assessment after implementation—not a restatement of the design—so stabilization and release work are guided by concrete strengths, defects, and newly exposed modeling problems.
+
+### What I did
+
+- Read both design documents, the full diary through Step 15, consumer inventory, task/changelog state, implementation commit sequence, core/shell source, tests, Go validation, in-repository consumers, and representative external adapters.
+- Ran protocol, core, shell, in-repository consumer, workspace typecheck, and targeted Go validation commands.
+- Added `scripts/04-implementation-review-probes.test.ts` and captured its seven observations.
+- Added `design-doc/03-post-implementation-architecture-and-code-review.md` with system orientation, actual architecture, end-to-end flows, strengths, completion-gate matrix, nineteen prioritized findings, decisions, phased fixes, test plan, API notes, and file references.
+- Updated the ticket index and added a review-delivery task.
+
+### Why
+
+- The implemented system materially differs from both the old code and the ideal architecture, so an intern needs a current-state guide rather than only the pre-implementation plan.
+- Callback ordering, reentrancy, and sync bootstrap defects are easy to miss in ordinary happy-path tests but directly affect persistence and server ordering.
+- Strict binding validation exposed product resource semantics that need a cross-language decision.
+
+### What worked
+
+- Protocol tests passed 40/40; shell tests passed 114/114.
+- Workspace-wide TypeScript typecheck passed for all 12 selected projects.
+- Chat passed 241 tests, chat demo 13, sandbox 224, ecommerce 35, and plotscript 32; all targeted packages built.
+- `GOWORK=off go test ./pkg/workbench ./pkg/workbenchapi` passed.
+- The review probes reproduced mutable state bypass, preview-id drift, subscriber/effect exceptions after commit, source receipt inversion, dropped replacement title, and sync-create false drop.
+- The isolated rebalance performance test passed at 36.7 ms median.
+- `docmgr doctor --ticket PBUI-WORKBENCH-CORE-1 --stale-after 30` passed after replacing historical RelatedFiles entries for files deleted by the cutover.
+- The refreshed nine-document bundle uploaded successfully and the remote directory listed `PBUI Workbench Core Consolidation`.
+
+### What didn't work
+
+- The first review-probe run failed because a ticket-local test could not resolve the workspace package from its directory:
+
+  ```text
+  Error: Failed to resolve import "@hyperslop-systems/workbench-core" from "ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts". Does the file exist?
+  ```
+
+  The fix was to import the core source through its explicit repository-relative path.
+
+- Two full core test runs failed the wall-clock performance assertion:
+
+  ```text
+  AssertionError: expected 53.57029700000021 to be less than 50
+  AssertionError: expected 72.42204200000015 to be less than 50
+  ```
+
+  The exact test passed alone at 36.7 ms, confirming load-sensitive flakiness.
+
+- `make protocol-check` reached Go and failed because the workspace directive/toolchain versions disagree:
+
+  ```text
+  go: module . listed in go.work file requires go >= 1.26.6, but go.work lists go 1.26; to update it:
+      go work use
+  ```
+
+  Targeted package tests passed with `GOWORK=off`.
+
+### What I learned
+
+- The architectural split is successful; the highest-risk problems are now concentrated in publication and integration boundaries rather than semantic planning.
+- “One gateway” is not enforceable while callers can mutate the exposed protobuf document and index maps.
+- A synchronous store listener is part of transaction semantics: document-source reconciliation can reverse receipt order and therefore produce server-invalid outbox order.
+- `openBindings` represents at least two different missing concepts—optional contextual binding and program-owned binding—and should not become the final model.
+- A source-clean package is not necessarily dependency-clean; workbench-core still reaches React transitively through the PBUI root entry.
+
+### What was tricky to build
+
+- The repository was moving concurrently while the review ran: the in-repository Phase 8 commit landed before review completion, and external consumer migrations were actively changing. The review therefore records an explicit PBUI commit baseline and separates stable implementation findings from migration status.
+- The source receipt-order defect required a particular sequence: remove a resource while still bound, then close the view. That causes the core subscriber to notice the now-unbound stale stub and perform a nested `documentDelete` before the outer close receipt.
+- Sync bootstrap needed a missing server row plus a local queued batch before attach; ordinary existing-row bootstrap tests do not expose the double-processing.
+
+### What warrants a second pair of eyes
+
+- Re-run and inspect all seven review probes, especially whether source receipt order can feed the current sync adapters exactly as described.
+- Review the proposed observer publication order before implementation; internal link-runtime and external receipt/state observers have different consistency needs.
+- Decide whether sandbox program-owned bindings belong in `AppView.documents` at all.
+- Decide turboproof state ownership before writing a mirrored Redux/core adapter.
+
+### What should be done in the future
+
+- Fix the P0 transaction/source/sync findings before package release.
+- Add explicit source ownership and persisted-layout hydration.
+- Replace or formally specify `openBindings` and mirror accepted semantics in Go fixtures.
+- Complete external consumer migration and Phase 9 only after stabilization.
+
+### Code review instructions
+
+- Start with design doc 03 §§1, 7, and 8.
+- Inspect `createWorkbenchCore.ts:202-232, 280-327`, `sources.ts:67-75`, and `sync/index.ts:184-255` beside the probe output.
+- Run:
+
+  ```bash
+  pnpm exec vitest run \
+    --config ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/01-vitest.config.ts \
+    ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts
+  ```
+
+### Technical details
+
+Observed probe evidence:
+
+```text
+EXPOSED_STATE_MUTATION revision=0
+PREVIEW_ID_DRIFT preview=n-00000009-0000 execute=n-00000012-0000
+SUBSCRIBER_ESCAPE revisionAfterThrow=1 commitReceipts=0
+POST_COMMIT_ESCAPE revisionAfterThrow=1
+REENTRANT_RECEIPTS revisions=[4,3] cases=[[documentDelete],[placementClose,viewDelete]]
+DROPPED_REPLACE_TITLE changed=false
+CREATE_BOOTSTRAP_DROP droppedCalls=1 phase=synced
+```
+
+Delivery evidence:
+
+```text
+OK: uploaded PBUI Workbench Core Consolidation.pdf -> /ai/2026/09/03/PBUI-WORKBENCH-CORE-1
+OK: uploaded PBUI Workbench Core Post-Implementation Review.pdf -> /ai/2026/09/03/PBUI-WORKBENCH-CORE-1
+remarquee cloud ls: [f] PBUI Workbench Core Post-Implementation Review
+```
+
+## Step 16: Phase 8 (external) — four products cut over in parallel
+
+The external half of Phase 8 was delegated to four subagents working from one brief (the new API on a page, the worked in-repo migrations to copy, the hard-cutover rules, and the "bindings are validated" warning from Step 15), one per repo: hyperblog, agentlogic, turboproof and rag-ttc. All four typecheck, test and build on the new core and shell, each committed on its own `task/add-plot-editor` branch and none pushed. Each report was read for decisions that reach back into pbui; one did, and it was fixed here before the phase closed.
+
+The reach-back was rag-ttc's: pbui-chat's `attachWorkbench` mirrored conversations as `chat.conversation` stubs with no way to choose the format or opt out, and rag-ttc's Go host refuses documents of a format it does not know. `createPbuiChat` now takes `conversationDocuments: { format } | false`; rag-ttc opted out and kept its own reconciler, and the double write it had to install is gone.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Finish Phase 8: the consumers outside this repo, per guide §17 Phase 8's list, as feasible.
+
+**Inferred user intent:** No product left on the old API, so the deletion is real and the next pbui publish does not strand anything.
+
+**Commit (code):** 7fdbe1e — "PBUI-WORKBENCH-CORE-1 P8: conversationDocuments option on createPbuiChat". Consumer commits: hyperblog 6358676; agentlogic e3b69e0; turboproof 68ed102; rag-ttc bdfb04f + 50db0fc.
+
+### What I did
+
+- Wrote the brief (`scratchpad/external-migration-brief.md`, not in the repo) and launched four agents in parallel; read each report; fixed the one pbui gap; sent rag-ttc's agent a follow-up to adopt the option.
+- hyperblog (`ui/`, `link:` overrides): apps as `defineWorkbenchApp`; document slots declared per `pkg/workbenchapp/catalog.go`; `splitPolicy` → `policy.duplicate` with the launcher as the empty placement; the old no-op `binding: { source: "post" }` dropped in favour of the default `bindRequestedOnly`; the corpus mirrored as `hyperblog.post` / `hyperblog.term` document sources through a React-context ref; verbs → commands; stored workspace → `initialSession`. 29 tests.
+- agentlogic (`ui/`, registry pins with local tarball overrides): `toApp` / `defineWorkbenchApp`; `policy.duplicate: { app: launcher }`; `followTheCrowd({ isBindable, unbound })` over the `transcript` slot; the transcript binding declared through `openBindings` rather than a slot (a declared slot makes an app doc-bound and `defaultLauncherRows` hides doc-bound apps); hand-rolled localStorage → `readWorkbenchSnapshot` + `createLocalPersistence` with a migration that folds the old workspace-pointer key; no document source needed (transcripts arrive by `documentPut`). The agent repacked the ROOT pbui package too, since the Sep 1 tarball lacked the port helpers the core imports. 128 tests.
+- turboproof (`ui/`, registry pins with local tarball overrides): the Redux mirror of the old store deleted; the core is the document's home (`useDocument` / `useCoreState` for React, `core.getState()` outside, `apply` / `execute` for writes); Redux keeps `fileSync` and a new `syncStatus { phase }` slice; sync rebuilt on `workbench-core/sync` with `onInvalid: "isolate"` and a 400ms flush; manifests with `documentSlotPort("source")` except the three that bind nothing; `followTheCrowd` over lean sources; the pbui runtime (`createPbui({ presentation, contextFor })`) migrated along the way because the new packages need post-KERNEL pbui at runtime. 129 tests.
+- rag-ttc (`apps/workbench/web`, `link:` overrides already pointing at this checkout): apps, workbench, sync adopt through `parseWorkbenchDocument` + `core.replaceDocument`, persistence, agent vocabulary regenerated with the command kinds; `conversationDocuments: false`. 167 tests.
+- pbui-chat: the option, README paragraph, and the two format constants exported.
+
+### Why
+
+- Guide §17 Phase 8 lists these products; the brief is what made four independent migrations converge on the same decisions (manifest slots mirroring the Go catalogs, `followTheCrowd` for the old `binding` option, launcher as the duplicate app).
+- A product that owns a strict host cannot accept a stub format chosen by a library; the option is the library-side fix, and opting out is the right shape for a product that already reconciles conversation documents itself.
+
+### What worked
+
+- The "bindings are validated" paragraph in the brief pre-empted the failure Step 15 hit; three of four products needed no document source because their bindings were already `documentPut` documents, and hyperblog's corpus became one in a few lines.
+- Every agent found and reported the same two conventions (a local-only `pnpm-workspace.yaml` with tarball overrides; a lockfile that deliberately lags unpublished versions) and followed them.
+
+### What didn't work
+
+- Nothing failed outright. agentlogic's `pnpm install` reused stale extractions of same-named tarballs and needed `--force`.
+
+### What I learned
+
+- The root `@hyperslop-systems/pbui` package is still 0.10.0 while its API is post-KERNEL-1..4; two consumers had to repack it, and turboproof's pin now names two incompatible things. Phase 9 bumps it.
+- Agentlogic's optional `transcript` binding has no exact spelling in the manifest: a document slot makes the app doc-bound (hidden from the launcher), and `openBindings` is a broader permission than "this one slot is optional". Follow-up.
+
+### What was tricky to build
+
+- Two writers of one document: pbui-chat's conversation source and rag-ttc's reconciler both asserted the conversation documents, each re-running on the other's commit. Both stopped when nothing differed, so it converged, but the fixed format was wrong for the host. The option removes the second writer instead of ordering them.
+
+### What warrants a second pair of eyes
+
+- turboproof's sync no longer coalesces consecutive `documentPut`s of one document: each keystroke queues a one-mutation batch and the debounce bundles them into one request. The agent chose not to add a coalescer because a put held outside the outbox could be lost on a concurrent adoption; worth a look when the editor is used against a live host.
+- hyperblog and agentlogic discard a stored layout from the previous build once (`unknown_document`, no stub documents were stored) and fall back to their seeds.
+- None of the four ran a browser smoke; Phase 9 lists it.
+
+### What should be done in the future
+
+- Mirror `openBindings` into the Go `ApplicationDescriptor`; consider an "optional document slot" that does not make an application doc-bound.
+- Bump the root pbui package (Phase 9); publish protocol → core → shell so the lagging lockfiles and embedded bundles can be committed.
+
+### Code review instructions
+
+- The consumer commits listed above; in each, start at the `workbenchShell`/`workbench.ts` module and its test. In pbui: `packages/pbui-chat/src/createPbuiChat.tsx` (`connectWorkbench`, `conversationDocuments`).
+- Validate: `pnpm typecheck && pnpm test && pnpm build` in each consumer's UI package; `cd packages/pbui-chat && pnpm typecheck && npx vitest run`.
+
+### Technical details
+
+- Consumer test counts: hyperblog 29, agentlogic 128 (+1 skipped), turboproof 129, rag-ttc 167.
+- Brief's key line: "The core refuses a view whose `documents` binding names a document not in `document.documents` (`unknown_document`), or a slot the manifest does not declare (`unknown_binding`, unless `openBindings`)."

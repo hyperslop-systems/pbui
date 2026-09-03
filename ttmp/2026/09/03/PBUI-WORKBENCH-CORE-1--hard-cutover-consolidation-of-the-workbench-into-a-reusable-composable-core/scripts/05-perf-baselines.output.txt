@@ -1,0 +1,8 @@
+# Phase 9 baselines — 2026-09-03T20:52:44.147Z — node v24.18.0
+# 12 tiles, 3 apps, 20 links
+buildWorkbenchIndex (12 tiles)               median 0.014ms  (min 0.012, max 0.018, n=25)
+preview placement.duplicate (plan only)      median 0.849ms  (min 0.544, max 1.037, n=25)
+preview view.show auto (plan only)           median 0.030ms  (min 0.015, max 0.086, n=25)
+execute duplicate + close (plan + commit ×2) median 2.056ms  (min 1.175, max 5.252, n=25)
+links.snapshot (12 tiles, 12 links)          median 0.000ms  (min 0.000, max 0.009, n=25)
+buildSlate anything-profile (12 tiles)       median 15.602ms  (min 13.819, max 18.802, n=5)

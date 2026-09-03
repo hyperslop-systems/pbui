@@ -13,16 +13,16 @@ DocType: design-doc
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - Path: repo://packages/pbui-workbench/src/createWorkbench.tsx
-      Note: Current assembly, shadow planning, object-identity freshness, and React binding boundary
-    - Path: repo://packages/pbui-workbench/src/links/handlers.ts
-      Note: Link planning, imperative runtime effects, lifecycle maintenance, and show integration
-    - Path: repo://packages/pbui-workbench/src/store.ts
-      Note: Current mixed runtime/shell state and atomic mutation versus unsafe replacement boundary
-    - Path: repo://packages/pbui-workbench/src/sync.ts
-      Note: Current flattened mutation outbox and structurally applicable rebase semantics
-    - Path: repo://packages/pbui-workbench/src/verbs.ts
-      Note: Current command algebra, DOM geometry, identity and placement policy, cleanup, and main consolidation hotspot
+    - Path: repo://packages/pbui-workbench/src/createWorkbenchShell.tsx
+      Note: Implemented React shell boundary
+    - Path: repo://packages/workbench-core/src/createWorkbenchCore.ts
+      Note: Implemented core assembly and execution gateway
+    - Path: repo://packages/workbench-core/src/links/collaborator.ts
+      Note: Implemented explicit links collaborator
+    - Path: repo://packages/workbench-core/src/planner/plan.ts
+      Note: Implemented pure planner and transition finalization
+    - Path: repo://packages/workbench-core/src/sync/index.ts
+      Note: Implemented batch-preserving synchronization
     - Path: repo://pkg/workbench/validate.go
       Note: Authoritative complete Go graph, catalog, limits, binding, and payload validation
     - Path: repo://proto/hyperslop/pbui/workbench/v1/workbench.proto
@@ -33,6 +33,7 @@ LastUpdated: 2026-09-03T15:00:00-04:00
 WhatFor: Give a new engineer the model, current implementation map, defects, target APIs, invariants, migration sequence, deletion list, and validation gates needed to consolidate the workbench safely.
 WhenToUse: Read before changing workbench protocol mutations, command planning, application manifests, link integration, layout geometry, persistence, synchronization, rebalance integration, or React workbench shell APIs.
 ---
+
 
 
 # Intern guide to the PBUI workbench core consolidation and hard cutover

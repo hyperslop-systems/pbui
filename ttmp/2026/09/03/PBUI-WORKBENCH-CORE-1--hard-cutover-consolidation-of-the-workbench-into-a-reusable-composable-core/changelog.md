@@ -140,3 +140,31 @@ Phase 8 (in-repo): sandbox, plotscript, ecommerce, chat and the chat demo on wor
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/tools/workbenchTools.ts — The agent tools on the command vocabulary
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/sources.ts — Stub documents for host-owned resources
 
+
+## 2026-09-03
+
+Added an evidence-backed post-implementation architecture/code review with an intern system guide, completion audit, nineteen prioritized findings, seven executable probes, and a phased stabilization plan.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/03-post-implementation-architecture-and-code-review.md — Primary post-implementation assessment
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts — Executable evidence for transaction, source, sync, state, preview, and view.show findings
+
+
+## 2026-09-03
+
+Validated the post-implementation review ticket cleanly and refreshed the nine-document PBUI Workbench Core Consolidation bundle on reMarkable.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/03-post-implementation-architecture-and-code-review.md — Reviewed document delivered in the refreshed bundle
+
+
+## 2026-09-03
+
+Phase 8 (external): hyperblog 6358676, agentlogic e3b69e0, turboproof 68ed102, rag-ttc bdfb04f+50db0fc migrated by parallel agents; createPbuiChat conversationDocuments option (commit 7fdbe1e)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/createPbuiChat.tsx — Conversation stubs configurable or off
+
