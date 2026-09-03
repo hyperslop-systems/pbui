@@ -15,12 +15,18 @@ Owners: []
 RelatedFiles:
     - Path: repo://packages/datalab-ui/src/appkit/useRemoteWorkbench.ts
       Note: Current remote projection policy inspected
+    - Path: repo://packages/datalab-ui/src/appkit/workbenchApps.ts
+      Note: Registry to manifest mapping (commit 49d27e8)
     - Path: repo://packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx
       Note: Product-specific launcher behavior inspected
     - Path: repo://packages/datalab-ui/src/remote/codec.ts
       Note: Current local-to-protocol conversion inspected
     - Path: repo://packages/datalab-ui/src/store/layout.ts
       Note: Primary duplicate spatial implementation inspected
+    - Path: repo://packages/datalab-ui/src/store/navigation.ts
+      Note: Navigation slice; derived current stage; reconcile (commit 49d27e8)
+    - Path: repo://packages/datalab-ui/src/store/seed.ts
+      Note: Seed compiler with singleton carry and bound-document stubs (commit 49d27e8)
     - Path: repo://packages/datalab-ui/test/helpers/layoutShape.ts
       Note: Id-free shape describer behind the seed golden (commit bc3f027)
     - Path: repo://packages/datalab-ui/test/layers.test.ts
@@ -35,6 +41,7 @@ LastUpdated: 2026-09-03T17:45:00-04:00
 WhatFor: Preserve how the Datalab Workbench migration design was derived and make implementation continuation reproducible.
 WhenToUse: Read before implementing or reviewing PBUI-DATALAB-WORKBENCH-1.
 ---
+
 
 
 
@@ -211,4 +218,74 @@ files importing store/layout: 32 src + 13 test
 production layoutActions uses: 52 (23 distinct)
 production state.layout reads: 57
 fixtures: layout-shape.golden.json (12.8 kB), persisted-v5.json (32.2 kB)
+```
+
+## Step 3: Phase 1 — manifests, seed compiler, graphic source, navigation slice
+
+Phase 1 added the workbench-side foundation beside the untouched Redux slice. The registry is projected onto workbench manifests, the pinned stages are redeclared as `LayoutSpec` definitions and compiled through the protocol into one `WorkbenchDocument`, the world becomes an identity-only document source, and a navigation slice holds stage definitions, per-workspace metadata and per-stage memory with no mirrored current-workspace pointer. The Phase 1 exit gate holds: the compiled default seed reproduces the Phase 0 shape golden exactly and validates strictly against the real catalog in a headless core.
+
+Nothing renders through the new stack yet; the full suite still runs the old code (53 files / 589 tests, up from 554 with the new tests).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Build the adapters the design's Phase 1 lists, additively, and prove them with the golden before any cutover.
+
+**Inferred user intent:** A reviewable, green intermediate state before the large spatial cutover.
+
+**Commit (code):** 49d27e8 — "PBUI-DATALAB-WORKBENCH-1 P1: manifests, seed compiler, graphic source, navigation slice"
+
+### What I did
+
+- `package.json`: `@hyperslop-systems/workbench-core` and `@hyperslop-systems/pbui-workbench` as workspace dependencies; `vite.config.ts` externals extended for the library build.
+- `src/store/stageIds.ts`: the fixed stage/workspace ids, so the navigation slice and the seed compiler need not import `stages.ts` (which imports the old layout). `stages.ts` re-exports them.
+- `src/store/graphicSource.ts`: `GRAPHIC_DOCUMENT_FORMAT`, `GRAPHIC_SOURCE_ID`, `graphicStub`, `graphicStubMutation`, `isGraphicStub`, `graphicDocumentSource(read, subscribe?)`.
+- `src/store/navigation.ts`: `StageDefinition`, `WorkspaceMeta`, `NavigationState`, the pure `reconcileNavigation`, `currentStageId`, `landingWorkspaceOf`, `workspacesOfStage`, and the slice (metadata, stage definition, transient UI reducers).
+- `src/store/seed.ts`: `compileSeed`, `pinnedDefinitions`, `workDefinitions`, `defaultSeed`, `singleStageSeed`, re-exporting `split`/`tile`.
+- `src/appkit/workbenchApps.ts`: `toWorkbenchApp`, `datalabWorkbenchApps`, `datalabManifests`.
+- `test/helpers/layoutShape.ts`: `shapeOfDocument` over a seed; `test/seed.test.ts`, `test/navigation.test.ts`, `test/graphic-source.test.ts`.
+
+### Why
+
+- Design §6.1 mapping, §6.3 identity-only source, §7 seed compiler with singleton carry, §5.3 metadata shape, §5.2 no mirrored pointer.
+- `primary` is an OPTIONAL binding and `launch` is `"unbound"`: a document-bound tile with no binding follows the active document, which DocBar's "+" and the launcher both produce, and Datalab's own launcher decides what to bind.
+
+### What worked
+
+- The shape golden matched on the first run: reading order in `buildLayout` and the old builder agree on every tree, and threading `existingViewsByAppId` across workspaces gave singleton sharing for free.
+- `sequentialIds` from workbench-core makes the seed deterministic for tests.
+
+### What didn't work
+
+- Biome reformatted eight files (line length); no lint errors.
+
+### What I learned
+
+- `workbench-core`'s `split(direction, ratio, a, b)` has the ratio SECOND; Datalab's builder had it last. Every pinned tree was transcribed by hand and the golden is what caught nothing being wrong.
+- Every stub the seed writes is exactly the set of bound ids (asserted), so the source will never delete one: bound stubs are retained by `documentSourceMutations` whether or not the world holds the document.
+
+### What was tricky to build
+
+- `reconcileNavigation` must return the SAME object when nothing changed, or a subscriber comparing identity wakes on every core install. The function tracks a `changed` flag through both maps and the memory.
+
+### What warrants a second pair of eyes
+
+- `duplicatePlacement` for an app that is `duplicable` AND `singleton` (none today; `apps.test.ts` forbids it) is forced to `"link"`, because the core refuses `one` + `clone`.
+
+### What should be done in the future
+
+- Phase 7 deletes the builder-based `pinnedStages` in `stages.ts`; until then the two definitions coexist and the golden pins them together.
+
+### Code review instructions
+
+- `src/store/seed.ts` (`compileSeed`), `src/store/navigation.ts` (`reconcileNavigation`), `src/appkit/workbenchApps.ts` (the manifest mapping).
+- `pnpm --filter @hyperslop-systems/datalab-ui exec vitest run test/seed.test.ts test/navigation.test.ts test/graphic-source.test.ts`
+
+### Technical details
+
+```text
+manifest mapping: singleton→one, duplicable→clone (else link), docBound→primary{required:false, formats:[datadrop.gog.document]}, launch: unbound
+seed: 4 stages, 15 workspaces, stubs = bound demo ids; default seed validates ok
+tests: 53 files / 589 passed
 ```

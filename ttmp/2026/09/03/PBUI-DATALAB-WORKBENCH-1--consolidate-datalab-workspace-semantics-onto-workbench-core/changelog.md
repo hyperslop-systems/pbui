@@ -31,3 +31,12 @@ Step 2 / Phase 0: analysis, shape + v5 goldens, golden test, use inventory (comm
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/test/migration-goldens.test.ts — Phase 0 goldens
 
+
+## 2026-09-03
+
+Step 3 / Phase 1: manifests, seed compiler, graphic document source, navigation slice; seed reproduces the shape golden (commit 49d27e8)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/src/store/seed.ts — Seed compiler over the protocol
+
