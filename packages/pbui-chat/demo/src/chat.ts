@@ -21,8 +21,7 @@ import {
 import { selectTimelineEntities } from "@go-go-golems/chat-provider";
 import { ConsumedApprovalStore } from "./approvalConsumption";
 import { registerConversationSource } from "./pbui/conversationFacts";
-import { pbui } from "./pbui/runtime";
-import { registry } from "./pbui/registry";
+import { pbui, registry } from "./pbui/runtime";
 import type { Environment, Values } from "./pbui/types";
 import type { Verb, VerbKind } from "./pbui/verbs";
 import { vocabulary } from "./pbui/vocabulary";

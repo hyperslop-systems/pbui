@@ -1,0 +1,49 @@
+.app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.pad {
+  padding: 8px 12px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  padding: 3px 6px;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+  vertical-align: baseline;
+}
+
+.faint {
+  opacity: 0.7;
+}

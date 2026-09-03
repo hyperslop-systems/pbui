@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { census, readings } from "../src/fixtures";
-import { datadropActionRegistry, snapshotForDatalab } from "../src/pbui/actions";
+import { datadropActionRegistry, snapshotForDatalab } from "../src/pbui/presentation";
 import { catToField, datadropConversions } from "../src/pbui/runtime";
 import type { DatadropPresentationReference } from "../src/pbui/runtime";
 import type { PbuiEnvironment, PresentationType } from "../src/pbui/types";

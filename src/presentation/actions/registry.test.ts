@@ -3,6 +3,7 @@ import { available, unavailable } from "./availability";
 import { definePredicate, predicate } from "./conditions";
 import { defineActions } from "./define";
 import { createActionRegistry } from "./registry";
+import { anyDeclaredType } from "../context/types";
 import { createPresentationTypeGraph } from "./typeGraph";
 import type { ActionContribution } from "./types";
 
@@ -67,7 +68,7 @@ describe("createActionRegistry validation is fail-fast", () => {
     expect(() => build([stray])).toThrow(/not in the type graph/);
   });
 
-  test('"*" is families-only, and family ids may not contain the candidate separator', () => {
+  test("anyDeclaredType is families-only, and family ids may not contain the candidate separator", () => {
     const starRule = define.inherited("object", {
       id: "star",
       action: "x.y",
@@ -75,7 +76,7 @@ describe("createActionRegistry validation is fail-fast", () => {
       metadata: { label: "?" },
       bind: () => ({ kind: "x" }),
     });
-    expect(() => build([{ ...starRule, subject: "*" }])).toThrow(/only families/);
+    expect(() => build([{ ...starRule, subject: anyDeclaredType as never }])).toThrow(/only families/);
     const slashed = define.family("file", {
       id: "bad/id",
       scopes: ["global"],

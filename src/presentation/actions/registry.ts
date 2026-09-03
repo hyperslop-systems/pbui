@@ -1,17 +1,19 @@
 import type { PresentationValues } from "../types";
-import { referencedPredicates } from "./conditions";
-import type { PredicateDefinition, ProductPredicate } from "./conditions";
+import type { PredicateDefinition } from "./conditions";
 import type { ActionQuery, SelectionSnapshot } from "./types";
 import type {
   ActionContribution,
   ResolutionResult,
 } from "./types";
-import type { PredicateId, RuntimeTypeId, ScopeId } from "./ids";
+import type { RuntimeTypeId, ScopeId } from "./ids";
 import { resolveActions } from "./resolve";
 import { vocabularyOf } from "./vocabulary";
 import type { ActionVocabulary } from "./vocabulary";
 import type { PreparedRegistry } from "./resolve";
 import type { PresentationTypeGraph } from "./typeGraph";
+import { createPredicateRegistry, validateConditionPredicates } from "../context/predicates";
+import type { PredicateRegistry } from "../context/predicates";
+import { isAnyDeclaredType } from "../context/types";
 
 /**
  * The action registry (PBUI-ACTIONS-2, source guide §13).
@@ -35,7 +37,8 @@ export interface ReachableContribution {
   contributionId: string;
   kind: "rule" | "family";
   action?: string;
-  declaredType: RuntimeTypeId | "*";
+  /** null: a universal (any-declared-type) family. */
+  declaredType: RuntimeTypeId | null;
   distance: number;
 }
 
@@ -74,6 +77,8 @@ export interface CreateActionRegistryOptions<
   /** Every scope any contribution may declare; unknown scopes throw. */
   scopes: readonly ScopeId[];
   predicates?: readonly PredicateDefinition<Values, ProductFacts>[];
+  /** A prebuilt table supplied by PresentationKernel. Do not combine with predicates. */
+  predicateRegistry?: PredicateRegistry<Values, ProductFacts>;
   contributions: readonly ActionContribution<Values, ProductFacts, Verb>[];
   version?: string | number;
 }
@@ -85,13 +90,11 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
   const declaredScopes = new Set(options.scopes);
   const version = options.version ?? 1;
 
-  const predicates = new Map<PredicateId, ProductPredicate<Values, ProductFacts>>();
-  for (const definition of options.predicates ?? []) {
-    if (predicates.has(definition.id)) {
-      throw new Error(`duplicate predicate id "${definition.id}"`);
-    }
-    predicates.set(definition.id, definition.evaluate);
+  if (options.predicates && options.predicateRegistry) {
+    throw new Error("createActionRegistry accepts predicates or predicateRegistry, not both");
   }
+  const predicates =
+    options.predicateRegistry ?? createPredicateRegistry(options.predicates);
 
   const contributionIds = new Set<string>();
   for (const contribution of contributions) {
@@ -116,14 +119,17 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
         );
       }
     }
-    if (contribution.subject !== "*" && !graph.has(contribution.subject)) {
+    if (isAnyDeclaredType(contribution.subject)) {
+      if (contribution.kind !== "family") {
+        throw new Error(
+          `only families may target anyDeclaredType (contribution "${contribution.id}")`,
+        );
+      }
+    } else if (!graph.has(contribution.subject)) {
       throw new Error(
         `contribution "${contribution.id}" targets type "${contribution.subject}" ` +
-          `which is not in the type graph — declare the type (or use "*" for the legacy family)`,
+          `which is not in the type graph — declare the type first`,
       );
-    }
-    if (contribution.subject === "*" && contribution.kind !== "family") {
-      throw new Error(`only families may target "*" (contribution "${contribution.id}")`);
     }
     if (
       contribution.priority !== undefined &&
@@ -147,13 +153,11 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
       ) {
         throw new Error(`rule "${contribution.id}" has a non-finite menu order`);
       }
-      for (const id of contribution.when ? referencedPredicates(contribution.when) : []) {
-        if (!predicates.has(id)) {
-          throw new Error(
-            `rule "${contribution.id}" references unknown predicate "${id}"`,
-          );
-        }
-      }
+      validateConditionPredicates(
+        `rule "${contribution.id}"`,
+        contribution.when,
+        predicates,
+      );
     }
   }
 
@@ -225,7 +229,7 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
     const out: ReachableContribution[] = [];
     for (const contribution of contributions) {
       let distance: number;
-      if (contribution.subject === "*") distance = 0;
+      if (isAnyDeclaredType(contribution.subject)) distance = 0;
       else if (contribution.match === "exact") {
         if (contribution.subject !== type) continue;
         distance = 0;
@@ -239,7 +243,7 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
         contributionId: contribution.id,
         kind: contribution.kind,
         ...(contribution.kind === "rule" ? { action: contribution.action } : {}),
-        declaredType: contribution.subject,
+        declaredType: isAnyDeclaredType(contribution.subject) ? null : contribution.subject,
         distance,
       });
     }

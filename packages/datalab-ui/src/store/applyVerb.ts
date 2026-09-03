@@ -6,7 +6,7 @@ import {
   type TransformKind,
 } from "../model/transformEditor";
 import type { Field, Table } from "../model/table";
-import { datadropRegistry } from "../pbui/registry";
+import { datadropRegistry } from "../pbui/presentation";
 import type { DatadropPresentationReference } from "../pbui/runtime";
 import type { PbuiEnvironment } from "../pbui/types";
 import type { Verb } from "../pbui/verbs";

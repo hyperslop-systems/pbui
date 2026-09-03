@@ -58,7 +58,7 @@ export type { UINodeRendererProps } from "./render/UINodeRenderer";
 export { INSPECTOR_APP_ID, PROGRAM_BINDING, SOURCE_APP_ID, ScriptTile } from "./ScriptTile";
 export type { ScriptTileProps } from "./ScriptTile";
 export { GENERATED_GROUP, createScriptApp } from "./createScriptApp";
-export { createGeneratedActionsFamily, substituteRef, substituteVerbRef } from "./actions";
+export { createGeneratedActionsFamily, createGeneratedActionsFragment, substituteRef, substituteVerbRef } from "./actions";
 export type { GeneratedActionFacts, GeneratedActionsFamilyOptions } from "./actions";
 export type { ScriptAppOptions } from "./createScriptApp";
 export {

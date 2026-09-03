@@ -1,3 +1,4 @@
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { describe, expect, it } from "vitest";
 import {
   createAppRegistry,
@@ -53,8 +54,7 @@ const apps = createAppRegistry([
     title: "SKU",
     tone: "var(--pbui-pane-alt)",
     singleton: false,
-    docBound: true,
-    bindings: ["product"],
+    ports: [documentSlotPort("product")],
     Component: Blank,
   }),
 ]);
@@ -714,5 +714,50 @@ describe("workbench_apply", () => {
       ],
     })) as any;
     expect(result.error).toContain("the limit is 1");
+  });
+});
+
+/* ---- PBUI-LINK-1 Phase 7: the agent links tiles through the same tools --- */
+
+describe("workbench_perform · tile linking", () => {
+  const ordersApp = defineApp({ id: "orders", title: "orders", tone: "var(--pbui-pane-alt)", singleton: false, ports: [{ name: "order", direction: "out", contract: "order", doc: "the clicked order" }], Component: Blank });
+  const detailApp = defineApp({ id: "detail", title: "detail", tone: "var(--pbui-pane-alt)", singleton: false, ports: [{ name: "order", direction: "in", contract: "order", doc: "the order shown", fallbackContext: "workspace.order" }], Component: Blank });
+
+  function linkedHarness() {
+    const wb = createWorkbench({ apps: createAppRegistry([ordersApp, detailApp]), initial: layout(split("row", 0.5, tile("orders", { title: "Orders East" }), tile("detail"))) });
+    const tools = createWorkbenchTools({
+      getWorkbench: () => wb,
+      perform: async (verb) => {
+        performWorkbenchVerb(wb.verbs, verb as unknown as WorkbenchVerb);
+        return "performed" as Outcome;
+      },
+      senderConversationId: "agent-a",
+      effectGateway: new AgentEffectGateway(),
+    });
+    const byName = (name: string) => tools.tools.find((tool) => tool.name === name) as FrontendTool<any, any>;
+    const run = (name: string, input: unknown) => Promise.resolve(byName(name).execute(input as never, { signal: new AbortController().signal, toolCallId: `link-${name}` }));
+    return { wb, run };
+  }
+
+  it("describes ports, performs port.follow, and describes the resulting binding in the badge's words", async () => {
+    const { wb, run } = linkedHarness();
+    const described = (await run("workbench_describe", {})) as { revision: string; apps: Array<{ id: string; ports?: Array<{ name: string; direction: string }> }>; workspaces: Array<{ tiles: Array<{ viewId: string; appId: string }> }> };
+    expect(described.apps.find((app) => app.id === "orders")?.ports?.[0]).toMatchObject({ name: "order", direction: "out" });
+    const tiles = described.workspaces[0]!.tiles;
+    const orders = tiles.find((t) => t.appId === "orders")!.viewId;
+    const detail = tiles.find((t) => t.appId === "detail")!.viewId;
+    const result = (await run("workbench_perform", { verbs: [{ kind: "port.follow", source: `${orders}/order`, destination: `${detail}/order` }], expectedRevision: described.revision })) as Record<string, unknown>;
+    expect(result.ok ?? result.applied ?? result.status ?? result).toBeTruthy();
+    wb.links.runtime.emit(`${orders}/order`, { type: "order", value: { id: "1042" } });
+    const after = (await run("workbench_describe", {})) as { links?: { bindings: Array<{ name: string; state: string; badge: string; source?: string }>; links: Array<{ kind: string }> } };
+    expect(after.links?.bindings).toEqual([expect.objectContaining({ name: "order", state: "following", badge: "→ Orders East", source: `${orders}/order` })]);
+    expect(after.links?.links).toEqual([expect.objectContaining({ kind: "follow" })]);
+  });
+
+  it("refuses a malformed link verb with the usual wording", async () => {
+    const { run } = linkedHarness();
+    const described = (await run("workbench_describe", {})) as { revision: string };
+    const result = (await run("workbench_perform", { verbs: [{ kind: "port.follow", source: "a/x" }], expectedRevision: described.revision })) as { error?: string; errors?: unknown[] };
+    expect(JSON.stringify(result)).toContain("not a complete workbench verb");
   });
 });

@@ -17,7 +17,10 @@ import type { HelpRendererRegistry } from "../components/ContextHelp";
 import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
-import type { ActionRegistry } from "./actions/registry";
+import { activationOutcome } from "./interaction/activation";
+import { describeRefusal } from "./interaction/refusal";
+import { explainResolution, type Explanation, type IntrospectionDisclosure } from "./interaction/explain";
+import { acceptStep, chooserOptions, pendingRequest, type AcceptEffect, type AcceptEvent, type AcceptState } from "./interaction/accept";
 import { evaluateFresh } from "./actions/perform";
 import type {
   ActionQuery,
@@ -34,15 +37,9 @@ import type {
   HelpSurfaceState,
 } from "./help/machine";
 import { placeHelpCard } from "./help/place";
-import type { HelpRegistry } from "./help/registry";
 import type { HelpResolution } from "./help/types";
-import { resolveAcceptance } from "./translators/resolve";
-import type {
-  AcceptanceOption,
-  AcceptanceResolution,
-  PresentationTranslator,
-} from "./translators/types";
-import type { PresentationDescriptorRegistry } from "./registry";
+import type { CompiledPresentation, PresentationContextInput } from "./model/types";
+import type { AcceptanceOption, AcceptanceResolution } from "./acceptance/types";
 import type {
   AcceptRequest,
   MenuState,
@@ -51,53 +48,32 @@ import type {
   PresentationValues,
 } from "./types";
 
+/**
+ * The one assembly (PBUI-KERNEL-1 §14.1, C13/C16): a compiled presentation
+ * plus the product's context projection. `createPbui` calls
+ * `presentation.snapshot(contextFor(query, environment))` for actions, help,
+ * acceptance, and introspection. There is no other construction path — the
+ * pre-KERNEL-1 option bag (registry + actions + snapshotFor + translators +
+ * help) is gone, because a runtime that accepted separately built registries
+ * could not guarantee they agreed on a graph or a predicate table.
+ */
 export interface CreatePbuiOptions<
   Values extends PresentationValues,
   Environment,
   Verb,
   ProductFacts,
 > {
-  registry: PresentationDescriptorRegistry<Values, Environment>;
+  presentation: CompiledPresentation<Values, Environment, ProductFacts, Verb>;
   defaultEnvironment: Environment;
+  contextFor(
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ): PresentationContextInput<ProductFacts>;
   renderMenuHeader?: (
     reference: PresentationReference<Values>,
     environment: Environment,
     label: ReactNode,
   ) => ReactNode;
-  /**
-   * The action-selection kernel (PBUI-ACTIONS-2). REQUIRED since 0.8.0:
-   * there is exactly one selection engine, and every menu row, primary
-   * click, and agent-visible action resolves through it.
-   *
-   * `actions` and `snapshotFor` come together: the kernel never reads live
-   * stores, so the product must say how a query's immutable fact snapshot
-   * is built from the environment.
-   */
-  actions: ActionRegistry<Values, ProductFacts, Verb>;
-  snapshotFor(
-    query: ActionQuery<Values>,
-    environment: Environment,
-  ): SelectionSnapshot<ProductFacts>;
-  /**
-   * Typed accept translators (PBUI-ACTIONS-2 P6): declared source/target/
-   * scope edges resolved by the nearest-scope-then-priority ladder, with a
-   * genuine remainder opening the chooser. Acceptance always has
-   * graph-subtype satisfaction (the ORIGINAL reference settles the request)
-   * whether or not translators are declared. Mount `AcceptChooser` alongside
-   * `AcceptBanner` — a product whose translators can tie needs the chooser
-   * on screen.
-   */
-  translators?: readonly PresentationTranslator<Values, ProductFacts>[];
-  /**
-   * The contextual help kernel (PBUI-HELP-001), OPTIONAL unlike `actions`:
-   * with neither `help` nor `helpRenderers` configured, `Presentation`
-   * allocates no help state, schedules no timers, and renders exactly the
-   * DOM it renders today. When configured, hovering or focusing a
-   * presentation resolves additive help rules lazily — against the same
-   * `snapshotFor` facts as action introspection — and shows them in the one
-   * `ContextHelp` surface the product mounts beside `ObjectMenu`.
-   */
-  help?: HelpRegistry<Values, ProductFacts>;
   helpRenderers?: HelpRendererRegistry;
 }
 
@@ -152,6 +128,16 @@ export interface PbuiHelpState<Values extends PresentationValues, ProductFacts> 
   trigger: "pointer" | "focus";
 }
 
+export interface PbuiRefusal<Values extends PresentationValues> {
+  readonly code: string;
+  readonly because?: string;
+  readonly action?: string;
+  /** The refused row's label, when it was plain text. */
+  readonly label?: string;
+  readonly candidateId?: string;
+  readonly subject?: PresentationReference<Values>;
+}
+
 export interface PbuiProviderProps<
   Values extends PresentationValues,
   Environment,
@@ -179,6 +165,17 @@ export interface PbuiProviderProps<
    * gateways stay the security boundary.
    */
   actor?: string;
+  /**
+   * Fresh-revalidation refusals (PBUI-KERNEL-1 §14.2; presentation added by
+   * PBUI-KERNEL-4). A displayed row is a proposal, and when the fresh
+   * resolution no longer agrees the user must see why. Every refusal lands
+   * in `pbui.refusal`, which the instance's `RefusalNotice` renders; this
+   * handler is for products that route refusals elsewhere as well — a
+   * status line, telemetry, an agent-visible error. A refusal that neither
+   * a mounted `RefusalNotice` nor this handler observes is logged as a
+   * warning: silence by omission is still what this design removes.
+   */
+  onRefuse?(refusal: PbuiRefusal<Values>): void;
 }
 
 /**
@@ -295,6 +292,13 @@ export interface PbuiContextValue<
   chooseAcceptance(option: AcceptanceOption<Values>): void;
   /** Dismisses the chooser; the accept request itself stays pending. */
   dismissAcceptChooser(): void;
+  /** The accept machine's event input (PBUI-KERNEL-4 §14.5); chrome dispatches, the machine decides. */
+  acceptDispatch(event: AcceptEvent<Values>): void;
+  /** The most recent fresh-revalidation refusal, until dismissed or the next menu opens. */
+  refusal: PbuiRefusal<Values> | null;
+  dismissRefusal(): void;
+  /** RefusalNotice registers itself so an unobserved refusal can be warned about. */
+  refusalNotices: { current: number };
   mouseDoc: string | null;
   setMouseDoc(text: string | null): void;
   /**
@@ -323,6 +327,12 @@ export interface PbuiContextValue<
   /** Resolve a query against the current environment's snapshot. Pure. */
   resolve(query: ActionQuery<Values>): ResolutionResult<Values, Verb>;
   /**
+   * Explain the query the user is looking at (PBUI-KERNEL-4 §15.3): the same
+   * query and snapshot as `resolve`, under a disclosure policy. `public` is
+   * what the menu shows; `developer` is the trace, for a product's own gate.
+   */
+  explain(query: ActionQuery<Values>, disclosure?: IntrospectionDisclosure): Explanation<Values>;
+  /**
    * Fresh revalidation, then delegation (PBUI-ACTIONS-2 Amendment A): the
    * query re-resolves against a fresh snapshot; the same candidate must still
    * win its action partition and be available; the FRESH verb is delegated.
@@ -336,25 +346,20 @@ export function createPbui<
   Environment,
   Verb,
   ProductFacts,
->({
-  registry,
-  defaultEnvironment,
-  renderMenuHeader,
-  actions,
-  snapshotFor,
-  translators = [],
-  help,
-  helpRenderers,
-}: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
+>(options: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
-
-  const actionEngine = actions;
-  const snapshotOf = snapshotFor;
-  const helpEngine = help ?? null;
+  const { defaultEnvironment, renderMenuHeader, helpRenderers } = options;
+  const { presentation } = options;
+  const registry = presentation.descriptors;
+  const actionEngine = presentation.actions;
+  const helpEngine = presentation.help;
+  const snapshotOf = (
+    query: ActionQuery<Values>,
+    environment: Environment,
+  ): SelectionSnapshot<ProductFacts> =>
+    presentation.snapshot(options.contextFor(query, environment));
   const helpRendererRegistry = helpRenderers ?? null;
   const helpEnabled = helpEngine !== null && helpRendererRegistry !== null;
-
-  const EMPTY_PREDICATES = new Map<string, never>();
 
   /**
    * One resolution for highlighting AND clicking: graph subtyping (the
@@ -367,12 +372,7 @@ export function createPbui<
     environment: Environment,
   ): AcceptanceResolution<Values> {
     const snapshot = snapshotOf({ subject: reference, invocation: "accept" }, environment);
-    return resolveAcceptance(
-      { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
-      request,
-      reference,
-      snapshot,
-    );
+    return presentation.accept(request, reference, snapshot);
   }
 
   function Provider({
@@ -381,13 +381,28 @@ export function createPbui<
     onPerform,
     onAccept,
     actor,
+    onRefuse,
   }: PbuiProviderProps<Values, Environment, Verb>) {
-    const [accepting, setAccepting] = useState<AcceptRequest<Values> | null>(null);
-    const [acceptChooser, setAcceptChooser] = useState<readonly AcceptanceOption<Values>[] | null>(
-      null,
-    );
+    /*
+     * The accept flow (PBUI-KERNEL-4 §14.5): ONE machine state, kept in a
+     * ref so `accept()` and the effect executor read the current value
+     * outside React's render cycle, mirrored into state for rendering.
+     * Components dispatch events; the machine decides; the Provider executes
+     * the effects it returns. Promise resolvers are keyed by request id, so a
+     * `settle` effect can only resolve the request it names.
+     */
+    const acceptRef = useRef<AcceptState<Values>>({ kind: "idle" });
+    const [acceptState, setAcceptState] = useState<AcceptState<Values>>({ kind: "idle" });
+    const acceptResolvers = useRef(new Map<number, (result: PresentationReference<Values> | null) => void>());
+    const acceptRequestIds = useRef(0);
+    const onAcceptRef = useRef(onAccept);
+    onAcceptRef.current = onAccept;
+    const accepting = pendingRequest(acceptState);
+    const acceptChooser = chooserOptions(acceptState);
     const [menu, setMenu] = useState<MenuState<Values> | null>(null);
     const [mouseDoc, setMouseDoc] = useState<string | null>(null);
+    const [refusal, setRefusal] = useState<PbuiRefusal<Values> | null>(null);
+    const refusalNotices = useRef(0);
     const helpSurfaceId = useId();
     useEffect(() => {
       if (helpEnabled) trackInputModality();
@@ -443,31 +458,52 @@ export function createPbui<
     useEffect(() => {
       helpDispatch({ type: menuOpen ? "menu-opened" : "menu-closed" });
     }, [menuOpen, helpDispatch]);
-    const pending = useRef<
-      ((result: PresentationReference<Values> | null) => void) | null
-    >(null);
+    const executeAcceptEffect = useCallback((effect: AcceptEffect<Values>) => {
+      switch (effect.kind) {
+        case "close-menu":
+          setMenu(null);
+          return;
+        case "settle": {
+          const resolve = acceptResolvers.current.get(effect.requestId);
+          acceptResolvers.current.delete(effect.requestId);
+          onAcceptRef.current?.(effect.reference);
+          resolve?.(effect.reference);
+          return;
+        }
+        case "resolve-null": {
+          const resolve = acceptResolvers.current.get(effect.requestId);
+          acceptResolvers.current.delete(effect.requestId);
+          // A refused second request never reached the product as a mode; only an abort is reported.
+          if (effect.reason === "aborted") onAcceptRef.current?.(null);
+          resolve?.(null);
+          return;
+        }
+      }
+    }, []);
 
-    const settle = useCallback((result: PresentationReference<Values> | null) => {
-      const resolve = pending.current;
-      pending.current = null;
-      setAccepting(null);
-      setAcceptChooser(null);
-      onAccept?.(result);
-      resolve?.(result);
-    }, [onAccept]);
+    const acceptDispatch = useCallback(
+      (event: AcceptEvent<Values>) => {
+        const step = acceptStep(acceptRef.current, event);
+        acceptRef.current = step.state;
+        setAcceptState(step.state);
+        for (const effect of step.effects) executeAcceptEffect(effect);
+      },
+      [executeAcceptEffect],
+    );
 
+    /*
+     * A promise-returning call usable OUTSIDE React (rag-ttc late-binds it
+     * from its verb sink): the resolver is filed under a fresh id and the
+     * machine is told; a refused second request resolves null at once.
+     */
     const accept = useCallback(
       (request: AcceptRequest<Values>) =>
         new Promise<PresentationReference<Values> | null>((resolve) => {
-          if (pending.current) {
-            resolve(null);
-            return;
-          }
-          pending.current = resolve;
-          setAccepting(request);
-          setMenu(null);
+          const requestId = (acceptRequestIds.current += 1);
+          acceptResolvers.current.set(requestId, resolve);
+          acceptDispatch({ type: "request", requestId, request });
         }),
-      [],
+      [acceptDispatch],
     );
 
     // Highlighting and clicking share ONE resolution (source guide §19.4):
@@ -481,17 +517,11 @@ export function createPbui<
 
     const satisfyAccept = useCallback(
       (reference: PresentationReference<Values>) => {
-        if (!accepting) return;
-        const resolution = acceptanceFor(accepting, reference, environment);
-        if (resolution.kind === "accepted") {
-          settle(resolution.option.result);
-        } else if (resolution.kind === "ambiguous") {
-          // A tie is the user's choice, never the registry's registration
-          // order — the request stays pending until they pick or abort.
-          setAcceptChooser(resolution.options);
-        }
+        const request = pendingRequest(acceptRef.current);
+        if (!request) return;
+        acceptDispatch({ type: "offer", reference, resolution: acceptanceFor(request, reference, environment) });
       },
-      [accepting, environment, settle],
+      [acceptDispatch, environment],
     );
 
     const value = useMemo<PbuiContextValue<Values, Environment, Verb>>(
@@ -499,20 +529,26 @@ export function createPbui<
         environment,
         accepting,
         accept,
-        abortAccept: () => settle(null),
+        abortAccept: () => acceptDispatch({ type: "abort" }),
         isAcceptable,
         satisfyAccept,
         menu,
         openMenu: (reference, x, y, invoker) => {
           // The menu supersedes the hover card AND any pending arm — the
           // machine's menu-opened transition handles both, driven by the
-          // menu mirror effect above.
+          // menu mirror effect above. A new menu also retires the last
+          // refusal: the user is looking at what applies now.
+          setRefusal(null);
           setMenu({ reference, x, y, returnFocus: captureFocusReturn(invoker) });
         },
         closeMenu: () => setMenu(null),
         acceptChooser,
-        chooseAcceptance: (option) => settle(option.result),
-        dismissAcceptChooser: () => setAcceptChooser(null),
+        chooseAcceptance: (option) => acceptDispatch({ type: "choose", option }),
+        dismissAcceptChooser: () => acceptDispatch({ type: "dismiss-chooser" }),
+        acceptDispatch,
+        refusal,
+        dismissRefusal: () => setRefusal(null),
+        refusalNotices,
         mouseDoc,
         setMouseDoc,
         helpEnabled,
@@ -535,11 +571,28 @@ export function createPbui<
           return onPerform(verb, { invocation: "direct", ...(actor !== undefined ? { actor } : {}) });
         },
         resolve: (query) => actionEngine.resolve(query, snapshotOf(query, environment)),
+        explain: (query, disclosure = "public") =>
+          explainResolution(query, actionEngine.resolve(query, snapshotOf(query, environment)), disclosure),
         performAction: async (stale) => {
           setMenu(null);
           const fresh = actionEngine.resolve(stale.query, snapshotOf(stale.query, environment));
           const decision = evaluateFresh(stale, fresh);
-          if (decision.kind !== "proceed") return decision;
+          if (decision.kind !== "proceed") {
+            const refused: PbuiRefusal<Values> = {
+              code: decision.code,
+              ...(decision.because !== undefined ? { because: decision.because } : {}),
+              action: stale.action,
+              candidateId: stale.candidateId,
+              subject: stale.query.subject,
+              ...(typeof stale.label === "string" ? { label: stale.label } : {}),
+            };
+            setRefusal(refused);
+            onRefuse?.(refused);
+            if (!onRefuse && refusalNotices.current === 0) {
+              console.warn(`pbui: a refusal (${refused.code}) was observed by nothing — mount <RefusalNotice /> or pass onRefuse`);
+            }
+            return decision;
+          }
           try {
             // Called synchronously within the click segment; the fresh verb,
             // never the stale one — and the envelope is built from the FRESH
@@ -566,11 +619,13 @@ export function createPbui<
         satisfyAccept,
         menu,
         mouseDoc,
+        refusal,
         helpSurface,
         helpSurfaceId,
         helpDispatch,
-        settle,
+        acceptDispatch,
         onPerform,
+        onRefuse,
         actor,
       ],
     );
@@ -720,31 +775,34 @@ export function createPbui<
       if (native[PRESENTATION_HANDLED]) return;
       native[PRESENTATION_HANDLED] = true;
 
-      if (acceptable) {
-        event.preventDefault();
-        event.stopPropagation();
-        pbui.satisfyAccept(reference);
-        return;
+      // ONE ladder for pointer and keyboard (PBUI-KERNEL-4 §14.4); this
+      // handler only carries the outcome out.
+      const outcome = activationOutcome<Values, Verb>({ acceptable, activate, primary: primaryFor });
+      switch (outcome.kind) {
+        case "attempt-accept":
+          event.preventDefault();
+          event.stopPropagation();
+          pbui.satisfyAccept(reference);
+          return;
+        case "activate-host":
+          // No stopPropagation: the host row's own gesture is not this
+          // element's to cancel. `run` is optional precisely so a product can
+          // say "the host owns this click" and still name it in the mouse doc.
+          outcome.run?.();
+          return;
+        case "perform-primary":
+          // The kernel's primary action acts like a menu row, not like
+          // `activate`: this element acts, so the click stops here, and the
+          // verb goes through fresh revalidation like every kernel action.
+          event.preventDefault();
+          event.stopPropagation();
+          void pbui.performAction(outcome.action);
+          return;
+        case "open-menu":
+          event.stopPropagation();
+          open(event.clientX, event.clientY, event.currentTarget as HTMLElement);
+          return;
       }
-      if (activate) {
-        // No stopPropagation: the host row's own gesture is not this
-        // element's to cancel. `run` is optional precisely so a product can
-        // say "the host owns this click" and still name it in the mouse doc.
-        activate.run?.();
-        return;
-      }
-      const primary = primaryFor();
-      if (primary) {
-        // The kernel's primary action acts like a menu row, not like
-        // `activate`: this element acts, so the click stops here, and the
-        // verb goes through fresh revalidation like every kernel action.
-        event.preventDefault();
-        event.stopPropagation();
-        void pbui.performAction(primary);
-        return;
-      }
-      event.stopPropagation();
-      open(event.clientX, event.clientY, event.currentTarget as HTMLElement);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -762,36 +820,38 @@ export function createPbui<
         // for.
         event.stopPropagation();
 
-        if (acceptable) {
-          pbui.satisfyAccept(reference);
-          return;
+        const outcome = activationOutcome<Values, Verb>({ acceptable, activate, primary: primaryFor });
+        switch (outcome.kind) {
+          case "attempt-accept":
+            pbui.satisfyAccept(reference);
+            return;
+          case "activate-host":
+            /*
+             * Route keyboard activation through the click path rather than
+             * calling `run` here.
+             *
+             * P4.1 made a click with `activate` bubble so the host sees its own
+             * gesture, and left this branch calling `activate.run()` directly —
+             * so mouse and keyboard diverged. Enter ran the presentation's verb
+             * and never reached the host, and `activate` WITHOUT `run` — the
+             * state a `renderRow` wrapper uses, where the host owns the click
+             * entirely — was a complete keyboard no-op.
+             *
+             * `.click()` dispatches a real, bubbling MouseEvent, so there is one
+             * activation path with one set of semantics instead of two that have
+             * to be kept in step. Caught in review on PR #9.
+             */
+            (event.currentTarget as HTMLElement).click();
+            return;
+          case "perform-primary":
+            void pbui.performAction(outcome.action);
+            return;
+          case "open-menu": {
+            const box = (event.target as HTMLElement).getBoundingClientRect();
+            open(box.left, box.bottom, event.currentTarget as HTMLElement);
+            return;
+          }
         }
-        if (activate) {
-          /*
-           * Route keyboard activation through the click path rather than
-           * calling `run` here.
-           *
-           * P4.1 made a click with `activate` bubble so the host sees its own
-           * gesture, and left this branch calling `activate.run()` directly —
-           * so mouse and keyboard diverged. Enter ran the presentation's verb
-           * and never reached the host, and `activate` WITHOUT `run` — the
-           * state a `renderRow` wrapper uses, where the host owns the click
-           * entirely — was a complete keyboard no-op.
-           *
-           * `.click()` dispatches a real, bubbling MouseEvent, so there is one
-           * activation path with one set of semantics instead of two that have
-           * to be kept in step. Caught in review on PR #9.
-           */
-          (event.currentTarget as HTMLElement).click();
-          return;
-        }
-        const primary = primaryFor();
-        if (primary) {
-          void pbui.performAction(primary);
-          return;
-        }
-        const box = (event.target as HTMLElement).getBoundingClientRect();
-        open(box.left, box.bottom, event.currentTarget as HTMLElement);
       } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
         event.preventDefault();
         event.stopPropagation();
@@ -1055,8 +1115,11 @@ export function createPbui<
   function AcceptBanner() {
     const pbui = usePbui();
     const accepting = pbui.accepting;
-    const abortAccept = pbui.abortAccept;
+    const acceptDispatch = pbui.acceptDispatch;
 
+    // Escape reaches the machine as ONE event; whether it aborts the request
+    // or only dismisses the chooser is the machine's rule (§14.5), and the
+    // escape-surface stack decides which surface forwards it.
     const ownsEscape = useEscapeSurface(accepting !== null);
     useEffect(() => {
       if (!accepting) return;
@@ -1064,12 +1127,12 @@ export function createPbui<
         if (event.key === "Escape") {
           if (!ownsEscape) return;
           event.preventDefault();
-          abortAccept();
+          acceptDispatch({ type: "escape" });
         }
       };
       window.addEventListener("keydown", onKey);
       return () => window.removeEventListener("keydown", onKey);
-    }, [accepting, abortAccept, ownsEscape]);
+    }, [accepting, acceptDispatch, ownsEscape]);
 
     if (!accepting) return null;
 
@@ -1102,7 +1165,7 @@ export function createPbui<
     const pbui = usePbui();
     const ref = useRef<HTMLDivElement>(null);
     const options = pbui.acceptChooser;
-    const dismiss = pbui.dismissAcceptChooser;
+    const acceptDispatch = pbui.acceptDispatch;
 
     const ownsEscape = useEscapeSurface(options !== null);
     useEffect(() => {
@@ -1113,7 +1176,7 @@ export function createPbui<
         if (event.key === "Escape") {
           if (!ownsEscape) return;
           event.preventDefault();
-          dismiss();
+          acceptDispatch({ type: "escape" });
         }
       };
       window.addEventListener("keydown", handleKey);
@@ -1121,7 +1184,7 @@ export function createPbui<
         window.removeEventListener("keydown", handleKey);
         queueFocusReturn(target);
       };
-    }, [options, dismiss, ownsEscape]);
+    }, [options, acceptDispatch, ownsEscape]);
 
     if (!options) return null;
 
@@ -1137,14 +1200,14 @@ export function createPbui<
         {options.map((option) => (
           <button
             type="button"
-            key={option.translator ?? "direct"}
+            key={option.relation ?? "direct"}
             data-part="accept-chooser-option"
             onClick={() => pbui.chooseAcceptance(option)}
           >
             {registry.labelFor(option.result, pbui.environment)}
             <span data-part="accept-chooser-via">
               {" "}
-              — as &lt;{option.result.type}&gt;{option.translator ? ` via ${option.translator}` : ""}
+              — as &lt;{option.result.type}&gt;{option.relation ? ` via ${option.relation}` : ""}
             </span>
           </button>
         ))}
@@ -1256,6 +1319,43 @@ export function createPbui<
     );
   }
 
+  /**
+   * The runtime's own presentation of a refusal (PBUI-KERNEL-4 P4): one
+   * sentence naming the row and the subject, the product's reason when the
+   * fresh status carried one, and what to do next. Shown until dismissed or
+   * until the next menu opens. A product with a status line of its own may
+   * leave this unmounted and pass `onRefuse` instead.
+   */
+  function RefusalNotice() {
+    const pbui = usePbui();
+    const notices = pbui.refusalNotices;
+    useEffect(() => {
+      notices.current += 1;
+      return () => {
+        notices.current -= 1;
+      };
+    }, [notices]);
+    const refusal = pbui.refusal;
+    if (!refusal) return null;
+    const subjectLabel = refusal.subject ? registry.labelFor(refusal.subject, pbui.environment) : null;
+    const presentation = describeRefusal({
+      code: refusal.code,
+      ...(refusal.because !== undefined ? { because: refusal.because } : {}),
+      ...(refusal.label !== undefined ? { label: refusal.label } : {}),
+      ...(typeof subjectLabel === "string" || typeof subjectLabel === "number" ? { subjectLabel: String(subjectLabel) } : {}),
+    });
+    return (
+      <div data-pbui="refusal-notice" data-part="refusal-notice" role="alert" data-code={refusal.code}>
+        <span data-part="refusal-notice-headline">{presentation.headline}</span>
+        {presentation.detail ? <span data-part="refusal-notice-detail">{presentation.detail}</span> : null}
+        <span data-part="refusal-notice-hint">{presentation.hint}</span>
+        <button type="button" data-part="refusal-notice-dismiss" onClick={pbui.dismissRefusal} aria-label="dismiss">
+          ✕
+        </button>
+      </div>
+    );
+  }
+
   return {
     Provider,
     Presentation,
@@ -1263,17 +1363,26 @@ export function createPbui<
     MouseDocLine,
     AcceptBanner,
     AcceptChooser,
+    RefusalNotice,
     ContextHelp,
     usePbui,
-    registry,
+    presentation,
   };
 }
 
+/**
+ * The instance type as consumers that do not know the product's facts name
+ * it (pbui-chat takes `PbuiInstance<Values, Environment, Verb>`). The facts
+ * parameter appears only in invariant positions (predicates read it), so the
+ * facts-agnostic spelling must default to `any`, not `unknown` — with
+ * `unknown` no concrete instance is assignable to it.
+ */
 export type PbuiInstance<
   Values extends PresentationValues,
   Environment,
   Verb,
-  ProductFacts = unknown,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ProductFacts = any,
 > = ReturnType<typeof createPbui<Values, Environment, Verb, ProductFacts>>;
 
 export function presentationTypes<Values extends PresentationValues>(

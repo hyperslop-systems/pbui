@@ -1,28 +1,54 @@
 # `@hyperslop-systems/pbui`
 
 PBUI is a domain-neutral React library for presenting typed objects and
-exposing descriptor-defined actions. Applications own their value vocabulary,
-environment, verbs, state management, and effects.
+resolving type-directed actions, help, acceptance, and links over them.
+Applications own their value vocabulary, environment, verbs, state
+management, and effects — and declare their presentation semantics ONCE, as
+one compiled presentation (PBUI-KERNEL-1, since 0.11).
 
 ```tsx
-const registry = createPresentationRegistry<Values, Environment, Verb>({
-  person: {
-    label: (person) => person.name,
-    actions: (person) => [{
-      id: "email",
-      label: "Send email",
-      verb: { type: "emailPerson", personId: person.id },
-    }],
-  },
+const p = definePresentation<Values, Environment, Facts, Verb>();
+
+export const presentation = p.create({
+  id: "crm",
+  types: [{ id: "person" }],
+  knownScopes: ["global"],
+  defaultActiveScopes: ["global"],
+  revision: (facts) => facts.revision,          // a semantic token, never a serialization
+  descriptors: { person: { label: (person) => person.name } },
+  actions: [
+    p.actions.exact("person", {
+      id: "crm.person.email",
+      action: "person.email",
+      scopes: ["global"],
+      metadata: { label: "Send email" },
+      bind: ({ subject }) => ({ type: "emailPerson", personId: subject.value.id }),
+    }),
+  ],
 });
 
-const pbui = createPbui({ registry, defaultEnvironment });
+const pbui = createPbui({
+  presentation,
+  defaultEnvironment,
+  contextFor: (query, environment) => ({ facts: environment.facts }),
+});
 
-<pbui.Provider onPerform={performVerb}>
+<pbui.Provider onPerform={performVerb} onRefuse={showRefusal}>
   <pbui.Presentation reference={{ type: "person", value: person }} />
   <pbui.ObjectMenu />
 </pbui.Provider>
 ```
+
+Types, known scopes, predicates, descriptors, action rules, relations, and
+help rules are one declaration; shared packages contribute named
+**fragments** (`createWorkbenchPresentationFragment`,
+`createChatPresentationFragment`) the product `include`s, so it cannot take a
+package's rules and forget its types. Construction validates the whole
+declaration: an undeclared type, a descriptor for a type with no node, a
+duplicate id across fragments, or a relation with no exposure is a
+construction error, not a runtime surprise. The type world is closed — a
+reference whose type is not declared is an error. `onRefuse` is required: a
+menu row that fails fresh revalidation is always reported to the product.
 
 The package intentionally does not depend on Redux, RTK Query, Datadrop model
 types, or application routing.
@@ -62,32 +88,29 @@ content. **Migration-free:** with no `help`/`helpRenderers` configured,
 nothing changes — no state, no timers, no DOM difference.
 
 ```tsx
-const define = defineHelp<Values, ProductFacts>();
-
-const help = createHelpRegistry({
-  graph: actions.graph,              // the SAME type graph as the actions
-  scopes: ["editor", "global"],
-  contributions: [
-    define.exact("field", {
+export const presentation = p.create({
+  ...,
+  help: [
+    p.help.exact("field", {
       id: "product.field.help",
       scopes: ["editor"],
       help: ({ subject, snapshot }) => [
         markdownHelp.create({ id: "field.meaning", order: 0,
           payload: { markdown: "A **field** is one column." } }),
         actionsHelp.create({ id: "field.actions", order: 10,
-          payload: { actions: actions.resolve({ subject, invocation: "menu" }, snapshot).actions } }),
+          // the REAL action resolution, displayed — never re-derived
+          payload: { actions: presentation.actions.resolve({ subject, invocation: "menu" }, snapshot).actions } }),
       ],
     }),
   ],
 });
 
 const pbui = createPbui({
-  registry, actions, snapshotFor, defaultEnvironment,
-  help,
+  presentation, defaultEnvironment, contextFor,
   helpRenderers: createHelpRendererRegistry([...builtinHelpItems, myCustomItem]),
 });
 
-<pbui.Provider onPerform={performVerb}>
+<pbui.Provider onPerform={performVerb} onRefuse={showRefusal}>
   <App />
   <pbui.ObjectMenu />
   <pbui.ContextHelp />   {/* mount once, beside the menu */}
@@ -96,10 +119,11 @@ const pbui = createPbui({
 
 Authoring rules, briefly:
 
-- Help rules reuse the action kernel's type graph, scopes, conditions, named
-  predicates, and immutable `snapshotFor` facts. They never compete: EVERY
-  matching rule contributes items; type distance, scope nearness, and
-  priority order the display only.
+- Help rules are declared in the same compiled presentation as the action
+  rules and reuse its type graph, scopes, conditions, named predicates, and
+  immutable snapshot facts. They never compete: EVERY matching rule
+  contributes items; type distance, scope nearness, and priority order the
+  display only. Help is ON when `createPbui` receives `helpRenderers`.
 - Rule ids, item ids, and renderer kinds are stable identities. Duplicate
   item ids in one resolution throw — an authoring defect, not a render state.
 - Only `available` matches: a rule whose `when`/`test` is unavailable,
@@ -118,6 +142,95 @@ Authoring rules, briefly:
 
 `packages/datalab-ui/src/pbui/help.tsx` is the reference product
 integration; the `WithContextualHelp` story shows the core wiring.
+
+## Link kernel: terms, programs, planners (PBUI-LINK-1, PBUI-KERNEL-2)
+
+`@hyperslop-systems/pbui/presentation` also exports the pure link kernel the
+workbench runs on: ports and contracts (`definePort`), the persisted binding
+grammar (`terms.ambient/constant/follow/alias/derived/hold/unresolved`), the
+evaluator (`evaluatePort`), the planners (`planFollow`, `planBind`,
+`planDerive`, …) and the transition (`applyLinkVerb`). Nothing in it imports
+React or a store.
+
+Since PBUI-KERNEL-2 the persisted grammar is the wire format only. Internally
+every term compiles to a binding program (source, relation application, held
+state, broken state) that evaluation, dependency extraction and the static
+checker all read. What the package exposes of that:
+
+- `normalizeBinding(b)` — `bindingOf(programOf(b))`; idempotent, and the
+  identity on every shape a planner writes.
+- `dependenciesOfBinding(b, { includeSuspended })` — the ports, relations and
+  link ids a term reads, as three sets; suspended wires count unless you say
+  otherwise. `dependsOn(port, target, snapshot)` is the one transitive walk.
+- `checkBinding(candidate, snapshot, deps, destination)` — structural
+  admissibility: sources, contexts, cells and relations exist; relation
+  domains and the destination type reach; no cycle. A relation that returns
+  `empty` in the current world is still valid: partiality is a runtime fact.
+- `candidateTermOf(verb)` — the exact term a `port.follow/bind/derive/ambient`
+  verb persists. Planners check it; `applyLinkVerb` stores it.
+
+A planner keeps only operation policy (existence, direction, self, document
+slots, held, shared, already linked, which relations are legal) and takes the
+rest of its verdict from the checker, so a refusal such as `Orders East ·
+order already reads from Detail B · order; that would be a cycle` has one
+source. The program's constructors (`programOf`, `bindingOf`, the
+`BindingProgram` types) are internal to `src/presentation/links/`.
+
+### Identity and port compatibility (PBUI-KERNEL-3)
+
+Identity declarations are undirected edges between ports; the kernel exposes
+them as a quotient of ports into logical cells. `quotientOf(snapshot)` returns
+the cells a snapshot carries and `cellByPort`; `cellOf(port, snapshot)` names
+a member's cell. `Alias(classId)` stays the wire representation and the
+effective binding of a member. The partition is a function of the set of
+admitted edges only: flipping, duplicating or reordering edges (or the port
+map) changes nothing, and an untouched cell keeps its id across recompiles.
+
+A port contract is a value contract (`valueType`, `semanticRole`,
+`cardinality`) times a protocol (`mode`, `authorityDomain`, `updateAlgebra`,
+`lifetime`), and the operations ask different questions of it:
+
+| Question | Predicate | Consults |
+|---|---|---|
+| may a value flow into this port | `canFlow(from, into, graph)` | value reachability |
+| may this reference be written here | `canAccept(reference, into, graph)` | value reachability |
+| may two ports be one cell | `canShareCell(left, right)` | every field, value and protocol reported apart |
+| do two endpoints combine writes alike | `canMergeUpdates(left, right)` | the update algebra |
+
+Callers name the question: the checker and `legalRelations` ask `canFlow`,
+`resolveShow` and the workbench "Link to…" family ask `canAccept`, identity
+asks `canShareCell`. A subtype flows but cannot share a cell; a different
+authority cannot share but flows; do not answer one question with the other's
+test.
+
+## Interaction policy and introspection (PBUI-KERNEL-4)
+
+The runtime's stateful interaction policy is explicit and tested, and the
+React components only carry it out:
+
+- **Activation.** A left click or Enter/Space on a presentation asks one pure
+  function, `activationOutcome({ acceptable, activate, primary })`, which
+  returns `attempt-accept`, `activate-host` (bubbles to the host), `perform-primary`
+  or `open-menu`. Pointer and keyboard differ only in how they carry the
+  outcome out.
+- **Accept.** `acceptStep(state, event)` is a request-identified machine:
+  `idle` → `pending {requestId}` → `choosing` on an ambiguous offer, with
+  effects `close-menu`, `settle {requestId}` and `resolve-null {requestId, reason}`.
+  At most one request is pending; a second resolves null at once without
+  disturbing the first; Escape on the chooser keeps the request, Escape on
+  the banner aborts it. `pbui.accept(request)` is still a promise-returning
+  call usable outside React.
+- **Refusals.** A menu row is a proposal; when the fresh resolution at click
+  time disagrees, the runtime refuses and the refusal lands in `pbui.refusal`.
+  Mount `<pbui.RefusalNotice />` to show it (row, subject, the product's
+  reason, a hint); `onRefuse` is an optional hook for products that route
+  refusals elsewhere. A refusal that neither observes is logged as a warning.
+- **Introspection.** `pbui.explain(query, disclosure)` explains the query the
+  user is looking at — the menu or primary query, over the same snapshot,
+  never a synthetic invocation. `"public"` is what the menu shows (hidden and
+  rejected candidates, reason codes and the trace are omitted); `"developer"`
+  adds each row's trace and every other candidate with its fate, for a
+  product's own gate.
 
 ## Datalab UI workspace package
 

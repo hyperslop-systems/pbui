@@ -65,8 +65,17 @@ export function WorkbenchProviders({ children }: { children: ReactNode }) {
     [dispatch, environment, store],
   );
 
+  /**
+   * A menu row that fails fresh revalidation (PBUI-KERNEL-1 §14.2). Datalab
+   * is frozen (C17): telemetry only, no status line — the refusal is at least
+   * observable in the console rather than silent.
+   */
+  const refuse = useCallback((refusal: { code: string; because?: string; action?: string }) => {
+    console.warn(`datalab: refused ${refusal.action ?? "action"} (${refusal.code})${refusal.because ? ` — ${refusal.because}` : ""}`);
+  }, []);
+
   return (
-    <PbuiProvider environment={environment} onPerform={perform}>
+    <PbuiProvider environment={environment} onPerform={perform} onRefuse={refuse}>
       {children}
     </PbuiProvider>
   );

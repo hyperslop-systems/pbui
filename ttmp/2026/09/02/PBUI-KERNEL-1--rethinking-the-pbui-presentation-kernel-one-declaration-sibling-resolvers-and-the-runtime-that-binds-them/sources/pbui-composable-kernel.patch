@@ -1,0 +1,3633 @@
+From 985f34ac319877e07e3fe018e7a4bf4529c7e57e Mon Sep 17 00:00:00 2001
+From: OpenAI <noreply@openai.com>
+Date: Wed, 2 Sep 2026 20:13:24 +0000
+Subject: [PATCH] refactor(presentation): add composable semantics kernel
+
+---
+ src/presentation/actions/registry.ts          |  31 +-
+ src/presentation/context/match.ts             |  14 +-
+ src/presentation/context/predicates.ts        |  49 ++
+ src/presentation/context/types.ts             |   8 +-
+ src/presentation/createPbui.tsx               | 157 ++++---
+ src/presentation/help/registry.ts             |  29 +-
+ src/presentation/index.ts                     |  12 +-
+ src/presentation/kernel/create.ts             | 229 ++++++++++
+ src/presentation/kernel/define.ts             |  56 +++
+ src/presentation/kernel/index.ts              |  13 +
+ src/presentation/kernel/kernel.test.ts        | 152 +++++++
+ src/presentation/kernel/types.ts              | 145 ++++++
+ src/presentation/links/check.ts               | 180 ++++++++
+ src/presentation/links/evaluate.ts            | 279 +++++++++---
+ src/presentation/links/expression.test.ts     |  93 ++++
+ src/presentation/links/expression.ts          | 204 +++++++++
+ .../links/identity.quotient.test.ts           |  46 ++
+ src/presentation/links/identity.ts            |  77 +++-
+ src/presentation/links/index.ts               |  30 +-
+ src/presentation/links/invariants.ts          |  10 +-
+ src/presentation/links/plan.ts                |  42 +-
+ src/presentation/links/snapshot.ts            |  16 +
+ src/presentation/links/types.ts               |  46 +-
+ src/presentation/relations/adapters.ts        |  24 +
+ src/presentation/relations/define.ts          |  24 +
+ src/presentation/relations/index.ts           |  19 +
+ src/presentation/relations/system.test.ts     | 217 +++++++++
+ src/presentation/relations/system.ts          | 429 ++++++++++++++++++
+ src/presentation/relations/types.ts           | 119 +++++
+ src/presentation/translators/resolve.ts       | 170 ++++---
+ src/presentation/translators/types.ts         |   5 +-
+ 31 files changed, 2699 insertions(+), 226 deletions(-)
+ create mode 100644 src/presentation/context/predicates.ts
+ create mode 100644 src/presentation/kernel/create.ts
+ create mode 100644 src/presentation/kernel/define.ts
+ create mode 100644 src/presentation/kernel/index.ts
+ create mode 100644 src/presentation/kernel/kernel.test.ts
+ create mode 100644 src/presentation/kernel/types.ts
+ create mode 100644 src/presentation/links/check.ts
+ create mode 100644 src/presentation/links/expression.test.ts
+ create mode 100644 src/presentation/links/expression.ts
+ create mode 100644 src/presentation/links/identity.quotient.test.ts
+ create mode 100644 src/presentation/relations/adapters.ts
+ create mode 100644 src/presentation/relations/define.ts
+ create mode 100644 src/presentation/relations/index.ts
+ create mode 100644 src/presentation/relations/system.test.ts
+ create mode 100644 src/presentation/relations/system.ts
+ create mode 100644 src/presentation/relations/types.ts
+
+diff --git a/src/presentation/actions/registry.ts b/src/presentation/actions/registry.ts
+index 4586876..19c6eec 100644
+--- a/src/presentation/actions/registry.ts
++++ b/src/presentation/actions/registry.ts
+@@ -1,17 +1,18 @@
+ import type { PresentationValues } from "../types";
+-import { referencedPredicates } from "./conditions";
+-import type { PredicateDefinition, ProductPredicate } from "./conditions";
++import type { PredicateDefinition } from "./conditions";
+ import type { ActionQuery, SelectionSnapshot } from "./types";
+ import type {
+   ActionContribution,
+   ResolutionResult,
+ } from "./types";
+-import type { PredicateId, RuntimeTypeId, ScopeId } from "./ids";
++import type { RuntimeTypeId, ScopeId } from "./ids";
+ import { resolveActions } from "./resolve";
+ import { vocabularyOf } from "./vocabulary";
+ import type { ActionVocabulary } from "./vocabulary";
+ import type { PreparedRegistry } from "./resolve";
+ import type { PresentationTypeGraph } from "./typeGraph";
++import { createPredicateRegistry, validateConditionPredicates } from "../context/predicates";
++import type { PredicateRegistry } from "../context/predicates";
+ 
+ /**
+  * The action registry (PBUI-ACTIONS-2, source guide §13).
+@@ -74,6 +75,8 @@ export interface CreateActionRegistryOptions<
+   /** Every scope any contribution may declare; unknown scopes throw. */
+   scopes: readonly ScopeId[];
+   predicates?: readonly PredicateDefinition<Values, ProductFacts>[];
++  /** A prebuilt table supplied by PresentationKernel. Do not combine with predicates. */
++  predicateRegistry?: PredicateRegistry<Values, ProductFacts>;
+   contributions: readonly ActionContribution<Values, ProductFacts, Verb>[];
+   version?: string | number;
+ }
+@@ -85,13 +88,11 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
+   const declaredScopes = new Set(options.scopes);
+   const version = options.version ?? 1;
+ 
+-  const predicates = new Map<PredicateId, ProductPredicate<Values, ProductFacts>>();
+-  for (const definition of options.predicates ?? []) {
+-    if (predicates.has(definition.id)) {
+-      throw new Error(`duplicate predicate id "${definition.id}"`);
+-    }
+-    predicates.set(definition.id, definition.evaluate);
++  if (options.predicates && options.predicateRegistry) {
++    throw new Error("createActionRegistry accepts predicates or predicateRegistry, not both");
+   }
++  const predicates =
++    options.predicateRegistry ?? createPredicateRegistry(options.predicates);
+ 
+   const contributionIds = new Set<string>();
+   for (const contribution of contributions) {
+@@ -147,13 +148,11 @@ export function createActionRegistry<Values extends PresentationValues, ProductF
+       ) {
+         throw new Error(`rule "${contribution.id}" has a non-finite menu order`);
+       }
+-      for (const id of contribution.when ? referencedPredicates(contribution.when) : []) {
+-        if (!predicates.has(id)) {
+-          throw new Error(
+-            `rule "${contribution.id}" references unknown predicate "${id}"`,
+-          );
+-        }
+-      }
++      validateConditionPredicates(
++        `rule "${contribution.id}"`,
++        contribution.when,
++        predicates,
++      );
+     }
+   }
+ 
+diff --git a/src/presentation/context/match.ts b/src/presentation/context/match.ts
+index b56c41a..2746f80 100644
+--- a/src/presentation/context/match.ts
++++ b/src/presentation/context/match.ts
+@@ -5,7 +5,7 @@ import type { PresentationTypeGraph } from "../actions/typeGraph";
+ import type { PresentationReference, PresentationValues } from "../types";
+ import type { RuntimeTypeId } from "../actions/ids";
+ import type { SelectionSnapshot } from "../actions/types";
+-import type { ContextMatchResult, ContextTarget } from "./types";
++import type { ContextMatchResult, PresentationSelector } from "./types";
+ 
+ /**
+  * The shared contextual matcher (PBUI-HELP-001, design doc §6.1) — the front
+@@ -39,8 +39,8 @@ export function activeScope(
+   return best;
+ }
+ 
+-export function matchContext<Values extends PresentationValues, ProductFacts>(
+-  target: ContextTarget,
++export function matchSelector<Values extends PresentationValues, ProductFacts>(
++  target: PresentationSelector,
+   subject: PresentationReference<Values>,
+   snapshot: SelectionSnapshot<ProductFacts>,
+   graph: PresentationTypeGraph,
+@@ -74,7 +74,10 @@ export function matchContext<Values extends PresentationValues, ProductFacts>(
+ 
+   /* scope ----------------------------------------------------------------- */
+ 
+-  const scope = activeScope(target.scopes, snapshot.scopes);
++  const scope =
++    target.scopes.length === 0
++      ? { scope: snapshot.scopes[0] ?? "__unscoped__", index: 0 }
++      : activeScope(target.scopes, snapshot.scopes);
+   if (scope === null) {
+     return { kind: "rejected", stage: "scope", reason: "no-active-scope" };
+   }
+@@ -108,3 +111,6 @@ export function matchContext<Values extends PresentationValues, ProductFacts>(
+     },
+   };
+ }
++
++/** Compatibility name retained for existing action/help integrations. */
++export const matchContext = matchSelector;
+diff --git a/src/presentation/context/predicates.ts b/src/presentation/context/predicates.ts
+new file mode 100644
+index 0000000..6734fb1
+--- /dev/null
++++ b/src/presentation/context/predicates.ts
+@@ -0,0 +1,49 @@
++import { referencedPredicates } from "../actions/conditions";
++import type {
++  Condition,
++  PredicateDefinition,
++  ProductPredicate,
++} from "../actions/conditions";
++import type { PredicateId } from "../actions/ids";
++import type { PresentationValues } from "../types";
++
++/** The canonical predicate table shared by every contextual interpreter. */
++export type PredicateRegistry<
++  Values extends PresentationValues,
++  ProductFacts,
++> = ReadonlyMap<PredicateId, ProductPredicate<Values, ProductFacts>>;
++
++export function createPredicateRegistry<
++  Values extends PresentationValues,
++  ProductFacts,
++>(
++  definitions: readonly PredicateDefinition<Values, ProductFacts>[] = [],
++): PredicateRegistry<Values, ProductFacts> {
++  const predicates = new Map<
++    PredicateId,
++    ProductPredicate<Values, ProductFacts>
++  >();
++  for (const definition of definitions) {
++    if (predicates.has(definition.id)) {
++      throw new Error(`duplicate predicate id "${definition.id}"`);
++    }
++    predicates.set(definition.id, definition.evaluate);
++  }
++  return predicates;
++}
++
++/** Registration-time validation with an owner-specific diagnostic. */
++export function validateConditionPredicates<
++  Values extends PresentationValues,
++  ProductFacts,
++>(
++  owner: string,
++  condition: Condition | undefined,
++  predicates: PredicateRegistry<Values, ProductFacts>,
++): void {
++  for (const id of condition ? referencedPredicates(condition) : []) {
++    if (!predicates.has(id)) {
++      throw new Error(`${owner} references unknown predicate "${id}"`);
++    }
++  }
++}
+diff --git a/src/presentation/context/types.ts b/src/presentation/context/types.ts
+index a57ece8..54a29af 100644
+--- a/src/presentation/context/types.ts
++++ b/src/presentation/context/types.ts
+@@ -4,16 +4,17 @@ import type { RuntimeTypeId, ScopeId } from "../actions/ids";
+ /**
+  * The shared contextual-matching contracts (PBUI-HELP-001, design doc §6).
+  *
+- * A ContextTarget is the part of a contribution that says WHERE it applies —
++ * A PresentationSelector is the part of a contribution that says WHERE it applies —
+  * a declared type with exact/subtype reach, declared scopes, and optionally a
+  * declarative condition. Both the action kernel and the help kernel declare
+  * targets; only what happens AFTER a match differs (actions compete per
+  * action id, help accumulates). Nothing here is action- or help-specific.
+  */
+ 
+-export interface ContextTarget {
++export interface PresentationSelector {
+   subject: RuntimeTypeId;
+   match: "exact" | "subtypes";
++  /** Empty means universal; action/help registries deliberately require explicit scopes. */
+   scopes: readonly ScopeId[];
+   /**
+    * Optional declarative gate. The ACTION caller does not pass one: a failing
+@@ -40,3 +41,6 @@ export interface ContextMatch {
+ export type ContextMatchResult =
+   | { kind: "matched"; match: ContextMatch }
+   | { kind: "rejected"; stage: "type" | "scope" | "condition"; reason: string };
++
++/** Compatibility name retained for PBUI-HELP-001 consumers. */
++export type ContextTarget = PresentationSelector;
+diff --git a/src/presentation/createPbui.tsx b/src/presentation/createPbui.tsx
+index 7e644c4..046a59a 100644
+--- a/src/presentation/createPbui.tsx
++++ b/src/presentation/createPbui.tsx
+@@ -36,6 +36,8 @@ import type {
+ import { placeHelpCard } from "./help/place";
+ import type { HelpRegistry } from "./help/registry";
+ import type { HelpResolution } from "./help/types";
++import { SNAPSHOT_INPUT } from "./kernel/types";
++import type { PresentationKernel, SnapshotInput } from "./kernel/types";
+ import { resolveAcceptance } from "./translators/resolve";
+ import type {
+   AcceptanceOption,
+@@ -51,54 +53,68 @@ import type {
+   PresentationValues,
+ } from "./types";
+ 
+-export interface CreatePbuiOptions<
++interface CreatePbuiCommonOptions<
+   Values extends PresentationValues,
+   Environment,
+-  Verb,
+-  ProductFacts,
+ > {
+-  registry: PresentationDescriptorRegistry<Values, Environment>;
+   defaultEnvironment: Environment;
+   renderMenuHeader?: (
+     reference: PresentationReference<Values>,
+     environment: Environment,
+     label: ReactNode,
+   ) => ReactNode;
+-  /**
+-   * The action-selection kernel (PBUI-ACTIONS-2). REQUIRED since 0.8.0:
+-   * there is exactly one selection engine, and every menu row, primary
+-   * click, and agent-visible action resolves through it.
+-   *
+-   * `actions` and `snapshotFor` come together: the kernel never reads live
+-   * stores, so the product must say how a query's immutable fact snapshot
+-   * is built from the environment.
+-   */
++  helpRenderers?: HelpRendererRegistry;
++}
++
++/** Compatibility assembly retained while products migrate to one kernel. */
++export interface LegacyCreatePbuiOptions<
++  Values extends PresentationValues,
++  Environment,
++  Verb,
++  ProductFacts,
++> extends CreatePbuiCommonOptions<Values, Environment> {
++  registry: PresentationDescriptorRegistry<Values, Environment>;
+   actions: ActionRegistry<Values, ProductFacts, Verb>;
+   snapshotFor(
+     query: ActionQuery<Values>,
+     environment: Environment,
+   ): SelectionSnapshot<ProductFacts>;
+-  /**
+-   * Typed accept translators (PBUI-ACTIONS-2 P6): declared source/target/
+-   * scope edges resolved by the nearest-scope-then-priority ladder, with a
+-   * genuine remainder opening the chooser. Acceptance always has
+-   * graph-subtype satisfaction (the ORIGINAL reference settles the request)
+-   * whether or not translators are declared. Mount `AcceptChooser` alongside
+-   * `AcceptBanner` — a product whose translators can tie needs the chooser
+-   * on screen.
+-   */
+   translators?: readonly PresentationTranslator<Values, ProductFacts>[];
+-  /**
+-   * The contextual help kernel (PBUI-HELP-001), OPTIONAL unlike `actions`:
+-   * with neither `help` nor `helpRenderers` configured, `Presentation`
+-   * allocates no help state, schedules no timers, and renders exactly the
+-   * DOM it renders today. When configured, hovering or focusing a
+-   * presentation resolves additive help rules lazily — against the same
+-   * `snapshotFor` facts as action introspection — and shows them in the one
+-   * `ContextHelp` surface the product mounts beside `ObjectMenu`.
+-   */
+   help?: HelpRegistry<Values, ProductFacts>;
+-  helpRenderers?: HelpRendererRegistry;
++}
++
++/** Preferred assembly: one declaration-built kernel plus product facts. */
++export interface KernelCreatePbuiOptions<
++  Values extends PresentationValues,
++  Environment,
++  Verb,
++  ProductFacts,
++> extends CreatePbuiCommonOptions<Values, Environment> {
++  kernel: PresentationKernel<Values, Environment, ProductFacts, Verb>;
++  factsFor(
++    query: ActionQuery<Values>,
++    environment: Environment,
++  ): ProductFacts | SnapshotInput<ProductFacts>;
++}
++
++export type CreatePbuiOptions<
++  Values extends PresentationValues,
++  Environment,
++  Verb,
++  ProductFacts,
++> =
++  | LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>
++  | KernelCreatePbuiOptions<Values, Environment, Verb, ProductFacts>;
++
++function isSnapshotInput<ProductFacts>(
++  value: ProductFacts | SnapshotInput<ProductFacts>,
++): value is SnapshotInput<ProductFacts> {
++  return (
++    typeof value === "object" &&
++    value !== null &&
++    SNAPSHOT_INPUT in value &&
++    value[SNAPSHOT_INPUT] === true
++  );
+ }
+ 
+ /** How long the pointer rests on a presentation before its help opens. */
+@@ -152,6 +168,14 @@ export interface PbuiHelpState<Values extends PresentationValues, ProductFacts>
+   trigger: "pointer" | "focus";
+ }
+ 
++export interface PbuiRefusal<Values extends PresentationValues> {
++  readonly code: string;
++  readonly because?: string;
++  readonly action?: string;
++  readonly candidateId?: string;
++  readonly subject?: PresentationReference<Values>;
++}
++
+ export interface PbuiProviderProps<
+   Values extends PresentationValues,
+   Environment,
+@@ -179,6 +203,8 @@ export interface PbuiProviderProps<
+    * gateways stay the security boundary.
+    */
+   actor?: string;
++  /** Fresh-revalidation refusals; absent preserves the legacy silent behavior. */
++  onRefuse?(refusal: PbuiRefusal<Values>): void;
+ }
+ 
+ /**
+@@ -336,21 +362,32 @@ export function createPbui<
+   Environment,
+   Verb,
+   ProductFacts,
+->({
+-  registry,
+-  defaultEnvironment,
+-  renderMenuHeader,
+-  actions,
+-  snapshotFor,
+-  translators = [],
+-  help,
+-  helpRenderers,
+-}: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
++>(options: CreatePbuiOptions<Values, Environment, Verb, ProductFacts>) {
+   const Context = createContext<PbuiContextValue<Values, Environment, Verb> | null>(null);
+-
+-  const actionEngine = actions;
+-  const snapshotOf = snapshotFor;
+-  const helpEngine = help ?? null;
++  const { defaultEnvironment, renderMenuHeader, helpRenderers } = options;
++  const kernelEngine = "kernel" in options ? options.kernel : null;
++  const registry =
++    kernelEngine?.descriptors ??
++    (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).registry;
++  const actionEngine =
++    kernelEngine?.actions ??
++    (options as LegacyCreatePbuiOptions<Values, Environment, Verb, ProductFacts>).actions;
++  const translators =
++    "kernel" in options ? [] : options.translators ?? [];
++  const helpEngine =
++    kernelEngine?.help ?? ("kernel" in options ? null : options.help ?? null);
++  const snapshotOf = (
++    query: ActionQuery<Values>,
++    environment: Environment,
++  ): SelectionSnapshot<ProductFacts> => {
++    if ("kernel" in options) {
++      const produced = options.factsFor(query, environment);
++      return isSnapshotInput(produced)
++        ? options.kernel.snapshot(produced.facts, produced.options)
++        : options.kernel.snapshot(produced);
++    }
++    return options.snapshotFor(query, environment);
++  };
+   const helpRendererRegistry = helpRenderers ?? null;
+   const helpEnabled = helpEngine !== null && helpRendererRegistry !== null;
+ 
+@@ -367,12 +404,14 @@ export function createPbui<
+     environment: Environment,
+   ): AcceptanceResolution<Values> {
+     const snapshot = snapshotOf({ subject: reference, invocation: "accept" }, environment);
+-    return resolveAcceptance(
+-      { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
+-      request,
+-      reference,
+-      snapshot,
+-    );
++    return kernelEngine
++      ? kernelEngine.accept(request, reference, snapshot)
++      : resolveAcceptance(
++          { graph: actionEngine.graph, translators, predicates: EMPTY_PREDICATES },
++          request,
++          reference,
++          snapshot,
++        );
+   }
+ 
+   function Provider({
+@@ -381,6 +420,7 @@ export function createPbui<
+     onPerform,
+     onAccept,
+     actor,
++    onRefuse,
+   }: PbuiProviderProps<Values, Environment, Verb>) {
+     const [accepting, setAccepting] = useState<AcceptRequest<Values> | null>(null);
+     const [acceptChooser, setAcceptChooser] = useState<readonly AcceptanceOption<Values>[] | null>(
+@@ -539,7 +579,16 @@ export function createPbui<
+           setMenu(null);
+           const fresh = actionEngine.resolve(stale.query, snapshotOf(stale.query, environment));
+           const decision = evaluateFresh(stale, fresh);
+-          if (decision.kind !== "proceed") return decision;
++          if (decision.kind !== "proceed") {
++            onRefuse?.({
++              code: decision.code,
++              ...(decision.because !== undefined ? { because: decision.because } : {}),
++              action: stale.action,
++              candidateId: stale.candidateId,
++              subject: stale.query.subject,
++            });
++            return decision;
++          }
+           try {
+             // Called synchronously within the click segment; the fresh verb,
+             // never the stale one — and the envelope is built from the FRESH
+@@ -571,6 +620,7 @@ export function createPbui<
+         helpDispatch,
+         settle,
+         onPerform,
++        onRefuse,
+         actor,
+       ],
+     );
+@@ -1266,6 +1316,7 @@ export function createPbui<
+     ContextHelp,
+     usePbui,
+     registry,
++    kernel: kernelEngine,
+   };
+ }
+ 
+diff --git a/src/presentation/help/registry.ts b/src/presentation/help/registry.ts
+index ec63bde..7443e3a 100644
+--- a/src/presentation/help/registry.ts
++++ b/src/presentation/help/registry.ts
+@@ -1,12 +1,13 @@
+-import { referencedPredicates } from "../actions/conditions";
+-import type { PredicateDefinition, ProductPredicate } from "../actions/conditions";
+-import type { PredicateId, ScopeId } from "../actions/ids";
++import type { PredicateDefinition } from "../actions/conditions";
++import type { ScopeId } from "../actions/ids";
+ import type { PresentationTypeGraph } from "../actions/typeGraph";
+ import type { SelectionSnapshot } from "../actions/types";
+ import type { PresentationReference, PresentationValues } from "../types";
+ import { resolveHelp } from "./resolve";
+ import type { PreparedHelpRegistry } from "./resolve";
+ import type { HelpContribution, HelpDiagnostic, HelpResolution } from "./types";
++import { createPredicateRegistry, validateConditionPredicates } from "../context/predicates";
++import type { PredicateRegistry } from "../context/predicates";
+ 
+ /**
+  * The help registry (design doc §11). Construction is fail-fast in the same
+@@ -32,6 +33,8 @@ export interface CreateHelpRegistryOptions<Values extends PresentationValues, Pr
+   /** Every scope any rule may declare; unknown scopes throw. */
+   scopes: readonly ScopeId[];
+   predicates?: readonly PredicateDefinition<Values, ProductFacts>[];
++  /** A prebuilt table supplied by PresentationKernel. Do not combine with predicates. */
++  predicateRegistry?: PredicateRegistry<Values, ProductFacts>;
+   contributions: readonly HelpContribution<Values, ProductFacts>[];
+   version?: string | number;
+ }
+@@ -43,13 +46,11 @@ export function createHelpRegistry<Values extends PresentationValues, ProductFac
+   const declaredScopes = new Set(options.scopes);
+   const version = options.version ?? 1;
+ 
+-  const predicates = new Map<PredicateId, ProductPredicate<Values, ProductFacts>>();
+-  for (const definition of options.predicates ?? []) {
+-    if (predicates.has(definition.id)) {
+-      throw new Error(`duplicate predicate id "${definition.id}"`);
+-    }
+-    predicates.set(definition.id, definition.evaluate);
++  if (options.predicates && options.predicateRegistry) {
++    throw new Error("createHelpRegistry accepts predicates or predicateRegistry, not both");
+   }
++  const predicates =
++    options.predicateRegistry ?? createPredicateRegistry(options.predicates);
+ 
+   const ruleIds = new Set<string>();
+   for (const rule of contributions) {
+@@ -80,11 +81,11 @@ export function createHelpRegistry<Values extends PresentationValues, ProductFac
+     if (rule.priority !== undefined && !Number.isFinite(rule.priority)) {
+       throw new Error(`help rule "${rule.id}" has a non-finite priority`);
+     }
+-    for (const id of rule.when ? referencedPredicates(rule.when) : []) {
+-      if (!predicates.has(id)) {
+-        throw new Error(`help rule "${rule.id}" references unknown predicate "${id}"`);
+-      }
+-    }
++    validateConditionPredicates(
++      `help rule "${rule.id}"`,
++      rule.when,
++      predicates,
++    );
+   }
+ 
+   const prepared: PreparedHelpRegistry<Values, ProductFacts> = {
+diff --git a/src/presentation/index.ts b/src/presentation/index.ts
+index 836cd19..1255d3e 100644
+--- a/src/presentation/index.ts
++++ b/src/presentation/index.ts
+@@ -14,8 +14,13 @@ export * from "./help";
+  * A sibling of the action kernel; no React at runtime.
+  */
+ export * from "./links";
+-export { activeScope, matchContext } from "./context/match";
+-export type { ContextMatch, ContextMatchResult, ContextTarget } from "./context/types";
++export { activeScope, matchContext, matchSelector } from "./context/match";
++export { createPredicateRegistry, validateConditionPredicates } from "./context/predicates";
++export type { PredicateRegistry } from "./context/predicates";
++export type { ContextMatch, ContextMatchResult, ContextTarget, PresentationSelector } from "./context/types";
++/* Canonical typed semantic arrows and the one-declaration kernel. */
++export * from "./relations";
++export * from "./kernel";
+ export { resolveAcceptance } from "./translators/resolve";
+ export type {
+   AcceptanceOption,
+@@ -26,6 +31,9 @@ export type {
+ export { createPresentationRegistry } from "./registry";
+ export type {
+   CreatePbuiOptions,
++  KernelCreatePbuiOptions,
++  LegacyCreatePbuiOptions,
++  PbuiRefusal,
+   PbuiContextValue,
+   PbuiInstance,
+   PbuiProviderProps,
+diff --git a/src/presentation/kernel/create.ts b/src/presentation/kernel/create.ts
+new file mode 100644
+index 0000000..e219062
+--- /dev/null
++++ b/src/presentation/kernel/create.ts
+@@ -0,0 +1,229 @@
++import { createActionRegistry } from "../actions/registry";
++import { createPresentationTypeGraph } from "../actions/typeGraph";
++import { createPredicateRegistry } from "../context/predicates";
++import { createHelpRegistry } from "../help/registry";
++import { isSerializableReference } from "../links/terms";
++import { relationFromTranslator } from "../relations/adapters";
++import { createRelationSystem } from "../relations/system";
++import { createPresentationRegistry } from "../registry";
++import { resolveAcceptance } from "../translators/resolve";
++import type { PresentationReference, PresentationValues } from "../types";
++import type {
++  KernelDiagnostic,
++  PresentationKernel,
++  PresentationKernelDeclaration,
++  PresentationVocabulary,
++  SnapshotOptions,
++  VocabularyHelpEntry,
++} from "./types";
++
++function checkedRevision(value: string | number | undefined): string | number {
++  if (value === undefined) {
++    throw new Error(
++      "presentation snapshot has no revision - provide declaration.revision(facts) " +
++        "or snapshot(..., { revision })",
++    );
++  }
++  if (typeof value === "number" && !Number.isFinite(value)) {
++    throw new Error("presentation snapshot revision must be a finite number or string");
++  }
++  return value;
++}
++
++/** Construct the complete presentation semantics from one declaration. */
++export function createPresentationKernel<
++  Values extends PresentationValues,
++  Environment,
++  ProductFacts,
++  Verb,
++>(
++  declaration: PresentationKernelDeclaration<
++    Values,
++    Environment,
++    ProductFacts,
++    Verb
++  >,
++): PresentationKernel<Values, Environment, ProductFacts, Verb> {
++  const version = declaration.version ?? 1;
++  const scopes = [...declaration.scopes];
++  if (scopes.length === 0) {
++    throw new Error("a presentation kernel must declare at least one scope");
++  }
++  const seenScopes = new Set<string>();
++  for (const scope of scopes) {
++    if (seenScopes.has(scope)) {
++      throw new Error(`duplicate presentation scope "${scope}"`);
++    }
++    seenScopes.add(scope);
++  }
++  if (declaration.relations && declaration.translators) {
++    throw new Error(
++      "createPresentationKernel accepts relations or translators, not both",
++    );
++  }
++
++  const graph = createPresentationTypeGraph(declaration.types);
++  const predicates = createPredicateRegistry(declaration.predicates);
++  const descriptors = createPresentationRegistry(declaration.descriptors);
++  const actions = createActionRegistry({
++    graph,
++    scopes,
++    predicateRegistry: predicates,
++    contributions: declaration.actions,
++    version,
++  });
++  const help = declaration.help
++    ? createHelpRegistry({
++        graph,
++        scopes,
++        predicateRegistry: predicates,
++        contributions: declaration.help,
++        version,
++      })
++    : null;
++  const relationDeclarations =
++    declaration.relations ??
++    (declaration.translators ?? []).map(relationFromTranslator);
++  const relations = createRelationSystem({
++    graph,
++    scopes,
++    predicateRegistry: predicates,
++    relations: relationDeclarations,
++    version,
++    requireConcreteTargets: true,
++  });
++
++  for (const type of Object.keys(declaration.descriptors)) {
++    if (!graph.has(type)) {
++      throw new Error(
++        `descriptor for type "${type}" has no node in the presentation type graph`,
++      );
++    }
++  }
++
++  const staticDiagnostics: KernelDiagnostic[] = [];
++  for (const type of graph.types()) {
++    if (!graph.isAbstract(type) && !descriptors.has(type)) {
++      staticDiagnostics.push({
++        code: "missing-descriptor",
++        type,
++        detail:
++          `concrete type "${type}" has no descriptor; labels use the JSON fallback`,
++      });
++    }
++  }
++
++  function snapshot(
++    facts: ProductFacts,
++    options: SnapshotOptions = {},
++  ) {
++    const activeScopes = [...(options.scopes ?? scopes)];
++    const activeSeen = new Set<string>();
++    for (const scope of activeScopes) {
++      if (!seenScopes.has(scope)) {
++        throw new Error(
++          `presentation snapshot names undeclared scope "${scope}"`,
++        );
++      }
++      if (activeSeen.has(scope)) {
++        throw new Error(
++          `presentation snapshot repeats active scope "${scope}"`,
++        );
++      }
++      activeSeen.add(scope);
++    }
++    return {
++      revision: checkedRevision(
++        options.revision ?? declaration.revision?.(facts),
++      ),
++      scopes: activeScopes,
++      modes: new Set(options.modes ?? []),
++      capabilities: new Set(options.capabilities ?? []),
++      product: facts,
++    };
++  }
++
++  const helpVocabulary: readonly VocabularyHelpEntry[] = (
++    declaration.help ?? []
++  ).map((rule) => ({
++    id: rule.id,
++    subject: rule.subject,
++    match: rule.match,
++    scopes: [...rule.scopes],
++    priority: rule.priority ?? 0,
++  }));
++
++  function vocabulary(): PresentationVocabulary {
++    return {
++      ...actions.vocabulary(),
++      relations: relations.definitions(),
++      help: helpVocabulary,
++    };
++  }
++
++  return {
++    version,
++    graph,
++    scopes,
++    predicates,
++    descriptors,
++    actions,
++    relations,
++    help,
++    snapshot,
++    accept: (request, reference, current) =>
++      resolveAcceptance({ relations }, request, reference, current),
++    linkDeps(options) {
++      return {
++        graph,
++        relations: relations.definitions().map((relation) => ({
++          id: relation.id,
++          from: relation.from,
++          to: relation.to,
++          match: relation.match,
++          ...(relation.label ? { label: relation.label } : {}),
++        })),
++        relationEvaluation: (id, reference, linkSnapshot) => {
++          const relationSnapshot = options.snapshotFor(linkSnapshot);
++          const result = relations.evaluate(
++            id,
++            reference as PresentationReference<Values>,
++            relationSnapshot,
++          );
++          if (result.kind === "empty") return { kind: "empty" };
++          if (result.kind === "value") {
++            if (!isSerializableReference(result.reference)) {
++              return {
++                kind: "error",
++                diagnostic: {
++                  code: "relation-result-not-serializable",
++                  message: `relation ${id} produced a non-serializable presentation reference`,
++                },
++              };
++            }
++            return { kind: "value", reference: result.reference };
++          }
++          return {
++            kind: "error",
++            diagnostic: {
++              code: result.code,
++              message: result.because,
++            },
++          };
++        },
++        ...(options.label ? { label: options.label } : {}),
++      };
++    },
++    vocabulary,
++    diagnostics: () => [
++      ...staticDiagnostics,
++      ...actions.diagnostics().map(
++        (diagnostic): KernelDiagnostic => ({
++          code: "action-registry",
++          diagnostic,
++          detail: diagnostic.detail,
++        }),
++      ),
++    ],
++  };
++}
+diff --git a/src/presentation/kernel/define.ts b/src/presentation/kernel/define.ts
+new file mode 100644
+index 0000000..b98b9e0
+--- /dev/null
++++ b/src/presentation/kernel/define.ts
+@@ -0,0 +1,56 @@
++import {
++  definePredicate,
++  type ProductPredicate,
++} from "../actions/conditions";
++import { defineActions } from "../actions/define";
++import type { PredicateId } from "../actions/ids";
++import { defineHelp } from "../help/define";
++import { defineRelations } from "../relations/define";
++import type { PresentationValues } from "../types";
++import { createPresentationKernel } from "./create";
++import { SNAPSHOT_INPUT } from "./types";
++import type {
++  PresentationKernelDeclaration,
++  SnapshotInput,
++  SnapshotOptions,
++} from "./types";
++
++/** Thread the product's four generic parameters once. */
++export function definePresentation<
++  Values extends PresentationValues,
++  Environment,
++  ProductFacts,
++  Verb,
++>() {
++  return {
++    actions: defineActions<Values, ProductFacts, Verb>(),
++    help: defineHelp<Values, ProductFacts>(),
++    relations: defineRelations<Values, ProductFacts>(),
++    predicate(
++      id: PredicateId,
++      evaluate: ProductPredicate<Values, ProductFacts>,
++    ) {
++      return definePredicate(id, evaluate);
++    },
++    snapshotInput(
++      facts: ProductFacts,
++      options?: SnapshotOptions,
++    ): SnapshotInput<ProductFacts> {
++      return {
++        [SNAPSHOT_INPUT]: true,
++        facts,
++        options: options ?? {},
++      };
++    },
++    kernel(
++      declaration: PresentationKernelDeclaration<
++        Values,
++        Environment,
++        ProductFacts,
++        Verb
++      >,
++    ) {
++      return createPresentationKernel(declaration);
++    },
++  };
++}
+diff --git a/src/presentation/kernel/index.ts b/src/presentation/kernel/index.ts
+new file mode 100644
+index 0000000..7f05a80
+--- /dev/null
++++ b/src/presentation/kernel/index.ts
+@@ -0,0 +1,13 @@
++export { createPresentationKernel } from "./create";
++export { SNAPSHOT_INPUT } from "./types";
++export { definePresentation } from "./define";
++export type {
++  KernelDiagnostic,
++  LinkDependencyOptions,
++  PresentationKernel,
++  PresentationKernelDeclaration,
++  PresentationVocabulary,
++  SnapshotInput,
++  SnapshotOptions,
++  VocabularyHelpEntry,
++} from "./types";
+diff --git a/src/presentation/kernel/kernel.test.ts b/src/presentation/kernel/kernel.test.ts
+new file mode 100644
+index 0000000..305491b
+--- /dev/null
++++ b/src/presentation/kernel/kernel.test.ts
+@@ -0,0 +1,152 @@
++import { describe, expect, it } from "vitest";
++import { available, unavailable } from "../actions/availability";
++import { predicate } from "../actions/conditions";
++import { definePresentation } from "./define";
++import { SNAPSHOT_INPUT } from "./types";
++
++interface Values {
++  order: { id: string; customerId: string };
++  customer: { id: string };
++}
++interface Environment {
++  readonly locale: string;
++}
++interface Facts {
++  readonly revision: number;
++  readonly customers: Readonly<Record<string, Values["customer"]>>;
++  readonly readable: boolean;
++}
++type Verb = { readonly kind: "open"; readonly id: string };
++
++const p = definePresentation<Values, Environment, Facts, Verb>();
++const canRead = p.predicate("can-read", ({ snapshot }) =>
++  snapshot.product.readable
++    ? available()
++    : unavailable("customer access is unavailable", "not-readable"),
++);
++const open = p.actions.exact("order", {
++  id: "shop.order.open.rule",
++  action: "shop.order.open",
++  scopes: ["shop"],
++  when: predicate("can-read"),
++  metadata: { label: "Open order" },
++  bind: ({ subject }) => ({ kind: "open", id: subject.value.id }),
++});
++const help = p.help.exact("order", {
++  id: "shop.order.help",
++  scopes: ["shop"],
++  when: predicate("can-read"),
++  help: ({ subject }) => [
++    { id: "order.summary", kind: "text", payload: subject.value.id },
++  ],
++});
++const customer = p.relations.direct({
++  id: "order.customer",
++  label: "customer",
++  from: "order",
++  to: "customer",
++  match: "exact",
++  when: predicate("can-read"),
++  apply(reference, snapshot) {
++    if (reference.type !== "order") return undefined;
++    const value = snapshot.product.customers[reference.value.customerId];
++    return value ? { type: "customer", value } : undefined;
++  },
++});
++
++function makeKernel() {
++  return p.kernel({
++    types: [{ id: "order" }, { id: "customer" }],
++    scopes: ["shop", "global"],
++    predicates: [canRead],
++    descriptors: {
++      order: { label: (value) => `Order ${value.id}` },
++      customer: { label: (value) => `Customer ${value.id}` },
++    },
++    actions: [open],
++    relations: [customer],
++    help: [help],
++    revision: (facts) => facts.revision,
++    version: "research-1",
++  });
++}
++
++describe("PresentationKernel", () => {
++  it("constructs sibling interpreters from one declaration and one predicate table", () => {
++    const kernel = makeKernel();
++    const snapshot = kernel.snapshot({
++      revision: 7,
++      customers: { c1: { id: "c1" } },
++      readable: true,
++    });
++    const order = { type: "order", value: { id: "o1", customerId: "c1" } } as const;
++
++    expect(snapshot).toMatchObject({ revision: 7, scopes: ["shop", "global"] });
++    expect(kernel.actions.resolve({ subject: order, invocation: "menu" }, snapshot).actions).toHaveLength(1);
++    expect(kernel.help?.resolve(order, snapshot).items).toHaveLength(1);
++    expect(kernel.accept({ types: "customer", prompt: "choose" }, order, snapshot)).toEqual({
++      kind: "accepted",
++      option: {
++        translator: "order.customer",
++        result: { type: "customer", value: { id: "c1" } },
++      },
++    });
++    expect(kernel.relations.predicates).toBe(kernel.predicates);
++    expect(kernel.vocabulary()).toMatchObject({
++      version: "research-1",
++      relations: [{ id: "order.customer", from: "order", to: "customer" }],
++      help: [{ id: "shop.order.help" }],
++    });
++  });
++
++
++  it("supports an explicit active scope stack and a collision-free facts wrapper", () => {
++    const kernel = makeKernel();
++    const facts = {
++      revision: 8,
++      customers: {},
++      readable: true,
++    };
++    const snapshot = kernel.snapshot(facts, { scopes: ["global"] });
++    expect(snapshot.scopes).toEqual(["global"]);
++    expect(kernel.actions.resolve(
++      {
++        subject: { type: "order", value: { id: "o1", customerId: "c1" } },
++        invocation: "menu",
++      },
++      snapshot,
++    ).actions).toHaveLength(0);
++    const input = p.snapshotInput(facts);
++    expect(input).toMatchObject({ facts, options: {} });
++    expect(input[SNAPSHOT_INPUT]).toBe(true);
++    expect(() => kernel.snapshot(facts, { scopes: ["undeclared"] })).toThrow(
++      /undeclared scope/,
++    );
++  });
++
++  it("fails closed when no semantic revision policy is supplied", () => {
++    const kernel = makeKernel();
++    expect(() =>
++      kernel.snapshot(
++        { revision: 1, customers: {}, readable: true },
++        { revision: Number.NaN },
++      ),
++    ).toThrow(/finite number/);
++  });
++
++  it("cross-validates descriptors and relation endpoints", () => {
++    expect(() =>
++      p.kernel({
++        types: [{ id: "order" }],
++        scopes: ["shop"],
++        descriptors: {
++          order: { label: (value) => value.id },
++          customer: { label: (value) => value.id },
++        },
++        actions: [],
++        relations: [],
++        revision: () => 1,
++      }),
++    ).toThrow(/descriptor for type "customer"/);
++  });
++});
+diff --git a/src/presentation/kernel/types.ts b/src/presentation/kernel/types.ts
+new file mode 100644
+index 0000000..eb4812d
+--- /dev/null
++++ b/src/presentation/kernel/types.ts
+@@ -0,0 +1,145 @@
++import type { PredicateDefinition } from "../actions/conditions";
++import type { ModeId, ScopeId } from "../actions/ids";
++import type {
++  ActionRegistry,
++  RegistryDiagnostic,
++} from "../actions/registry";
++import type {
++  PresentationTypeDefinition,
++  PresentationTypeGraph,
++} from "../actions/typeGraph";
++import type {
++  ActionContribution,
++  SelectionSnapshot,
++} from "../actions/types";
++import type { ActionVocabulary } from "../actions/vocabulary";
++import type { PredicateRegistry } from "../context/predicates";
++import type { HelpRegistry } from "../help/registry";
++import type { HelpContribution } from "../help/types";
++import type { LinkDeps, LinkSnapshot } from "../links/snapshot";
++import type { SerializableReference } from "../links/terms";
++import type {
++  PresentationRelationDeclaration,
++  PresentationRelationDefinition,
++} from "../relations/types";
++import type { RelationSystem } from "../relations/system";
++import type { PresentationDescriptorRegistry } from "../registry";
++import type {
++  AcceptRequest,
++  PresentationDescriptorMap,
++  PresentationReference,
++  PresentationValues,
++} from "../types";
++import type {
++  AcceptanceResolution,
++  PresentationTranslator,
++} from "../translators/types";
++
++export interface SnapshotOptions {
++  /** Active inner-to-outer scope stack; defaults to the declaration order. */
++  readonly scopes?: Iterable<ScopeId>;
++  readonly modes?: Iterable<ModeId>;
++  readonly capabilities?: Iterable<string>;
++  /** Explicit cache/revalidation token. */
++  readonly revision?: string | number;
++}
++
++/** Nominal runtime marker; product fact records cannot collide with it by shape. */
++export const SNAPSHOT_INPUT: unique symbol = Symbol.for(
++  "@hyperslop-systems/pbui/presentation-snapshot-input",
++);
++
++export interface SnapshotInput<ProductFacts> {
++  readonly [SNAPSHOT_INPUT]: true;
++  readonly facts: ProductFacts;
++  readonly options: SnapshotOptions;
++}
++
++export interface PresentationKernelDeclaration<
++  Values extends PresentationValues,
++  Environment,
++  ProductFacts,
++  Verb,
++> {
++  readonly types: readonly PresentationTypeDefinition[];
++  readonly scopes: readonly ScopeId[];
++  readonly predicates?: readonly PredicateDefinition<Values, ProductFacts>[];
++  readonly descriptors: PresentationDescriptorMap<Values, Environment>;
++  readonly actions: readonly ActionContribution<Values, ProductFacts, Verb>[];
++  /** Canonical semantic arrows. */
++  readonly relations?: readonly PresentationRelationDeclaration<
++    Values,
++    ProductFacts
++  >[];
++  /** Migration-only input; converted into direct relations. Do not provide both. */
++  readonly translators?: readonly PresentationTranslator<Values, ProductFacts>[];
++  readonly help?: readonly HelpContribution<Values, ProductFacts>[];
++  /**
++   * Product-defined semantic revision. Structural serialization is not a
++   * default: state equality and invalidation identity are distinct contracts.
++   */
++  readonly revision?: (facts: Readonly<ProductFacts>) => string | number;
++  readonly version?: string | number;
++}
++
++export type KernelDiagnostic =
++  | {
++      readonly code: "missing-descriptor";
++      readonly type: string;
++      readonly detail: string;
++    }
++  | {
++      readonly code: "action-registry";
++      readonly diagnostic: RegistryDiagnostic;
++      readonly detail: string;
++    };
++
++export interface VocabularyHelpEntry {
++  readonly id: string;
++  readonly subject: string;
++  readonly match: "exact" | "subtypes";
++  readonly scopes: readonly string[];
++  readonly priority: number;
++}
++
++export interface PresentationVocabulary extends ActionVocabulary {
++  readonly relations: readonly PresentationRelationDefinition[];
++  readonly help: readonly VocabularyHelpEntry[];
++}
++
++export interface LinkDependencyOptions<ProductFacts> {
++  /** Project a link world into the presentation snapshot relations read. */
++  readonly snapshotFor: (
++    snapshot: LinkSnapshot,
++  ) => SelectionSnapshot<ProductFacts>;
++  readonly label?: (reference: SerializableReference) => string;
++}
++
++export interface PresentationKernel<
++  Values extends PresentationValues,
++  Environment,
++  ProductFacts,
++  Verb,
++> {
++  readonly version: string | number;
++  readonly graph: PresentationTypeGraph;
++  readonly scopes: readonly ScopeId[];
++  readonly predicates: PredicateRegistry<Values, ProductFacts>;
++  readonly descriptors: PresentationDescriptorRegistry<Values, Environment>;
++  readonly actions: ActionRegistry<Values, ProductFacts, Verb>;
++  readonly relations: RelationSystem<Values, ProductFacts>;
++  readonly help: HelpRegistry<Values, ProductFacts> | null;
++  snapshot(
++    facts: ProductFacts,
++    options?: SnapshotOptions,
++  ): SelectionSnapshot<ProductFacts>;
++  accept(
++    request: AcceptRequest<Values>,
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++  ): AcceptanceResolution<Values>;
++  /** Bind the pure relation system to a link-world projection. */
++  linkDeps(options: LinkDependencyOptions<ProductFacts>): LinkDeps;
++  vocabulary(): PresentationVocabulary;
++  diagnostics(): readonly KernelDiagnostic[];
++}
+diff --git a/src/presentation/links/check.ts b/src/presentation/links/check.ts
+new file mode 100644
+index 0000000..3b3c218
+--- /dev/null
++++ b/src/presentation/links/check.ts
+@@ -0,0 +1,180 @@
++import type { RuntimeTypeId } from "../actions/ids";
++import {
++  dependenciesOfBinding,
++  programOf,
++  type BindingDependencies,
++  type BindingExpression,
++  type BindingProgram,
++} from "./expression";
++import { reaches, type LinkDeps, type LinkSnapshot } from "./snapshot";
++import type { Binding } from "./terms";
++import type { PortId } from "./types";
++
++export interface BindingCheckDiagnostic {
++  readonly code:
++    | "unresolved"
++    | "context-missing"
++    | "source-missing"
++    | "class-missing"
++    | "relation-missing"
++    | "relation-source"
++    | "type"
++    | "cycle";
++  readonly message: string;
++}
++
++export type BindingCheckResult =
++  | {
++      readonly kind: "valid";
++      readonly program: BindingProgram;
++      readonly resultType: RuntimeTypeId;
++      readonly dependencies: BindingDependencies;
++    }
++  | { readonly kind: "invalid"; readonly diagnostic: BindingCheckDiagnostic };
++
++function inferExpression(
++  expression: BindingExpression,
++  snapshot: LinkSnapshot,
++  deps: LinkDeps,
++): RuntimeTypeId | BindingCheckDiagnostic {
++  if (expression.kind === "apply") {
++    const input = inferExpression(expression.input, snapshot, deps);
++    if (typeof input !== "string") return input;
++    const relation = deps.relations?.find(
++      (candidate) => candidate.id === expression.relationId,
++    );
++    if (!relation) {
++      return {
++        code: "relation-missing",
++        message: `no relation called ${expression.relationId}`,
++      };
++    }
++    const sourceMatches =
++      relation.match === "exact"
++        ? input === relation.from
++        : reaches(input, relation.from, deps.graph);
++    if (!sourceMatches) {
++      return {
++        code: "relation-source",
++        message: `<${input}> does not reach relation ${relation.id}'s <${relation.from}> source`,
++      };
++    }
++    return relation.to;
++  }
++
++  switch (expression.source.kind) {
++    case "constant":
++      return expression.source.reference.type;
++    case "context": {
++      const context = snapshot.contexts.get(expression.source.key);
++      return context?.valueType ?? {
++        code: "context-missing",
++        message: `no context called ${expression.source.key}`,
++      };
++    }
++    case "port": {
++      const definition = snapshot.ports.get(expression.source.port);
++      return definition?.declaration.contract.valueType ?? {
++        code: "source-missing",
++        message: `${expression.source.port} is not a declared port`,
++      };
++    }
++    case "cell": {
++      const cell = snapshot.classes.get(expression.source.classId);
++      const member = cell?.members[0];
++      const definition = member ? snapshot.ports.get(member) : undefined;
++      return definition?.declaration.contract.valueType ?? {
++        code: "class-missing",
++        message: `identity class ${expression.source.classId} has no declared member`,
++      };
++    }
++    case "error":
++      return {
++        code: "unresolved",
++        message: expression.source.diagnostic.message,
++      };
++  }
++}
++
++function inferProgram(
++  program: BindingProgram,
++  snapshot: LinkSnapshot,
++  deps: LinkDeps,
++): RuntimeTypeId | BindingCheckDiagnostic {
++  switch (program.kind) {
++    case "live":
++      return inferExpression(program.expression, snapshot, deps);
++    case "held":
++      return program.reference.type;
++    case "broken":
++      return { code: "unresolved", message: program.diagnostic.message };
++  }
++}
++
++function readsFrom(
++  port: PortId,
++  target: PortId,
++  snapshot: LinkSnapshot,
++  seen: Set<PortId>,
++): boolean {
++  if (port === target) return true;
++  if (seen.has(port)) return false;
++  seen.add(port);
++  const binding = snapshot.bindings.get(port);
++  if (!binding) return false;
++  return [...dependenciesOfBinding(binding).ports].some((source) =>
++    readsFrom(source, target, snapshot, seen),
++  );
++}
++
++/** Typecheck and dependency-check a candidate expression for a destination. */
++export function checkBinding(
++  binding: Binding,
++  snapshot: LinkSnapshot,
++  deps: LinkDeps,
++  destination?: PortId,
++): BindingCheckResult {
++  const program = programOf(binding);
++  const dependencies = dependenciesOfBinding(binding);
++  const resultType = inferProgram(program, snapshot, deps);
++  if (typeof resultType !== "string") {
++    return { kind: "invalid", diagnostic: resultType };
++  }
++
++  if (destination) {
++    const definition = snapshot.ports.get(destination);
++    if (!definition) {
++      return {
++        kind: "invalid",
++        diagnostic: {
++          code: "source-missing",
++          message: `${destination} is not a declared port`,
++        },
++      };
++    }
++    for (const source of dependencies.ports) {
++      if (readsFrom(source, destination, snapshot, new Set())) {
++        return {
++          kind: "invalid",
++          diagnostic: {
++            code: "cycle",
++            message: `${source} already reads from ${destination}`,
++          },
++        };
++      }
++    }
++    if (!reaches(resultType, definition.declaration.contract.valueType, deps.graph)) {
++      return {
++        kind: "invalid",
++        diagnostic: {
++          code: "type",
++          message:
++            `<${resultType}> does not reach ` +
++            `<${definition.declaration.contract.valueType}>`,
++        },
++      };
++    }
++  }
++
++  return { kind: "valid", program, resultType, dependencies };
++}
+diff --git a/src/presentation/links/evaluate.ts b/src/presentation/links/evaluate.ts
+index 10bc4b6..dfc74b2 100644
+--- a/src/presentation/links/evaluate.ts
++++ b/src/presentation/links/evaluate.ts
+@@ -1,99 +1,272 @@
++import {
++  bindingOf,
++  programOf,
++  type BindingExpression,
++  type BindingProgram,
++  type BindingSource,
++} from "./expression";
+ import type { LinkDeps, LinkSnapshot } from "./snapshot";
+-import { terms, type Binding, type Diagnostic, type SerializableReference } from "./terms";
++import {
++  terms,
++  type Binding,
++  type Diagnostic,
++  type SerializableReference,
++} from "./terms";
+ import type { PortId } from "./types";
+ 
+ /*
+  * Effective bindings and pull evaluation (design §8.1, D5).
+  *
+- * `effectiveBinding` is the precedence rule of D2: an explicit term in the
+- * link document wins; else a document slot reads as a constant; else the
+- * declared ambient fallback; else `Unresolved("unbound")`. `evaluatePort`
+- * walks the term to a value with a `visiting` set, so a cycle that slipped
+- * past the planner is reported, never looped.
++ * Persisted `Binding` remains the stable wire format. Evaluation compiles it
++ * into a factored program (source/computation/control state) and interprets
++ * that program. This makes normalization, dependency extraction and static
++ * checking sibling interpreters over one AST rather than special cases.
+  */
+ 
+ export type Evaluation =
+-  | { readonly kind: "value"; readonly reference: SerializableReference; readonly provenance: Binding; readonly path: readonly PortId[] }
+-  | { readonly kind: "empty"; readonly provenance: Binding; readonly path: readonly PortId[] }
+-  | { readonly kind: "error"; readonly diagnostic: Diagnostic; readonly provenance: Binding; readonly path: readonly PortId[] };
++  | {
++      readonly kind: "value";
++      readonly reference: SerializableReference;
++      readonly provenance: Binding;
++      readonly path: readonly PortId[];
++    }
++  | {
++      readonly kind: "empty";
++      readonly provenance: Binding;
++      readonly path: readonly PortId[];
++    }
++  | {
++      readonly kind: "error";
++      readonly diagnostic: Diagnostic;
++      readonly provenance: Binding;
++      readonly path: readonly PortId[];
++    };
+ 
+ export function effectiveBinding(port: PortId, s: LinkSnapshot): Binding {
+   const explicit = s.bindings.get(port);
+   if (explicit) return explicit;
+-  // A member of an identity class reads the shared cell (never written as a term; derived here).
+   const classId = s.aliases.get(port);
+   if (classId) return terms.alias(classId);
+   const slot = s.documentSlots.get(port);
+   if (slot) return terms.constant(slot);
+   const definition = s.ports.get(port);
+-  if (!definition) return terms.unresolved("port-missing", `${port} is not a declared port of a placed view`);
+-  if (definition.declaration.fallbackContext) return terms.ambient(definition.declaration.fallbackContext);
+-  return terms.unresolved("unbound", `${definition.declaration.name} is not bound`);
++  if (!definition) {
++    return terms.unresolved(
++      "port-missing",
++      `${port} is not a declared port of a placed view`,
++    );
++  }
++  if (definition.declaration.fallbackContext) {
++    return terms.ambient(definition.declaration.fallbackContext);
++  }
++  return terms.unresolved(
++    "unbound",
++    `${definition.declaration.name} is not bound`,
++  );
++}
++
++export function effectiveProgram(port: PortId, s: LinkSnapshot): BindingProgram {
++  return programOf(effectiveBinding(port, s));
+ }
+ 
+-export function evaluatePort(port: PortId, s: LinkSnapshot, deps: LinkDeps, visiting: readonly PortId[] = []): Evaluation {
++export function evaluatePort(
++  port: PortId,
++  s: LinkSnapshot,
++  deps: LinkDeps,
++  visiting: readonly PortId[] = [],
++): Evaluation {
+   if (visiting.includes(port)) {
+     const path = [...visiting, port];
+-    return { kind: "error", diagnostic: { code: "cycle", message: `cycle through ${path.join(" → ")}` }, provenance: terms.unresolved("cycle", "cycle"), path };
++    return {
++      kind: "error",
++      diagnostic: { code: "cycle", message: `cycle through ${path.join(" -> ")}` },
++      provenance: terms.unresolved("cycle", "cycle"),
++      path,
++    };
+   }
+   const binding = effectiveBinding(port, s);
+-  // An OUTPUT or INOUT port with no term is its own source: it reads what it last emitted.
+   if (binding.kind === "unresolved" && binding.diagnostic.code === "unbound") {
+     const definition = s.ports.get(port);
+     if (definition && definition.declaration.direction !== "in") {
+       const own = s.values.emitted(port);
+-      return own ? { kind: "value", reference: own, provenance: binding, path: [...visiting, port] } : { kind: "empty", provenance: binding, path: [...visiting, port] };
++      return own
++        ? {
++            kind: "value",
++            reference: own,
++            provenance: binding,
++            path: [...visiting, port],
++          }
++        : { kind: "empty", provenance: binding, path: [...visiting, port] };
+     }
+   }
+-  return evaluateBinding(binding, s, deps, [...visiting, port]);
++  return evaluateProgram(programOf(binding), s, deps, [...visiting, port], binding);
+ }
+ 
+-export function evaluateBinding(binding: Binding, s: LinkSnapshot, deps: LinkDeps, path: readonly PortId[]): Evaluation {
+-  switch (binding.kind) {
+-    case "ambient": {
+-      const cell = s.values.context(binding.key);
+-      return cell ? { kind: "value", reference: cell, provenance: binding, path } : { kind: "empty", provenance: binding, path };
++export function evaluateBinding(
++  binding: Binding,
++  s: LinkSnapshot,
++  deps: LinkDeps,
++  path: readonly PortId[],
++): Evaluation {
++  return evaluateProgram(programOf(binding), s, deps, path, binding);
++}
++
++export function evaluateProgram(
++  program: BindingProgram,
++  s: LinkSnapshot,
++  deps: LinkDeps,
++  path: readonly PortId[],
++  provenance: Binding = bindingOf(program),
++): Evaluation {
++  switch (program.kind) {
++    case "held":
++      return {
++        kind: "value",
++        reference: program.reference,
++        provenance,
++        path,
++      };
++    case "broken":
++      return { kind: "error", diagnostic: program.diagnostic, provenance, path };
++    case "live":
++      return evaluateExpression(program.expression, s, deps, path, provenance);
++  }
++}
++
++function evaluateExpression(
++  expression: BindingExpression,
++  s: LinkSnapshot,
++  deps: LinkDeps,
++  path: readonly PortId[],
++  provenance: Binding,
++): Evaluation {
++  if (expression.kind === "source") {
++    return evaluateSource(expression.source, s, deps, path, provenance);
++  }
++
++  const inner = evaluateExpression(expression.input, s, deps, path, provenance);
++  if (inner.kind !== "value") return { ...inner, provenance };
++
++  if (deps.relationEvaluation) {
++    const result = deps.relationEvaluation(
++      expression.relationId,
++      inner.reference,
++      s,
++    );
++    if (result.kind === "value") {
++      return {
++        kind: "value",
++        reference: result.reference,
++        provenance,
++        path: inner.path,
++      };
++    }
++    if (result.kind === "empty") {
++      return { kind: "empty", provenance, path: inner.path };
++    }
++    return {
++      kind: "error",
++      diagnostic: result.diagnostic,
++      provenance,
++      path: inner.path,
++    };
++  }
++
++  if (!deps.relation) {
++    return {
++      kind: "error",
++      diagnostic: {
++        code: "relation-missing",
++        message: `no relation registry can apply ${expression.relationId}`,
++      },
++      provenance,
++      path: inner.path,
++    };
++  }
++  const output = deps.relation(expression.relationId, inner.reference, s);
++  return output
++    ? { kind: "value", reference: output, provenance, path: inner.path }
++    : { kind: "empty", provenance, path: inner.path };
++}
++
++function evaluateSource(
++  source: BindingSource,
++  s: LinkSnapshot,
++  deps: LinkDeps,
++  path: readonly PortId[],
++  provenance: Binding,
++): Evaluation {
++  switch (source.kind) {
++    case "context": {
++      const cell = s.values.context(source.key);
++      return cell
++        ? { kind: "value", reference: cell, provenance, path }
++        : { kind: "empty", provenance, path };
+     }
+     case "constant":
+-      return { kind: "value", reference: binding.reference, provenance: binding, path };
+-    case "hold":
+-      return { kind: "value", reference: binding.reference, provenance: binding, path };
+-    case "follow": {
+-      const source = s.ports.get(binding.source);
+-      if (!source) {
+-        return { kind: "error", diagnostic: { code: "source-missing", message: `${binding.source} is gone` }, provenance: binding, path };
++      return { kind: "value", reference: source.reference, provenance, path };
++    case "port": {
++      const definition = s.ports.get(source.port);
++      if (!definition) {
++        return {
++          kind: "error",
++          diagnostic: {
++            code: "source-missing",
++            message: `${source.port} is gone`,
++          },
++          provenance,
++          path,
++        };
+       }
+-      // Following a follower: an INPUT's value is whatever it reads.
+-      if (source.declaration.direction === "in") {
+-        const inner = evaluatePort(binding.source, s, deps, path);
+-        return inner.kind === "value" ? { kind: "value", reference: inner.reference, provenance: binding, path: inner.path } : { ...inner, provenance: binding };
++      if (definition.declaration.direction === "in") {
++        const inner = evaluatePort(source.port, s, deps, path);
++        return inner.kind === "value"
++          ? {
++              kind: "value",
++              reference: inner.reference,
++              provenance,
++              path: inner.path,
++            }
++          : { ...inner, provenance };
+       }
+-      const emitted = s.values.emitted(binding.source);
+-      return emitted ? { kind: "value", reference: emitted, provenance: binding, path: [...path, binding.source] } : { kind: "empty", provenance: binding, path: [...path, binding.source] };
++      const emitted = s.values.emitted(source.port);
++      return emitted
++        ? {
++            kind: "value",
++            reference: emitted,
++            provenance,
++            path: [...path, source.port],
++          }
++        : { kind: "empty", provenance, path: [...path, source.port] };
+     }
+-    case "alias": {
+-      const cell = s.values.classCell?.(binding.classId);
++    case "cell": {
++      const cell = s.values.classCell?.(source.classId);
+       if (cell === undefined) {
+-        return { kind: "error", diagnostic: { code: "class-missing", message: `no identity class ${binding.classId}` }, provenance: binding, path };
+-      }
+-      return cell ? { kind: "value", reference: cell, provenance: binding, path } : { kind: "empty", provenance: binding, path };
+-    }
+-    case "derived": {
+-      const inner = evaluateBinding(binding.source, s, deps, path);
+-      if (inner.kind !== "value") return { ...inner, provenance: binding };
+-      if (!deps.relation) {
+-        return { kind: "error", diagnostic: { code: "relation-missing", message: `no relation registry can apply ${binding.relationId}` }, provenance: binding, path: inner.path };
++        return {
++          kind: "error",
++          diagnostic: {
++            code: "class-missing",
++            message: `no identity class ${source.classId}`,
++          },
++          provenance,
++          path,
++        };
+       }
+-      const out = deps.relation(binding.relationId, inner.reference, s);
+-      return out ? { kind: "value", reference: out, provenance: binding, path: inner.path } : { kind: "empty", provenance: binding, path: inner.path };
++      return cell
++        ? { kind: "value", reference: cell, provenance, path }
++        : { kind: "empty", provenance, path };
+     }
+-    case "unresolved":
+-      return { kind: "error", diagnostic: binding.diagnostic, provenance: binding, path };
++    case "error":
++      return { kind: "error", diagnostic: source.diagnostic, provenance, path };
+   }
+ }
+ 
+-/** The value Pin would freeze: what was last presented as attended on the port, else its evaluation. */
+-export function valueToHold(port: PortId, s: LinkSnapshot, deps: LinkDeps): SerializableReference | null {
++/** The value Pin would freeze: last attended value, else current evaluation. */
++export function valueToHold(
++  port: PortId,
++  s: LinkSnapshot,
++  deps: LinkDeps,
++): SerializableReference | null {
+   const attended = s.values.attended(port);
+   if (attended) return attended;
+   const evaluation = evaluatePort(port, s, deps);
+diff --git a/src/presentation/links/expression.test.ts b/src/presentation/links/expression.test.ts
+new file mode 100644
+index 0000000..503c68b
+--- /dev/null
++++ b/src/presentation/links/expression.test.ts
+@@ -0,0 +1,93 @@
++import { describe, expect, it } from "vitest";
++import { checkBinding } from "./check";
++import {
++  dependenciesOfBinding,
++  normalizeBinding,
++  programOf,
++} from "./expression";
++import { terms } from "./terms";
++import { deps, ORDER_1042, world } from "./world.test-helpers";
++
++describe("binding expression IR", () => {
++  it("compiles source, computation, and control state without changing the wire format", () => {
++    const binding = terms.hold(
++      ORDER_1042,
++      terms.derived(
++        terms.follow("v-east/order", "L-source"),
++        "order.customer",
++        "L-derived",
++      ),
++    );
++    expect(programOf(binding)).toMatchObject({
++      kind: "held",
++      suspended: {
++        kind: "live",
++        expression: {
++          kind: "apply",
++          relationId: "order.customer",
++          input: { kind: "source", source: { kind: "port", port: "v-east/order" } },
++        },
++      },
++    });
++    expect(normalizeBinding(binding)).toEqual(binding);
++    expect(normalizeBinding(normalizeBinding(binding))).toEqual(normalizeBinding(binding));
++  });
++
++  it("extracts every structural dependency rather than one privileged source", () => {
++    const binding = terms.hold(
++      ORDER_1042,
++      terms.derived(
++        terms.follow("v-east/order", "L-source"),
++        "order.customer",
++        "L-derived",
++      ),
++    );
++    const dependencies = dependenciesOfBinding(binding);
++    expect([...dependencies.ports]).toEqual(["v-east/order"]);
++    expect([...dependencies.relations]).toEqual(["order.customer"]);
++    expect([...dependencies.links]).toEqual(["L-derived", "L-source"]);
++    expect([...dependenciesOfBinding(binding, { includeSuspended: false }).ports]).toEqual([]);
++  });
++
++
++  it("preserves exact relation source semantics in static checking", () => {
++    const s = world();
++    const exactDeps = {
++      ...deps,
++      relations: [
++        {
++          id: "inspectable.customer",
++          from: "inspectable",
++          to: "customer",
++          match: "exact" as const,
++        },
++      ],
++    };
++    const candidate = terms.derived(
++      terms.follow("v-east/order", "L-source"),
++      "inspectable.customer",
++      "L-derived",
++    );
++    expect(checkBinding(candidate, s, exactDeps, "v-cust/customer")).toMatchObject({
++      kind: "invalid",
++      diagnostic: { code: "relation-source" },
++    });
++  });
++
++  it("typechecks candidates and rejects cycles from the expression graph", () => {
++    const s = world({
++      bindings: {
++        "v-a/order": terms.follow("v-b/order", "L1"),
++      },
++    });
++    expect(checkBinding(terms.follow("v-east/order", "L2"), s, deps, "v-b/order").kind).toBe("valid");
++    expect(checkBinding(terms.follow("v-a/order", "L2"), s, deps, "v-b/order")).toMatchObject({
++      kind: "invalid",
++      diagnostic: { code: "cycle" },
++    });
++    expect(checkBinding(terms.constant({ type: "customer", value: { id: "c1" } }), s, deps, "v-b/order")).toMatchObject({
++      kind: "invalid",
++      diagnostic: { code: "type" },
++    });
++  });
++});
+diff --git a/src/presentation/links/expression.ts b/src/presentation/links/expression.ts
+new file mode 100644
+index 0000000..a02a231
+--- /dev/null
++++ b/src/presentation/links/expression.ts
+@@ -0,0 +1,204 @@
++import type { Binding, Diagnostic, SerializableReference } from "./terms";
++import type { PortId } from "./types";
++
++/** Atomic sources in the normalized binding expression language. */
++export type BindingSource =
++  | { readonly kind: "context"; readonly key: string }
++  | { readonly kind: "constant"; readonly reference: SerializableReference }
++  | { readonly kind: "port"; readonly port: PortId; readonly linkId: string }
++  | { readonly kind: "cell"; readonly classId: string }
++  | { readonly kind: "error"; readonly diagnostic: Diagnostic };
++
++/** Computation is explicit syntax: sources plus named relation application. */
++export type BindingExpression =
++  | { readonly kind: "source"; readonly source: BindingSource }
++  | {
++      readonly kind: "apply";
++      readonly relationId: string;
++      readonly input: BindingExpression;
++      readonly linkId: string;
++    };
++
++/** Runtime control state is factored from the computation it controls. */
++export type BindingProgram =
++  | { readonly kind: "live"; readonly expression: BindingExpression }
++  | {
++      readonly kind: "held";
++      readonly reference: SerializableReference;
++      readonly suspended: BindingProgram;
++    }
++  | { readonly kind: "broken"; readonly diagnostic: Diagnostic };
++
++export interface BindingDependencies {
++  readonly ports: ReadonlySet<PortId>;
++  readonly relations: ReadonlySet<string>;
++  readonly links: ReadonlySet<string>;
++}
++
++function expressionOf(binding: Binding): BindingExpression {
++  switch (binding.kind) {
++    case "ambient":
++      return { kind: "source", source: { kind: "context", key: binding.key } };
++    case "constant":
++      return {
++        kind: "source",
++        source: { kind: "constant", reference: binding.reference },
++      };
++    case "follow":
++      return {
++        kind: "source",
++        source: {
++          kind: "port",
++          port: binding.source,
++          linkId: binding.linkId,
++        },
++      };
++    case "alias":
++      return {
++        kind: "source",
++        source: { kind: "cell", classId: binding.classId },
++      };
++    case "derived":
++      return {
++        kind: "apply",
++        relationId: binding.relationId,
++        input: expressionOf(binding.source),
++        linkId: binding.linkId,
++      };
++    case "hold":
++      // A derived-over-hold term is representable but non-canonical: only the
++      // frozen value participates in that computation.
++      return {
++        kind: "source",
++        source: { kind: "constant", reference: binding.reference },
++      };
++    case "unresolved":
++      return {
++        kind: "source",
++        source: { kind: "error", diagnostic: binding.diagnostic },
++      };
++  }
++}
++
++/** Compile the stable PBUI-LINK-1 document grammar into normalized IR. */
++export function programOf(binding: Binding): BindingProgram {
++  if (binding.kind === "hold") {
++    return {
++      kind: "held",
++      reference: binding.reference,
++      suspended: programOf(binding.suspended),
++    };
++  }
++  if (binding.kind === "unresolved") {
++    return { kind: "broken", diagnostic: binding.diagnostic };
++  }
++  return { kind: "live", expression: expressionOf(binding) };
++}
++
++function bindingOfExpression(expression: BindingExpression): Binding {
++  if (expression.kind === "apply") {
++    return {
++      kind: "derived",
++      source: bindingOfExpression(expression.input),
++      relationId: expression.relationId,
++      linkId: expression.linkId,
++    };
++  }
++  switch (expression.source.kind) {
++    case "context":
++      return { kind: "ambient", key: expression.source.key };
++    case "constant":
++      return { kind: "constant", reference: expression.source.reference };
++    case "port":
++      return {
++        kind: "follow",
++        source: expression.source.port,
++        linkId: expression.source.linkId,
++      };
++    case "cell":
++      return { kind: "alias", classId: expression.source.classId };
++    case "error":
++      return { kind: "unresolved", diagnostic: expression.source.diagnostic };
++  }
++}
++
++/** Lower normalized IR back to the stable persisted grammar. */
++export function bindingOf(program: BindingProgram): Binding {
++  switch (program.kind) {
++    case "live":
++      return bindingOfExpression(program.expression);
++    case "held":
++      return {
++        kind: "hold",
++        reference: program.reference,
++        suspended: bindingOf(program.suspended),
++      };
++    case "broken":
++      return { kind: "unresolved", diagnostic: program.diagnostic };
++  }
++}
++
++/** Idempotent canonicalization over the legacy wire format. */
++export function normalizeBinding(binding: Binding): Binding {
++  return bindingOf(programOf(binding));
++}
++
++function collectExpression(
++  expression: BindingExpression,
++  ports: Set<PortId>,
++  relations: Set<string>,
++  links: Set<string>,
++): void {
++  if (expression.kind === "apply") {
++    relations.add(expression.relationId);
++    links.add(expression.linkId);
++    collectExpression(expression.input, ports, relations, links);
++    return;
++  }
++  if (expression.source.kind === "port") {
++    ports.add(expression.source.port);
++    links.add(expression.source.linkId);
++  }
++}
++
++/** Structural dependencies. Suspended wires are included unless excluded. */
++export function dependenciesOfProgram(
++  program: BindingProgram,
++  options: { readonly includeSuspended?: boolean } = {},
++): BindingDependencies {
++  const ports = new Set<PortId>();
++  const relations = new Set<string>();
++  const links = new Set<string>();
++  const includeSuspended = options.includeSuspended ?? true;
++
++  function visit(current: BindingProgram): void {
++    switch (current.kind) {
++      case "live":
++        collectExpression(current.expression, ports, relations, links);
++        return;
++      case "held":
++        if (includeSuspended) visit(current.suspended);
++        return;
++      case "broken":
++        return;
++    }
++  }
++
++  visit(program);
++  return { ports, relations, links };
++}
++
++export function dependenciesOfBinding(
++  binding: Binding,
++  options?: { readonly includeSuspended?: boolean },
++): BindingDependencies {
++  return dependenciesOfProgram(programOf(binding), options);
++}
++
++/** Compatibility projection for algorithms that need only source ports. */
++export function sourcePortsOfBinding(
++  binding: Binding,
++  options?: { readonly includeSuspended?: boolean },
++): readonly PortId[] {
++  return [...dependenciesOfBinding(binding, options).ports];
++}
+diff --git a/src/presentation/links/identity.quotient.test.ts b/src/presentation/links/identity.quotient.test.ts
+new file mode 100644
+index 0000000..98b979b
+--- /dev/null
++++ b/src/presentation/links/identity.quotient.test.ts
+@@ -0,0 +1,46 @@
++import { describe, expect, it } from "vitest";
++import { compileIdentityQuotient, logicalCellOf } from "./identity";
++import { PORTS } from "./world.test-helpers";
++
++describe("identity quotient", () => {
++  it("constructs connected components as logical cells", () => {
++    const quotient = compileIdentityQuotient(
++      [
++        { linkId: "I1", left: "v-a/order", right: "v-b/order", mergePolicy: "prefer-left" },
++        { linkId: "I2", left: "v-b/order", right: "v-c/order", mergePolicy: "prefer-left" },
++      ],
++      new Map(PORTS.map((port) => [port.id, port] as const)),
++    );
++    expect(quotient.cells).toHaveLength(1);
++    expect(quotient.cells[0]?.members).toEqual([
++      "v-a/order",
++      "v-b/order",
++      "v-c/order",
++    ]);
++    expect(logicalCellOf("v-b/order", quotient)?.id).toBe(quotient.cells[0]?.id);
++  });
++
++  it("is invariant under edge order and duplicate unions", () => {
++    const ports = new Map(PORTS.map((port) => [port.id, port] as const));
++    const forward = compileIdentityQuotient(
++      [
++        { linkId: "I1", left: "v-a/order", right: "v-b/order", mergePolicy: "prefer-left" },
++        { linkId: "I2", left: "v-b/order", right: "v-c/order", mergePolicy: "prefer-left" },
++      ],
++      ports,
++    );
++    const reordered = compileIdentityQuotient(
++      [
++        { linkId: "I3", left: "v-c/order", right: "v-b/order", mergePolicy: "prefer-left" },
++        { linkId: "I2", left: "v-b/order", right: "v-c/order", mergePolicy: "prefer-left" },
++        { linkId: "I1", left: "v-b/order", right: "v-a/order", mergePolicy: "prefer-left" },
++      ],
++      new Map([...ports].reverse()),
++    );
++    expect(reordered.cells).toEqual(forward.cells);
++    expect([...reordered.cellByPort.entries()].sort()).toEqual(
++      [...forward.cellByPort.entries()].sort(),
++    );
++  });
++
++});
+diff --git a/src/presentation/links/identity.ts b/src/presentation/links/identity.ts
+index 45a6edc..528bf2e 100644
+--- a/src/presentation/links/identity.ts
++++ b/src/presentation/links/identity.ts
+@@ -81,12 +81,20 @@ export function checkIdentityCompatibility(a: PortId, b: PortId, s: LinkSnapshot
+ 
+ class UnionFind {
+   private readonly parent = new Map<PortId, PortId>();
++  private readonly rank = new Map<PortId, number>();
+   find(x: PortId): PortId {
+     let root = x;
+-    while (this.parent.get(root) !== undefined && this.parent.get(root) !== root) root = this.parent.get(root)!;
+-    // Path compression, for tidiness on small sets.
++    while (
++      this.parent.get(root) !== undefined &&
++      this.parent.get(root) !== root
++    ) {
++      root = this.parent.get(root)!;
++    }
+     let cursor = x;
+-    while (this.parent.get(cursor) !== undefined && this.parent.get(cursor) !== root) {
++    while (
++      this.parent.get(cursor) !== undefined &&
++      this.parent.get(cursor) !== root
++    ) {
+       const next = this.parent.get(cursor)!;
+       this.parent.set(cursor, root);
+       cursor = next;
+@@ -94,7 +102,10 @@ class UnionFind {
+     return root;
+   }
+   add(x: PortId): void {
+-    if (!this.parent.has(x)) this.parent.set(x, x);
++    if (!this.parent.has(x)) {
++      this.parent.set(x, x);
++      this.rank.set(x, 0);
++    }
+   }
+   union(a: PortId, b: PortId): void {
+     this.add(a);
+@@ -102,9 +113,23 @@ class UnionFind {
+     const ra = this.find(a);
+     const rb = this.find(b);
+     if (ra === rb) return;
+-    // Deterministic: the lexically smaller root wins.
+-    if (ra < rb) this.parent.set(rb, ra);
+-    else this.parent.set(ra, rb);
++
++    const rankA = this.rank.get(ra) ?? 0;
++    const rankB = this.rank.get(rb) ?? 0;
++    if (rankA < rankB) {
++      this.parent.set(ra, rb);
++      return;
++    }
++    if (rankB < rankA) {
++      this.parent.set(rb, ra);
++      return;
++    }
++
++    // Equal-rank ties use lexical order so compilation remains deterministic.
++    const root = ra < rb ? ra : rb;
++    const child = root === ra ? rb : ra;
++    this.parent.set(child, root);
++    this.rank.set(root, rankA + 1);
+   }
+   members(): Map<PortId, PortId[]> {
+     const out = new Map<PortId, PortId[]>();
+@@ -213,3 +238,41 @@ export function compileIdentity(declarations: readonly IdentityDeclaration[], po
+   for (const cls of classes) for (const member of cls.members) aliases.set(member, cls.id);
+   return { classes, aliases, lineage, diagnostics };
+ }
++
++/** A logical shared cell is one equivalence class in the quotient Ports / ~. */
++export type LogicalCell = IdentityClass;
++
++/** Runtime quotient view: declarations induce cells; directed bindings do not. */
++export interface IdentityQuotient {
++  readonly cells: readonly LogicalCell[];
++  readonly cellByPort: ReadonlyMap<PortId, string>;
++  readonly lineage: ReadonlyMap<string, ClassLineage>;
++  readonly diagnostics: readonly IdentityDiagnostic[];
++}
++
++export function identityQuotientOf(
++  compiled: CompiledIdentity,
++): IdentityQuotient {
++  return {
++    cells: compiled.classes,
++    cellByPort: compiled.aliases,
++    lineage: compiled.lineage,
++    diagnostics: compiled.diagnostics,
++  };
++}
++
++export function compileIdentityQuotient(
++  declarations: readonly IdentityDeclaration[],
++  ports: ReadonlyMap<PortId, PortDefinition>,
++  previous: readonly IdentityClass[] = [],
++): IdentityQuotient {
++  return identityQuotientOf(compileIdentity(declarations, ports, previous));
++}
++
++export function logicalCellOf(
++  port: PortId,
++  quotient: IdentityQuotient,
++): LogicalCell | null {
++  const id = quotient.cellByPort.get(port);
++  return id ? quotient.cells.find((cell) => cell.id === id) ?? null : null;
++}
+diff --git a/src/presentation/links/index.ts b/src/presentation/links/index.ts
+index a02474a..258a88e 100644
+--- a/src/presentation/links/index.ts
++++ b/src/presentation/links/index.ts
+@@ -7,6 +7,8 @@
+ 
+ export {
+   CONTRACT_IDENTITY_FIELDS,
++  PORT_PROTOCOL_FIELDS,
++  VALUE_CONTRACT_FIELDS,
+   DOCUMENT_VALUE_TYPE,
+   contractFingerprint,
+   contractMismatches,
+@@ -16,6 +18,8 @@ export {
+   documentSlotsOf,
+   hasDocumentSlot,
+   normalizeContract,
++  portProtocolOf,
++  valueContractOf,
+   parsePortId,
+   portId,
+   refineDeclaration,
+@@ -32,17 +36,35 @@ export type {
+   PortId,
+   PortLifetime,
+   PortMode,
++  PortProtocol,
+   SourceClosePolicy,
++  ValueContract,
+ } from "./types";
+ export { describeBinding, isBinding, isSerializableReference, linkIdOf, sameReference, sourcePortOf, terms } from "./terms";
+ export type { Binding, Diagnostic, SerializableReference } from "./terms";
++export {
++  bindingOf,
++  dependenciesOfBinding,
++  dependenciesOfProgram,
++  normalizeBinding,
++  programOf,
++  sourcePortsOfBinding,
++} from "./expression";
++export type {
++  BindingDependencies,
++  BindingExpression,
++  BindingProgram,
++  BindingSource,
++} from "./expression";
++export { checkBinding } from "./check";
++export type { BindingCheckDiagnostic, BindingCheckResult } from "./check";
+ export { LINK_VERB_KINDS, describeLinkVerb, isLinkVerb, linkVerbs } from "./verbs";
+ export type { LinkVerb, LinkVerbKind, UnlinkPolicy } from "./verbs";
+ export { EMPTY_LINK_STATE, labelOf, reaches } from "./snapshot";
+-export type { ContextDefinition, LinkDeps, LinkSnapshot, LinkState, LinkValues, PortDefinition, RelationDefinition } from "./snapshot";
+-export { checkIdentityCompatibility, compatibilityOf, compileIdentity } from "./identity";
+-export type { ClassLineage, CompiledIdentity, Compatibility, IdentityClass, IdentityDeclaration, IdentityDiagnostic, MergePolicy, SplitPolicy } from "./identity";
+-export { effectiveBinding, evaluateBinding, evaluatePort, valueToHold } from "./evaluate";
++export type { ContextDefinition, LinkDeps, LinkRelationEvaluation, LinkSnapshot, LinkState, LinkValues, PortDefinition, RelationDefinition } from "./snapshot";
++export { checkIdentityCompatibility, compatibilityOf, compileIdentity, compileIdentityQuotient, identityQuotientOf, logicalCellOf } from "./identity";
++export type { ClassLineage, CompiledIdentity, Compatibility, IdentityClass, IdentityDeclaration, IdentityDiagnostic, IdentityQuotient, LogicalCell, MergePolicy, SplitPolicy } from "./identity";
++export { effectiveBinding, effectiveProgram, evaluateBinding, evaluatePort, evaluateProgram, valueToHold } from "./evaluate";
+ export type { Evaluation } from "./evaluate";
+ export {
+   dependsOn,
+diff --git a/src/presentation/links/invariants.ts b/src/presentation/links/invariants.ts
+index 129d7e9..08a9c98 100644
+--- a/src/presentation/links/invariants.ts
++++ b/src/presentation/links/invariants.ts
+@@ -1,6 +1,7 @@
+ import { evaluatePort } from "./evaluate";
+ import type { LinkDeps, LinkSnapshot } from "./snapshot";
+-import { linkIdOf, sourcePortOf } from "./terms";
++import { dependenciesOfBinding } from "./expression";
++import { linkIdOf } from "./terms";
+ import { contractFingerprint } from "./types";
+ 
+ /*
+@@ -26,9 +27,10 @@ export function checkInvariants(s: LinkSnapshot, deps: LinkDeps): Violation[] {
+     if (definition.declaration.documentSlot && binding.kind === "constant") {
+       out.push({ code: "slot-constant", message: `${port} is a document slot; its constant belongs in view.documents` });
+     }
+-    const source = sourcePortOf(binding);
+-    if (source && !s.ports.has(source) && binding.kind !== "hold") {
+-      out.push({ code: "source-missing", message: `${port} reads ${source}, which is not a declared port` });
++    for (const source of dependenciesOfBinding(binding, { includeSuspended: false }).ports) {
++      if (!s.ports.has(source)) {
++        out.push({ code: "source-missing", message: `${port} reads ${source}, which is not a declared port` });
++      }
+     }
+     const linkId = linkIdOf(binding);
+     if (linkId) {
+diff --git a/src/presentation/links/plan.ts b/src/presentation/links/plan.ts
+index 9db8007..d4ad11f 100644
+--- a/src/presentation/links/plan.ts
++++ b/src/presentation/links/plan.ts
+@@ -1,4 +1,6 @@
+ import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
++import { checkBinding } from "./check";
++import { sourcePortsOfBinding } from "./expression";
+ import { checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
+ import { labelOf, reaches, type LinkDeps, type LinkSnapshot, type PortDefinition } from "./snapshot";
+ import { sourcePortOf, terms, type Binding, type SerializableReference } from "./terms";
+@@ -21,6 +23,18 @@ export type LinkPlan =
+ const unavailable = (because: string, code: string, alternatives?: LinkVerb[]): LinkPlan => ({ kind: "unavailable", because, code, ...(alternatives ? { alternatives } : {}) });
+ const available = (verb: LinkVerb, explanation: string): LinkPlan => ({ kind: "available", verb, explanation });
+ 
++function checkedCandidate(
++  destination: PortId,
++  binding: Binding,
++  s: LinkSnapshot,
++  deps: LinkDeps,
++): LinkPlan | null {
++  const result = checkBinding(binding, s, deps, destination);
++  return result.kind === "invalid"
++    ? unavailable(result.diagnostic.message, result.diagnostic.code)
++    : null;
++}
++
+ export function titleOfPort(definition: PortDefinition): string {
+   return `${definition.tileTitle} · ${definition.declaration.name}`;
+ }
+@@ -31,8 +45,8 @@ export function dependsOn(port: PortId, target: PortId, s: LinkSnapshot, seen: S
+   if (seen.has(port)) return false;
+   seen.add(port);
+   const binding = s.bindings.get(port);
+-  const source = binding ? sourcePortOf(binding) : null;
+-  return source ? dependsOn(source, target, s, seen) : false;
++  const sources = binding ? sourcePortsOfBinding(binding) : [];
++  return sources.some((source) => dependsOn(source, target, s, seen));
+ }
+ 
+ export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot, deps: LinkDeps): LinkPlan {
+@@ -53,6 +67,8 @@ export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot,
+     return unavailable(`${titleOfPort(S)} already reads from ${titleOfPort(D)}; that would be a cycle`, "cycle");
+   }
+   const replacing = current && sourcePortOf(current) ? ` (replacing ${current.kind === "follow" ? titleOfPort(s.ports.get(current.source) ?? S) : "its current source"})` : "";
++  const checked = checkedCandidate(destination, terms.follow(source, "__plan__"), s, deps);
++  if (checked) return checked;
+   return available(linkVerbs.follow(source, destination), `${titleOfPort(D)} will follow ${titleOfPort(S)}${replacing}`);
+ }
+ 
+@@ -67,6 +83,8 @@ export function planBind(port: PortId, reference: SerializableReference, s: Link
+   const current = s.bindings.get(port);
+   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
+   if (s.aliases.has(port)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(port)} cell; leave the class first`, "shared");
++  const checked = checkedCandidate(port, terms.constant(reference), s, deps);
++  if (checked) return checked;
+   return available(linkVerbs.bind(port, reference), `${titleOfPort(D)} will show ${labelOf(reference, deps)}`);
+ }
+ 
+@@ -81,6 +99,8 @@ export function planAmbient(port: PortId, context: string, s: LinkSnapshot, deps
+   }
+   const current = s.bindings.get(port);
+   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
++  const checked = checkedCandidate(port, terms.ambient(context), s, deps);
++  if (checked) return checked;
+   return available(linkVerbs.ambient(port, context), `${titleOfPort(D)} will read the ${context} context`);
+ }
+ 
+@@ -199,7 +219,16 @@ export function legalRelations(source: PortId, destination: PortId, s: LinkSnaps
+   const S = s.ports.get(source);
+   const D = s.ports.get(destination);
+   if (!S || !D) return [];
+-  return (deps.relations ?? []).filter((relation) => reaches(S.declaration.contract.valueType, relation.from, deps.graph) && reaches(relation.to, D.declaration.contract.valueType, deps.graph));
++  return (deps.relations ?? []).filter((relation) => {
++    const sourceMatches =
++      relation.match === "exact"
++        ? S.declaration.contract.valueType === relation.from
++        : reaches(S.declaration.contract.valueType, relation.from, deps.graph);
++    return (
++      sourceMatches &&
++      reaches(relation.to, D.declaration.contract.valueType, deps.graph)
++    );
++  });
+ }
+ 
+ /**
+@@ -228,6 +257,13 @@ export function planDerive(source: PortId, destination: PortId, relationId: stri
+     if (current?.kind === "derived" && current.relationId === relationId && sourcePortOf(current) === source) {
+       return unavailable(`${titleOfPort(D)} already derives through ${relation.label ?? relation.id} from ${titleOfPort(S)}`, "already");
+     }
++    const candidate = terms.derived(
++      terms.follow(source, "__plan-source__"),
++      relationId,
++      "__plan-derived__",
++    );
++    const checked = checkedCandidate(destination, candidate, s, deps);
++    if (checked) return checked;
+     return available({ kind: "port.derive", source, destination, relation: relationId }, `${titleOfPort(D)} will derive through ${relation.label ?? relation.id} from ${titleOfPort(S)}`);
+   }
+   if (legal.length === 1) return planDerive(source, destination, legal[0]!.id, s, deps);
+diff --git a/src/presentation/links/snapshot.ts b/src/presentation/links/snapshot.ts
+index a5db48d..dc27180 100644
+--- a/src/presentation/links/snapshot.ts
++++ b/src/presentation/links/snapshot.ts
+@@ -75,10 +75,20 @@ export interface RelationDefinition {
+   readonly id: string;
+   readonly from: RuntimeTypeId;
+   readonly to: RuntimeTypeId;
++  /** Source matching discipline. Absent preserves the legacy subtype-reach behavior. */
++  readonly match?: "exact" | "subtypes";
+   /** One line for the palette and the wire label; defaults to the id. */
+   readonly label?: string;
+ }
+ 
++export type LinkRelationEvaluation =
++  | { readonly kind: "value"; readonly reference: SerializableReference }
++  | { readonly kind: "empty" }
++  | {
++      readonly kind: "error";
++      readonly diagnostic: { readonly code: string; readonly message: string };
++    };
++
+ export interface LinkDeps {
+   readonly graph: PresentationTypeGraph;
+   /** The relations a `Derived` term may name (Phase 6). Absent ⇒ no derivations are offered. */
+@@ -88,6 +98,12 @@ export interface LinkDeps {
+    * Absent ⇒ every `Derived` term evaluates to a diagnostic.
+    */
+   relation?(relationId: string, reference: SerializableReference, snapshot: LinkSnapshot): SerializableReference | undefined;
++  /** Detailed canonical evaluator; preferred over the compatibility callback. */
++  relationEvaluation?(
++    relationId: string,
++    reference: SerializableReference,
++    snapshot: LinkSnapshot,
++  ): LinkRelationEvaluation;
+   /** How a value is named in a badge or menu row; defaults to `<type>`. */
+   label?(reference: SerializableReference): string;
+ }
+diff --git a/src/presentation/links/types.ts b/src/presentation/links/types.ts
+index 514e87d..4c1a6a6 100644
+--- a/src/presentation/links/types.ts
++++ b/src/presentation/links/types.ts
+@@ -27,21 +27,28 @@ export type FanInPolicy = "single-producer" | "active-source" | "last-event";
+ /** What a follower does when its source view closes (report §11.3). Default `freeze`. */
+ export type SourceClosePolicy = "freeze" | "clear" | "ambient" | "reroute" | "prompt";
+ 
+-/** The seven identity fields, normalized. Compared field by field by `contractMismatches`. */
+-export interface PortContract {
++/** The value carried by a port, independent of its communication protocol. */
++export interface ValueContract {
+   /** A runtime type id in the product's presentation type graph; compared nominally. */
+   readonly valueType: RuntimeTypeId;
+-  /** The semantic role, e.g. `order.current`, `selection`, `subject`. Defaults to the value type. */
++  /** The semantic role, e.g. `order.current`, `selection`, `subject`. */
+   readonly semanticRole: string;
+   readonly cardinality: PortCardinality;
++}
++
++/** Authority, update and lifetime semantics of the communication endpoint. */
++export interface PortProtocol {
+   readonly mode: PortMode;
+-  /** Who is allowed to write the cell; a table name, a relation id, or `workspace`. */
++  /** Who is allowed to write the cell; a table name, relation id, or `workspace`. */
+   readonly authorityDomain: string;
+   /** `replace` (the default) or a product-named algebra such as `union`. */
+   readonly updateAlgebra: "replace" | (string & {});
+   readonly lifetime: PortLifetime;
+ }
+ 
++/** Normalized contract = value contract x endpoint protocol. */
++export interface PortContract extends ValueContract, PortProtocol {}
++
+ /** What an application writes: only `valueType` is required. */
+ export interface PortContractInput {
+   readonly valueType: RuntimeTypeId;
+@@ -150,17 +157,44 @@ export function normalizeContract(input: PortContractInput | RuntimeTypeId, dire
+   };
+ }
+ 
+-/** The identity fields in the fixed order P06 hashes them; the fingerprint is their join. */
+-export const CONTRACT_IDENTITY_FIELDS: readonly (keyof PortContract)[] = [
++/** Fields relevant to value compatibility. */
++export const VALUE_CONTRACT_FIELDS: readonly (keyof ValueContract)[] = [
+   "valueType",
+   "semanticRole",
+   "cardinality",
++];
++
++/** Fields relevant to endpoint protocol compatibility. */
++export const PORT_PROTOCOL_FIELDS: readonly (keyof PortProtocol)[] = [
+   "mode",
+   "authorityDomain",
+   "updateAlgebra",
+   "lifetime",
+ ];
+ 
++/** The identity fields in the fixed order P06 hashes them. */
++export const CONTRACT_IDENTITY_FIELDS: readonly (keyof PortContract)[] = [
++  ...VALUE_CONTRACT_FIELDS,
++  ...PORT_PROTOCOL_FIELDS,
++];
++
++export function valueContractOf(contract: PortContract): ValueContract {
++  return {
++    valueType: contract.valueType,
++    semanticRole: contract.semanticRole,
++    cardinality: contract.cardinality,
++  };
++}
++
++export function portProtocolOf(contract: PortContract): PortProtocol {
++  return {
++    mode: contract.mode,
++    authorityDomain: contract.authorityDomain,
++    updateAlgebra: contract.updateAlgebra,
++    lifetime: contract.lifetime,
++  };
++}
++
+ /** A stable string two contracts share exactly when they are identity-compatible. */
+ export function contractFingerprint(contract: PortContract): string {
+   return CONTRACT_IDENTITY_FIELDS.map((field) => `${field}=${String(contract[field])}`).join("|");
+diff --git a/src/presentation/relations/adapters.ts b/src/presentation/relations/adapters.ts
+new file mode 100644
+index 0000000..2536a72
+--- /dev/null
++++ b/src/presentation/relations/adapters.ts
+@@ -0,0 +1,24 @@
++import type { PresentationValues } from "../types";
++import type { PresentationTranslator } from "../translators/types";
++import type { PresentationRelation } from "./types";
++
++/** Compatibility adapter for the pre-kernel translator declaration. */
++export function relationFromTranslator<
++  Values extends PresentationValues,
++  ProductFacts,
++>(
++  translator: PresentationTranslator<Values, ProductFacts>,
++): PresentationRelation<Values, ProductFacts> {
++  return {
++    id: translator.id,
++    from: translator.from,
++    to: translator.to,
++    match: translator.match,
++    ...(translator.scopes ? { scopes: translator.scopes } : {}),
++    ...(translator.when ? { when: translator.when } : {}),
++    ...(translator.priority !== undefined
++      ? { priority: translator.priority }
++      : {}),
++    apply: translator.translate,
++  };
++}
+diff --git a/src/presentation/relations/define.ts b/src/presentation/relations/define.ts
+new file mode 100644
+index 0000000..ed0c3bd
+--- /dev/null
++++ b/src/presentation/relations/define.ts
+@@ -0,0 +1,24 @@
++import type { PresentationValues } from "../types";
++import type {
++  ComposedPresentationRelation,
++  PresentationRelation,
++} from "./types";
++
++/** Pre-typed factories. Composition is explicit and therefore bounded. */
++export function defineRelations<
++  Values extends PresentationValues,
++  ProductFacts,
++>() {
++  return {
++    direct(
++      relation: PresentationRelation<Values, ProductFacts>,
++    ): PresentationRelation<Values, ProductFacts> {
++      return relation;
++    },
++    compose(
++      relation: ComposedPresentationRelation,
++    ): ComposedPresentationRelation {
++      return relation;
++    },
++  };
++}
+diff --git a/src/presentation/relations/index.ts b/src/presentation/relations/index.ts
+new file mode 100644
+index 0000000..5911258
+--- /dev/null
++++ b/src/presentation/relations/index.ts
+@@ -0,0 +1,19 @@
++export { relationFromTranslator } from "./adapters";
++export { defineRelations } from "./define";
++export { createRelationSystem } from "./system";
++export type {
++  CreateRelationSystemOptions,
++  RelationSystem,
++} from "./system";
++export type {
++  ApplicableRelation,
++  ComposedPresentationRelation,
++  PreparedPresentationRelation,
++  PresentationRelation,
++  PresentationRelationDeclaration,
++  PresentationRelationDefinition,
++  RelationDeclarationBase,
++  RelationEvaluation,
++  RelationId,
++  RelationMatch,
++} from "./types";
+diff --git a/src/presentation/relations/system.test.ts b/src/presentation/relations/system.test.ts
+new file mode 100644
+index 0000000..2ad1da4
+--- /dev/null
++++ b/src/presentation/relations/system.test.ts
+@@ -0,0 +1,217 @@
++import { describe, expect, it } from "vitest";
++import { available } from "../actions/availability";
++import { predicate } from "../actions/conditions";
++import { createPresentationTypeGraph } from "../actions/typeGraph";
++import type { SelectionSnapshot } from "../actions/types";
++import { createRelationSystem } from "./system";
++
++interface Values {
++  order: { customerId: string };
++  customer: { id: string; accountId: string };
++  account: { id: string };
++  text: string;
++}
++interface Facts {
++  readonly customers: Readonly<Record<string, Values["customer"]>>;
++}
++
++const graph = createPresentationTypeGraph([
++  { id: "order" },
++  { id: "customer" },
++  { id: "account" },
++  { id: "text" },
++]);
++
++const snapshot: SelectionSnapshot<Facts> = {
++  revision: 1,
++  scopes: ["shop", "global"],
++  modes: new Set(),
++  capabilities: new Set(),
++  product: {
++    customers: { c1: { id: "c1", accountId: "a1" } },
++  },
++};
++
++const declarations = [
++  {
++    id: "order.customer",
++    from: "order",
++    to: "customer",
++    match: "exact" as const,
++    apply(reference: { type: keyof Values; value: unknown }, current: SelectionSnapshot<Facts>) {
++      if (reference.type !== "order") return undefined;
++      const order = reference.value as Values["order"];
++      const customer = current.product.customers[order.customerId];
++      return customer ? ({ type: "customer", value: customer } as const) : undefined;
++    },
++  },
++  {
++    id: "customer.account",
++    from: "customer",
++    to: "account",
++    match: "exact" as const,
++    apply(reference: { type: keyof Values; value: unknown }) {
++      if (reference.type !== "customer") return undefined;
++      const customer = reference.value as Values["customer"];
++      return { type: "account", value: { id: customer.accountId } } as const;
++    },
++  },
++  {
++    kind: "composition" as const,
++    id: "order.account",
++    steps: ["order.customer", "customer.account"],
++    label: "the order's account",
++  },
++];
++
++describe("RelationSystem", () => {
++  it("evaluates direct and explicitly composed contextual partial functions", () => {
++    const system = createRelationSystem<Values, Facts>({
++      graph,
++      scopes: ["shop", "global"],
++      relations: declarations,
++    });
++    const order = { type: "order", value: { customerId: "c1" } } as const;
++    expect(system.apply("order.customer", order, snapshot)).toEqual({
++      type: "customer",
++      value: { id: "c1", accountId: "a1" },
++    });
++    expect(system.apply("order.account", order, snapshot)).toEqual({
++      type: "account",
++      value: { id: "a1" },
++    });
++    expect(system.get("order.account")).toMatchObject({
++      kind: "composition",
++      from: "order",
++      to: "account",
++      steps: ["order.customer", "customer.account"],
++    });
++  });
++
++
++  it("treats an unscoped relation as universal even in a hand-built empty scope snapshot", () => {
++    const system = createRelationSystem<Values, Facts>({
++      graph,
++      scopes: ["shop", "global"],
++      relations: declarations.slice(0, 1),
++    });
++    const emptyScopes = { ...snapshot, scopes: [] };
++    const order = { type: "order", value: { customerId: "c1" } } as const;
++    expect(system.apply("order.customer", order, emptyScopes)).toEqual({
++      type: "customer",
++      value: { id: "c1", accountId: "a1" },
++    });
++  });
++
++  it("does not infer undeclared paths", () => {
++    const directOnly = createRelationSystem<Values, Facts>({
++      graph,
++      scopes: ["shop", "global"],
++      relations: declarations.slice(0, 2),
++    });
++    const order = { type: "order", value: { customerId: "c1" } } as const;
++    expect(directOnly.matches(order, snapshot, ["account"])).toEqual([]);
++  });
++
++  it("evaluates selector predicates once per match query", () => {
++    let predicateCalls = 0;
++    let relationCalls = 0;
++    const system = createRelationSystem<Values, Facts>({
++      graph,
++      scopes: ["shop"],
++      predicates: [
++        {
++          id: "counted",
++          evaluate: () => {
++            predicateCalls += 1;
++            return available();
++          },
++        },
++      ],
++      relations: [
++        {
++          id: "order.customer.counted",
++          from: "order",
++          to: "customer",
++          match: "exact",
++          when: predicate("counted"),
++          apply(reference, current) {
++            relationCalls += 1;
++            if (reference.type !== "order") return undefined;
++            const customer =
++              current.product.customers[reference.value.customerId];
++            return customer
++              ? ({ type: "customer", value: customer } as const)
++              : undefined;
++          },
++        },
++      ],
++    });
++    const order = { type: "order", value: { customerId: "c1" } } as const;
++    expect(system.matches(order, snapshot, ["customer"])).toHaveLength(1);
++    expect(predicateCalls).toBe(1);
++    expect(relationCalls).toBe(1);
++  });
++
++  it("gives extensionally equal results for equivalent explicit compositions", () => {
++    const system = createRelationSystem<Values, Facts>({
++      graph,
++      scopes: ["shop", "global"],
++      relations: [
++        ...declarations.slice(0, 2),
++        {
++          kind: "composition",
++          id: "order.account.left",
++          steps: ["order.customer", "customer.account"],
++        },
++        {
++          kind: "composition",
++          id: "order.customer.named",
++          steps: ["order.customer"],
++        },
++        {
++          kind: "composition",
++          id: "order.account.right",
++          steps: ["order.customer.named", "customer.account"],
++        },
++      ],
++    });
++    const order = { type: "order", value: { customerId: "c1" } } as const;
++    expect(system.apply("order.account.left", order, snapshot)).toEqual(
++      system.apply("order.account.right", order, snapshot),
++    );
++  });
++
++  it("rejects broken compositions and invalid result types at the boundary", () => {
++    expect(() =>
++      createRelationSystem<Values, Facts>({
++        graph,
++        scopes: ["shop"],
++        relations: [
++          ...declarations.slice(0, 2),
++          { kind: "composition", id: "bad", steps: ["customer.account", "order.customer"] },
++        ],
++      }),
++    ).toThrow(/cannot connect/);
++
++    const invalid = createRelationSystem<Values, Facts>({
++      graph,
++      scopes: ["shop"],
++      relations: [
++        {
++          id: "lying",
++          from: "order",
++          to: "account",
++          match: "exact",
++          apply: () => ({ type: "text", value: "not an account" }),
++        },
++      ],
++    });
++    const result = invalid.evaluate(
++      "lying",
++      { type: "order", value: { customerId: "c1" } },
++      snapshot,
++    );
++    expect(result).toMatchObject({ kind: "error", code: "invalid-result-type" });
++  });
++});
+diff --git a/src/presentation/relations/system.ts b/src/presentation/relations/system.ts
+new file mode 100644
+index 0000000..36cbf53
+--- /dev/null
++++ b/src/presentation/relations/system.ts
+@@ -0,0 +1,429 @@
++import type { RuntimeTypeId, ScopeId } from "../actions/ids";
++import type { PresentationTypeGraph } from "../actions/typeGraph";
++import type { SelectionSnapshot } from "../actions/types";
++import type { ContextMatch } from "../context/types";
++import { matchSelector } from "../context/match";
++import {
++  createPredicateRegistry,
++  validateConditionPredicates,
++  type PredicateRegistry,
++} from "../context/predicates";
++import type { PredicateDefinition } from "../actions/conditions";
++import type { PresentationReference, PresentationValues } from "../types";
++import type {
++  ApplicableRelation,
++  ComposedPresentationRelation,
++  PreparedPresentationRelation,
++  PresentationRelationDeclaration,
++  PresentationRelationDefinition,
++  RelationEvaluation,
++  RelationId,
++  RelationMatch,
++} from "./types";
++
++export interface CreateRelationSystemOptions<
++  Values extends PresentationValues,
++  ProductFacts,
++> {
++  readonly graph: PresentationTypeGraph;
++  readonly scopes: readonly ScopeId[];
++  readonly predicates?: readonly PredicateDefinition<Values, ProductFacts>[];
++  readonly predicateRegistry?: PredicateRegistry<Values, ProductFacts>;
++  readonly relations: readonly PresentationRelationDeclaration<Values, ProductFacts>[];
++  readonly version?: string | number;
++  /** A kernel relation must declare a concrete result type. */
++  readonly requireConcreteTargets?: boolean;
++}
++
++export interface RelationSystem<
++  Values extends PresentationValues,
++  ProductFacts,
++> {
++  readonly graph: PresentationTypeGraph;
++  readonly scopes: readonly ScopeId[];
++  readonly predicates: PredicateRegistry<Values, ProductFacts>;
++  readonly version: string | number;
++  has(id: RelationId): boolean;
++  get(id: RelationId): PreparedPresentationRelation<Values, ProductFacts> | null;
++  list(): readonly PreparedPresentationRelation<Values, ProductFacts>[];
++  definitions(): readonly PresentationRelationDefinition[];
++  applicable(
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++    targets?: readonly RuntimeTypeId[],
++  ): readonly ApplicableRelation<Values, ProductFacts>[];
++  matches(
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++    targets?: readonly RuntimeTypeId[],
++  ): readonly RelationMatch<Values, ProductFacts>[];
++  evaluate(
++    id: RelationId,
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++  ): RelationEvaluation<Values>;
++  apply(
++    id: RelationId,
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++  ): PresentationReference<Values> | undefined;
++}
++
++function reaches(
++  from: RuntimeTypeId,
++  to: RuntimeTypeId,
++  graph: PresentationTypeGraph,
++): boolean {
++  return from === to || graph.isSubtype(from, to);
++}
++
++/** Build and validate the canonical typed relation registry. */
++export function createRelationSystem<
++  Values extends PresentationValues,
++  ProductFacts,
++>(
++  options: CreateRelationSystemOptions<Values, ProductFacts>,
++): RelationSystem<Values, ProductFacts> {
++  if (options.predicates && options.predicateRegistry) {
++    throw new Error("createRelationSystem accepts predicates or predicateRegistry, not both");
++  }
++  const predicates =
++    options.predicateRegistry ?? createPredicateRegistry(options.predicates);
++  const scopes = [...options.scopes];
++  const declaredScopes = new Set(scopes);
++  const version = options.version ?? 1;
++  const declarations = new Map<
++    RelationId,
++    PresentationRelationDeclaration<Values, ProductFacts>
++  >();
++
++  for (const declaration of options.relations) {
++    if (declaration.id.length === 0) throw new Error("a relation has an empty id");
++    if (declarations.has(declaration.id)) {
++      throw new Error(`duplicate relation id "${declaration.id}"`);
++    }
++    if (
++      declaration.priority !== undefined &&
++      !Number.isFinite(declaration.priority)
++    ) {
++      throw new Error(`relation "${declaration.id}" has a non-finite priority`);
++    }
++    for (const scope of declaration.scopes ?? []) {
++      if (!declaredScopes.has(scope)) {
++        throw new Error(
++          `relation "${declaration.id}" names unknown scope "${scope}"`,
++        );
++      }
++    }
++    validateConditionPredicates(
++      `relation "${declaration.id}"`,
++      declaration.when,
++      predicates,
++    );
++    if (declaration.kind !== "composition") {
++      if (!options.graph.has(declaration.from)) {
++        throw new Error(
++          `relation "${declaration.id}" names unknown source type "${declaration.from}"`,
++        );
++      }
++      if (!options.graph.has(declaration.to)) {
++        throw new Error(
++          `relation "${declaration.id}" names unknown target type "${declaration.to}"`,
++        );
++      }
++      if (
++        options.requireConcreteTargets &&
++        options.graph.isAbstract(declaration.to)
++      ) {
++        throw new Error(
++          `relation "${declaration.id}" targets abstract type "${declaration.to}"`,
++        );
++      }
++    } else if (declaration.steps.length === 0) {
++      throw new Error(
++        `composed relation "${declaration.id}" declares no steps`,
++      );
++    }
++    declarations.set(declaration.id, declaration);
++  }
++
++  const prepared = new Map<
++    RelationId,
++    PreparedPresentationRelation<Values, ProductFacts>
++  >();
++  const state = new Map<RelationId, "visiting" | "done">();
++
++  function prepare(
++    id: RelationId,
++    path: readonly RelationId[],
++  ): PreparedPresentationRelation<Values, ProductFacts> {
++    const cached = prepared.get(id);
++    if (cached) return cached;
++    const declaration = declarations.get(id);
++    if (!declaration) {
++      throw new Error(`composition names unknown relation "${id}"`);
++    }
++    if (state.get(id) === "visiting") {
++      throw new Error(
++        `relation composition cycle: ${[...path, id].join(" -> ")}`,
++      );
++    }
++    state.set(id, "visiting");
++
++    let relation: PreparedPresentationRelation<Values, ProductFacts>;
++    if (declaration.kind !== "composition") {
++      relation = {
++        ...declaration,
++        kind: "direct",
++        steps: [],
++        scopes: declaration.scopes ?? [],
++        priority: declaration.priority ?? 0,
++      };
++    } else {
++      const composition: ComposedPresentationRelation = declaration;
++      const steps = composition.steps.map((step) =>
++        prepare(step, [...path, id]),
++      );
++      for (let index = 1; index < steps.length; index += 1) {
++        const previous = steps[index - 1] as PreparedPresentationRelation<
++          Values,
++          ProductFacts
++        >;
++        const next = steps[index] as PreparedPresentationRelation<
++          Values,
++          ProductFacts
++        >;
++        const compatible =
++          next.match === "exact"
++            ? previous.to === next.from
++            : reaches(previous.to, next.from, options.graph);
++        if (!compatible) {
++          throw new Error(
++            `composed relation "${id}" cannot connect "${previous.id}" ` +
++              `(<${previous.to}>) to "${next.id}" (<${next.from}>)`,
++          );
++        }
++      }
++      const first = steps[0] as PreparedPresentationRelation<
++        Values,
++        ProductFacts
++      >;
++      const last = steps[steps.length - 1] as PreparedPresentationRelation<
++        Values,
++        ProductFacts
++      >;
++      if (
++        options.requireConcreteTargets &&
++        options.graph.isAbstract(last.to)
++      ) {
++        throw new Error(`relation "${id}" ends at abstract type "${last.to}"`);
++      }
++      relation = {
++        ...composition,
++        kind: "composition",
++        from: first.from,
++        to: last.to,
++        match: first.match,
++        steps: [...composition.steps],
++        scopes: composition.scopes ?? [],
++        priority: composition.priority ?? 0,
++        apply(reference, snapshot) {
++          let current: PresentationReference<Values> | undefined = reference;
++          for (const step of steps) {
++            if (!current) return undefined;
++            const applicability = matchSelector(
++              {
++                subject: step.from,
++                match: step.match,
++                scopes: step.scopes,
++                ...(step.when ? { when: step.when } : {}),
++                priority: step.priority,
++              },
++              current,
++              snapshot,
++              options.graph,
++              predicates,
++            );
++            if (applicability.kind !== "matched") return undefined;
++            current = step.apply(current, snapshot);
++            if (current && !reaches(current.type, step.to, options.graph)) {
++              return undefined;
++            }
++          }
++          return current;
++        },
++      };
++    }
++
++    prepared.set(id, relation);
++    state.set(id, "done");
++    return relation;
++  }
++
++  for (const id of declarations.keys()) prepare(id, []);
++  const ordered = options.relations.map(
++    ({ id }) =>
++      prepared.get(id) as PreparedPresentationRelation<Values, ProductFacts>,
++  );
++
++  function applicabilityOf(
++    relation: PreparedPresentationRelation<Values, ProductFacts>,
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++  ) {
++    return matchSelector(
++      {
++        subject: relation.from,
++        match: relation.match,
++        scopes: relation.scopes,
++        ...(relation.when ? { when: relation.when } : {}),
++        priority: relation.priority,
++      },
++      reference,
++      snapshot,
++      options.graph,
++      predicates,
++    );
++  }
++
++  function targetMatches(
++    relation: PreparedPresentationRelation<Values, ProductFacts>,
++    targets: readonly RuntimeTypeId[] | undefined,
++  ): boolean {
++    return (
++      !targets ||
++      targets.length === 0 ||
++      targets.some((target) => reaches(relation.to, target, options.graph))
++    );
++  }
++
++  function applicable(
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++    targets?: readonly RuntimeTypeId[],
++  ): readonly ApplicableRelation<Values, ProductFacts>[] {
++    const found: ApplicableRelation<Values, ProductFacts>[] = [];
++    for (const relation of ordered) {
++      if (!targetMatches(relation, targets)) continue;
++      const result = applicabilityOf(relation, reference, snapshot);
++      if (result.kind === "matched") {
++        found.push({ relation, match: result.match });
++      }
++    }
++    return found;
++  }
++
++  function execute(
++    relation: PreparedPresentationRelation<Values, ProductFacts>,
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++    match: ContextMatch,
++  ): RelationEvaluation<Values> {
++    let output: PresentationReference<Values> | undefined;
++    try {
++      output = relation.apply(reference, snapshot);
++    } catch (cause) {
++      return {
++        kind: "error",
++        relationId: relation.id,
++        code: "relation-threw",
++        because: `relation "${relation.id}" threw while evaluating`,
++        cause,
++      };
++    }
++    if (!output) {
++      return { kind: "empty", relationId: relation.id, match };
++    }
++    if (
++      !options.graph.has(output.type) ||
++      !reaches(output.type, relation.to, options.graph)
++    ) {
++      return {
++        kind: "error",
++        relationId: relation.id,
++        code: "invalid-result-type",
++        because:
++          `relation "${relation.id}" declares <${relation.to}> but produced ` +
++          `<${String(output.type)}>`,
++      };
++    }
++    return {
++      kind: "value",
++      relationId: relation.id,
++      reference: output,
++      match,
++    };
++  }
++
++  function evaluate(
++    id: RelationId,
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++  ): RelationEvaluation<Values> {
++    const relation = prepared.get(id);
++    if (!relation) {
++      return {
++        kind: "unavailable",
++        relationId: id,
++        code: "relation-missing",
++        because: `no relation called ${id}`,
++      };
++    }
++    const applicability = applicabilityOf(relation, reference, snapshot);
++    if (applicability.kind !== "matched") {
++      return {
++        kind: "unavailable",
++        relationId: id,
++        code: applicability.stage,
++        because: applicability.reason,
++      };
++    }
++    return execute(relation, reference, snapshot, applicability.match);
++  }
++
++  return {
++    graph: options.graph,
++    scopes,
++    predicates,
++    version,
++    has: (id) => prepared.has(id),
++    get: (id) => prepared.get(id) ?? null,
++    list: () => ordered,
++    definitions: () =>
++      ordered.map((relation) => ({
++        id: relation.id,
++        kind: relation.kind,
++        from: relation.from,
++        to: relation.to,
++        match: relation.match,
++        steps: [...relation.steps],
++        scopes: [...(relation.scopes ?? [])],
++        priority: relation.priority,
++        ...(relation.label !== undefined ? { label: relation.label } : {}),
++        ...(relation.description !== undefined
++          ? { description: relation.description }
++          : {}),
++      })),
++    applicable,
++    matches(reference, snapshot, targets) {
++      const found: RelationMatch<Values, ProductFacts>[] = [];
++      for (const candidate of applicable(reference, snapshot, targets)) {
++        const result = execute(
++          candidate.relation,
++          reference,
++          snapshot,
++          candidate.match,
++        );
++        if (result.kind === "value") {
++          found.push({ ...candidate, result: result.reference });
++        }
++      }
++      return found;
++    },
++    evaluate,
++    apply(id, reference, snapshot) {
++      const result = evaluate(id, reference, snapshot);
++      return result.kind === "value" ? result.reference : undefined;
++    },
++  };
++}
+diff --git a/src/presentation/relations/types.ts b/src/presentation/relations/types.ts
+new file mode 100644
+index 0000000..c4a725b
+--- /dev/null
++++ b/src/presentation/relations/types.ts
+@@ -0,0 +1,119 @@
++import type { Condition } from "../actions/conditions";
++import type { RuntimeTypeId, ScopeId } from "../actions/ids";
++import type { SelectionSnapshot } from "../actions/types";
++import type { ContextMatch } from "../context/types";
++import type { PresentationReference, PresentationValues } from "../types";
++
++/** Stable identity for a semantic arrow in the presentation system. */
++export type RelationId = string;
++
++export interface RelationDeclarationBase {
++  readonly id: RelationId;
++  readonly label?: string;
++  readonly description?: string;
++  /** Empty or absent means that the relation is applicable in every active scope. */
++  readonly scopes?: readonly ScopeId[];
++  readonly when?: Condition;
++  readonly priority?: number;
++}
++
++/** A directly implemented contextual partial function A ⇀ B. */
++export interface PresentationRelation<
++  Values extends PresentationValues,
++  ProductFacts,
++> extends RelationDeclarationBase {
++  readonly kind?: "direct";
++  readonly from: RuntimeTypeId;
++  readonly to: RuntimeTypeId;
++  readonly match: "exact" | "subtypes";
++  apply(
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++  ): PresentationReference<Values> | undefined;
++}
++
++/**
++ * An explicitly authorized composition. No implicit path search is performed:
++ * only the named finite sequence exists as a public relation.
++ */
++export interface ComposedPresentationRelation extends RelationDeclarationBase {
++  readonly kind: "composition";
++  readonly steps: readonly RelationId[];
++}
++
++export type PresentationRelationDeclaration<
++  Values extends PresentationValues,
++  ProductFacts,
++> = PresentationRelation<Values, ProductFacts> | ComposedPresentationRelation;
++
++/** Validated executable relation, including endpoints inferred for compositions. */
++export interface PreparedPresentationRelation<
++  Values extends PresentationValues,
++  ProductFacts,
++> extends Omit<RelationDeclarationBase, "scopes" | "priority"> {
++  readonly scopes: readonly ScopeId[];
++  readonly priority: number;
++  readonly kind: "direct" | "composition";
++  readonly from: RuntimeTypeId;
++  readonly to: RuntimeTypeId;
++  readonly match: "exact" | "subtypes";
++  readonly steps: readonly RelationId[];
++  apply(
++    reference: PresentationReference<Values>,
++    snapshot: SelectionSnapshot<ProductFacts>,
++  ): PresentationReference<Values> | undefined;
++}
++
++export interface PresentationRelationDefinition {
++  readonly id: RelationId;
++  readonly kind: "direct" | "composition";
++  readonly from: RuntimeTypeId;
++  readonly to: RuntimeTypeId;
++  readonly match: "exact" | "subtypes";
++  readonly steps: readonly RelationId[];
++  readonly scopes: readonly ScopeId[];
++  readonly priority: number;
++  readonly label?: string;
++  readonly description?: string;
++}
++
++export interface ApplicableRelation<
++  Values extends PresentationValues,
++  ProductFacts,
++> {
++  readonly relation: PreparedPresentationRelation<Values, ProductFacts>;
++  readonly match: ContextMatch;
++}
++
++export interface RelationMatch<
++  Values extends PresentationValues,
++  ProductFacts,
++> extends ApplicableRelation<Values, ProductFacts> {
++  readonly result: PresentationReference<Values>;
++}
++
++export type RelationEvaluation<Values extends PresentationValues> =
++  | {
++      readonly kind: "value";
++      readonly relationId: RelationId;
++      readonly reference: PresentationReference<Values>;
++      readonly match: ContextMatch;
++    }
++  | {
++      readonly kind: "empty";
++      readonly relationId: RelationId;
++      readonly match: ContextMatch;
++    }
++  | {
++      readonly kind: "unavailable";
++      readonly relationId: RelationId;
++      readonly code: string;
++      readonly because: string;
++    }
++  | {
++      readonly kind: "error";
++      readonly relationId: RelationId;
++      readonly code: "relation-threw" | "invalid-result-type";
++      readonly because: string;
++      readonly cause?: unknown;
++    };
+diff --git a/src/presentation/translators/resolve.ts b/src/presentation/translators/resolve.ts
+index 49f4a30..1b9c366 100644
+--- a/src/presentation/translators/resolve.ts
++++ b/src/presentation/translators/resolve.ts
+@@ -1,61 +1,135 @@
+ import { evaluateCondition } from "../actions/conditions";
+ import type { ProductPredicate } from "../actions/conditions";
+-import type { PredicateId } from "../actions/ids";
++import type { PredicateId, RuntimeTypeId } from "../actions/ids";
+ import type { PresentationTypeGraph } from "../actions/typeGraph";
+ import type { SelectionSnapshot } from "../actions/types";
+-import type { AcceptRequest, PresentationReference, PresentationValues } from "../types";
++import type { RelationSystem } from "../relations/system";
++import type {
++  AcceptRequest,
++  PresentationReference,
++  PresentationValues,
++} from "../types";
+ import type {
+   AcceptanceOption,
+   AcceptanceResolution,
+   PresentationTranslator,
+ } from "./types";
+ 
++export interface TranslatorAcceptanceOptions<
++  Values extends PresentationValues,
++  ProductFacts,
++> {
++  readonly graph: PresentationTypeGraph;
++  readonly translators: readonly PresentationTranslator<Values, ProductFacts>[];
++  readonly predicates: ReadonlyMap<
++    PredicateId,
++    ProductPredicate<Values, ProductFacts>
++  >;
++}
++
++export interface RelationAcceptanceOptions<
++  Values extends PresentationValues,
++  ProductFacts,
++> {
++  readonly relations: RelationSystem<Values, ProductFacts>;
++}
++
++export type AcceptanceResolverOptions<
++  Values extends PresentationValues,
++  ProductFacts,
++> =
++  | TranslatorAcceptanceOptions<Values, ProductFacts>
++  | RelationAcceptanceOptions<Values, ProductFacts>;
++
++interface RankedOption<Values extends PresentationValues>
++  extends AcceptanceOption<Values> {
++  readonly scopeIndex: number;
++  readonly priority: number;
++}
++
++function finish<Values extends PresentationValues>(
++  candidates: readonly RankedOption<Values>[],
++): AcceptanceResolution<Values> {
++  if (candidates.length === 0) return { kind: "none" };
++  let pool = [...candidates];
++  if (pool.length > 1) {
++    const nearest = Math.min(...pool.map((candidate) => candidate.scopeIndex));
++    pool = pool.filter((candidate) => candidate.scopeIndex === nearest);
++  }
++  if (pool.length > 1) {
++    const highest = Math.max(...pool.map((candidate) => candidate.priority));
++    pool = pool.filter((candidate) => candidate.priority === highest);
++  }
++  if (pool.length === 1) {
++    const single = pool[0] as RankedOption<Values>;
++    return {
++      kind: "accepted",
++      option: { translator: single.translator, result: single.result },
++    };
++  }
++  return {
++    kind: "ambiguous",
++    options: pool
++      .sort((a, b) => String(a.translator).localeCompare(String(b.translator)))
++      .map(({ translator, result }) => ({ translator, result })),
++  };
++}
++
+ /**
+- * One resolver for highlighting AND clicking (source guide §19.4): the accept
+- * banner's `data-state="acceptable"` marking and the click that settles the
+- * request must agree, so both call this function. A simplified highlight
+- * check that ignored translator conditions or ambiguity would advertise
+- * clicks that then do nothing.
+- *
+- * Sequence (§19.2): direct satisfaction first — the concrete type is an
+- * accepted target or a graph subtype of one, and the ORIGINAL reference
+- * settles the request; then direct translator edges (source, scope,
+- * condition); then the request's filter over each candidate result; then
+- * zero/one/many → none / accepted / explicit chooser. Ties inside "many" are
+- * first reduced by nearest scope, then priority — the same ladder actions
+- * use — and only genuine remainders reach the chooser.
++ * Resolve acceptance through direct subtyping first, then canonical typed
++ * relations. The graph + translator tuple remains as a migration facade.
+  */
+-export function resolveAcceptance<Values extends PresentationValues, ProductFacts>(
+-  options: {
+-    graph: PresentationTypeGraph;
+-    translators: readonly PresentationTranslator<Values, ProductFacts>[];
+-    predicates: ReadonlyMap<PredicateId, ProductPredicate<Values, ProductFacts>>;
+-  },
++export function resolveAcceptance<
++  Values extends PresentationValues,
++  ProductFacts,
++>(
++  options: AcceptanceResolverOptions<Values, ProductFacts>,
+   request: AcceptRequest<Values>,
+   reference: PresentationReference<Values>,
+   snapshot: SelectionSnapshot<ProductFacts>,
+ ): AcceptanceResolution<Values> {
+-  const wanted = Array.isArray(request.types) ? request.types : [request.types];
++  const graph = "relations" in options ? options.relations.graph : options.graph;
++  const wanted = (Array.isArray(request.types)
++    ? request.types
++    : [request.types]) as readonly RuntimeTypeId[];
++  const reachesWanted = (type: RuntimeTypeId) =>
++    wanted.some((target) => type === target || graph.isSubtype(type, target));
+   const passes = (candidate: PresentationReference<Values>) =>
+     !request.filter || request.filter(candidate);
+ 
+-  // Direct: identity or subtype substitution, original reference preserved.
+-  for (const target of wanted) {
+-    if (reference.type === target || options.graph.isSubtype(reference.type, target)) {
+-      return passes(reference)
+-        ? { kind: "accepted", option: { translator: null, result: reference } }
+-        : { kind: "none" };
++  // Subtyping is substitutability, never conversion: preserve the reference.
++  if (reachesWanted(reference.type)) {
++    return passes(reference)
++      ? { kind: "accepted", option: { translator: null, result: reference } }
++      : { kind: "none" };
++  }
++
++  const candidates: RankedOption<Values>[] = [];
++  if ("relations" in options) {
++    for (const candidate of options.relations.matches(
++      reference,
++      snapshot,
++      wanted,
++    )) {
++      if (!reachesWanted(candidate.result.type) || !passes(candidate.result)) {
++        continue;
++      }
++      candidates.push({
++        translator: candidate.relation.id,
++        result: candidate.result,
++        scopeIndex: candidate.match.scopeIndex,
++        priority: candidate.match.priority,
++      });
+     }
++    return finish(candidates);
+   }
+ 
+-  const candidates: Array<AcceptanceOption<Values> & { scopeIndex: number; priority: number }> =
+-    [];
+   for (const translator of options.translators) {
+-    if (!wanted.includes(translator.to as (typeof wanted)[number])) continue;
++    if (!reachesWanted(translator.to)) continue;
+     const sourceMatches =
+       translator.match === "exact"
+         ? reference.type === translator.from
+-        : options.graph.isSubtype(reference.type, translator.from);
++        : graph.isSubtype(reference.type, translator.from);
+     if (!sourceMatches) continue;
+ 
+     let scopeIndex = 0;
+@@ -67,12 +141,15 @@ export function resolveAcceptance<Values extends PresentationValues, ProductFact
+       scopeIndex = Math.min(...indices);
+     }
+     if (translator.when) {
+-      const availability = evaluateCondition(translator.when, { subject: reference, snapshot }, options.predicates);
+-      if (availability.kind !== "available") continue;
++      const status = evaluateCondition(
++        translator.when,
++        { subject: reference, snapshot },
++        options.predicates,
++      );
++      if (status.kind !== "available") continue;
+     }
+     const result = translator.translate(reference, snapshot);
+-    if (!result || !wanted.includes(result.type as (typeof wanted)[number])) continue;
+-    if (!passes(result)) continue;
++    if (!result || !reachesWanted(result.type) || !passes(result)) continue;
+     candidates.push({
+       translator: translator.id,
+       result,
+@@ -81,24 +158,5 @@ export function resolveAcceptance<Values extends PresentationValues, ProductFact
+     });
+   }
+ 
+-  if (candidates.length === 0) return { kind: "none" };
+-  let pool = candidates;
+-  if (pool.length > 1) {
+-    const nearest = Math.min(...pool.map((candidate) => candidate.scopeIndex));
+-    pool = pool.filter((candidate) => candidate.scopeIndex === nearest);
+-  }
+-  if (pool.length > 1) {
+-    const highest = Math.max(...pool.map((candidate) => candidate.priority));
+-    pool = pool.filter((candidate) => candidate.priority === highest);
+-  }
+-  if (pool.length === 1) {
+-    const single = pool[0] as (typeof pool)[number];
+-    return { kind: "accepted", option: { translator: single.translator, result: single.result } };
+-  }
+-  return {
+-    kind: "ambiguous",
+-    options: [...pool]
+-      .sort((a, b) => String(a.translator).localeCompare(String(b.translator)))
+-      .map(({ translator, result }) => ({ translator, result })),
+-  };
++  return finish(candidates);
+ }
+diff --git a/src/presentation/translators/types.ts b/src/presentation/translators/types.ts
+index d61e5c0..5214878 100644
+--- a/src/presentation/translators/types.ts
++++ b/src/presentation/translators/types.ts
+@@ -23,7 +23,7 @@ import type { PresentationReference, PresentationValues } from "../types";
+  *   picks a translator.
+  */
+ 
+-export type TranslatorId = string;
++export type TranslatorId = string; // compatibility name; canonical identity is RelationId
+ 
+ export interface PresentationTranslator<Values extends PresentationValues, ProductFacts> {
+   id: TranslatorId;
+@@ -43,7 +43,8 @@ export interface PresentationTranslator<Values extends PresentationValues, Produ
+ 
+ /** One candidate outcome of an accept gesture. */
+ export interface AcceptanceOption<Values extends PresentationValues> {
+-  translator: TranslatorId | null; // null ⇒ direct (identity or subtype)
++  /** null means direct subtype satisfaction; otherwise this is a relation id. */
++  translator: TranslatorId | null;
+   result: PresentationReference<Values>;
+ }
+ 
+-- 
+2.47.3
+

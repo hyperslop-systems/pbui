@@ -1,4 +1,5 @@
-import { activeScope, matchContext } from "../context/match";
+import { matchSelector, requireScoped, selectorOf } from "../context/selector";
+import { isAnyDeclaredType } from "../context/types";
 import type { PresentationValues } from "../types";
 import { available } from "./availability";
 import type { Availability } from "./availability";
@@ -80,37 +81,37 @@ export function resolveActions<Values extends PresentationValues, ProductFacts, 
 
   for (const contribution of prepared.contributions) {
     /*
-     * Type reachability and scope nearness now come from the shared
-     * contextual matcher (PBUI-HELP-001) — the "*" family escape hatch is the
-     * one target it cannot express, so that keeps the inline path. The
-     * matcher checks type before scope, and this loop's trace order requires
-     * invocation BETWEEN them (a type-reachable contribution failing both
-     * invocation and scope traces invocation-not-allowed), so the rejection
-     * is held and interleaved rather than acted on immediately. No `when` is
-     * passed: a failing action condition is a STATUS that stays in the
-     * override competition, not a reject.
+     * Type reachability and scope nearness come from the shared selector
+     * (PBUI-HELP-001, PBUI-KERNEL-1 §9). The selector checks type before
+     * scope, and this loop's trace order requires invocation BETWEEN them (a
+     * type-reachable contribution failing both invocation and scope traces
+     * invocation-not-allowed), so the rejection is held and interleaved
+     * rather than acted on immediately. No `when` is passed: a failing action
+     * condition is a STATUS that stays in the override competition, not a
+     * reject. A universal family is an explicit `anyDeclaredType` subject;
+     * the selector handles it like any other.
      */
     let distance: number;
     let scope: { scope: ScopeId; index: number } | null;
-    if (contribution.subject === "*") {
-      distance = 0;
-      scope = activeScope(contribution.scopes, snapshot.scopes);
+    const matched = matchSelector(
+      selectorOf({
+        subject: contribution.subject,
+        match: contribution.match,
+        scopes: contribution.scopes,
+      }),
+      query.subject,
+      snapshot,
+      prepared.graph,
+      prepared.predicates,
+    );
+    if (matched.kind === "rejected" && matched.stage === "type") continue;
+    if (matched.kind === "matched") {
+      const scoped = requireScoped(matched.match, `contribution "${contribution.id}"`);
+      distance = scoped.typeDistance;
+      scope = { scope: scoped.scope, index: scoped.scopeIndex };
     } else {
-      const matched = matchContext(
-        { subject: contribution.subject, match: contribution.match, scopes: contribution.scopes },
-        query.subject,
-        snapshot,
-        prepared.graph,
-        prepared.predicates,
-      );
-      if (matched.kind === "rejected" && matched.stage === "type") continue;
-      if (matched.kind === "matched") {
-        distance = matched.match.typeDistance;
-        scope = { scope: matched.match.scope, index: matched.match.scopeIndex };
-      } else {
-        distance = 0; // unread: every rejected path below continues
-        scope = null;
-      }
+      distance = 0; // unread: every rejected path below continues
+      scope = null;
     }
 
     const seedId =
@@ -213,7 +214,7 @@ export function resolveActions<Values extends PresentationValues, ProductFacts, 
         status,
         metadata: instance.metadata,
         bind: instance.bind as Candidate<Values, ProductFacts, Verb>["bind"],
-        declaredType: family.subject === "*" ? subjectType : family.subject,
+        declaredType: isAnyDeclaredType(family.subject) ? subjectType : family.subject,
         distance,
         scope: scope.scope,
         scopeIndex: scope.index,

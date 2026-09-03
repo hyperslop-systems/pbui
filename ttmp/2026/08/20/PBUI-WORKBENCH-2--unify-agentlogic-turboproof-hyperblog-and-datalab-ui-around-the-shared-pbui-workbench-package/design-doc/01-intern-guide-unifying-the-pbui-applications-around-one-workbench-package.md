@@ -22,9 +22,9 @@ RelatedFiles:
       Note: createWorkbenchClient config (sourceBinding, launcherAppId) the binding option adopts
 ExternalSources: []
 Summary: 'An intern-level analysis, design and implementation guide for making agentlogic, turboproof, hyperblog and datalab-ui share one workbench shell (@hyperslop-systems/pbui-workbench): what each product built, a feature matrix against the package, the features worth lifting into the shared core with API sketches, and a per-product migration plan with risks and verification.'
-LastUpdated: 2026-08-20T14:29:03.751088984-04:00
+LastUpdated: 2026-09-01T18:20:00.000000000-04:00
 WhatFor: Let someone new execute the unification product by product without re-reading five repositories, and give reviewers one place to challenge what goes into the shared core.
-WhenToUse: Read before extending pbui-workbench or migrating any product onto it; §4 is the matrix, §5 the core additions, §6 the migrations.
+WhenToUse: 'Read before extending pbui-workbench or migrating any product onto it; §4 is the matrix, §5 the core additions, §6 the migrations. READ §10 FIRST if you are picking up datalab-ui (§6.4) — it is not executable as written — or planning any migration, whose omissions §10.2 generalises.'
 ---
 
 
@@ -435,3 +435,71 @@ Two rules for every phase: the package change ships with tests and a story befor
 | datalab-ui | `DL/src/store/{layout.ts,layoutTree.ts,applyVerb.ts,applyLayoutVerb.ts,persist.ts,remote.ts}`, `DL/src/components/organisms/{Tile,SplitView}/`, `DL/src/components/pages/Workbench/`, `DL/src/apps/LauncherApp/`, `DL/src/appkit/{registry.ts,AppScope.tsx,useRemoteWorkbench.ts}`, `DL/src/remote/codec.ts`, `DL/src/pbui/descriptors/{tile,workspace}.ts` |
 | consumers of the package | `pbui/packages/pbui-chat/src/apps/createChatApps.tsx`, `pbui/packages/pbui-chat/demo/src/workbench.ts` |
 | design records | PBUI-WORKBENCH-1 guide (`pbui/ttmp/2026/08/20/PBUI-WORKBENCH-1--…/design-doc/01-…md`), PBUI-UNIFY-001 (DR-U2..U6), DATADROP-18 design-doc/02, DATALAB-VIEW-001 design-doc/01–02, `pbui/docs/playbooks/building-a-new-hyperslop-systems-app-on-pbui.md` §6 |
+
+## 10 · What this plan got wrong
+
+Three of the four migrations are done (agentlogic §6.1, turboproof §6.2, hyperblog §6.3). Each corrected something in the sections above, and the fourth is blocked on a decision §6.4 assumed away rather than made. This section is that record: what a reader of §§1–9 will find false, and what still has to be chosen.
+
+Corrections are stated here rather than edited into place on purpose. The sections above are the reasoning that produced the work; a reader who cannot see where the reasoning was wrong learns nothing about how to reason next time.
+
+### 10.1 §1.3 and §5.F: the package moved
+
+`§1.3` lists the package's absences as of the survey. Four are now false: there IS a persistence adapter with a debounce (`createLocalPersistence`), a placement mode (`wb.placement`), a sync module, and `parseDocument` is NOT tolerant — it refuses an unknown field, an unknown `schemaVersion`, and a tree naming views the document does not have. §5.F's "strict reader" item was therefore closed by inspection rather than by code.
+
+`§5.G`'s signature reads `createTileDescriptor(wb, { extra? })`. It takes no workbench; a reader following the design literally writes the wrong call.
+
+`§2.1` says agentlogic's split "always mints a **launcher view** in the new pane". `createWorkbenchClient.splitPlacement` does, unconditionally; the package's `split` did not, because `resolvePolicy` short-circuited singletons. The feature matrix's "Split policy — agentlogic: launcher" row was therefore true of eight of its fourteen applications and false of the six singletons. That is fixed in the package now (C1 finding 1), which is what makes §6.3's per-application policy work at all — the risk note there anticipated the opposite.
+
+### 10.2 A migration plan needs the product's package VERSION, not only its feature prerequisites
+
+§6.3's prerequisites for hyperblog — 5.B, 5.C, 5.D — were all satisfied, and the migration was still blocked. hyperblog held `@hyperslop-systems/pbui@^0.5.0`, and **pbui 0.8.0 deleted the descriptor's `actions()` callback** along with the `PresentationAction` row shape (PBUI-ACTIONS-3 A1): action discovery moved to a kernel of contributions, because several scopes may offer entries on one object and a callback hanging off representation policy cannot compose. hyperblog's entire presentation layer — 641 lines, ten `actions()` callbacks — was built on the deleted shape.
+
+That is a larger change than the workbench migration it blocks, and nothing in §6 mentions it. The generalisation is the lesson:
+
+> **A migration plan must state which version of the shared package the product currently holds, and read that package's changelog between then and now.** Feature prerequisites answer "does the core do what I need"; the version answers "will this product still compile against it".
+
+The cost was small only because the answer already existed next door: turboproof had made the same jump, and its `runtime.tsx` carries a wildcard action family that asks whichever descriptor owns the subject for its rows and republishes them as kernel instances. Copying it kept entries written beside the type they belong to (playbook §6) and cost twenty minutes instead of ten rewrites. **Check whether a sibling product has already made the jump before designing the jump.**
+
+### 10.3 A package-shipped application must reach the product's Go catalog
+
+`rebalanceSettingsApp` is a tile `pbui-workbench` ships. Registering it in a product's workbench is one line — and it is not enough. `pkg/workbench.Validate` refuses `unknown_application`, so a stored layout containing the tile is unloadable until the id is in the product's Go catalog AND in the `registry.fixture.json` both sides assert against.
+
+The consequence for the parity test is worth stating, because both products got it wrong the same way: **the fixture must be compared against the SHELL's registry, not the product's `allApps()`.** The catalog mirrors what this client can place, and that now includes applications the product does not define.
+
+### 10.4 §6.4 is not executable as written
+
+Two claims in §6.4 do not survive contact with `datalab-ui`.
+
+**Claim 1: "the codec at the remote boundary disappears because the runtime document *is* the wire document".**
+
+`remote/codec.ts` is not a type converter between one runtime document and one wire document. The wire document is a *filtered projection of two slices*, built by `currentRemoteState` (`DL/src/appkit/useRemoteWorkbench.ts:307`):
+
+| wire field | source | narrowed by |
+|---|---|---|
+| `workspaces` | `layout.spaces` | `stageId === WORK_STAGE_ID` — every other stage is code-defined and local-only |
+| `views` / `viewOrder` | `layout.views` | reachability from those workspaces' trees (`managedViews`) |
+| `documents` | **`world.docs`** | reachability from those views' bindings (`managedDocuments`) |
+
+…with an inverse: `preservedLocalState` collects the views and documents belonging to the *other* stages, and `assertRemoteDocumentNamespace` throws if the server returns a document id colliding with one of them.
+
+So even with a protocol tree at runtime, the boundary must still select which workspaces are sendable, walk reachability twice, merge from a second slice, and defend the local-only namespace. What deleting datalab's own `Node` type buys is the tree/view encode-decode pair — most of the file's bulk, and worth having. What remains is not a codec. It is a **sync policy that has been hiding inside one**, and it should be renamed to that rather than deleted.
+
+**Claim 2: "migrate it last and in two steps".**
+
+The two steps are not separable. Step 1 covers the geometry and view reducers — `setRatio`, `splitLeaf`, `closeLeaf`, `swapTiles`, `duplicateView`, `createLinkedDuplicate`, `replacePlacementWithView`, roughly twelve of the slice's twenty-nine — and those are *exactly* what step 2 deletes when `wb.Surface` and the store adapter take over. Doing step 1 first means hand-writing protocol-node manipulation in twelve reducers and then removing it, with no green intermediate to commit.
+
+Measured, so the next person does not have to: swapping `DL/src/store/layoutTree.ts`'s `Node` for the protocol's, and nothing else, produces **308 type errors across 25 files** — 102 in one test file, about 50 in components step 2 deletes — against 554 currently-passing tests.
+
+### 10.5 The decision §6.4 has to make first
+
+Where do datalab's documents live? Three answers; the design never picks one.
+
+| | approach | cost | what it delivers |
+|---|---|---|---|
+| **(a)** | Merge `world.docs` into the layout slice's `WorkbenchDocument` | `world.ts` is 487 lines and docs are read across the product | The runtime document really is the wire document — except the stage and reachability filtering still needs a home, so the boundary does not actually disappear |
+| **(b)** | Keep them apart. The layout slice holds a real `WorkbenchDocument` with an empty `documents` map at runtime; `useRemoteWorkbench` keeps projecting and merging, renamed to what it is | Smallest; touches no other slice | The tree/view codec halves die, and datalab reaches `wb.Surface` — which is §6.4's actual goal |
+| **(c)** | Give the protocol a way to say which workspaces are sendable, so §5.F's sync module can own the boundary | A protocol change, touching the Go side | One document, one sync module, no product-specific boundary — the honest end state |
+
+**Recommendation: (b), with steps 1 and 2 done as one continuous change**, and (c) left available once stages have proved they deserve protocol support. (b) is the only option whose intermediate states are honest, and the only one that does not make a 487-line slice part of a workbench migration.
+
+Two things to establish before starting, both learned the hard way above: which pbui version `datalab-ui` holds and what changed since (§10.2), and whether the 554 tests encode a third assumption the way `syncSpacePointer` and the stage pointer encode the first two. §6.4's Verify list names four of those test files; it is not obviously complete.

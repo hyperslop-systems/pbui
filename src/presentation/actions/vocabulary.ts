@@ -1,4 +1,5 @@
 import type { PresentationValues } from "../types";
+import { isAnyDeclaredType } from "../context/types";
 import type { RuntimeTypeId } from "./ids";
 import type { PresentationTypeGraph } from "./typeGraph";
 import type {
@@ -42,7 +43,8 @@ export interface VocabularyActionEntry {
   kind: "exact" | "inherited" | "family";
   /** Absent for families: their action ids live on runtime instances. */
   action?: string;
-  subject: RuntimeTypeId | "*";
+  /** null: a universal family (`anyDeclaredType`) — every declared type. */
+  subject: RuntimeTypeId | null;
   scopes: readonly string[];
   /** Absent = discoverable by every invocation. */
   invocations?: readonly ActionInvocation[];
@@ -80,7 +82,7 @@ export function vocabularyOf<Values extends PresentationValues, ProductFacts, Ve
       return {
         id: contribution.id,
         kind: "family",
-        subject: contribution.subject,
+        subject: isAnyDeclaredType(contribution.subject) ? null : contribution.subject,
         scopes: [...contribution.scopes],
         ...(contribution.invocations ? { invocations: [...contribution.invocations] } : {}),
         danger: false,

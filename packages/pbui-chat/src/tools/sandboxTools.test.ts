@@ -1,3 +1,4 @@
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { describe, expect, it } from "vitest";
 import { createAppRegistry, createWorkbench, defineApp, layout, split, tile } from "@hyperslop-systems/pbui-workbench";
 import {
@@ -51,7 +52,7 @@ const Blank = () => null;
 
 const apps = createAppRegistry([
   defineApp({ id: "chat", title: "chat", tone: "var(--pbui-pane-alt)", singleton: false, Component: Blank }),
-  defineApp({ id: "script", title: "program", tone: "var(--pbui-pane-alt)", singleton: false, docBound: true, duplicable: false, bindings: ["program"], Component: Blank }),
+  defineApp({ id: "script", title: "program", tone: "var(--pbui-pane-alt)", singleton: false, duplicable: false, ports: [documentSlotPort("program")], Component: Blank }),
 ]);
 
 const vocabulary = defineVocabulary({

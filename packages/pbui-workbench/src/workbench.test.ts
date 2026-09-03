@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, test, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { Direction, DocumentPayloadSchema, MutationSchema, type Node } from "@hyperslop-systems/workbench-protocol";
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { leaves, SNAP_RATIOS, viewsOfApp, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
+import { defineApp } from "./apps";
 import { createWorkbench } from "./createWorkbench";
 import { layout, parseDocument, serializeDocument, singleTile, split, tile, workspaces } from "./document";
 import { createWorkbenchStore } from "./store";
@@ -359,7 +361,7 @@ describe("verbs", () => {
   });
 
   test("openView binds documents and goes to an existing doc-bound view with the same bindings", () => {
-    const widgetApp = { ...counterApp, id: "widget", title: "widget", docBound: true };
+    const widgetApp = defineApp({ ...counterApp, id: "widget", title: "widget", ports: [documentSlotPort("widget")] });
     const wb = createWorkbench({ apps: [counterApp, notesApp, widgetApp], initial: singleTile("counter") });
     const tree = () => wb.store.getState().document.workspaces[0]?.tree;
     const first = wb.verbs.openView("widget", { widget: "w-1" }, { title: "Low stock" });
@@ -379,7 +381,7 @@ describe("verbs", () => {
 /* ---- PBUI-WORKBENCH-2 Phase 4 · 5.E ------------------------------------ */
 
 describe("zone-aware open (5.E)", () => {
-  const widgetApp = { ...counterApp, id: "widget", title: "widget", docBound: true };
+  const widgetApp = defineApp({ ...counterApp, id: "widget", title: "widget", ports: [documentSlotPort("widget")] });
 
   function twoTiles() {
     const wb = createWorkbench({

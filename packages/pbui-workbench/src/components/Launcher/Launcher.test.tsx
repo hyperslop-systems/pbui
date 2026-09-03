@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
-import { Button } from "@hyperslop-systems/pbui";
+import { Button, documentSlotPort } from "@hyperslop-systems/pbui";
 import { leaves } from "@hyperslop-systems/workbench-protocol/client";
+import { defineApp } from "../../apps";
 import { createWorkbench } from "../../createWorkbench";
 import { layout, split, tile, workspaces } from "../../document";
 import { counterApp, demoApps } from "../../stories/demoApps";
@@ -149,7 +150,7 @@ describe("Launcher", () => {
   });
 
   test("a doc-bound application is not offered as a new tile", () => {
-    const widgetApp = { ...counterApp, id: "widget", title: "widget", docBound: true };
+    const widgetApp = defineApp({ ...counterApp, id: "widget", title: "widget", ports: [documentSlotPort("widget")] });
     const wb = createWorkbench({ apps: [...demoApps, widgetApp], initial: layout(tile("counter")) });
     const { baseElement } = render(<wb.Launcher />);
     act(() => {

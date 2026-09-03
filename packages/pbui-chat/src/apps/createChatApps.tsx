@@ -1,3 +1,4 @@
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { defineApp, type AppDescriptor } from "@hyperslop-systems/pbui-workbench";
 import { ActiveConversationScope } from "../conversations/ActiveConversationScope";
 import { CONVERSATION_BINDING } from "../conversations/bindings";
@@ -49,9 +50,8 @@ export function createChatApps(
       title: title("chat", "chat"),
       tone: tone("chat", "message", "var(--pbui-pane-alt)"),
       singleton: false,
-      docBound: true,
       duplicable: true,
-      bindings: [CONVERSATION_BINDING],
+      ports: [documentSlotPort(CONVERSATION_BINDING, "the conversation this tile is a view of")],
       titleFor: (view) => {
         const id = view.documents[CONVERSATION_BINDING];
         if (!id) return view.title || "chat";
@@ -101,8 +101,8 @@ export function createChatApps(
       title: title("widget", "widget"),
       tone: tone("widget", "widget", "var(--pbui-tone-neutral)"),
       singleton: false,
-      docBound: true,
       duplicable: false,
+      ports: [documentSlotPort(WIDGET_BINDING, "the widget this tile shows")],
       titleFor: (view) => view.title || `widget ${view.documents[WIDGET_BINDING] ?? ""}`.trim(),
       Component: WidgetApp,
     }),

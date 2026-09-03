@@ -1,23 +1,25 @@
 import {
   available,
-  createActionRegistry,
-  createPresentationTypeGraph,
   defineActions,
+  definePresentation,
   unavailable,
 } from "@hyperslop-systems/pbui";
 import type {
   ActionContribution,
   ActionQuery,
   Availability,
+  PresentationContextInput,
   SelectionSnapshot,
 } from "@hyperslop-systems/pbui";
 import type { TileRef } from "@hyperslop-systems/pbui-workbench";
 import { workbenchTileContributions } from "@hyperslop-systems/pbui-workbench";
 import { createGeneratedActionsFamily } from "@hyperslop-systems/pbui-sandbox";
 import type { GeneratedActionFacts } from "@hyperslop-systems/pbui-sandbox";
-import { fromPresentationReference } from "@hyperslop-systems/pbui-chat";
+import { createChatPresentationFragment, fromPresentationReference } from "@hyperslop-systems/pbui-chat";
 import { conversationRecord } from "./conversationFacts";
 import { library } from "../sandbox";
+import { chatDescriptors, demoDescriptors } from "./registry";
+import { demoRelations } from "./relations";
 import type { Environment, PresentationType, Values } from "./types";
 import type { Verb } from "./verbs";
 
@@ -64,10 +66,15 @@ export interface DemoFacts extends GeneratedActionFacts {
   program: ProgramFacts | null;
 }
 
-export function snapshotForDemo(
+/**
+ * The product's context projection (PBUI-KERNEL-1): the derived facts one
+ * query reads, the semantic revision over exactly those facts, and the
+ * `approve` capability.
+ */
+export function demoContextFor(
   query: ActionQuery<Values>,
   environment: Environment,
-): SelectionSnapshot<DemoFacts> {
+): PresentationContextInput<DemoFacts> {
   let conversation: ConversationFacts | null = null;
   let program: ProgramFacts | null = null;
 
@@ -106,6 +113,8 @@ export function snapshotForDemo(
   const generatedPrograms = new Set(Object.keys(state.programs));
 
   return {
+    // The revision names exactly the facts rules read; the product chose a
+    // JSON spelling because these facts are small and JSON-shaped (§8.2).
     revision: JSON.stringify([
       environment.canApprove,
       conversation,
@@ -113,10 +122,8 @@ export function snapshotForDemo(
       generatedActions.map((record) => [record.id, record.updatedAt]),
       [...generatedPrograms],
     ]),
-    scopes: ["shop", "workbench", "global"],
-    modes: new Set(),
-    capabilities: new Set(environment.canApprove ? ["approve"] : []),
-    product: {
+    capabilities: environment.canApprove ? ["approve"] : [],
+    facts: {
       environment,
       canApprove: environment.canApprove,
       conversation,
@@ -719,16 +726,36 @@ function fieldSort(ref: Values["field"], dir: "asc" | "desc"): Verb {
 
 /* -------------------------------------------------------------- registry --- */
 
-export const demoActionRegistry = createActionRegistry<Values, DemoFacts, Verb>({
-  graph: createPresentationTypeGraph(
-    (
-      [
-        "product", "category", "metal", "order", "tile", "workspace", "app",
-        "program", "action", "conversation", "chatEvent", "field", "row",
-        "source", "widget", "tool", "proposal", "traceEntry", "unresolved",
-      ] as const
-    ).map((id) => ({ id })),
-  ),
-  scopes: ["shop", "workbench", "global"],
-  contributions: CONTRIBUTIONS,
+const p = definePresentation<Values, Environment, DemoFacts, Verb>();
+
+/**
+ * The demo's ONE compiled presentation (PBUI-KERNEL-1): the chat layer's six
+ * types arrive as pbui-chat's fragment (declared exactly where their
+ * descriptors are), the thirteen product types are declared here with their
+ * descriptors, every rule is `CONTRIBUTIONS` (the workbench tile rules ride
+ * inside it through `project`), and `row → product` is a canonical relation.
+ */
+export const demoPresentation = p.create({
+  id: "pbui-chat.demo",
+  include: [createChatPresentationFragment<Values, Environment, DemoFacts, Verb>(chatDescriptors)],
+  types: (
+    [
+      "product", "category", "metal", "order", "tile", "workspace", "app",
+      "program", "action", "conversation", "chatEvent", "field", "row",
+    ] as const
+  ).map((id) => ({ id })),
+  knownScopes: ["shop", "workbench", "global"],
+  defaultActiveScopes: ["shop", "workbench", "global"],
+  descriptors: demoDescriptors,
+  actions: CONTRIBUTIONS,
+  relations: demoRelations,
+  version: 1,
 });
+
+/** The action registry, for the golden tests that resolve directly. */
+export const demoActionRegistry = demoPresentation.actions;
+
+/** One snapshot for one query: the context projection through the model. */
+export function snapshotForDemo(query: ActionQuery<Values>, environment: Environment): SelectionSnapshot<DemoFacts> {
+  return demoPresentation.snapshot(demoContextFor(query, environment));
+}

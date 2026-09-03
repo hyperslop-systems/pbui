@@ -45,8 +45,18 @@ export type PresentationDescriptorMap<
   [Type in PresentationType<Values>]: PresentationDescriptor<Values[Type], Environment>;
 }>;
 
+/**
+ * A requested type may be a concrete presentation type (autocompleted) or an
+ * ABSTRACT runtime type from the graph, which no `Values` key names: an
+ * abstract request is satisfied by any concrete subtype, by subtyping or by
+ * a relation whose codomain reaches it (PBUI-KERNEL-1 §11.3, C8).
+ */
+export type AcceptableType<Values extends PresentationValues> =
+  | PresentationType<Values>
+  | (string & {});
+
 export interface AcceptRequest<Values extends PresentationValues> {
-  types: PresentationType<Values> | readonly PresentationType<Values>[];
+  types: AcceptableType<Values> | readonly AcceptableType<Values>[];
   prompt: string;
   filter?: (reference: PresentationReference<Values>) => boolean;
 }

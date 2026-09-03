@@ -39,7 +39,7 @@ export interface ShortcutContext {
   renamingView: boolean;
 }
 
-export type ShortcutDecision = { kind: "ignore" } | { kind: "open-launcher" } | { kind: "open-rebalance" };
+export type ShortcutDecision = { kind: "ignore" } | { kind: "open-launcher" } | { kind: "open-rebalance" } | { kind: "toggle-link-mode" };
 
 /**
  * The chords. One modifier apart on the same key: Mod+K places something,
@@ -49,6 +49,8 @@ export type ShortcutDecision = { kind: "ignore" } | { kind: "open-launcher" } | 
 const ROUTES: ReadonlyArray<{ key: string; shift: boolean; decision: Exclude<ShortcutDecision, { kind: "ignore" }> }> = [
   { key: "k", shift: false, decision: { kind: "open-launcher" } },
   { key: "k", shift: true, decision: { kind: "open-rebalance" } },
+  // PBUI-LINK-1: connect-management mode, the patch bay behind the tiles.
+  { key: "l", shift: true, decision: { kind: "toggle-link-mode" } },
 ];
 
 /** The modifier that means "application shortcut": Meta on Apple, Control elsewhere. */

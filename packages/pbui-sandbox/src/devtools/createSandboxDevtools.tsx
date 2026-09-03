@@ -1,3 +1,4 @@
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { SandboxHost } from "../host/hostOptions";
 import { INSPECTOR_APP_ID, PROGRAM_BINDING, SOURCE_APP_ID } from "../ScriptTile";
@@ -43,9 +44,8 @@ export function createSandboxDevtools(host: SandboxHost, options: SandboxDevtool
       title: "inspector",
       tone,
       singleton: false,
-      docBound: true,
       duplicable: false,
-      bindings: [PROGRAM_BINDING],
+      ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile is a view of")],
       group,
       blurb: "a running program's state, bindings, render tree and timings",
       titleFor: (view) => titleOf(view, "inspect"),
@@ -83,9 +83,8 @@ export function createSandboxDevtools(host: SandboxHost, options: SandboxDevtool
       title: "source",
       tone,
       singleton: false,
-      docBound: true,
       duplicable: false,
-      bindings: [PROGRAM_BINDING],
+      ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile is a view of")],
       group,
       blurb: "a program's source, its previous versions, a diff, and rollback",
       titleFor: (view) => titleOf(view, "source"),

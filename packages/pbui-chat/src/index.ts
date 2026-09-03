@@ -32,4 +32,6 @@ export type { ToolCardProps } from "./messages/ToolCard";
 export { Composer } from "./composer/Composer";
 export type { ComposerProps } from "./composer/Composer";
 export { createPbuiChat } from "./createPbuiChat";
+export { chatTypeIds, createChatPresentationFragment } from "./presentation";
+export type { ChatTypeId } from "./presentation";
 export type { ConversationToolset, CreatePbuiChatOptions, PbuiChat, PbuiChatProviderProps } from "./createPbuiChat";

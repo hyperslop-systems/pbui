@@ -8,6 +8,8 @@ import { WorkspaceStrip } from "./components/WorkspaceStrip";
 import { WorkbenchContext } from "./context";
 import { parseDocument, serializeDocument } from "./document";
 import { createPlacementController } from "./placement";
+import type { LinkEnvironment } from "./links/handlers";
+import { createLinkRuntime } from "./links/runtime";
 import { createWorkbenchStore, useWorkbenchStore, type WorkbenchStore, type WorkbenchStoreOptions } from "./store";
 import type { RebalanceBadgeProps } from "./components/RebalanceBadge";
 import type { LauncherProps, RebalanceProps, SurfaceProps, Workbench, WorkbenchPlan, WorkbenchPlanResult, WorkspaceStripProps } from "./types";
@@ -47,6 +49,12 @@ export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
    * off, or an id when the policy is a function.
    */
   emptyPaneApp?: string;
+  /**
+   * Tile linking (PBUI-LINK-1): the type graph the ports are typed against,
+   * how a value is named in a badge, and (Phase 6) the relations. Absent ⇒
+   * linking still works, with only equal type ids and `<any>` reaching.
+   */
+  links?: LinkEnvironment;
 }
 
 /**
@@ -77,10 +85,13 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
   let rootElement: HTMLElement | null = null;
   const root = () => rootElement;
   const placement = createPlacementController();
+  const runtime = createLinkRuntime();
   const verbs = createVerbHandlers({
     store,
     apps,
     root,
+    runtime,
+    ...(options.links ? { linkEnvironment: options.links } : {}),
     ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
     ...(options.binding ? { binding: options.binding } : {}),
     ...(options.paneConstraints ? { paneConstraints: options.paneConstraints } : {}),
@@ -105,6 +116,8 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       store: shadow,
       apps,
       root,
+      runtime,
+      ...(options.links ? { linkEnvironment: options.links } : {}),
       ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
       ...(options.binding ? { binding: options.binding } : {}),
       ...(options.paneConstraints ? { paneConstraints: options.paneConstraints } : {}),
@@ -140,10 +153,14 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     return true;
   };
 
+  // The show handler spawns a tile AND links its port in one plan (Phase 4).
+  verbs.links.attach({ planner: { plan, applyPlan } });
+
   const workbench: Workbench = {
     apps,
     store,
     verbs,
+    links: verbs.links,
     useDocument: () => useWorkbenchStore(store, (state) => state.document),
     useWorkbenchState: (selector) => useWorkbenchStore(store, selector),
     mutate: (mutations) => store.mutate(mutations),

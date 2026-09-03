@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { datadropRegistry } from "../src/pbui/registry";
+import { datadropRegistry } from "../src/pbui/presentation";
 import type { PresentationType } from "../src/pbui/types";
 
 const SRC = join(import.meta.dirname, "..", "src");

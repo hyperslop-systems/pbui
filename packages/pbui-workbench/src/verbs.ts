@@ -30,8 +30,10 @@ import {
   workspaceTree,
   type DockZone,
 } from "@hyperslop-systems/workbench-protocol/client";
-import { splitDirectionFor } from "@hyperslop-systems/pbui";
-import type { AppDescriptor, AppRegistry } from "./apps";
+import { describeLinkVerb, isLinkVerb, splitDirectionFor, type LinkVerb } from "@hyperslop-systems/pbui";
+import { createLinkHandlers, type LinkEnvironment, type LinkHandlers } from "./links/handlers";
+import { createLinkRuntime, type LinkRuntime } from "./links/runtime";
+import { isDocBound, type AppDescriptor, type AppRegistry } from "./apps";
 import { buildLayout, workspaceCreateMutation, type LayoutSpec } from "./document";
 import type { WorkbenchStore } from "./store";
 
@@ -111,6 +113,8 @@ export type WorkbenchVerb =
       title?: string;
       /** Land at a named zone of a named tile, instead of beside `near`. */
       at?: { placementId: string; zone: PlaceZone };
+      /** Mint the view under THIS id, so a plan may name its ports in a later verb (PBUI-LINK-1 show → spawn + follow). */
+      viewId?: string;
     }
   | { kind: "tile.replace"; placementId: string; appId: string; documents?: Record<string, string> }
   | { kind: "tile.link"; placementId: string; viewId: string }
@@ -125,7 +129,9 @@ export type WorkbenchVerb =
   | { kind: "launcher.open"; placementId?: string }
   | { kind: "launcher.close" }
   | { kind: "rebalance.open" }
-  | { kind: "rebalance.close" };
+  | { kind: "rebalance.close" }
+  // The link verbs (PBUI-LINK-1): port.follow/bind/ambient/pin/resume/detach/unlink/clear, link.mode.open/close.
+  | LinkVerb;
 
 export type WorkbenchVerbKind = WorkbenchVerb["kind"];
 
@@ -232,7 +238,7 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
           typeof at.placementId === "string" &&
           at.placementId.length > 0 &&
           ["top", "right", "bottom", "left", "center", "replace"].includes(String(at.zone)));
-      return string("appId") && stringMap("documents") && optionalString("near") && optionalString("title") && atOk;
+      return string("appId") && stringMap("documents") && optionalString("near") && optionalString("title") && optionalString("viewId") && atOk;
     }
     case "tile.replace":
       return string("placementId") && string("appId") && stringMap("documents");
@@ -265,11 +271,12 @@ export function isWorkbenchVerb(value: unknown): value is WorkbenchVerb {
     case "rebalance.close":
       return true;
     default:
-      return false;
+      return isLinkVerb(value);
   }
 }
 
 export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
+  if (isLinkVerb(verb)) return describeLinkVerb(verb);
   switch (verb.kind) {
     case "tile.split":
       return verb.direction === "row" ? "split side by side" : "split top and bottom";
@@ -333,6 +340,10 @@ export function describeWorkbenchVerb(verb: WorkbenchVerb): string {
 
 /** The handlers behind every verb; `createWorkbench` exposes them as `verbs`. */
 export interface WorkbenchVerbHandlers {
+  /** The link verbs (PBUI-LINK-1): planned by the kernel on a fresh snapshot, written as one `documentPut`. */
+  performLink(verb: LinkVerb): boolean;
+  /** The link facilities: runtime, snapshot, deps; `createWorkbench` exposes them as `workbench.links`. */
+  links: LinkHandlers;
   /**
    * Open a new pane beside a tile. With `appId` the new pane holds that
    * application (a placed singleton gets a linked placement); without it the
@@ -387,7 +398,7 @@ export interface WorkbenchVerbHandlers {
   openView(
     appId: string,
     documents: Record<string, string>,
-    options?: { near?: string; title?: string; at?: { placementId: string; zone: PlaceZone } },
+    options?: { near?: string; title?: string; at?: { placementId: string; zone: PlaceZone }; viewId?: string },
   ): string | null;
   /**
    * Change what ONE pane shows, in place. When the pane's view has a single
@@ -572,6 +583,12 @@ export interface VerbEnvironment {
   binding?: BindingConfig;
   paneConstraints?: Partial<PaneConstraints>;
   emptyPaneApp?: string;
+  /** The link runtime shared by the real handlers and a plan's shadow handlers; created when absent. */
+  runtime?: LinkRuntime;
+  /** What the product hands the kernel: its type graph, its value labels, its relations. */
+  linkEnvironment?: LinkEnvironment;
+  /** A link verb the kernel refused; replaces the default `console.warn`. */
+  onLinkRefused?(verb: LinkVerb, because: string, code: string): void;
 }
 
 /**
@@ -590,7 +607,7 @@ function emptyPaneAppOf(splitPolicy: SplitPolicy | undefined, explicit: string |
   return null;
 }
 
-export function createVerbHandlers({ store, apps, root, splitPolicy, binding, paneConstraints, emptyPaneApp }: VerbEnvironment): WorkbenchVerbHandlers {
+export function createVerbHandlers({ store, apps, root, splitPolicy, binding, paneConstraints, emptyPaneApp, runtime, linkEnvironment, onLinkRefused }: VerbEnvironment): WorkbenchVerbHandlers {
   const emptyApp = emptyPaneAppOf(splitPolicy, emptyPaneApp);
   const constraints: PaneConstraints = { ...DEFAULT_PANE_CONSTRAINTS, ...paneConstraints };
   if (
@@ -601,6 +618,26 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     throw new Error("pane constraints require positive pixel minima and minFraction in (0, 0.5]");
   }
   const doc = () => store.getState().document;
+  const links = createLinkHandlers({
+    store,
+    apps,
+    runtime: runtime ?? createLinkRuntime(),
+    ...(linkEnvironment ? { environment: linkEnvironment } : {}),
+    onRefused: onLinkRefused ?? ((verb, because) => console.warn(`pbui-workbench: refused to ${describeLinkVerb(verb)} — ${because}`)),
+  });
+  /**
+   * Every batch goes through here so the link document keeps up with the
+   * layout (design §6.9): a deleted view's followers apply their
+   * `onSourceClose`, a replaced app drops stale terms, a clone re-keys them.
+   * One extra mutation in the SAME batch, so plan/applyPlan and undo see
+   * layout and links change together or not at all.
+   */
+  const mutate = (mutations: Mutation[]): boolean => {
+    const upkeep = links.maintenance(doc(), mutations);
+    const ok = store.mutate(upkeep ? [...mutations, upkeep] : mutations);
+    if (ok) links.afterCommit(mutations);
+    return ok;
+  };
   const workspace = () => store.getState().workspaceId;
 
   /** The document a freshly placed view of `appId` should bind, if any. */
@@ -800,7 +837,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       }
     }
     const created = newPlacementIdOf(mutations);
-    if (!store.mutate(mutations)) return null;
+    if (!mutate(mutations)) return null;
     if (created) activate(created);
     return created;
   };
@@ -808,7 +845,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
   const close: WorkbenchVerbHandlers["close"] = (placementId) => {
     const current = doc();
     if (!canClose(current, placementId)) return false;
-    const ok = store.mutate(closePlacement(current, placementId));
+    const ok = mutate(closePlacement(current, placementId));
     if (ok && store.getState().activePlacementId === placementId) activate(null);
     return ok;
   };
@@ -821,7 +858,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     // A conventional snap point may sit outside the rendered minimum. Clamp
     // it through the same bounds pointer, keyboard and agent calls share.
     const final = Math.max(bounds.min, Math.min(bounds.max, snapped));
-    return store.mutate(resizeSplit(doc(), splitId, final)) ? final : null;
+    return mutate(resizeSplit(doc(), splitId, final)) ? final : null;
   };
 
   /** Which application a pane is showing, or null when it shows nothing usable. */
@@ -865,7 +902,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
         if (!canSplitPlacement(target, direction)) return null;
         const mutations = splitWithView(current, target, direction, existing.id);
         const created = newPlacementIdOf(mutations);
-        if (!store.mutate(mutations)) return null;
+        if (!mutate(mutations)) return null;
         if (created) activate(created);
         return created;
       }
@@ -898,7 +935,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       ? splitWithView(current, target, direction, existing.id, position)
       : splitWithNewView(current, target, direction, appId, position);
     const created = newPlacementIdOf(mutations);
-    if (!store.mutate(mutations)) return null;
+    if (!mutate(mutations)) return null;
     if (created) activate(created);
     return created;
   };
@@ -915,6 +952,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     existing: AppView | undefined,
     at: { placementId: string; zone: PlaceZone },
     title?: string,
+    viewId?: string,
   ): string | null => {
     const { placementId, zone } = at;
     if (!workspaceOfPlacement(current, placementId)) return null;
@@ -935,7 +973,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       mutations = splitWithView(current, placementId, direction, existing.id, position);
     } else {
       const view = create(AppViewSchema, {
-        id: newId("v"),
+        id: viewId ?? newId("v"),
         appId,
         documents: Object.keys(documents).length > 0 ? { ...documents } : defaultBindings(current, appId),
         ...(title ? { title } : {}),
@@ -946,24 +984,28 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       ];
     }
     const created = newPlacementIdOf(mutations);
-    if (!store.mutate(mutations)) return null;
+    if (!mutate(mutations)) return null;
     if (created) activate(created);
     return created;
   };
 
   const openView: WorkbenchVerbHandlers["openView"] = (appId, documents, options = {}) => {
+    links.attach({ openView: (id, docs, opts) => openViewInner(id, docs, opts) });
+    return openViewInner(appId, documents, options);
+  };
+  const openViewInner: WorkbenchVerbHandlers["openView"] = (appId, documents, options = {}) => {
     const current = doc();
     const app = apps.get(appId);
     // What this open would DUPLICATE if the document already has it: a
     // doc-bound application on exactly these bindings, or a singleton's one
     // view. Both mean "the same thing, already open".
-    const already = app?.docBound
+    const already = app && isDocBound(app)
       ? viewsOfApp(current, appId).find((view) => sameBindings(view.documents, documents))
       : app?.singleton
         ? viewsOfApp(current, appId)[0]
         : undefined;
-    if (options.at) return openAt(current, appId, documents, already, options.at, options.title);
-    if (app?.docBound) {
+    if (options.at) return openAt(current, appId, documents, already, options.at, options.title, options.viewId);
+    if (app && isDocBound(app)) {
       const existing = already;
       if (existing) {
         // `viewsOfApp` searches the whole document, so the match may live in
@@ -980,7 +1022,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     const direction = splitDirectionFor(target, root());
     if (!canSplitPlacement(target, direction)) return null;
     const view = create(AppViewSchema, {
-      id: newId("v"),
+      id: options.viewId ?? newId("v"),
       appId,
       documents: Object.keys(documents).length > 0 ? { ...documents } : defaultBindings(current, appId),
       ...(options.title ? { title: options.title } : {}),
@@ -990,7 +1032,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
       ...splitWithView(current, target, direction, view.id),
     ];
     const created = newPlacementIdOf(mutations);
-    if (!store.mutate(mutations)) return null;
+    if (!mutate(mutations)) return null;
     if (created) activate(created);
     return created;
   };
@@ -999,7 +1041,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     const trimmed = title.trim();
     // No `replaceDocuments`: the applier only touches bindings when the
     // message is present, so a rename leaves the documents alone.
-    return store.mutate([
+    return mutate([
       mutation({
         case: "viewConfigure",
         value: {
@@ -1043,7 +1085,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     if (currentView && placementCount(current, currentViewId) === 1) {
       // The pane owns its view: retarget in place so it keeps its identity
       // (its placement id, its position, and any product state keyed by view).
-      return store.mutate([
+      return mutate([
         mutation({
           case: "viewConfigure",
           value: {
@@ -1058,7 +1100,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     // The view is linked into other tiles: mint one and move only this
     // placement, or the twin silently changes too.
     const view = create(AppViewSchema, { id: newId("v"), appId, documents: values });
-    return store.mutate([
+    return mutate([
       mutation({ case: "viewCreate", value: { view } }),
       mutation({ case: "placementReplace", value: { workspaceId, placementId, viewId: view.id } }),
     ]);
@@ -1081,12 +1123,12 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     if (placementCount(current, currentViewId) === 1) {
       mutations.push(mutation({ case: "viewDelete", value: { viewId: currentViewId } }));
     }
-    return store.mutate(mutations);
+    return mutate(mutations);
   };
 
   const rebind: WorkbenchVerbHandlers["rebind"] = (viewId, documents) => {
     if (!doc().views[viewId]) return false;
-    return store.mutate([bindings(viewId, { ...documents })]);
+    return mutate([bindings(viewId, { ...documents })]);
   };
 
   const goToView: WorkbenchVerbHandlers["goToView"] = (viewId) => {
@@ -1132,13 +1174,13 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     }
     const built = buildLayout(effective, { singletonAppIds, existingViewsByAppId });
     const workspaceId = options.workspaceId ?? newId("ws");
-    if (!store.mutate([...built.mutations, workspaceCreateMutation(workspaceId, name, built.tree)])) return null;
+    if (!mutate([...built.mutations, workspaceCreateMutation(workspaceId, name, built.tree)])) return null;
     if (options.select !== false) selectWorkspace(workspaceId);
     return workspaceId;
   };
 
   const renameWorkspace: WorkbenchVerbHandlers["renameWorkspace"] = (workspaceId, name) =>
-    store.mutate([mutation({ case: "workspaceRename", value: { workspaceId, name: name.trim() } })]);
+    mutate([mutation({ case: "workspaceRename", value: { workspaceId, name: name.trim() } })]);
 
   const deleteWorkspace: WorkbenchVerbHandlers["deleteWorkspace"] = (workspaceId) => {
     const current = doc();
@@ -1152,7 +1194,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     for (const viewId of orphanViewIds(without)) {
       mutations.push(mutation({ case: "viewDelete", value: { viewId } }));
     }
-    if (!store.mutate(mutations)) return false;
+    if (!mutate(mutations)) return false;
     if (store.getState().workspaceId === workspaceId) {
       const survivor = store.getState().document.workspaces[0];
       if (survivor) selectWorkspace(survivor.id);
@@ -1161,7 +1203,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
   };
 
   const setWorkspaceTree: WorkbenchVerbHandlers["setWorkspaceTree"] = (workspaceId, tree) =>
-    store.mutate([mutation({ case: "workspaceSetTree", value: { workspaceId, rootPlacement: tree } })]);
+    mutate([mutation({ case: "workspaceSetTree", value: { workspaceId, rootPlacement: tree } })]);
 
   const cloneWorkspace: WorkbenchVerbHandlers["cloneWorkspace"] = (workspaceId, options = {}) => {
     const current = doc();
@@ -1197,7 +1239,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     if (!tree) return null;
     const newWorkspaceId = options.newWorkspaceId ?? newId("ws");
     mutations.push(workspaceCreateMutation(newWorkspaceId, options.name ?? `${source.name} copy`, tree));
-    if (!store.mutate(mutations)) return null;
+    if (!mutate(mutations)) return null;
     if (options.select !== false) selectWorkspace(newWorkspaceId);
     return newWorkspaceId;
   };
@@ -1208,7 +1250,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     if (!canSplitPlacement(target, direction)) return false;
     const sourceNode = findNode(workspaceTree(current, workspaceOfPlacement(current, source) ?? ""), source);
     const sourceViewId = sourceNode?.body.case === "leaf" ? sourceNode.body.value.viewId : null;
-    const ok = store.mutate(dockPlacement(current, source, target, zone));
+    const ok = mutate(dockPlacement(current, source, target, zone));
     // The source placement is gone; follow its view to where it landed so the
     // active id never points at a closed tile.
     if (ok && sourceViewId) activate(firstPlacementOfView(store.getState().document, workspace(), sourceViewId));
@@ -1218,7 +1260,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
   const replaceWith: WorkbenchVerbHandlers["replaceWith"] = (source, target) => {
     const mutations = replacePlacement(doc(), source, target);
     if (mutations.length === 0) return false;
-    if (!store.mutate(mutations)) return false;
+    if (!mutate(mutations)) return false;
     // The source placement is gone; its view now lives in the target (or the
     // twins collapsed there), so that is where the active id belongs.
     if (store.getState().activePlacementId === source) activate(target);
@@ -1229,7 +1271,9 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
     split,
     canSplit: canSplitPlacement,
     close,
-    swap: (a, b) => store.mutate(swapPlacements(doc(), a, b)),
+    swap: (a, b) => mutate(swapPlacements(doc(), a, b)),
+    performLink: links.perform,
+    links,
     dock,
     replaceWith,
     resize,
@@ -1281,6 +1325,7 @@ export function createVerbHandlers({ store, apps, root, splitPolicy, binding, pa
  * because the button is attached to the thing it operates on.
  */
 export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: WorkbenchVerb): boolean {
+  if (isLinkVerb(verb)) return handlers.performLink(verb);
   switch (verb.kind) {
     case "tile.split":
       return handlers.split(verb.placementId, verb.direction, verb.appId) !== null;
@@ -1315,6 +1360,7 @@ export function performWorkbenchVerb(handlers: WorkbenchVerbHandlers, verb: Work
           ...(verb.near ? { near: verb.near } : {}),
           ...(verb.title ? { title: verb.title } : {}),
           ...(verb.at ? { at: verb.at } : {}),
+          ...(verb.viewId ? { viewId: verb.viewId } : {}),
         }) !== null
       );
     case "view.goTo":

@@ -32,16 +32,20 @@ export interface PresentationTypeGraph {
   /** Reflexive: every declared type is a subtype of itself. */
   isSubtype(type: RuntimeTypeId, supertype: RuntimeTypeId): boolean;
   /**
-   * Shortest ancestor distance (0 = itself), or `Infinity` when unrelated or
-   * either id is undeclared. Callers compare distances; they never do
-   * arithmetic on `Infinity`.
+   * Shortest ancestor distance (0 = itself), or `Infinity` when `supertype` is
+   * unrelated or undeclared. Callers compare distances; they never do
+   * arithmetic on `Infinity`. Throws when `type` itself is undeclared.
    */
   distance(type: RuntimeTypeId, supertype: RuntimeTypeId): number;
   /**
    * Self plus every ancestor with its shortest distance, in deterministic
-   * breadth-first order (parents in declaration order). An undeclared type
-   * yields just itself at distance 0 — an isolated node, so a product may
-   * present types it never declared (the legacy adapter depends on this).
+   * breadth-first order (parents in declaration order).
+   *
+   * The type world is CLOSED (PBUI-KERNEL-1 C9): an undeclared type throws.
+   * Before KERNEL-1 it yielded itself as an isolated node so a legacy adapter
+   * could present types it never declared; that open-world exception is the
+   * reason one validated declaration could not guarantee consistency, and it
+   * is gone. Universal matching is an explicit selector subject instead.
    */
   ancestors(type: RuntimeTypeId): readonly AncestorEntry[];
   /** Declared ids in declaration order, for validation sweeps. */
@@ -92,9 +96,10 @@ export function createPresentationTypeGraph(
     const cached = ancestorCache.get(type);
     if (cached) return cached;
     if (!byId.has(type)) {
-      const isolated: readonly AncestorEntry[] = [{ type, distance: 0 }];
-      ancestorCache.set(type, isolated);
-      return isolated;
+      throw new Error(
+        `runtime type "${type}" is not declared in the type graph — ` +
+          `every runtime type must be declared (closed world, PBUI-KERNEL-1 C9)`,
+      );
     }
     const order: AncestorEntry[] = [];
     const best = new Map<RuntimeTypeId, number>([[type, 0]]);

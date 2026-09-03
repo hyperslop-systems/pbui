@@ -1,4 +1,4 @@
-import type { PbuiInstance, PresentationDescriptorRegistry, PresentationValues } from "@hyperslop-systems/pbui";
+import type { PbuiInstance, PbuiRefusal, PresentationDescriptorRegistry, PresentationValues } from "@hyperslop-systems/pbui";
 import {
   createChatDebugEventStore,
   createDefaultChatDebugClassifier,
@@ -50,7 +50,7 @@ import { WIDGET_BINDING } from "./apps/WidgetApp";
 export interface CreatePbuiChatOptions<Values extends PresentationValues, Environment, Verb extends VerbLike> {
   /** The product's `createPbui()` instance. */
   pbui: PbuiInstance<Values, Environment, Verb>;
-  /** Defaults to `pbui.registry`. */
+  /** Defaults to `pbui.presentation.descriptors`. */
   registry?: PresentationDescriptorRegistry<Values, Environment>;
   vocabulary: Vocabulary;
   router: VerbRouter<Verb>;
@@ -122,6 +122,12 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
 export interface PbuiChatProviderProps<Environment> {
   children: ReactNode;
   environment?: Environment;
+  /**
+   * A menu row that failed fresh revalidation before its verb reached the
+   * router (PBUI-KERNEL-1 §14.2). Default: a console warning — the chat
+   * layer has no status line of its own; a product with one passes its own.
+   */
+  onRefuse?(refusal: PbuiRefusal<PresentationValues>): void;
 }
 
 interface PendingSend {
@@ -152,7 +158,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
   options: CreatePbuiChatOptions<Values, Environment, Verb>,
 ) {
   const { pbui, vocabulary } = options;
-  const registry = options.registry ?? pbui.registry;
+  const registry = options.registry ?? pbui.presentation.descriptors;
   const referenceAdapter = options.referenceAdapter ?? identityReferenceAdapter<Values>();
   const router = options.router as unknown as VerbRouter<VerbLike>;
   const store = options.store ?? createPbuiChatStore();
@@ -449,13 +455,17 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     );
   }
 
-  function Provider({ children, environment }: PbuiChatProviderProps<Environment>) {
+  function Provider({ children, environment, onRefuse }: PbuiChatProviderProps<Environment>) {
     const PbuiProvider = pbui.Provider;
     return (
       <PbuiProvider
         environment={environment}
         onPerform={async (verb) => {
           await router.perform(verb as VerbLike);
+        }}
+        onRefuse={(refusal) => {
+          if (onRefuse) onRefuse(refusal as unknown as PbuiRefusal<PresentationValues>);
+          else console.warn(`pbui-chat: refused ${refusal.action ?? "action"} (${refusal.code})${refusal.because ? ` — ${refusal.because}` : ""}`);
         }}
       >
         <Binder>{children}</Binder>

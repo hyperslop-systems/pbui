@@ -1,12 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState, type CSSProperties } from "react";
-import {
-  available,
-  createActionRegistry,
-  createPresentationTypeGraph,
-  defineActions,
-  unavailable,
-} from "./actions";
+import { available, unavailable } from "./actions";
 import {
   actionsHelp,
   builtinHelpItems,
@@ -15,8 +9,7 @@ import {
   markdownHelp,
 } from "../components/ContextHelp";
 import { createPbui } from "./createPbui";
-import { createHelpRegistry, defineHelp } from "./help";
-import { createPresentationRegistry } from "./registry";
+import { definePresentation } from "./model";
 
 interface ExampleValues {
   person: { id: string; name: string; email: string };
@@ -31,24 +24,33 @@ type ExampleVerb =
   | { type: "emailPerson"; personId: string }
   | { type: "archiveProject"; projectId: string };
 
-const registry = createPresentationRegistry<ExampleValues, ExampleEnvironment>({
-  person: {
-    label: (person) => person.name,
-    describe: (person) => person,
-    tone: "accent",
-  },
-  project: {
-    label: (project) => project.title,
-    describe: (project) => project,
-    tone: "positive",
-  },
-});
+const p = definePresentation<ExampleValues, ExampleEnvironment, ExampleEnvironment, ExampleVerb>();
+const define = p.actions;
 
-const define = defineActions<ExampleValues, ExampleEnvironment, ExampleVerb>();
-const exampleActions = createActionRegistry<ExampleValues, ExampleEnvironment, ExampleVerb>({
-  graph: createPresentationTypeGraph([{ id: "person" }, { id: "project" }]),
-  scopes: ["global"],
-  contributions: [
+/**
+ * ONE compiled presentation (PBUI-KERNEL-1): types, descriptors, actions and
+ * help rules declared together. The plain example passes no help renderers,
+ * so its help surface stays off; the help example passes them.
+ */
+const examplePresentation = p.create({
+  id: "story.example",
+  types: [{ id: "person" }, { id: "project" }],
+  knownScopes: ["global"],
+  defaultActiveScopes: ["global"],
+  revision: (facts) => facts.currentUserId,
+  descriptors: {
+    person: {
+      label: (person) => person.name,
+      describe: (person) => person,
+      tone: "accent",
+    },
+    project: {
+      label: (project) => project.title,
+      describe: (project) => project,
+      tone: "positive",
+    },
+  },
+  actions: [
     define.exact("person", {
       id: "story.person.email",
       action: "person.email",
@@ -72,25 +74,58 @@ const exampleActions = createActionRegistry<ExampleValues, ExampleEnvironment, E
       bind: ({ subject }) => ({ type: "archiveProject", projectId: subject.value.id }),
     }),
   ],
+  help: [
+    p.help.exact("person", {
+      id: "story.person.help",
+      scopes: ["global"],
+      help: ({ subject, snapshot }) => [
+        markdownHelp.create({
+          id: "person.meaning",
+          title: "Person",
+          order: 0,
+          payload: {
+            markdown:
+              "A **person** can be emailed from their menu.\n\n- hover shows this card\n- keyboard focus shows the same card",
+          },
+        }),
+        fieldsHelp.create({
+          id: "person.fields",
+          title: "Details",
+          order: 10,
+          payload: {
+            fields: [
+              { label: "Name", value: subject.value.name },
+              { label: "Email", value: subject.value.email },
+            ],
+          },
+        }),
+        actionsHelp.create({
+          id: "person.actions",
+          title: "Actions",
+          order: 20,
+          payload: {
+            // The REAL action resolution, rendered informationally.
+            actions: examplePresentation.actions.resolve({ subject, invocation: "menu" }, snapshot).actions,
+          },
+        }),
+      ],
+    }),
+  ],
 });
 
+const contextFor = (_query: unknown, environment: ExampleEnvironment) => ({ facts: environment });
+const logRefusal = (refusal: unknown) => console.warn("pbui refused a stale action", refusal);
+
 const examplePbui = createPbui({
-  registry,
+  presentation: examplePresentation,
   defaultEnvironment: { currentUserId: "person-1" },
-  actions: exampleActions,
-  snapshotFor: (_query, environment) => ({
-    revision: environment.currentUserId,
-    scopes: ["global"],
-    modes: new Set<string>(),
-    capabilities: new Set<string>(),
-    product: environment,
-  }),
+  contextFor,
 });
 
 function Example({ themed = false }: { themed?: boolean }) {
   const [lastVerb, setLastVerb] = useState<ExampleVerb | null>(null);
   return (
-    <examplePbui.Provider onPerform={setLastVerb}>
+    <examplePbui.Provider onPerform={setLastVerb} onRefuse={logRefusal}>
       <div
         style={
           themed
@@ -170,66 +205,16 @@ export const TwoIsolatedProviders: Story = {
  */
 
 const helpPbui = createPbui({
-  registry,
+  presentation: examplePresentation,
   defaultEnvironment: { currentUserId: "person-1" },
-  actions: exampleActions,
-  snapshotFor: (_query, environment) => ({
-    revision: environment.currentUserId,
-    scopes: ["global"],
-    modes: new Set<string>(),
-    capabilities: new Set<string>(),
-    product: environment,
-  }),
-  help: createHelpRegistry<ExampleValues, ExampleEnvironment>({
-    graph: exampleActions.graph,
-    scopes: ["global"],
-    contributions: [
-      defineHelp<ExampleValues, ExampleEnvironment>().exact("person", {
-        id: "story.person.help",
-        scopes: ["global"],
-        help: ({ subject, snapshot }) => [
-          markdownHelp.create({
-            id: "person.meaning",
-            title: "Person",
-            order: 0,
-            payload: {
-              markdown:
-                "A **person** can be emailed from their menu.\n\n- hover shows this card\n- keyboard focus shows the same card",
-            },
-          }),
-          fieldsHelp.create({
-            id: "person.fields",
-            title: "Details",
-            order: 10,
-            payload: {
-              fields: [
-                { label: "Name", value: subject.value.name },
-                { label: "Email", value: subject.value.email },
-              ],
-            },
-          }),
-          actionsHelp.create({
-            id: "person.actions",
-            title: "Actions",
-            order: 20,
-            payload: {
-              actions: exampleActions.resolve(
-                { subject, invocation: "menu" },
-                snapshot,
-              ).actions,
-            },
-          }),
-        ],
-      }),
-    ],
-  }),
+  contextFor,
   helpRenderers: createHelpRendererRegistry(builtinHelpItems),
 });
 
 function HelpExample() {
   const [lastVerb, setLastVerb] = useState<ExampleVerb | null>(null);
   return (
-    <helpPbui.Provider onPerform={setLastVerb}>
+    <helpPbui.Provider onPerform={setLastVerb} onRefuse={logRefusal}>
       <div style={{ display: "grid", gap: "1rem", padding: "2rem" }}>
         <p>Rest the pointer on a presentation — or Tab to it — for its help card.</p>
         <div style={{ display: "flex", gap: "0.75rem" }}>

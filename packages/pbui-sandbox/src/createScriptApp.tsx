@@ -1,3 +1,4 @@
+import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { SandboxHost } from "./host/hostOptions";
 import { PROGRAM_BINDING, ScriptTile } from "./ScriptTile";
@@ -25,9 +26,8 @@ export function createScriptApp(host: SandboxHost, options: ScriptAppOptions = {
     title: "program",
     tone,
     singleton: false,
-    docBound: true,
     duplicable: false,
-    bindings: [PROGRAM_BINDING],
+    ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile runs")],
     group,
     blurb: "a program the agent wrote, running in the sandbox",
     titleFor: (view) => {

@@ -1,6 +1,6 @@
-import {
-  createPresentationRegistry,
-  type PresentationDescriptor as GenericPresentationDescriptor,
+import type {
+  PresentationDescriptor as GenericPresentationDescriptor,
+  PresentationDescriptorMap,
 } from "@hyperslop-systems/pbui";
 import type { PbuiEnvironment, PresentationType, PresentationValues } from "./types";
 import { catDescriptor } from "./descriptors/cat";
@@ -63,14 +63,12 @@ function bindProductDescriptor<Value>(
 }
 
 /**
- * The Datadrop descriptor vocabulary bound to PBUI's generic registry.
- *
- * Types without a descriptor remain legal presentations and receive PBUI's
- * safe label/description/action defaults. That preserves the existing
- * descriptor-coverage contract while moving registry mechanics out of the
- * product.
+ * The Datadrop descriptor vocabulary, as the map the compiled presentation
+ * binds (PBUI-KERNEL-1). Every concrete type has one: the closed world does
+ * not admit an undescribed runtime type. The registry itself is
+ * `datalabPresentation.descriptors` (./presentation.ts).
  */
-export const datadropRegistry = createPresentationRegistry<PresentationValues, PbuiEnvironment>({
+export const datadropDescriptors: PresentationDescriptorMap<PresentationValues, PbuiEnvironment> = {
   field: bindProductDescriptor(fieldDescriptor),
   source: bindProductDescriptor(sourceDescriptor),
   doc: bindProductDescriptor(docDescriptor),
@@ -86,4 +84,4 @@ export const datadropRegistry = createPresentationRegistry<PresentationValues, P
   workspace: bindProductDescriptor(workspaceDescriptor),
   stage: bindProductDescriptor(stageDescriptor),
   traceEntry: bindProductDescriptor(traceEntryDescriptor),
-});
+};

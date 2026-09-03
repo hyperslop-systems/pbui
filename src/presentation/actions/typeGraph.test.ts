@@ -37,12 +37,14 @@ describe("createPresentationTypeGraph", () => {
     ]);
   });
 
-  test("an undeclared type is an isolated node, not an error", () => {
-    // The legacy adapter presents types the graph never declared.
+  test("an undeclared type is an error, never an isolated node (closed world, KERNEL-1 C9)", () => {
     expect(graph.has("mystery")).toBe(false);
-    expect(graph.ancestors("mystery")).toEqual([{ type: "mystery", distance: 0 }]);
-    expect(graph.isSubtype("mystery", "object")).toBe(false);
-    expect(graph.distance("mystery", "object")).toBe(Number.POSITIVE_INFINITY);
+    expect(() => graph.ancestors("mystery")).toThrow(/"mystery" is not declared/);
+    expect(() => graph.isSubtype("mystery", "object")).toThrow(/closed world/);
+    expect(() => graph.distance("mystery", "object")).toThrow(/closed world/);
+    // An undeclared SUPERTYPE is merely unrelated: the subject is still valid.
+    expect(graph.isSubtype("file", "mystery")).toBe(false);
+    expect(graph.distance("file", "mystery")).toBe(Number.POSITIVE_INFINITY);
   });
 
   test("abstract and concrete nodes coexist", () => {

@@ -3,12 +3,15 @@ import { Button, Callout, EmptyState, IconButton, Text, TileFrame, useTileDrag }
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { placementCount } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
+import { useBadges } from "../../links/hooks";
+import { PortBadge } from "../PortBadge";
+import { PortRail } from "../PortRail";
 import type { SurfaceProps, TilePlacementInfo } from "../../types";
 import { canClose as canClosePlacement, type PlaceZone } from "../../verbs";
 import styles from "./Tile.module.css";
 
 export interface TileProps
-  extends Pick<SurfaceProps, "renderTitle" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
+  extends Pick<SurfaceProps, "renderTitle" | "renderBadges" | "renderPort" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
   node: Node;
   /** The active placement request's per-tile wording, from the Surface. */
   placementLabelFor?(placementId: string, zone: PlaceZone): string | undefined;
@@ -22,14 +25,16 @@ export interface TileProps
  * verbs, and hands the application a one-cell grid with a committed height.
  * It holds no application state and no layout logic of its own.
  */
-export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
+export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const active = workbench.useWorkbenchState((state) => state.activePlacementId === node.id);
+  const linkMode = workbench.useWorkbenchState((state) => state.linkModeOpen);
   const viewId = node.body.case === "leaf" ? node.body.value.viewId : "";
   const view = document.views[viewId];
   const app = view ? workbench.apps.get(view.appId) : null;
   const canClose = canClosePlacement(document, node.id);
+  const badges = useBadges(view ?? { id: viewId, appId: "", documents: {} } as never);
 
   const drag = useTileDrag({
     id: node.id,
@@ -61,7 +66,16 @@ export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, repl
       ) : null}
     </>
   );
-  const title = view && renderTitle ? renderTitle(view, info, defaultTitle) : defaultTitle;
+  // The binding badges (PBUI-LINK-1): the always-on substrate of tile linking.
+  // BESIDE the product's title presentation, never inside it: a badge is its
+  // own presentation and must not sit in another one's frame.
+  const badgeNodes = view && badges.length > 0 ? (renderBadges ? renderBadges(view, info, badges) : badges.map((badge) => <PortBadge key={badge.port} badge={badge} />)) : null;
+  const title = (
+    <>
+      {view && renderTitle ? renderTitle(view, info, defaultTitle) : defaultTitle}
+      {badgeNodes}
+    </>
+  );
 
   // The chrome's own door to the per-pane launcher. Without it a product with
   // no `<tile>` presentation cannot reach `launcher.open({ placementId })` at
@@ -121,11 +135,15 @@ export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, repl
           (drag.carrying ? (replaceLabel ?? "\u2325 show it in this tile instead \u00b7 keeps the tile") : replaceLabel)
         }
       >
-        <div className={styles.body}>
+        <div className={styles.body} data-link-mode={linkMode || undefined}>
           {view && app ? (
-            <TileBoundary resetKey={`${view.id}:${view.appId}`} title={app.title}>
-              <app.Component placementId={node.id} view={view} />
-            </TileBoundary>
+            // In connect mode the application is INERT under its rail: the
+            // rail takes the pointer, and the app neither focuses nor clicks.
+            <div className={styles.app} inert={linkMode || undefined}>
+              <TileBoundary resetKey={`${view.id}:${view.appId}`} title={app.title}>
+                <app.Component placementId={node.id} view={view} />
+              </TileBoundary>
+            </div>
           ) : (
             <div className={styles.empty}>
               <EmptyState
@@ -134,6 +152,7 @@ export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, repl
               />
             </div>
           )}
+          {linkMode && view ? <PortRail view={view} {...(renderPort ? { renderPort } : {})} /> : null}
         </div>
       </TileFrame>
     </div>
