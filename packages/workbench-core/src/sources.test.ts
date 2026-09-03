@@ -89,3 +89,48 @@ describe("document sources", () => {
     if (!closed.ok) expect(closed.code).toBe("unknown_binding");
   });
 });
+
+describe("source scheduling (design doc 04 §6.4, §12.3)", () => {
+  it("a burst of source signals outside a publication reconciles once and applies once", () => {
+    const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
+    const { source, set } = registry(["c-1"]);
+    const commits: number[] = [];
+    core.subscribe(() => commits.push(core.getState().revision));
+    connectDocumentSource(core, source);
+    set(["c-1", "c-2"]);
+    set(["c-1", "c-2"]);
+    set(["c-1", "c-2"]);
+    expect(commits).toEqual([1, 2]); // the initial stub, then c-2 once
+  });
+
+  it("a source signalled from inside a publication reconciles after it, in one transaction", async () => {
+    const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
+    const { source, set } = registry(["c-1"]);
+    connectDocumentSource(core, source);
+    const receipts: string[][] = [];
+    core.subscribe(() => {
+      // A product listener that adds a resource in reaction to a commit.
+      if (core.getState().revision === 2) set(["c-1", "c-2", "c-3"]);
+    });
+    const onCommit = core.subscribe(() => receipts.push(Object.keys(core.getState().document.documents).sort()));
+    expect(core.execute(commands.open("chat", { conversation: "c-1" })).ok).toBe(true);
+    expect(core.getState().document.documents["c-2"]).toBeUndefined();
+    await Promise.resolve();
+    expect(Object.keys(core.getState().document.documents).sort()).toEqual(["c-1", "c-2", "c-3"]);
+    expect(core.getState().revision).toBe(3); // one transaction for both stubs
+    onCommit();
+  });
+
+  it("a disconnected source applies nothing from a deferred reconcile", async () => {
+    const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
+    const { source, set } = registry(["c-1"]);
+    const disconnect = connectDocumentSource(core, source);
+    core.subscribe(() => {
+      if (core.getState().revision === 2) set([]);
+    });
+    expect(core.execute(commands.open("chat", { conversation: "c-1" })).ok).toBe(true);
+    disconnect();
+    await Promise.resolve();
+    expect(core.getState().document.documents["c-1"]).toBeDefined();
+  });
+});

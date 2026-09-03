@@ -132,6 +132,8 @@ export interface WorkbenchCore {
   /** Replace the document wholesale through the gateway: validated, indexed, session repaired, one notification. */
   replaceDocument(document: WorkbenchDocument, options?: { session?: Partial<WorkbenchSession> }): ReplaceResult;
   serialize(): string;
+  /** Check a document against this core's catalog without installing it (what `replaceDocument` would decide). */
+  validateDocument(document: WorkbenchDocument): ReplaceResult;
   /** Replace from `serialize()` output; the state is untouched when it does not parse or validate. */
   restore(json: string): ReplaceResult;
   /**
@@ -358,6 +360,10 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
       }
     },
     replaceDocument: (next, replaceOptions = {}) => replace(next, replaceOptions.session),
+    validateDocument(document) {
+      const checked = validateWorkbenchDocument(document, { apps });
+      return checked.ok ? { ok: true } : { ok: false, diagnostics: checked.diagnostics };
+    },
     serialize: () => serializeDocument(state.document),
     restore(json) {
       const parsed = parseWorkbenchDocument(json, { apps });

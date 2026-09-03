@@ -119,7 +119,7 @@ describe("stabilization probes (design doc 04 §4, §12)", () => {
     expect(core.getState().document.views[core.getState().document.viewOrder[0]!]!.title).toBe("Renamed");
   });
 
-  it.fails("CREATE_BOOTSTRAP_DROP: creating the server row from the optimistic document acknowledges what it already contains", async () => {
+  it("CREATE_BOOTSTRAP_DROP: creating the server row from the optimistic document acknowledges what it already contains", async () => {
     const { ids, initial } = twoNotes();
     let committed: Parameters<ReturnType<typeof createWorkbenchSync>["enqueue"]>[0] = [];
     const core = createWorkbenchCore({ initial, apps: [notes], ids, onCommit: (receipt) => (committed = receipt.mutations) });

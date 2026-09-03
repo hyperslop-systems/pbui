@@ -333,3 +333,131 @@ describe("the sync module (guide §15, batch-preserving)", () => {
     sync.dispose();
   });
 });
+
+describe("stabilization (design doc 04 §7, §12.4)", () => {
+  test("a missing row is created from the optimistic document; the entries it already contains are acknowledged, not replayed or dropped", async () => {
+    const initial = layout(split("row", 0.5, tile("counter"), tile("notes")));
+    let document: WorkbenchDocument | null = null;
+    const created: WorkbenchDocument[] = [];
+    const seen: number[] = [];
+    const dropped = vi.fn();
+    const client: SyncClient = {
+      get: async () => (document ? { document, revision: "r" } : null),
+      create: async (doc) => {
+        created.push(doc);
+        document = doc;
+        return { document: doc, revision: "created" };
+      },
+      mutate: async (_revision, mutations) => {
+        seen.push(mutations.length);
+        document = applyMutations(document!, mutations);
+        return { document, revision: "next" };
+      },
+    };
+    const sync = createWorkbenchSync({ client, flushDelayMs: 0, onDropped: dropped, onError: () => {} });
+    const core = createWorkbenchCore({ apps, initial, onCommit: (receipt) => sync.enqueue(receipt.mutations) });
+    core.execute(commands.duplicate(leaves(core.getState().document.workspaces[0]?.tree)[0]!.id, "row"));
+    sync.attach(core);
+    await sync.flush();
+    expect(created).toHaveLength(1);
+    expect(leafCount(created[0]!)).toBe(3);
+    expect(seen).toEqual([]);
+    expect(dropped).not.toHaveBeenCalled();
+    expect(sync.status()).toMatchObject({ phase: "synced", revision: "created", queued: 0, inFlight: 0 });
+    expect(leafCount(core.getState().document)).toBe(3);
+    sync.dispose();
+  });
+
+  test("work queued while the row is being created is overlaid on the created document and sent once", async () => {
+    const initial = layout(split("row", 0.5, tile("counter"), tile("notes")));
+    let document: WorkbenchDocument | null = null;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let started: () => void = () => {};
+    const createStarted = new Promise<void>((resolve) => (started = resolve));
+    const seen: number[] = [];
+    const client: SyncClient = {
+      get: async () => (document ? { document, revision: "r" } : null),
+      create: async (doc) => {
+        started();
+        await gate;
+        document = doc;
+        return { document: doc, revision: "created" };
+      },
+      mutate: async (_revision, mutations) => {
+        seen.push(mutations.length);
+        document = applyMutations(document!, mutations);
+        return { document, revision: "next" };
+      },
+    };
+    const sync = createWorkbenchSync({ client, flushDelayMs: 0, onError: () => {} });
+    const core = createWorkbenchCore({ apps, initial, onCommit: (receipt) => sync.enqueue(receipt.mutations) });
+    sync.attach(core);
+    const flushing = sync.flush();
+    // The create is out (its snapshot captured); a change lands locally meanwhile.
+    await createStarted;
+    core.execute(commands.duplicate(leaves(core.getState().document.workspaces[0]?.tree)[0]!.id, "row"));
+    release();
+    await flushing;
+    await sync.flush();
+    expect(seen).toEqual([2]); // one request: the duplicate's two mutations, sent once
+    expect(leafCount(document!)).toBe(3);
+    expect(leafCount(core.getState().document)).toBe(3);
+    sync.dispose();
+  });
+
+  test("a server document the local catalog refuses is not adopted: phase incompatible, revision not advanced", async () => {
+    const initial = layout(split("row", 0.5, tile("counter"), tile("notes")));
+    const foreign = layout(tile("ledger")); // no such application here
+    const incompatible = vi.fn();
+    const client: SyncClient = { get: async () => ({ document: foreign, revision: "srv" }), create: async () => { throw new Error("unreachable"); }, mutate: async () => { throw new Error("unreachable"); } };
+    const sync = createWorkbenchSync({ client, flushDelayMs: 0, onError: () => {}, onIncompatible: incompatible });
+    const core = createWorkbenchCore({ apps, initial, onCommit: (receipt) => sync.enqueue(receipt.mutations) });
+    sync.attach(core);
+    await sync.flush();
+    expect(sync.status()).toMatchObject({ phase: "incompatible", revision: null });
+    expect(incompatible).toHaveBeenCalledWith([expect.objectContaining({ code: "unknown_application" })]);
+    expect(leafCount(core.getState().document)).toBe(2);
+    sync.dispose();
+  });
+
+  test("422 isolation keeps the batches still to be sent overlaid: the screen never rolls back a pending change", async () => {
+    const { core, sync, server, ids } = scenario({ onInvalid: "isolate" });
+    await sync.flush();
+    core.execute(commands.duplicate(ids()[0]!, "row"));
+    core.execute(commands.duplicate(ids()[0]!, "col"));
+    core.execute(commands.duplicate(ids()[0]!, "row"));
+    const before = leafCount(core.getState().document);
+    let lowest = before;
+    const stop = core.subscribe(() => {
+      lowest = Math.min(lowest, leafCount(core.getState().document));
+    });
+    // The combined request 422s; the first isolated batch 422s too (guilty), the rest land.
+    server.failures.push(new SyncHttpError(422, "invalid"), new SyncHttpError(422, "invalid"));
+    await sync.flush();
+    stop();
+    expect(lowest).toBe(before - 1); // only the guilty batch's tile went away, never the pending ones
+    expect(leafCount(core.getState().document)).toBe(before - 1);
+    expect(leafCount(server.document)).toBe(before - 1);
+    expect(sync.status()).toMatchObject({ phase: "synced", queued: 0, inFlight: 0 });
+    sync.dispose();
+  });
+
+  test("a rebased entry the catalog would refuse is dropped, not kept on structural applicability alone", async () => {
+    const dropped = vi.fn();
+    const { core, sync, server, ids } = scenario({ onDropped: dropped });
+    await sync.flush();
+    // Locally: a second `notes` tile is impossible (cardinality one) — so build a
+    // batch that is structurally fine but semantically refused after the server moves.
+    const [first] = ids();
+    const viewId = viewOf(core.getState().document.workspaces[0]?.tree, first!);
+    core.execute(commands.setTitle(viewId, "mine"));
+    // The server retitles the same view first; the local retitle still applies structurally.
+    server.externalWrite(mutationsOf(core, commands.setTitle(viewId, "theirs")));
+    await sync.flush();
+    // Structurally applicable ⇒ kept and replayed (a title is a title); no drop.
+    expect(dropped).not.toHaveBeenCalled();
+    expect(sync.status().phase).toBe("synced");
+    sync.dispose();
+  });
+});

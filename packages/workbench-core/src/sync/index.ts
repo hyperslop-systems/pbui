@@ -22,18 +22,21 @@
  * batch-level conflict detection. It does not provide collaborative
  * concurrent layout editing or CRDT convergence (§15.5).
  */
-import { toJsonString } from "@bufbuild/protobuf";
-import { MutationSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import { clone, toJsonString } from "@bufbuild/protobuf";
+import { MutationSchema, WorkbenchDocumentSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
+import type { WorkbenchDiagnostic } from "../diagnostics";
 
 /**
  * Where the workbench stands with the server. `local`: not talking to one
  * yet. `probing`: the bootstrap request is out. `synced`: everything
  * committed is on the server. `pending`: batches are queued or in flight.
- * `offline`: a request failed and a retry is scheduled. `detached`: the
- * server says the row is gone, and nothing will be sent again.
+ * `offline`: a request failed and a retry is scheduled. `incompatible`: the
+ * server answered with a document this client's catalog cannot accept — not
+ * offline, not retryable (design doc 04 §7.2). `detached`: the server says
+ * the row is gone, and nothing will be sent again.
  */
-export type SyncPhase = "local" | "probing" | "synced" | "pending" | "offline" | "detached";
+export type SyncPhase = "local" | "probing" | "synced" | "pending" | "offline" | "incompatible" | "detached";
 
 /** A revision as the server states it; opaque to this module, compared by equality. */
 export type Revision = string;
@@ -109,6 +112,8 @@ export interface SyncOptions {
    */
   onDropped?(entries: readonly OutboxEntry[], reason: DropReason): void;
   onError?(error: unknown): void;
+  /** The server's document was refused by the local catalog (phase `incompatible`); the diagnostics say why. */
+  onIncompatible?(diagnostics: readonly WorkbenchDiagnostic[]): void;
 }
 
 export interface WorkbenchSync {
@@ -129,10 +134,18 @@ export interface WorkbenchSync {
   dispose(): void;
 }
 
-/** The half of a core this needs; `createWorkbenchCore(...)` satisfies it. Replacement goes through the core's validated gateway. */
+/**
+ * The half of a core this needs; `createWorkbenchCore(...)` satisfies it.
+ * Replacement goes through the core's validated gateway and is ACKNOWLEDGED
+ * (design doc 04 §7.2): the revision, the outbox and the phase advance only
+ * after the target accepted the document. `validateDocument` lets a rebased
+ * candidate be checked against the catalog before an entry is kept, since
+ * the protocol applier proves structural applicability only (§7.3).
+ */
 export interface SyncTarget {
   getState(): { document: WorkbenchDocument };
-  replaceDocument(document: WorkbenchDocument): unknown;
+  replaceDocument(document: WorkbenchDocument): { ok: true } | { ok: false; diagnostics: readonly WorkbenchDiagnostic[] };
+  validateDocument?(document: WorkbenchDocument): { ok: true } | { ok: false; diagnostics: readonly WorkbenchDiagnostic[] };
 }
 
 const isDestructive = (mutations: readonly Mutation[]) => mutations.some((mutation) => mutation.body.case === "workspaceSetTree");
@@ -179,18 +192,30 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   /**
    * Install a server document, keeping what is still queued: a response is
    * a snapshot of what the server had when it answered, and the local
-   * document is that plus everything not yet acknowledged.
+   * document is that plus everything not yet acknowledged — the outbox, and
+   * `extra`: entries the caller still holds in flight (an isolation loop, a
+   * 409 rebase) that must stay overlaid rather than roll back on screen.
+   *
+   * Acknowledged: nothing advances until the target accepted the candidate.
+   * A refusal is `incompatible` — the server is reachable, the document is
+   * not one this catalog can show — and leaves revision and queue alone.
+   * Returns the `extra` entries that still apply, for the caller to keep.
    */
-  const adopt = (result: SyncResult) => {
-    revision = result.revision;
-    if (!target) return;
-    if (outbox.length === 0) {
-      target.replaceDocument(result.document);
-      return;
+  const adopt = (result: SyncResult, extra: readonly OutboxEntry[] = [], afterConflict = false): { ok: boolean; keptExtra: OutboxEntry[] } => {
+    if (!target) return { ok: false, keptExtra: [...extra] };
+    const queue = [...extra, ...outbox];
+    const { document, kept } = queue.length > 0 ? rebase(result.document, queue, afterConflict) : { document: result.document, kept: [] as OutboxEntry[] };
+    const accepted = target.replaceDocument(document);
+    if (!accepted.ok) {
+      options.onIncompatible?.(accepted.diagnostics);
+      report(new Error(`workbench-core/sync: the server's document was refused locally — ${accepted.diagnostics[0]?.code}: ${accepted.diagnostics[0]?.detail}`));
+      setPhase("incompatible");
+      return { ok: false, keptExtra: [...extra] };
     }
-    const { document, kept } = rebase(result.document, outbox, false);
-    outbox = kept;
-    target.replaceDocument(document);
+    revision = result.revision;
+    const extraSet = new Set(extra);
+    outbox = kept.filter((entry) => !extraSet.has(entry));
+    return { ok: true, keptExtra: kept.filter((entry) => extraSet.has(entry)) };
   };
 
   /** A stable id for a request's CONTENT (the payloads, not only the kinds), so a retry is idempotent and a correction is not a replay. */
@@ -221,13 +246,23 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
         conflicted.push(entry);
         continue;
       }
+      let candidate: WorkbenchDocument;
       try {
-        document = applyMutations(document, [...entry.mutations]);
-        kept.push(entry);
+        candidate = applyMutations(document, [...entry.mutations]);
       } catch (error) {
         if (!(error instanceof MutationError)) throw error;
         dropped.push(entry);
+        continue;
       }
+      // Structurally applicable is not the same as acceptable (§7.3): the
+      // target's catalog decides whether the candidate may be installed.
+      const checked = target?.validateDocument?.(candidate);
+      if (checked && !checked.ok) {
+        dropped.push(entry);
+        continue;
+      }
+      document = candidate;
+      kept.push(entry);
     }
     drop(conflicted, "conflict");
     drop(dropped, "rebase");
@@ -244,15 +279,29 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
 
   const idle = () => outbox.length === 0 && inFlight.length === 0;
 
+  /**
+   * The first request (design doc 04 §7.1). A row that exists is adopted.
+   * A missing row is CREATED from the local document — which already
+   * contains everything queued, so those entries are acknowledged by the
+   * creation itself rather than rebased over the very document they built.
+   * Entries queued while the request is out are overlaid afterwards, and a
+   * failed creation puts the covered entries back ahead of them.
+   */
   async function bootstrap(): Promise<boolean> {
     setPhase("probing");
     const existing = await client.get();
-    if (existing) {
-      adopt(existing);
-      return true;
+    if (existing) return adopt(existing).ok;
+    const covered = outbox;
+    outbox = [];
+    const snapshot = clone(WorkbenchDocumentSchema, target!.getState().document);
+    let created: SyncResult;
+    try {
+      created = await client.create(snapshot);
+    } catch (error) {
+      outbox = [...covered, ...outbox];
+      throw error;
     }
-    adopt(await client.create(target!.getState().document));
-    return true;
+    return adopt(created).ok;
   }
 
   async function pump(): Promise<void> {
@@ -260,7 +309,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     if (running) return running;
     running = (async () => {
       try {
-        if (revision === null) await bootstrap();
+        if (revision === null && !(await bootstrap())) return;
         while (!disposed && !detached() && outbox.length > 0) {
           if (conflicts >= MAX_CONFLICTS) throw new Error("workbench-core/sync: too many conflicts in a row; backing off");
           inFlight = outbox;
@@ -268,12 +317,13 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
           setPhase("pending");
           await send(inFlight);
           inFlight = [];
+          if (phase === "incompatible") return;
         }
         if (!disposed && !detached()) {
           if (streamDirty && idle()) {
             streamDirty = false;
             const fresh = await client.get();
-            if (fresh) adopt(fresh);
+            if (fresh && !adopt(fresh).ok) return;
           }
           setPhase(idle() ? "synced" : "pending");
           failures = 0;
@@ -295,11 +345,17 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     return running;
   }
 
-  /** One request carries several whole batches, in order; the server applies the request atomically. */
-  async function send(batches: readonly OutboxEntry[]): Promise<void> {
+  /**
+   * One request carries several whole batches, in order; the server applies
+   * the request atomically. `remaining` are batches the caller still holds
+   * in flight after this one (the isolation loop): any adoption here keeps
+   * them overlaid so the screen never rolls back a change that is still
+   * pending (§7.4).
+   */
+  async function send(batches: readonly OutboxEntry[], remaining: OutboxEntry[] = []): Promise<OutboxEntry[]> {
     const mutations = batches.flatMap((entry) => [...entry.mutations]);
     try {
-      adopt(await client.mutate(revision!, mutations, requestIdOf(mutations)));
+      return adopt(await client.mutate(revision!, mutations, requestIdOf(mutations)), remaining).keptExtra;
     } catch (error) {
       if (!(error instanceof SyncHttpError)) throw error;
       if (error.status === 404) {
@@ -307,37 +363,46 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
         inFlight = [];
         setPhase("detached");
         report(error);
-        return;
+        return [];
       }
       if (error.status === 409) {
         const fresh = await client.get();
         if (!fresh) {
           setPhase("detached");
-          return;
+          return [];
         }
         conflicts += 1;
-        const { document, kept } = rebase(fresh.document, [...batches, ...outbox], true);
-        revision = fresh.revision;
-        target!.replaceDocument(document);
-        outbox = kept;
+        // The batches that were refused go back in front of the queue and
+        // are rebased with it; a destructive one is a conflict, not a replay.
+        outbox = [...batches, ...remaining, ...outbox];
         inFlight = [];
-        return;
+        adopt(fresh, [], true);
+        return [];
       }
       if (error.status === 422) {
         if (onInvalid === "isolate" && batches.length > 1) {
           // One of the batches is invalid and the server did not say which.
           // Send them one at a time — whole — so the innocent ones land and
-          // the guilty one 422s alone and is dropped below.
-          for (const entry of batches) await send([entry]);
-          return;
+          // the guilty one 422s alone and is dropped below. The ones not yet
+          // sent stay overlaid through every adoption in between.
+          let pending = [...batches];
+          while (pending.length > 0) {
+            const entry = pending.shift()!;
+            if (phase === "detached" || phase === "incompatible") return [];
+            pending = await send([entry], [...pending, ...remaining]);
+            const remainingSet = new Set(remaining);
+            remaining = pending.filter((item) => remainingSet.has(item));
+            pending = pending.filter((item) => !remainingSet.has(item));
+          }
+          return remaining;
         }
         drop(batches, "invalid");
         report(error);
         // The optimistic document contains a change the server refused.
         const fresh = await client.get();
-        if (fresh) adopt(fresh);
-        else setPhase("detached");
-        return;
+        if (fresh) return adopt(fresh, remaining).keptExtra;
+        setPhase("detached");
+        return [];
       }
       throw error;
     }
