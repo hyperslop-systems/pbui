@@ -1780,3 +1780,62 @@ S2 was implemented in the same pass as S1 because the POST_COMMIT_ESCAPE probe c
 ### Technical details
 
 - Publication order: `onCommit(receipt)` → `links.publish` → core listeners → `reportFailures`.
+
+## Step 24: Phase S3 — sources after publication, sync that waits for an answer
+
+Phase S3 finished the ordering half of Track A. The document source's scheduling had landed with S1 (try synchronously, defer once on a reentrant refusal); this step pinned its three behaviours — a burst of signals reconciles once, a signal from inside a publication reconciles after it in one transaction, a disconnected source applies nothing from a stale microtask — and then rewrote the four sync paths design doc 04 §7 names.
+
+Bootstrap no longer rebases the outbox over the document it built: the covered entries are set aside, the row is created from a clone of the local document, and the creation acknowledges them; a failed creation puts them back ahead of anything queued meanwhile. Adoption is acknowledged — `revision`, the outbox and the phase advance only after the target accepted the candidate, and a refusal is the new phase `incompatible`, which is neither offline nor retryable. Rebase consults the target's catalog through `validateDocument` before keeping an entry. The 422 isolation loop threads the batches still to be sent through every adoption as an overlay, so a change that is still pending never disappears from the screen between two isolated requests.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 20)
+
+**Assistant interpretation:** Design doc 04 Phase S3: schedule and coalesce source reconciliation; fix the missing-row bootstrap; require target acknowledgement; overlay remaining in-flight entries during isolation; pin the receipt/outbox order.
+
+**Inferred user intent:** The close-bound-source scenario reaches a Go-like server in valid order, and a client never claims a revision the core did not install.
+
+**Commit (code):** 929c9e1 — "PBUI-WORKBENCH-CORE-1 S3: source scheduling tests, sync bootstrap, acknowledged adoption, isolation overlay"
+
+### What I did
+
+- `sync/index.ts`: `adopt(result, extra, afterConflict)` returns `{ ok, keptExtra }`; `SyncTarget.replaceDocument` must return `{ ok } | { ok: false, diagnostics }` and may offer `validateDocument`; `SyncPhase` gains `incompatible`; `SyncOptions.onIncompatible`; `bootstrap` per §7.1; `send(batches, remaining)` returns the still-applicable remaining entries; the 409 path re-queues the refused batches before the conflict rebase; `pump` stops on `incompatible`.
+- `createWorkbenchCore.ts`: `validateDocument(document): ReplaceResult`.
+- Tests: five sync cases (create acknowledges covered entries; work queued during create overlaid and sent once; incompatible server document; isolation never rolls back; rebased-and-accepted title); three source cases; CREATE_BOOTSTRAP_DROP un-failed.
+
+### Why
+
+- §7.1–7.4, §12.3–12.4, and the S3 exit gate.
+
+### What worked
+
+- The core already returned `ReplaceResult` from `replaceDocument`, so tightening `SyncTarget` cost the in-repo consumers nothing (chat demo, sandbox tests typecheck unchanged).
+
+### What didn't work
+
+- The "work queued during create" test first staged the change while `client.get()` was pending — before the snapshot was captured — so the creation legitimately covered it and nothing was sent; the second version waits for `create` to start. Its assertion then counted mutations (2 for a duplicate) where I had written batches (1). Traced by appending to a file, since the package's vitest config silences console output.
+
+### What I learned
+
+- "Covered" is decided by WHEN the snapshot is cloned, not by when the row is missing: everything committed before the clone is in the created document, everything after is an overlay.
+
+### What was tricky to build
+
+- The isolation loop's overlay bookkeeping: `send` returns the remaining entries that still apply after any adoption it caused, and the loop splits them back into "not yet sent in this loop" and "held by the outer caller" by identity.
+
+### What warrants a second pair of eyes
+
+- On a 409 the refused batches are put back in front of the outbox BEFORE `adopt(fresh, [], true)` rebases; a destructive one among them is reported as a conflict, as before, but the order of `onDropped` calls relative to the replacement changed (drop first, then replace).
+- `incompatible` halts the pump; recovery requires a new `attach` or a catalog change and is not automatic.
+
+### What should be done in the future
+
+- rag-ttc's own `SyncTarget` (`apps/workbench/web/src/sync.ts`) must return the core's `ReplaceResult` — S7 verifies.
+
+### Code review instructions
+
+- `packages/workbench-core/src/sync/index.ts` (`adopt`, `bootstrap`, `send`), the five new cases at the end of `sync.test.ts`; `npx vitest run src/sync src/sources.test.ts src/stabilization.probes.test.ts`.
+
+### Technical details
+
+- Remaining expected-fail probes after S3: EXPOSED_STATE_MUTATION, PREVIEW_ID_DRIFT, DROPPED_REPLACE_TITLE (all S4).

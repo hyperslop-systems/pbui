@@ -205,3 +205,8 @@ S0: seven review probes as expected-fail package tests, public-surface golden, s
 
 S1+S2: attemptAll publication, onObserverError, reentrant_execution refusal, deferred source reconcile, staged link runtime (commit 740ef57)
 
+
+## 2026-09-03
+
+S3: acknowledged sync adoption, incompatible phase, bootstrap covered entries, isolation overlay, validateDocument; source scheduling pinned (commit 929c9e1)
+
