@@ -45,3 +45,8 @@ Step 5: explainResolution and pbui.explain with public/developer disclosure (com
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/interaction/explain.ts — Original-query introspection
 
+
+## 2026-09-02
+
+Step 6: §19.8 DOM tests, Interaction stories, seven screenshots, README section, cross-package verification (commit e56e3da)
+

@@ -10,13 +10,26 @@ Topics:
 DocType: index
 Intent: long-term
 Owners: []
-RelatedFiles: []
+RelatedFiles:
+    - Path: repo://src/presentation/Interaction.stories.tsx
+      Note: The three stories behind the screenshots
+    - Path: repo://src/presentation/createPbui.tsx
+      Note: The runtime as executor of the machines
+    - Path: repo://src/presentation/interaction/accept.ts
+      Note: The accept machine
+    - Path: repo://src/presentation/interaction/activation.ts
+      Note: activationOutcome
+    - Path: repo://src/presentation/interaction/explain.ts
+      Note: explainResolution and disclosure
+    - Path: repo://src/presentation/interaction/refusal.ts
+      Note: describeRefusal
 ExternalSources: []
-Summary: "Phase 10 of the PBUI-KERNEL-1 clean-cutover guide: split out of PBUI-KERNEL-1; see KERNEL-1 guide §0.1"
+Summary: 'Phase 10 of the PBUI-KERNEL-1 clean-cutover guide: split out of PBUI-KERNEL-1; see KERNEL-1 guide §0.1'
 LastUpdated: 2026-09-02T22:00:00.042619328-04:00
-WhatFor: "Find the scope, specification pointer, and exit criteria for this follow-up to PBUI-KERNEL-1."
-WhenToUse: "After PBUI-KERNEL-1 Phase 7 has landed."
+WhatFor: Find the scope, specification pointer, and exit criteria for this follow-up to PBUI-KERNEL-1.
+WhenToUse: After PBUI-KERNEL-1 Phase 7 has landed.
 ---
+
 
 # Interaction policy and introspection: activation function, accept machine, disclosure
 

@@ -259,3 +259,50 @@ Disclosure is two policies. Public is the menu: rows in menu order with their av
 
 ### Code review instructions
 - `interaction/explain.ts`; `explain.test.ts`; `explain` in the context value.
+
+## Step 6: Through the DOM, on screen, across the packages
+
+The machine's invariants were proven in isolation in Step 2; §19.8 asks for them as a user meets them. `createPbui.interaction.test.tsx` mounts the real Provider, Presentation, AcceptBanner and AcceptChooser and drives them with clicks and keys: a direct reference settles; a second request resolves null at once, the first stays pending and `onAccept` is not told; an ambiguous note opens the chooser, Escape closes the chooser and keeps the banner, Escape again aborts and `onAccept(null)` fires; choosing an option settles with that option's result; Enter on an acceptable presentation settles like a click. A last test reads `pbui.explain` from a component and checks it lists exactly what `pbui.resolve` returns for the menu query.
+
+For the screenshots the core Storybook gained `Presentation/Interaction (KERNEL-4)` with three stories over one presentation. The stale-row story exposes the lock as a window flag so that it can be flipped AFTER the menu is open, which is the only way to produce a stale row deliberately. The refusal notice had no styles; a rule set in `presentation-parts.css` was added and the screenshot retaken.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 6: runtime tests, screenshots, docs, cross-package verification.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** e56e3da — "PBUI-KERNEL-4 P6: §19.8 runtime tests, Interaction stories, screenshots, README"
+
+### What I did
+- `createPbui.interaction.test.tsx` (6 tests); `Interaction.stories.tsx` (3 stories); `presentation-parts.css` refusal-notice rules; screenshots 01–07 with `various/screenshots/README.md`; README section; KERNEL-4 `index.md` status.
+- `pnpm build`, `pnpm -r typecheck` clean; `pnpm -r --no-bail test` green except the two failures baselined in KERNEL-1 (pbui-workbench slate perf guard under load; pbui-chat grid-columns).
+
+### Why
+- The DOM tests are the fence that the Provider executes the machine's effects the way the machine's tests assume.
+
+### What worked
+- The chooser story reproduced the tie exactly as the kernel test does: two acceptance relations from `note` to `person` at the same scope.
+
+### What didn't work
+- Two runtime tests first looked for a button named "note"; a presentation's accessible name is its descriptor label ("note n1"). Fixed the queries.
+- Playwright's screenshot timed out twice with the chooser open; injecting a no-animation stylesheet into the page made it return (the acceptable-pulse animation and the chooser's focus handling kept the page from settling).
+- The first refusal-notice screenshot ran its three spans together; it had no CSS. Added rules and retook it.
+
+### What I learned
+- A row can only go stale between menu render and click; a story that wants to show it needs a side channel (the window flag) because any click in the page closes the menu.
+
+### What was tricky to build
+- Keeping the story honest: the lock is a real product fact read by `contextFor`, and the refusal comes from `evaluateFresh` as in production; nothing in the story fakes the refusal.
+
+### What warrants a second pair of eyes
+- `presentation-parts.css` is the stylesheet consumers copy; the new rules use the same tokens (`--pbui-danger`, `--pbui-paper`) as the banner.
+
+### What should be done in the future
+- The KERNEL-4 project report (task added at the user's request).
+
+### Code review instructions
+- `createPbui.interaction.test.tsx`; `Interaction.stories.tsx`; `various/screenshots/README.md`.
+- `pnpm build && pnpm -r typecheck && pnpm -r --no-bail test`.
