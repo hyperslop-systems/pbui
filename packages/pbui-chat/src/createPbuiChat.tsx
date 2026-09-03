@@ -104,6 +104,16 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
    */
   workbench?: WorkbenchShell;
   /**
+   * How conversations are mirrored into an attached workbench's document so
+   * `chat` tiles can bind them (the core validates every binding against the
+   * document store). Default: a stub per conversation in the
+   * `chat.conversation` format. A product whose host validates document
+   * formats passes its own `format`; a product that keeps conversation
+   * documents itself (a reconciler writing richer bodies) passes `false`
+   * and no source is connected.
+   */
+  conversationDocuments?: { format: string } | false;
+  /**
    * Tune the workbench tools the agent uses to rearrange the screen: limits,
    * the per-verb policy, and whether the raw mutation tool is offered.
    * Confirm-policy authority always comes from the product-wide ledger.
@@ -258,9 +268,9 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     disconnectConversations();
     disconnectConversations = () => undefined;
     workbench = next;
-    if (!next) return;
+    if (!next || options.conversationDocuments === false) return;
     const source: DocumentSource = {
-      format: CONVERSATION_DOCUMENT_FORMAT,
+      format: options.conversationDocuments?.format ?? CONVERSATION_DOCUMENT_FORMAT,
       list: () => conversations.all().map((snapshot) => ({ id: snapshot.id })),
       subscribe: (listener) => conversations.subscribe(listener),
     };
