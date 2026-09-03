@@ -48,6 +48,8 @@ export type { Binding, Diagnostic, SerializableReference } from "./terms";
 export { dependenciesOfBinding, normalizeBinding, sourcePortsOfBinding } from "./expression";
 export type { BindingDependencies } from "./expression";
 export { checkBinding, dependsOn } from "./check";
+export { canAccept, canFlow, canMergeUpdates, canShareCell, describeMismatches, protocolMismatches, valueMismatches } from "./compatibility";
+export type { ShareVerdict, Verdict } from "./compatibility";
 export { PLAN_LINK_ID, candidateTermOf, destinationOf, isTermVerb, linkIdFor } from "./candidate";
 export type { TermVerb } from "./candidate";
 export type { BindingCheckDiagnostic, BindingCheckResult } from "./check";
