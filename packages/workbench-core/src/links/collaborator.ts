@@ -47,6 +47,8 @@ export interface WorkbenchLinks {
   maintenance(doc: WorkbenchDocument, mutations: readonly Mutation[]): Mutation | null;
   /** After a COMMITTED transition: apply the planned effects to the runtime. */
   afterCommit(effects: readonly LocalEffect[]): void;
+  /** After a wholesale replacement (restore, reset, sync adoption): forget the values of views the new document no longer has. */
+  afterReplace(doc: WorkbenchDocument): void;
   /** The out port whose attended or emitted value is this reference. */
   sourceOf(reference: SerializableReference): PortId | null;
 }
@@ -150,6 +152,15 @@ export function createWorkbenchLinks(options: CreateWorkbenchLinksOptions = {}):
         if (effect.kind === "link-runtime") runtime.apply(effect.effects);
         else if (effect.kind === "forget-view-values") runtime.forgetView(effect.viewId);
       }
+    },
+    afterReplace(doc) {
+      const state = runtime.getState();
+      const gone = new Set<string>();
+      for (const port of [...state.emitted.keys(), ...state.attended.keys()]) {
+        const viewId = port.split("/")[0]!;
+        if (!doc.views[viewId]) gone.add(viewId);
+      }
+      for (const viewId of gone) runtime.forgetView(viewId);
     },
     sourceOf: (reference) => runtime.sourceOf(reference),
   };

@@ -4,6 +4,7 @@ import { createManifestCatalog, isManifestCatalog, type ManifestCatalog, type Wo
 import { describeWorkbenchCommand, type WorkbenchCommand } from "./commands";
 import { diagnostic, WorkbenchDiagnosticError, type WorkbenchDiagnostic } from "./diagnostics";
 import { parseWorkbenchDocument, serializeDocument } from "./document";
+import type { LocalEffect } from "./effects";
 import type { GeometrySnapshot } from "./geometry";
 import { buildWorkbenchIndex, type WorkbenchIndex } from "./graph";
 import type { WorkbenchLinks } from "./links/collaborator";
@@ -218,8 +219,15 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     const checked = validateWorkbenchDocument(next, { apps });
     if (!checked.ok) return { ok: false, diagnostics: checked.diagnostics };
     install({ document: next, session: { workspaceId: session?.workspaceId ?? state.session.workspaceId, activePlacementId: session?.activePlacementId ?? null } });
+    // The runtime holds values keyed by view; a view the new document does
+    // not have must not keep emitting into badges from beyond the grave.
+    links?.afterReplace(next);
     return { ok: true };
   };
+
+  /** The forget-values effects a raw batch implies: one per deleted view. */
+  const forgetEffects = (mutations: readonly Mutation[]): LocalEffect[] =>
+    mutations.flatMap((item) => (item.body.case === "viewDelete" ? [{ kind: "forget-view-values" as const, viewId: item.body.value.viewId }] : []));
 
   const worldOf = (geometry: GeometrySnapshot | undefined): PlanWorld => ({
     document: state.document,
@@ -296,12 +304,18 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     },
     apply(mutations) {
       if (mutations.length === 0) return { ok: true, changed: false };
-      const prepared = prepare(mutations);
+      // The same gateway as a command (F3): a raw batch that deletes,
+      // retargets, or clones a view gets the links maintenance a command
+      // would, in the same atomic batch.
+      const upkeep = links?.maintenance(state.document, mutations) ?? null;
+      const batch = upkeep ? [...mutations, upkeep] : [...mutations];
+      const prepared = prepare(batch);
       if (!prepared.ok) {
-        report(mutations, prepared.diagnostics);
+        report(batch, prepared.diagnostics);
         return prepared;
       }
-      install({ document: prepared.document, mutations: [...mutations] });
+      install({ document: prepared.document, mutations: batch });
+      links?.afterCommit(forgetEffects(batch));
       return { ok: true, changed: true };
     },
     replaceDocument: (next, replaceOptions = {}) => replace(next, replaceOptions.session),
