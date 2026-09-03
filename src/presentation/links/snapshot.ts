@@ -120,6 +120,11 @@ export function reaches(from: RuntimeTypeId, to: RuntimeTypeId, graph: Presentat
   return graph.isSubtype(from, to);
 }
 
+/** How a port is named in a refusal or an explanation: "Orders East · order". */
+export function titleOfPort(definition: PortDefinition): string {
+  return `${definition.tileTitle} · ${definition.declaration.name}`;
+}
+
 export function labelOf(reference: SerializableReference, deps: LinkDeps): string {
   return deps.label?.(reference) ?? `<${reference.type}>`;
 }

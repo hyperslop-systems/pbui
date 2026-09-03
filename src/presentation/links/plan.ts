@@ -1,8 +1,7 @@
 import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
-import { checkBinding } from "./check";
-import { sourcePortsOfBinding } from "./expression";
+import { checkBinding, dependsOn } from "./check";
 import { checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
-import { labelOf, reaches, type LinkDeps, type LinkSnapshot, type PortDefinition } from "./snapshot";
+import { labelOf, reaches, titleOfPort, type LinkDeps, type LinkSnapshot } from "./snapshot";
 import { sourcePortOf, terms, type Binding, type SerializableReference } from "./terms";
 import type { PortId } from "./types";
 import { linkVerbs, type LinkVerb, type UnlinkPolicy } from "./verbs";
@@ -33,20 +32,6 @@ function checkedCandidate(
   return result.kind === "invalid"
     ? unavailable(result.diagnostic.message, result.diagnostic.code)
     : null;
-}
-
-export function titleOfPort(definition: PortDefinition): string {
-  return `${definition.tileTitle} · ${definition.declaration.name}`;
-}
-
-/** Does `port`'s explicit chain read (transitively) from `target`? The check `port.follow` runs before adding an edge. */
-export function dependsOn(port: PortId, target: PortId, s: LinkSnapshot, seen: Set<PortId> = new Set()): boolean {
-  if (port === target) return true;
-  if (seen.has(port)) return false;
-  seen.add(port);
-  const binding = s.bindings.get(port);
-  const sources = binding ? sourcePortsOfBinding(binding) : [];
-  return sources.some((source) => dependsOn(source, target, s, seen));
 }
 
 export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot, deps: LinkDeps): LinkPlan {
@@ -280,4 +265,4 @@ export function suspendedAfterPin(binding: Binding): Binding {
   return binding.kind === "hold" ? binding.suspended : binding;
 }
 
-export { terms };
+export { terms, dependsOn, titleOfPort };

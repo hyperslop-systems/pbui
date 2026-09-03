@@ -4,7 +4,7 @@ import { checkBinding } from "./check";
 import { effectiveBinding, evaluatePort, evaluateProgram } from "./evaluate";
 import { bindingOf, dependenciesOfBinding, normalizeBinding, programOf } from "./expression";
 import { suspendedAfterPin } from "./plan";
-import { isBinding, terms, type Binding } from "./terms";
+import { isBinding, linkIdOf, sourcePortOf, terms, type Binding } from "./terms";
 import { linkVerbs } from "./verbs";
 import { CUSTOMER_ADA, deps, ORDER_1042, ORDER_1060, withBindings, world } from "./world.test-helpers";
 
@@ -235,4 +235,24 @@ describe("§19.6 checker coverage", () => {
     expect(result).toMatchObject({ kind: "valid", resultType: "customer" });
     if (result.kind === "valid") expect([...result.dependencies.ports]).toEqual(["v-east/order"]);
   });
+});
+
+describe("§12.5 the wire-level projections agree with the IR", () => {
+  // `sourcePortOf` and `linkIdOf` stay on terms.ts for the badge and the
+  // workbench's link refs, which need ONE source to name. They are
+  // projections of the dependency sets, and this law says so.
+  for (const name of Object.keys(WIRE_FIXTURES)) {
+    it(`sourcePortOf and linkIdOf of a ${name} term are members of its dependency sets`, () => {
+      const binding = parsed(name);
+      const d = dependenciesOfBinding(binding);
+      const source = sourcePortOf(binding);
+      if (source === null) expect(d.ports.size).toBe(0);
+      else {
+        expect(d.ports.size).toBe(1);
+        expect(d.ports.has(source)).toBe(true);
+      }
+      const linkId = linkIdOf(binding);
+      if (linkId !== null) expect(d.links.has(linkId)).toBe(true);
+    });
+  }
 });

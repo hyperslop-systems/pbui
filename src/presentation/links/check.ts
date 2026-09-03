@@ -6,7 +6,7 @@ import {
   type BindingExpression,
   type BindingProgram,
 } from "./expression";
-import { reaches, type LinkDeps, type LinkSnapshot } from "./snapshot";
+import { reaches, titleOfPort, type LinkDeps, type LinkSnapshot } from "./snapshot";
 import type { Binding } from "./terms";
 import type { PortId } from "./types";
 
@@ -111,20 +111,20 @@ function inferProgram(
   }
 }
 
-function readsFrom(
-  port: PortId,
-  target: PortId,
-  snapshot: LinkSnapshot,
-  seen: Set<PortId>,
-): boolean {
+/**
+ * Does `port`'s explicit chain read, transitively, from `target`? The ONE
+ * dependency walk of the kernel (PBUI-KERNEL-2 P2): it follows
+ * `dependenciesOfBinding` over the program, suspended wires included, so a
+ * held term that would close a loop on resume is refused before the resume.
+ * The planners ask this through the checker; nothing walks terms by hand.
+ */
+export function dependsOn(port: PortId, target: PortId, snapshot: LinkSnapshot, seen: Set<PortId> = new Set()): boolean {
   if (port === target) return true;
   if (seen.has(port)) return false;
   seen.add(port);
   const binding = snapshot.bindings.get(port);
   if (!binding) return false;
-  return [...dependenciesOfBinding(binding).ports].some((source) =>
-    readsFrom(source, target, snapshot, seen),
-  );
+  return [...dependenciesOfBinding(binding).ports].some((source) => dependsOn(source, target, snapshot, seen));
 }
 
 /** Typecheck and dependency-check a candidate expression for a destination. */
@@ -153,12 +153,13 @@ export function checkBinding(
       };
     }
     for (const source of dependencies.ports) {
-      if (readsFrom(source, destination, snapshot, new Set())) {
+      if (dependsOn(source, destination, snapshot)) {
+        const S = snapshot.ports.get(source);
         return {
           kind: "invalid",
           diagnostic: {
             code: "cycle",
-            message: `${source} already reads from ${destination}`,
+            message: `${S ? titleOfPort(S) : source} already reads from ${titleOfPort(definition)}; that would be a cycle`,
           },
         };
       }
