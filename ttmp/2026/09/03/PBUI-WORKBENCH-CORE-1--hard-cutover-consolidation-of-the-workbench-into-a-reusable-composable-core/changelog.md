@@ -91,3 +91,12 @@ Phase 3: command algebra, pure planner with generalized view.show, execute/previ
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/planner/show.ts — resolveView / resolvePlacement / materialize
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/02-plan-purity-probe-core.test.ts — The inverted probe
 
+
+## 2026-09-03
+
+Phase 4: raw batches and replacement pass links maintenance and runtime cleanup; door-equivalence test (commit 93724d5)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/gateway.test.ts — Command and raw doors commit identical batches
+

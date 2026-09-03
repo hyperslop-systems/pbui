@@ -855,3 +855,61 @@ The proof is the golden replay: all 44 Phase 0 scenarios produce the same protoc
 ### Technical details
 
 - Id minting order inside a split: view id (if created) → split id → new leaf id, matching the old handlers so the goldens' ids line up.
+
+## Step 11: Phase 4 — one execution gateway, links through every door
+
+Phase 4 closed F3: there is no longer a door into the document that skips validation or links maintenance. A raw protocol batch now receives the same links upkeep a command does, in the same atomic batch, and replacement (restore, reset, and later sync adoption) tells the links runtime which views are gone.
+
+Most of what the guide lists for this phase had already landed with the constructor in Phase 2 (state shape, revision, post-commit isolation, validated replacement), so the commit is small and its value is the door-equivalence test.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Deliver guide §17 Phase 4.
+
+**Inferred user intent:** No path — button, agent, product adapter, sync — can leave link topology or runtime values stale.
+
+**Commit (code):** 93724d5 — "PBUI-WORKBENCH-CORE-1 P4: one gateway for raw batches and replacement; links maintenance through every door"
+
+### What I did
+
+- `createWorkbenchCore.apply`: appends `links.maintenance(document, batch)`, validates the whole batch, installs once, then `links.afterCommit` with a forget-values effect per `viewDelete`.
+- `replace` (used by `replaceDocument`, `restore`, `reset`): calls the new `links.afterReplace(document)`, which forgets emitted/attended values of every view absent from the new document.
+- `gateway.test.ts`: the close command and a raw `closePlacement` batch produce byte-identical committed batches and link payloads; a raw batch whose second half is invalid is refused whole; replacement forgets only the vanished views; restore/reset validate.
+
+### Why
+
+- F3 and the Phase 4 exit gate: "equivalent view lifecycle changes maintain links identically".
+
+### What worked
+
+- Comparing the two doors by their committed batch (through `onCommit`) is a precise, cheap equivalence test.
+
+### What didn't work
+
+- First run of the equivalence test failed on the hold's captured value: only the raw path had emitted a value before closing, so the follower held `7` on one side and an unresolved diagnostic on the other. A setup mismatch in the test, not a gateway difference; both paths now emit first.
+
+### What I learned
+
+- `afterReplace` cannot reuse maintenance: a replacement has no mutation list, so the runtime is reconciled against the new document's view set instead.
+
+### What was tricky to build
+
+- Nothing beyond the test setup.
+
+### What warrants a second pair of eyes
+
+- Raw batches receive links maintenance but NOT the orphan sweep; a raw batch is taken to mean exactly what it says.
+
+### What should be done in the future
+
+- Phase 7 makes sync adoption call `replaceDocument`, which now carries this cleanup for free.
+
+### Code review instructions
+
+- `packages/workbench-core/src/createWorkbenchCore.ts` (`apply`, `replace`) and `links/collaborator.ts` (`afterReplace`); `gateway.test.ts`.
+
+### Technical details
+
+- N/A
