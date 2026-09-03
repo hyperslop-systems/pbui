@@ -27,3 +27,12 @@ Step 2: accept machine with fuzzed §14.5 invariants (commit 65ae198)
 
 Step 3: Provider on the accept machine; Escape dispatched, not decided, by the surfaces (commit db767eb)
 
+
+## 2026-09-02
+
+Step 4: refusal in context, RefusalNotice, onRefuse optional with an unobserved-refusal warning (commit 4ee8735)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/interaction/refusal.ts — describeRefusal
+

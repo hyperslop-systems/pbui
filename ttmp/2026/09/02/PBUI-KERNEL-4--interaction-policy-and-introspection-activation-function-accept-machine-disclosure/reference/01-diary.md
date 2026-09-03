@@ -168,3 +168,49 @@ With the machine proven, the Provider's accept code became an executor. One `use
 ### Code review instructions
 - `createPbui.tsx`: search `acceptDispatch`; the executor is the switch above it.
 - `npx vitest run src/presentation/createPbui.test.tsx`.
+
+## Step 4: A refusal has a face
+
+KERNEL-1 made `onRefuse` required so that a stale row's refusal could not vanish by omission, and every consumer wrote a handler — most of them `() => {}` with a comment, or a status-line setter. This step gives the runtime its own presentation. `describeRefusal` (pure, in `interaction/refusal.ts`) turns a refusal into a headline naming the row and the subject, the product's reason when the fresh status carried one, and a hint. The Provider stores every refusal in `pbui.refusal` (now with the row's `label`) and the instance gains a `RefusalNotice` chrome component that renders it with `role="alert"`, a dismiss button, and retirement on the next menu open.
+
+`onRefuse` becomes optional. The intent of "never silent" is kept mechanically rather than by the type: `RefusalNotice` registers itself in a context counter, and a refusal that neither a mounted notice nor a handler observes logs a warning naming the code.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 4: refusal presentation so a product does not have to write its own handler.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 4ee8735 — "PBUI-KERNEL-4 P4: refusal presentation"
+
+### What I did
+- `interaction/refusal.ts` (+ 3 tests): one sentence per fresh-revalidation code and a fallback showing the code.
+- `createPbui.tsx`: `PbuiRefusal.label`; `onRefuse?`; `refusal`/`dismissRefusal`/`refusalNotices` on the context; the refuse branch stores, calls the hook, warns if unobserved; `openMenu` clears the last refusal; `RefusalNotice` component returned by the instance.
+- `createPbui.refusal.test.tsx` (5 DOM tests): stale row → notice with row, subject and reason; dismiss and next-menu retirement; `onRefuse` still called; warning once when unobserved; no warning when the notice is mounted.
+- Root suite: 46 files, 817 tests.
+
+### Why
+- The ticket asks for refusal presentation; the guide's §14.3 makes the refusal the runtime's, so its first presentation should be the runtime's too.
+
+### What worked
+- The existing consumers pass `onRefuse` and are unaffected; making the prop optional broke no typecheck.
+
+### What didn't work
+- N/A.
+
+### What I learned
+- `ResolvedAction.label` is a `ReactNode`; only string labels reach the refusal, which is what the sentence can carry. A rendered label falls back to "that action".
+
+### What was tricky to build
+- Deciding what "unobserved" means. A mounted `RefusalNotice` counts as observation even if the product's CSS hides it; the runtime cannot see further than the tree.
+
+### What warrants a second pair of eyes
+- Loosening `onRefuse` from required to optional is a public API change in the other direction from KERNEL-1's C16. The warning is the replacement guarantee; reviewers should decide whether it is enough.
+
+### What should be done in the future
+- Consumers (rag-ttc, hyperblog, shop, chat demo) can mount `RefusalNotice` and drop their `() => {}` handlers; left for the 0.11 release notes.
+
+### Code review instructions
+- `interaction/refusal.ts`; `RefusalNotice` in `createPbui.tsx`; `createPbui.refusal.test.tsx`.
