@@ -17,12 +17,17 @@ RelatedFiles:
       Note: The IR, compiler, lowering and dependency extraction the laws hold
     - Path: repo://src/presentation/links/laws.test.ts
       Note: §19.6 laws and checker coverage (commit 3f55488)
+    - Path: repo://src/presentation/links/plan.ts
+      Note: Planners; imports dependsOn/titleOfPort since Step 2, per-verb checks retired in Step 4
+    - Path: repo://src/presentation/links/snapshot.ts
+      Note: titleOfPort lives here since Step 2
 ExternalSources: []
 Summary: 'Chronological record of PBUI-KERNEL-2: how the binding-program laws were pinned as tests, how dependency extraction and candidate construction were centralized on the IR, and how the per-verb planner checks were retired after parity.'
 LastUpdated: 2026-09-02T20:33:04.350435303-04:00
 WhatFor: Continue or review the binding-program work without re-deriving what was tried, what failed, and why the planners look the way they do.
 WhenToUse: Before touching links/expression.ts, links/check.ts or links/plan.ts, or when a link refusal message changed.
 ---
+
 
 
 # Diary
@@ -91,4 +96,59 @@ bindingOf(programOf(b)) == b                   for every persisted shape
 normalize(normalize(b)) == normalize(b)        for every shape, canonical or not
 deps(normalize(b)) == deps(b)                  for every persisted shape
 normalize(Derived(Hold(r, b), ρ)) == Derived(Constant(r), ρ)   the documented exception
+```
+
+## Step 2: One dependency walk, and refusals that name tiles
+
+Two functions walked the binding graph: `dependsOn` in `plan.ts`, over `sourcePortsOfBinding`, and `readsFrom` in `check.ts`, over `dependenciesOfBinding`. Both were correct and both included suspended wires, but two walks is one too many for a kernel whose point is that every interpreter reads the same program. This step keeps one, in the checker, and has the planners import it.
+
+The checker's cycle diagnostic also changes from port ids (`v-east/order already reads from v-b/order`) to the sentence the planners wrote (`Orders East · order already reads from Detail B · order; that would be a cycle`). That required `titleOfPort` to leave `plan.ts` for `snapshot.ts`, where it belongs: it is a function of a port definition, not of a plan. With the same wording on both sides, P4 can delete the planner copy without a user-visible change.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 2 of the plan slip: centralize dependency extraction and make the checker's diagnostics at least as good as the planners' before replacing them.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 1167b08 — "PBUI-KERNEL-2 P2: one dependency walk over the IR; titled cycle diagnostics"
+
+### What I did
+- `check.ts`: replaced `readsFrom` with an exported `dependsOn(port, target, snapshot)`; cycle message uses `titleOfPort` on both ends.
+- `snapshot.ts`: added `titleOfPort`; `plan.ts` imports it and `dependsOn`, re-exports both so `index.ts` is unchanged.
+- `laws.test.ts`: added the §12.5 parity law: for every wire fixture, `sourcePortOf(b)` is the one member of `dependencies.ports` (or null when the set is empty) and `linkIdOf(b)` is in `dependencies.links`.
+- `npx tsc -p tsconfig.json --noEmit` clean; `npx vitest run src/presentation/links` → 9 files, 130 tests.
+
+### Why
+- §12.5 asks for one dependency extraction that every caller uses and that states whether suspended wires count. `dependsOn` in the checker is that caller; `sourcePortOf` remains as the projection the badge and the workbench's link refs need (one source to name), fenced by the parity law instead of reimplemented.
+
+### What worked
+- Message parity was exact on the first run: the planner test for `code: "type"` asserts `<order> does not reach <customer>`, which the checker already wrote.
+
+### What didn't work
+- N/A.
+
+### What I learned
+- `linkIdOf` of a `hold` returns the suspended wire's id, and `dependenciesOfBinding` includes suspended links by default, so the parity law holds without special-casing holds.
+
+### What was tricky to build
+- Import direction. `terms.ts` cannot import `expression.ts` (expression imports terms), so `sourcePortOf` cannot be defined over the IR without a cycle. The law test is the honest substitute: it fails the moment the two disagree.
+
+### What warrants a second pair of eyes
+- The cycle message when the source port is not in the snapshot falls back to the raw port id; the checker returns `source-missing` earlier for that case, so the fallback should be unreachable.
+
+### What should be done in the future
+- N/A.
+
+### Code review instructions
+- `src/presentation/links/check.ts` (`dependsOn`, the cycle branch of `checkBinding`), `snapshot.ts` (`titleOfPort`), `plan.ts` (imports and the tail re-export).
+- `npx vitest run src/presentation/links`.
+
+### Technical details
+- Cycle refusal, before and after:
+
+```text
+before  v-east/order already reads from v-b/order
+after   Orders East · order already reads from Detail B · order; that would be a cycle
 ```
