@@ -19,6 +19,7 @@ import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus
 import { useEscapeSurface } from "../surfaces";
 import { activationOutcome } from "./interaction/activation";
 import { describeRefusal } from "./interaction/refusal";
+import { explainResolution, type Explanation, type IntrospectionDisclosure } from "./interaction/explain";
 import { acceptStep, chooserOptions, pendingRequest, type AcceptEffect, type AcceptEvent, type AcceptState } from "./interaction/accept";
 import { evaluateFresh } from "./actions/perform";
 import type {
@@ -326,6 +327,12 @@ export interface PbuiContextValue<
   /** Resolve a query against the current environment's snapshot. Pure. */
   resolve(query: ActionQuery<Values>): ResolutionResult<Values, Verb>;
   /**
+   * Explain the query the user is looking at (PBUI-KERNEL-4 §15.3): the same
+   * query and snapshot as `resolve`, under a disclosure policy. `public` is
+   * what the menu shows; `developer` is the trace, for a product's own gate.
+   */
+  explain(query: ActionQuery<Values>, disclosure?: IntrospectionDisclosure): Explanation<Values>;
+  /**
    * Fresh revalidation, then delegation (PBUI-ACTIONS-2 Amendment A): the
    * query re-resolves against a fresh snapshot; the same candidate must still
    * win its action partition and be available; the FRESH verb is delegated.
@@ -564,6 +571,8 @@ export function createPbui<
           return onPerform(verb, { invocation: "direct", ...(actor !== undefined ? { actor } : {}) });
         },
         resolve: (query) => actionEngine.resolve(query, snapshotOf(query, environment)),
+        explain: (query, disclosure = "public") =>
+          explainResolution(query, actionEngine.resolve(query, snapshotOf(query, environment)), disclosure),
         performAction: async (stale) => {
           setMenu(null);
           const fresh = actionEngine.resolve(stale.query, snapshotOf(stale.query, environment));

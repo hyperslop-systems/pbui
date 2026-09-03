@@ -58,3 +58,5 @@ export { describeRefusal } from "./interaction/refusal";
 export type { RefusalFacts, RefusalPresentation } from "./interaction/refusal";
 export { acceptStep, chooserOptions, pendingRequest } from "./interaction/accept";
 export type { AcceptEffect, AcceptEvent, AcceptState, AcceptStepResult } from "./interaction/accept";
+export { explainResolution } from "./interaction/explain";
+export type { ExplainedCandidate, ExplainedRow, Explanation, IntrospectionDisclosure } from "./interaction/explain";
