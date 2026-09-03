@@ -1,6 +1,6 @@
 import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
 import { candidateTermOf, type TermVerb } from "./candidate";
-import { checkBinding, dependsOn } from "./check";
+import { checkBinding } from "./check";
 import { checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
 import { labelOf, reaches, titleOfPort, type LinkDeps, type LinkSnapshot } from "./snapshot";
 import { sourcePortOf, terms, type Binding, type SerializableReference } from "./terms";
@@ -13,6 +13,12 @@ import { linkVerbs, type LinkVerb, type UnlinkPolicy } from "./verbs";
  * a code and a sentence, or an ambiguity. Menus render the refusal; a drop
  * highlights on `kind !== "unavailable"`; the handler re-plans on a fresh
  * snapshot before writing (report §8.10). Registration order never decides.
+ *
+ * Since PBUI-KERNEL-2 the planners keep only OPERATION policy — existence,
+ * direction, self, document slots, held, shared, already-linked, which
+ * relations are legal — and hand the term they would persist to the static
+ * checker (`check.ts`) for what is STRUCTURAL: sources, contexts, cells and
+ * relations exist, domains and destination types reach, no cycle.
  */
 
 export type LinkPlan =
@@ -36,16 +42,10 @@ export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot,
   if (source === destination) return unavailable("a port cannot follow itself", "self");
   if (S.declaration.direction === "in") return unavailable(`${titleOfPort(S)} is an input; only outputs can be followed`, "direction");
   if (D.declaration.direction === "out") return unavailable(`${titleOfPort(D)} is an output; it cannot follow anything`, "direction");
-  if (!reaches(S.declaration.contract.valueType, D.declaration.contract.valueType, deps.graph)) {
-    return unavailable(`<${S.declaration.contract.valueType}> does not reach <${D.declaration.contract.valueType}>`, "type");
-  }
   const current = s.bindings.get(destination);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
   if (s.aliases.has(destination)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(destination)} cell; leave the class first`, "shared");
   if (current?.kind === "follow" && current.source === source) return unavailable(`${titleOfPort(D)} already follows ${titleOfPort(S)}`, "already");
-  if (dependsOn(source, destination, s)) {
-    return unavailable(`${titleOfPort(S)} already reads from ${titleOfPort(D)}; that would be a cycle`, "cycle");
-  }
   const replacing = current && sourcePortOf(current) ? ` (replacing ${current.kind === "follow" ? titleOfPort(s.ports.get(current.source) ?? S) : "its current source"})` : "";
   const verb = linkVerbs.follow(source, destination) as TermVerb;
   const checked = checkedCandidate(verb, destination, s, deps);
@@ -58,9 +58,6 @@ export function planBind(port: PortId, reference: SerializableReference, s: Link
   if (!D) return unavailable("that port no longer exists", "port-missing");
   if (D.declaration.direction === "out") return unavailable(`${titleOfPort(D)} is an output`, "direction");
   if (D.declaration.documentSlot) return unavailable(`${titleOfPort(D)} is a document slot; rebind the view instead`, "document-slot");
-  if (!reaches(reference.type, D.declaration.contract.valueType, deps.graph)) {
-    return unavailable(`<${reference.type}> does not reach <${D.declaration.contract.valueType}>`, "type");
-  }
   const current = s.bindings.get(port);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
   if (s.aliases.has(port)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(port)} cell; leave the class first`, "shared");
@@ -74,11 +71,6 @@ export function planAmbient(port: PortId, context: string, s: LinkSnapshot, deps
   const D = s.ports.get(port);
   if (!D) return unavailable("that port no longer exists", "port-missing");
   if (D.declaration.direction === "out") return unavailable(`${titleOfPort(D)} is an output`, "direction");
-  const definition = s.contexts.get(context);
-  if (!definition) return unavailable(`no context called ${context}`, "context-missing");
-  if (!reaches(definition.valueType, D.declaration.contract.valueType, deps.graph)) {
-    return unavailable(`${context} holds <${definition.valueType}>, which does not reach <${D.declaration.contract.valueType}>`, "type");
-  }
   const current = s.bindings.get(port);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
   const verb = linkVerbs.ambient(port, context) as TermVerb;
@@ -229,7 +221,6 @@ export function planDerive(source: PortId, destination: PortId, relationId: stri
   const current = s.bindings.get(destination);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
   if (s.aliases.has(destination)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(destination)} cell; leave the class first`, "shared");
-  if (dependsOn(source, destination, s)) return unavailable(`${titleOfPort(S)} already reads from ${titleOfPort(D)}; that would be a cycle`, "cycle");
   const legal = legalRelations(source, destination, s, deps);
   if (legal.length === 0) {
     return unavailable(`no relation turns a <${S.declaration.contract.valueType}> into a <${D.declaration.contract.valueType}>`, "no-relation");
@@ -259,4 +250,4 @@ export function suspendedAfterPin(binding: Binding): Binding {
   return binding.kind === "hold" ? binding.suspended : binding;
 }
 
-export { terms, dependsOn, titleOfPort };
+export { terms };

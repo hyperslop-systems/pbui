@@ -165,13 +165,13 @@ export function checkBinding(
       }
     }
     if (!reaches(resultType, definition.declaration.contract.valueType, deps.graph)) {
+      const to = `<${definition.declaration.contract.valueType}>`;
+      const context = program.kind === "live" && program.expression.kind === "source" && program.expression.source.kind === "context" ? program.expression.source.key : null;
       return {
         kind: "invalid",
         diagnostic: {
           code: "type",
-          message:
-            `<${resultType}> does not reach ` +
-            `<${definition.declaration.contract.valueType}>`,
+          message: context ? `${context} holds <${resultType}>, which does not reach ${to}` : `<${resultType}> does not reach ${to}`,
         },
       };
     }

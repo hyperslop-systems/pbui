@@ -42,34 +42,24 @@ export type {
 } from "./types";
 export { describeBinding, isBinding, isSerializableReference, linkIdOf, sameReference, sourcePortOf, terms } from "./terms";
 export type { Binding, Diagnostic, SerializableReference } from "./terms";
-export {
-  bindingOf,
-  dependenciesOfBinding,
-  dependenciesOfProgram,
-  normalizeBinding,
-  programOf,
-  sourcePortsOfBinding,
-} from "./expression";
-export type {
-  BindingDependencies,
-  BindingExpression,
-  BindingProgram,
-  BindingSource,
-} from "./expression";
-export { checkBinding } from "./check";
+// The binding-program IR (programOf/bindingOf and the BindingProgram types)
+// is internal (guide §12.3): the package exposes normalization, dependency
+// summaries and the checker's verdicts, not the IR's constructors.
+export { dependenciesOfBinding, normalizeBinding, sourcePortsOfBinding } from "./expression";
+export type { BindingDependencies } from "./expression";
+export { checkBinding, dependsOn } from "./check";
 export { PLAN_LINK_ID, candidateTermOf, destinationOf, isTermVerb, linkIdFor } from "./candidate";
 export type { TermVerb } from "./candidate";
 export type { BindingCheckDiagnostic, BindingCheckResult } from "./check";
 export { LINK_VERB_KINDS, describeLinkVerb, isLinkVerb, linkVerbs } from "./verbs";
 export type { LinkVerb, LinkVerbKind, UnlinkPolicy } from "./verbs";
-export { EMPTY_LINK_STATE, labelOf, reaches } from "./snapshot";
+export { EMPTY_LINK_STATE, labelOf, reaches, titleOfPort } from "./snapshot";
 export type { ContextDefinition, LinkDeps, LinkRelationEvaluation, LinkSnapshot, LinkState, LinkValues, PortDefinition, RelationDefinition } from "./snapshot";
 export { checkIdentityCompatibility, compatibilityOf, compileIdentity, compileIdentityQuotient, identityQuotientOf, logicalCellOf } from "./identity";
 export type { ClassLineage, CompiledIdentity, Compatibility, IdentityClass, IdentityDeclaration, IdentityDiagnostic, IdentityQuotient, LogicalCell, MergePolicy, SplitPolicy } from "./identity";
-export { effectiveBinding, effectiveProgram, evaluateBinding, evaluatePort, evaluateProgram, valueToHold } from "./evaluate";
+export { effectiveBinding, evaluateBinding, evaluatePort, valueToHold } from "./evaluate";
 export type { Evaluation } from "./evaluate";
 export {
-  dependsOn,
   findLink,
   legalRelations,
   planAmbient,
@@ -84,7 +74,6 @@ export {
   planResume,
   planUnlink,
   plansForPort,
-  titleOfPort,
 } from "./plan";
 export type { LinkPlan } from "./plan";
 export { applyLinkVerb } from "./apply";

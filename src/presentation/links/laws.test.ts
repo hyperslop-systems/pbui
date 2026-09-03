@@ -4,7 +4,7 @@ import { PLAN_LINK_ID, candidateTermOf, destinationOf, type TermVerb } from "./c
 import { checkBinding } from "./check";
 import { effectiveBinding, evaluatePort, evaluateProgram } from "./evaluate";
 import { bindingOf, dependenciesOfBinding, normalizeBinding, programOf } from "./expression";
-import { suspendedAfterPin } from "./plan";
+import { planAmbient, planBind, planDerive, planFollow, suspendedAfterPin } from "./plan";
 import { isBinding, linkIdOf, sourcePortOf, terms, type Binding } from "./terms";
 import { linkVerbs } from "./verbs";
 import { CUSTOMER_ADA, deps, ORDER_1042, ORDER_1060, withBindings, world } from "./world.test-helpers";
@@ -293,5 +293,44 @@ describe("§12.7 a planner checks the term apply persists", () => {
     applyLinkVerb(linkVerbs.bind("v-a/order", ORDER_1060), s, deps, { newLinkId: () => `L${(calls += 1)}` });
     applyLinkVerb(linkVerbs.ambient("v-insp/subject", "workspace.order"), s, deps, { newLinkId: () => `L${(calls += 1)}` });
     expect(calls).toBe(0);
+  });
+});
+
+describe("§12.7 parity: refusals the planners no longer compute themselves", () => {
+  const s = world({ emitted: { "v-east/order": ORDER_1042 } });
+
+  it("follow: type and cycle come from the checker with the planners' sentences", () => {
+    expect(planFollow("v-east/order", "v-cust/customer", s, deps)).toMatchObject({ code: "type", because: "<order> does not reach <customer>" });
+    const loop = world({ bindings: { "v-a/order": terms.follow("v-b/order", "L1") } });
+    expect(planFollow("v-a/order", "v-b/order", loop, deps)).toMatchObject({ code: "direction" });
+    // An inout source that reads from the destination: the checker sees the cycle the planner used to.
+    const chain = world({ bindings: { "v-plot/selection": terms.follow("v-east/selection", "L1") } });
+    expect(planFollow("v-plot/selection", "v-east/selection", chain, deps)).toMatchObject({
+      code: "cycle",
+      because: "Plot · selection already reads from Orders East · selection; that would be a cycle",
+    });
+  });
+
+  it("bind: a wrong type is the checker's verdict", () => {
+    expect(planBind("v-a/order", CUSTOMER_ADA, s, deps)).toMatchObject({ code: "type", because: "<customer> does not reach <order>" });
+  });
+
+  it("ambient: a missing context and a wrong context type are the checker's verdicts, naming the context", () => {
+    expect(planAmbient("v-a/order", "workspace.nothing", s, deps)).toMatchObject({ code: "context-missing", because: "no context called workspace.nothing" });
+    expect(planAmbient("v-cust/customer", "workspace.order", s, deps)).toMatchObject({
+      code: "type",
+      because: "workspace.order holds <order>, which does not reach <customer>",
+    });
+  });
+
+  it("derive: a cycle through the derived wire is the checker's verdict", () => {
+    const chain = world({ bindings: { "v-east/selection": terms.follow("v-plot/selection", "L1") } });
+    const withSelf = { ...deps, relations: [...(deps.relations ?? []), { id: "datum.self", from: "datum", to: "datum" }] };
+    // Legality is judged before structure: with no relation the refusal is "no-relation", not "cycle".
+    expect(planDerive("v-east/selection", "v-plot/selection", undefined, chain, deps)).toMatchObject({ code: "no-relation" });
+    expect(planDerive("v-east/selection", "v-plot/selection", undefined, chain, withSelf)).toMatchObject({
+      code: "cycle",
+      because: "Orders East · selection already reads from Plot · selection; that would be a cycle",
+    });
   });
 });
