@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/workbench-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The headless PBUI workbench engine: app manifests, the structural index, essential validation, pure command planning, and the transactional core that executes commands over a workbench-protocol document. No React, no DOM.",
   "type": "module",
   "files": [

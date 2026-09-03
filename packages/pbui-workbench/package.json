@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/pbui-workbench",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "The PBUI React shell over @hyperslop-systems/workbench-core: bound Surface/Launcher/WorkspaceStrip/Rebalance components, the shell-local store, placement mode, geometry measurement, and the presentation fragment",
   "type": "module",
   "sideEffects": [
