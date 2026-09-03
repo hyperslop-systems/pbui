@@ -100,3 +100,14 @@ Phase 4: raw batches and replacement pass links maintenance and runtime cleanup;
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/gateway.test.ts — Command and raw doors commit identical batches
 
+
+## 2026-09-03
+
+Phase 5: rebalance engine moved to workbench-core/rebalance with the preservation law and property test; measureGeometry and createShellStore in the shell (commit f909b1e)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/geometry.ts — DOM to GeometrySnapshot at execution time
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/shellState.ts — One shell-local store
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/rebalance/law.ts — The placement→view preservation law
+

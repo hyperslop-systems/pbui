@@ -913,3 +913,64 @@ Most of what the guide lists for this phase had already landed with the construc
 ### Technical details
 
 - N/A
+
+## Step 12: Phase 5 — geometry as a value, the rebalance law, one shell store
+
+Phase 5 moved the rebalance engine out of the React package and into a `workbench-core/rebalance` subpath, stated the preservation law as a function, and proved with a generated-tree property test that every structural proposal the slate emits obeys it. On the shell side, `measureGeometry` turns the DOM into the `GeometrySnapshot` the planner already consumes, and `createShellStore` holds the five transient shell facts the old `WorkbenchState` mixed into the semantic store.
+
+The React components are still on the old assembly; Phase 6 rewires them. The shell barrel re-exports the engine from the core so nothing downstream moved yet.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Deliver guide §17 Phase 5.
+
+**Inferred user intent:** No DOM in semantic code; rebalance provably rearranges only; shell state with its own lifetime.
+
+**Commit (code):** f909b1e — "PBUI-WORKBENCH-CORE-1 P5: rebalance into workbench-core/rebalance with the preservation law; shell geometry snapshot and shell-local store"
+
+### What I did
+
+- `git mv` of every pure `rebalance/*` module and test (all but `configStore.ts`) into `packages/workbench-core/src/rebalance/`; `config.ts` now takes `DEFAULT_PANE_CONSTRAINTS` from `../policy`; a barrel `rebalance/index.ts`; `./rebalance` subpath export and Vite entry.
+- `rebalance/law.ts`: `placementMapOf`, `preservesPlacements`; `law.test.ts` generates 48 trees × 2 profiles and checks every `set-tree` proposal.
+- pbui-workbench: imports rewired to `@hyperslop-systems/workbench-core/rebalance`; barrel re-exports the subpath whole; `geometry.ts` (`measureGeometry`), `shellState.ts` (`createShellStore`, `useShellState`, `WorkbenchShellAction`, `isWorkbenchShellAction`) with tests.
+- core `geometry.test.ts`: headless fallbacks are deterministic; measured minima decide.
+
+### Why
+
+- §4.8 / §12.4: keep the algorithms, move the integration; §11.4 the law; S5 and S10.
+
+### What worked
+
+- The move was clean: the rebalance modules imported nothing from the shell except one constant.
+
+### What didn't work
+
+- `splitRatioBounds` for a 400px-tall column split is not null (two 160px panes fit with a 10px divider: `160/390 ≈ 0.41 < 0.5`); my expectation was wrong and the test now also covers the genuinely-too-small case (300px).
+- `slate.perf.test.ts` failed once under parallel load in its new home and passed alone; unchanged behaviour.
+
+### What I learned
+
+- `measureGeometry` measures the divider from the first rendered `split-divider` per axis and falls back to the `--pbui-space-4` token, the same two sources the old handler consulted, now once per execution instead of per lookup.
+
+### What was tricky to build
+
+- Two `Rect` types now exist on purpose: the rebalance engine's `{x,y,w,h}` under the subpath and the geometry snapshot's `{x,y,width,height}` at the root. Unifying them would have meant editing every rebalance module for no semantic gain.
+
+### What warrants a second pair of eyes
+
+- The law test's tree grammar is small (depth ≤ 3); it exercises reshape and rebuild but not the 12-tile perf fixture.
+
+### What should be done in the future
+
+- Phase 6 replaces `measureRect`/`measureDividerPx` inside `RebalanceDialog` with `measureGeometry`.
+
+### Code review instructions
+
+- `packages/workbench-core/src/rebalance/law.ts`, `law.test.ts`; `packages/pbui-workbench/src/geometry.ts`, `shellState.ts`.
+- Validate: `pnpm --filter @hyperslop-systems/workbench-core build && pnpm --filter @hyperslop-systems/workbench-core test && pnpm --filter @hyperslop-systems/pbui-workbench test`.
+
+### Technical details
+
+- Shell test count dropped from 328 to 274 because the rebalance suites moved to the core (158 there).
