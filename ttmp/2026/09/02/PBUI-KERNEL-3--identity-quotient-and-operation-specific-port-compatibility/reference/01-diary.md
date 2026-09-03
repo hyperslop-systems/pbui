@@ -195,3 +195,49 @@ resolveShow (existing ports)          canAccept
 workbench "Link to…" targets          canAccept
 relation domain (check, legalRelations)  reaches   (a relation, not a port)
 ```
+
+## Step 4: The quotient as the thing a snapshot exposes
+
+Guide §13.1 asks that identity be exposed as a quotient of ports into logical cells, backed by the compiled classes and alias map that already exist, with `Alias(classId)` kept as the wire representation and new reasoning phrased in cells. The prototype had `compileIdentityQuotient` (compile then view) and `logicalCellOf` (look a port up in a quotient). What was missing was the view over a SNAPSHOT, which is what planners and instruments hold: `quotientOf(s)` returns the snapshot's classes as cells and its aliases as `cellByPort`; lineage is empty because a snapshot does not persist the compile that produced its classes, and diagnostics come from a fresh compile over the snapshot's declarations and ports. `cellOf(port, s)` names a member's cell or returns null.
+
+The three planners that refuse a shared destination now read the cell through `cellOf` and say "leave the cell first"; before, the sentence said "shares the σ1 cell; leave the class first", using both words for one thing.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 4 of the plan slip: the snapshot-level quotient view and logical-cell wording.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** b5907c9 — "PBUI-KERNEL-3 P4: quotient view of a snapshot; planners read cells"
+
+### What I did
+- `identity.ts`: `quotientOf`, `cellOf`; exported from `links/index.ts`.
+- `plan.ts`: `planFollow`, `planBind`, `planDerive` "shared" refusals through `cellOf`, one word.
+- `identity.quotient.test.ts`: a test over the world fixture with one admitted and one incompatible declaration.
+- `tsc` clean; links suite 287.
+
+### Why
+- A planner that reads `s.aliases` and `s.classes` separately can hold an alias to a class the snapshot does not carry; `cellOf` returns null in that case, which is what the invariants checker would flag.
+
+### What worked
+- No test asserted the old "leave the class first" wording; only the PortBadge story mentions "shares the … cell", which is unchanged.
+
+### What didn't work
+- N/A.
+
+### What I learned
+- A snapshot carries classes for id stability but not lineage; a UI that wants to show "merged"/"split" must read the `CompiledIdentity` from the apply step, not the snapshot.
+
+### What was tricky to build
+- Deciding not to add lineage to the snapshot. It would mean persisting it or recomputing it on every snapshot build; the apply step already returns it once, at the moment it is true.
+
+### What warrants a second pair of eyes
+- `quotientOf` recompiles to obtain diagnostics; on a large workspace that is a union-find over the declarations per call. Callers on a hot path should use `cellOf`.
+
+### What should be done in the future
+- The identity screenshots (P5) need an inout pair; the demo apps have none, so P5 adds an IdentityLab story.
+
+### Code review instructions
+- `identity.ts` tail; the three `cellOf` lines in `plan.ts`.

@@ -31,3 +31,8 @@ Step 3: identity on canShareCell, checker/legalRelations on canFlow, resolveShow
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/identity.ts — compatibilityOf over canShareCell
 
+
+## 2026-09-02
+
+Step 4: quotientOf(snapshot) and cellOf; shared refusals say 'cell' (commit b5907c9)
+
