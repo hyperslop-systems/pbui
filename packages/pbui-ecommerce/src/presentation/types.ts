@@ -1,4 +1,4 @@
-import type { LinkRef, PortRef, TileRef, WorkbenchLinks } from "@hyperslop-systems/pbui-workbench";
+import type { LinkRef, PortRef, TileRef, WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
 import type { ShopHost } from "../host";
 
 /*
@@ -83,8 +83,8 @@ export type ShopType = keyof Values;
 /** What descriptors and rules may read beyond the reference itself. */
 export interface Environment {
   host: ShopHost;
-  /** The workbench's link facilities, once a workbench exists; what `snapshotFor` reads link facts from. */
-  links?: WorkbenchLinks;
+  /** The workbench shell, once one exists; what `snapshotFor` reads link facts from (`linkSnapshot()`, `links.deps`). */
+  links?: WorkbenchShell;
 }
 
 /** The abstract type every shop value descends from: what an inspector's `subject` port accepts. */

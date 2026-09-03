@@ -16,6 +16,7 @@
     "@hyperslop-systems/pbui-sandbox": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
     "@hyperslop-systems/plot": "0.3.1",
+    "@hyperslop-systems/workbench-core": "workspace:^",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

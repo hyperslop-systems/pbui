@@ -42,7 +42,7 @@ export {
   LayoutSpecSchema,
   DEFAULT_LIMITS,
   DEFAULT_POLICY,
-  WORKBENCH_VERB_KINDS,
+  WORKBENCH_COMMAND_KINDS,
 } from "./workbenchTools";
 export type {
   PolicyDecision,

@@ -49,7 +49,7 @@ export function shopContextFor(_query: ActionQuery<Values>, environment: Environ
   const hostRevision = environment.host.revision();
   const workbenchLinks = environment.links;
   const links: LinkFacts | null = workbenchLinks
-    ? { snapshot: workbenchLinks.snapshot(), deps: workbenchLinks.deps, sourceOf: (reference) => workbenchLinks.sourceOf(reference) }
+    ? { snapshot: workbenchLinks.linkSnapshot(), deps: workbenchLinks.links.deps, sourceOf: (reference) => workbenchLinks.links.sourceOf(reference) }
     : null;
   return { facts: { hostRevision, links } };
 }

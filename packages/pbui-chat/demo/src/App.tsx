@@ -5,6 +5,7 @@ import styles from "./App.module.css";
 import { chat } from "./chat";
 import { type Environment } from "./pbui/types";
 import { defaultLauncherRows, tileRefOf, type LauncherRow, type LauncherRowsContext } from "@hyperslop-systems/pbui-workbench";
+import { commands } from "@hyperslop-systems/workbench-core";
 import { PROGRAM_BINDING, useLibrary } from "@hyperslop-systems/pbui-sandbox";
 import { library } from "./sandbox";
 import { resetLayout, workbench } from "./workbench";
@@ -59,7 +60,7 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
             >
               + conversation
             </Button>
-            <Button size="tiny" variant="framed" onClick={() => workbench.verbs.openLauncher()} title="open the launcher to place an application">
+            <Button size="tiny" variant="framed" onClick={() => workbench.dispatch({ kind: "launcher.open" })} title="open the launcher to place an application">
               {isApple ? "⌘K" : "Ctrl+K"} · launcher
             </Button>
             <Button size="tiny" onClick={resetLayout} title="back to the default tiles">
@@ -149,7 +150,7 @@ function Workbench() {
     const near = context.invocation.target;
     if (row.id === NEW_CONVERSATION_ROW) {
       void chat.router.perform({ kind: "conversation.new", ...(near ? { near } : {}) });
-      workbench.verbs.closeLauncher();
+      workbench.dispatch({ kind: "launcher.close" });
       return true;
     }
     if (row.id.startsWith(CONVERSATION_ROW_PREFIX)) {
@@ -158,12 +159,12 @@ function Workbench() {
         conversationId: row.id.slice(CONVERSATION_ROW_PREFIX.length),
         ...(near ? { near } : {}),
       });
-      workbench.verbs.closeLauncher();
+      workbench.dispatch({ kind: "launcher.close" });
       return true;
     }
     if (!row.id.startsWith(PROGRAM_ROW_PREFIX)) return false;
-    workbench.verbs.openView("script", { [PROGRAM_BINDING]: row.id.slice(PROGRAM_ROW_PREFIX.length) }, near ? { near } : {});
-    workbench.verbs.closeLauncher();
+    workbench.execute(commands.open("script", { [PROGRAM_BINDING]: row.id.slice(PROGRAM_ROW_PREFIX.length) }, near ? { near } : {}));
+    workbench.dispatch({ kind: "launcher.close" });
     return true;
   }, []);
   return (
@@ -184,7 +185,7 @@ function Workbench() {
               value: { name: workspace.name || workspace.id, tileCount: placement.tileCount, active: placement.active },
             }}
             doc={`workspace · ${placement.tileCount} tile${placement.tileCount === 1 ? "" : "s"}${placement.active ? " · you are here" : ""}`}
-            activate={{ run: () => void chat.router.perform({ kind: "workspace.select", workspaceId: workspace.id }), doc: "go to this workspace" }}
+            activate={{ run: () => void chat.router.perform({ kind: "session.selectWorkspace", workspaceId: workspace.id }), doc: "go to this workspace" }}
           >
             <Text size="tiny" strong={placement.active}>
               {placement.active ? "▸ " : ""}

@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { linkVerbs, planIdentityAdd, portId } from "@hyperslop-systems/pbui";
-import { LINKS_DOC_ID, bindingsOf, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { LINKS_DOC_ID, bindingsOf, commands, split, tile } from "@hyperslop-systems/workbench-core";
 import { ORDERS_BY_STATUS, REVENUE_BY_CATEGORY } from "./plots/documents";
 import { plotTile } from "./seed";
 import { APP_IDS } from "./apps";
@@ -74,8 +74,8 @@ describe("scene 3 · show with routing", () => {
     fireEvent.pointerEnter(row("88214"));
     fireEvent.contextMenu(row("88214").querySelector('[data-ptype="order"]')!);
     fireEvent.click(await screen.findByText("Show details…"));
-    expect(bindingsOf(workbench.store.getState().document).get(portId(b!, "order"))).toMatchObject({ kind: "follow", source: portId(orders, "order") });
-    expect(bindingsOf(workbench.store.getState().document).get(portId(a!, "order"))?.kind).toBe("hold");
+    expect(bindingsOf(workbench.core.getState().document).get(portId(b!, "order"))).toMatchObject({ kind: "follow", source: portId(orders, "order") });
+    expect(bindingsOf(workbench.core.getState().document).get(portId(a!, "order"))?.kind).toBe("hold");
     expect(badges(b!)).toEqual(["following:→orders"]);
   });
 
@@ -87,9 +87,9 @@ describe("scene 3 · show with routing", () => {
     fireEvent.click(await screen.findByText("Show details…"));
     expect(document.querySelectorAll("[data-placement-id]").length).toBe(before + 1);
     expect(detailTitle()).toContain("order #88214");
-    const detail = Object.values(workbench.store.getState().document.views).find((view) => view.appId === APP_IDS.orderDetail);
+    const detail = Object.values(workbench.core.getState().document.views).find((view) => view.appId === APP_IDS.orderDetail);
     expect(detail).toBeTruthy();
-    expect(bindingsOf(workbench.store.getState().document).get(portId(detail!.id, "order"))).toMatchObject({ kind: "follow", source: portId(views.orders![0]!, "order") });
+    expect(bindingsOf(workbench.core.getState().document).get(portId(detail!.id, "order"))).toMatchObject({ kind: "follow", source: portId(views.orders![0]!, "order") });
   });
 });
 
@@ -105,7 +105,7 @@ describe("scene 4 · derived", () => {
     fireEvent.click(await screen.findByText("Derive through…"));
     expect(await screen.findByText(/^DERIVE customer detail · customer THROUGH/)).toBeTruthy();
     fireEvent.click(screen.getByText("its customer"));
-    expect(bindingsOf(workbench.store.getState().document).get(portId(detail, "customer"))).toMatchObject({ kind: "derived", relationId: "order.customer", source: { kind: "follow", source: portId(orders, "order") } });
+    expect(bindingsOf(workbench.core.getState().document).get(portId(detail, "customer"))).toMatchObject({ kind: "derived", relationId: "order.customer", source: { kind: "follow", source: portId(orders, "order") } });
     expect(badges(detail)).toEqual(["derived:←customer ← its customer"]);
     expect(document.querySelector('[data-part="customer-detail"]')?.textContent).toContain("J. Alvarez");
     fireEvent.click(row("88214"));
@@ -123,7 +123,7 @@ describe("scenes 5 and 6 · identity and follow", () => {
     expect(document.querySelectorAll('[data-part="orders-table"] tr[data-selected]')).toHaveLength(2);
     // Incompatible: different authority domain — refused, nothing written.
     expect(performed(() => workbench.perform(linkVerbs.identityAdd(portId(orders, "selection"), portId(byCategory!, "selection"))))).toBe(false);
-    const refusal = planIdentityAdd(portId(orders, "selection"), portId(byCategory!, "selection"), "prefer-left", workbench.links.snapshot(), workbench.links.deps);
+    const refusal = planIdentityAdd(portId(orders, "selection"), portId(byCategory!, "selection"), "prefer-left", workbench.linkSnapshot(), workbench.links.deps);
     expect(refusal).toMatchObject({ kind: "unavailable", code: "incompatible", because: expect.stringContaining("different authority domain: orders vs daily_sales") });
     // Compatible: one cell for both.
     expect(performed(() => workbench.perform(linkVerbs.identityAdd(portId(orders, "selection"), portId(byStatus!, "selection"))))).toBe(true);
@@ -164,7 +164,7 @@ describe("scene 2 · follow and hold", () => {
     fireEvent.click(linkRow);
     const detail = views["order-detail"]![0]!;
     const orders = views.orders![0]!;
-    expect(bindingsOf(workbench.store.getState().document).get(portId(detail, "order"))).toMatchObject({ kind: "follow", source: portId(orders, "order") });
+    expect(bindingsOf(workbench.core.getState().document).get(portId(detail, "order"))).toMatchObject({ kind: "follow", source: portId(orders, "order") });
     expect(badges(detail)).toEqual(["following:→orders"]);
     fireEvent.click(row("88214"));
     expect(detailTitle()).toContain("order #88214");
@@ -194,7 +194,7 @@ describe("scene 2 · follow and hold", () => {
     fireEvent.click(badgeEl(detail));
     fireEvent.click(await screen.findByText("Detach as a fixed value"));
     expect(badges(detail)).toEqual(["fixed:•#88214"]);
-    expect(bindingsOf(workbench.store.getState().document).get(portId(detail, "order"))).toMatchObject({ kind: "constant" });
+    expect(bindingsOf(workbench.core.getState().document).get(portId(detail, "order"))).toMatchObject({ kind: "constant" });
   });
 
   it("an unavailable row stays visible with its reason: Resume on a port that is not held", async () => {
@@ -217,10 +217,10 @@ describe("scene 2 · follow and hold", () => {
     expect(JSON.parse(json).documents[LINKS_DOC_ID]).toBeTruthy();
     const again = createShopWorkbench(shop);
     expect(again.restore(json)).toBe(true);
-    expect(bindingsOf(again.store.getState().document).get(portId(detail, "order"))).toMatchObject({ kind: "follow" });
+    expect(bindingsOf(again.core.getState().document).get(portId(detail, "order"))).toMatchObject({ kind: "follow" });
 
     const placement = document.querySelector('[data-part="orders-table"]')?.closest("[data-placement-id]")?.getAttribute("data-placement-id");
-    act(() => void workbench.verbs.close(placement!));
+    act(() => void workbench.execute(commands.close(placement!)));
     expect(badges(detail)).toEqual(["held:⏸#88213"]);
     expect(detailTitle()).toContain("order #88213");
   });

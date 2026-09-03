@@ -127,7 +127,7 @@ export function validateWorkbenchDocument(doc: WorkbenchDocument, options: Valid
     const slots = new Set(documentSlots(app));
     for (const [slot, documentId] of Object.entries(view.documents)) {
       const bindingPath = `${path}.documents["${slot}"]`;
-      if (!slots.has(slot)) report("unknown_binding", bindingPath, `application "${app.id}" does not define binding "${slot}"`);
+      if (!slots.has(slot) && !app.openBindings) report("unknown_binding", bindingPath, `application "${app.id}" does not define binding "${slot}"`);
       if (!doc.documents[documentId]) report("unknown_document", bindingPath, `document "${documentId}" does not exist`);
     }
   }

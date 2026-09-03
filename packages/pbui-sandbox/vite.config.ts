@@ -9,6 +9,7 @@ const external = [
   "@hyperslop-systems/pbui",
   "@hyperslop-systems/pbui-editor",
   "@hyperslop-systems/pbui-workbench",
+  "@hyperslop-systems/workbench-core",
   "@hyperslop-systems/workbench-protocol",
   "@hyperslop-systems/workbench-protocol/client",
   "quickjs-emscripten",
@@ -27,6 +28,7 @@ export default defineConfig({
       external: (id) =>
         external.includes(id) ||
         id.startsWith("@hyperslop-systems/pbui/") ||
+        id.startsWith("@hyperslop-systems/workbench-core/") ||
         id.startsWith("@hyperslop-systems/pbui-editor/") ||
         id.startsWith("@hyperslop-systems/pbui-workbench/") ||
         id.startsWith("@hyperslop-systems/workbench-protocol/") ||

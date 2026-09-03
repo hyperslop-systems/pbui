@@ -1,5 +1,6 @@
 import { linkVerbs, portId } from "@hyperslop-systems/pbui";
-import type { LayoutSpec, Workbench } from "@hyperslop-systems/pbui-workbench";
+import type { WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
+import type { LayoutSpec } from "@hyperslop-systems/workbench-core";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useMemo } from "react";
 import { createShop, createShopWorkbench, type Shop } from "../createShop";
@@ -18,16 +19,16 @@ export interface ShopStoryProps {
   spec?: LayoutSpec;
   height?: number;
   strip?: boolean;
-  setup?(shop: Shop, workbench: Workbench, views: ViewsByApp): void;
+  setup?(shop: Shop, workbench: WorkbenchShell, views: ViewsByApp): void;
 }
 
 /** The view ids of the current workspace, grouped by app id in tree order. */
 export type ViewsByApp = Record<string, string[]>;
 
-export function viewsByApp(workbench: Workbench): ViewsByApp {
-  const state = workbench.store.getState();
+export function viewsByApp(workbench: WorkbenchShell): ViewsByApp {
+  const state = workbench.core.getState();
   const out: ViewsByApp = {};
-  for (const leaf of leaves(workspaceTree(state.document, state.workspaceId))) {
+  for (const leaf of leaves(workspaceTree(state.document, state.session.workspaceId))) {
     if (leaf.body.case !== "leaf") continue;
     const view = state.document.views[leaf.body.value.viewId];
     if (!view) continue;

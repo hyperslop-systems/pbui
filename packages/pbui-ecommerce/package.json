@@ -1,7 +1,7 @@
 {
   "name": "@hyperslop-systems/pbui-ecommerce",
   "version": "0.1.0",
-  "description": "The gold-coin shop as a PBUI workbench: an in-memory host over orders, customers, products and sales, tiles that declare ports, and plots over @hyperslop-systems/plot — the first consumer of tile linking (PBUI-LINK-1)",
+  "description": "The gold-coin shop as a PBUI workbench: an in-memory host over orders, customers, products and sales, tiles that declare ports, and plots over @hyperslop-systems/plot \u2014 the first consumer of tile linking (PBUI-LINK-1)",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -42,6 +42,7 @@
     "@hyperslop-systems/pbui": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
     "@hyperslop-systems/plot": "0.3.1",
+    "@hyperslop-systems/workbench-core": "workspace:^",
     "@hyperslop-systems/workbench-protocol": "workspace:^"
   },
   "peerDependencies": {

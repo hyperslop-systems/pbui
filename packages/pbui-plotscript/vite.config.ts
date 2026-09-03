@@ -11,6 +11,7 @@ const external = [
   "@hyperslop-systems/pbui-editor",
   "@hyperslop-systems/pbui-sandbox",
   "@hyperslop-systems/pbui-workbench",
+  "@hyperslop-systems/workbench-core",
   "@hyperslop-systems/plot",
   "@hyperslop-systems/workbench-protocol",
 ];

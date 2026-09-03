@@ -1,11 +1,11 @@
 import { Text } from "@hyperslop-systems/pbui";
-import { PortBadge, isWorkbenchVerb, portRefOf, tileRefOf, type Workbench } from "@hyperslop-systems/pbui-workbench";
+import { PortBadge, isWorkbenchVerb, portRefOf, tileRefOf, type WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../createShop";
 import styles from "./ShopShell.module.css";
 
 export interface ShopShellProps {
   shop: Shop;
-  workbench: Workbench;
+  workbench: WorkbenchShell;
   /** Show the workspace strip above the surface. Default true. */
   strip?: boolean;
   title?: string;
@@ -22,7 +22,7 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
   const { Provider, Presentation, ObjectMenu, AcceptBanner } = shop.pbui;
   return (
     <Provider
-      environment={{ host: shop.host, links: workbench.links }}
+      environment={{ host: shop.host, links: workbench }}
       onPerform={(verb) => {
         if (isWorkbenchVerb(verb)) workbench.perform(verb);
       }}
@@ -65,7 +65,7 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
               </Presentation>
             )}
             renderBadges={(_view, _placement, badges) => {
-              const snapshot = workbench.links.snapshot();
+              const snapshot = workbench.linkSnapshot();
               return badges.map((badge) => {
                 const port = portRefOf(badge, snapshot);
                 if (!port) return <PortBadge key={badge.port} badge={badge} />;

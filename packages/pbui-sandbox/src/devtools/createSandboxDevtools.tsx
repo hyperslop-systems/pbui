@@ -1,5 +1,5 @@
 import { documentSlotPort } from "@hyperslop-systems/pbui";
-import { defineApp, type AppDescriptor, type AppProps } from "@hyperslop-systems/pbui-workbench";
+import { defineWorkbenchApp, type AppProps, type WorkbenchApp } from "@hyperslop-systems/pbui-workbench";
 import type { SandboxHost } from "../host/hostOptions";
 import { INSPECTOR_APP_ID, PROGRAM_BINDING, SOURCE_APP_ID } from "../ScriptTile";
 import { InspectorTile } from "./InspectorTile/InspectorTile";
@@ -25,11 +25,11 @@ export const TIMELINE_APP_ID = "sandbox-timeline";
 export const PLAYGROUND_APP_ID = "sandbox-playground";
 
 /**
- * The devtools as ordinary app descriptors (guide D8): register them beside
+ * The devtools as ordinary workbench apps (guide D8): register them beside
  * `createScriptApp(host)`. Marks `host.devtools` so the script tile shows
  * its inspect/source buttons — the same host object must be passed to both.
  */
-export function createSandboxDevtools(host: SandboxHost, options: SandboxDevtoolsOptions = {}): AppDescriptor[] {
+export function createSandboxDevtools(host: SandboxHost, options: SandboxDevtoolsOptions = {}): WorkbenchApp[] {
   const { group = SANDBOX_GROUP, tone = "var(--pbui-tone-widget)" } = options;
   host.devtools = true;
   const playground = options.playground ?? createPlaygroundStore({ key: options.playgroundKey ?? "pbui-sandbox.playground" });
@@ -39,56 +39,57 @@ export function createSandboxDevtools(host: SandboxHost, options: SandboxDevtool
     return `${prefix} · ${host.library.getState().programs[id]?.title ?? (id || "program")}`;
   };
   return [
-    defineApp({
-      id: INSPECTOR_APP_ID,
-      title: "inspector",
-      tone,
-      singleton: false,
-      duplicable: false,
-      ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile is a view of")],
-      group,
-      blurb: "a running program's state, bindings, render tree and timings",
-      titleFor: (view) => titleOf(view, "inspect"),
-      Component: (props: AppProps) => <InspectorTile placementId={props.placementId} view={props.view} host={host} />,
+    defineWorkbenchApp({
+      manifest: { id: INSPECTOR_APP_ID, duplicatePlacement: "link", ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile is a view of")] },
+      presentation: {
+        title: "inspector",
+        tone,
+        group,
+        blurb: "a running program's state, bindings, render tree and timings",
+        titleFor: (view) => titleOf(view, "inspect"),
+        Component: (props: AppProps) => <InspectorTile placementId={props.placementId} view={props.view} host={host} />,
+      },
     }),
-    defineApp({
-      id: REPL_APP_ID,
-      title: "REPL",
-      tone,
-      singleton: true,
-      group,
-      blurb: "evaluate and inject code inside the selected program",
-      Component: (props: AppProps) => <ReplTile placementId={props.placementId} view={props.view} host={host} />,
+    defineWorkbenchApp({
+      manifest: { id: REPL_APP_ID, viewCardinality: "one" },
+      presentation: {
+        title: "REPL",
+        tone,
+        group,
+        blurb: "evaluate and inject code inside the selected program",
+        Component: (props: AppProps) => <ReplTile placementId={props.placementId} view={props.view} host={host} />,
+      },
     }),
-    defineApp({
-      id: TIMELINE_APP_ID,
-      title: "timeline",
-      tone,
-      singleton: true,
-      group,
-      blurb: "every load, render, event, intent and error across running programs",
-      Component: (props: AppProps) => <TimelineTile placementId={props.placementId} view={props.view} host={host} />,
+    defineWorkbenchApp({
+      manifest: { id: TIMELINE_APP_ID, viewCardinality: "one" },
+      presentation: {
+        title: "timeline",
+        tone,
+        group,
+        blurb: "every load, render, event, intent and error across running programs",
+        Component: (props: AppProps) => <TimelineTile placementId={props.placementId} view={props.view} host={host} />,
+      },
     }),
-    defineApp({
-      id: PLAYGROUND_APP_ID,
-      title: "playground",
-      tone,
-      singleton: true,
-      group,
-      blurb: "write a program by hand, run it live, save it into the library",
-      Component: (props: AppProps) => <PlaygroundTile placementId={props.placementId} view={props.view} host={host} store={playground} />,
+    defineWorkbenchApp({
+      manifest: { id: PLAYGROUND_APP_ID, viewCardinality: "one" },
+      presentation: {
+        title: "playground",
+        tone,
+        group,
+        blurb: "write a program by hand, run it live, save it into the library",
+        Component: (props: AppProps) => <PlaygroundTile placementId={props.placementId} view={props.view} host={host} store={playground} />,
+      },
     }),
-    defineApp({
-      id: SOURCE_APP_ID,
-      title: "source",
-      tone,
-      singleton: false,
-      duplicable: false,
-      ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile is a view of")],
-      group,
-      blurb: "a program's source, its previous versions, a diff, and rollback",
-      titleFor: (view) => titleOf(view, "source"),
-      Component: (props: AppProps) => <SourceTile placementId={props.placementId} view={props.view} host={host} playground={playground} />,
+    defineWorkbenchApp({
+      manifest: { id: SOURCE_APP_ID, duplicatePlacement: "link", ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile is a view of")] },
+      presentation: {
+        title: "source",
+        tone,
+        group,
+        blurb: "a program's source, its previous versions, a diff, and rollback",
+        titleFor: (view) => titleOf(view, "source"),
+        Component: (props: AppProps) => <SourceTile placementId={props.placementId} view={props.view} host={host} playground={playground} />,
+      },
     }),
   ];
 }

@@ -94,7 +94,7 @@ export function NotesApp({ view }: AppProps) {
 
   const save = useCallback(
     (id: string, text: string) => {
-      workbench.mutate([
+      workbench.apply([
         create(MutationSchema, {
           body: {
             case: "documentPut",
@@ -195,7 +195,7 @@ export function NotesApp({ view }: AppProps) {
           disabled={!stored.updatedAt}
           onClick={() => {
             owed.current = null;
-            const gone = workbench.mutate([
+            const gone = workbench.apply([
               create(MutationSchema, { body: { case: "documentDelete", value: { documentId: noteId } } }),
             ]);
             setRefused(!gone);

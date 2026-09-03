@@ -296,7 +296,7 @@ const CONTRIBUTIONS: ActionContribution<Values, DemoFacts, Verb>[] = [
       action: "tile.askAgent.about",
       label: "Ask the agent about this tile",
       order: 40,
-      bind: ({ subject }) => ({ kind: "view.goTo", viewId: subject.value.value?.viewId ?? "" }),
+      bind: ({ subject }) => ({ kind: "view.show", view: { kind: "existing", viewId: subject.value.value?.viewId ?? "" }, placement: { kind: "navigate" } }),
     },
     {
       slug: "ask-rearrange",
@@ -314,11 +314,11 @@ const CONTRIBUTIONS: ActionContribution<Values, DemoFacts, Verb>[] = [
   ...rulesFor("workspace", [
     {
       slug: "go-to",
-      action: "workspace.workspace.select",
+      action: "workspace.session.selectWorkspace",
       label: "Go to it",
       test: ({ subject }) =>
         subject.value.value?.active ? unavailable("you are already here") : available(),
-      bind: ({ subject }) => ({ kind: "workspace.select", workspaceId: subject.value.id }),
+      bind: ({ subject }) => ({ kind: "session.selectWorkspace", workspaceId: subject.value.id }),
     },
     { slug: "duplicate", action: "workspace.workspace.clone", label: "Duplicate", bind: ({ subject }) => ({ kind: "workspace.clone", workspaceId: subject.value.id }) },
     {
@@ -339,13 +339,13 @@ const CONTRIBUTIONS: ActionContribution<Values, DemoFacts, Verb>[] = [
   ...rulesFor("app", [
     {
       slug: "place",
-      action: "app.app.place",
+      action: "app.view.show",
       label: "Open it in a tile",
       test: ({ subject }) =>
         subject.value.value?.docBound
           ? unavailable("this application is a view OF something; open it from the object it shows")
           : available(),
-      bind: ({ subject }) => ({ kind: "app.place", appId: subject.value.id }),
+      bind: ({ subject }) => ({ kind: "view.show", view: { kind: "application", appId: subject.value.id }, placement: { kind: "auto" } }),
     },
     {
       slug: "ask-place",
@@ -480,7 +480,7 @@ const CONTRIBUTIONS: ActionContribution<Values, DemoFacts, Verb>[] = [
     },
     {
       slug: "waiting",
-      action: "conversation.view.open.chat-tools",
+      action: "conversation.view.show.chat-tools",
       label: ({ snapshot }) => {
         const waiting = snapshot.product.conversation?.waiting ?? 0;
         return waiting > 0 ? `Show what is waiting · ${waiting}` : "Show what is waiting";
@@ -490,19 +490,15 @@ const CONTRIBUTIONS: ActionContribution<Values, DemoFacts, Verb>[] = [
         (snapshot.product.conversation?.waiting ?? 0) > 0
           ? available()
           : unavailable("nothing is waiting in this conversation"),
-      bind: () => ({ kind: "view.open", appId: "chat-tools", documents: {} as Record<string, string> }),
+      bind: () => ({ kind: "view.show", view: { kind: "application", appId: "chat-tools" }, placement: { kind: "auto" } }),
     },
     {
       slug: "context",
-      action: "conversation.view.open.conversation-context",
+      action: "conversation.view.show.conversation-context",
       label: "Show what it was told",
       description: "its tools, the last message it sent, its environment",
       test: ({ snapshot }) => gone(snapshot.product.conversation),
-      bind: ({ subject }) => ({
-        kind: "view.open",
-        appId: "conversation-context",
-        documents: { conversation: subject.value.id },
-      }),
+      bind: ({ subject }) => ({ kind: "view.show", view: { kind: "application", appId: "conversation-context", documents: { conversation: subject.value.id } }, placement: { kind: "auto" } }),
     },
     { slug: "inspect", action: "conversation.inspect", label: "Inspect", bind: ({ subject }) => ({ kind: "inspect", ref: subject.value }) },
     {

@@ -89,7 +89,7 @@ export function followTheCrowd(options: FollowTheCrowdOptions = {}): InitialDocu
  */
 export function resolveInitialDocuments(policy: InitialDocumentPolicy, app: WorkbenchAppManifest, requested: Readonly<Record<string, string>>, doc: WorkbenchDocument, index: WorkbenchIndex): InitialDocumentResolution {
   const slots = documentSlots(app);
-  const unknown = Object.keys(requested).filter((key) => !slots.includes(key));
+  const unknown = app.openBindings ? [] : Object.keys(requested).filter((key) => !slots.includes(key));
   if (unknown.length > 0) {
     return { kind: "refused", code: "unknown_binding", because: `application "${app.id}" does not define binding ${unknown.map((k) => `"${k}"`).join(", ")}`, missing: [] };
   }

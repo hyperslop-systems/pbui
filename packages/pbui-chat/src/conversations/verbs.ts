@@ -1,4 +1,5 @@
-import type { Workbench } from "@hyperslop-systems/pbui-workbench";
+import type { WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
+import { commands } from "@hyperslop-systems/workbench-core";
 import { z } from "zod";
 import type { Actor, Reference, VerbLike } from "../types";
 import type { VerbDocs } from "../vocabulary/defineVocabulary";
@@ -115,7 +116,7 @@ export interface ConversationVerbContext {
   /** Who is performing it; a human's rename owns the title, an agent's does not (D7). */
   actor: Actor;
   /** Where a conversation's tile is opened; null in a product with no workbench. */
-  workbench: Workbench | null;
+  workbench: WorkbenchShell | null;
   /** Send to a named conversation — the router's `sendToAgent` with a target. */
   send(conversationId: string, template: string, refs: readonly Reference[]): Promise<void>;
 }
@@ -193,7 +194,7 @@ function requireKnown(ctx: ConversationVerbContext, conversationId: string) {
 }
 
 /**
- * A conversation's tile. `openView` is doc-bound de-duplication: a second
+ * A conversation's tile. `view.show` is doc-bound de-duplication: a second
  * open of a conversation that already has a tile goes to that tile rather
  * than minting a second one.
  */
@@ -201,10 +202,6 @@ function openConversationTile(ctx: ConversationVerbContext, conversationId: stri
   const workbench = ctx.workbench;
   if (!workbench) return;
   const beside = near ?? workbench.activePlacementId() ?? undefined;
-  const placed = workbench.verbs.openView(
-    "chat",
-    { [CONVERSATION_BINDING]: conversationId },
-    beside ? { near: beside } : {},
-  );
-  if (!placed) throw new Error("the workbench refused to open a conversation tile");
+  const placed = workbench.execute(commands.open("chat", { [CONVERSATION_BINDING]: conversationId }, beside ? { near: beside } : {}));
+  if (!placed.ok) throw new Error(`the workbench refused to open a conversation tile: ${placed.because}`);
 }

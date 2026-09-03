@@ -1440,6 +1440,11 @@ exports[`placement goldens > close of the last tile is refused 1`] = `
   "returned": {
     "because": "a workspace keeps at least one tile",
     "code": "last_placement",
+    "command": {
+      "kind": "placement.close",
+      "placementId": "n-00000002-0000",
+    },
+    "index": 0,
     "ok": false,
   },
   "session": {
@@ -2088,6 +2093,14 @@ exports[`view and workspace goldens > setTitle sets and clears; rebind replaces 
     "returned": {
       "because": "application "notes" does not define binding "product"",
       "code": "unknown_binding",
+      "command": {
+        "documents": {
+          "product": "p1",
+        },
+        "kind": "view.configure",
+        "viewId": "v-00000003-0000",
+      },
+      "index": 0,
       "ok": false,
     },
     "session": {
@@ -2351,6 +2364,22 @@ exports[`view and workspace goldens > workspace.rebalance refuses a tree that dr
   "returned": {
     "because": "a rebalance may only rearrange tiles; it cannot add, drop, or retarget them",
     "code": "rebalance_changes_membership",
+    "command": {
+      "kind": "workspace.rebalance",
+      "tree": {
+        "$typeName": "hyperslop.pbui.workbench.v1.Node",
+        "body": {
+          "case": "leaf",
+          "value": {
+            "$typeName": "hyperslop.pbui.workbench.v1.Leaf",
+            "viewId": "v-00000001-0000",
+          },
+        },
+        "id": "n-00000002-0000",
+      },
+      "workspaceId": "main",
+    },
+    "index": 0,
     "ok": false,
   },
   "session": {

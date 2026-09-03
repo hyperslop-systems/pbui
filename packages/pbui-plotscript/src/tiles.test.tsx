@@ -1,6 +1,9 @@
 import { EditorView } from "@hyperslop-systems/pbui-editor";
-import { createWorkbench, createAppRegistry, layout, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench } from "@hyperslop-systems/pbui-workbench";
+import { create } from "@bufbuild/protobuf";
+import { DocumentPayloadSchema, MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { createPlotScriptApps } from "./apps";
@@ -28,8 +31,8 @@ function mount(source = OK) {
   const initial = applyMutations(layout(split("row", 0.5, tile("plot-script", { documents: { plot: "s1" } }), tile("plot-view", { documents: { plot: "s1" } })), { id: "wb" }), [
     plotScriptMutation({ id: "s1", name: "three points", source, updatedAt: "2026-09-01T00:00:00.000Z" }),
   ]);
-  const wb = createWorkbench({ apps: createAppRegistry(createPlotScriptApps(host)), initial });
-  connectPlotScriptDocuments(wb, host);
+  const wb = createWorkbench({ apps: createPlotScriptApps(host), initial });
+  connectPlotScriptDocuments(wb.core, host);
   const utils = render(<wb.Surface />);
   return { host, wb, ...utils };
 }
@@ -60,7 +63,7 @@ describe("the script tile and the plot tile over one document", () => {
     // Draft changed, nothing drawn yet from it → stale until the debounce fires.
     expect(container.textContent).toContain("stale");
     await waitFor(() => expect(host.runner.getState("s1").lastGoodSource).toBe(next));
-    await waitFor(() => expect(readPlotScript(wb.store.getState().document, "s1")?.source).toBe(next));
+    await waitFor(() => expect(readPlotScript(wb.core.getState().document, "s1")?.source).toBe(next));
     await waitFor(() => expect(container.textContent).not.toContain("stale"));
     expect(container.textContent).toContain("four points");
 
@@ -72,7 +75,7 @@ describe("the script tile and the plot tile over one document", () => {
     // The plot is still the last good one, marked stale; the document is untouched.
     expect(container.querySelector('[data-part="plot-view"] svg')).not.toBeNull();
     expect(container.textContent).toContain("stale");
-    expect(readPlotScript(wb.store.getState().document, "s1")?.source).toBe(next);
+    expect(readPlotScript(wb.core.getState().document, "s1")?.source).toBe(next);
   });
 
   test("console output reaches the output pane", async () => {
@@ -103,7 +106,7 @@ describe("the script tile and the plot tile over one document", () => {
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: edited } });
     });
     await waitFor(() => expect(host.runner.getState("s1").lastGoodSource).toBe(edited));
-    await waitFor(() => expect(readPlotScript(wb.store.getState().document, "s1")?.source).toBe(edited));
+    await waitFor(() => expect(readPlotScript(wb.core.getState().document, "s1")?.source).toBe(edited));
 
     // The demo's reset sequence.
     await act(async () => {
@@ -120,9 +123,13 @@ describe("the script tile and the plot tile over one document", () => {
 
   test("an unbound tile and a missing script each say so", () => {
     const host = createPlotScriptHost();
+    // The core validates bindings at its door, so "missing" means a document
+    // that exists but is not a plot script (a foreign format), not an id
+    // nothing holds.
+    const ghost = create(MutationSchema, { body: { case: "documentPut", value: { document: create(DocumentPayloadSchema, { id: "ghost", format: "not.a.plotscript", schemaVersion: 1, body: {} }) } } });
     const wb = createWorkbench({
-      apps: createAppRegistry(createPlotScriptApps(host)),
-      initial: layout(split("row", 0.5, tile("plot-script"), tile("plot-view", { documents: { plot: "ghost" } })), { id: "wb" }),
+      apps: createPlotScriptApps(host),
+      initial: applyMutations(layout(split("row", 0.5, tile("plot-script"), tile("plot-view", { documents: { plot: "ghost" } })), { id: "wb" }), [ghost]),
     });
     const { container } = render(<wb.Surface />);
     expect(container.textContent).toContain("this tile names no script");

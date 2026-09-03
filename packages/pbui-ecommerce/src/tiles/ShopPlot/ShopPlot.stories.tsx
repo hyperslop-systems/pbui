@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { split } from "@hyperslop-systems/pbui-workbench";
+import { split } from "@hyperslop-systems/workbench-core";
 import { ORDERS_BY_STATUS, REVENUE_BY_CATEGORY, REVENUE_BY_DAY } from "../../plots/documents";
 import { plotTile } from "../../seed";
 import { ShopStory } from "../../stories/harness";

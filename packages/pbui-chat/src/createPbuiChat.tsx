@@ -11,7 +11,8 @@ import {
   type ChatDebugFamily,
   type SendMessageRequest,
 } from "@go-go-golems/chat-provider";
-import type { Workbench } from "@hyperslop-systems/pbui-workbench";
+import type { WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
+import { commands, connectDocumentSource, type DocumentSource } from "@hyperslop-systems/workbench-core";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { traceAdapter } from "./adapters/traceAdapter";
 import { Composer } from "./composer/Composer";
@@ -45,7 +46,14 @@ import { exportVocabulary } from "./vocabulary/defineVocabulary";
 import type { Vocabulary } from "./vocabulary/schemas";
 import { pbuiWidgets } from "./widget/definitions";
 import { findWidgetEntity, widgetTitleOf } from "./widget/findWidgetEntity";
+import { create } from "@bufbuild/protobuf";
+import { DocumentPayloadSchema, MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { WIDGET_BINDING } from "./apps/WidgetApp";
+
+/** The format of the stub document that stands for a conversation in an attached workbench. */
+export const CONVERSATION_DOCUMENT_FORMAT = "chat.conversation";
+/** The format of the stub document that stands for a widget instance opened in a tile. */
+export const WIDGET_DOCUMENT_FORMAT = "chat.widget";
 
 export interface CreatePbuiChatOptions<Values extends PresentationValues, Environment, Verb extends VerbLike> {
   /** The product's `createPbui()` instance. */
@@ -94,7 +102,7 @@ export interface CreatePbuiChatOptions<Values extends PresentationValues, Enviro
    * construction with `chat.attachWorkbench(wb)`, because the workbench's
    * apps (`createChatApps(chat)`) need the chat first.
    */
-  workbench?: Workbench;
+  workbench?: WorkbenchShell;
   /**
    * Tune the workbench tools the agent uses to rearrange the screen: limits,
    * the per-verb policy, and whether the raw mutation tool is offered.
@@ -204,7 +212,17 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       }
       const title = widgetTitleOf(findWidgetEntity(getEntities(), widgetId), widgetId);
       const near = workbench.activePlacementId();
-      workbench.verbs.openView("widget", { [WIDGET_BINDING]: widgetId }, { ...(near ? { near } : {}), title });
+      // The core validates the binding against the document store, so the
+      // widget instance gets a stub document first. It is never removed: a
+      // widget that left the timeline is what the tile's empty state reports.
+      if (!workbench.core.getState().document.documents[widgetId]) {
+        workbench.apply([
+          create(MutationSchema, {
+            body: { case: "documentPut", value: { document: create(DocumentPayloadSchema, { id: widgetId, format: WIDGET_DOCUMENT_FORMAT, schemaVersion: 1, body: {} }) } },
+          }),
+        ]);
+      }
+      workbench.execute(commands.open("widget", { [WIDGET_BINDING]: widgetId }, { ...(near ? { near } : {}), title }));
     };
   }
 
@@ -227,7 +245,27 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
    * the model is simply not offered them rather than being offered ones that
    * fail.
    */
-  let workbench: Workbench | null = options.workbench ?? null;
+  let workbench: WorkbenchShell | null = null;
+  let disconnectConversations: () => void = () => undefined;
+  /**
+   * Conversations live in the registry, not in the workbench document, but
+   * a `chat` tile BINDS one and the core validates that binding against the
+   * document store. So every conversation the registry knows is mirrored
+   * into the attached workbench as a stub document (`chat.conversation`),
+   * kept in step with the registry for as long as the workbench is attached.
+   */
+  function connectWorkbench(next: WorkbenchShell | null) {
+    disconnectConversations();
+    disconnectConversations = () => undefined;
+    workbench = next;
+    if (!next) return;
+    const source: DocumentSource = {
+      format: CONVERSATION_DOCUMENT_FORMAT,
+      list: () => conversations.all().map((snapshot) => ({ id: snapshot.id })),
+      subscribe: (listener) => conversations.subscribe(listener),
+    };
+    disconnectConversations = connectDocumentSource(next.core, source);
+  }
   let library: ProgramLibrary | null = options.sandbox?.library ?? null;
   let engine: ProgramEngine | null = options.sandbox?.engine ?? null;
   let instances: InstanceRegistry | null = null;
@@ -342,6 +380,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
       sessionPolicy: { restore: "never" },
     }),
   });
+  if (options.workbench) connectWorkbench(options.workbench);
 
   /** Send to a conversation, queueing its refs and focus for `sendMessageBody`. */
   async function sendTo(conversationId: string | null, body: Omit<ChatMessageBody, "attachments">) {
@@ -507,8 +546,8 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     /** One conversation's revision-bound workbench and program tools. */
     toolsFor,
     /** Route `openInTile` to a workbench's `widget` tiles from now on (null detaches). */
-    attachWorkbench(next: Workbench | null) {
-      workbench = next;
+    attachWorkbench(next: WorkbenchShell | null) {
+      connectWorkbench(next);
       // Re-advertise: every workbench tool's `available()` just flipped, and
       // the manifest the server holds is only refreshed on connect, on send,
       // and on extension install. Without this the tools are invisible to the

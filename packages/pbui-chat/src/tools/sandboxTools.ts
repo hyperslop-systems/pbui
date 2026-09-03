@@ -1,6 +1,6 @@
 import type { FrontendTool, ToolDefinition } from "@go-go-golems/chat-provider";
 import type { JsonValue } from "@bufbuild/protobuf";
-import { describeWorkbench, type Workbench } from "@hyperslop-systems/pbui-workbench";
+import type { WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
 import { type ActionBehaviour, type ActionRecord, BOOTSTRAP_VERSION, DEFAULT_LIMITS, type DispatchIntent, type InstanceRegistry, type LoadedProgram, type ProgramEngine, type ProgramErrorPayload, type ProgramGlobalState, type ProgramLibrary, type ProgramRecord, SANDBOX_INTENTS, SANDBOX_UI_KINDS, type SandboxLimits, type UINode, type UIReference, byteLength, countNodes, reducePluginIntent, substituteVerbRef, toProgramError, validateUINode } from "@hyperslop-systems/pbui-sandbox";
 import { z } from "zod";
 import type { EffectCorrelation, Outcome, VerbLike } from "../types";
@@ -37,7 +37,7 @@ export interface SandboxToolsOptions {
   getLibrary(): ProgramLibrary | null;
   getEngine(): ProgramEngine | null;
   /** The workbench programs open in; null disables opening but not creating or testing. */
-  getWorkbench(): Workbench | null;
+  getWorkbench(): WorkbenchShell | null;
   /** The instance registry, when the product runs one: `sandbox_describe` then reports what is running and how it is doing. */
   getInstances?(): InstanceRegistry | null;
   /** Perform a verb through the PRODUCT's router with `actor: "agent"`, so the trace records it. */
@@ -247,14 +247,14 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
 
   /* ---- reads ------------------------------------------------------------ */
 
-  function tilesShowing(wb: Workbench, programId: string): string[] {
-    return describeWorkbench(wb).workspaces.flatMap((workspace) =>
+  function tilesShowing(wb: WorkbenchShell, programId: string): string[] {
+    return wb.describe().workspaces.flatMap((workspace) =>
       workspace.tiles.filter((tile) => tile.appId === "script" && tile.documents.program === programId).map((tile) => tile.placementId),
     );
   }
 
-  function currentTiles(wb: Workbench) {
-    return describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId }).workspaces[0]?.tiles ?? [];
+  function currentTiles(wb: WorkbenchShell) {
+    return wb.describe({ workspaceId: wb.core.getState().session.workspaceId }).workspaces[0]?.tiles ?? [];
   }
 
   /** What the registry knows about a program's running instances — timings and errors a model can act on. */
@@ -277,7 +277,7 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
     }));
   }
 
-  function summarise(program: ProgramRecord, wb: Workbench | null) {
+  function summarise(program: ProgramRecord, wb: WorkbenchShell | null) {
     const instances = running(program.id);
     return {
       id: program.id,
@@ -313,7 +313,7 @@ export function createSandboxTools(options: SandboxToolsOptions): SandboxTools {
   }
 
   async function open(
-    wb: Workbench,
+    wb: WorkbenchShell,
     programId: string,
     documents: Record<string, string>,
     near: string | undefined,

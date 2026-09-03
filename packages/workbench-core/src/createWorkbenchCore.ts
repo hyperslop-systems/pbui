@@ -74,12 +74,20 @@ export type ExecuteResult =
       viewId?: string;
       workspaceId?: string;
     }
-  | { ok: false; code: string; because: string; choices?: readonly Choice[] };
+  | {
+      ok: false;
+      code: string;
+      because: string;
+      choices?: readonly Choice[];
+      /** For a batch: which command was refused, and its position. */
+      index?: number;
+      command?: WorkbenchCommand;
+    };
 
 /** What `preview` returns: advisory, never a commit handle (S2). */
 export type PreviewResult =
   | { ok: true; changed: boolean; mutations: readonly Mutation[]; session: WorkbenchSession; explanation: string; placementId?: string; viewId?: string; workspaceId?: string }
-  | { ok: false; code: string; because: string; choices?: readonly Choice[] };
+  | Extract<ExecuteResult, { ok: false }>;
 
 /** The small result of a raw batch through the gateway. */
 export type ApplyResult =
@@ -245,13 +253,13 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     return { commands, result: plan(worldOf(geometry), commands) };
   };
 
-  const refusal = (result: Exclude<PlanResult, { kind: "prepared" }>): { ok: false; code: string; because: string; choices?: readonly Choice[] } => {
+  const refusal = (result: Exclude<PlanResult, { kind: "prepared" }>): { ok: false; code: string; because: string; choices?: readonly Choice[]; index: number; command: WorkbenchCommand } => {
     if (result.kind === "ambiguous") {
       options.onRefused?.(result.command, "ambiguous", result.because);
-      return { ok: false, code: "ambiguous", because: result.because, choices: result.choices };
+      return { ok: false, code: "ambiguous", because: result.because, choices: result.choices, index: result.index, command: result.command };
     }
     options.onRefused?.(result.command, result.code, result.because);
-    return { ok: false, code: result.code, because: result.because };
+    return { ok: false, code: result.code, because: result.because, index: result.index, command: result.command };
   };
 
   const ids_of = (transition: PreparedTransition) => ({
@@ -282,7 +290,7 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
         if (!prepared.ok) {
           report(transition.mutations, prepared.diagnostics);
           options.onRefused?.(commands[0]!, prepared.code, prepared.because);
-          return { ok: false, code: prepared.code, because: prepared.because };
+          return { ok: false, code: prepared.code, because: prepared.because, index: 0, command: commands[0]! };
         }
         next = prepared.document;
       }

@@ -1,5 +1,6 @@
 import { Button, Callout, Chip, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
 import { useWorkbench } from "@hyperslop-systems/pbui-workbench";
+import { commands } from "@hyperslop-systems/workbench-core";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { useMemo, useState } from "react";
 import type { ProgramErrorPayload, UIReference } from "../contracts";
@@ -175,10 +176,10 @@ function DevtoolButtons({ programId, viewId, placementId }: { programId: string;
   const workbench = useWorkbench();
   return (
     <>
-      <Button size="tiny" variant="bare" onClick={() => workbench.verbs.openView(INSPECTOR_APP_ID, { program: programId, view: viewId }, { near: placementId })}>
+      <Button size="tiny" variant="bare" onClick={() => workbench.execute(commands.open(INSPECTOR_APP_ID, { program: programId, view: viewId }, { near: placementId }))}>
         inspect
       </Button>
-      <Button size="tiny" variant="bare" onClick={() => workbench.verbs.openView(SOURCE_APP_ID, { program: programId }, { near: placementId })}>
+      <Button size="tiny" variant="bare" onClick={() => workbench.execute(commands.open(SOURCE_APP_ID, { program: programId }, { near: placementId }))}>
         source
       </Button>
     </>

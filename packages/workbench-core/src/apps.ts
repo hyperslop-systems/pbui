@@ -25,6 +25,14 @@ export interface WorkbenchAppManifest {
   readonly duplicatePlacement: DuplicatePlacement;
   /** Typed ports (PBUI-LINK-1). A `documentSlot` port is a key of `view.documents`. */
   readonly ports?: readonly PortDeclaration[];
+  /**
+   * The application accepts bindings beyond its declared document slots.
+   * For a host whose bindings are declared by the bound resource rather than
+   * the manifest — the sandbox's `script` application, whose programs each
+   * name their own — so `unknown_binding` is not reported for its views.
+   * Every bound document must still exist. Default false.
+   */
+  readonly openBindings: boolean;
 }
 
 export interface WorkbenchAppManifestInput {
@@ -34,6 +42,8 @@ export interface WorkbenchAppManifestInput {
   /** Default: `"link"` for a `"one"` application, `"clone"` otherwise. */
   duplicatePlacement?: DuplicatePlacement;
   ports?: readonly PortDeclarationInput[];
+  /** Default false. */
+  openBindings?: boolean;
 }
 
 /** Normalise a manifest so readers never branch on `undefined`, and refuse the contradiction `one` + `clone`. */
@@ -45,7 +55,7 @@ export function defineAppManifest(input: WorkbenchAppManifestInput): WorkbenchAp
     throw new Error(`workbench-core: application "${input.id}" declares viewCardinality "one" and duplicatePlacement "clone"; a single view cannot be cloned`);
   }
   const ports = input.ports && input.ports.length > 0 ? definePorts(input.ports) : undefined;
-  return { id: input.id, viewCardinality, duplicatePlacement, ...(ports ? { ports } : {}) };
+  return { id: input.id, viewCardinality, duplicatePlacement, ...(ports ? { ports } : {}), openBindings: input.openBindings ?? false };
 }
 
 /** Is the application a view OF a document — does it declare a document-slot port? */

@@ -125,7 +125,7 @@ describe("planning purity (the Phase 0 probe, inverted)", () => {
     const onRefused = vi.fn();
     const onRejected = vi.fn();
     const core = createWorkbenchCore({ initial: layout(tile("notes"), { ids }), apps, ids, onRefused, onRejected });
-    expect(core.execute(commands.close("n-00000002-0000"))).toEqual({ ok: false, code: "last_placement", because: "a workspace keeps at least one tile" });
+    expect(core.execute(commands.close("n-00000002-0000"))).toEqual({ ok: false, code: "last_placement", because: "a workspace keeps at least one tile", index: 0, command: commands.close("n-00000002-0000") });
     expect(onRefused).toHaveBeenCalledWith(commands.close("n-00000002-0000"), "last_placement", "a workspace keeps at least one tile");
     expect(onRejected).not.toHaveBeenCalled();
   });

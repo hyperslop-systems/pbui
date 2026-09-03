@@ -1,4 +1,5 @@
-import { createAppRegistry, createWorkbench, layout, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench } from "@hyperslop-systems/pbui-workbench";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import { describe, expect, it } from "vitest";
 import { createPlotScriptApps } from "./apps";
@@ -24,12 +25,12 @@ function make(source = "return null;") {
   const initial = applyMutations(layout(split("row", 0.5, tile("plot-script", { documents: { plot: "s1" } }), tile("plot-view", { documents: { plot: "s1" } })), { id: "wb" }), [
     plotScriptMutation({ id: "s1", name: "s", source, updatedAt: "2026-09-01T00:00:00.000Z" }),
   ]);
-  const wb = createWorkbench({ apps: createAppRegistry(createPlotScriptApps(host)), initial });
-  const disconnect = connectPlotScriptDocuments(wb, host);
+  const wb = createWorkbench({ apps: createPlotScriptApps(host), initial });
+  const disconnect = connectPlotScriptDocuments(wb.core, host);
   return { host, wb, disconnect };
 }
 
-const sourceOf = (wb: ReturnType<typeof make>["wb"]) => readPlotScript(wb.store.getState().document, "s1")?.source;
+const sourceOf = (wb: ReturnType<typeof make>["wb"]) => readPlotScript(wb.core.getState().document, "s1")?.source;
 
 describe("connectPlotScriptDocuments", () => {
   it("persists a successful run with NO tile mounted — the run outlives any component", async () => {
@@ -45,10 +46,10 @@ describe("connectPlotScriptDocuments", () => {
     await host.runner.run("s1", "return {");
     expect(sourceOf(wb)).toBe(OK);
     await host.runner.run("ghost", OK);
-    expect(readPlotScript(wb.store.getState().document, "ghost")).toBeNull();
-    const before = wb.store.getState().document;
+    expect(readPlotScript(wb.core.getState().document, "ghost")).toBeNull();
+    const before = wb.core.getState().document;
     await host.runner.run("s1", OK); // succeeds, but the document already holds this source
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   it("disconnect stops the writes", async () => {

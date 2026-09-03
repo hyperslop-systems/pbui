@@ -10,14 +10,8 @@ import {
   type VerbFamily,
 } from "@hyperslop-systems/pbui-chat";
 import { substituteVerbRef, type UIReference } from "@hyperslop-systems/pbui-sandbox";
-import {
-  describeWorkbench,
-  describeWorkbenchVerb,
-  isWorkbenchVerb,
-  performWorkbenchVerb,
-  type Workbench,
-  type WorkbenchVerb,
-} from "@hyperslop-systems/pbui-workbench";
+import { describeWorkbenchVerb, isWorkbenchVerb, type WorkbenchShell, type WorkbenchVerb } from "@hyperslop-systems/pbui-workbench";
+import { commands } from "@hyperslop-systems/workbench-core";
 import { selectTimelineEntities } from "@go-go-golems/chat-provider";
 import { ConsumedApprovalStore } from "./approvalConsumption";
 import { registerConversationSource } from "./pbui/conversationFacts";
@@ -46,24 +40,20 @@ const FAMILIES: Record<VerbKind, VerbFamily> = {
   /*
    * Every workbench verb is LOCAL: it changes this browser's layout and
    * nothing else. Routing them through the router rather than calling
-   * `wb.verbs.*` directly is what puts an agent's rearrangement in the trace
+   * `wb.execute` directly is what puts an agent's rearrangement in the trace
    * beside a human's, with the same validation and the same rejection
    * strings — the price is this one indirection.
    */
-  "tile.split": "local",
-  "tile.close": "local",
-  "tile.swap": "local",
-  "tile.dock": "local",
-  "tile.activate": "local",
-  "tile.replace": "local",
-  "tile.link": "local",
-  "split.resize": "local",
-  "app.place": "local",
-  "view.setTitle": "local",
-  "view.open": "local",
-  "view.rebind": "local",
-  "view.goTo": "local",
-  "workspace.select": "local",
+  "placement.duplicate": "local",
+  "placement.close": "local",
+  "placement.swap": "local",
+  "placement.dock": "local",
+  "placement.replaceWith": "local",
+  "placement.resize": "local",
+  "view.show": "local",
+  "view.configure": "local",
+  "session.selectWorkspace": "local",
+  "session.activatePlacement": "local",
   "workspace.create": "local",
   "workspace.rename": "local",
   "workspace.delete": "local",
@@ -180,8 +170,8 @@ const demoApprovalLedger: ApprovalLedger = {
 };
 
 /** Every tile showing a program, across workspaces, by placement id. */
-function tilesShowing(wb: Workbench, programId: string): string[] {
-  return describeWorkbench(wb).workspaces.flatMap((workspace) =>
+function tilesShowing(wb: WorkbenchShell, programId: string): string[] {
+  return wb.describe().workspaces.flatMap((workspace) =>
     workspace.tiles.filter((tile) => tile.appId === "script" && tile.documents.program === programId).map((tile) => tile.placementId),
   );
 }
@@ -202,8 +192,9 @@ export const router = createVerbRouter<Verb>({
       });
       return;
     }
-    // The workbench owns its own verbs; `performWorkbenchVerb` is the single
-    // dispatcher, so a verb added to the package needs no case here.
+    // The workbench owns its own verbs; `workbench.perform` is the single
+    // dispatcher (a command executes, a shell action dispatches), so a verb
+    // added to the package needs no case here.
     if (isWorkbenchVerb(verb)) {
       const wb = chat.workbench();
       if (!wb) throw new Error("no workbench is attached");
@@ -211,7 +202,7 @@ export const router = createVerbRouter<Verb>({
       // Throwing on a refusal is what turns it into `rejected:…` in the trace
       // and in the tool result. Swallowing it told the agent that a close of a
       // stale placement, or of the last tile, had landed.
-      if (!performWorkbenchVerb(wb.verbs, workbenchVerb)) {
+      if (!wb.perform(workbenchVerb)) {
         throw new Error(`the workbench refused to ${describeWorkbenchVerb(workbenchVerb)}`);
       }
       return;
@@ -242,8 +233,8 @@ export const router = createVerbRouter<Verb>({
         const program = library.getState().programs[verb.programId];
         if (!program) throw new Error(`no program ${verb.programId} in the library`);
         const near = verb.near ?? wb.activePlacementId() ?? undefined;
-        const placed = wb.verbs.openView("script", { program: program.id, ...(verb.documents ?? {}) }, { ...(near ? { near } : {}), ...(verb.title ? { title: verb.title } : {}) });
-        if (!placed) throw new Error(`the workbench refused to open ${program.title}`);
+        const placed = wb.execute(commands.open("script", { program: program.id, ...(verb.documents ?? {}) }, { ...(near ? { near } : {}), ...(verb.title ? { title: verb.title } : {}) }));
+        if (!placed.ok) throw new Error(`the workbench refused to open ${program.title}: ${placed.because}`);
         return;
       }
       case "program.remove": {
@@ -251,7 +242,7 @@ export const router = createVerbRouter<Verb>({
         if (!library.getState().programs[verb.programId]) throw new Error(`no program ${verb.programId} in the library`);
         // Close its tiles first: a tile bound to a program that is gone shows
         // an empty state, which is honest but not what "remove" means.
-        if (wb) for (const placementId of tilesShowing(wb, verb.programId)) wb.verbs.close(placementId);
+        if (wb) for (const placementId of tilesShowing(wb, verb.programId)) wb.execute(commands.close(placementId));
         library.removeProgram(verb.programId);
         return;
       }

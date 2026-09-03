@@ -27,6 +27,7 @@ export type {
   WorkspaceStripProps,
 } from "./types";
 export { createShellStore, isWorkbenchShellAction, useShellState } from "./shellState";
+export { describeWorkbenchVerb, isWorkbenchVerb } from "./verb";
 export type { WorkbenchShellAction, WorkbenchShellState, WorkbenchShellStore } from "./shellState";
 export { measureGeometry, measureSplitGeometry } from "./geometry";
 export { createPlacementController } from "./placement";
