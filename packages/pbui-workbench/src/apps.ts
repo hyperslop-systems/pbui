@@ -60,10 +60,11 @@ export interface AppDescriptor {
   /** One line under the title in the launcher, so a name that is not self-explanatory can explain itself. */
   blurb?: string;
   /**
-   * May this application be offered right now? Datalab's app scoping as a
-   * predicate. A tile whose layout ALREADY names an excluded application
-   * still renders it — hiding it from the launcher must never silently drop
-   * a tile from a seeded layout.
+   * May the LAUNCHER'S ROWS offer this application right now, and nothing
+   * else? Datalab's app scoping as a predicate. It gates one list: a tile
+   * whose layout already names an excluded application still renders it,
+   * `place`/`open`/`replace` still place it, and a stored layout never
+   * silently loses a tile because a predicate turned false.
    */
   available?(context: AppAvailability): boolean;
   Component: ComponentType<AppProps>;
@@ -79,7 +80,7 @@ export interface DefineAppInput extends Omit<AppDescriptor, "duplicable" | "docB
   docBound?: boolean;
 }
 
-/** Is the application offered in this workspace? An app without a predicate always is. */
+/** Is the application offered in this workspace's LAUNCHER? An app without a predicate always is. */
 export function isAppAvailable(app: AppDescriptor, context: AppAvailability): boolean {
   return app.available?.(context) ?? true;
 }

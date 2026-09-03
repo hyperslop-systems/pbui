@@ -51,6 +51,59 @@ describe("Surface", () => {
     expect(container.querySelector('[data-part="custom-title"]')?.textContent).toBe("notes:notes");
   });
 
+  test("renderTitle is handed the default node, so a custom title composes with the ×N badge", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("notes"), tile("counter"))) });
+    const { container } = render(
+      <wb.Surface
+        renderTitle={(_view, _placement, defaultTitle) => (
+          <b data-part="custom-title">
+            <span data-part="product-chip">·</span>
+            {defaultTitle}
+          </b>
+        )}
+      />,
+    );
+    // Link the notes view into the second pane: the badge is now meaningful.
+    const [first, second] = leaves(wb.store.getState().document.workspaces[0]?.tree).map((leaf) => leaf.id);
+    const notesView = (() => {
+      const leaf = leaves(wb.store.getState().document.workspaces[0]?.tree).find((node) => node.id === first)!;
+      return leaf.body.case === "leaf" ? leaf.body.value.viewId : "";
+    })();
+    act(() => {
+      wb.verbs.link(second!, notesView);
+    });
+    const badges = container.querySelectorAll('[data-part="custom-title"] [data-part="tile-linked"]');
+    expect(badges).toHaveLength(2);
+    expect(badges[0]?.textContent).toBe(" ×2");
+    // And the product's own chrome is still there beside it.
+    expect(container.querySelectorAll('[data-part="product-chip"]')).toHaveLength(2);
+  });
+
+  test("every tile bar carries a door to the per-pane launcher, outside the ellipsising title", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
+    const { container } = render(<wb.Surface />);
+    const doors = container.querySelectorAll('[aria-label="show something else in this tile"]');
+    expect(doors).toHaveLength(2);
+    // In the action group, never the title: the title clips.
+    expect(doors[0]?.closest('[data-part="tile-actions"]')).not.toBeNull();
+    const second = container.querySelectorAll('[data-part="tile"]')[1]!;
+    fireEvent.click(second.querySelector('[aria-label="show something else in this tile"]')!);
+    expect(wb.store.getState().launcherOpen).toBe(true);
+    expect(wb.store.getState().launcherFrom).toBe(second.getAttribute("data-placement-id"));
+  });
+
+  test("tileAction replaces the default door, and null removes it", () => {
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
+    const { container, rerender } = render(
+      <wb.Surface tileAction={(placement) => (placement.app?.id === "notes" ? <i data-part="product-action" /> : undefined)} />,
+    );
+    // The notes tile took the slot; the counter tile declined and kept the default.
+    expect(container.querySelectorAll('[data-part="product-action"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[aria-label="show something else in this tile"]')).toHaveLength(1);
+    rerender(<wb.Surface tileAction={() => null} />);
+    expect(container.querySelectorAll('[aria-label="show something else in this tile"]')).toHaveLength(0);
+  });
+
   test("pointer-down on a tile makes it the active placement", () => {
     const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
     const { container } = render(<wb.Surface />);

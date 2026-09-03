@@ -3,13 +3,13 @@ import { afterEach, describe, expect, test } from "vitest";
 import { Button } from "@hyperslop-systems/pbui";
 import { leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { layout, split, tile, workspaces } from "../../document";
 import { counterApp, demoApps } from "../../stories/demoApps";
 
 afterEach(cleanup);
 
 describe("Launcher", () => {
-  test("Ctrl+K opens it; a placed singleton is offered as go-to, the rest as a new tile", () => {
+  test("Ctrl+K opens it; a placed singleton is offered as go-to, the rest as a new tile", async () => {
     const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
     const { container, baseElement } = render(
       <>
@@ -42,12 +42,13 @@ describe("Launcher", () => {
     });
     expect(wb.store.getState().launcherOpen).toBe(false);
     expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(2);
-    expect(baseElement.querySelector('[data-part="launcher-carry"]')?.textContent).toMatch(/placing/);
-    // Enter commits the old default spot: split the active tile.
-    act(() => {
+    expect(baseElement.querySelector('[data-part="workbench-placing"]')?.textContent).toMatch(/placing/);
+    // Enter commits the old default spot: split the active tile. The
+    // placement outcome is a promise, so the tile lands a microtask later.
+    await act(async () => {
       fireEvent.keyDown(window, { key: "Enter" });
     });
-    expect(baseElement.querySelector('[data-part="launcher-carry"]')).toBeNull();
+    expect(baseElement.querySelector('[data-part="workbench-placing"]')).toBeNull();
     expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
   });
@@ -121,11 +122,11 @@ describe("Launcher", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
-    expect(baseElement.querySelector('[data-part="launcher-carry"]')).not.toBeNull();
+    expect(baseElement.querySelector('[data-part="workbench-placing"]')).not.toBeNull();
     act(() => {
       fireEvent.keyDown(window, { key: "Escape" });
     });
-    expect(baseElement.querySelector('[data-part="launcher-carry"]')).toBeNull();
+    expect(baseElement.querySelector('[data-part="workbench-placing"]')).toBeNull();
     expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
   });
 
@@ -232,7 +233,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     expect(viewIds).toEqual([viewOfSecond, viewOfSecond]);
   });
 
-  test("a global choice never destroys a working tile", () => {
+  test("a global choice never destroys a working tile", async () => {
     const { wb } = twoTiles();
     const { container, baseElement } = render(
       <>
@@ -246,8 +247,10 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
-    // Placement mode is live; Enter commits the default (split the active tile).
-    act(() => {
+    // Placement mode is live; Enter commits the default (split the active
+    // tile). The outcome is a promise the launcher awaits, so the placement
+    // lands a microtask later.
+    await act(async () => {
       fireEvent.keyDown(window, { key: "Enter" });
     });
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
@@ -280,7 +283,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     expect(wb.store.getState().launcherOpen).toBe(false);
   });
 
-  test("choose returning false falls through to the default meaning", () => {
+  test("choose returning false falls through to the default meaning", async () => {
     const { wb } = twoTiles();
     const { container, baseElement } = render(
       <>
@@ -294,7 +297,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
-    act(() => {
+    await act(async () => {
       fireEvent.keyDown(window, { key: "Enter" });
     });
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
@@ -342,5 +345,89 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
       wb.verbs.openLauncher();
     });
     expect(baseElement.querySelector("#place\\:notes")?.textContent).toContain("[app]");
+  });
+});
+
+describe("Launcher · rows scope (C1 finding 6)", () => {
+  function twoWorkspaces() {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: workspaces([
+        { name: "one", spec: tile("counter") },
+        { name: "two", spec: tile("notes", { title: "elsewhere" }) },
+      ]),
+    });
+    return wb;
+  }
+
+  test("the default reaches the whole document, marking the foreign rows", () => {
+    const wb = twoWorkspaces();
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Launcher />
+      </>,
+    );
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.textContent ?? "");
+    expect(rows.some((row) => row.includes("elsewhere") && row.includes("in another workspace"))).toBe(true);
+  });
+
+  test("a view linked into two workspaces is local to BOTH (PR #23, P2)", () => {
+    const wb = createWorkbench({
+      apps: demoApps,
+      initial: workspaces([
+        { name: "one", spec: tile("counter") },
+        { name: "two", spec: tile("counter", { title: "over here" }) },
+      ]),
+    });
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Launcher scope="workspace" />
+      </>,
+    );
+    // Link workspace one's view into workspace two as well.
+    const [firstWorkspace, secondWorkspace] = wb.store.getState().document.workspaces;
+    const sharedView = (() => {
+      const leaf = leaves(firstWorkspace!.tree)[0]!;
+      return leaf.body.case === "leaf" ? leaf.body.value.viewId : "";
+    })();
+    act(() => {
+      wb.verbs.selectWorkspace(secondWorkspace!.id);
+      wb.verbs.split(leaves(secondWorkspace!.tree)[0]!.id, "row");
+    });
+    const newPane = leaves(wb.store.getState().document.workspaces[1]?.tree)[1]!.id;
+    act(() => {
+      wb.verbs.link(newPane, sharedView);
+    });
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    // The shared view IS on screen in workspace two. Deciding foreignness by
+    // "which workspace holds its FIRST placement" calls it foreign here and
+    // scoped rows drop it, so a view the user is looking at vanishes from the
+    // launcher.
+    const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.id);
+    expect(rows).toContain(`goto:${sharedView}`);
+  });
+
+  test('scope="workspace" lists only what is in front of the user', () => {
+    const wb = twoWorkspaces();
+    const { baseElement } = render(
+      <>
+        <wb.Surface />
+        <wb.Launcher scope="workspace" />
+      </>,
+    );
+    act(() => {
+      wb.verbs.openLauncher();
+    });
+    const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.textContent ?? "");
+    expect(rows.some((row) => row.includes("elsewhere"))).toBe(false);
+    // The applications are unaffected: scope is about what is ON SCREEN.
+    expect(baseElement.querySelector("#place\\:notes")).not.toBeNull();
   });
 });

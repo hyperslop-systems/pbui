@@ -17,7 +17,10 @@ export default defineConfig({
   plugins: [react()],
   build: {
     lib: {
-      entry: { index: "src/index.ts" },
+      // A second entry, not a re-export from the root: a product with no
+      // server should not pull the sync loop into its bundle, and nothing in
+      // it touches React or the DOM.
+      entry: { index: "src/index.ts", sync: "src/sync.ts" },
       formats: ["es"],
       cssFileName: "pbui-workbench",
     },

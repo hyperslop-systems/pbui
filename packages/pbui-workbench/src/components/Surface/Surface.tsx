@@ -1,7 +1,7 @@
 import { useCallback, type ReactNode } from "react";
 import { EmptyState } from "@hyperslop-systems/pbui";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
-import { useWorkbench } from "../../context";
+import { usePlacement, useWorkbench } from "../../context";
 import type { SurfaceProps } from "../../types";
 import { SplitPane } from "../SplitPane";
 import { Tile } from "../Tile";
@@ -14,19 +14,31 @@ import styles from "./Surface.module.css";
  * `data-launcher-open` so the active tile is outlined only while a keyboard
  * operation needs a target.
  */
-export function WorkbenchSurface({ renderTitle, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
+export function WorkbenchSurface({ renderTitle, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
   const launcherOpen = workbench.useWorkbenchState((state) => state.launcherOpen);
+  const placing = usePlacement(workbench);
   const tree = document.workspaces.find((workspace) => workspace.id === workspaceId)?.tree;
 
   const renderNode = useCallback(
     function renderNode(node: Node): ReactNode {
       if (node.body.case === "split") return <SplitPane key={node.id} node={node} renderNode={renderNode} />;
-      return <Tile key={node.id} node={node} renderTitle={renderTitle} swapLabel={swapLabel} dockLabel={dockLabel} replaceLabel={replaceLabel} />;
+      return (
+        <Tile
+          key={node.id}
+          node={node}
+          renderTitle={renderTitle}
+          tileAction={tileAction}
+          swapLabel={swapLabel}
+          dockLabel={dockLabel}
+          replaceLabel={replaceLabel}
+          placementLabelFor={placing?.labelFor}
+        />
+      );
     },
-    [renderTitle, swapLabel, dockLabel, replaceLabel],
+    [renderTitle, tileAction, swapLabel, dockLabel, replaceLabel, placing],
   );
 
   return (
@@ -44,6 +56,14 @@ export function WorkbenchSurface({ renderTitle, className, swapLabel, dockLabel,
           <EmptyState message="this workbench has no workspace" hint="create it with layout() or singleTile() and pass it as `initial`" />
         </div>
       )}
+      {placing ? (
+        <div className={styles.placing} data-part="workbench-placing" role="status">
+          <b>{placing.prompt}</b>
+          {" — click a tile: edges dock, centre splits, hold Alt to replace what it shows"}
+          {placing.defaultLabel ? ` · Enter: ${placing.defaultLabel}` : ""}
+          {" · Esc: cancel"}
+        </div>
+      ) : null}
     </div>
   );
 }

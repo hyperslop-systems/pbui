@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/pbui",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Presentation-based React UI primitives and typed interaction protocols",
   "type": "module",
   "sideEffects": [

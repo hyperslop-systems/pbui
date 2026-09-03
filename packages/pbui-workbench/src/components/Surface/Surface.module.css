@@ -12,3 +12,27 @@
 .empty {
   padding: var(--pbui-space-4);
 }
+
+/* The placement banner (§5.E): pinned over the workspace while something is
+ * being aimed at the tiles. Pointer-events none — the carry owns every click,
+ * and a banner that swallowed one would cancel the mode it describes. */
+.placing {
+  position: fixed;
+  left: 50%;
+  bottom: var(--pbui-space-5);
+  transform: translateX(-50%);
+  z-index: 80;
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+  font-size: var(--pbui-fs-small);
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 90vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placing b {
+  font-weight: 700;
+}

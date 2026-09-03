@@ -1,6 +1,15 @@
 import { CONVERSATION_BINDING, createChatApps, createConversationApps, RefPresentation, type Reference } from "@hyperslop-systems/pbui-chat";
 import { createSandboxDevtools, createScriptApp, type SandboxHost } from "@hyperslop-systems/pbui-sandbox";
-import { createWorkbench, describeWorkbench, layout, parseDocument, rebalanceSettingsApp, split, tile } from "@hyperslop-systems/pbui-workbench";
+import {
+  createLocalPersistence,
+  createWorkbench,
+  describeWorkbench,
+  layout,
+  rebalanceSettingsApp,
+  readWorkbenchSnapshot,
+  split,
+  tile,
+} from "@hyperslop-systems/pbui-workbench";
 import { createElement } from "react";
 import { createDemoApps } from "./apps";
 import { chat, LEGACY_SESSION_KEY, router } from "./chat";
@@ -13,14 +22,6 @@ import { demoBindingChoices, engine, instances, library, programStates, resolveD
  * returns to this.
  */
 export const WORKBENCH_STORAGE_KEY = "pbui-chat-demo.workbench.v1";
-/**
- * Which workspace THIS browser is looking at, kept out of the document on
- * purpose: it is not part of the layout (DATADROP-18 §1.4), and writing it
- * into the document would make two tabs fight over the selection. Without it
- * a reload silently returns to workspaces[0], which quietly abandons a
- * workspace the user — or the agent — just created and switched to.
- */
-export const WORKSPACE_STORAGE_KEY = `${WORKBENCH_STORAGE_KEY}.workspace`;
 
 export function defaultLayout() {
   return layout(
@@ -29,6 +30,22 @@ export function defaultLayout() {
   );
 }
 
+/**
+ * The layout as this browser last left it: the document AND the workspace it
+ * was looking at, which is deliberately not part of the document (a workspace
+ * pointer in the layout would make two tabs fight over the selection,
+ * DATADROP-18 §1.4).
+ *
+ * Read BEFORE the workbench is built, so a reload renders the restored layout
+ * once instead of the default layout followed by the restored one.
+ */
+const stored = readWorkbenchSnapshot(WORKBENCH_STORAGE_KEY, {
+  // Builds before PBUI-WORKBENCH-2 §5.F wrote the bare document under this
+  // key. It arrives as version 0 and the wrap is the whole migration.
+  migrate: (payload, from) => (from === 0 ? { version: 1, document: payload } : null),
+});
+
+/** Still needed for the legacy session key below; the layout no longer uses it. */
 function storage(): Storage | null {
   try {
     return typeof localStorage === "undefined" ? null : localStorage;
@@ -81,11 +98,7 @@ export const workbench = createWorkbench({
   // between the agent's machinery and the product's tiles fails at startup
   // rather than showing whichever descriptor was registered last.
   apps: [...createChatApps(chat), ...createConversationApps(chat), ...createDemoApps(), scriptApp, ...devtoolApps, rebalanceSettingsApp],
-  initial: parseDocument(storage()?.getItem(WORKBENCH_STORAGE_KEY)) ?? defaultLayout(),
-  // The document is the only thing worth writing; onMutate fires once per
-  // committed batch and never for activation or launcher state, so this is
-  // one write per real change rather than one per store notification.
-  onMutate: () => persistDocument(),
+  initial: stored?.document ?? defaultLayout(),
   onRejected: (_mutations, error) => {
     console.warn(`layout change refused: ${error.code} at ${error.path} — ${error.detail}`);
   },
@@ -163,31 +176,25 @@ if (typeof window !== "undefined") {
   (window as unknown as { __pbuiDemo?: Record<string, unknown> }).__pbuiDemo = demo;
 }
 
-function persistDocument() {
-  storage()?.setItem(WORKBENCH_STORAGE_KEY, workbench.serialize());
-}
-
-// The selected workspace is separate state with its own write, so switching
-// tabs costs one small string rather than re-serialising the whole document.
-let selected = workbench.store.getState().workspaceId;
-workbench.store.subscribe(() => {
-  const next = workbench.store.getState().workspaceId;
-  if (next === selected) return;
-  selected = next;
-  storage()?.setItem(WORKSPACE_STORAGE_KEY, next);
-});
-
 // A workspace that is gone (a restored document from an older layout) makes
 // this a no-op and the first workspace stays selected.
-const restored = storage()?.getItem(WORKSPACE_STORAGE_KEY);
-if (restored) workbench.verbs.selectWorkspace(restored);
+if (stored?.workspaceId) workbench.verbs.selectWorkspace(stored.workspaceId);
+
+/**
+ * One writer for the document and the workspace pointer alike (§5.F). It
+ * subscribes to the store rather than to `onMutate`, which is what makes
+ * `resetLayout` below a one-liner: `replaceDocument` never reaches
+ * `onMutate`, and the hand-written version had to remember to write after it.
+ */
+export const persistence = createLocalPersistence(workbench, { key: WORKBENCH_STORAGE_KEY });
 
 export function resetLayout() {
-  workbench.store.replaceDocument(defaultLayout());
+  // `reset(factory)`, not `reset()`: `initial` is the STORED layout after a
+  // reload, so a plain reset would restore the one the user is escaping.
+  workbench.reset(defaultLayout);
   // The default layout's chat tile carries no binding; without this, "reset
   // layout" would leave the user looking at an unbound tile.
   const active = chat.conversations.activeId();
   if (active) bindLooseChatTiles(active);
-  persistDocument();
-  storage()?.removeItem(WORKSPACE_STORAGE_KEY);
+  persistence.flush();
 }

@@ -6,7 +6,7 @@ import { createWorkbench } from "./createWorkbench";
 import { layout, parseDocument, serializeDocument, singleTile, split, tile, workspaces } from "./document";
 import { createWorkbenchStore } from "./store";
 import { counterApp, demoApps, notesApp } from "./stories/demoApps";
-import { isWorkbenchVerb, performWorkbenchVerb, workbenchVerbs } from "./verbs";
+import { describeWorkbenchVerb, isWorkbenchVerb, performWorkbenchVerb, workbenchVerbs } from "./verbs";
 
 function leafIds(tree: Node | undefined): string[] {
   return leaves(tree).map((leaf) => leaf.id);
@@ -15,6 +15,14 @@ function leafIds(tree: Node | undefined): string[] {
 function viewOf(tree: Node | undefined, placementId: string): string {
   const leaf = leaves(tree).find((node) => node.id === placementId);
   return leaf?.body.case === "leaf" ? leaf.body.value.viewId : "";
+}
+
+/** The split node that directly holds this leaf, so a zone's AXIS is observable. */
+function findSplitOf(tree: Node | undefined, placementId: string): { direction: Direction } | null {
+  if (!tree || tree.body.case !== "split") return null;
+  const value = tree.body.value;
+  if (value.a?.id === placementId || value.b?.id === placementId) return { direction: value.direction };
+  return findSplitOf(value.a, placementId) ?? findSplitOf(value.b, placementId);
 }
 
 function box(width: number, height: number): DOMRect {
@@ -368,6 +376,157 @@ describe("verbs", () => {
   });
 });
 
+/* ---- PBUI-WORKBENCH-2 Phase 4 · 5.E ------------------------------------ */
+
+describe("zone-aware open (5.E)", () => {
+  const widgetApp = { ...counterApp, id: "widget", title: "widget", docBound: true };
+
+  function twoTiles() {
+    const wb = createWorkbench({
+      apps: [counterApp, notesApp, widgetApp],
+      initial: layout(split("row", 0.5, tile("counter"), tile("notes"))),
+    });
+    const tree = () => wb.store.getState().document.workspaces[0]?.tree;
+    const [a, b] = leafIds(tree());
+    return { wb, tree, a: a!, b: b! };
+  }
+
+  /** The leaf ids in tree order, so a zone's SIDE is observable and not just its count. */
+  function order(tree: Node | undefined): string[] {
+    return leafIds(tree);
+  }
+
+  test("an edge zone docks the new tile at that edge of the target", () => {
+    const { wb, tree, a, b } = twoTiles();
+    const placed = wb.verbs.openView("widget", { widget: "w-1" }, { at: { placementId: b, zone: "left" } });
+    expect(placed).not.toBeNull();
+    // "left" splits along the row axis and puts the new tile BEFORE the target.
+    expect(order(tree())).toEqual([a, placed, b]);
+    expect(findSplitOf(tree(), placed!)?.direction).toBe(Direction.ROW);
+    expect(wb.store.getState().document.views[viewOf(tree(), placed!)]!.documents).toEqual({ widget: "w-1" });
+  });
+
+  test('"bottom" splits along the column axis and lands after the target', () => {
+    const { wb, tree, a, b } = twoTiles();
+    const placed = wb.verbs.openView("widget", { widget: "w-1" }, { at: { placementId: a, zone: "bottom" } });
+    expect(order(tree())).toEqual([a, placed, b]);
+    expect(findSplitOf(tree(), placed!)?.direction).toBe(Direction.COLUMN);
+  });
+
+  test('"replace" shows it in the aimed tile, keeping the tile', () => {
+    const { wb, tree, b } = twoTiles();
+    const placed = wb.verbs.openView("widget", { widget: "w-1" }, { at: { placementId: b, zone: "replace" } });
+    expect(placed).toBe(b);
+    expect(leafIds(tree())).toHaveLength(2);
+    const view = wb.store.getState().document.views[viewOf(tree(), b)]!;
+    expect(view.appId).toBe("widget");
+    expect(view.documents).toEqual({ widget: "w-1" });
+    expect(wb.activePlacementId()).toBe(b);
+  });
+
+  test("aiming at a document already open LINKS its view rather than minting a second one", () => {
+    const { wb, tree, a, b } = twoTiles();
+    const first = wb.verbs.openView("widget", { widget: "w-1" })!;
+    const firstView = viewOf(tree(), first);
+    // Aimed at another tile, the same document arrives as the SAME view.
+    const second = wb.verbs.openView("widget", { widget: "w-1" }, { at: { placementId: b, zone: "right" } })!;
+    expect(viewOf(tree(), second)).toBe(firstView);
+    expect(Object.values(wb.store.getState().document.views).filter((view) => view.appId === "widget")).toHaveLength(1);
+    // And into a tile by replacement: still one view, one fewer tile.
+    const before = leafIds(tree()).length;
+    const third = wb.verbs.openView("widget", { widget: "w-1" }, { at: { placementId: a, zone: "replace" } })!;
+    expect(viewOf(tree(), third)).toBe(firstView);
+    expect(leafIds(tree()).length).toBe(before);
+    expect(Object.values(wb.store.getState().document.views).filter((view) => view.appId === "widget")).toHaveLength(1);
+  });
+
+  test("at refuses an unknown placement, and never half-applies", () => {
+    const { wb, tree } = twoTiles();
+    const before = wb.store.getState().document;
+    expect(wb.verbs.openView("widget", { widget: "w-1" }, { at: { placementId: "nope", zone: "center" } })).toBeNull();
+    expect(wb.store.getState().document).toBe(before);
+    expect(leafIds(tree())).toHaveLength(2);
+  });
+
+  test("the verb carries at through validation and describes where it lands", () => {
+    expect(isWorkbenchVerb({ kind: "view.open", appId: "a", documents: {}, at: { placementId: "n1", zone: "left" } })).toBe(true);
+    expect(isWorkbenchVerb({ kind: "view.open", appId: "a", documents: {}, at: { placementId: "n1", zone: "sideways" } })).toBe(false);
+    expect(isWorkbenchVerb({ kind: "view.open", appId: "a", documents: {}, at: { zone: "left" } })).toBe(false);
+    expect(describeWorkbenchVerb(workbenchVerbs.open("files", {}, { at: { placementId: "n1", zone: "bottom" } }))).toBe(
+      "open files at that tile's bottom edge",
+    );
+    expect(describeWorkbenchVerb(workbenchVerbs.open("files", {}, { at: { placementId: "n1", zone: "replace" } }))).toBe(
+      "show files in that tile instead",
+    );
+    expect(describeWorkbenchVerb(workbenchVerbs.open("files", {}))).toBe("open files in a new tile");
+  });
+
+  test("performWorkbenchVerb routes the aimed open", () => {
+    const { wb, tree, b } = twoTiles();
+    expect(
+      wb.perform({ kind: "view.open", appId: "widget", documents: { widget: "w-9" }, at: { placementId: b, zone: "top" } }),
+    ).toBe(true);
+    expect(leafIds(tree())).toHaveLength(3);
+  });
+});
+
+describe("filling an empty pane (6.2)", () => {
+  const launcherApp = { ...notesApp, id: "launcher", title: "new tile", singleton: false, duplicable: true };
+
+  function withLauncherPolicy() {
+    const wb = createWorkbench({
+      apps: [counterApp, notesApp, launcherApp],
+      initial: layout(split("row", 0.5, tile("counter"), tile("counter"))),
+      splitPolicy: { app: "launcher" },
+    });
+    const tree = () => wb.store.getState().document.workspaces[0]?.tree;
+    return { wb, tree };
+  }
+
+  test("aiming at the centre of a pane that holds nothing FILLS it rather than splitting it", () => {
+    const { wb, tree } = withLauncherPolicy();
+    const [first] = leafIds(tree());
+    // A bare split opens an empty pane, per the policy.
+    const empty = wb.verbs.split(first!, "row")!;
+    expect(wb.store.getState().document.views[viewOf(tree(), empty)]!.appId).toBe("launcher");
+    const before = leafIds(tree()).length;
+
+    const landed = wb.verbs.placeAt("notes", empty, "center");
+    expect(landed).toBe(empty);
+    // Same number of tiles: splitting an empty pane to make room is absurd.
+    expect(leafIds(tree())).toHaveLength(before);
+    expect(wb.store.getState().document.views[viewOf(tree(), empty)]!.appId).toBe("notes");
+  });
+
+  test("a pane holding a real application still splits, and an edge zone always docks", () => {
+    const { wb, tree } = withLauncherPolicy();
+    const [first] = leafIds(tree());
+    const before = leafIds(tree()).length;
+    expect(wb.verbs.placeAt("notes", first!, "center")).not.toBeNull();
+    expect(leafIds(tree())).toHaveLength(before + 1);
+
+    const empty = wb.verbs.split(first!, "row")!;
+    const after = leafIds(tree()).length;
+    // An EDGE of an empty pane is still a dock: the user aimed at a side.
+    expect(wb.verbs.placeAt("counter", empty, "right")).not.toBeNull();
+    expect(leafIds(tree())).toHaveLength(after + 1);
+  });
+
+  test("emptyPaneApp: \"\" switches the rule off for a product that wants the split", () => {
+    const wb = createWorkbench({
+      apps: [counterApp, notesApp, launcherApp],
+      initial: layout(split("row", 0.5, tile("counter"), tile("counter"))),
+      splitPolicy: { app: "launcher" },
+      emptyPaneApp: "",
+    });
+    const tree = () => wb.store.getState().document.workspaces[0]?.tree;
+    const empty = wb.verbs.split(leafIds(tree())[0]!, "row")!;
+    const before = leafIds(tree()).length;
+    expect(wb.verbs.placeAt("notes", empty, "center")).not.toBeNull();
+    expect(leafIds(tree())).toHaveLength(before + 1);
+  });
+});
+
 describe("the launcher placement rule", () => {
   function mountPlacement(id: string, width: number, height: number) {
     const element = document.createElement("section");
@@ -434,6 +593,30 @@ describe("persistence", () => {
     expect(fresh.restore(JSON.stringify({ format: "something.else" }))).toBe(false);
     fresh.reset();
     expect(leafIds(fresh.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
+  });
+
+  test("reset(factory) returns to a FRESH layout, not the one construction captured (C1 finding 3)", () => {
+    // The shape of a persisted product: `initial` is what came out of
+    // storage, so a plain reset() restores the layout the user is escaping.
+    const stored = layout(split("row", 0.5, tile("counter"), split("col", 0.5, tile("notes"), tile("counter"))));
+    const wb = createWorkbench({ apps: demoApps, initial: stored });
+    expect(leafIds(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
+    wb.reset();
+    expect(leafIds(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
+    let built = 0;
+    const factory = () => {
+      built += 1;
+      return singleTile("counter");
+    };
+    wb.reset(factory);
+    expect(built).toBe(1);
+    expect(leafIds(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
+    // Called again it builds again — a captured object would hand back the
+    // same document twice, which is the bug this argument exists to avoid.
+    wb.verbs.split(leafIds(wb.store.getState().document.workspaces[0]?.tree)[0]!, "row");
+    wb.reset(factory);
+    expect(built).toBe(2);
+    expect(leafIds(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
   });
 
   test("store.subscribe fires once per committed batch", () => {

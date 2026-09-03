@@ -4,14 +4,12 @@ import {
   isEditableTarget,
   routeWorkbenchKey,
   splitDirectionFor,
-  startTileCarry,
   useAnyEscapeSurface,
 } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import { defaultLauncherRows, groupLauncherRows, rowOf, type LauncherInvocation } from "../../launcherRows";
 import type { LauncherProps } from "../../types";
-import styles from "./Launcher.module.css";
 
 /**
  * pbui's `LauncherShell` over the app registry. Two groups: applications
@@ -30,6 +28,7 @@ export function WorkbenchLauncher({
   rows,
   choose,
   renderDetail,
+  scope = "document",
 }: LauncherProps) {
   const workbench = useWorkbench();
   const open = workbench.useWorkbenchState((state) => state.launcherOpen);
@@ -38,39 +37,43 @@ export function WorkbenchLauncher({
   const previousOpenRef = useRef(workbench.store.getState().launcherOpen);
 
   /**
-   * Placement mode (PBUI-REBALANCE-1): choosing an application does not place
-   * it immediately — the choice is CARRIED, the tiles show drop-zone
-   * overlays, and the next click says where it lands (edges dock, centre
-   * splits the longer side, Alt replaces what the tile shows). Enter takes
-   * the old default spot; Escape or an empty-space click cancels. Lives on
-   * this component, not the modal, because the modal unmounts when the
-   * launcher closes and the carry must survive that.
+   * Placement mode (PBUI-REBALANCE-1, generalised in §5.E): choosing an
+   * application does not place it immediately — the choice is CARRIED, the
+   * tiles show drop-zone overlays, and the next click says where it lands
+   * (edges dock, centre splits the longer side, Alt replaces what the tile
+   * shows). Enter takes the old default spot; Escape or an empty-space click
+   * cancels.
+   *
+   * The mode itself belongs to the workbench, not this component: the modal
+   * unmounts when the launcher closes and the carry must outlive it, and a
+   * product's own "open this file somewhere" gesture is the same mode with a
+   * different prompt. The launcher is now one caller of `wb.placement`.
    */
-  const [carry, setCarry] = useState<{ appId: string; title: string } | null>(null);
-  const cancelCarryRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => cancelCarryRef.current?.(), []);
   const beginCarry = (appId: string, appTitle: string) => {
-    setCarry({ appId, title: appTitle });
-    const done = (placement: string | null) => {
-      setCarry(null);
-      cancelCarryRef.current = null;
-      if (placement) workbench.focusPlacement(placement);
-    };
-    // A refused drop (the target cannot split that way — a sliver, say) does
-    // not end the mode: the carry re-arms so the user can aim elsewhere.
-    const arm = () => {
-      cancelCarryRef.current = startTileCarry({
-        onDrop: (target, zone) => {
-          const placement = workbench.verbs.placeAt(appId, target, zone);
-          if (placement) done(placement);
-          else arm();
+    void workbench.placement
+      .begin({
+        prompt: `placing ${appTitle}`,
+        defaultLabel: "the default spot",
+        // A refused drop (the target cannot split that way — a sliver, say)
+        // re-arms rather than ending the mode, and a successful one has
+        // already placed the tile by the time the promise settles.
+        accept: (aim) => {
+          const placement = workbench.verbs.placeAt(appId, aim.placementId, aim.zone);
+          if (placement) placedRef.current = placement;
+          return placement !== null;
         },
-        onDefault: () => done(workbench.verbs.place(appId)),
-        onCancel: () => done(null),
+      })
+      .then((outcome) => {
+        if (outcome.kind === "aimed" && placedRef.current) workbench.focusPlacement(placedRef.current);
+        else if (outcome.kind === "default") {
+          const placement = workbench.verbs.place(appId);
+          if (placement) workbench.focusPlacement(placement);
+        }
+        placedRef.current = null;
       });
-    };
-    arm();
   };
+  const placedRef = useRef<string | null>(null);
+  useEffect(() => () => workbench.placement.cancel(), [workbench]);
 
   // The store changes synchronously inside the click/key handler, before React
   // mounts Dialog. Capture there: another shell effect may move focus while
@@ -130,15 +133,10 @@ export function WorkbenchLauncher({
           rows={rows}
           choose={choose}
           renderDetail={renderDetail}
+          scope={scope}
           returnFocusTo={returnFocusRef.current}
           beginCarry={beginCarry}
         />
-      ) : null}
-      {carry ? (
-        <div className={styles.carryHint} data-part="launcher-carry" role="status">
-          placing <b>{carry.title}</b> — click a tile: edges dock, centre splits, hold Alt to replace what it shows ·
-          Enter: default spot · Esc: cancel
-        </div>
       ) : null}
     </>
   );
@@ -150,9 +148,10 @@ function LauncherModal({
   rows,
   choose,
   renderDetail,
+  scope,
   returnFocusTo,
   beginCarry,
-}: Required<Pick<LauncherProps, "title">> &
+}: Required<Pick<LauncherProps, "title" | "scope">> &
   Pick<LauncherProps, "rows" | "choose" | "renderDetail"> & {
     returnFocusTo: HTMLElement | null;
     beginCarry(appId: string, title: string): void;
@@ -187,9 +186,9 @@ function LauncherModal({
   const direction = invocation.target ? splitDirectionFor(invocation.target, workbench.root()) : "row";
 
   const model = useMemo(() => {
-    const context = { document, apps: workbench.apps, workspaceId, invocation, query: query.trim().toLowerCase() };
+    const context = { document, apps: workbench.apps, workspaceId, invocation, query: query.trim().toLowerCase(), scope };
     return rows ? rows(context) : defaultLauncherRows(context);
-  }, [document, workbench, workspaceId, invocation, query, rows]);
+  }, [document, workbench, workspaceId, invocation, query, rows, scope]);
 
   const groups = useMemo(
     () => groupLauncherRows(model, workbench.apps, perPane, renderDetail),
@@ -212,7 +211,14 @@ function LauncherModal({
   const onChoose = (rowId: string) => {
     const row = rowOf(rowId, model);
     if (!row) return;
-    const claimed = choose?.(row, { document, apps: workbench.apps, workspaceId, invocation, query: query.trim().toLowerCase() });
+    const claimed = choose?.(row, {
+      document,
+      apps: workbench.apps,
+      workspaceId,
+      invocation,
+      query: query.trim().toLowerCase(),
+      scope,
+    });
     if (claimed) {
       close();
       return;

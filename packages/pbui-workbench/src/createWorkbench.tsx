@@ -1,12 +1,15 @@
 import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { createAppRegistry, isAppRegistry, type AppDescriptor, type AppRegistry } from "./apps";
 import { WorkbenchLauncher } from "./components/Launcher";
+import { RebalanceStatusBadge } from "./components/RebalanceBadge";
 import { WorkbenchRebalance } from "./components/RebalanceDialog";
 import { WorkbenchSurface } from "./components/Surface";
 import { WorkspaceStrip } from "./components/WorkspaceStrip";
 import { WorkbenchContext } from "./context";
 import { parseDocument, serializeDocument } from "./document";
+import { createPlacementController } from "./placement";
 import { createWorkbenchStore, useWorkbenchStore, type WorkbenchStore, type WorkbenchStoreOptions } from "./store";
+import type { RebalanceBadgeProps } from "./components/RebalanceBadge";
 import type { LauncherProps, RebalanceProps, SurfaceProps, Workbench, WorkbenchPlan, WorkbenchPlanResult, WorkspaceStripProps } from "./types";
 import { createVerbHandlers, describeWorkbenchVerb, performWorkbenchVerb, type BindingConfig, type PaneConstraints, type SplitPolicy, type WorkbenchVerb } from "./verbs";
 
@@ -37,6 +40,13 @@ export interface CreateWorkbenchOptions extends WorkbenchStoreOptions {
   binding?: BindingConfig;
   /** Runtime pane minima shared by pointer, keyboard, human and agent verbs. */
   paneConstraints?: Partial<PaneConstraints>;
+  /**
+   * The application a pane shows when it holds nothing yet. Aiming a new tile
+   * at the centre of such a pane FILLS it instead of splitting it. Defaults
+   * to the id in an object-form `splitPolicy`; pass `""` to switch the rule
+   * off, or an id when the policy is a function.
+   */
+  emptyPaneApp?: string;
 }
 
 /**
@@ -66,6 +76,7 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     });
   let rootElement: HTMLElement | null = null;
   const root = () => rootElement;
+  const placement = createPlacementController();
   const verbs = createVerbHandlers({
     store,
     apps,
@@ -73,6 +84,7 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
     ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
     ...(options.binding ? { binding: options.binding } : {}),
     ...(options.paneConstraints ? { paneConstraints: options.paneConstraints } : {}),
+    ...(options.emptyPaneApp !== undefined ? { emptyPaneApp: options.emptyPaneApp } : {}),
   });
 
   const plan = (plannedVerbs: readonly WorkbenchVerb[]): WorkbenchPlanResult => {
@@ -96,6 +108,7 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       ...(options.splitPolicy ? { splitPolicy: options.splitPolicy } : {}),
       ...(options.binding ? { binding: options.binding } : {}),
       ...(options.paneConstraints ? { paneConstraints: options.paneConstraints } : {}),
+      ...(options.emptyPaneApp !== undefined ? { emptyPaneApp: options.emptyPaneApp } : {}),
     });
     for (let index = 0; index < plannedVerbs.length; index += 1) {
       const verb = plannedVerbs[index]!;
@@ -144,8 +157,13 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       store.replaceDocument(doc);
       return true;
     },
-    reset: () => store.replaceDocument(initial),
+    // A factory rather than a captured object: `initial` is whatever was
+    // passed at construction, and a persisted product passes the STORED
+    // document — so a plain `reset()` there would restore the layout the
+    // user is trying to escape. The factory is the product's "fresh".
+    reset: (factory) => store.replaceDocument(factory ? factory() : initial),
     activePlacementId: () => store.getState().activePlacementId,
+    placement,
     root,
     setRoot: (element) => {
       rootElement = element;
@@ -194,6 +212,13 @@ export function createWorkbench(options: CreateWorkbenchOptions): Workbench {
       return (
         <WorkbenchContext.Provider value={workbench}>
           <WorkbenchRebalance {...props} />
+        </WorkbenchContext.Provider>
+      );
+    },
+    RebalanceBadge: function Badge(props: RebalanceBadgeProps) {
+      return (
+        <WorkbenchContext.Provider value={workbench}>
+          <RebalanceStatusBadge {...props} />
         </WorkbenchContext.Provider>
       );
     },

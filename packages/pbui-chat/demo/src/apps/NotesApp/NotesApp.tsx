@@ -20,11 +20,12 @@ export const NOTE_SCHEMA_VERSION = 1;
 /*
  * ---- why this tile is debounced AND capped -------------------------------
  *
- * The demo persists the WHOLE workbench document to localStorage on every
- * committed batch (see demo/src/workbench.ts `onMutate` → `persistDocument`).
- * So one keystroke here is not one small write: it re-serialises every
- * workspace, every split ratio and every view, and hands the result to
- * localStorage synchronously on the main thread.
+ * The demo persists the WHOLE workbench document to localStorage whenever it
+ * changes (see demo/src/workbench.ts `createLocalPersistence`). So one
+ * keystroke here is not one small write: it re-serialises every workspace,
+ * every split ratio and every view, and hands the result to localStorage on
+ * the main thread. The package's 250 ms trailing window softens a burst; it
+ * does not make the payload smaller, which is what the cap below is for.
  *
  * Both numbers below defend the same failure, which is worse than slowness.
  * localStorage has a per-origin quota (5–10 MB in practice) and a quota

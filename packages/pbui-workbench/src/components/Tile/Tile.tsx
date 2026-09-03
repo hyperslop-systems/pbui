@@ -1,14 +1,17 @@
 import { Component as ReactComponent, type ErrorInfo, type ReactNode } from "react";
-import { Button, Callout, EmptyState, Text, TileFrame, useTileDrag } from "@hyperslop-systems/pbui";
+import { Button, Callout, EmptyState, IconButton, Text, TileFrame, useTileDrag } from "@hyperslop-systems/pbui";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { placementCount } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import type { SurfaceProps, TilePlacementInfo } from "../../types";
-import { canClose as canClosePlacement } from "../../verbs";
+import { canClose as canClosePlacement, type PlaceZone } from "../../verbs";
 import styles from "./Tile.module.css";
 
-export interface TileProps extends Pick<SurfaceProps, "renderTitle" | "swapLabel" | "dockLabel" | "replaceLabel"> {
+export interface TileProps
+  extends Pick<SurfaceProps, "renderTitle" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
   node: Node;
+  /** The active placement request's per-tile wording, from the Surface. */
+  placementLabelFor?(placementId: string, zone: PlaceZone): string | undefined;
 }
 
 /**
@@ -19,7 +22,7 @@ export interface TileProps extends Pick<SurfaceProps, "renderTitle" | "swapLabel
  * verbs, and hands the application a one-cell grid with a committed height.
  * It holds no application state and no layout logic of its own.
  */
-export function Tile({ node, renderTitle, swapLabel, dockLabel, replaceLabel }: TileProps) {
+export function Tile({ node, renderTitle, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
   const workbench = useWorkbench();
   const document = workbench.useDocument();
   const active = workbench.useWorkbenchState((state) => state.activePlacementId === node.id);
@@ -46,19 +49,43 @@ export function Tile({ node, renderTitle, swapLabel, dockLabel, replaceLabel }: 
   // The linked badge is chrome, not a product decision: a view shown twice
   // looks like two independent tiles until something says otherwise, and
   // "why did editing this one change that one" is the confusion it prevents.
-  const title =
-    view && renderTitle ? (
-      renderTitle(view, info)
-    ) : (
-      <>
-        {label}
-        {info.placementCount > 1 ? (
-          <span data-part="tile-linked" title={`the same view is shown in ${info.placementCount} tiles`}>
-            {` ×${info.placementCount}`}
-          </span>
-        ) : null}
-      </>
-    );
+  // It is handed to `renderTitle` rather than replaced by it, so a product's
+  // custom title composes with the badge instead of re-deriving it.
+  const defaultTitle = (
+    <>
+      {label}
+      {info.placementCount > 1 ? (
+        <span data-part="tile-linked" title={`the same view is shown in ${info.placementCount} tiles`}>
+          {` ×${info.placementCount}`}
+        </span>
+      ) : null}
+    </>
+  );
+  const title = view && renderTitle ? renderTitle(view, info, defaultTitle) : defaultTitle;
+
+  // The chrome's own door to the per-pane launcher. Without it a product with
+  // no `<tile>` presentation cannot reach `launcher.open({ placementId })` at
+  // all — and a pane the split policy filled with something unwanted has no
+  // exit but "close it". In the action group, never the title: the title
+  // ellipsises, so a control there vanishes on exactly the long-named tiles.
+  const defaultAction = (
+    <IconButton
+      variant="framed"
+      size="tiny"
+      glyph="⌕"
+      accessibleName="show something else in this tile"
+      onClick={() => workbench.verbs.openLauncher(node.id)}
+    />
+  );
+  // `undefined` (no prop, or a function that declines this tile) keeps the
+  // default; an explicit `null` is how a product says "no extra button".
+  const custom = tileAction?.(info);
+  const action = custom === undefined ? defaultAction : custom;
+  // A placement request words the overlay for THIS tile and THIS zone — "open
+  // Basic.lean in this editor" reads differently on the editor pane and on
+  // the goals pane, and naming the outcome before the click is the point.
+  // Only the hovered tile has a zone, so one label covers all three slots.
+  const aimed = placementLabelFor && drag.zone ? placementLabelFor(node.id, drag.zone) : undefined;
   const activate = () => workbench.verbs.activate(node.id);
 
   return (
@@ -82,14 +109,16 @@ export function Tile({ node, renderTitle, swapLabel, dockLabel, replaceLabel }: 
         canClose={canClose}
         onSplit={(direction) => workbench.verbs.split(node.id, direction)}
         onClose={() => workbench.verbs.close(node.id)}
+        actions={action}
         grip={{ onPointerDown: drag.onGripPointerDown }}
         dropZone={drag.zone}
         dragging={drag.dragging}
         registerElement={drag.register}
-        swapLabel={drag.carrying ? (swapLabel ?? "place beside \u00b7 splits the longer side") : swapLabel}
-        dockLabel={drag.carrying ? (dockLabel ?? "place the new tile at this edge") : dockLabel}
+        swapLabel={aimed ?? (drag.carrying ? (swapLabel ?? "place beside \u00b7 splits the longer side") : swapLabel)}
+        dockLabel={aimed ?? (drag.carrying ? (dockLabel ?? "place the new tile at this edge") : dockLabel)}
         replaceLabel={
-          drag.carrying ? (replaceLabel ?? "\u2325 show it in this tile instead \u00b7 keeps the tile") : replaceLabel
+          aimed ??
+          (drag.carrying ? (replaceLabel ?? "\u2325 show it in this tile instead \u00b7 keeps the tile") : replaceLabel)
         }
       >
         <div className={styles.body}>
