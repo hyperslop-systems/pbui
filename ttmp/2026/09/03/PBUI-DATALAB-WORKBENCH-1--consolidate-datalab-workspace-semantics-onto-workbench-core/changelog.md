@@ -22,3 +22,12 @@ Validated and uploaded the Datalab Workbench Core Consolidation bundle to /ai/20
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-DATALAB-WORKBENCH-1--consolidate-datalab-workspace-semantics-onto-workbench-core/design-doc/01-intern-guide-to-consolidating-datalab-onto-workbench-core.md — Delivered migration guide
 
+
+## 2026-09-03
+
+Step 2 / Phase 0: analysis, shape + v5 goldens, golden test, use inventory (commit bc3f027)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/test/migration-goldens.test.ts — Phase 0 goldens
+
