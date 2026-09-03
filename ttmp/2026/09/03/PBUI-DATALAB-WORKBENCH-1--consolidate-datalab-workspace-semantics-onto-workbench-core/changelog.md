@@ -40,3 +40,12 @@ Step 3 / Phase 1: manifests, seed compiler, graphic document source, navigation 
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/src/store/seed.ts — Seed compiler over the protocol
 
+
+## 2026-09-03
+
+Step 4 / Phase 2: headless controller, runtime, verb thunks; 36 reducer-parity tests through the core (commit 93cbf64)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/src/store/controller.ts — Product policy in front of core commands
+

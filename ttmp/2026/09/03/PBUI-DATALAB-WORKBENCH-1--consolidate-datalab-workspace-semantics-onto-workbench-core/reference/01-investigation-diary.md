@@ -21,12 +21,18 @@ RelatedFiles:
       Note: Product-specific launcher behavior inspected
     - Path: repo://packages/datalab-ui/src/remote/codec.ts
       Note: Current local-to-protocol conversion inspected
+    - Path: repo://packages/datalab-ui/src/store/controller.ts
+      Note: 'Controller: policy, metadata sequencing, close-view batch (commit 93cbf64)'
     - Path: repo://packages/datalab-ui/src/store/layout.ts
       Note: Primary duplicate spatial implementation inspected
     - Path: repo://packages/datalab-ui/src/store/navigation.ts
       Note: Navigation slice; derived current stage; reconcile (commit 49d27e8)
+    - Path: repo://packages/datalab-ui/src/store/runtime.ts
+      Note: Store + core + controller + source as one unit (commit 93cbf64)
     - Path: repo://packages/datalab-ui/src/store/seed.ts
       Note: Seed compiler with singleton carry and bound-document stubs (commit 49d27e8)
+    - Path: repo://packages/datalab-ui/test/controller.test.ts
+      Note: Reducer goldens replayed through the controller (commit 93cbf64)
     - Path: repo://packages/datalab-ui/test/helpers/layoutShape.ts
       Note: Id-free shape describer behind the seed golden (commit bc3f027)
     - Path: repo://packages/datalab-ui/test/layers.test.ts
@@ -41,6 +47,7 @@ LastUpdated: 2026-09-03T17:45:00-04:00
 WhatFor: Preserve how the Datalab Workbench migration design was derived and make implementation continuation reproducible.
 WhenToUse: Read before implementing or reviewing PBUI-DATALAB-WORKBENCH-1.
 ---
+
 
 
 
@@ -288,4 +295,77 @@ Nothing renders through the new stack yet; the full suite still runs the old cod
 manifest mapping: singleton→one, duplicable→clone (else link), docBound→primary{required:false, formats:[datadrop.gog.document]}, launch: unbound
 seed: 4 stages, 15 workspaces, stubs = bound demo ids; default seed validates ok
 tests: 53 files / 589 passed
+```
+
+## Step 4: Phase 2 — headless controller, runtime, verb thunks
+
+Phase 2 put the product's policy in front of the core. `store/controller.ts` is the one door Datalab code will use for anything spatial: it refuses what the workbench would allow but the product forbids (a pinned workspace renamed, a stage stranded), sequences the operations that touch the workbench document and the navigation metadata together, and expresses Datalab's tile verbs as core commands with the reuse rule Datalab's reducers implied (a singleton's view is reused, every other application gets a fresh view). `store/runtime.ts` builds the store, the core, the controller and the graphic source as one unit and keeps navigation reconciled with the document. `store/workbenchVerbs.ts` is the verb seam over the controller, not yet wired into `applyVerb.ts`.
+
+The exit gate holds: every behaviour the old reducer tests pinned replays through the controller without rendering (36 parity tests), and the whole suite is green at 55 files / 628 tests with the old slice still in place.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Design §8 and §5.4–5.5, additively, proven by the reducer goldens.
+
+**Inferred user intent:** The spatial semantics ported and verified before any component changes.
+
+**Commit (code):** 93cbf64 — "PBUI-DATALAB-WORKBENCH-1 P2: headless controller, runtime, verb thunks"
+
+### What I did
+
+- `src/store/index.ts`: the `navigation` slice beside `layout`; a lazy `controller` getter on the thunk extra argument.
+- `src/store/controller.ts`: `createDatalabController({ store, core, execute? })` with navigation (`selectWorkspace`, `selectStage`), workspace policy (`createWorkspace`, `removeWorkspace`, `renameWorkspace`, `cloneWorkspace`, `moveWorkspaceToStage`, `setWorkspaceApps`), stage policy (`addStage`, `removeStage`, `renameStage`), and tile verbs (`splitTile`, `duplicateView`, `createLinkedDuplicate`, `replacePlacement`, `renameView`, `rebindView`, `removePlacement`, `closeView`, `setActivePlacement`).
+- `src/store/runtime.ts`: `createDatalabRuntime({ seed, apps, world?, ids?, … })` → `{ store, core, controller, dispose }`; policy `duplicate: { app: "launcher" }`; source connected; reconcile on workspace-set change.
+- `src/store/workbenchVerbs.ts`: `actionsForWorkbenchVerb(verb)` → thunks; `null` for export/import/template verbs.
+- `test/controller.test.ts` (36), `test/workbench-verbs.test.ts` (3).
+
+### Why
+
+- §5.5: protocol validity and product permission are separate checks; the controller is where the second lives.
+- §8.3: metadata before the command, rolled back on refusal, so the runtime's reconcile never files a new workspace under `work` for one notification.
+- §8.2: close-view as one validated raw batch through `core.apply` (`viewCreate` of a launcher fallback only when a workspace would empty, then `viewClose`), not a generic core command.
+
+### What worked
+
+- The protocol's `viewClose` is exactly the old `closeView` reducer; the controller only has to mint the fallback when needed.
+- `execute` injection: the React layer will pass `shell.execute` so geometry is measured, and the tests run the same controller headless.
+
+### What didn't work
+
+- `Bash` refused one heredoc as containing a control character (the prime in `′`); the files were written with the Write tool instead.
+- First test run: 7 failures. Two causes — the test handed the seed and the core separate `sequentialIds()` generators, so a minted node id collided with a seeded one (`duplicate_id … "n-00000004-0000" was already used`); and tests bound `"doc-a"` without a world document, correctly refused as `unknown_document`. Fixed by sharing one generator and minting real documents through `worldActions.newDoc`.
+- TS2345 on `view.show`: an inline `{ primary } | {}` union is not a `Record<string, string>`; typed the map explicitly.
+
+### What I learned
+
+- Two deliberate deviations from the reducers, both toward the core's rule: (1) `workspace.clone` CLONES a clone-able application's view where `cloneSpace` linked every view; a duplicated workspace now gets independent chart/table views and shares singletons. (2) The planner sweeps views a batch leaves unplaced, so replacing a tile's only view deletes the old view instead of leaving it "unplaced" (§19.3).
+- `view.show` `{ replace }` on a view placed once retargets the same view id; the swap test still passes because swap is placement-level.
+
+### What was tricky to build
+
+- `removeStage` when the current workspace is in it: the batch must `selectWorkspace(landing)` BEFORE the deletes, or the core's `workspace.delete` picks any survivor and the user lands in a random stage. Same shape for `removeWorkspace` of the current one: select a same-stage sibling first, in one transition.
+- `reconcile` on the core subscription compares the joined workspace-id list, not object identity, so an install that changed only tiles dispatches nothing.
+
+### What warrants a second pair of eyes
+
+- The clone deviation above (Decision recorded; the design's §8.1 mapping said `commands.cloneWorkspace + metadata copy`).
+- `closeView` bypasses the planner (raw `apply`): links maintenance runs, orphan sweep does not; `viewClose` deletes the view itself, so nothing is left unplaced.
+
+### What should be done in the future
+
+- Phase 3 passes `shell.execute` as the controller's executor and wires `actionsForWorkbenchVerb` into `applyVerb.ts`.
+
+### Code review instructions
+
+- `src/store/controller.ts` (`removeWorkspace`, `removeStage`, `closeView`, `applicationView`); `src/store/runtime.ts` (the two one-way subscriptions).
+- `pnpm --filter @hyperslop-systems/datalab-ui exec vitest run test/controller.test.ts test/workbench-verbs.test.ts`
+
+### Technical details
+
+```text
+refusal codes: pinned_workspace, last_workspace_in_stage, pinned_stage, last_stage, unknown_stage, empty_stage, empty_name (+ core codes)
+policy: duplicate { app: "launcher" } ⇒ bare split = launcher tile, centre-aim on a launcher fills it
+tests: 55 files / 628 passed
 ```
