@@ -124,7 +124,10 @@ export function plan(world: PlanWorld, commands: readonly WorkbenchCommand[]): P
         return { kind: "prepared", mutations: [], changed: true };
       };
       const outcome = planOne(draft, command, expand);
-      if (holder.nested) return holder.nested;
+      // A refusal inside an expansion is reported at the TOP-LEVEL command
+      // the caller passed (design doc 04 §6.8): the inner commands are the
+      // planner's, not the caller's, and an agent retries by index.
+      if (holder.nested) return holder.nested.kind === "prepared" ? holder.nested : { ...holder.nested, index: base + i, command };
       if (outcome.kind === "refused") return { kind: "refused", code: outcome.code, because: outcome.because, index: base + i, command };
       if (outcome.kind === "ambiguous") return { kind: "ambiguous", because: outcome.because, choices: outcome.choices, index: base + i, command };
       const applied = step(outcome.mutations, outcome.session);

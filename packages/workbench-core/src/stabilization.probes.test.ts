@@ -24,7 +24,7 @@ const twoNotes = (ids = sequentialIds()) => ({ ids, initial: layout(split("row",
 const firstPlacement = (core: ReturnType<typeof createWorkbenchCore>) => [...core.getState().index.viewByPlacementId.keys()][0]!;
 
 describe("stabilization probes (design doc 04 §4, §12)", () => {
-  it.fails("EXPOSED_STATE_MUTATION: the document handed out by getState cannot be changed under its revision", () => {
+  it("EXPOSED_STATE_MUTATION: the document handed out by getState cannot be changed under its revision", () => {
     const core = createWorkbenchCore({ initial: layout(tile("notes")), apps: [notes] });
     const exposed = core.getState();
     expect(() => {
@@ -33,7 +33,7 @@ describe("stabilization probes (design doc 04 §4, §12)", () => {
     expect(core.getState().document.name).not.toBe("mutated outside the gateway");
   });
 
-  it.fails("PREVIEW_ID_DRIFT: execute after preview mints the ids the preview reported", () => {
+  it("PREVIEW_ID_DRIFT: execute after preview mints the ids the preview reported", () => {
     const { ids, initial } = twoNotes();
     const core = createWorkbenchCore({ initial, apps: [notes], ids });
     const placementId = firstPlacement(core);
@@ -111,7 +111,7 @@ describe("stabilization probes (design doc 04 §4, §12)", () => {
     expect(receipts.map((receipt) => receipt.cases)).toEqual([["placementClose", "viewDelete"], ["documentDelete"]]);
   });
 
-  it.fails("DROPPED_REPLACE_TITLE: same-app replacement keeps an explicitly requested title", () => {
+  it("DROPPED_REPLACE_TITLE: same-app replacement keeps an explicitly requested title", () => {
     const core = createWorkbenchCore({ initial: layout(tile("notes")), apps: [notes] });
     const placementId = firstPlacement(core);
     const result = core.execute({ kind: "view.show", view: { kind: "application", appId: "notes", title: "Renamed" }, placement: { kind: "replace", target: placementId } });

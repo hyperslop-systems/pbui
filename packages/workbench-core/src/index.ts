@@ -10,6 +10,7 @@ export { defineAppManifest, createManifestCatalog, isManifestCatalog, isDocBound
 export type { DuplicatePlacement, ManifestCatalog, ViewCardinality, WorkbenchAppManifest, WorkbenchAppManifestInput } from "./apps";
 export { diagnostic, WorkbenchDiagnosticError } from "./diagnostics";
 export { attemptAll, reportFailures } from "./publication";
+export type { OwnershipMode } from "./ownership";
 export type { ObserverErrorSink, ObserverStage, WorkbenchObserverError } from "./publication";
 export type { ValidationResult, WorkbenchDiagnostic } from "./diagnostics";
 export { buildWorkbenchIndex } from "./graph";

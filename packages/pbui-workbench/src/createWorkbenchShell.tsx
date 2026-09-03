@@ -62,6 +62,12 @@ export function createWorkbenchShell(options: CreateWorkbenchShellOptions): Work
   for (const presentation of apps.list()) {
     if (!core.apps.get(presentation.id)) throw new Error(`pbui-workbench: application "${presentation.id}" has a presentation but no manifest in the core`);
   }
+  // The other direction too (design doc 04 §6.8): a manifest without a
+  // presentation is a tile with no component, which the Surface cannot
+  // render. Both halves are required, at construction, not at first paint.
+  for (const manifest of core.apps.list()) {
+    if (!apps.get(manifest.id)) throw new Error(`pbui-workbench: application "${manifest.id}" has a manifest in the core but no presentation; pass its presentation to the shell`);
+  }
   const shell = createShellStore();
   const placement = createPlacementController();
   let rootElement: HTMLElement | null = null;
@@ -122,7 +128,10 @@ export function createWorkbenchShell(options: CreateWorkbenchShellOptions): Work
       // not rendered the new tile yet, so the element does not exist on this tick.
       const focus = () => {
         const escaped = typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(placementId) : placementId.replace(/"/g, '\\"');
-        const frame = (rootElement ?? globalThis.document)?.querySelector(`[data-placement-id="${escaped}"]`);
+        // Scoped to this workbench's root (design doc 04 §6.8): two
+        // workbenches on one page must not focus each other's tiles, and a
+        // shell with no root mounted has nothing to focus.
+        const frame = rootElement?.querySelector(`[data-placement-id="${escaped}"]`);
         // The tile CELL, not the application inside it: the cell is
         // programmatically focusable only, so Tab then moves into the app.
         const cell = frame?.closest<HTMLElement>('[data-part="workbench-tile"]');

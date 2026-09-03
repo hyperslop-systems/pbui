@@ -110,3 +110,15 @@ connectDocumentSource(workbench.core, { format: "app.session", list: () => sessi
 
 `createWorkbenchPresentationFragment`, `workbenchTileContributions`,
 `tileRefOf` and `TileRef` are unchanged in name; the rules now bind commands.
+
+## Stabilization (workbench-core 0.2 / pbui-workbench 0.6)
+
+The stabilization pass (design doc 04 of PBUI-WORKBENCH-CORE-1) changes these
+surfaces, without aliases:
+
+- `onPostCommitError(error, receipt)` is replaced by `onObserverError({ stage, revision, error })`; stages are `commit-receipt`, `link-subscriber`, `core-subscriber`, `replacement-effects`. Every observer is attempted once per publication; failures are reported after all attempts and never thrown through `execute`/`apply`/`replaceDocument`.
+- A mutation door called from an observer (a `subscribe` listener, `onCommit`, a link runtime subscriber) is refused with code `reentrant_execution`. Schedule such work for after the publication (`queueMicrotask`); `connectDocumentSource` already does.
+- `LinkRuntime.apply` / `forgetView` and `WorkbenchLinks.afterCommit` / `afterReplace` are gone; the runtime state is reduced by the core (`reduceRuntimeEffects`, `forgetViewValues`) and published in the order receipt → link observers → core observers.
+- `SyncTarget.replaceDocument` must return `{ ok: true } | { ok: false, diagnostics }` (a `WorkbenchCore` does); `validateDocument` is optional and used to check rebased entries. `SyncPhase` gains `incompatible` (the server's document was refused by the local catalog; `onIncompatible` carries the diagnostics), which halts the loop rather than retrying.
+- The core owns its documents: `initial`, replacements and adoptions are cloned (object identity is not preserved), and outside production `getState()` is deep-frozen (`ownership: "trust"` opts out). Use `core.snapshot()` for a document to write on.
+- The shell requires a presentation for every manifest in the core, at construction; `focusPlacement` only searches the mounted root.

@@ -68,6 +68,10 @@ An application whose bindings are declared by the bound resource rather than by 
 
 A transaction has three stages (design doc 04 §6.1): **prepare** (plan or apply the raw batch, validate, stage the link runtime's next value — all pure), **install** (set the core state and the link state, without notifying anyone), **publish** (the receipt hook `onCommit`, then the link runtime's subscribers, then the core's subscribers). Past install, nothing makes the operation look uncommitted: every observer is attempted exactly once, a throwing observer is recorded, and the collection is reported after all attempts through `onObserverError({ stage, revision, error })`. A mutation door called from an observer — `execute`, `apply`, `replaceDocument`, `restore`, `reset` — is refused with `reentrant_execution`; an integration that reacts to a publication schedules its own transaction for after it (a document source retries in a microtask).
 
+## Owned state
+
+Every document that enters the core — `initial`, a replacement, a restore, a server adoption — is cloned, so a caller's later edits to what it passed in reach nothing. What the core exposes through `getState()` is deep-frozen (the document, the session, and the index's maps) unless `ownership: "trust"` is set or `NODE_ENV` is `production`; a caller that mutates it fails at the assignment. `core.snapshot()` returns a clone to write on. Preview never consumes ids: plans read them through a lookahead pool and only a committed execution consumes what its plan drew, so `execute` after `preview` mints the ids the preview reported. A transition that reproduces the current document with an unchanged session is `changed: false` and installs nothing.
+
 ## Invariants
 
 - Planning never touches anything observable; `preview` leaves the document, the session, and the link runtime exactly as they were.

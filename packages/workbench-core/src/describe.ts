@@ -5,6 +5,7 @@ import { documentSlots, type WorkbenchAppManifest } from "./apps";
 import type { WorkbenchCore } from "./createWorkbenchCore";
 import { MISSING_APP_ID, specOf, type LayoutSpec } from "./document";
 import type { GeometrySnapshot } from "./geometry";
+import type { WorkbenchIndex } from "./graph";
 import { placementCount } from "./queries";
 
 /**
@@ -153,7 +154,7 @@ export function describeWorkbench(core: WorkbenchCore, options: DescribeOptions 
       id: workspace.id,
       name: workspace.name,
       active: workspace.id === state.session.workspaceId,
-      tiles: leavesOf(workspace.tree).map((leaf) => describeTile(core, doc, leaf, presentation, rects)),
+      tiles: leavesOf(workspace.tree).map((leaf) => describeTile(state.index, doc, leaf, presentation, rects)),
       tree: workspace.tree ? specOf(doc, workspace.tree) : { kind: "tile", appId: MISSING_APP_ID, title: "missing tree" },
       splits: splitsOf(workspace.tree),
     })),
@@ -238,7 +239,7 @@ function describePort(port: PortDeclaration): DescribedPort {
   };
 }
 
-function describeTile(core: WorkbenchCore, doc: WorkbenchDocument, leaf: Node, presentation: (appId: string) => DescribePresentation | null, rects: Map<string, { x: number; y: number; w: number; h: number }> | null): DescribedTile {
+function describeTile(index: WorkbenchIndex, doc: WorkbenchDocument, leaf: Node, presentation: (appId: string) => DescribePresentation | null, rects: Map<string, { x: number; y: number; w: number; h: number }> | null): DescribedTile {
   const viewId = leaf.body.case === "leaf" ? leaf.body.value.viewId : "";
   const view = doc.views[viewId];
   const rect = rects?.get(leaf.id);
@@ -250,7 +251,7 @@ function describeTile(core: WorkbenchCore, doc: WorkbenchDocument, leaf: Node, p
     appId: view?.appId ?? MISSING_APP_ID,
     title: titleOfView(view, view ? presentation(view.appId) : null, viewId),
     documents: { ...(view?.documents ?? {}) },
-    linkedPlacements: view ? placementCount(core.getState().index, view.id) : 0,
+    linkedPlacements: view ? placementCount(index, view.id) : 0,
     ...(rect ? { rect } : {}),
   };
 }

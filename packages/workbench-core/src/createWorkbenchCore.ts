@@ -1,4 +1,5 @@
-import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import { equals } from "@bufbuild/protobuf";
+import { WorkbenchDocumentSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError, newId, type IdGenerator } from "@hyperslop-systems/workbench-protocol/client";
 import { createManifestCatalog, isManifestCatalog, type ManifestCatalog, type WorkbenchAppManifest } from "./apps";
 import { describeWorkbenchCommand, type WorkbenchCommand } from "./commands";
@@ -11,6 +12,8 @@ import type { WorkbenchLinks } from "./links/collaborator";
 import type { LinkRuntimeState } from "./links/runtime";
 import { plan, type PlanResult, type PreparedTransition } from "./planner/plan";
 import type { Choice, PlanWorld } from "./planner/world";
+import { createIdPool } from "./ids";
+import { deepFreeze, defaultOwnership, own, readonlyIndex, type OwnershipMode } from "./ownership";
 import { compilePolicy, type WorkbenchPolicy, type WorkbenchPolicyInput } from "./policy";
 import { attemptAll, reportFailures, type WorkbenchObserverError } from "./publication";
 import { repairSession, type WorkbenchSession } from "./session";
@@ -43,8 +46,15 @@ export interface CreateWorkbenchCoreOptions {
   policy?: WorkbenchPolicyInput;
   /** Tile linking: the one explicit collaborator (guide §16.6). Absent ⇒ link commands are refused with `no_links`. */
   links?: WorkbenchLinks;
-  /** Deterministic ids for tests and replay; default `newId`. */
+  /** Deterministic ids for tests and replay; default `newId`. Plans read it through a lookahead pool, so a preview consumes nothing (§5.5). */
   ids?: IdGenerator;
+  /**
+   * `"freeze"`: the exposed document, session and index are deep-frozen,
+   * so a caller that mutates them fails at the assignment. `"trust"`: no
+   * freeze (no per-install cost). Default: freeze unless `NODE_ENV` is
+   * `production`. Every ingress document is cloned in both modes.
+   */
+  ownership?: OwnershipMode;
   initialSession?: Partial<WorkbenchSession>;
   /**
    * Once per COMMITTED durable batch, after the new state is installed. This
@@ -112,6 +122,8 @@ export interface WorkbenchCore {
   /** The links collaborator, when one was given. */
   readonly links: WorkbenchLinks | null;
   getState(): WorkbenchCoreState;
+  /** A clone of the current document, for an integration that wants to write on one of its own. */
+  snapshot(): WorkbenchDocument;
   subscribe(listener: () => void): () => void;
   /**
    * The normal semantic door (guide §16.3): capture the state, plan the
@@ -166,7 +178,11 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
   const apps = isManifestCatalog(options.apps) ? options.apps : createManifestCatalog(options.apps);
   const policy = compilePolicy(options.policy);
   const ids = options.ids ?? newId;
-  const initial = options.initial;
+  const pool = createIdPool(ids);
+  const ownership = options.ownership ?? defaultOwnership();
+  // Ingress: the core owns its documents (§6.5); a caller's later edits to
+  // what it passed in reach nothing.
+  const initial = own(WorkbenchDocumentSchema, options.initial);
   const links = options.links ?? null;
   links?.bind(apps);
 
@@ -184,6 +200,13 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
    */
   let phase: "idle" | "preparing" | "publishing" = "idle";
   const REENTRANT = { code: "reentrant_execution", because: "the workbench is publishing a transaction; a mutation from an observer must be scheduled for after it" } as const;
+  const owned = (next: WorkbenchCoreState): WorkbenchCoreState => {
+    if (ownership !== "freeze") return next;
+    deepFreeze(next.document);
+    deepFreeze(next.session);
+    readonlyIndex(next.index);
+    return Object.freeze(next);
+  };
   let state: WorkbenchCoreState = (() => {
     const index = buildWorkbenchIndex(initial);
     const session = repairSession(
@@ -191,7 +214,7 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
       initial,
       index,
     );
-    return { document: initial, session, index, revision: 0 };
+    return owned({ document: initial, session, index, revision: 0 });
   })();
 
   const report = (mutations: readonly Mutation[], diagnostics: readonly WorkbenchDiagnostic[]) => {
@@ -230,7 +253,7 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     // Stage the link runtime's next value BEFORE the point of no return
     // (design doc 04 §6.6): a reducer that throws leaves nothing installed.
     const stagedLinks = linkState ?? (effects && effects.length > 0 && links ? links.stage(effects) : null);
-    state = { document: next, session: repaired, index, revision };
+    state = owned({ document: next, session: repaired, index, revision });
     if (stagedLinks && links) links.install(stagedLinks);
     phase = "publishing";
     const failures: WorkbenchObserverError[] = [];
@@ -247,10 +270,12 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     reportFailures(failures, options.onObserverError);
   };
 
-  const replace = (next: WorkbenchDocument, session?: Partial<WorkbenchSession>): ReplaceResult => {
+  const replace = (incoming: WorkbenchDocument, session?: Partial<WorkbenchSession>): ReplaceResult => {
+    let next = incoming;
     if (phase !== "idle") return { ok: false, diagnostics: [diagnostic(REENTRANT.code, "", REENTRANT.because)] };
     const checked = validateWorkbenchDocument(next, { apps });
     if (!checked.ok) return { ok: false, diagnostics: checked.diagnostics };
+    next = own(WorkbenchDocumentSchema, next);
     // The runtime holds values keyed by view; a view the new document does
     // not have must not keep emitting into badges from beyond the grave.
     // Staged as a value and installed with the document (same path as a commit).
@@ -263,21 +288,26 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
   const forgetEffects = (mutations: readonly Mutation[]): LocalEffect[] =>
     mutations.flatMap((item) => (item.body.case === "viewDelete" ? [{ kind: "forget-view-values" as const, viewId: item.body.value.viewId }] : []));
 
-  const worldOf = (geometry: GeometrySnapshot | undefined): PlanWorld => ({
+  const worldOf = (geometry: GeometrySnapshot | undefined, planIds: IdGenerator): PlanWorld => ({
     document: state.document,
     session: state.session,
     index: state.index,
     apps,
     policy,
     geometry: geometry ?? null,
-    ids,
+    ids: planIds,
     links,
   });
 
-  const planned = (input: WorkbenchCommand | readonly WorkbenchCommand[], geometry: GeometrySnapshot | undefined): { commands: readonly WorkbenchCommand[]; result: PlanResult } => {
+  const planned = (input: WorkbenchCommand | readonly WorkbenchCommand[], geometry: GeometrySnapshot | undefined) => {
     const commands = Array.isArray(input) ? (input as readonly WorkbenchCommand[]) : [input as WorkbenchCommand];
-    return { commands, result: plan(worldOf(geometry), commands) };
+    const fork = pool.fork();
+    return { commands, result: plan(worldOf(geometry, fork.ids), commands), commitIds: fork.commit };
   };
+
+  /** Nothing to install: the batch reproduces the current document and the session is unchanged (§6.8, no revision or outbox churn). */
+  const isNoOp = (next: WorkbenchDocument, session: WorkbenchSession | undefined) =>
+    (session === undefined || (session.workspaceId === state.session.workspaceId && session.activePlacementId === state.session.activePlacementId)) && equals(WorkbenchDocumentSchema, next, state.document);
 
   const refusal = (result: Exclude<PlanResult, { kind: "prepared" }>): { ok: false; code: string; because: string; choices?: readonly Choice[]; index: number; command: WorkbenchCommand } => {
     if (result.kind === "ambiguous") {
@@ -300,11 +330,12 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     ids,
     links,
     getState: () => state,
+    snapshot: () => own(WorkbenchDocumentSchema, state.document),
     execute(input, executeOptions = {}) {
       if (phase !== "idle") return { ok: false, ...REENTRANT };
       phase = "preparing";
       try {
-        const { commands, result } = planned(input, executeOptions.geometry);
+        const { commands, result, commitIds } = planned(input, executeOptions.geometry);
         if (result.kind !== "prepared") return refusal(result);
         const { transition } = result;
         if (!transition.changed) return { ok: true, changed: false, ...ids_of(transition) };
@@ -318,6 +349,8 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
           }
           next = prepared.document;
         }
+        if (isNoOp(next, transition.session)) return { ok: true, changed: false, ...ids_of(transition) };
+        commitIds();
         install({ document: next, session: transition.session, ...(transition.mutations.length > 0 ? { mutations: transition.mutations } : {}), effects: transition.effects });
         return { ok: true, changed: true, ...ids_of(transition) };
       } finally {
@@ -353,6 +386,7 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
           report(batch, prepared.diagnostics);
           return prepared;
         }
+        if (isNoOp(prepared.document, undefined)) return { ok: true, changed: false };
         install({ document: prepared.document, mutations: batch, effects: forgetEffects(batch) });
         return { ok: true, changed: true };
       } finally {

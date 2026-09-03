@@ -132,18 +132,21 @@ export function materialize(world: PlanWorld, view: ResolvedView, placement: Res
       if (currentViewId === view.viewId) return unchanged({ placementId: placement.target, viewId: view.viewId });
       return prepared({ mutations: [mutation({ case: "placementReplace", value: { workspaceId, placementId: placement.target, viewId: view.viewId } })], session: { activePlacementId: placement.target }, placementId: placement.target, viewId: view.viewId, changed: true });
     }
-    if (currentView?.appId === view.app.id && !view.documentsRequested) return unchanged({ placementId: placement.target, viewId: currentViewId });
+    // The same application with nothing new asked for — no documents, no
+    // title — is already what the pane shows.
+    if (currentView?.appId === view.app.id && !view.documentsRequested && !view.title) return unchanged({ placementId: placement.target, viewId: currentViewId });
     if (currentView && placementCount(index, currentViewId) === 1) {
       // The pane owns its view: retarget in place so it keeps its identity
       // (its placement id, its position, and any product state keyed by view).
+      // The same app with only a title asked for keeps its bindings.
+      const sameApp = currentView.appId === view.app.id && !view.documentsRequested;
       return prepared({
         mutations: [
           mutation({
             case: "viewConfigure",
             value: {
               viewId: currentViewId,
-              appId: view.app.id,
-              replaceDocuments: create(DocumentBindingsSchema, { values: { ...view.documents } }),
+              ...(sameApp ? {} : { appId: view.app.id, replaceDocuments: create(DocumentBindingsSchema, { values: { ...view.documents } }) }),
               ...(view.title ? { titleChange: { case: "setTitle", value: view.title } } : {}),
             },
           }),

@@ -98,7 +98,7 @@ describe("createWorkbenchCore", () => {
     expect(core.restore("{broken").ok).toBe(false);
     const fresh = layout(tile("notes"), { ids: sequentialIds(100) });
     expect(core.reset(() => fresh)).toEqual({ ok: true });
-    expect(core.getState().document).toBe(fresh);
+    expect(core.getState().document).toEqual(fresh); // a clone since design doc 04 §6.5: equal, not identical
     expect(core.reset()).toEqual({ ok: true });
     expect(core.getState().document.viewOrder).toHaveLength(3);
   });
