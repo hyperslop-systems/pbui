@@ -271,3 +271,55 @@ planBind     port-missing, direction, document-slot, held, shared               
 planAmbient  port-missing, direction, held                                         → checker
 planDerive   port-missing, self, direction, held, shared, legal relations, already → checker
 ```
+
+## Step 5: Prove it across the packages, on screen, and in the README
+
+The kernel's tests are one fence; the workbench, the shop and the external consumers are the other. This step rebuilt pbui (`pnpm build`, since the packages resolve it through `dist`), typechecked every workspace package, ran every package's tests without bailing, and then exercised the link verbs by hand in two UIs: the workbench's own LinkLab story (follow, pin, resume) and the gold-coin shop (the "Link to…" family, the port badge menu, and a refusal rendered in the menu). Six screenshots and an index went into `various/screenshots/`.
+
+The README had no section on the link kernel at all, so one was added: what the package exposes of the binding program (`normalizeBinding`, `dependenciesOfBinding`, `dependsOn`, `checkBinding`, `candidateTermOf`), what stays internal, and the planner/checker split in one paragraph.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 5 of the plan slip: verification beyond the kernel's own tests, screenshots for the diary and the report, documentation.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** b8e3687 — "PBUI-KERNEL-2 P5: README link-kernel section, screenshots with index, ticket status"
+
+### What I did
+- `pnpm build` → `pnpm -r typecheck`: every package clean.
+- `pnpm -r --no-bail --workspace-concurrency=1 test`: green everywhere except two failures that predate this ticket and were baselined in KERNEL-1 (`packages/pbui-chat/test/grid-columns.test.ts`, which scans workbench CSS; `packages/pbui-workbench/src/rebalance/slate.perf.test.ts`, load-sensitive and passing alone).
+- Storybook `Workbench/LinkLab`: follow, count twice, pin, count, resume; screenshots 01–03.
+- Gold-coin shop demo: "Link to order detail · order" on #88150, the port badge menu, Pin, then the "Link to…" menu on #88151 showing the held refusal; screenshots 04–06.
+- `README.md`: new section "Link kernel: terms, programs, planners"; `various/screenshots/README.md`; KERNEL-2 `index.md` status; related files on the ticket.
+
+### Why
+- The planners' deletions in P4 are only safe if every consumer's tests still hold; the workbench alone has 554 tests over the link handlers, badges and the "Link to…" family.
+
+### What worked
+- The held state on screen matches the law: the counter advanced to 3 while the notes port stayed on 2, and Resume brought it back to following.
+
+### What didn't work
+- The first screenshot attempt targeted the session scratchpad, which is outside the Playwright server's allowed roots; and the second targeted a directory that did not exist yet. Screenshots go under the ticket's `various/screenshots/` directory, created first.
+- The first `pnpm -r test` bailed at pbui-chat's known failure and skipped the packages after it; rerun with `--no-bail`.
+
+### What I learned
+- The "Link to…" family filters its targets by `reaches` before planning, so a type refusal from the checker never reaches that menu; the held/shared/cycle refusals do. A screenshot of a checker type verdict would need the connect-mode rail or the relation palette.
+
+### What was tricky to build
+- Nothing in code. Locating the shop demo: `pnpm dev` in `packages/pbui-ecommerce/demo` listens on 5176 (its `vite.config.ts`), while 5173 belonged to an unrelated app running on this machine.
+
+### What warrants a second pair of eyes
+- The README section's claim that the checker is the one source of a cycle refusal: true for the four term verbs; `planIdentityAdd` has its own checks (KERNEL-3's subject).
+
+### What should be done in the future
+- The KERNEL-2 project report (task added at the user's request); then KERNEL-3.
+
+### Code review instructions
+- `README.md` section "Link kernel"; `various/screenshots/README.md` for what each image is evidence of.
+- `pnpm build && pnpm -r typecheck && pnpm -r --no-bail test`.
+
+### Technical details
+- Per-package test counts from the no-bail run: workbench-protocol 48, pbui-workbench 554 (1 baselined perf failure), datalab-ui 281 (…), pbui-editor 35, pbui-ecommerce 12, pbui-sandbox 224, pbui-chat 241 (1 baselined), pbui-plotscript 32, chat demo 13; pbui root 443.

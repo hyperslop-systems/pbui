@@ -40,3 +40,12 @@ Step 4: planners' duplicate type/cycle/context checks deleted after parity; IR c
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/index.ts — Root export surface without the IR constructors
 
+
+## 2026-09-02
+
+Step 5: cross-package typecheck/tests, LinkLab and shop screenshots, README link-kernel section, ticket status complete (commit b8e3687)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/README.md — Link kernel section
+
