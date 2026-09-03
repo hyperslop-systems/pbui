@@ -1,5 +1,5 @@
 import { CONVERSATION_BINDING, createChatApps, createConversationApps, RefPresentation, type Reference } from "@hyperslop-systems/pbui-chat";
-import { connectProgramLibrary, createSandboxDevtools, createScriptApp, type SandboxHost } from "@hyperslop-systems/pbui-sandbox";
+import { connectProgramLibrary, createSandboxDevtools, createScriptApp, programDocumentSource, type SandboxHost } from "@hyperslop-systems/pbui-sandbox";
 import { createWorkbench, manifestsOf, rebalanceSettingsApp } from "@hyperslop-systems/pbui-workbench";
 import { commands, createManifestCatalog, layout, split, tile, connectDocumentSource, type DocumentSource } from "@hyperslop-systems/workbench-core";
 import { createLocalPersistence, readWorkbenchSnapshot } from "@hyperslop-systems/workbench-core/persistence";
@@ -39,6 +39,9 @@ const stored = () => readWorkbenchSnapshot(WORKBENCH_STORAGE_KEY, {
   migrate: (payload, from) => (from === 0 ? { version: 1, document: payload } : null),
   // A stored layout naming a tile this build no longer has falls back to the default.
   apps: createManifestCatalog(manifestsOf(apps)),
+  // Stubs first, catalog second (design doc 04 §9.7): a layout stored before a
+  // source existed is repaired, not replaced by the default.
+  sources: [...worldDocumentSources(), programDocumentSource(library)],
 });
 
 
@@ -139,10 +142,10 @@ export const conversationsReady = bootstrapConversations();
 /** The shop's world as document sources: static, one format per type. */
 function worldDocumentSources(): DocumentSource[] {
   return [
-    { format: "shop.product", list: () => PRODUCTS.map((product) => ({ id: product.id, body: { name: product.name } })) },
-    { format: "shop.category", list: () => Object.keys(CATEGORIES).map((id) => ({ id })) },
-    { format: "shop.metal", list: () => Object.keys(METALS).map((id) => ({ id })) },
-    { format: "shop.order", list: () => Object.keys(ORDERS).map((id) => ({ id })) },
+    { id: "shop.products", format: "shop.product", list: () => PRODUCTS.map((product) => ({ id: product.id, body: { name: product.name } })) },
+    { id: "shop.categories", format: "shop.category", list: () => Object.keys(CATEGORIES).map((id) => ({ id })) },
+    { id: "shop.metals", format: "shop.metal", list: () => Object.keys(METALS).map((id) => ({ id })) },
+    { id: "shop.orders", format: "shop.order", list: () => Object.keys(ORDERS).map((id) => ({ id })) },
   ];
 }
 

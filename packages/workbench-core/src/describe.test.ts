@@ -67,6 +67,7 @@ describe("describeWorkbench", () => {
       viewCardinality: "many",
       duplicatePlacement: "clone",
       docBound: true,
+      launch: "requires-bindings",
       bindings: ["product"],
       ports: [{ name: "product", direction: "in", valueType: "document", role: "document.product", doc: "the product this tile details", documentSlot: true }],
       blurb: "one product, in detail",
@@ -79,6 +80,7 @@ describe("describeWorkbench", () => {
       viewCardinality: "many",
       duplicatePlacement: "clone",
       docBound: false,
+      launch: "unbound",
       ports: [{ name: "count", direction: "out", valueType: "number", role: "number", doc: "the count, each time the button is pressed" }],
     });
     // Headless: without presentations the id is the title, and the description still answers.

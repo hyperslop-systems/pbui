@@ -16,7 +16,10 @@ export const PROGRAM_DOCUMENT_FORMAT = "sandbox.program";
  */
 export function programDocumentSource(library: ProgramLibrary): DocumentSource {
   return {
+    id: "sandbox.programs",
     format: PROGRAM_DOCUMENT_FORMAT,
+    // The title follows the library: a renamed program renames its stub.
+    update: "replace-body",
     list: () => Object.values(library.getState().programs).map((program) => ({ id: program.id, body: { title: program.title } })),
     subscribe: (listener) => library.subscribe(listener),
   };

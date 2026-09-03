@@ -1,5 +1,5 @@
 import type { DocumentPayload, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
-import { documentSlots, type WorkbenchAppManifest } from "./apps";
+import { bindingNames, type WorkbenchAppManifest } from "./apps";
 import type { WorkbenchIndex } from "./graph";
 
 /**
@@ -88,8 +88,8 @@ export function followTheCrowd(options: FollowTheCrowdOptions = {}): InitialDocu
  * conflict repair is worse than a refusal now.
  */
 export function resolveInitialDocuments(policy: InitialDocumentPolicy, app: WorkbenchAppManifest, requested: Readonly<Record<string, string>>, doc: WorkbenchDocument, index: WorkbenchIndex): InitialDocumentResolution {
-  const slots = documentSlots(app);
-  const unknown = app.openBindings ? [] : Object.keys(requested).filter((key) => !slots.includes(key));
+  const slots = bindingNames(app);
+  const unknown = app.additionalBindings ? [] : Object.keys(requested).filter((key) => !slots.includes(key));
   if (unknown.length > 0) {
     return { kind: "refused", code: "unknown_binding", because: `application "${app.id}" does not define binding ${unknown.map((k) => `"${k}"`).join(", ")}`, missing: [] };
   }

@@ -270,6 +270,7 @@ export function createPbuiChat<Values extends PresentationValues, Environment, V
     workbench = next;
     if (!next || options.conversationDocuments === false) return;
     const source: DocumentSource = {
+      id: "chat.conversations",
       format: options.conversationDocuments?.format ?? CONVERSATION_DOCUMENT_FORMAT,
       list: () => conversations.all().map((snapshot) => ({ id: snapshot.id })),
       subscribe: (listener) => conversations.subscribe(listener),

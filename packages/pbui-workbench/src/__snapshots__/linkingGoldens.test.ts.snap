@@ -9,6 +9,7 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
       "docBound": false,
       "duplicatePlacement": "clone",
       "id": "counter",
+      "launch": "unbound",
       "ports": [
         {
           "direction": "out",
@@ -26,6 +27,7 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
       "docBound": false,
       "duplicatePlacement": "link",
       "id": "notes",
+      "launch": "unbound",
       "ports": [
         {
           "direction": "in",
@@ -48,6 +50,7 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
       "duplicatePlacement": "link",
       "group": "shop",
       "id": "sku",
+      "launch": "requires-bindings",
       "ports": [
         {
           "direction": "in",

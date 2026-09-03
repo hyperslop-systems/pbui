@@ -1,5 +1,5 @@
 import type { LauncherShellGroup } from "@hyperslop-systems/pbui";
-import { isDocBound, type ManifestCatalog } from "@hyperslop-systems/workbench-core";
+import type { ManifestCatalog } from "@hyperslop-systems/workbench-core";
 import type { Node, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { placementCount } from "@hyperslop-systems/workbench-protocol/client";
 import { isAppAvailable, labelOfView, type PresentationRegistry } from "./app";
@@ -89,7 +89,9 @@ export function defaultLauncherRows(context: LauncherRowsContext): LauncherRow[]
     if (!isAppAvailable(app, { workspaceId })) continue;
     // A doc-bound application is a view OF something; with no document to
     // bind it would open empty. Those arrive through `view.show` with documents.
-    if (isDocBound(manifest)) continue;
+    // Launch policy, not binding presence (design doc 04 §9.5): an app with
+    // optional context launches unbound; a view OF something is opened from it.
+    if (manifest.launch !== "unbound") continue;
     // A placed singleton is already offered above, as the view it has — but
     // only if that row exists. Scoped to the workspace, a singleton living
     // next door is offered as an application row (place goes there).

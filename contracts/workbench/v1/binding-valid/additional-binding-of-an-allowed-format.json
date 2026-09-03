@@ -1,0 +1,52 @@
+{
+  "name": "additional binding of an allowed format",
+  "catalog": "additional",
+  "document": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "w1",
+    "name": "fixture",
+    "workspaces": [
+      {
+        "id": "main",
+        "name": "main",
+        "tree": {
+          "id": "n-00000002-0000",
+          "leaf": {
+            "viewId": "v-00000001-0000"
+          }
+        }
+      }
+    ],
+    "views": {
+      "v-00000001-0000": {
+        "id": "v-00000001-0000",
+        "appId": "script",
+        "documents": {
+          "program": "prg-1",
+          "product": "2049"
+        }
+      }
+    },
+    "viewOrder": [
+      "v-00000001-0000"
+    ],
+    "documents": {
+      "2049": {
+        "id": "2049",
+        "format": "shop.product",
+        "schemaVersion": 1,
+        "body": {}
+      },
+      "prg-1": {
+        "id": "prg-1",
+        "format": "sandbox.program",
+        "schemaVersion": 1,
+        "body": {}
+      }
+    }
+  },
+  "expected": {
+    "ok": true
+  }
+}

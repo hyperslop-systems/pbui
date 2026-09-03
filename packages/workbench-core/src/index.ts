@@ -6,8 +6,8 @@
  * structural index and queries, essential validation, layout builders, the
  * command planner, and the core that executes commands transactionally.
  */
-export { defineAppManifest, createManifestCatalog, isManifestCatalog, isDocBound, documentSlots } from "./apps";
-export type { DuplicatePlacement, ManifestCatalog, ViewCardinality, WorkbenchAppManifest, WorkbenchAppManifestInput } from "./apps";
+export { defineAppManifest, createManifestCatalog, isManifestCatalog, isDocBound, bindingNames } from "./apps";
+export type { DuplicatePlacement, LaunchPolicy, ManifestCatalog, ViewCardinality, WorkbenchAdditionalBindings, WorkbenchAppManifest, WorkbenchAppManifestInput, WorkbenchBindingRule } from "./apps";
 export { diagnostic, WorkbenchDiagnosticError } from "./diagnostics";
 export { attemptAll, reportFailures } from "./publication";
 export type { OwnershipMode } from "./ownership";
@@ -63,7 +63,7 @@ export type { PlanResult, PreparedTransition } from "./planner/plan";
 export type { Choice, PlanWorld } from "./planner/world";
 export * from "./links";
 export { describeWorkbench, titleOfView } from "./describe";
-export { connectDocumentSource, documentSourceMutations } from "./sources";
-export type { DocumentSource } from "./sources";
+export { connectDocumentSource, documentSourceMutations, SOURCE_OWNER_FIELD } from "./sources";
+export type { ConnectDocumentSourceOptions, DocumentSource, SourceCollision, SourceDocument, SourceReconciliation } from "./sources";
 export type { DescribeOptions, DescribePresentation, DescribedApp, DescribedBinding, DescribedContext, DescribedLink, DescribedPort, DescribedSplit, DescribedTile, DescribedWorkspace, WorkbenchDescription } from "./describe";
 export { sequentialIds } from "./testing";

@@ -1,3 +1,5 @@
+import { create } from "@bufbuild/protobuf";
+import { DocumentPayloadSchema, MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { describe, expect, it } from "vitest";
 import { defineAppManifest } from "./apps";
 import { commands } from "./commands";
@@ -12,6 +14,7 @@ function registry(initial: string[]) {
   let ids = [...initial];
   const listeners = new Set<() => void>();
   const source: DocumentSource = {
+    id: "chat.conversations",
     format: "chat.conversation",
     list: () => ids.map((id) => ({ id })),
     subscribe: (listener) => {
@@ -65,21 +68,21 @@ describe("document sources", () => {
 
   it("touches nothing of another format, and applies nothing when in step", () => {
     const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
-    const other: DocumentSource = { format: "shop.product", list: () => [{ id: "2049", body: { name: "Eagle" } }] };
+    const other: DocumentSource = { id: "shop.products", format: "shop.product", list: () => [{ id: "2049", body: { name: "Eagle" } }] };
     connectDocumentSource(core, other);
     const { source } = registry([]);
-    expect(documentSourceMutations(core.getState().document, source)).toEqual([]);
+    expect(documentSourceMutations(core.getState().document, source).mutations).toEqual([]);
     const revision = core.getState().revision;
     connectDocumentSource(core, source);
     expect(core.getState().revision).toBe(revision);
-    expect(core.getState().document.documents["2049"]?.body).toEqual({ name: "Eagle" });
+    expect(core.getState().document.documents["2049"]?.body).toEqual({ name: "Eagle", $source: "shop.products" });
   });
 
   it("an application with open bindings may bind slots its manifest does not declare", () => {
-    const script = defineAppManifest({ id: "script", ports: [documentSlotPort("program")], openBindings: true });
+    const script = defineAppManifest({ id: "script", ports: [documentSlotPort("program")], additionalBindings: {} });
     const core = createWorkbenchCore({ initial: layout(tile("notes")), apps: [...apps, script] });
-    connectDocumentSource(core, { format: "sandbox.program", list: () => [{ id: "prg-1" }] });
-    connectDocumentSource(core, { format: "shop.product", list: () => [{ id: "2049" }] });
+    connectDocumentSource(core, { id: "sandbox.programs", format: "sandbox.program", list: () => [{ id: "prg-1" }] });
+    connectDocumentSource(core, { id: "shop.products", format: "shop.product", list: () => [{ id: "2049" }] });
     expect(core.execute(commands.open("script", { program: "prg-1", product: "2049" })).ok).toBe(true);
     const refused = core.execute(commands.open("script", { program: "prg-1", product: "nope" }));
     expect(refused.ok).toBe(false);
@@ -132,5 +135,51 @@ describe("source scheduling (design doc 04 §6.4, §12.3)", () => {
     disconnect();
     await Promise.resolve();
     expect(core.getState().document.documents["c-1"]).toBeDefined();
+  });
+});
+
+describe("source ownership (design doc 04 §9.6, §12.3)", () => {
+  const conversations = (ids: string[]): DocumentSource => ({ id: "chat.conversations", format: "chat.conversation", list: () => ids.map((id) => ({ id })) });
+
+  it("a listed id that names a document of another format is a collision: reported, never overwritten", () => {
+    const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
+    connectDocumentSource(core, { id: "shop.products", format: "shop.product", list: () => [{ id: "x" }] });
+    const collisions: string[] = [];
+    connectDocumentSource(core, conversations(["x", "c-1"]), { onCollision: (collision, source) => collisions.push(`${source.id}:${collision.id}:${collision.format}`) });
+    expect(collisions).toEqual(["chat.conversations:x:shop.product"]);
+    expect(core.getState().document.documents["x"]?.format).toBe("shop.product");
+    expect(core.getState().document.documents["c-1"]?.format).toBe("chat.conversation");
+  });
+
+  it("a stub of the same format owned by another source is left untouched", () => {
+    const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
+    connectDocumentSource(core, { id: "chat.local", format: "chat.conversation", list: () => [{ id: "c-local" }] });
+    const disconnect = connectDocumentSource(core, conversations([]));
+    expect(core.getState().document.documents["c-local"]?.body).toEqual({ $source: "chat.local" });
+    disconnect();
+  });
+
+  it("replace-body follows the source's body; identity-only writes it once", () => {
+    const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
+    let title = "one";
+    const listeners = new Set<() => void>();
+    const signal = () => {
+      for (const listener of listeners) listener();
+    };
+    const following: DocumentSource = { id: "sandbox.programs", format: "sandbox.program", update: "replace-body", list: () => [{ id: "prg-1", body: { title } }], subscribe: (l) => (listeners.add(l), () => listeners.delete(l)) };
+    const once: DocumentSource = { id: "shop.products", format: "shop.product", list: () => [{ id: "2049", body: { title } }], subscribe: (l) => (listeners.add(l), () => listeners.delete(l)) };
+    connectDocumentSource(core, following);
+    connectDocumentSource(core, once);
+    title = "two";
+    signal();
+    expect(core.getState().document.documents["prg-1"]?.body).toEqual({ title: "two", $source: "sandbox.programs" });
+    expect(core.getState().document.documents["2049"]?.body).toEqual({ title: "one", $source: "shop.products" });
+  });
+
+  it("a stub without an owner marker (from before ownership was recorded) is adopted by the source of its format", () => {
+    const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
+    core.apply([create(MutationSchema, { body: { case: "documentPut", value: { document: create(DocumentPayloadSchema, { id: "c-old", format: "chat.conversation", schemaVersion: 1, body: {} }) } } })]);
+    connectDocumentSource(core, conversations([]));
+    expect(core.getState().document.documents["c-old"]).toBeUndefined();
   });
 });

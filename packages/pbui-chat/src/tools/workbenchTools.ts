@@ -4,7 +4,7 @@ import {
   canSplitPlacement,
   commands,
   describeWorkbenchCommand,
-  documentSlots,
+  bindingNames,
   isWorkbenchCommand,
   layoutFits,
   longerAxis,
@@ -399,7 +399,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       const app = wb.core.apps.get(node.appId)!;
       // A doc-bound application placed with nothing bound opens empty, which
       // reads as a broken tile rather than as a mistake in the request.
-      for (const key of documentSlots(app)) {
+      for (const key of bindingNames(app)) {
         if (!node.documents?.[key]) {
           return `app "${node.appId}" needs a "${key}" binding; got ${JSON.stringify(node.documents ?? {})}`;
         }

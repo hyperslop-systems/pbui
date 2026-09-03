@@ -128,3 +128,23 @@ describe("local persistence (guide §15.1)", () => {
     expect(errors).toHaveLength(2);
   });
 });
+
+describe("hydration before validation (design doc 04 §9.7)", () => {
+  test("a stored layout bound to a resource whose stub was never persisted is repaired by the sources, not discarded", async () => {
+    const { createWorkbenchCore } = await import("../createWorkbenchCore");
+    const { defineAppManifest, createManifestCatalog } = await import("../apps");
+    const { layout, tile, serializeDocument } = await import("../document");
+    const apps = createManifestCatalog([defineAppManifest({ id: "chat", ports: [{ name: "conversation", direction: "in", contract: "conversation", doc: "the conversation", documentSlot: true }] })]);
+    // A document written by a build that had no sources: the view binds c-1, no stub.
+    const stale = layout(tile("chat", { documents: { conversation: "c-1" } }));
+    const storage = new Map<string, string>();
+    const like = { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => void storage.set(k, v), removeItem: (k: string) => void storage.delete(k) };
+    like.setItem("k", JSON.stringify({ version: 1, document: JSON.parse(serializeDocument(stale)) }));
+    const discarded: string[] = [];
+    expect(readWorkbenchSnapshot("k", { storage: like, apps, onDiscard: (reason) => discarded.push(reason) })).toBeNull();
+    expect(discarded[0]).toMatch(/unknown_document/);
+    const restored = readWorkbenchSnapshot("k", { storage: like, apps, sources: [{ id: "chat.conversations", format: "chat.conversation", list: () => [{ id: "c-1" }] }] });
+    expect(restored?.document.documents["c-1"]?.format).toBe("chat.conversation");
+    expect(createWorkbenchCore({ initial: restored!.document, apps }).getState().document.viewOrder).toHaveLength(1);
+  });
+});

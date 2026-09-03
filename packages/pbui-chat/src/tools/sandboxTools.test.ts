@@ -54,7 +54,7 @@ const Blank = () => null;
 
 const apps = [
   defineWorkbenchApp({ manifest: { id: "chat" }, presentation: { title: "chat", tone: "var(--pbui-pane-alt)", Component: Blank } }),
-  defineWorkbenchApp({ manifest: { id: "script", duplicatePlacement: "link", ports: [documentSlotPort("program")], openBindings: true }, presentation: { title: "program", tone: "var(--pbui-pane-alt)", Component: Blank } }),
+  defineWorkbenchApp({ manifest: { id: "script", duplicatePlacement: "link", ports: [documentSlotPort("program")], additionalBindings: {} }, presentation: { title: "program", tone: "var(--pbui-pane-alt)", Component: Blank } }),
 ];
 
 const vocabulary = defineVocabulary({
@@ -81,7 +81,7 @@ function harness(overrides: Partial<SandboxToolsOptions> = {}) {
   // The `script` app binds `program`; the core validates that binding, so the
   // library's programs must exist in the document as stubs (as the demo does).
   connectProgramLibrary(wb.core, library);
-  connectDocumentSource(wb.core, { format: "shop.product", list: () => [{ id: "2049" }] });
+  connectDocumentSource(wb.core, { id: "test.products", format: "shop.product", list: () => [{ id: "2049" }] });
   const performed: VerbLike[] = [];
   const options: SandboxToolsOptions = {
     getLibrary: () => library,

@@ -1,0 +1,47 @@
+{
+  "name": "unknown key where additional bindings are not admitted",
+  "catalog": "open-context",
+  "document": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "w1",
+    "name": "fixture",
+    "workspaces": [
+      {
+        "id": "main",
+        "name": "main",
+        "tree": {
+          "id": "n-00000002-0000",
+          "leaf": {
+            "viewId": "v-00000001-0000"
+          }
+        }
+      }
+    ],
+    "views": {
+      "v-00000001-0000": {
+        "id": "v-00000001-0000",
+        "appId": "session",
+        "documents": {
+          "extra": "t-1"
+        }
+      }
+    },
+    "viewOrder": [
+      "v-00000001-0000"
+    ],
+    "documents": {
+      "t-1": {
+        "id": "t-1",
+        "format": "agentlogic.transcript-ref",
+        "schemaVersion": 1,
+        "body": {}
+      }
+    }
+  },
+  "expected": {
+    "ok": false,
+    "code": "unknown_binding",
+    "path": "views[\"v-00000001-0000\"].documents[\"extra\"]"
+  }
+}

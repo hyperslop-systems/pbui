@@ -1,7 +1,7 @@
 import { toJson } from "@bufbuild/protobuf";
 import { Direction, type AppView, type Node, type WorkbenchDocument, WorkbenchDocumentSchema } from "@hyperslop-systems/workbench-protocol";
 import { badgeOf, type BadgeState, type PortDeclaration, type PortDirection } from "@hyperslop-systems/pbui/link-kernel";
-import { documentSlots, type WorkbenchAppManifest } from "./apps";
+import { bindingNames, type WorkbenchAppManifest } from "./apps";
 import type { WorkbenchCore } from "./createWorkbenchCore";
 import { MISSING_APP_ID, specOf, type LayoutSpec } from "./document";
 import type { GeometrySnapshot } from "./geometry";
@@ -48,7 +48,9 @@ export interface DescribedApp {
   singleton: boolean;
   viewCardinality: "one" | "many";
   duplicatePlacement: "clone" | "link";
+  /** The application must be opened from a document (`launch === "requires-bindings"`). */
   docBound: boolean;
+  launch: "unbound" | "requires-bindings" | "hidden";
   bindings?: string[];
   ports?: DescribedPort[];
   blurb?: string;
@@ -212,14 +214,17 @@ function describeLinks(core: WorkbenchCore, doc: WorkbenchDocument): WorkbenchDe
 }
 
 function describeApp(app: WorkbenchAppManifest, presentation: DescribePresentation | null): DescribedApp {
-  const slots = documentSlots(app);
+  const slots = bindingNames(app);
   return {
     id: app.id,
     title: presentation?.title ?? app.id,
     singleton: app.viewCardinality === "one",
     viewCardinality: app.viewCardinality,
     duplicatePlacement: app.duplicatePlacement,
-    docBound: slots.length > 0,
+    // "Must be opened from something": the launch policy, not the mere
+    // presence of a binding (an optional context binding launches unbound).
+    docBound: app.launch === "requires-bindings",
+    launch: app.launch,
     ...(slots.length > 0 ? { bindings: slots } : {}),
     ...(app.ports && app.ports.length > 0 ? { ports: app.ports.map(describePort) } : {}),
     ...(presentation?.blurb ? { blurb: presentation.blurb } : {}),

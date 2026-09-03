@@ -1,6 +1,5 @@
 import { Direction, type Node, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import type { ManifestCatalog } from "./apps";
-import { documentSlots } from "./apps";
 import { diagnostic, type ValidationResult, type WorkbenchDiagnostic } from "./diagnostics";
 
 /**
@@ -124,11 +123,25 @@ export function validateWorkbenchDocument(doc: WorkbenchDocument, options: Valid
       if (first) report("duplicate_singleton", `${path}.appId`, `application "${app.id}" already has view "${first}"`);
       else singletons.set(app.id, view.id);
     }
-    const slots = new Set(documentSlots(app));
+    // The same checks, in the same order, as pkg/workbench (design doc 04
+    // §9, §12.5): legality, existence, format; then requiredness.
     for (const [slot, documentId] of Object.entries(view.documents)) {
       const bindingPath = `${path}.documents["${slot}"]`;
-      if (!slots.has(slot) && !app.openBindings) report("unknown_binding", bindingPath, `application "${app.id}" does not define binding "${slot}"`);
-      if (!doc.documents[documentId]) report("unknown_document", bindingPath, `document "${documentId}" does not exist`);
+      const rule = app.bindings[slot];
+      if (!rule && !app.additionalBindings) {
+        report("unknown_binding", bindingPath, `application "${app.id}" does not define binding "${slot}"`);
+        continue;
+      }
+      const payload = doc.documents[documentId];
+      if (!payload) {
+        report("unknown_document", bindingPath, `document "${documentId}" does not exist`);
+        continue;
+      }
+      const formats = rule ? rule.formats : app.additionalBindings?.formats;
+      if (formats && !formats.includes(payload.format)) report("invalid_binding_format", bindingPath, `binding "${slot}" of application "${app.id}" accepts ${formats.map((f) => `"${f}"`).join(", ")}; document "${documentId}" has format "${payload.format}"`);
+    }
+    for (const [slot, rule] of Object.entries(app.bindings)) {
+      if (rule.required && !view.documents[slot]) report("required_binding", `${path}.documents`, `application "${app.id}" requires binding "${slot}"`);
     }
   }
 

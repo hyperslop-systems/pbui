@@ -1,0 +1,37 @@
+{
+  "apps": [
+    {
+      "id": "notes"
+    },
+    {
+      "id": "chat",
+      "bindings": {
+        "conversation": {
+          "required": false,
+          "formats": [
+            "chat.conversation"
+          ]
+        }
+      }
+    },
+    {
+      "id": "sku",
+      "bindings": {
+        "product": {
+          "required": true,
+          "formats": [
+            "shop.product"
+          ]
+        }
+      }
+    },
+    {
+      "id": "any",
+      "bindings": {
+        "thing": {
+          "required": false
+        }
+      }
+    }
+  ]
+}

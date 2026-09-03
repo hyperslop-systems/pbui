@@ -25,16 +25,37 @@ type (
 	Mutation        = workbenchv1.Mutation
 )
 
-// BindingRule describes one named document binding supported by an app.
+// BindingRule describes one named document binding supported by an app:
+// whether a view must carry it, and which document formats may fill it
+// (empty means any). The same facts the TypeScript manifest declares as
+// WorkbenchBindingRule (design doc 04 §9.2–9.3).
 type BindingRule struct {
 	Required bool
+	Formats  []string
 }
 
 // ApplicationDescriptor is the server-visible portion of an application.
+// AdditionalBindings, when set, admits bindings beyond DocumentBindings
+// (an application whose inputs are named by what it binds), constrained
+// to the rule's Formats; nil means unknown bindings are refused.
 type ApplicationDescriptor struct {
-	ID               string
-	Singleton        bool
-	DocumentBindings map[string]BindingRule
+	ID                 string
+	Singleton          bool
+	DocumentBindings   map[string]BindingRule
+	AdditionalBindings *BindingRule
+}
+
+// acceptsFormat reports whether a rule admits a document of the format.
+func (r BindingRule) acceptsFormat(format string) bool {
+	if len(r.Formats) == 0 {
+		return true
+	}
+	for _, allowed := range r.Formats {
+		if allowed == format {
+			return true
+		}
+	}
+	return false
 }
 
 // ApplicationCatalog supplies the host application's registered apps.

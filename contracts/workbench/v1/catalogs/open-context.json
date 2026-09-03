@@ -1,0 +1,17 @@
+{
+  "apps": [
+    {
+      "id": "session",
+      "bindings": {
+        "transcript": {
+          "required": false,
+          "formats": [
+            "agentlogic.transcript-ref"
+          ],
+          "role": "context"
+        }
+      },
+      "launch": "unbound"
+    }
+  ]
+}

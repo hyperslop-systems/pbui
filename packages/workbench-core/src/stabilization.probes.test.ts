@@ -91,6 +91,7 @@ describe("stabilization probes (design doc 04 §4, §12)", () => {
     let resources = ["c-1"];
     const listeners = new Set<() => void>();
     const source: DocumentSource = {
+      id: "chat.conversations",
       format: "chat.conversation",
       list: () => resources.map((id) => ({ id })),
       subscribe(listener) {

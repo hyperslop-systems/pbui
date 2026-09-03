@@ -1,7 +1,10 @@
 import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
+import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import type { ManifestCatalog } from "../apps";
 import type { WorkbenchCore } from "../createWorkbenchCore";
 import { parseWorkbenchDocument, serializeDocument } from "../document";
+import { documentSourceMutations, type DocumentSource } from "../sources";
+import { validateWorkbenchDocument } from "../validation";
 
 /** The three methods this needs from `localStorage`, so a test can pass a Map. */
 export interface StorageLike {
@@ -39,6 +42,13 @@ export interface ReadOptions {
   migrate?(payload: unknown, fromVersion: number): unknown | null;
   /** Validate the stored document against a catalog too, so a layout naming a retired application falls back rather than failing construction. */
   apps?: ManifestCatalog;
+  /**
+   * Hydrate before validating (design doc 04 §9.7): the stubs these
+   * sources would contribute are added to the parsed document first, so a
+   * layout stored before a source existed — or bound to a resource whose
+   * stub was never persisted — is repaired, not discarded.
+   */
+  sources?: readonly DocumentSource[];
   /** Told why a stored entry was discarded; default silence (the product falls back to its default layout). */
   onDiscard?(reason: string): void;
 }
@@ -91,10 +101,21 @@ export function readWorkbenchSnapshot(key: string, options: ReadOptions = {}): W
     if (!current || typeof current !== "object") return discard(`migrate discarded envelope version ${version}`);
   }
   const envelope = current as { document?: unknown; workspaceId?: unknown };
-  const parsed = parseWorkbenchDocument(typeof envelope.document === "string" ? envelope.document : JSON.stringify(envelope.document), options.apps ? { apps: options.apps } : {});
-  if (!parsed.ok) return discard(parsed.diagnostics.map((d) => `${d.code}${d.path ? ` at ${d.path}` : ""}: ${d.detail}`).join("; "));
+  const explain = (diagnostics: readonly { code: string; path: string; detail: string }[]) => diagnostics.map((d) => `${d.code}${d.path ? ` at ${d.path}` : ""}: ${d.detail}`).join("; ");
+  // Structural parse first, sources second, the catalog last.
+  const parsed = parseWorkbenchDocument(typeof envelope.document === "string" ? envelope.document : JSON.stringify(envelope.document));
+  if (!parsed.ok) return discard(explain(parsed.diagnostics));
+  let document = parsed.document;
+  for (const source of options.sources ?? []) {
+    const { mutations } = documentSourceMutations(document, source);
+    if (mutations.length > 0) document = applyMutations(document, mutations);
+  }
+  if (options.apps) {
+    const checked = validateWorkbenchDocument(document, { apps: options.apps });
+    if (!checked.ok) return discard(explain(checked.diagnostics));
+  }
   const workspaceId = typeof envelope.workspaceId === "string" ? envelope.workspaceId : undefined;
-  return { document: parsed.document, ...(workspaceId ? { workspaceId } : {}) };
+  return { document, ...(workspaceId ? { workspaceId } : {}) };
 }
 
 export interface LocalPersistenceOptions extends Omit<ReadOptions, "migrate" | "apps" | "onDiscard"> {

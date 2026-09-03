@@ -1,4 +1,5 @@
 import { documentSlotPort } from "@hyperslop-systems/pbui";
+import { PROGRAM_DOCUMENT_FORMAT } from "./connect";
 import { defineWorkbenchApp, type AppProps, type WorkbenchApp } from "@hyperslop-systems/pbui-workbench";
 import type { SandboxHost } from "./host/hostOptions";
 import { PROGRAM_BINDING, ScriptTile } from "./ScriptTile";
@@ -22,10 +23,20 @@ export const GENERATED_GROUP = "GENERATED";
 export function createScriptApp(host: SandboxHost, options: ScriptAppOptions = {}): WorkbenchApp {
   const { group = GENERATED_GROUP, tone = "var(--pbui-tone-widget)" } = options;
   return defineWorkbenchApp({
-    // `openBindings`: a program names its own bindings (`product`, `order`…)
-    // beyond the one slot this manifest can declare, so the core must not
-    // report them as `unknown_binding`; each bound document must still exist.
-    manifest: { id: "script", duplicatePlacement: "link", ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile runs")], openBindings: true },
+    // A program names its own inputs (`product`, `order`…) beyond the one
+    // slot this manifest can declare, and they are per VIEW — two tiles may
+    // run one program on two products — so they stay in `view.documents`
+    // under `additionalBindings` (design doc 04 §9.4; formats unconstrained,
+    // since an input may be any product document). The program binding
+    // itself takes only program stubs.
+    manifest: {
+      id: "script",
+      duplicatePlacement: "link",
+      ports: [documentSlotPort(PROGRAM_BINDING, "the program this tile runs")],
+      bindings: { [PROGRAM_BINDING]: { required: false, formats: [PROGRAM_DOCUMENT_FORMAT] } },
+      additionalBindings: {},
+      launch: "requires-bindings",
+    },
     presentation: {
       title: "program",
       tone,

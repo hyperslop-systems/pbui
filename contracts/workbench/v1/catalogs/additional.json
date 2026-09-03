@@ -1,0 +1,32 @@
+{
+  "apps": [
+    {
+      "id": "script",
+      "bindings": {
+        "program": {
+          "required": false,
+          "formats": [
+            "sandbox.program"
+          ]
+        }
+      },
+      "additionalBindings": {
+        "formats": [
+          "shop.product"
+        ]
+      }
+    },
+    {
+      "id": "script-any",
+      "bindings": {
+        "program": {
+          "required": false,
+          "formats": [
+            "sandbox.program"
+          ]
+        }
+      },
+      "additionalBindings": {}
+    }
+  ]
+}

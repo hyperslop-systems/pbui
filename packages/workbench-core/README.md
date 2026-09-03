@@ -46,23 +46,26 @@ const advisory = core.preview(commands.close(placementId));
 
 Geometry is a value: pass `execute(command, { geometry })` with a `GeometrySnapshot` the caller measured; without one the policy's deterministic fallbacks apply.
 
+## Bindings and launch policy
+
+A manifest declares the legal `view.documents` keys as binding rules — `bindings: { product: { required: true, formats: ["shop.product"], role: "primary" } }` — and a launch policy: `"unbound"` (the launcher may create a view with no bindings), `"requires-bindings"` (the application is a view OF something and is opened from it), `"hidden"`. A `documentSlot` port declares a binding `{ required: false, role: "primary" }` unless a rule says otherwise, and the launch policy defaults to `requires-bindings` when any binding is primary. An application whose inputs are named by what it binds (the sandbox's `script`) sets `additionalBindings: { formats? }`. The core validates, in this order and with the same codes as `pkg/workbench`: `unknown_binding`, `unknown_document`, `invalid_binding_format`, then `required_binding`; the shared fixtures under `contracts/workbench/v1` are asserted by both validators.
+
 ## Documents for what tiles bind
 
-The core validates every `view.documents` binding against the document store, as `pkg/workbench` does: a binding must name a slot the manifest declares (`unknown_binding`) and a document that exists (`unknown_document`). Products bind things that live elsewhere — a conversation in a registry, a program in a library, a product in a catalogue — so those get a stub document that stands for them:
+The core validates every `view.documents` binding against the document store, so products bind things that live elsewhere — a conversation in a registry, a program in a library, a product in a catalogue — through a stub document that stands for them:
 
 ```ts
 import { connectDocumentSource } from "@hyperslop-systems/workbench-core";
 
 const disconnect = connectDocumentSource(core, {
+  id: "chat.conversations",
   format: "chat.conversation",
   list: () => registry.all().map((c) => ({ id: c.id })),
   subscribe: (listener) => registry.subscribe(listener),
 });
 ```
 
-One stub per listed resource, of that format, put when missing and deleted when the source no longer lists it — unless a view still binds it, in which case the stub stays until the view goes. The sync also re-runs when the core's document is replaced (a restore, a reset), so a document that arrived without stubs gets them. The host stays the resource's home; a stub carries identity and, optionally, a small body written once.
-
-An application whose bindings are declared by the bound resource rather than by its manifest (the sandbox's `script`, whose programs each name their own) sets `openBindings: true` on its manifest; `unknown_binding` is then not reported for its views, and every bound document must still exist.
+One stub per listed resource, of that format, put when missing and deleted when the source no longer lists it — unless a view still binds it, in which case the stub stays until the view goes. A stub records its writer in the reserved body field `$source`: a listed id that names a document of another format is a collision (`onCollision`, never overwritten), and a stub of the same format owned by another source is left alone. `update: "replace-body"` makes the body follow the source. Reconciliation is tried synchronously and, when signalled from inside a publication, retried once in a microtask, after it. `readWorkbenchSnapshot(key, { apps, sources })` hydrates a stored layout with the sources' stubs BEFORE validating it against the catalog, so a layout stored before a source existed is repaired rather than discarded.
 
 ## Publication order and observer failures
 
