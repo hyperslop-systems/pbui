@@ -66,7 +66,7 @@ export function PortRail({ view, renderPort }: PortRailProps) {
     const node = (
       <div
         key={`${side}:${port.id}`}
-        ref={(element) => registerPort(port.id, element)}
+        ref={(element) => registerPort(port.id, side, element)}
         data-part="port-rail-port"
         data-port-id={port.id}
         data-side={side}

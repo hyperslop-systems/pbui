@@ -1,10 +1,8 @@
 import {
   applyLinkVerb,
-  bindingsAfterAppReplaced,
   bindingsAfterClone,
-  bindingsAfterViewsRemoved,
   createPresentationTypeGraph,
-  identityAfterViewsRemoved,
+  linksAfterPortsRemoved,
   type Binding,
   type LinkDeps,
   type LinkSnapshot,
@@ -53,8 +51,6 @@ export interface WorkbenchLinks {
    * effects change nothing.
    */
   stage(effects: readonly LocalEffect[]): LinkRuntimeState | null;
-  /** The runtime state after a wholesale replacement: the values of views the new document no longer has are forgotten. Null when nothing is forgotten. */
-  stageReplace(doc: WorkbenchDocument): LinkRuntimeState | null;
   /** Set a staged state without notifying; the core calls this between installing its document and publishing. */
   install(next: LinkRuntimeState): void;
   /** Attempt every runtime subscriber once, recording failures for the core's report. */
@@ -135,27 +131,23 @@ export function createWorkbenchLinks(options: CreateWorkbenchLinksOptions = {}):
     maintenance(doc, mutations) {
       const s = snapshot(doc);
       if (s.bindings.size === 0 && s.identity.length === 0) return null;
-      const removed = new Set<string>();
-      const replaced: Array<{ viewId: string; appId: string }> = [];
+      const removedPorts = new Set<PortId>();
       const cloned = new Map<string, string>();
       for (const mutation of mutations) {
         const body = mutation.body;
-        if (body.case === "viewDelete") removed.add(body.value.viewId);
-        else if (body.case === "viewConfigure" && body.value.appId) replaced.push({ viewId: body.value.viewId, appId: body.value.appId });
-        else if (body.case === "viewClone") cloned.set(body.value.sourceViewId, body.value.newViewId);
+        if (body.case === "viewDelete") {
+          for (const [port, definition] of s.ports) if (definition.viewId === body.value.viewId) removedPorts.add(port);
+        } else if (body.case === "viewConfigure" && body.value.appId && doc.views[body.value.viewId]?.appId !== body.value.appId) {
+          const kept = new Set((catalog().get(body.value.appId)?.ports ?? []).map((port) => port.name));
+          for (const [port, definition] of s.ports) if (definition.viewId === body.value.viewId && !kept.has(definition.declaration.name)) removedPorts.add(port);
+        } else if (body.case === "viewClone") {
+          cloned.set(body.value.sourceViewId, body.value.newViewId);
+        }
       }
-      if (removed.size === 0 && replaced.length === 0 && cloned.size === 0) return null;
-      let next: ReadonlyMap<PortId, Binding> = removed.size > 0 ? bindingsAfterViewsRemoved(removed, s, links.deps) : s.bindings;
-      for (const { viewId, appId } of replaced) {
-        const before = doc.views[viewId]?.appId;
-        if (before === appId) continue;
-        const kept = new Set((catalog().get(appId)?.ports ?? []).map((port) => port.name));
-        next = bindingsAfterAppReplaced(viewId, kept, next);
-      }
-      if (cloned.size > 0) next = bindingsAfterClone(cloned, next);
-      const identity = removed.size > 0 ? identityAfterViewsRemoved(removed, s) : { identity: [...s.identity], classes: [...s.classes.values()] };
-      const history = new Map([...s.history].filter(([port]) => identity.classes.some((cls) => cls.members.includes(port))));
-      return linksChange(doc, { bindings: next, identity: identity.identity, classes: identity.classes, history });
+      if (removedPorts.size === 0 && cloned.size === 0) return null;
+      const lifecycle = removedPorts.size > 0 ? linksAfterPortsRemoved(removedPorts, s, links.deps) : { bindings: s.bindings, identity: [...s.identity], classes: [...s.classes.values()], history: s.history };
+      const bindings: ReadonlyMap<PortId, Binding> = cloned.size > 0 ? bindingsAfterClone(cloned, lifecycle.bindings) : lifecycle.bindings;
+      return linksChange(doc, { ...lifecycle, bindings });
     },
     stage(effects) {
       const before = runtime.getState();
@@ -163,15 +155,6 @@ export function createWorkbenchLinks(options: CreateWorkbenchLinksOptions = {}):
       for (const effect of effects) {
         if (effect.kind === "link-runtime") next = reduceRuntimeEffects(next, effect.effects);
         else if (effect.kind === "forget-view-values") next = forgetViewValues(next, effect.viewId);
-      }
-      return next === before ? null : next;
-    },
-    stageReplace(doc) {
-      const before = runtime.getState();
-      let next = before;
-      for (const port of [...before.emitted.keys(), ...before.attended.keys()]) {
-        const viewId = port.split("/")[0]!;
-        if (!doc.views[viewId]) next = forgetViewValues(next, viewId);
       }
       return next === before ? null : next;
     },

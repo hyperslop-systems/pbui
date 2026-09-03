@@ -1,3 +1,5 @@
+import { create } from "@bufbuild/protobuf";
+import { MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { describe, expect, it, vi } from "vitest";
 import { createPresentationTypeGraph, linkVerbs } from "@hyperslop-systems/pbui/link-kernel";
 import { defineAppManifest } from "./apps";
@@ -5,6 +7,7 @@ import { commands, type WorkbenchCommand } from "./commands";
 import { createWorkbenchCore } from "./createWorkbenchCore";
 import { layout, split, tile } from "./document";
 import { createWorkbenchLinks } from "./links/collaborator";
+import { bindingsOf } from "./links/document";
 import { leavesOfWorkspace } from "./queries";
 import { sequentialIds } from "./testing";
 
@@ -26,6 +29,41 @@ function twoTiles() {
   const [left, right] = leavesOfWorkspace(core.getState().index, "main").map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
   return { core, links, left: left!, right: right! };
 }
+
+describe("application replacement lifecycle", () => {
+  function sourceAndFollower() {
+    const ids = sequentialIds();
+    const links = createWorkbenchLinks({ deps: { graph } });
+    const core = createWorkbenchCore({ initial: layout(split("row", 0.5, tile("orders"), tile("detail")), { ids }), apps, ids, links });
+    const [sourcePlacement, followerPlacement] = leavesOfWorkspace(core.getState().index, "main");
+    const source = sourcePlacement!.body.case === "leaf" ? sourcePlacement!.body.value.viewId : "";
+    const follower = followerPlacement!.body.case === "leaf" ? followerPlacement!.body.value.viewId : "";
+    expect(core.execute(linkVerbs.follow(`${source}/order`, `${follower}/order`) as WorkbenchCommand).ok).toBe(true);
+    links.runtime.emit(`${source}/order`, { type: "order", value: { id: "1042" } });
+    return { core, links, source, follower, sourcePlacement: sourcePlacement!.id };
+  }
+
+  it("applies a dependent follower's source-close policy and forgets the old app runtime", () => {
+    const { core, links, source, follower, sourcePlacement } = sourceAndFollower();
+    expect(core.execute(commands.replace(sourcePlacement, "notes")).ok).toBe(true);
+    expect(bindingsOf(core.getState().document).get(`${follower}/order`)).toMatchObject({
+      kind: "hold",
+      reference: { type: "order", value: { id: "1042" } },
+      suspended: { kind: "unresolved", diagnostic: { code: "source-closed" } },
+    });
+    expect(links.runtime.getState().emitted.has(`${source}/order`)).toBe(false);
+  });
+
+  it("gives a raw app-changing mutation the same durable and runtime maintenance", () => {
+    const { core, links, source, follower } = sourceAndFollower();
+    const result = core.apply([
+      create(MutationSchema, { body: { case: "viewConfigure", value: { viewId: source, appId: "notes" } } }),
+    ]);
+    expect(result.ok).toBe(true);
+    expect(bindingsOf(core.getState().document).get(`${follower}/order`)).toMatchObject({ kind: "hold" });
+    expect(links.runtime.getState().emitted.has(`${source}/order`)).toBe(false);
+  });
+});
 
 describe("planning purity (the Phase 0 probe, inverted)", () => {
   it("preview of an identity merge leaves the document, the session, the live link runtime, and every observer untouched", () => {

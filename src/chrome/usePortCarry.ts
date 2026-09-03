@@ -28,7 +28,10 @@ export interface PortCarryState {
   ctrl: boolean;
 }
 
-const PORTS = new Map<string, HTMLElement>();
+export type PortAnchorSide = "in" | "out";
+
+type PortAnchors = Partial<Record<PortAnchorSide, HTMLElement>>;
+const PORTS = new Map<string, PortAnchors>();
 let state: PortCarryState | null = null;
 const listeners = new Set<() => void>();
 
@@ -37,14 +40,21 @@ function setState(next: PortCarryState | null): void {
   for (const listener of listeners) listener();
 }
 
-/** Register a rail's port element; a ref callback. */
-export function registerPort(id: string, element: HTMLElement | null): void {
-  if (element) PORTS.set(id, element);
+/** Register one visual side of a rail port; an inout port owns two independent anchors. */
+export function registerPort(id: string, side: PortAnchorSide, element: HTMLElement | null): void {
+  const anchors = PORTS.get(id) ?? {};
+  if (element) {
+    anchors[side] = element;
+    PORTS.set(id, anchors);
+    return;
+  }
+  delete anchors[side];
+  if (anchors.in || anchors.out) PORTS.set(id, anchors);
   else PORTS.delete(id);
 }
 
-export function portElement(id: string): HTMLElement | null {
-  return PORTS.get(id) ?? null;
+export function portElement(id: string, side: PortAnchorSide): HTMLElement | null {
+  return PORTS.get(id)?.[side] ?? null;
 }
 
 export function registeredPorts(): readonly string[] {

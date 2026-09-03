@@ -8,6 +8,7 @@ import { useState } from "react";
 import { LauncherShell } from "./LauncherShell";
 import { routeWorkbenchKey, isEditableTarget, isModKey, type ShortcutContext } from "./shortcutRouting";
 import { TileFrame } from "./TileFrame";
+import { portElement, registerPort, registeredPorts } from "./usePortCarry";
 import { registeredTileCount, startTileCarry, useTileDrag, zoneFor } from "./useTileDrag";
 
 afterEach(cleanup);
@@ -47,6 +48,24 @@ describe("zoneFor (DR-U4: the banded geometry)", () => {
     // 2000x2000: band = 110, so 150px in from the edge is already centre.
     expect(zoneFor(box(2000, 2000), 150, 1000)).toBe("center");
     expect(zoneFor(box(2000, 2000), 100, 1000)).toBe("left");
+  });
+});
+
+describe("port anchor registry", () => {
+  test("keeps the input and output anchors of one inout port independent", () => {
+    const input = document.createElement("div");
+    const output = document.createElement("div");
+    registerPort("view/selection", "in", input);
+    registerPort("view/selection", "out", output);
+    expect(portElement("view/selection", "in")).toBe(input);
+    expect(portElement("view/selection", "out")).toBe(output);
+    expect(registeredPorts()).toContain("view/selection");
+
+    registerPort("view/selection", "in", null);
+    expect(portElement("view/selection", "in")).toBeNull();
+    expect(portElement("view/selection", "out")).toBe(output);
+    registerPort("view/selection", "out", null);
+    expect(registeredPorts()).not.toContain("view/selection");
   });
 });
 

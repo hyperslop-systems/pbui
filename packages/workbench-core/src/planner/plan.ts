@@ -1,7 +1,7 @@
 import type { Mutation } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 import { isWorkbenchLinkCommand, type WorkbenchCommand } from "../commands";
-import type { LocalEffect } from "../effects";
+import { linkLifecycleEffects, type LocalEffect } from "../effects";
 import { buildWorkbenchIndex } from "../graph";
 import { orphanViewIds } from "../queries";
 import type { WorkbenchSession } from "../session";
@@ -166,9 +166,7 @@ export function plan(world: PlanWorld, commands: readonly WorkbenchCommand[]): P
         if (!applied.ok) return { kind: "refused", code: applied.code, because: applied.because, index: commands.length - 1, command: commands[commands.length - 1]! };
       }
     }
-    for (const item of mutations) {
-      if (item.body.case === "viewDelete") effects.push({ kind: "forget-view-values", viewId: item.body.value.viewId });
-    }
+    effects.push(...linkLifecycleEffects(world.document, draft.document));
   }
 
   return {

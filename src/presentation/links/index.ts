@@ -80,7 +80,8 @@ export {
 export type { LinkPlan } from "./plan";
 export { applyLinkVerb } from "./apply";
 export type { ApplyOptions, ApplyResult, RuntimeEffect } from "./apply";
-export { bindingsAfterAppReplaced, bindingsAfterClone, bindingsAfterViewsRemoved, identityAfterViewsRemoved } from "./lifecycle";
+export { bindingsAfterAppReplaced, bindingsAfterClone, bindingsAfterViewsRemoved, identityAfterViewsRemoved, linksAfterPortsRemoved } from "./lifecycle";
+export type { RemovedPortLifecycle } from "./lifecycle";
 export { badgeOf, badgesOfView } from "./badge";
 export type { Badge, BadgeState } from "./badge";
 export { checkInvariants } from "./invariants";

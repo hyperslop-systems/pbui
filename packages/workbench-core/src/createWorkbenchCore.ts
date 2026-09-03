@@ -5,7 +5,7 @@ import { createManifestCatalog, isManifestCatalog, type ManifestCatalog, type Wo
 import { describeWorkbenchCommand, type WorkbenchCommand } from "./commands";
 import { diagnostic, WorkbenchDiagnosticError, type WorkbenchDiagnostic } from "./diagnostics";
 import { parseWorkbenchDocument, serializeDocument } from "./document";
-import type { LocalEffect } from "./effects";
+import { linkLifecycleEffects, type LocalEffect } from "./effects";
 import type { GeometrySnapshot } from "./geometry";
 import { buildWorkbenchIndex, type WorkbenchIndex } from "./graph";
 import type { WorkbenchLinks } from "./links/collaborator";
@@ -276,17 +276,12 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     const checked = validateWorkbenchDocument(next, { apps });
     if (!checked.ok) return { ok: false, diagnostics: checked.diagnostics };
     next = own(WorkbenchDocumentSchema, next);
-    // The runtime holds values keyed by view; a view the new document does
-    // not have must not keep emitting into badges from beyond the grave.
-    // Staged as a value and installed with the document (same path as a commit).
-    const linkState = links?.stageReplace(next) ?? null;
+    // Runtime lifecycle follows semantic before/after state, including an
+    // application replacement that keeps the same view id.
+    const linkState = links?.stage(linkLifecycleEffects(state.document, next)) ?? null;
     install({ document: next, session: { workspaceId: session?.workspaceId ?? state.session.workspaceId, activePlacementId: session?.activePlacementId ?? null }, ...(linkState ? { linkState } : {}) });
     return { ok: true };
   };
-
-  /** The forget-values effects a raw batch implies: one per deleted view. */
-  const forgetEffects = (mutations: readonly Mutation[]): LocalEffect[] =>
-    mutations.flatMap((item) => (item.body.case === "viewDelete" ? [{ kind: "forget-view-values" as const, viewId: item.body.value.viewId }] : []));
 
   const worldOf = (geometry: GeometrySnapshot | undefined, planIds: IdGenerator): PlanWorld => ({
     document: state.document,
@@ -387,7 +382,7 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
           return prepared;
         }
         if (isNoOp(prepared.document, undefined)) return { ok: true, changed: false };
-        install({ document: prepared.document, mutations: batch, effects: forgetEffects(batch) });
+        install({ document: prepared.document, mutations: batch, effects: linkLifecycleEffects(state.document, prepared.document) });
         return { ok: true, changed: true };
       } finally {
         if (phase === "preparing") phase = "idle";

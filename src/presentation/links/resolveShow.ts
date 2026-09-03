@@ -92,7 +92,7 @@ export interface ResolveShowOptions {
 }
 
 export const existingCandidateId = (port: PortId) => `existing:${port}`;
-export const spawnCandidateId = (appId: string, placementId: string) => `spawn:${appId}:${placementId}`;
+export const spawnCandidateId = (appId: string, portName: string, placementId: string) => `spawn:${appId}:${portName}:${placementId}`;
 
 function typeDistance(from: RuntimeTypeId, to: RuntimeTypeId, deps: LinkDeps): number {
   if (from === to) return 0;
@@ -185,7 +185,7 @@ export function resolveShow(query: ShowQuery, s: LinkSnapshot, deps: LinkDeps, o
     const roleDistance = query.role ? (app.semanticRole === query.role ? 0 : 1) : 0;
     for (const placement of options.placements ?? []) {
       candidates.push({
-        candidateId: spawnCandidateId(app.appId, placement.id),
+        candidateId: spawnCandidateId(app.appId, app.portName, placement.id),
         kind: "spawn",
         app,
         placement,
@@ -201,14 +201,15 @@ export function resolveShow(query: ShowQuery, s: LinkSnapshot, deps: LinkDeps, o
   const available = candidates.filter((candidate) => candidate.status.kind === "available");
   available.sort((a, b) => compareRank(a.rank, b.rank));
   const best = available[0];
+  // Placement index is the final rank component, so alternate placements
+  // for one target lose to its preferred placement. Equal-ranked distinct
+  // (app, port) targets remain an ambiguity; registration order never wins.
   const winners = best ? available.filter((candidate) => compareRank(candidate.rank, best.rank) === 0) : [];
-  // Spawn candidates never tie into an ambiguity among themselves: the first placement offered is the default spot.
-  const dedupedWinners = winners.length > 1 && winners.every((w) => w.kind === "spawn") ? [winners[0]!] : winners;
 
   return {
     candidates,
-    winners: dedupedWinners,
-    ambiguous: dedupedWinners.length > 1,
+    winners,
+    ambiguous: winners.length > 1,
     snapshotRevision: `${s.documentRevision}:${s.runtimeRevision}`,
   };
 }

@@ -12,6 +12,7 @@ export { useTileDrag, zoneFor, registeredTileCount, startTileCarry } from "./use
 export type { DockZone, DragZone, TileCarryOptions, UseTileDragOptions } from "./useTileDrag";
 // Port-to-port drag for connect-management mode (PBUI-LINK-1 Phase 3).
 export { portElement, portIdOf, registerPort, registeredPorts, resetPortCarry, startPortCarry, usePortCarry } from "./usePortCarry";
+export type { PortAnchorSide } from "./usePortCarry";
 export type { PortCarryOptions, PortCarryState } from "./usePortCarry";
 export { LauncherShell, splitDirectionFor } from "./LauncherShell";
 export type {

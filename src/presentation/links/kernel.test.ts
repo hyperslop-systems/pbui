@@ -3,7 +3,7 @@ import { applyLinkVerb } from "./apply";
 import { badgeOf, badgesOfView } from "./badge";
 import { effectiveBinding, evaluatePort } from "./evaluate";
 import { checkInvariants } from "./invariants";
-import { bindingsAfterAppReplaced, bindingsAfterClone, bindingsAfterViewsRemoved } from "./lifecycle";
+import { bindingsAfterAppReplaced, bindingsAfterClone, bindingsAfterViewsRemoved, linksAfterPortsRemoved } from "./lifecycle";
 import { planFollow, planPin, planResume, planUnlink } from "./plan";
 import { describeBinding, isBinding, terms } from "./terms";
 import { describeLinkVerb, isLinkVerb, linkVerbs } from "./verbs";
@@ -225,6 +225,23 @@ describe("lifecycle", () => {
     const s = world({ bindings: { "v-a/order": terms.follow("v-east/order", "L1"), "v-b/order": terms.follow("v-east/order", "L2") } });
     const next = bindingsAfterAppReplaced("v-a", new Set(["subject"]), s.bindings);
     expect([...next.keys()]).toEqual(["v-b/order"]);
+  });
+
+  it("arbitrary removed ports apply source-close and remove only identities and history that touch them", () => {
+    const s = world({
+      bindings: { "v-a/order": terms.follow("v-east/order", "L1") },
+      emitted: { "v-east/order": ORDER_1042 },
+      identity: [
+        { linkId: "I1", left: "v-east/selection", right: "v-west/selection", mergePolicy: "prefer-left" },
+        { linkId: "I2", left: "v-west/selection", right: "v-plot/selection", mergePolicy: "prefer-left" },
+      ],
+      history: { "v-east/selection": null, "v-west/selection": null, "v-plot/selection": null },
+    });
+    const next = linksAfterPortsRemoved(new Set(["v-east/order", "v-east/selection"]), s, deps);
+    expect(next.bindings.get("v-a/order")).toMatchObject({ kind: "hold", reference: ORDER_1042 });
+    expect(next.identity.map((entry) => entry.linkId)).toEqual(["I2"]);
+    expect([...next.classes[0]!.members].sort()).toEqual(["v-plot/selection", "v-west/selection"]);
+    expect([...next.history.keys()].sort()).toEqual(["v-plot/selection", "v-west/selection"]);
   });
 
   it("cloning re-keys terms onto the copies and keeps sources that were cloned pointing at the copies", () => {

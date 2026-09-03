@@ -22,7 +22,7 @@ function cubic(a: Point, b: Point): string {
 }
 
 function anchor(id: string, side: "in" | "out", root: HTMLElement): Point | null {
-  const element = portElement(id);
+  const element = portElement(id, side);
   if (!element) return null;
   const box = element.getBoundingClientRect();
   const origin = root.getBoundingClientRect();
