@@ -10,13 +10,24 @@ Topics:
 DocType: index
 Intent: long-term
 Owners: []
-RelatedFiles: []
+RelatedFiles:
+    - Path: repo://src/presentation/links/candidate.ts
+      Note: 'candidateTermOf: the term a verb persists'
+    - Path: repo://src/presentation/links/check.ts
+      Note: Static checker and the one dependency walk
+    - Path: repo://src/presentation/links/expression.ts
+      Note: The binding-program IR the ticket promotes to the one authority
+    - Path: repo://src/presentation/links/laws.test.ts
+      Note: §19.6 laws, checker coverage, parity
+    - Path: repo://src/presentation/links/plan.ts
+      Note: Planners reduced to operation policy
 ExternalSources: []
-Summary: "Phase 8 of the PBUI-KERNEL-1 clean-cutover guide: split out of PBUI-KERNEL-1; see KERNEL-1 guide §0.1"
-LastUpdated: 2026-09-02T18:47:29.919972726-04:00
-WhatFor: "Find the scope, specification pointer, and exit criteria for this follow-up to PBUI-KERNEL-1."
-WhenToUse: "After PBUI-KERNEL-1 Phase 7 has landed."
+Summary: 'Phase 8 of the PBUI-KERNEL-1 clean-cutover guide: split out of PBUI-KERNEL-1; see KERNEL-1 guide §0.1'
+LastUpdated: 2026-09-02T21:05:00-04:00
+WhatFor: Find the scope, specification pointer, and exit criteria for this follow-up to PBUI-KERNEL-1.
+WhenToUse: After PBUI-KERNEL-1 Phase 7 has landed.
 ---
+
 
 # Binding programs: internal link IR, static checker, planner integration
 
@@ -45,7 +56,9 @@ Split out of PBUI-KERNEL-1 on 2026-09-02 (guide §0.1) so that KERNEL-1 ships on
 
 ## Status
 
-Current status: **active**
+Implementation complete on the `task/add-plot-editor` branch (pbui 3f55488 → P5 commit). Phases: P1 laws and checker coverage as tests; P2 one dependency walk and titled diagnostics; P3 `candidateTermOf` shared by planners and apply; P4 the planners' duplicate type/cycle/context checks deleted after parity, IR constructors internal; P5 cross-package verification and screenshots. Exit criteria: wire round-trip fixtures unchanged (byte for byte); `normalize(normalize(b)) == normalize(b)`; `resume(pin(b)) == b` for follow/derived/ambient/alias; cycle and type diagnostics unchanged or improved (the checker names tiles and contexts). Evidence: [diary](./reference/01-diary.md) Steps 1–5, [screenshots](./various/screenshots/README.md), [tasks](./tasks.md).
+
+Not in scope, recorded for later: narrowed return types on `linkVerbs.*` to drop the `TermVerb` casts; whether a hold under a derivation should compile to a `broken` program rather than folding silently.
 
 ## Topics
 

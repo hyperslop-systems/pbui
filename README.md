@@ -143,6 +143,39 @@ Authoring rules, briefly:
 `packages/datalab-ui/src/pbui/help.tsx` is the reference product
 integration; the `WithContextualHelp` story shows the core wiring.
 
+## Link kernel: terms, programs, planners (PBUI-LINK-1, PBUI-KERNEL-2)
+
+`@hyperslop-systems/pbui/presentation` also exports the pure link kernel the
+workbench runs on: ports and contracts (`definePort`), the persisted binding
+grammar (`terms.ambient/constant/follow/alias/derived/hold/unresolved`), the
+evaluator (`evaluatePort`), the planners (`planFollow`, `planBind`,
+`planDerive`, …) and the transition (`applyLinkVerb`). Nothing in it imports
+React or a store.
+
+Since PBUI-KERNEL-2 the persisted grammar is the wire format only. Internally
+every term compiles to a binding program (source, relation application, held
+state, broken state) that evaluation, dependency extraction and the static
+checker all read. What the package exposes of that:
+
+- `normalizeBinding(b)` — `bindingOf(programOf(b))`; idempotent, and the
+  identity on every shape a planner writes.
+- `dependenciesOfBinding(b, { includeSuspended })` — the ports, relations and
+  link ids a term reads, as three sets; suspended wires count unless you say
+  otherwise. `dependsOn(port, target, snapshot)` is the one transitive walk.
+- `checkBinding(candidate, snapshot, deps, destination)` — structural
+  admissibility: sources, contexts, cells and relations exist; relation
+  domains and the destination type reach; no cycle. A relation that returns
+  `empty` in the current world is still valid: partiality is a runtime fact.
+- `candidateTermOf(verb)` — the exact term a `port.follow/bind/derive/ambient`
+  verb persists. Planners check it; `applyLinkVerb` stores it.
+
+A planner keeps only operation policy (existence, direction, self, document
+slots, held, shared, already linked, which relations are legal) and takes the
+rest of its verdict from the checker, so a refusal such as `Orders East ·
+order already reads from Detail B · order; that would be a cycle` has one
+source. The program's constructors (`programOf`, `bindingOf`, the
+`BindingProgram` types) are internal to `src/presentation/links/`.
+
 ## Datalab UI workspace package
 
 `packages/datalab-ui` contains `@hyperslop-systems/datalab-ui`, the complete
