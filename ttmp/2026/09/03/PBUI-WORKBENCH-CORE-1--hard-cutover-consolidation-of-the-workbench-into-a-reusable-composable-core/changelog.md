@@ -121,3 +121,12 @@ Phase 6: React shell cut over to the core (createWorkbenchShell/createWorkbench,
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/createWorkbenchShell.tsx — The shell over the core and the convenience constructor
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/describe.ts — Agent-facing description with presentations and geometry as inputs
 
+
+## 2026-09-03
+
+Phase 7: batch-preserving sync outbox (whole entries, per-batch rebase and isolation, destructive-batch conflicts) with tests (commit 580f1a9)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/sync/index.ts — The batch-preserving outbox
+

@@ -1045,3 +1045,59 @@ The shell's test corpus was ported rather than rewritten: every Surface, Launche
 ### Technical details
 
 - Shell suite: 22 files, 114 tests; core suite: 24 files, 171 tests (Phase 0 baseline was 31 files / 281 tests in the shell alone, before the goldens and the moves).
+
+## Step 14: Phase 7 — batch-preserving sync
+
+Phase 7 rewrote the sync outbox so the atomicity a local transition promises survives to the server. An outbox entry is one committed batch with a stable id and a `destructive` flag; a request carries whole batches in order; a 409 rebases batch by batch and refuses to replay a stale tree replacement; a 422 with isolation re-sends batches one at a time and never halves one. Local persistence had already moved to the core in Phase 6.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Deliver guide §17 Phase 7 (persistence landed in Phase 6; this step is the outbox).
+
+**Inferred user intent:** The server never sees half of a semantic transition, and a rebalance never silently overwrites another tab's layout.
+
+**Commit (code):** 580f1a9 — "PBUI-WORKBENCH-CORE-1 P7: batch-preserving sync"
+
+### What I did
+
+- `packages/workbench-core/src/sync/index.ts`: `OutboxEntry { id, mutations, destructive }`; `enqueue` makes one entry per batch; `send` concatenates whole entries into one request; `rebase(server, entries, afterConflict)` applies each entry whole and, after a 409, drops destructive entries with reason `conflict`; 422 isolation is per entry; `status()` counts batches; `onDropped(entries, "invalid" | "rebase" | "conflict")`.
+- `sync/sync.test.ts`: the old loop's guarantees ported to the core (order, in-flight survival, bootstrap adoption, request-id stability and distinction, transport backoff, 404 detach, stream refetch) plus the §19.6 cases: whole-batch rebase drop, destructive conflict, per-batch isolation (`[3, 2, 1]` requests, never `[3, 1, 1, 1]`), single invalid batch dropped whole, link topology plus maintenance as one batch.
+
+### Why
+
+- F5, F6, S9, Decision 8's reduced form.
+
+### What worked
+
+- The fake server from the old test needed no change; only what it observes changed (batch counts instead of mutation counts).
+
+### What didn't work
+
+- Nothing failed in this step.
+
+### What I learned
+
+- The one-request-many-batches shape keeps the request count of the old flattened outbox while preserving batch boundaries, because the Go server applies a request atomically anyway; isolation is the only path where batch boundaries cost extra requests.
+
+### What was tricky to build
+
+- Distinguishing "structurally inapplicable" (`rebase`) from "applicable but wrong" (`conflict`): the second needs the batch to declare itself, which `workspaceSetTree` does by kind. No other mutation is treated as destructive in version one.
+
+### What warrants a second pair of eyes
+
+- `adopt` (a normal response or a stream refetch) rebases queued entries WITHOUT the conflict rule; only a 409 marks destructive batches as conflicts. A stream refetch that arrives while a rebalance is queued will replay it if it still applies.
+
+### What should be done in the future
+
+- Phase 8 migrates the products that used `onDropped(mutations, reason)` to the entry-based signature.
+
+### Code review instructions
+
+- `packages/workbench-core/src/sync/index.ts` (`rebase`, `send`), then `sync.test.ts`.
+- Validate: `pnpm --filter @hyperslop-systems/workbench-core test -- src/sync`.
+
+### Technical details
+
+- Concurrency statement (guide §15.5) is in the module header: optimistic single-user / multi-client persistence with batch-level conflict detection; no collaborative editing.
