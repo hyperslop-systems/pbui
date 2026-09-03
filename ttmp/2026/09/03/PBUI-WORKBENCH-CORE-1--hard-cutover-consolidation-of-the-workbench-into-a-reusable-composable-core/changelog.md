@@ -210,3 +210,8 @@ S1+S2: attemptAll publication, onObserverError, reentrant_execution refusal, def
 
 S3: acknowledged sync adoption, incompatible phase, bootstrap covered entries, isolation overlay, validateDocument; source scheduling pinned (commit 929c9e1)
 
+
+## 2026-09-03
+
+S4: ingress clone, development deep freeze, snapshot(), id pool for preview purity, no-op detection, replacement title, description capture, expansion index, shell completeness and focus scoping; all seven probes green (commit 2833785)
+

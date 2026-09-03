@@ -1839,3 +1839,67 @@ Bootstrap no longer rebases the outbox over the document it built: the covered e
 ### Technical details
 
 - Remaining expected-fail probes after S3: EXPOSED_STATE_MUTATION, PREVIEW_ID_DRIFT, DROPPED_REPLACE_TITLE (all S4).
+
+## Step 25: Phase S4 — the core owns its state, and preview stops spending ids
+
+Phase S4 closed Track A. The core clones every document at its doors — `initial`, replacement (so restore, reset and adoption) — and, outside production, deep-freezes what `getState()` hands out, so a caller that writes on the document or the index fails at the assignment rather than corrupting state under an unchanged revision. `snapshot()` is the door for an integration that wants a document of its own. Preview is pure with respect to execution: plans draw ids from a lookahead pool and only a committed plan consumes what it drew, so `execute` after `preview` mints exactly the ids the preview reported, deterministic generators keep their sequence, and the goldens keep their ids. A transition that reproduces the current document with an unchanged session is `changed: false` and reaches neither revision nor outbox.
+
+The five edge fixes from the review landed alongside: a same-app replacement with a title keeps the title (and keeps its bindings), the description reads one captured index throughout, a refusal inside an expanded link command reports the caller's command index, the shell requires a presentation for every manifest at construction, and `focusPlacement` never falls back to the global document. All seven review probes now assert the required behaviour with no `fails` marker.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 20)
+
+**Assistant interpretation:** Design doc 04 Phase S4: clone at ingress, development freeze, safe snapshot, a non-consuming preview allocator, and the §6.8 edge fixes; exit gate: all seven probes inverted and green.
+
+**Inferred user intent:** No public reference can mutate internal state; "what would happen" and "what happened" agree.
+
+**Commit (code):** 2833785 — "PBUI-WORKBENCH-CORE-1 S4: owned state, non-consuming preview ids, semantic edge fixes"
+
+### What I did
+
+- `src/ownership.ts`: `defaultOwnership` (freeze unless `NODE_ENV=production`), `own` (clone), `deepFreeze`, `readonlyIndex` (the index's maps refuse `set`/`delete`/`clear` with a message naming the gateway).
+- `src/ids.ts`: `createIdPool(generator)` with `fork()` → `{ ids, commit }`; per-prefix lookahead buffers.
+- `createWorkbenchCore.ts`: `ownership` option; `snapshot()`; ingress clone in the constructor and `replace`; `owned()` at every install; `planned()` forks the pool and `execute` commits it only after a successful prepare; `isNoOp` (protobuf `equals` on the document plus a session comparison) in `execute` and `apply`.
+- `planner/show.ts`: same-app replace keeps bindings and applies the title; `planner/plan.ts`: expansion refusals carry the top-level index and command; `describe.ts`: `describeTile(index, …)` from the captured state.
+- Shell: manifest-without-presentation throws at construction; `focusPlacement` searches `rootElement` only.
+- Tests: `ownership.test.ts` (initial and replacement tamper-proof, freeze refuses writes, snapshot is a clone, same revision same document, two no-op cases, refused execution consumes no ids); `createWorkbenchShell.test.ts` (both completeness directions; focus with no root); three probes un-failed; the reset round-trip test now compares by value.
+- README "Owned state"; MIGRATION.md "Stabilization" section covering S1–S4's surface changes.
+
+### Why
+
+- §5.4, §5.5, §6.5, §6.7, §6.8; Decision C.
+
+### What worked
+
+- `applyMutations` already clones the whole document before touching it, so a frozen input is safe through every planner step and the applier — no consumer broke on the freeze (workbench 116, sandbox 224, ecommerce 35, plotscript 32, chat 241).
+
+### What didn't work
+
+- The reset round-trip test asserted `toBe` identity between the factory's document and the installed one; identity is exactly what Decision C gives up. Changed to `toEqual`.
+- A first plotscript run failed in a typing-debounce test and passed on rerun; timing, not the freeze.
+
+### What I learned
+
+- Freezing costs one traversal per install in development; at 12 tiles it is invisible against the index build.
+
+### What was tricky to build
+
+- Deciding what `commit()` of the id pool means for a refused execution: the plan drew ids, prepare refused the batch, nothing was installed — so nothing is consumed, and the next plan reads the same ids. The pool is consumed in exactly one place, after `prepare` succeeded and before `install`.
+
+### What warrants a second pair of eyes
+
+- `isNoOp` runs `equals` over the whole document per command; cheap at product sizes, but a document with thousands of payloads would pay for it on every keystroke that goes through `apply`.
+- The expanded-refusal index override is verified by reading, not by a test: constructing a refusal INSIDE a show expansion needs geometry small enough to refuse the spawn split, and I did not want a test that depends on the chooser's ranking. Worth a golden when the link goldens are next touched.
+
+### What should be done in the future
+
+- Track B (S5) and Track C (S6).
+
+### Code review instructions
+
+- `ownership.ts`, `ids.ts`, then the four touched sites in `createWorkbenchCore.ts` (`owned`, `planned`, `isNoOp`, `snapshot`); `npx vitest run src/ownership.test.ts src/stabilization.probes.test.ts` (7 passed, 0 expected fail).
+
+### Technical details
+
+- Freeze mode default: `process.env.NODE_ENV !== "production"`, read defensively (no `process` ⇒ trust).
