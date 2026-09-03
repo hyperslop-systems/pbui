@@ -13,10 +13,14 @@ DocType: index
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://ttmp/2026/09/03/PBUI-DATALAB-WORKBENCH-1--consolidate-datalab-workspace-semantics-onto-workbench-core/index.md
+      Note: Follow-on adopter of the stabilized Workbench core
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/01-intern-guide-to-the-pbui-workbench-core-consolidation-and-hard-cutover.md
       Note: Primary hard-cutover architecture and implementation guide
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/03-post-implementation-architecture-and-code-review.md
       Note: Current implementation assessment and stabilization priorities
+    - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/04-workbench-stabilization-transaction-safety-headless-boundary-and-typescript-go-parity.md
+      Note: Implementation plan for post-cutover stabilization priorities 1-3
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/reference/01-investigation-diary.md
       Note: Chronological research, failures, validation, and delivery record
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/reference/02-consumer-inventory-and-public-surface.md
@@ -29,6 +33,8 @@ LastUpdated: 2026-09-03T15:00:00-04:00
 WhatFor: Track the architecture, evidence, implementation plan, and delivery for consolidating PBUI’s Workbench into foundational reusable technology.
 WhenToUse: Start here when implementing or reviewing PBUI-WORKBENCH-CORE-1.
 ---
+
+
 
 
 
@@ -45,6 +51,7 @@ The implemented first version has three package layers: stable protocol primitiv
 - [Intern guide to the PBUI workbench core consolidation and hard cutover](design-doc/01-intern-guide-to-the-pbui-workbench-core-consolidation-and-hard-cutover.md)
 - [Version one simplification decisions](design-doc/02-version-one-simplification-decisions.md)
 - [Post-implementation architecture and code review](design-doc/03-post-implementation-architecture-and-code-review.md)
+- [Workbench stabilization: transaction safety, headless boundary, and TypeScript-Go parity](design-doc/04-workbench-stabilization-transaction-safety-headless-boundary-and-typescript-go-parity.md)
 - [Investigation diary](reference/01-investigation-diary.md)
 - [Consumer inventory and public surface](reference/02-consumer-inventory-and-public-surface.md)
 - [Imported workbench architectural assessment](sources/01-workbench-architectural-assessment.md)
@@ -73,7 +80,11 @@ pbui-workbench React shell
 
 ## Status
 
-**Active; stabilization and external migration required.** Phases 0–7 and the in-repository half of Phase 8 are implemented. External consumer migration and Phase 9 remain open. The post-implementation review records transaction/sync/source defects that should block release until corrected.
+**Implemented; stabilization designed.** Phases 0–9 and external consumer migrations are complete, with package publication intentionally left to the release owner. Design doc 04 now specifies the follow-up transaction/source/sync hardening, true headless dependency boundary, and TypeScript-Go binding parity required before broad new adoption such as Datalab.
+
+## Follow-on adoption
+
+- [PBUI-DATALAB-WORKBENCH-1](../PBUI-DATALAB-WORKBENCH-1--consolidate-datalab-workspace-semantics-onto-workbench-core/index.md) adopts the stabilized core as Datalab’s canonical spatial model.
 
 ## Tasks and changelog
 

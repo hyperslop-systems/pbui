@@ -19,3 +19,6 @@
 - [x] Phase 8: Migrate all PBUI and external consumers and delete legacy APIs without compatibility aliases <!-- t:i09x -->
 - [x] Phase 9: Run release audit, browser smokes, package documentation, and publish protocol/core/shell in order <!-- t:lnzs -->
 - [x] Write the post-implementation architecture/code review, validate the ticket, and upload the refreshed bundle to reMarkable <!-- t:vykl -->
+- [ ] Stabilize Workbench publication, document-source ordering, sync bootstrap/adoption, and owned snapshots <!-- t:2mfw -->
+- [ ] Extract a React-free PBUI link-kernel entry and enforce the built dependency boundary <!-- t:4m7u -->
+- [ ] Define binding and document-source semantics shared by TypeScript and Go, with parity fixtures <!-- t:ba1r -->

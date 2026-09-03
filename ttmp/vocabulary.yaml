@@ -27,6 +27,8 @@ topics:
       description: Evidence-backed theoretical or technology investigation
     - slug: actions
       description: pbui action-selection kernel work (rules, families, type graph, availability, revalidation, vocabulary)
+    - slug: datalab
+      description: Datalab UI architecture, analytical workspaces, and product integration
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes

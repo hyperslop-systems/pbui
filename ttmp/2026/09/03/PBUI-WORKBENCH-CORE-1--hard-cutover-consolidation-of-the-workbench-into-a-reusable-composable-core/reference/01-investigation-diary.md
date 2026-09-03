@@ -1175,7 +1175,7 @@ That finding produced the one new facility of this phase, `connectDocumentSource
 ### What should be done in the future
 
 - Mirror `openBindings` into the Go `ApplicationDescriptor` and the protocol fixtures.
-- The external consumers (Step 16).
+- The external consumers (Step 17).
 
 ### Code review instructions
 
@@ -1318,7 +1318,7 @@ OK: uploaded PBUI Workbench Core Post-Implementation Review.pdf -> /ai/2026/09/0
 remarquee cloud ls: [f] PBUI Workbench Core Post-Implementation Review
 ```
 
-## Step 16: Phase 8 (external) — four products cut over in parallel
+## Step 17: Phase 8 (external) — four products cut over in parallel
 
 The external half of Phase 8 was delegated to four subagents working from one brief (the new API on a page, the worked in-repo migrations to copy, the hard-cutover rules, and the "bindings are validated" warning from Step 15), one per repo: hyperblog, agentlogic, turboproof and rag-ttc. All four typecheck, test and build on the new core and shell, each committed on its own `task/add-plot-editor` branch and none pushed. Each report was read for decisions that reach back into pbui; one did, and it was fixed here before the phase closed.
 
@@ -1387,7 +1387,7 @@ The reach-back was rag-ttc's: pbui-chat's `attachWorkbench` mirrored conversatio
 - Consumer test counts: hyperblog 29, agentlogic 128 (+1 skipped), turboproof 129, rag-ttc 167.
 - Brief's key line: "The core refuses a view whose `documents` binding names a document not in `document.documents` (`unknown_document`), or a slot the manifest does not declare (`unknown_binding`, unless `openBindings`)."
 
-## Step 17: Phase 9 — release audit, baselines, versions
+## Step 18: Phase 9 — release audit, baselines, versions
 
 Phase 9 is the audit the guide asks for before a publish: every package's suite, the Go tests, protocol generation parity, the bundle fence, a browser smoke, performance baselines, the migration note, and version bumps in dependency order. Everything that can be run without publishing was run and is green; the publish itself is left to the user, since it is outward-facing and the four external consumers' lockfiles and embedded bundles wait on it by their own convention.
 
@@ -1406,7 +1406,7 @@ The one result worth reading is the baseline table: index build and link snapsho
 ### What I did
 
 - Whole-workspace audit: `pnpm -r typecheck` (13 projects), `pnpm -r test` (10 suites, 1,454 tests: protocol 40, pbui 554, core 189, shell 114, ecommerce 35, editor 12, sandbox 224, chat 241, plotscript 32, datalab 13), `pnpm -r build` (12 builds), Storybook builds for workbench, chat, sandbox, ecommerce, plotscript; `make protocol-check` (buf lint, regenerate, no diff); `GOWORK=off go test ./pkg/workbench/... ./pkg/workbenchapi/...` (the workspace `go.work` refuses sibling modules' Go versions, an environment matter).
-- Consumer suites: hyperblog 29, agentlogic 128, turboproof 129, rag-ttc 167 (Step 16).
+- Consumer suites: hyperblog 29, agentlogic 128, turboproof 129, rag-ttc 167 (Step 17).
 - Bundle fence: `packages/workbench-core/dist/*.js` import only `@bufbuild/protobuf`, `workbench-protocol`, `workbench-protocol/client` and `@hyperslop-systems/pbui` (port helpers); no `react`, `window` or `document.body` in the output. The source fence test stays.
 - Browser smoke: the ecommerce demo served from its `dist` with `vite preview`; the seeded workspace renders three tiles, the tile object menu opens, "Split beside" produces a nested pair, zero console warnings or errors.
 - Baselines: `scripts/05-perf-baselines.test.ts` (12 tiles, 3 apps, 20 links; medians of 25 after a warm-up) writes `05-perf-baselines.output.txt`.
@@ -1453,3 +1453,82 @@ The one result worth reading is the baseline table: index build and link snapsho
 ### Technical details
 
 - Baselines (medians, ms): index 0.014; preview duplicate 0.849; preview show 0.030; execute duplicate+close 2.056; links snapshot 0.000; slate 15.602 (n=5). Node v24.18.0.
+
+## Step 19: Design the Workbench stabilization program
+
+This step turned the first three post-cleanup priorities into one implementation guide: safe transaction publication, a genuinely React-free core dependency graph, and binding/document-source semantics shared by TypeScript and Go. It treats these as one prerequisite program because Datalab and future consumers should not adopt the core while receipt ordering, source hydration, and server acceptance remain ambiguous.
+
+The design retains the completed protocol/core/shell architecture. It introduces prepare/install/publish phases, exception-isolated observers, deterministic reentrancy refusal, scheduled source reconciliation, owned snapshots, acknowledged sync adoption, a pure PBUI link-kernel entry, explicit binding rules, source ownership, hydration-before-validation, and shared semantic fixtures.
+
+### Prompt Context
+
+**User prompt (verbatim):** "ok, create a new design doc in this ticket to address 1-3. Then a new docmgr ticket + design doc for 4. Create  a detailed analysis / design / implementation guide that is for a new intern, explaining all the parts of the system needed to understand what it is, with prose paragraphs and bullet point sand pseudocode and diagrams and api references and file references. It should be very clear and technical. Store in the ticket and the nupload to remarkable.
+
+Then which of 5-9 do you think we should already flesh out, or should we give it a new stab sometime in the future?
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Add an implementation-ready stabilization design to this ticket for priorities 1–3, then separately design Datalab adoption and advise on later priorities.
+
+**Inferred user intent:** Finish the Workbench foundation before expanding its adoption and keep unrelated future architecture from becoming one oversized ticket.
+
+### What I did
+
+- Added `design-doc/04-workbench-stabilization-transaction-safety-headless-boundary-and-typescript-go-parity.md`.
+- Added three implementation tasks corresponding to transaction/sync/source safety, a pure PBUI kernel entry, and TS/Go binding/source parity.
+- Defined transaction phases, observer error data, reentrancy behavior, source scheduling, state ownership, staged link effects, preview allocation, sync bootstrap/adoption, package build entries, binding rules, Go counterparts, source ownership, hydration, fixtures, phases, tests, risks, and completion gates.
+- Related the stabilization sequence explicitly to the new Datalab adoption ticket.
+
+### Why
+
+- The review probes demonstrate release-relevant boundary defects even though the main cutover and release audit passed.
+- The core’s source fence does not prove a React-free installed graph.
+- `openBindings` and format-owned sources are not yet a cross-language semantic contract.
+
+### What worked
+
+- The post-implementation review supplied executable acceptance cases, so the stabilization plan is concrete rather than speculative.
+- The existing pure link-kernel barrel provides a clear path to a dedicated package subpath without duplicating semantics.
+- Go already has `BindingRule`, providing a natural place to align requiredness and format constraints.
+- `docmgr doctor` passed and `PBUI Workbench Stabilization.pdf` uploaded to `/ai/2026/09/03/PBUI-WORKBENCH-CORE-1` after a successful dry run.
+
+### What didn't work
+
+- N/A; this was a design-only step.
+
+### What I learned
+
+- The Phase 9 diary independently identified the same pure-PBUI-subpath and optional-binding gaps, reinforcing the review conclusions.
+- Binding legality, binding requiredness, format compatibility, and launcher eligibility must be separate facts.
+
+### What was tricky to build
+
+- Reentrant mutation cannot simply be queued because the synchronous caller expects an immediate truthful result. The chosen version-one rule rejects mutation during publication and requires reactive integrations such as document sources to schedule a later reconciliation.
+- A full unified runtime would exceed the chosen first-version architecture, so the design stages core and link values together without introducing a generic module system.
+
+### What warrants a second pair of eyes
+
+- Review receipt versus subscriber publication order and whether persistence/sync should observe before UI subscribers.
+- Confirm a pure `pbui/link-kernel` entry includes the type graph without pulling React-bearing declaration files.
+- Decide whether sandbox program inputs belong in `AppView.documents` or only in the program payload.
+
+### What should be done in the future
+
+- Implement stabilization phases S0–S7 before starting the Datalab spatial cutover.
+- Invert all seven review probes into package regression tests.
+
+### Code review instructions
+
+- Start with design §§5–9 and compare each invariant to `createWorkbenchCore.ts`, `sources.ts`, `sync/index.ts`, PBUI package exports, and Go validation.
+- Run the existing implementation-review probes before changing publication order.
+
+### Technical details
+
+```text
+Track A: safe transactions, sources, sync, ownership
+Track B: React-free PBUI link-kernel entry
+Track C: explicit TS/Go binding and source semantics
+Dependency: A → B → C → Datalab adoption
+Upload: PBUI Workbench Stabilization.pdf
+Remote: /ai/2026/09/03/PBUI-WORKBENCH-CORE-1
+```

@@ -177,3 +177,21 @@ Phase 9: whole-workspace audit green (1,454 tests, 12 builds, 5 storybooks, prot
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/MIGRATION.md — The consumer migration note
 
+
+## 2026-09-03
+
+Added the implementation-ready stabilization design for transaction/source/sync safety, a truly React-free core dependency boundary, and TypeScript-Go binding/source parity; added three follow-up tasks.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/04-workbench-stabilization-transaction-safety-headless-boundary-and-typescript-go-parity.md — Priorities 1-3 stabilization guide
+
+
+## 2026-09-03
+
+Validated and uploaded the Workbench stabilization design bundle to /ai/2026/09/03/PBUI-WORKBENCH-CORE-1.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/04-workbench-stabilization-transaction-safety-headless-boundary-and-typescript-go-parity.md — Delivered stabilization guide
+
