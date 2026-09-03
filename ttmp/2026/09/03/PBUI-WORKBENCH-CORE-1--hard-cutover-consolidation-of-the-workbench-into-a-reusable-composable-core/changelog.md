@@ -215,3 +215,8 @@ S3: acknowledged sync adoption, incompatible phase, bootstrap covered entries, i
 
 S4: ingress clone, development deep freeze, snapshot(), id pool for preview purity, no-op detection, replacement title, description capture, expansion index, shell completeness and focus scoping; all seven probes green (commit 2833785)
 
+
+## 2026-09-03
+
+S5: pbui/link-kernel entry, optional React peers, core repointed, packed no-React boundary check and package-graph test (commit c3befc7)
+

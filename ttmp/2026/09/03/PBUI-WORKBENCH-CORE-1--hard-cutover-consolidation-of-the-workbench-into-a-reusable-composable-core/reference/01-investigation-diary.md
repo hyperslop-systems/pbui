@@ -1903,3 +1903,61 @@ The five edge fixes from the review landed alongside: a same-app replacement wit
 ### Technical details
 
 - Freeze mode default: `process.env.NODE_ENV !== "production"`, read defensively (no `process` ⇒ trust).
+
+## Step 26: Phase S5 — a pure PBUI entry, and a boundary the build proves
+
+Phase S5 closed Track B. The core's source never imported React, but its package graph did: the nine modules that need the link kernel imported `@hyperslop-systems/pbui`'s root entry, whose runtime bundle carries React and whose `peerDependencies` name it, so a package manager installing the core alone would install React. Two changes fix the graph. PBUI gains `./link-kernel` — `src/link-kernel.ts` re-exports the links barrel, `createPresentationTypeGraph` and the runtime id types, nothing that renders — and declares React and react-dom as optional peers, which npm and pnpm then do not auto-install for a consumer that does not use them. The core imports only that entry; its fence test now forbids the root entry as it forbids `react`; react and react-dom leave its devDependencies.
+
+The claim is then proven rather than asserted. `pnpm boundary` packs pbui, workbench-protocol and workbench-core, installs the core alone into an empty project with scripts disabled, asserts React is absent from `node_modules`, imports the core, plans a command, and scans the built output's import specifiers; `packageGraph.test.ts` pins the declarations by dependency kind so a stray `react` in any of the three manifests fails a unit test.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 20)
+
+**Assistant interpretation:** Design doc 04 Phase S5: add the link-kernel entry, repoint the core, remove React from the core's requirements, add the packed no-React consumer and built-import scan, update package docs.
+
+**Inferred user intent:** "No React, no DOM" as a property of the installed package, not of a regex.
+
+**Commit (code):** c3befc7 — "PBUI-WORKBENCH-CORE-1 S5: pure PBUI link-kernel entry; core imports it; packed no-React boundary check"
+
+### What I did
+
+- Root: `src/link-kernel.ts`; `package.json` exports `./link-kernel` and `peerDependenciesMeta` (react, react-dom optional); `vite.config.ts` third entry. The built `dist/link-kernel.js` reaches one shared chunk (`resolveShow-*.js`) and no external module.
+- Core: nine imports repointed; `fence.test.ts` forbids the root entry; devDependencies without react; `scripts/check-boundary.mjs` + `pnpm boundary`; `packageGraph.test.ts`; README "Package boundary".
+- Verified: root typecheck and its 554 tests; core 219 (the slate perf guard is flaky under a full parallel run and green alone); `pnpm boundary` → "installed without React", "imported and planned: split side by side".
+
+### Why
+
+- §5.7, §8.1–8.5, Decision D.
+
+### What worked
+
+- Every symbol the core used was already exported by the links barrel except `createPresentationTypeGraph`; the links directory imports only `actions/ids` and `actions/typeGraph` from outside itself, both pure — so the entry is a re-export file, not a refactor.
+
+### What didn't work
+
+- N/A (the boundary script worked on the first run; it needs registry access for `@bufbuild/protobuf`).
+
+### What I learned
+
+- With npm ≥ 7 and pnpm, a dependency's NON-optional peer is auto-installed, so the design's "React absent from the dependency graph" is only achievable by declaring PBUI's React peers optional. That is also the truthful declaration: the root entry needs React, the link-kernel entry does not.
+
+### What was tricky to build
+
+- The built-import scan must allow `@hyperslop-systems/pbui/link-kernel` and forbid every other `@hyperslop-systems/pbui` specifier, including the bare root; the regex in the script does exactly that.
+
+### What warrants a second pair of eyes
+
+- Making React an optional peer of PBUI changes what a product installing the ROOT entry gets: a product that forgot to depend on React itself now gets a runtime error instead of an auto-installed React. Every product in this repo and the four external ones declare React.
+
+### What should be done in the future
+
+- Track C (S6).
+
+### Code review instructions
+
+- `src/link-kernel.ts`, the root `package.json` diff, `packages/workbench-core/scripts/check-boundary.mjs`; run `pnpm build` at the root, `pnpm --filter @hyperslop-systems/workbench-core build boundary`.
+
+### Technical details
+
+- Core's built externals after S5: `@bufbuild/protobuf`, `@hyperslop-systems/pbui/link-kernel`, `@hyperslop-systems/workbench-protocol`, `@hyperslop-systems/workbench-protocol/client`.
