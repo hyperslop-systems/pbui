@@ -220,3 +220,8 @@ S4: ingress clone, development deep freeze, snapshot(), id pool for preview puri
 
 S5: pbui/link-kernel entry, optional React peers, core repointed, packed no-React boundary check and package-graph test (commit c3befc7)
 
+
+## 2026-09-03
+
+S6: binding rules + launch policy, additionalBindings replaces openBindings, Go Formats/AdditionalBindings, shared fixtures contracts/workbench/v1, source ownership, persistence hydration (commit 7d76033)
+

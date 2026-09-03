@@ -1961,3 +1961,71 @@ The claim is then proven rather than asserted. `pnpm boundary` packs pbui, workb
 ### Technical details
 
 - Core's built externals after S5: `@bufbuild/protobuf`, `@hyperslop-systems/pbui/link-kernel`, `@hyperslop-systems/workbench-protocol`, `@hyperslop-systems/workbench-protocol/client`.
+
+## Step 27: Phase S6 — bindings and sources TypeScript and Go agree on
+
+Phase S6 closed Track C. The manifest now separates the four questions design doc 04 §9.1 lists. Which binding names are legal, which are required and which formats may fill them are `bindings: Record<name, { required, formats?, role }>`; whether the launcher may create an unbound view is `launch`; an application whose inputs are named by what it binds says so with the typed `additionalBindings: { formats? }`. `openBindings` is gone. A `documentSlot` port still implies a binding, so every existing manifest keeps its meaning, and the launcher offers applications by launch policy — agentlogic's optional transcript context can now be `{ required: false, role: "context" }` with `launch: "unbound"` and stay in the launcher.
+
+Go carries the same facts: `BindingRule.Formats` and `ApplicationDescriptor.AdditionalBindings`, validated in the same order as the core (legality, existence, format, then requiredness) with the same codes and paths, which the shared fixtures under `contracts/workbench/v1` now assert from both sides. Document sources gained an identity — every stub records its writer in `$source` — with the collision and ownership rules of §9.6, and `readWorkbenchSnapshot` hydrates a stored layout with its sources before the catalog judges it, so a layout from before a source existed is repaired instead of replaced by the default.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 20)
+
+**Assistant interpretation:** Design doc 04 Phase S6: binding rules and launch policy, manifests migrated, `openBindings` replaced by a typed rule, source identity/ownership/update, persistence hydration, Go descriptor and validator, shared fixtures.
+
+**Inferred user intent:** TypeScript and Go accept the same document for the same reason, and a product cannot type its way past a validator.
+
+**Commit (code):** 7d76033 — "PBUI-WORKBENCH-CORE-1 S6: binding rules and launch policy, source ownership, hydration, Go parity fixtures"
+
+### What I did
+
+- `apps.ts`: `WorkbenchBindingRule`, `WorkbenchAdditionalBindings`, `LaunchPolicy`; `defineAppManifest` merges port-derived and explicit rules and derives `launch`; `bindingNames` replaces `documentSlots`; `isDocBound` means "has a primary binding".
+- `validation.ts`: per binding — `unknown_binding` (unless additional), `unknown_document`, `invalid_binding_format` — then `required_binding` at `views["v"].documents`; `binding.ts` honours `additionalBindings`; `describe.ts` reports `launch` and defines `docBound` as "must be opened from something".
+- `sources.ts`: `id`, `update`, `owns`, `SOURCE_OWNER_FIELD`, collisions reported through `onCollision`; `persistence`: `sources` option, structural parse → hydrate → catalog validation.
+- Go: `model.go` (`Formats`, `AdditionalBindings`, `acceptsFormat`), `validate.go` (the same order, `invalid_binding_format`), `binding_fixtures_test.go` (loads the shared catalogs; an accept-anything payload validator, since the fixtures assert binding rules).
+- Fixtures: `packages/workbench-core/scripts/generate-binding-fixtures.ts` writes 3 catalogs, 9 valid and 6 invalid cases; `bindingFixtures.test.ts` asserts them from TypeScript.
+- Consumers: the shell's launcher rows use `launch`; the sandbox's `script` declares `program: { formats: ["sandbox.program"] }`, `additionalBindings: {}`, `launch: "requires-bindings"`, and its library source is `sandbox.programs` with `replace-body` (a renamed program renames its stub); pbui-chat's conversation source is `chat.conversations`; the demo's world sources carry ids and the demo hydrates its stored layout with them; the agent tools use `bindingNames`.
+- Tests: ownership (collision, other owner, replace-body vs identity-only, legacy unowned stub adopted), hydration, describe expectations, surface and describe goldens; the slate perf guard's line raised to what a real regression would cross rather than what a parallel run reaches.
+- README "Bindings and launch policy" and the reworked "Documents for what tiles bind"; MIGRATION.md.
+
+### Why
+
+- §9.1–9.9, §12.5, Decisions E and F.
+
+### What worked
+
+- Port-derived rules made the manifest change invisible to every product that only declares `documentSlotPort`s: sandbox 224, chat 241, ecommerce 35, plotscript 32 passed without a manifest edit.
+- Go's `testCatalog` and error type were reusable as-is; the parity test is forty lines of loading.
+
+### What didn't work
+
+- The first Go run failed every valid fixture with `unsupported graphic document`: the package's test payload validator accepts one format; the fixture test now supplies an accept-anything validator, since it asserts binding rules, not payloads.
+- `documentSourceMutations` changed shape (`{ mutations, collisions }`) and two call sites in tests asserted the old array.
+
+### What I learned
+
+- `docBound` in the agent description had two meanings — "has a binding" and "cannot be launched empty" — which coincided until optional context bindings existed. It now means the second, and `launch` is reported beside it.
+
+### What was tricky to build
+
+- The sandbox decision (§9.4): program inputs are per VIEW (one program on two products in two tiles), so they cannot live in the program document; `additionalBindings: {}` (formats unconstrained, since an input may be any product document) is the honest declaration, and its Go counterpart `AdditionalBindings: &BindingRule{}` means the same.
+- Ownership for stubs written before this step: a stub without `$source` is treated as owned by whichever source claims its format, so an existing persisted layout is adopted rather than orphaned.
+
+### What warrants a second pair of eyes
+
+- Go ranges over `view.Documents` in map order; a document with two violations in one view reports either first. The fixtures carry one violation each; the TypeScript side reports all and compares the first.
+- `required: true` was NOT applied to the sandbox's program binding (an unbound script tile is legal and shows its empty state); the fixture catalog's `sku` demonstrates the required path instead.
+
+### What should be done in the future
+
+- S7: re-verify the four external consumers (agentlogic's transcript to a context binding; hyperblog's sources need ids; rag-ttc's sync target signature).
+
+### Code review instructions
+
+- `apps.ts` (`defineAppManifest`), `validation.ts` (the binding loop), `pkg/workbench/validate.go` (the same loop), then the fixtures; run `npx vitest run src/bindingFixtures.test.ts` and `GOWORK=off go test ./pkg/workbench/ -run TestBindingFixtures -v`.
+
+### Technical details
+
+- Fixture expectation shape: `{ name, catalog, document: <protobuf JSON>, expected: { ok } | { ok: false, code, path } }`.
+- Stub body after S6: `{ ...body, "$source": "<source id>" }`.
