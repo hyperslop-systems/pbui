@@ -31,3 +31,12 @@ Step 3: links/candidate.ts; planners check candidateTermOf(verb), apply persists
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/candidate.ts — The one spelling of each term a verb persists
 
+
+## 2026-09-02
+
+Step 4: planners' duplicate type/cycle/context checks deleted after parity; IR constructors internal (commit d080c68)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/index.ts — Root export surface without the IR constructors
+

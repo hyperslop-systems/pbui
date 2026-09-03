@@ -213,3 +213,61 @@ plan:   checkBinding(candidateTermOf(verb, PLAN_LINK_ID), s, deps, destinationOf
 apply:  bindings[destinationOf(verb)] = candidateTermOf(verb, linkIdFor(verb, mint))
 law:    apply(verb).bindings[dest] == candidateTermOf(verb, minted)
 ```
+
+## Step 4: Delete the planners' copies of the structural checks
+
+With the checker's coverage proven (Step 1), one dependency walk (Step 2) and the exact candidate term in the planner's hands (Step 3), the planners' own type, cycle and context checks were duplicates running before the checker reached the same verdict. This step deletes them: `planFollow` loses `reaches` and `dependsOn`, `planBind` loses `reaches`, `planAmbient` loses the context lookup and `reaches`, `planDerive` loses `dependsOn`. What stays in a planner is operation policy, as §12.7 lists it: existence, direction, self, document slots, held, shared, already-linked, and which relations are legal.
+
+One message would have regressed: the ambient planner said `workspace.order holds <order>, which does not reach <customer>` and the checker said `<order> does not reach <customer>`. The checker now names the context when the program's expression is a single context source, so the sentence is unchanged. The whole pbui root suite passes (40 files, 443 tests), which is the parity proof the guide asks for before deleting. The IR's constructors also leave the package root export, per §12.3: consumers get `normalizeBinding`, `dependenciesOfBinding`, `checkBinding` and `dependsOn`, not `programOf`/`bindingOf` or the `BindingProgram` types.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 4 of the plan slip: delete the duplicated planner logic after parity, and keep the IR internal.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** d080c68 — "PBUI-KERNEL-2 P4: retire the planners' duplicate structural checks; IR internal"
+
+### What I did
+- `plan.ts`: removed the four duplicated checks; header comment states the operation/structure split; `dependsOn` and `titleOfPort` re-exports dropped.
+- `check.ts`: the `type` diagnostic names the context for a context-source program.
+- `index.ts`: `programOf`, `bindingOf`, `dependenciesOfProgram`, `effectiveProgram`, `evaluateProgram` and the `Binding{Program,Expression,Source}` types are no longer exported; `dependsOn` from `./check`, `titleOfPort` from `./snapshot`.
+- `laws.test.ts`: "§12.7 parity" describes the refusals that now come from the checker, with their sentences.
+- `npx vitest run src` → 40 files, 443 tests; `tsc --noEmit` clean.
+
+### Why
+- Two implementations of one verdict drift. The guide's instruction is explicit: "delete duplicated planner logic rather than running both forever".
+
+### What worked
+- Every existing planner test passed unchanged after the deletion, including the one asserting the exact type sentence.
+
+### What didn't work
+- First parity test for a derive cycle asserted `code: "cycle"` and received `no-relation`: the selection ports are `datum`-typed and the fixture relations are all over `order`, so legality refused first. Fixed by adding a `datum.self` relation in that test and asserting both orders.
+
+### What I learned
+- Refusal precedence changed in one visible way: a derive that is both illegal (no relation) and cyclic now says "no relation" where it used to say "cycle". Legality is the more useful message, since the cycle is unreachable without a relation.
+
+### What was tricky to build
+- Choosing what stays. `planFollow` checks that the SOURCE exists before the checker runs, and must: the checker's `source-missing` is about the term's source too, but the planner needs both definitions to write titles, and the test asserts `code: "port-missing"` for a missing source. Existence stayed a planner concern for that reason.
+
+### What warrants a second pair of eyes
+- Precedence between planner policy and checker structure. The order is now: existence, self, direction, held, shared, already, then structure. A held port whose candidate would also be ill-typed says "held", which is right (the user must resume or detach first), but it is a change from "type" for the follow planner.
+
+### What should be done in the future
+- N/A.
+
+### Code review instructions
+- Diff of `plan.ts` in this commit: every deleted line should have a counterpart in `checkBinding`.
+- `npx vitest run src`.
+
+### Technical details
+- What each planner still checks, after this step:
+
+```text
+planFollow   port-missing, self, direction(S in / D out), held, shared, already   → checker
+planBind     port-missing, direction, document-slot, held, shared                  → checker
+planAmbient  port-missing, direction, held                                         → checker
+planDerive   port-missing, self, direction, held, shared, legal relations, already → checker
+```
