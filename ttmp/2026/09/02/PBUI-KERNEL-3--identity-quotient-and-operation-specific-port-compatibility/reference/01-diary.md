@@ -136,3 +136,62 @@ canAccept(ref, into)       canFlow(ref.type, into)
 canShareCell(l, r)         valueMismatches(l, r) = ∅ ∧ protocolMismatches(l, r) = ∅
 canMergeUpdates(l, r)      l.updateAlgebra == r.updateAlgebra
 ```
+
+## Step 3: Every caller names the question it asks
+
+With the predicates in place, this step moved each compatibility decision in the kernel and the workbench onto the one that matches its operation. `compatibilityOf` in `identity.ts`, which `planIdentityAdd` and `compileIdentity` both use, is now `canShareCell`; its `Compatibility` result keeps its shape and its sentence, so the refusals in the identity tests are unchanged byte for byte. The checker's destination check is `canFlow`, which also produces the `<from> does not reach <into>` sentence, so the KERNEL-2 parity tests still pass. `legalRelations` asks `canFlow` on the relation's codomain. `resolveShow`'s filter of ports a subject may be shown in, and the workbench "Link to…" family's target filter, are `canAccept`.
+
+One `reaches` call stays on purpose in both `check.ts` and `plan.ts`: matching an input type against a relation's declared source type. That is a question about a relation's domain, not about a port, and there is no port contract to ask `canFlow` about.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 3 of the plan slip: planners and checker on the predicates.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 7650690 — "PBUI-KERNEL-3 P3: callers say which compatibility question they ask"
+
+### What I did
+- `identity.ts`: `compatibilityOf` over `canShareCell`; its private `FIELD_WORDS` table deleted (it lives in `compatibility.ts`).
+- `check.ts`: destination check through `canFlow`; the context-naming message kept.
+- `plan.ts`: `legalRelations` codomain check through `canFlow`.
+- `resolveShow.ts` and `packages/pbui-workbench/src/links/contributions.ts`: `canAccept`.
+- `tsc` clean; `npx vitest run src` → 42 files, 590 tests; `pnpm build`; pbui-workbench typecheck clean and 31 files, 281 tests.
+
+### Why
+- §13.2: "Do not equate all compatibility with whole-contract equality by accident." A caller that names `canFlow` cannot be reading protocol fields it should not.
+
+### What worked
+- No refusal sentence changed. The identity tests assert `different authority domain: orders vs daily_sales` and pass through the new path.
+
+### What didn't work
+- One type error: `BindingCheckDiagnostic.code` is a closed union and `Verdict.code` is a string; the checker writes the literal `"type"` rather than forwarding the verdict's code.
+
+### What I learned
+- The `"Link to…"` family's pre-filter was the only place outside the kernel that asked a compatibility question directly; everything else goes through the planners.
+
+### What was tricky to build
+- Keeping `Compatibility`'s `mismatches` order: value fields then protocol fields, which is what `contractMismatches` produced from `CONTRACT_IDENTITY_FIELDS`, so the concatenation `[...value, ...protocol]` reproduces it exactly.
+
+### What warrants a second pair of eyes
+- `resolveShow`'s second `reaches` (line ~182) compares a subject type against a spawnable app's `valueType`, which is not a contract; it stays as `reaches`. If apps ever declare contracts for spawn, it becomes `canAccept`.
+
+### What should be done in the future
+- N/A.
+
+### Code review instructions
+- Diff of this commit; every removed `reaches`/`contractMismatches` call should have a named predicate in its place.
+
+### Technical details
+- Who asks what, after this step:
+
+```text
+compileIdentity / planIdentityAdd     canShareCell
+checkBinding (destination)            canFlow
+legalRelations (codomain)             canFlow
+resolveShow (existing ports)          canAccept
+workbench "Link to…" targets          canAccept
+relation domain (check, legalRelations)  reaches   (a relation, not a port)
+```

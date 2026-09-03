@@ -22,3 +22,12 @@ Step 2: links/compatibility.ts with canFlow/canAccept/canShareCell/canMergeUpdat
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/compatibility.ts — The four predicates
 
+
+## 2026-09-02
+
+Step 3: identity on canShareCell, checker/legalRelations on canFlow, resolveShow and workbench Link-to on canAccept; all suites green (commit 7650690)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/identity.ts — compatibilityOf over canShareCell
+
