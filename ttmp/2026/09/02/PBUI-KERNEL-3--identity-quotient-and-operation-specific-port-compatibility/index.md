@@ -9,13 +9,24 @@ Topics:
 DocType: index
 Intent: long-term
 Owners: []
-RelatedFiles: []
+RelatedFiles:
+    - Path: repo://packages/pbui-workbench/src/stories/IdentityLab.stories.tsx
+      Note: IdentityLab story
+    - Path: repo://src/presentation/links/compatibility.test.ts
+      Note: Identity-vs-flow tests
+    - Path: repo://src/presentation/links/compatibility.ts
+      Note: The four predicates
+    - Path: repo://src/presentation/links/identity.properties.test.ts
+      Note: §19.7 properties
+    - Path: repo://src/presentation/links/identity.ts
+      Note: Quotient view, compatibilityOf on canShareCell
 ExternalSources: []
-Summary: "Phase 9 of the PBUI-KERNEL-1 clean-cutover guide: split out of PBUI-KERNEL-1; see KERNEL-1 guide §0.1"
+Summary: 'Phase 9 of the PBUI-KERNEL-1 clean-cutover guide: split out of PBUI-KERNEL-1; see KERNEL-1 guide §0.1'
 LastUpdated: 2026-09-02T21:30:00-04:00
-WhatFor: "Find the scope, specification pointer, and exit criteria for this follow-up to PBUI-KERNEL-1."
-WhenToUse: "After PBUI-KERNEL-1 Phase 7 has landed."
+WhatFor: Find the scope, specification pointer, and exit criteria for this follow-up to PBUI-KERNEL-1.
+WhenToUse: After PBUI-KERNEL-1 Phase 7 has landed.
 ---
+
 
 # Identity quotient and operation-specific port compatibility
 

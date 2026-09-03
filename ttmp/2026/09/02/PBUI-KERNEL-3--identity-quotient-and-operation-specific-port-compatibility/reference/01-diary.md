@@ -241,3 +241,49 @@ The three planners that refuse a shared destination now read the cell through `c
 
 ### Code review instructions
 - `identity.ts` tail; the three `cellOf` lines in `plan.ts`.
+
+## Step 5: Identity on screen, and in the README
+
+The workbench's demo apps have one output and one input port, so nothing in the existing stories can share a cell. This step adds `Workbench/IdentityLab`: three picker tiles each owning an inout `selection` port (two with authority `orders`, one with `daily_sales`), buttons that call `planIdentityAdd` and perform `identity.add`/`identity.remove` the way a Ctrl-drag on the port rail would, and a panel that prints `quotientOf(snapshot)`. Five screenshots record a private-values baseline, the shared cell with both `≡ σ1` badges and the cell listed with its members, a write from one member showing up in the other, the incompatible pair refused with the field named, and the history split restoring each side's earlier value.
+
+The README's link-kernel section gained an "Identity and port compatibility" subsection with the four questions as a table.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 5 of the plan slip: screenshots for the diary and the report, documentation, ticket status.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 2f2dde2 — "PBUI-KERNEL-3 P5: IdentityLab story, screenshots with index, README identity section, ticket status"
+
+### What I did
+- `packages/pbui-workbench/src/stories/IdentityLab.stories.tsx`; `pnpm build` and workbench typecheck clean (the story imports `quotientOf` and `planIdentityAdd` from the built package).
+- Storybook on 6008 picked the story up without a restart; screenshots 01–05 and `various/screenshots/README.md`.
+- `README.md` subsection; KERNEL-3 `index.md` status.
+
+### Why
+- The exit criterion "identity and flow compatibility tests are separate" is a code fact; the screenshots show the same separation in the product: the pair that flow would allow is the pair sharing refuses.
+
+### What worked
+- The refusal sentence on screen is the one `compatibility.test.ts` asserts: `different authority domain: orders vs daily_sales`.
+
+### What didn't work
+- N/A.
+
+### What I learned
+- `useEmitPort` looks up the alias of the emitting port on every emit and routes the write to the class cell; the story needed no extra wiring for write-through.
+
+### What was tricky to build
+- The picker app is defined twice (two ids) so that one workspace can hold two contracts; a single app with a `refineContract` per view would also work but would hide the authority in the view's documents.
+
+### What warrants a second pair of eyes
+- The story's `quotientOf` call recompiles on every render; fine for a lab, not a pattern for a product panel (use `cellOf` or the apply step's `CompiledIdentity`).
+
+### What should be done in the future
+- The KERNEL-3 project report; then PBUI-KERNEL-4.
+
+### Code review instructions
+- `IdentityLab.stories.tsx`; `various/screenshots/README.md`.
+- `pnpm build && pnpm --filter @hyperslop-systems/pbui-workbench typecheck`.

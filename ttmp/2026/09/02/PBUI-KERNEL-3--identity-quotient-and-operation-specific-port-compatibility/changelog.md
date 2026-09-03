@@ -36,3 +36,12 @@ Step 3: identity on canShareCell, checker/legalRelations on canFlow, resolveShow
 
 Step 4: quotientOf(snapshot) and cellOf; shared refusals say 'cell' (commit b5907c9)
 
+
+## 2026-09-02
+
+Step 5: IdentityLab story, five screenshots, README identity section, status complete (commit 2f2dde2)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/stories/IdentityLab.stories.tsx — The shell's smallest shared-cell demo
+
