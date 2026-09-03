@@ -520,6 +520,15 @@ These reuse `deriveFacets` with the kernel's `RelationDefinition` list mapped to
 
 ### Decision D9: Translators move into the action registry; `createPbui` and the link kernel read them from there
 
+> **Superseded by PBUI-KERNEL-1 (2026-09-02, C5/C6).** Translators are now canonical
+> **relations** declared in the compiled presentation (`definePresentation().create({ relations })`),
+> each with an explicit `exposure` naming the interpreters that may discover it
+> (`acceptance`, `facet`, `derivation`). Nothing lives in the action registry. Facet
+> derivation consumes `presentation.relations.exposed("facet")` and must not introduce a
+> second edge registry; metadata a facet needs goes on the relation's `facet` exposure.
+> `createPbui` takes the compiled presentation; the link kernel receives
+> `presentation.linkDeps(...)`. See the KERNEL-1 guide §10–§11.4.
+
 - **Context:** The same edges are handed to three consumers in three shapes: `createPbui({ translators })` for accept mode (`createPbui.tsx:82-90, 345, 371`), the shop's hand-mapped `RelationDefinition`s and `relation()` applier for the link kernel (`packages/pbui-ecommerce/src/createShop.ts:42-51`), and the proposed `FacetDeps.translators`. The registry validates contributions against the graph fail-fast (`registry.ts:81-179`) but never sees the translators, so an edge naming an unknown type is not caught at construction and the vocabulary cannot list edges.
 - **Options considered:** (a) keep translators as a `createPbui` option and pass them to the facet module and the link kernel separately; (b) `createActionRegistry({ …, translators })` owns and validates them; `createPbui` reads `actions.translators`; `deriveFacets` reads `prepared.translators`; the link kernel is handed `relationsOf(registry)` / `applyRelation(registry, id, reference, snapshot)`; the `translators` option on `createPbui` is deleted (hard cutover).
 - **Decision:** (b).

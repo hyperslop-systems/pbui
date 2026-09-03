@@ -310,29 +310,32 @@ Wire it while building the first tiles rather than retrofitting finished panels.
 The presentation layering is already defined by the library:
 
 ```
-@hyperslop-systems/pbui/presentation     createPbui, Presentation, ObjectMenu
-  generic over <PresentationValues, Environment, Verb>
+@hyperslop-systems/pbui/presentation     definePresentation, createPbui, Presentation, ObjectMenu
+  generic over <PresentationValues, Environment, Facts, Verb>
         │
-        ├── datalab-ui/src/pbui/         15 descriptors
-        └── <your app>/src/pbui/         yours
+        ├── pbui-ecommerce/src/presentation/   the reference product (workbench + links)
+        ├── datalab-ui/src/pbui/               15 descriptors
+        └── <your app>/src/pbui/               yours
 ```
 
-Your binding layer is five small product-owned areas:
+Your binding layer is six small product-owned areas (PBUI-KERNEL-1):
 
 ```
-types.ts       PresentationValues, and the environment a descriptor may read
-verbs.ts       every action, as DATA
-registry.ts    createPresentationRegistry over your descriptor map
-runtime.tsx    createPbui and the product-bound runtime exports
-descriptors/   one file per type
+types.ts          PresentationValues, the environment a descriptor may read, your Facts
+verbs.ts          every action, as DATA
+descriptors/      one file per type; registry.ts exports the MAP
+actions.ts        the rules, the type definitions, and contextFor(query, env) → { facts, ... }
+presentation.ts   definePresentation().create({ include: [fragments], types, descriptors, actions, relations, help, revision })
+runtime.tsx       createPbui({ presentation, contextFor }) and the product-bound runtime exports
 ```
 
 The runtime exports the product-bound presentation parts:
 
 ```ts
-const instance = createPbui<Values, Environment, Verb>({
-  registry,
+const instance = createPbui<Values, Environment, Verb, Facts>({
+  presentation,
   defaultEnvironment,
+  contextFor,
 });
 export const PbuiProvider = instance.Provider;
 export const Presentation = instance.Presentation;
@@ -704,22 +707,24 @@ ambiguity, trace, and fresh-revalidation semantics.
 The shape of a product's action setup:
 
 ```ts
-import {
-  available, unavailable, inapplicable, hidden,
-  createActionRegistry, createPresentationTypeGraph, defineActions,
-} from "@hyperslop-systems/pbui";
+import { available, unavailable, inapplicable, hidden, definePresentation } from "@hyperslop-systems/pbui";
+import { createWorkbenchPresentationFragment } from "@hyperslop-systems/pbui-workbench";
 
-const graph = createPresentationTypeGraph([
-  { id: "inspectable", abstract: true },
-  { id: "invoice", parents: ["inspectable"] },
-]);
+const p = definePresentation<Values, Environment, ProductFacts, Verb>();
+const define = p.actions;
 
-const define = defineActions<Values, ProductFacts, Verb>();
-
-const registry = createActionRegistry<Values, ProductFacts, Verb>({
-  graph,
-  scopes: ["billing", "global"],
-  contributions: [
+export const presentation = p.create({
+  id: "billing",
+  include: [createWorkbenchPresentationFragment<Values, Environment, ProductFacts, Verb>()],
+  types: [
+    { id: "inspectable", abstract: true },
+    { id: "invoice", parents: ["inspectable"] },
+  ],
+  knownScopes: ["billing", "global"],
+  defaultActiveScopes: ["billing", "workbench", "global"],
+  revision: (facts) => facts.revision,   // moves iff a fact a rule reads moves
+  descriptors,                            // representation only, one per concrete type
+  actions: [
     define.exact("invoice", {
       id: "billing.invoice.send",          // rule id: names THIS declaration
       action: "invoice.send",              // action id: the conceptual operation
@@ -737,16 +742,27 @@ const registry = createActionRegistry<Values, ProductFacts, Verb>({
       bind: ({ subject }) => ({ kind: "inspect", ref: subject }),
     }),
   ],
+  relations: [                             // typed accept edges; mount <AcceptChooser/> if edges can tie
+    p.relation({
+      id: "billing.invoice-to-customer",
+      from: "invoice", to: "customer", match: "exact",
+      exposure: { acceptance: true },      // and/or derivation: links may derive through it
+      apply: (reference) => reference.type === "invoice" ? { type: "customer", value: ... } : undefined,
+    }),
+  ],
 });
 
 const pbui = createPbui<Values, Environment, Verb, ProductFacts>({
-  registry: descriptors,        // representation only
-  actions: registry,
-  snapshotFor,                  // (query, environment) -> immutable facts + revision
-  translators,                  // typed accept edges; mount <AcceptChooser/> if edges can tie
+  presentation,
+  contextFor: (query, environment) => ({ facts: factsFor(query, environment) }),
   defaultEnvironment,
 });
 ```
+
+Construction validates the WHOLE declaration (types, scopes, predicates,
+descriptors, ids across fragments, relation exposure) and throws with the
+fragment named; `presentation.diagnostics()` lists the advisory findings.
+The type world is closed: present only declared types.
 
 The rules that keep a product honest:
 
@@ -757,21 +773,26 @@ The rules that keep a product honest:
 - **Ids are identity.** Rule ids (`billing.invoice.send`) name declarations;
   action ids (`invoice.send`) name operations that compete. Never derive
   either from labels or positions.
-- **The snapshot is the only state a rule reads.** `snapshotFor` copies
-  query-local facts and stamps a revision that moves iff they move. No store
-  reads in `test`/`bind`.
+- **The snapshot is the only state a rule reads.** `contextFor` copies
+  query-local facts; the declaration's `revision(facts)` stamps a token that
+  moves iff they move (or pass `revision` in the context). No store reads in
+  `test`/`bind`.
 - **Menu order is metadata.** `order` places rows; the ladder
   (type distance → scope → priority → ambiguity) picks winners; the two never
   interact.
 - **Chrome buttons keep calling `pbui.perform(verb)`** with verbs built at
   click time; menu rows go through `performAction`, which re-resolves and
   delegates the FRESH verb or refuses.
-- **Tiles:** spread `workbenchTileContributions()` (with `project` when your
-  tile value is not a `TileRef`) instead of writing tile rules by hand, and
+- **Tiles:** `include` `createWorkbenchPresentationFragment()` (with
+  `tile: { project }` when your tile value is not a `TileRef`, and `links`
+  when your tiles declare ports) instead of writing tile rules by hand, and
   add product rules for subject `"tile"` for your own entries.
-- **Live/generated actions:** `createGeneratedActionsFamily` from
-  pbui-sandbox; put the records and program ids in your snapshot facts.
+- **Live/generated actions:** `include` `createGeneratedActionsFragment()`
+  from pbui-sandbox; put the records and program ids in your facts.
+- **Links:** hand the workbench `presentation.linkDeps({ contextFor })` — the
+  same graph your menus resolve on and the derivation-exposed relations.
+- **Refusals:** `onRefuse` on the Provider is required; decide what the user
+  sees when a menu row fails fresh revalidation (status line, toast, trace).
 
-Descriptor `actions()` callbacks and the `conversions` array still function
-through a deprecated legacy engine so 0.6.x products keep working; both are
-removed at the next major. New code never uses them.
+Descriptor `actions()` callbacks, the `conversions` array, translators, and
+the separate-registry `createPbui` option bag are gone (pbui 0.8 and 0.11).

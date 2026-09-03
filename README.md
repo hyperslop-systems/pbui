@@ -1,28 +1,54 @@
 # `@hyperslop-systems/pbui`
 
 PBUI is a domain-neutral React library for presenting typed objects and
-exposing descriptor-defined actions. Applications own their value vocabulary,
-environment, verbs, state management, and effects.
+resolving type-directed actions, help, acceptance, and links over them.
+Applications own their value vocabulary, environment, verbs, state
+management, and effects — and declare their presentation semantics ONCE, as
+one compiled presentation (PBUI-KERNEL-1, since 0.11).
 
 ```tsx
-const registry = createPresentationRegistry<Values, Environment, Verb>({
-  person: {
-    label: (person) => person.name,
-    actions: (person) => [{
-      id: "email",
-      label: "Send email",
-      verb: { type: "emailPerson", personId: person.id },
-    }],
-  },
+const p = definePresentation<Values, Environment, Facts, Verb>();
+
+export const presentation = p.create({
+  id: "crm",
+  types: [{ id: "person" }],
+  knownScopes: ["global"],
+  defaultActiveScopes: ["global"],
+  revision: (facts) => facts.revision,          // a semantic token, never a serialization
+  descriptors: { person: { label: (person) => person.name } },
+  actions: [
+    p.actions.exact("person", {
+      id: "crm.person.email",
+      action: "person.email",
+      scopes: ["global"],
+      metadata: { label: "Send email" },
+      bind: ({ subject }) => ({ type: "emailPerson", personId: subject.value.id }),
+    }),
+  ],
 });
 
-const pbui = createPbui({ registry, defaultEnvironment });
+const pbui = createPbui({
+  presentation,
+  defaultEnvironment,
+  contextFor: (query, environment) => ({ facts: environment.facts }),
+});
 
-<pbui.Provider onPerform={performVerb}>
+<pbui.Provider onPerform={performVerb} onRefuse={showRefusal}>
   <pbui.Presentation reference={{ type: "person", value: person }} />
   <pbui.ObjectMenu />
 </pbui.Provider>
 ```
+
+Types, known scopes, predicates, descriptors, action rules, relations, and
+help rules are one declaration; shared packages contribute named
+**fragments** (`createWorkbenchPresentationFragment`,
+`createChatPresentationFragment`) the product `include`s, so it cannot take a
+package's rules and forget its types. Construction validates the whole
+declaration: an undeclared type, a descriptor for a type with no node, a
+duplicate id across fragments, or a relation with no exposure is a
+construction error, not a runtime surprise. The type world is closed — a
+reference whose type is not declared is an error. `onRefuse` is required: a
+menu row that fails fresh revalidation is always reported to the product.
 
 The package intentionally does not depend on Redux, RTK Query, Datadrop model
 types, or application routing.
@@ -62,32 +88,29 @@ content. **Migration-free:** with no `help`/`helpRenderers` configured,
 nothing changes — no state, no timers, no DOM difference.
 
 ```tsx
-const define = defineHelp<Values, ProductFacts>();
-
-const help = createHelpRegistry({
-  graph: actions.graph,              // the SAME type graph as the actions
-  scopes: ["editor", "global"],
-  contributions: [
-    define.exact("field", {
+export const presentation = p.create({
+  ...,
+  help: [
+    p.help.exact("field", {
       id: "product.field.help",
       scopes: ["editor"],
       help: ({ subject, snapshot }) => [
         markdownHelp.create({ id: "field.meaning", order: 0,
           payload: { markdown: "A **field** is one column." } }),
         actionsHelp.create({ id: "field.actions", order: 10,
-          payload: { actions: actions.resolve({ subject, invocation: "menu" }, snapshot).actions } }),
+          // the REAL action resolution, displayed — never re-derived
+          payload: { actions: presentation.actions.resolve({ subject, invocation: "menu" }, snapshot).actions } }),
       ],
     }),
   ],
 });
 
 const pbui = createPbui({
-  registry, actions, snapshotFor, defaultEnvironment,
-  help,
+  presentation, defaultEnvironment, contextFor,
   helpRenderers: createHelpRendererRegistry([...builtinHelpItems, myCustomItem]),
 });
 
-<pbui.Provider onPerform={performVerb}>
+<pbui.Provider onPerform={performVerb} onRefuse={showRefusal}>
   <App />
   <pbui.ObjectMenu />
   <pbui.ContextHelp />   {/* mount once, beside the menu */}
@@ -96,10 +119,11 @@ const pbui = createPbui({
 
 Authoring rules, briefly:
 
-- Help rules reuse the action kernel's type graph, scopes, conditions, named
-  predicates, and immutable `snapshotFor` facts. They never compete: EVERY
-  matching rule contributes items; type distance, scope nearness, and
-  priority order the display only.
+- Help rules are declared in the same compiled presentation as the action
+  rules and reuse its type graph, scopes, conditions, named predicates, and
+  immutable snapshot facts. They never compete: EVERY matching rule
+  contributes items; type distance, scope nearness, and priority order the
+  display only. Help is ON when `createPbui` receives `helpRenderers`.
 - Rule ids, item ids, and renderer kinds are stable identities. Duplicate
   item ids in one resolution throw — an authoring defect, not a render state.
 - Only `available` matches: a rule whose `when`/`test` is unavailable,
