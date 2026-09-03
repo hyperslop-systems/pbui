@@ -3,6 +3,7 @@ import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { closePlacement, leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { defineAppManifest } from "./apps";
+import { commands } from "./commands";
 import { createWorkbenchCore } from "./createWorkbenchCore";
 import { layout, serializeDocument, split, tile, workspaces } from "./document";
 import { sequentialIds } from "./testing";
@@ -55,19 +56,20 @@ describe("createWorkbenchCore", () => {
   });
 
   it("apply: a throwing post-commit hook is reported separately and never undoes the commit", () => {
-    const onPostCommitError = vi.fn();
+    const onObserverError = vi.fn();
     const core = createWorkbenchCore({
       initial: threeTiles(),
       apps,
       onCommit: () => {
         throw new Error("outbox is full");
       },
-      onPostCommitError,
+      onObserverError,
     });
     const [, , third] = leaves(core.getState().document.workspaces[0]!.tree).map((leaf) => leaf.id);
     expect(core.apply(closePlacement(core.getState().document, third!))).toEqual({ ok: true, changed: true });
     expect(core.getState().revision).toBe(1);
-    expect(onPostCommitError).toHaveBeenCalledTimes(1);
+    expect(onObserverError).toHaveBeenCalledTimes(1);
+    expect(onObserverError).toHaveBeenCalledWith(expect.objectContaining({ stage: "commit-receipt", revision: 1 }));
   });
 
   it("replaceDocument validates, repairs the session, and never fires onCommit", () => {
@@ -99,5 +101,58 @@ describe("createWorkbenchCore", () => {
     expect(core.getState().document).toBe(fresh);
     expect(core.reset()).toEqual({ ok: true });
     expect(core.getState().document.viewOrder).toHaveLength(3);
+  });
+});
+
+describe("publication (design doc 04 §5.1–5.3, §12.1)", () => {
+  it("a subscriber that executes a command during publication is refused, and the outer receipt is the only one", () => {
+    const receipts: number[] = [];
+    const core = createWorkbenchCore({ initial: threeTiles(), apps, onCommit: (receipt) => receipts.push(receipt.revision) });
+    const [first, second] = leaves(core.getState().document.workspaces[0]!.tree).map((leaf) => leaf.id);
+    let nested: ReturnType<typeof core.execute> | null = null;
+    core.subscribe(() => {
+      if (!nested) nested = core.execute(commands.close(second!));
+    });
+    expect(core.execute(commands.close(first!)).ok).toBe(true);
+    expect(nested).toMatchObject({ ok: false, code: "reentrant_execution" });
+    expect(receipts).toEqual([1]);
+    // Refused, not queued: the second tile is still there, and the core is idle again.
+    expect(leaves(core.getState().document.workspaces[0]!.tree)).toHaveLength(2);
+    expect(core.execute(commands.close(second!)).ok).toBe(true);
+  });
+
+  it("apply and replaceDocument are refused during publication too", () => {
+    const core = createWorkbenchCore({ initial: threeTiles(), apps });
+    const seen: string[] = [];
+    core.subscribe(() => {
+      const applied = core.apply(closePlacement(core.getState().document, leaves(core.getState().document.workspaces[0]!.tree)[0]!.id));
+      if (!applied.ok) seen.push(applied.code);
+      const replaced = core.replaceDocument(threeTiles());
+      if (!replaced.ok) seen.push(replaced.diagnostics[0]!.code);
+    });
+    core.execute(commands.close(leaves(core.getState().document.workspaces[0]!.tree)[2]!.id));
+    expect(seen).toEqual(["reentrant_execution", "reentrant_execution"]);
+  });
+
+  it("every observer is attempted and every failure is reported after all attempts, in publication order", () => {
+    const order: string[] = [];
+    const findings: string[] = [];
+    const core = createWorkbenchCore({
+      initial: threeTiles(),
+      apps,
+      onCommit: () => {
+        order.push("receipt");
+        throw new Error("receipt failed");
+      },
+      onObserverError: (finding) => findings.push(`${finding.stage}@${finding.revision}`),
+    });
+    core.subscribe(() => {
+      order.push("a");
+      throw new Error("a failed");
+    });
+    core.subscribe(() => order.push("b"));
+    expect(core.execute(commands.close(leaves(core.getState().document.workspaces[0]!.tree)[2]!.id)).ok).toBe(true);
+    expect(order).toEqual(["receipt", "a", "b"]);
+    expect(findings).toEqual(["commit-receipt@1", "core-subscriber@1"]);
   });
 });

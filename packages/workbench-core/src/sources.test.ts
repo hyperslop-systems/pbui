@@ -37,7 +37,7 @@ describe("document sources", () => {
     expect(Object.keys(core.getState().document.documents).sort()).toEqual(["c-2", "c-3"]);
   });
 
-  it("lets a view bind a mirrored resource, and keeps the stub while the view binds it", () => {
+  it("lets a view bind a mirrored resource, and keeps the stub while the view binds it", async () => {
     const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
     const { source, set } = registry(["c-1"]);
     connectDocumentSource(core, source);
@@ -46,16 +46,20 @@ describe("document sources", () => {
     set([]);
     // Bound: the applier would refuse the delete, so the stub stays…
     expect(core.getState().document.documents["c-1"]).toBeDefined();
-    // …until the view goes.
+    // …until the view goes: the source learns of the close from inside the
+    // publication, and its delete is a transaction of its own, one microtask later.
     expect(core.execute(commands.close(opened.ok ? opened.placementId! : "")).ok).toBe(true);
+    expect(core.getState().document.documents["c-1"]).toBeDefined();
+    await Promise.resolve();
     expect(core.getState().document.documents["c-1"]).toBeUndefined();
   });
 
-  it("re-syncs when the core's document is replaced under it", () => {
+  it("re-syncs when the core's document is replaced under it", async () => {
     const core = createWorkbenchCore({ initial: layout(tile("notes")), apps });
     const { source } = registry(["c-1"]);
     connectDocumentSource(core, source);
     expect(core.reset(() => layout(split("row", 0.5, tile("notes"), tile("notes")))).ok).toBe(true);
+    await Promise.resolve();
     expect(core.getState().document.documents["c-1"]).toBeDefined();
   });
 

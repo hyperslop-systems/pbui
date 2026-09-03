@@ -17,7 +17,8 @@ import type { ManifestCatalog } from "../apps";
 import type { WorkbenchLinkCommand } from "../commands";
 import type { LocalEffect } from "../effects";
 import { linksChange } from "./document";
-import { createLinkRuntime, type LinkRuntime } from "./runtime";
+import type { WorkbenchObserverError } from "../publication";
+import { createLinkRuntime, forgetViewValues, reduceRuntimeEffects, type LinkRuntime, type LinkRuntimeState } from "./runtime";
 import { buildLinkSnapshot, DEFAULT_LINK_LABELS, type LinkLabels } from "./snapshot";
 
 /**
@@ -25,7 +26,7 @@ import { buildLinkSnapshot, DEFAULT_LINK_LABELS, type LinkLabels } from "./snaps
  * the core's planner and gateway call for link commands, the `pbui.links`
  * document, lifecycle maintenance, and the runtime values. Everything it
  * returns during planning is DATA — a mutation, effects — and nothing it does
- * during planning touches the live runtime (F1). Only `afterCommit` writes
+ * during planning touches the live runtime (F1). Only the core writes
  * the runtime, and only `execute` calls it.
  */
 export interface WorkbenchLinks {
@@ -45,10 +46,19 @@ export interface WorkbenchLinks {
    * batch, or null when the batch touches no linked port.
    */
   maintenance(doc: WorkbenchDocument, mutations: readonly Mutation[]): Mutation | null;
-  /** After a COMMITTED transition: apply the planned effects to the runtime. */
-  afterCommit(effects: readonly LocalEffect[]): void;
-  /** After a wholesale replacement (restore, reset, sync adoption): forget the values of views the new document no longer has. */
-  afterReplace(doc: WorkbenchDocument): void;
+  /**
+   * The runtime state a transition's effects produce, as a VALUE (design doc
+   * 04 §6.6): computed before anything is installed, installed beside the
+   * core's document, published after both are current. Null when the
+   * effects change nothing.
+   */
+  stage(effects: readonly LocalEffect[]): LinkRuntimeState | null;
+  /** The runtime state after a wholesale replacement: the values of views the new document no longer has are forgotten. Null when nothing is forgotten. */
+  stageReplace(doc: WorkbenchDocument): LinkRuntimeState | null;
+  /** Set a staged state without notifying; the core calls this between installing its document and publishing. */
+  install(next: LinkRuntimeState): void;
+  /** Attempt every runtime subscriber once, recording failures for the core's report. */
+  publish(revision: number, failures: WorkbenchObserverError[]): void;
   /** The out port whose attended or emitted value is this reference. */
   sourceOf(reference: SerializableReference): PortId | null;
 }
@@ -147,21 +157,26 @@ export function createWorkbenchLinks(options: CreateWorkbenchLinksOptions = {}):
       const history = new Map([...s.history].filter(([port]) => identity.classes.some((cls) => cls.members.includes(port))));
       return linksChange(doc, { bindings: next, identity: identity.identity, classes: identity.classes, history });
     },
-    afterCommit(effects) {
+    stage(effects) {
+      const before = runtime.getState();
+      let next = before;
       for (const effect of effects) {
-        if (effect.kind === "link-runtime") runtime.apply(effect.effects);
-        else if (effect.kind === "forget-view-values") runtime.forgetView(effect.viewId);
+        if (effect.kind === "link-runtime") next = reduceRuntimeEffects(next, effect.effects);
+        else if (effect.kind === "forget-view-values") next = forgetViewValues(next, effect.viewId);
       }
+      return next === before ? null : next;
     },
-    afterReplace(doc) {
-      const state = runtime.getState();
-      const gone = new Set<string>();
-      for (const port of [...state.emitted.keys(), ...state.attended.keys()]) {
+    stageReplace(doc) {
+      const before = runtime.getState();
+      let next = before;
+      for (const port of [...before.emitted.keys(), ...before.attended.keys()]) {
         const viewId = port.split("/")[0]!;
-        if (!doc.views[viewId]) gone.add(viewId);
+        if (!doc.views[viewId]) next = forgetViewValues(next, viewId);
       }
-      for (const viewId of gone) runtime.forgetView(viewId);
+      return next === before ? null : next;
     },
+    install: (next) => runtime.install(next),
+    publish: (revision, failures) => runtime.publish(revision, failures),
     sourceOf: (reference) => runtime.sourceOf(reference),
   };
   return links;

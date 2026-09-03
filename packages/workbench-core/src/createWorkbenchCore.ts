@@ -8,9 +8,11 @@ import type { LocalEffect } from "./effects";
 import type { GeometrySnapshot } from "./geometry";
 import { buildWorkbenchIndex, type WorkbenchIndex } from "./graph";
 import type { WorkbenchLinks } from "./links/collaborator";
+import type { LinkRuntimeState } from "./links/runtime";
 import { plan, type PlanResult, type PreparedTransition } from "./planner/plan";
 import type { Choice, PlanWorld } from "./planner/world";
 import { compilePolicy, type WorkbenchPolicy, type WorkbenchPolicyInput } from "./policy";
+import { attemptAll, reportFailures, type WorkbenchObserverError } from "./publication";
 import { repairSession, type WorkbenchSession } from "./session";
 import { validateWorkbenchDocument } from "./validation";
 
@@ -53,8 +55,15 @@ export interface CreateWorkbenchCoreOptions {
   onCommit?(receipt: CommitReceipt): void;
   /** A batch the applier or essential validation refused. Replaces the default `console.warn`. */
   onRejected?(mutations: readonly Mutation[], diagnostics: readonly WorkbenchDiagnostic[]): void;
-  /** A post-commit observer threw after the state was installed; deliberately separate from `onRejected` (retrying would duplicate a visible change). */
-  onPostCommitError?(error: unknown, receipt: CommitReceipt): void;
+  /**
+   * An observer threw during publication — the receipt hook, a link
+   * subscriber, a core subscriber, or replacement effects — after the state
+   * was installed. Deliberately separate from `onRejected`: the change
+   * landed, so retrying would duplicate it. Every observer is still
+   * attempted; this is told about each failure after all attempts. Default
+   * `console.error`.
+   */
+  onObserverError?(finding: WorkbenchObserverError): void;
   /** A command the planner refused (not a batch the applier refused). Replaces the default silence; agents read the result instead. */
   onRefused?(command: WorkbenchCommand, code: string, because: string): void;
 }
@@ -141,7 +150,7 @@ export interface WorkbenchCore {
  * validation.
  */
 export interface WorkbenchCoreInternals {
-  install(next: { document: WorkbenchDocument; session?: WorkbenchSession; mutations?: readonly Mutation[] }): void;
+  install(next: { document: WorkbenchDocument; session?: WorkbenchSession; mutations?: readonly Mutation[]; effects?: readonly LocalEffect[]; linkState?: LinkRuntimeState }): void;
   /** Apply + validate without installing; the shared preflight of every durable door. */
   prepare(mutations: readonly Mutation[]): { ok: true; document: WorkbenchDocument } | { ok: false; code: string; because: string; diagnostics: readonly WorkbenchDiagnostic[] };
 }
@@ -163,6 +172,16 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
   if (!initialCheck.ok) throw new WorkbenchDiagnosticError(initialCheck.diagnostics[0]!);
 
   const listeners = new Set<() => void>();
+  /**
+   * Where the core is in a transaction (design doc 04 §6.3). A mutation door
+   * called while not `idle` — from a subscriber, a receipt hook, a link
+   * observer — is refused with `reentrant_execution` rather than nested:
+   * nesting published an inner receipt before the outer one, and queueing
+   * would make a synchronous result dishonest. An integration that reacts to
+   * a publication schedules its own mutation for after it.
+   */
+  let phase: "idle" | "preparing" | "publishing" = "idle";
+  const REENTRANT = { code: "reentrant_execution", because: "the workbench is publishing a transaction; a mutation from an observer must be scheduled for after it" } as const;
   let state: WorkbenchCoreState = (() => {
     const index = buildWorkbenchIndex(initial);
     const session = repairSession(
@@ -172,10 +191,6 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     );
     return { document: initial, session, index, revision: 0 };
   })();
-
-  const notify = () => {
-    for (const listener of listeners) listener();
-  };
 
   const report = (mutations: readonly Mutation[], diagnostics: readonly WorkbenchDiagnostic[]) => {
     if (options.onRejected) options.onRejected(mutations, diagnostics);
@@ -199,37 +214,46 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     return { ok: true, document: next };
   };
 
-  const install: WorkbenchCoreInternals["install"] = ({ document: next, session, mutations }) => {
+  /**
+   * Install, then publish (design doc 04 §6.1–6.2). Past the assignment of
+   * `state` nothing may make the operation look uncommitted: the receipt
+   * hook, the links effects and every subscriber are attempted under the
+   * safe primitive, failures are collected, and the caller gets its
+   * success. Publication order: receipt → link observers → core observers.
+   */
+  const install: WorkbenchCoreInternals["install"] = ({ document: next, session, mutations, effects, linkState }) => {
     const index = next === state.document ? state.index : buildWorkbenchIndex(next);
     const repaired = repairSession(session ?? state.session, next, index);
     const revision = state.revision + 1;
+    // Stage the link runtime's next value BEFORE the point of no return
+    // (design doc 04 §6.6): a reducer that throws leaves nothing installed.
+    const stagedLinks = linkState ?? (effects && effects.length > 0 && links ? links.stage(effects) : null);
     state = { document: next, session: repaired, index, revision };
-    notify();
-    if (mutations && mutations.length > 0) {
-      const receipt: CommitReceipt = { mutations, document: next, revision };
-      // A post-commit hook runs after the state is visible. Its failure must
-      // never turn a committed batch into a refusal or throw through the
-      // caller: an agent would retry and duplicate work that already landed.
-      try {
-        options.onCommit?.(receipt);
-      } catch (error) {
-        try {
-          if (options.onPostCommitError) options.onPostCommitError(error, receipt);
-          else console.error("workbench-core: post-commit hook failed", error);
-        } catch (reportingError) {
-          console.error("workbench-core: post-commit error handler failed", reportingError);
-        }
+    if (stagedLinks && links) links.install(stagedLinks);
+    phase = "publishing";
+    const failures: WorkbenchObserverError[] = [];
+    try {
+      if (mutations && mutations.length > 0) {
+        const receipt: CommitReceipt = { mutations, document: next, revision };
+        attemptAll([receipt], (item) => options.onCommit?.(item), "commit-receipt", revision, failures);
       }
+      if (stagedLinks && links) links.publish(revision, failures);
+      attemptAll(listeners, (listener) => listener(), "core-subscriber", revision, failures);
+    } finally {
+      phase = "idle";
     }
+    reportFailures(failures, options.onObserverError);
   };
 
   const replace = (next: WorkbenchDocument, session?: Partial<WorkbenchSession>): ReplaceResult => {
+    if (phase !== "idle") return { ok: false, diagnostics: [diagnostic(REENTRANT.code, "", REENTRANT.because)] };
     const checked = validateWorkbenchDocument(next, { apps });
     if (!checked.ok) return { ok: false, diagnostics: checked.diagnostics };
-    install({ document: next, session: { workspaceId: session?.workspaceId ?? state.session.workspaceId, activePlacementId: session?.activePlacementId ?? null } });
     // The runtime holds values keyed by view; a view the new document does
     // not have must not keep emitting into badges from beyond the grave.
-    links?.afterReplace(next);
+    // Staged as a value and installed with the document (same path as a commit).
+    const linkState = links?.stageReplace(next) ?? null;
+    install({ document: next, session: { workspaceId: session?.workspaceId ?? state.session.workspaceId, activePlacementId: session?.activePlacementId ?? null }, ...(linkState ? { linkState } : {}) });
     return { ok: true };
   };
 
@@ -275,28 +299,30 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     links,
     getState: () => state,
     execute(input, executeOptions = {}) {
-      const revision = state.revision;
-      const { commands, result } = planned(input, executeOptions.geometry);
-      if (result.kind !== "prepared") return refusal(result);
-      const { transition } = result;
-      // Planning is synchronous over a captured snapshot; the check is the
-      // coarse-revision precondition of S1, kept explicit so a re-entrant
-      // listener can never install over a state it did not plan against.
-      if (state.revision !== revision) return { ok: false, code: "stale", because: "the workbench changed while the command was planned" };
-      if (!transition.changed) return { ok: true, changed: false, ...ids_of(transition) };
-      let next = state.document;
-      if (transition.mutations.length > 0) {
-        const prepared = prepare(transition.mutations);
-        if (!prepared.ok) {
-          report(transition.mutations, prepared.diagnostics);
-          options.onRefused?.(commands[0]!, prepared.code, prepared.because);
-          return { ok: false, code: prepared.code, because: prepared.because, index: 0, command: commands[0]! };
+      if (phase !== "idle") return { ok: false, ...REENTRANT };
+      phase = "preparing";
+      try {
+        const { commands, result } = planned(input, executeOptions.geometry);
+        if (result.kind !== "prepared") return refusal(result);
+        const { transition } = result;
+        if (!transition.changed) return { ok: true, changed: false, ...ids_of(transition) };
+        let next = state.document;
+        if (transition.mutations.length > 0) {
+          const prepared = prepare(transition.mutations);
+          if (!prepared.ok) {
+            report(transition.mutations, prepared.diagnostics);
+            options.onRefused?.(commands[0]!, prepared.code, prepared.because);
+            return { ok: false, code: prepared.code, because: prepared.because, index: 0, command: commands[0]! };
+          }
+          next = prepared.document;
         }
-        next = prepared.document;
+        install({ document: next, session: transition.session, ...(transition.mutations.length > 0 ? { mutations: transition.mutations } : {}), effects: transition.effects });
+        return { ok: true, changed: true, ...ids_of(transition) };
+      } finally {
+        // `install` leaves the phase idle after publishing; a refusal or an
+        // unexpected exception before it must not wedge the core.
+        if (phase === "preparing") phase = "idle";
       }
-      install({ document: next, session: transition.session, ...(transition.mutations.length > 0 ? { mutations: transition.mutations } : {}) });
-      links?.afterCommit(transition.effects);
-      return { ok: true, changed: true, ...ids_of(transition) };
     },
     preview(input, previewOptions = {}) {
       const { commands, result } = planned(input, previewOptions.geometry);
@@ -312,19 +338,24 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     },
     apply(mutations) {
       if (mutations.length === 0) return { ok: true, changed: false };
-      // The same gateway as a command (F3): a raw batch that deletes,
-      // retargets, or clones a view gets the links maintenance a command
-      // would, in the same atomic batch.
-      const upkeep = links?.maintenance(state.document, mutations) ?? null;
-      const batch = upkeep ? [...mutations, upkeep] : [...mutations];
-      const prepared = prepare(batch);
-      if (!prepared.ok) {
-        report(batch, prepared.diagnostics);
-        return prepared;
+      if (phase !== "idle") return { ok: false, ...REENTRANT, diagnostics: [] };
+      phase = "preparing";
+      try {
+        // The same gateway as a command (F3): a raw batch that deletes,
+        // retargets, or clones a view gets the links maintenance a command
+        // would, in the same atomic batch.
+        const upkeep = links?.maintenance(state.document, mutations) ?? null;
+        const batch = upkeep ? [...mutations, upkeep] : [...mutations];
+        const prepared = prepare(batch);
+        if (!prepared.ok) {
+          report(batch, prepared.diagnostics);
+          return prepared;
+        }
+        install({ document: prepared.document, mutations: batch, effects: forgetEffects(batch) });
+        return { ok: true, changed: true };
+      } finally {
+        if (phase === "preparing") phase = "idle";
       }
-      install({ document: prepared.document, mutations: batch });
-      links?.afterCommit(forgetEffects(batch));
-      return { ok: true, changed: true };
     },
     replaceDocument: (next, replaceOptions = {}) => replace(next, replaceOptions.session),
     serialize: () => serializeDocument(state.document),

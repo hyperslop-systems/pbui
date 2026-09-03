@@ -1,4 +1,5 @@
 import type { PortId, RuntimeEffect, SerializableReference } from "@hyperslop-systems/pbui";
+import { attemptAll, reportFailures, type ObserverErrorSink, type WorkbenchObserverError } from "../publication";
 
 /**
  * The link runtime (design §6.4): the VALUES that are not persisted — what
@@ -32,24 +33,69 @@ export interface EmitOptions {
 export interface LinkRuntime {
   getState(): LinkRuntimeState;
   subscribe(listener: () => void): () => void;
-  /** An OUT/INOUT port presents a value. */
+  /** An OUT/INOUT port presents a value. A runtime-only write: published at once, under the runtime's own sink. */
   emit(port: PortId, reference: SerializableReference, options?: EmitOptions): void;
   setContext(key: string, reference: SerializableReference | null): void;
   setClass(classId: string, reference: SerializableReference | null): void;
-  /** Apply the kernel's effects after a COMMITTED transition (merge seeds, split restores). Never during planning. */
-  apply(effects: readonly RuntimeEffect[]): void;
-  /** Forget everything a view emitted or attended (it was closed or replaced). */
-  forgetView(viewId: string): void;
+  /**
+   * Set the state WITHOUT notifying (design doc 04 §6.6): the core installs
+   * the reduced link state beside its own document and publishes both
+   * afterwards, so no observer sees a new durable link program with stale
+   * runtime values. Only the core calls this.
+   */
+  install(next: LinkRuntimeState): void;
+  /** Attempt every subscriber once, recording failures into the caller's list (stage `link-subscriber`). */
+  publish(revision: number, failures: WorkbenchObserverError[]): void;
   /** The out port whose ATTENDED or emitted value equals this reference — the provenance of a presentation the user is pointing at. */
   sourceOf(reference: SerializableReference): PortId | null;
 }
 
-export function createLinkRuntime(): LinkRuntime {
+/** The kernel's post-commit effects as a pure function of the runtime state; the same state back when nothing changes. */
+export function reduceRuntimeEffects(state: LinkRuntimeState, effects: readonly RuntimeEffect[]): LinkRuntimeState {
+  if (effects.length === 0) return state;
+  const emitted = new Map(state.emitted);
+  const classes = new Map(state.classes);
+  for (const effect of effects) {
+    if (effect.kind === "seed-class") classes.set(effect.classId, effect.reference);
+    else if (effect.kind === "forget-class") classes.delete(effect.classId);
+    else if (effect.kind === "set-emitted") {
+      if (effect.reference) emitted.set(effect.port, effect.reference);
+      else emitted.delete(effect.port);
+    }
+  }
+  return { ...state, emitted, classes };
+}
+
+/** Forget everything a view emitted or attended (it was closed or replaced); the same state back when it had nothing. */
+export function forgetViewValues(state: LinkRuntimeState, viewId: string): LinkRuntimeState {
+  const prefix = `${viewId}/`;
+  const emitted = new Map([...state.emitted].filter(([port]) => !port.startsWith(prefix)));
+  const attended = new Map([...state.attended].filter(([port]) => !port.startsWith(prefix)));
+  if (emitted.size === state.emitted.size && attended.size === state.attended.size) return state;
+  return { ...state, emitted, attended };
+}
+
+export interface CreateLinkRuntimeOptions {
+  /** Where a throwing runtime subscriber is reported for a RUNTIME-ONLY write (an emit); a core transaction reports through the core's own sink. */
+  onObserverError?: ObserverErrorSink;
+}
+
+export function createLinkRuntime(options: CreateLinkRuntimeOptions = {}): LinkRuntime {
   let state: LinkRuntimeState = { revision: 0, emitted: new Map(), contexts: new Map(), attended: new Map(), classes: new Map() };
   const listeners = new Set<() => void>();
-  const commit = (next: Omit<LinkRuntimeState, "revision">) => {
+  const install = (next: Omit<LinkRuntimeState, "revision">) => {
     state = { ...next, revision: state.revision + 1 };
-    for (const listener of listeners) listener();
+  };
+  const publish = (revision: number, failures: WorkbenchObserverError[]) => {
+    attemptAll(listeners, (listener) => listener(), "link-subscriber", revision, failures);
+  };
+  // A runtime-only write (a tile emitting) has no core transaction around
+  // it: it installs and publishes at once, under the runtime's own sink.
+  const commit = (next: Omit<LinkRuntimeState, "revision">) => {
+    install(next);
+    const failures: WorkbenchObserverError[] = [];
+    publish(state.revision, failures);
+    reportFailures(failures, options.onObserverError);
   };
   const same = (a: SerializableReference | null | undefined, b: SerializableReference | null | undefined) =>
     a === b || (a && b && a.type === b.type && JSON.stringify(a.value) === JSON.stringify(b.value));
@@ -109,27 +155,8 @@ export function createLinkRuntime(): LinkRuntime {
       classes.set(classId, reference);
       commit({ ...state, classes });
     },
-    apply(effects) {
-      if (effects.length === 0) return;
-      const emitted = new Map(state.emitted);
-      const classes = new Map(state.classes);
-      for (const effect of effects) {
-        if (effect.kind === "seed-class") classes.set(effect.classId, effect.reference);
-        else if (effect.kind === "forget-class") classes.delete(effect.classId);
-        else if (effect.kind === "set-emitted") {
-          if (effect.reference) emitted.set(effect.port, effect.reference);
-          else emitted.delete(effect.port);
-        }
-      }
-      commit({ ...state, emitted, classes });
-    },
-    forgetView(viewId) {
-      const prefix = `${viewId}/`;
-      const emitted = new Map([...state.emitted].filter(([port]) => !port.startsWith(prefix)));
-      const attended = new Map([...state.attended].filter(([port]) => !port.startsWith(prefix)));
-      if (emitted.size === state.emitted.size && attended.size === state.attended.size) return;
-      commit({ ...state, emitted, attended });
-    },
+    install: (next) => install(next),
+    publish,
     sourceOf(reference) {
       for (const [port, value] of state.attended) if (same(value, reference)) return port;
       for (const [port, value] of state.emitted) if (same(value, reference)) return port;

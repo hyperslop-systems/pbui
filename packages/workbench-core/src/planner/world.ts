@@ -12,7 +12,7 @@ import type { WorkbenchSession } from "../session";
 /**
  * Everything a planner may read (guide §7.3): values only. No store, no
  * DOM, no runtime mutation methods, no React. The links collaborator is
- * present as a value-returning planner; its `afterCommit` is not reachable
+ * present as a value-returning planner; its `install` is not reachable
  * from here.
  */
 export interface PlanWorld {

@@ -44,11 +44,11 @@ describe("stabilization probes (design doc 04 §4, §12)", () => {
     expect(executed.placementId).toBe(preview.placementId);
   });
 
-  it.fails("SUBSCRIBER_ESCAPE: a throwing core subscriber neither escapes nor suppresses the receipt", () => {
+  it("SUBSCRIBER_ESCAPE: a throwing core subscriber neither escapes nor suppresses the receipt", () => {
     const { ids, initial } = twoNotes();
     const onCommit = vi.fn();
     const onObserverError = vi.fn();
-    const core = createWorkbenchCore({ initial, apps: [notes], ids, onCommit, ...({ onObserverError } as object) });
+    const core = createWorkbenchCore({ initial, apps: [notes], ids, onCommit, onObserverError });
     const placementId = firstPlacement(core);
     core.subscribe(() => {
       throw new Error("probe: subscriber failure");
@@ -62,12 +62,15 @@ describe("stabilization probes (design doc 04 §4, §12)", () => {
     expect(onObserverError).toHaveBeenCalledWith(expect.objectContaining({ stage: "core-subscriber", revision: 1 }));
   });
 
-  it.fails("POST_COMMIT_ESCAPE: a throwing link observer does not escape after durable state is visible", () => {
+  it("POST_COMMIT_ESCAPE: a throwing link observer does not escape after durable state is visible", () => {
     const { ids, initial } = twoNotes();
     const links = createWorkbenchLinks();
     const onObserverError = vi.fn();
-    const core = createWorkbenchCore({ initial, apps: [notes], ids, links, ...({ onObserverError } as object) });
+    const core = createWorkbenchCore({ initial, apps: [notes], ids, links, onObserverError });
     const placementId = firstPlacement(core);
+    // The closed view holds a runtime value, so the close carries a
+    // forget-view-values effect and the runtime is published with the commit.
+    links.runtime.emit(`${core.getState().index.viewByPlacementId.get(placementId)}/out`, { type: "thing", value: { id: "1" } });
     links.runtime.subscribe(() => {
       throw new Error("probe: link subscriber failure");
     });
@@ -76,7 +79,7 @@ describe("stabilization probes (design doc 04 §4, §12)", () => {
     expect(onObserverError).toHaveBeenCalledWith(expect.objectContaining({ stage: "link-subscriber" }));
   });
 
-  it.fails("REENTRANT_RECEIPTS: a document source's delete lands after the lifecycle receipt that made it legal", async () => {
+  it("REENTRANT_RECEIPTS: a document source's delete lands after the lifecycle receipt that made it legal", async () => {
     const { ids, initial } = twoNotes();
     const receipts: Array<{ revision: number; cases: string[] }> = [];
     const core = createWorkbenchCore({

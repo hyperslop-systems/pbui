@@ -64,6 +64,10 @@ One stub per listed resource, of that format, put when missing and deleted when 
 
 An application whose bindings are declared by the bound resource rather than by its manifest (the sandbox's `script`, whose programs each name their own) sets `openBindings: true` on its manifest; `unknown_binding` is then not reported for its views, and every bound document must still exist.
 
+## Publication order and observer failures
+
+A transaction has three stages (design doc 04 §6.1): **prepare** (plan or apply the raw batch, validate, stage the link runtime's next value — all pure), **install** (set the core state and the link state, without notifying anyone), **publish** (the receipt hook `onCommit`, then the link runtime's subscribers, then the core's subscribers). Past install, nothing makes the operation look uncommitted: every observer is attempted exactly once, a throwing observer is recorded, and the collection is reported after all attempts through `onObserverError({ stage, revision, error })`. A mutation door called from an observer — `execute`, `apply`, `replaceDocument`, `restore`, `reset` — is refused with `reentrant_execution`; an integration that reacts to a publication schedules its own transaction for after it (a document source retries in a microtask).
+
 ## Invariants
 
 - Planning never touches anything observable; `preview` leaves the document, the session, and the link runtime exactly as they were.

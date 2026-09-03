@@ -65,14 +65,31 @@ export function documentSourceMutations(doc: WorkbenchDocument, source: Document
  * core subscription from feeding itself.
  */
 export function connectDocumentSource(core: WorkbenchCore, source: DocumentSource): () => void {
+  let disposed = false;
+  let deferred = false;
   const sync = () => {
+    if (disposed) return;
     const mutations = documentSourceMutations(core.getState().document, source);
-    if (mutations.length > 0) core.apply(mutations);
+    if (mutations.length === 0) return;
+    const applied = core.apply(mutations);
+    // Signalled from inside a publication (a core subscriber, a receipt
+    // hook): the core refuses a nested transaction (design doc 04 §6.3), so
+    // the reconcile runs after it — one microtask, however many signals.
+    // Outside a publication the stub lands synchronously, which is what a
+    // caller that adds a resource and opens a view in the same tick needs.
+    if (!applied.ok && applied.code === "reentrant_execution" && !deferred) {
+      deferred = true;
+      queueMicrotask(() => {
+        deferred = false;
+        sync();
+      });
+    }
   };
   sync();
   const unsubscribeSource = source.subscribe?.(sync) ?? (() => undefined);
   const unsubscribeCore = core.subscribe(sync);
   return () => {
+    disposed = true;
     unsubscribeSource();
     unsubscribeCore();
   };
