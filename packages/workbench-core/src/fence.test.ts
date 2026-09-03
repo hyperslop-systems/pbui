@@ -49,7 +49,8 @@ describe("workbench-core imports no React and reads no DOM", () => {
       const rel = relative(root, file);
       if (HOST_ADAPTERS.some((dir) => rel.startsWith(`${dir}/`))) return false;
       const source = stripComments(readFileSync(file, "utf8"));
-      return /\b(globalThis\.)?(document|window|localStorage|navigator)\.[a-zA-Z]/.test(source) || /\bHTMLElement\b|\bElement\b|\bDOMRect\b/.test(source);
+      // A leading `.` is a property of something else (`world.document.views`); a bare `document.` is the DOM.
+      return /(^|[^.\w])(globalThis\.)?(document|window|localStorage|navigator)\.[a-zA-Z]/.test(source) || /\bHTMLElement\b|\bElement\b|\bDOMRect\b/.test(source);
     });
     expect(offenders.map((file) => relative(root, file))).toEqual([]);
   });

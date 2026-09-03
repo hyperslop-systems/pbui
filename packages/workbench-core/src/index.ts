@@ -49,5 +49,14 @@ export type { FollowTheCrowdOptions, InitialDocumentInput, InitialDocumentPolicy
 export { repairSession } from "./session";
 export type { WorkbenchSession } from "./session";
 export { createWorkbenchCore } from "./createWorkbenchCore";
-export type { ApplyResult, CommitReceipt, CreateWorkbenchCoreOptions, ReplaceResult, WorkbenchCore, WorkbenchCoreState } from "./createWorkbenchCore";
+export type { ApplyResult, CommitReceipt, CreateWorkbenchCoreOptions, ExecuteOptions, ExecuteResult, PreviewResult, ReplaceResult, WorkbenchCore, WorkbenchCoreState } from "./createWorkbenchCore";
+export { commands, describeWorkbenchCommand, isWorkbenchCommand, isWorkbenchLinkCommand } from "./commands";
+export type { Edge, PlacementRequest, ViewRequest, WorkbenchCommand, WorkbenchCommandKind, WorkbenchLinkCommand } from "./commands";
+export { canSplitPlacement, DEFAULT_DIVIDER_PX, layoutFits, longerAxis, paneRatioBounds, splitRatioBounds } from "./geometry";
+export type { GeometrySnapshot, Rect, SplitRatioBounds } from "./geometry";
+export type { LocalEffect } from "./effects";
+export { plan } from "./planner/plan";
+export type { PlanResult, PreparedTransition } from "./planner/plan";
+export type { Choice, PlanWorld } from "./planner/world";
+export * from "./links";
 export { sequentialIds } from "./testing";
