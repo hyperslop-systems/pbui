@@ -65,13 +65,21 @@ describe("the version-5 persistence golden", () => {
     const layout = valid.layout;
     const work = layout.spaces.filter((space) => space.stageId === WORK_STAGE_ID);
     // A renamed workspace and an added one, both user-owned.
-    expect(work.map((space) => space.name)).toEqual(["build", "my explore", "gallery", "help", "scratch"]);
+    expect(work.map((space) => space.name)).toEqual([
+      "build",
+      "my explore",
+      "gallery",
+      "help",
+      "scratch",
+    ]);
     expect(work.every((space) => !space.pinned)).toBe(true);
     // The added workspace narrows its allow-list.
     const scratch = work.find((space) => space.name === "scratch")!;
     expect(scratch.apps).toEqual(["chart", "table", "launcher"]);
     // One chart view, named, bound to a document, placed TWICE (a linked duplicate).
-    const chartLeaves = leaves(scratch.tree).filter((leaf) => layout.views[leaf.viewId]?.appId === "chart");
+    const chartLeaves = leaves(scratch.tree).filter(
+      (leaf) => layout.views[leaf.viewId]?.appId === "chart",
+    );
     expect(chartLeaves).toHaveLength(2);
     expect(new Set(chartLeaves.map((leaf) => leaf.viewId)).size).toBe(1);
     const chart = layout.views[chartLeaves[0]!.viewId]!;
@@ -80,7 +88,11 @@ describe("the version-5 persistence golden", () => {
     // The stage pointers moved: the user is on `my explore` in work, and the
     // account stage remembers its own workspace.
     expect(layout.currentStageId).toBe(WORK_STAGE_ID);
-    expect(layout.spaces.find((space) => space.id === layout.currentSpaceId)?.name).toBe("my explore");
-    expect(layout.stages.find((stage) => stage.id === ACCOUNT_STAGE_ID)?.currentSpaceId).toBe("ws-account");
+    expect(layout.spaces.find((space) => space.id === layout.currentSpaceId)?.name).toBe(
+      "my explore",
+    );
+    expect(layout.stages.find((stage) => stage.id === ACCOUNT_STAGE_ID)?.currentSpaceId).toBe(
+      "ws-account",
+    );
   });
 });

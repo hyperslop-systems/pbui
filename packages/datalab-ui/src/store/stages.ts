@@ -43,37 +43,31 @@ import { newId } from "./world";
  * its first workspace on every reload.
  */
 
-export const SIGNIN_STAGE_ID: StageId = "stage-signin";
-export const WELCOME_STAGE_ID: StageId = "stage-welcome";
-export const ACCOUNT_STAGE_ID: StageId = "stage-account";
-export const WORK_STAGE_ID: StageId = "stage-work";
-
-/** The sign-in stage's single workspace. */
-export const SIGNIN_SPACE_ID = "ws-signin";
-/**
- * Where a signed-out visitor lands (DATADROP-14).
- *
- * The welcome stage's first workspace, ahead of the four tutorial ones: a
- * stranger who has just arrived wants to see the product work on real data, not
- * to be dropped into lesson one. The tutorials stay one click away in the
- * workspace strip.
- */
-export const WELCOME_SPACE_ID = "ws-welcome";
-/** The welcome stage's four tutorial workspaces. */
-export const TOUR_SPACE_IDS = ["ws-tour-1", "ws-tour-2", "ws-tour-3", "ws-tour-4"] as const;
-/** Finished product demonstrations, after the four teaching workspaces. */
-export const DEMO_SPACE_IDS = ["ws-demo-5", "ws-demo-6", "ws-demo-7"] as const;
-/** The account stage's workspaces. */
-export const ACCOUNT_SPACE_ID = "ws-account";
-/**
- * The templates workspace, which the stage menu's "templates …" opens.
- *
- * On the account stage rather than anywhere else because that is what the
- * request asked for: "a button on the top right that is used to manage account,
- * stored workspace templates, etc." The button is the stage menu, and account
- * management is a stage.
- */
-export const TEMPLATES_SPACE_ID = "ws-templates";
+export {
+  ACCOUNT_SPACE_ID,
+  ACCOUNT_STAGE_ID,
+  DEMO_SPACE_IDS,
+  SIGNIN_SPACE_ID,
+  SIGNIN_STAGE_ID,
+  TEMPLATES_SPACE_ID,
+  TOUR_SPACE_IDS,
+  WELCOME_SPACE_ID,
+  WELCOME_STAGE_ID,
+  WORK_STAGE_ID,
+} from "./stageIds";
+import {
+  ACCOUNT_SPACE_ID,
+  ACCOUNT_STAGE_ID,
+  DEMO_SPACE_IDS,
+  PINNED_STAGE_IDS,
+  SIGNIN_SPACE_ID,
+  SIGNIN_STAGE_ID,
+  TEMPLATES_SPACE_ID,
+  TOUR_SPACE_IDS,
+  WELCOME_SPACE_ID,
+  WELCOME_STAGE_ID,
+  WORK_STAGE_ID,
+} from "./stageIds";
 
 /**
  * The applications the welcome stage offers.
@@ -435,13 +429,6 @@ export function stageIsVisible(stage: Stage, authed: boolean): boolean {
 export function landingStageFor(authed: boolean): StageId {
   return authed ? WORK_STAGE_ID : WELCOME_STAGE_ID;
 }
-
-const PINNED_STAGE_IDS: ReadonlySet<string> = new Set([
-  SIGNIN_STAGE_ID,
-  WELCOME_STAGE_ID,
-  ACCOUNT_STAGE_ID,
-  WORK_STAGE_ID,
-]);
 
 /** Was this workspace id defined in code by *this* build? */
 export function isPinnedSpaceId(id: string): boolean {

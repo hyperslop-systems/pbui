@@ -96,3 +96,75 @@ export function shapeOfLayout(layout: LayoutState): LayoutShape {
     })),
   };
 }
+
+/* ------------------------------------------------ the workbench side -- */
+
+import type { Node as ProtocolNode } from "@hyperslop-systems/workbench-protocol";
+import { Direction } from "@hyperslop-systems/workbench-protocol";
+import type { DatalabSeed } from "../../src/store/seed";
+
+/**
+ * The same shape, read off a workbench document plus navigation metadata —
+ * what the seed compiler produces. Equality with `shapeOfLayout(defaultLayout())`
+ * is the Phase 1 exit gate.
+ */
+export function shapeOfDocument(seed: DatalabSeed): LayoutShape {
+  const { document, navigation, workspaceId } = seed;
+  const aliases = new Map<string, string>();
+  const alias = (viewId: string): string => {
+    let name = aliases.get(viewId);
+    if (!name) {
+      name = `v${aliases.size + 1}`;
+      aliases.set(viewId, name);
+    }
+    return name;
+  };
+  const tree = (node: ProtocolNode | undefined): TreeShape => {
+    if (!node) throw new Error("a workspace has no tree");
+    if (node.body.case === "leaf") {
+      const view = document.views[node.body.value.viewId];
+      return {
+        view: alias(node.body.value.viewId),
+        app: view?.appId ?? "?",
+        ...(view?.title ? { title: view.title } : {}),
+        ...(view?.documents.primary ? { doc: view.documents.primary } : {}),
+      };
+    }
+    if (node.body.case !== "split") throw new Error("a node has no body");
+    const { direction, ratio, a, b } = node.body.value;
+    return { dir: direction === Direction.COLUMN ? "col" : "row", ratio, a: tree(a), b: tree(b) };
+  };
+  const metaOf = (id: string) =>
+    navigation.workspace[id] ?? { stageId: "", pinned: false, apps: null };
+  const label = (id: string | undefined): string => {
+    if (!id) return "";
+    const space = document.workspaces.find((candidate) => candidate.id === id);
+    if (!space) return "";
+    return metaOf(id).pinned ? id : space.name;
+  };
+  return {
+    currentStage: metaOf(workspaceId).stageId,
+    currentWorkspace: label(workspaceId),
+    stages: navigation.stages.map((stage) => ({
+      id: stage.id,
+      name: stage.name,
+      apps: stage.apps,
+      chrome: stage.chrome,
+      ...(stage.audience ? { audience: stage.audience } : {}),
+      pinned: stage.pinned === true,
+      current: label(navigation.rememberedWorkspaceByStage[stage.id]),
+      workspaces: document.workspaces
+        .filter((space) => metaOf(space.id).stageId === stage.id)
+        .map((space) => {
+          const meta = metaOf(space.id);
+          return {
+            ...(meta.pinned ? { id: space.id } : {}),
+            name: space.name,
+            pinned: meta.pinned,
+            ...(meta.apps !== null ? { apps: meta.apps } : {}),
+            tree: tree(space.tree),
+          };
+        }),
+    })),
+  };
+}
