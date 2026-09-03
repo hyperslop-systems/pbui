@@ -52,3 +52,5 @@ export type {
   PresentationType,
   PresentationValues,
 } from "./types";
+export { activationOutcome, stopsPropagation } from "./interaction/activation";
+export type { ActivationInput, ActivationOutcome } from "./interaction/activation";

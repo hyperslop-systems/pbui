@@ -17,6 +17,7 @@ import type { HelpRendererRegistry } from "../components/ContextHelp";
 import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
+import { activationOutcome } from "./interaction/activation";
 import { evaluateFresh } from "./actions/perform";
 import type {
   ActionQuery,
@@ -709,31 +710,34 @@ export function createPbui<
       if (native[PRESENTATION_HANDLED]) return;
       native[PRESENTATION_HANDLED] = true;
 
-      if (acceptable) {
-        event.preventDefault();
-        event.stopPropagation();
-        pbui.satisfyAccept(reference);
-        return;
+      // ONE ladder for pointer and keyboard (PBUI-KERNEL-4 §14.4); this
+      // handler only carries the outcome out.
+      const outcome = activationOutcome<Values, Verb>({ acceptable, activate, primary: primaryFor });
+      switch (outcome.kind) {
+        case "attempt-accept":
+          event.preventDefault();
+          event.stopPropagation();
+          pbui.satisfyAccept(reference);
+          return;
+        case "activate-host":
+          // No stopPropagation: the host row's own gesture is not this
+          // element's to cancel. `run` is optional precisely so a product can
+          // say "the host owns this click" and still name it in the mouse doc.
+          outcome.run?.();
+          return;
+        case "perform-primary":
+          // The kernel's primary action acts like a menu row, not like
+          // `activate`: this element acts, so the click stops here, and the
+          // verb goes through fresh revalidation like every kernel action.
+          event.preventDefault();
+          event.stopPropagation();
+          void pbui.performAction(outcome.action);
+          return;
+        case "open-menu":
+          event.stopPropagation();
+          open(event.clientX, event.clientY, event.currentTarget as HTMLElement);
+          return;
       }
-      if (activate) {
-        // No stopPropagation: the host row's own gesture is not this
-        // element's to cancel. `run` is optional precisely so a product can
-        // say "the host owns this click" and still name it in the mouse doc.
-        activate.run?.();
-        return;
-      }
-      const primary = primaryFor();
-      if (primary) {
-        // The kernel's primary action acts like a menu row, not like
-        // `activate`: this element acts, so the click stops here, and the
-        // verb goes through fresh revalidation like every kernel action.
-        event.preventDefault();
-        event.stopPropagation();
-        void pbui.performAction(primary);
-        return;
-      }
-      event.stopPropagation();
-      open(event.clientX, event.clientY, event.currentTarget as HTMLElement);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -751,36 +755,38 @@ export function createPbui<
         // for.
         event.stopPropagation();
 
-        if (acceptable) {
-          pbui.satisfyAccept(reference);
-          return;
+        const outcome = activationOutcome<Values, Verb>({ acceptable, activate, primary: primaryFor });
+        switch (outcome.kind) {
+          case "attempt-accept":
+            pbui.satisfyAccept(reference);
+            return;
+          case "activate-host":
+            /*
+             * Route keyboard activation through the click path rather than
+             * calling `run` here.
+             *
+             * P4.1 made a click with `activate` bubble so the host sees its own
+             * gesture, and left this branch calling `activate.run()` directly —
+             * so mouse and keyboard diverged. Enter ran the presentation's verb
+             * and never reached the host, and `activate` WITHOUT `run` — the
+             * state a `renderRow` wrapper uses, where the host owns the click
+             * entirely — was a complete keyboard no-op.
+             *
+             * `.click()` dispatches a real, bubbling MouseEvent, so there is one
+             * activation path with one set of semantics instead of two that have
+             * to be kept in step. Caught in review on PR #9.
+             */
+            (event.currentTarget as HTMLElement).click();
+            return;
+          case "perform-primary":
+            void pbui.performAction(outcome.action);
+            return;
+          case "open-menu": {
+            const box = (event.target as HTMLElement).getBoundingClientRect();
+            open(box.left, box.bottom, event.currentTarget as HTMLElement);
+            return;
+          }
         }
-        if (activate) {
-          /*
-           * Route keyboard activation through the click path rather than
-           * calling `run` here.
-           *
-           * P4.1 made a click with `activate` bubble so the host sees its own
-           * gesture, and left this branch calling `activate.run()` directly —
-           * so mouse and keyboard diverged. Enter ran the presentation's verb
-           * and never reached the host, and `activate` WITHOUT `run` — the
-           * state a `renderRow` wrapper uses, where the host owns the click
-           * entirely — was a complete keyboard no-op.
-           *
-           * `.click()` dispatches a real, bubbling MouseEvent, so there is one
-           * activation path with one set of semantics instead of two that have
-           * to be kept in step. Caught in review on PR #9.
-           */
-          (event.currentTarget as HTMLElement).click();
-          return;
-        }
-        const primary = primaryFor();
-        if (primary) {
-          void pbui.performAction(primary);
-          return;
-        }
-        const box = (event.target as HTMLElement).getBoundingClientRect();
-        open(box.left, box.bottom, event.currentTarget as HTMLElement);
       } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
         event.preventDefault();
         event.stopPropagation();
