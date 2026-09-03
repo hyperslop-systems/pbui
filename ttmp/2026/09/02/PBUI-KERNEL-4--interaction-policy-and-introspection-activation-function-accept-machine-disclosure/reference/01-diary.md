@@ -214,3 +214,48 @@ KERNEL-1 made `onRefuse` required so that a stale row's refusal could not vanish
 
 ### Code review instructions
 - `interaction/refusal.ts`; `RefusalNotice` in `createPbui.tsx`; `createPbui.refusal.test.tsx`.
+
+## Step 5: Explain the query the user is looking at
+
+Guide §15.3 is explicit about what introspection must not do: re-resolve with a synthetic `"introspection"` invocation to explain a menu, because invocation is an input to discovery and a different one can produce a different candidate set. `explainResolution(query, resolution, disclosure)` therefore takes the resolution the menu (or the primary click) already computed, over the same snapshot, and only decides how much of it to show. `pbui.explain(query, disclosure = "public")` on the context resolves the query exactly as `pbui.resolve` does and hands the result to it.
+
+Disclosure is two policies. Public is the menu: rows in menu order with their availability and the product's `because`, and the ambiguity notes; a hidden rule is hidden from the explanation, rejected candidates and reason codes do not appear, and the trace is absent. Developer is the trace: the same rows each with the entries that produced them, and every other candidate the resolver considered with its last stage, result and reason code.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 5: original-query introspection with an explicit disclosure policy.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 65832f2 — "PBUI-KERNEL-4 P5: explain the original query under a disclosure policy"
+
+### What I did
+- `interaction/explain.ts` (+ 5 tests over a compiled presentation with an available, an unavailable-with-code, a hidden and an out-of-scope rule); `pbui.explain` on the context; exports.
+- Root suite: 47 files, 822 tests.
+
+### Why
+- The exit criteria: public omits hidden detail; developer explains the same rows as the menu query.
+
+### What worked
+- The trace already carries everything developer mode needs; the module groups it by candidate and separates shown rows from the rest.
+
+### What didn't work
+- The fixture first reused rule ids as action ids (`files.delete`/`files.delete`), which the registry refuses: "a rule names a declaration, an action names the conceptual operation". Renamed the rules.
+- Two expectations were wrong about the resolver, not the explanation: menu rows are sorted (Delete before Open), and a hidden winner's last trace stage is `selected:hidden`, not `condition:hidden`. Fixed the expectations; both facts are now recorded in the test.
+
+### What I learned
+- A hidden rule wins its action and is then withheld from the menu at the `selected` stage; that is why public disclosure filters on the rows, not on the trace's `condition` stage.
+
+### What was tricky to build
+- Making "public omits hidden detail" checkable: the test serializes the public explanation and asserts the hidden rule's id, the out-of-scope rule's id, `reasonCode`, the unavailable rule's code and the words `trace`/`others` are all absent from the text.
+
+### What warrants a second pair of eyes
+- Developer disclosure exposes reason codes and predicate ids; the doc comment says "behind a deliberate product gate". Nothing in the runtime enforces the gate.
+
+### What should be done in the future
+- A developer-mode panel in a product (the chat demo's inspector is the natural place).
+
+### Code review instructions
+- `interaction/explain.ts`; `explain.test.ts`; `explain` in the context value.

@@ -36,3 +36,12 @@ Step 4: refusal in context, RefusalNotice, onRefuse optional with an unobserved-
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/interaction/refusal.ts — describeRefusal
 
+
+## 2026-09-02
+
+Step 5: explainResolution and pbui.explain with public/developer disclosure (commit 65832f2)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/interaction/explain.ts — Original-query introspection
+
