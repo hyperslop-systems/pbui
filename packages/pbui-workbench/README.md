@@ -52,6 +52,8 @@ root.render(
 
 `createWorkbench` is the convenience over the two constructors: `createWorkbenchCore({ initial, apps: manifests, policy, links })` and `createWorkbenchShell({ core, apps: presentations })`. Use them directly when the core must exist without React (agents, tests, workers).
 
+Bindings are validated against the document store (see workbench-core's README, "Documents for what tiles bind"): a tile that binds a host-owned id needs a stub document for it, kept in step with `connectDocumentSource(workbench.core, source)`.
+
 ## Change the layout
 
 ```ts

@@ -95,6 +95,12 @@ Migration owner for every row in this ticket: the implementer of Phase 8 (this s
   ./styles.css
 ```
 
+### 3.1 Phase 8 additions
+
+- `connectDocumentSource(core, { format, list, subscribe? })`, `documentSourceMutations`, `DocumentSource` (workbench-core): stub documents for host-owned resources that tiles bind, because the core validates `unknown_document` like the Go validator.
+- `WorkbenchAppManifest.openBindings` (default false): the application accepts bindings beyond its declared slots; used by the sandbox's `script` application.
+- Consumers use them as: pbui-sandbox `programDocumentSource` / `connectProgramLibrary`; pbui-chat `attachWorkbench` (conversations) and "Open in tile" (widgets); the chat demo's world; test harnesses seed with static sources.
+
 ## 4. Phase 0 baseline
 
 ```text

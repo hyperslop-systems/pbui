@@ -46,6 +46,24 @@ const advisory = core.preview(commands.close(placementId));
 
 Geometry is a value: pass `execute(command, { geometry })` with a `GeometrySnapshot` the caller measured; without one the policy's deterministic fallbacks apply.
 
+## Documents for what tiles bind
+
+The core validates every `view.documents` binding against the document store, as `pkg/workbench` does: a binding must name a slot the manifest declares (`unknown_binding`) and a document that exists (`unknown_document`). Products bind things that live elsewhere — a conversation in a registry, a program in a library, a product in a catalogue — so those get a stub document that stands for them:
+
+```ts
+import { connectDocumentSource } from "@hyperslop-systems/workbench-core";
+
+const disconnect = connectDocumentSource(core, {
+  format: "chat.conversation",
+  list: () => registry.all().map((c) => ({ id: c.id })),
+  subscribe: (listener) => registry.subscribe(listener),
+});
+```
+
+One stub per listed resource, of that format, put when missing and deleted when the source no longer lists it — unless a view still binds it, in which case the stub stays until the view goes. The sync also re-runs when the core's document is replaced (a restore, a reset), so a document that arrived without stubs gets them. The host stays the resource's home; a stub carries identity and, optionally, a small body written once.
+
+An application whose bindings are declared by the bound resource rather than by its manifest (the sandbox's `script`, whose programs each name their own) sets `openBindings: true` on its manifest; `unknown_binding` is then not reported for its views, and every bound document must still exist.
+
 ## Invariants
 
 - Planning never touches anything observable; `preview` leaves the document, the session, and the link runtime exactly as they were.
