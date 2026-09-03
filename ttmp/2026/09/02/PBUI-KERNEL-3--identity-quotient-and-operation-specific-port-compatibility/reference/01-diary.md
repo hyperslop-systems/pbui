@@ -10,6 +10,10 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://src/presentation/links/compatibility.test.ts
+      Note: Identity-vs-flow tests kept apart
+    - Path: repo://src/presentation/links/compatibility.ts
+      Note: Four predicates (Step 2)
     - Path: repo://src/presentation/links/identity.properties.test.ts
       Note: §19.7 properties (Step 1)
     - Path: repo://src/presentation/links/identity.ts
@@ -20,6 +24,7 @@ LastUpdated: 2026-09-02T20:33:04.514887849-04:00
 WhatFor: Continue or review the identity and compatibility work without re-deriving what was tried and why the predicates are shaped as they are.
 WhenToUse: Before touching links/identity.ts, links/compatibility.ts or planIdentityAdd, or when a compatibility refusal changed.
 ---
+
 
 
 # Diary
@@ -78,3 +83,56 @@ Keep screenshots regularly for the diary and for the report ultimately."
 
 ### Technical details
 - Synthetic port map: `a1..a8` (orders selection, inout), `b1..b4` (daily_sales selection, inout), `o1` (orders selection, out), `r1` (orders, role `brush`).
+
+## Step 2: Four predicates where there was one equality and one bare reach
+
+`types.ts` already had the factorization the guide asks for in §13.2: `ValueContract` (value type, role, cardinality), `PortProtocol` (mode, authority, algebra, lifetime), and projections over each. What it did not have was the predicates. Every compatibility question was answered by one of two tools: `contractMismatches`, which compares all seven fields and is what identity used, and `reaches`, which compares value types and is what flow used. Neither says which question it answers, and neither can answer "do these two endpoints combine writes the same way" without also answering six other things.
+
+`links/compatibility.ts` gives each question a name, a code and a sentence. `canFlow(from, into, graph)` is value reachability and nothing else; `canAccept(reference, into, graph)` is flow with a reference as the source; `canShareCell(left, right)` demands equality on both projections and reports the value and protocol disagreements apart; `canMergeUpdates(left, right)` reads the algebra only. The tests are deliberately organized by question, not by fixture: the same pair of contracts is asked each question and the answers differ, which is the point.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 2 of the plan slip: the named predicates and the separate identity-vs-flow tests.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 02d85f3 — "PBUI-KERNEL-3 P2: operation-specific port compatibility (§13.2)"
+
+### What I did
+- New `src/presentation/links/compatibility.ts` and `compatibility.test.ts` (11 tests); exports added to `links/index.ts`.
+- `tsc --noEmit` clean; `npx vitest run src/presentation/links` → 287 tests.
+
+### Why
+- The guide's warning: "Do not equate all compatibility with whole-contract equality by accident." A predicate with a name cannot be used by accident for the wrong question.
+
+### What worked
+- `canFlow` produces the exact `<order> does not reach <customer>` sentence the checker and the planners already use, so P3 can route the checker through it without a message change.
+
+### What didn't work
+- Two type errors on the first typecheck: the test helper's signature did not admit the bare-type shorthand `normalizeContract` accepts, and a shared `OK` constant typed as `Verdict` was not assignable to `ShareVerdict`. Both fixed in the test helper's type and by typing `OK` `as const`.
+
+### What I learned
+- Only `updateAlgebra` is consulted by `canMergeUpdates`. Authority is a different question (who may write), and a future merge policy that needs both should compose the two predicates rather than widen this one.
+
+### What was tricky to build
+- Deciding what `canFlow` should NOT check. Cardinality (`many` into `one`) and role are plausible flow constraints and would be new behavior; the predicate names the existing PBUI-LINK-1 law and leaves that change for a ticket that wants it.
+
+### What warrants a second pair of eyes
+- `canShareCell`'s `because` sentence concatenates value then protocol mismatches, which is the order `contractMismatches` produced, so identity refusals are byte-identical after P3.
+
+### What should be done in the future
+- Cardinality-aware flow, if a product needs it.
+
+### Code review instructions
+- `compatibility.ts` top comment states the four questions; `compatibility.test.ts` is grouped by question.
+
+### Technical details
+
+```text
+canFlow(from, into)        reaches(from.valueType, into.valueType)
+canAccept(ref, into)       canFlow(ref.type, into)
+canShareCell(l, r)         valueMismatches(l, r) = ∅ ∧ protocolMismatches(l, r) = ∅
+canMergeUpdates(l, r)      l.updateAlgebra == r.updateAlgebra
+```

@@ -13,3 +13,12 @@ Step 1: §19.7 quotient properties as 136 seeded tests against a reference parti
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/identity.properties.test.ts — Reference partition and the six properties
 
+
+## 2026-09-02
+
+Step 2: links/compatibility.ts with canFlow/canAccept/canShareCell/canMergeUpdates and question-separated tests (commit 02d85f3)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/compatibility.ts — The four predicates
+
