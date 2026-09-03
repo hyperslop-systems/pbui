@@ -16,8 +16,9 @@ import type {
 import { linkTypeDefinitions, workbenchLinkContributions, type WorkbenchLinkContributionOptions } from "./links/contributions";
 import { createLinkDescriptor, type LinkRef } from "./links/linkRef";
 import { createPortDescriptor, type PortRef } from "./links/portRef";
+import { commands } from "@hyperslop-systems/workbench-core";
 import { createTileDescriptor, type TileRef } from "./tileDescriptor";
-import { workbenchVerbs, type WorkbenchVerb } from "./verbs";
+import type { WorkbenchVerb } from "./types";
 
 /**
  * The shared workbench action contributions (PBUI-ACTIONS-2 Amendment C).
@@ -97,14 +98,14 @@ export function workbenchTileContributions<
       action: "tile.split.row",
       scopes: [...workbenchScopes],
       metadata: { label: "Split beside", order: 10 },
-      bind: ({ subject }) => workbenchVerbs.split(project(subject.value).placementId, "row"),
+      bind: ({ subject }) => commands.duplicate(project(subject.value).placementId, "row"),
     }),
     define.exact("tile", {
       id: "workbench.tile.split-col",
       action: "tile.split.col",
       scopes: [...workbenchScopes],
       metadata: { label: "Split below", order: 11 },
-      bind: ({ subject }) => workbenchVerbs.split(project(subject.value).placementId, "col"),
+      bind: ({ subject }) => commands.duplicate(project(subject.value).placementId, "col"),
     }),
   ];
 
@@ -119,7 +120,7 @@ export function workbenchTileContributions<
           description: "opens the launcher aimed at this tile",
           order: 12,
         },
-        bind: ({ subject }) => workbenchVerbs.openLauncher(project(subject.value).placementId),
+        bind: ({ subject }) => ({ kind: "launcher.open", from: project(subject.value).placementId }),
       }),
     );
   }
@@ -138,7 +139,7 @@ export function workbenchTileContributions<
         description: "a second tile with its own state",
         order: 20,
       },
-      bind: ({ subject }) => workbenchVerbs.split(project(subject.value).placementId, "row"),
+      bind: ({ subject }) => commands.duplicate(project(subject.value).placementId, "row"),
     }),
     define.exact("tile", {
       id: "workbench.tile.rename",
@@ -151,7 +152,7 @@ export function workbenchTileContributions<
       },
       bind: ({ subject }) => {
         const tile = project(subject.value);
-        return workbenchVerbs.setTitle(tile.viewId, tile.customTitle ?? "");
+        return commands.setTitle(tile.viewId, tile.customTitle ?? "");
       },
     }),
     define.exact("tile", {
@@ -169,7 +170,7 @@ export function workbenchTileContributions<
         description: "the same view; changes appear in both",
         order: 22,
       },
-      bind: ({ subject }) => workbenchVerbs.goTo(project(subject.value).viewId),
+      bind: ({ subject }) => commands.goTo(project(subject.value).viewId),
     }),
     define.exact("tile", {
       id: "workbench.tile.close",
@@ -180,7 +181,7 @@ export function workbenchTileContributions<
           ? available()
           : unavailable("a workspace keeps at least one tile"),
       metadata: { label: "Close tile", danger: true, order: 30 },
-      bind: ({ subject }) => workbenchVerbs.close(project(subject.value).placementId),
+      bind: ({ subject }) => commands.close(project(subject.value).placementId),
     }),
   );
 

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
-import { createWorkbench } from "../../createWorkbench";
-import { split, tile, workspaces } from "../../document";
+import { split, tile, workspaces } from "@hyperslop-systems/workbench-core";
+import { createWorkbench } from "../../createWorkbenchShell";
 import { demoApps } from "../../stories/demoApps";
 
 afterEach(cleanup);
@@ -37,7 +37,7 @@ describe("WorkspaceStrip", () => {
     );
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(2);
     fireEvent.click(container.querySelectorAll('[data-part="workspace-strip"] button')[1]!);
-    expect(wb.store.getState().workspaceId).toBe("b");
+    expect(wb.core.getState().session.workspaceId).toBe("b");
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(1);
   });
 
@@ -57,23 +57,13 @@ describe("WorkspaceStrip", () => {
     const buttons = container.querySelectorAll<HTMLButtonElement>('[data-part="workspace-strip"] button');
     expect(buttons).toHaveLength(4);
     fireEvent.click(buttons[3]!);
-    expect(wb.store.getState().document.workspaces).toHaveLength(4);
-    expect(wb.store.getState().workspaceId).not.toBe("a");
+    expect(wb.core.getState().document.workspaces).toHaveLength(4);
+    expect(wb.core.getState().session.workspaceId).not.toBe("a");
   });
 
   test("renderWorkspace replaces the default button", () => {
     const wb = threeWorkspaces();
-    const { container } = render(
-      <wb.WorkspaceStrip
-        renderWorkspace={(workspace, placement) => (
-          <b data-part="custom-ws">{`${workspace.name}/${placement.tileCount}/${placement.active}`}</b>
-        )}
-      />,
-    );
-    expect([...container.querySelectorAll('[data-part="custom-ws"]')].map((n) => n.textContent)).toEqual([
-      "main/2/true",
-      "scratch/1/false",
-      "third/1/false",
-    ]);
+    const { container } = render(<wb.WorkspaceStrip renderWorkspace={(workspace, placement) => <b data-part="custom-ws">{`${workspace.name}/${placement.tileCount}/${placement.active}`}</b>} />);
+    expect([...container.querySelectorAll('[data-part="custom-ws"]')].map((n) => n.textContent)).toEqual(["main/2/true", "scratch/1/false", "third/1/false"]);
   });
 });

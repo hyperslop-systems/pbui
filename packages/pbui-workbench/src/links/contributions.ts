@@ -29,8 +29,9 @@ import {
   type SerializableReference,
   type UnlinkPolicy,
 } from "@hyperslop-systems/pbui";
+import { commands } from "@hyperslop-systems/workbench-core";
 import { workbenchScopes } from "../actions";
-import { workbenchVerbs, type WorkbenchVerb } from "../verbs";
+import type { WorkbenchVerb } from "../types";
 import type { LinkRef } from "./linkRef";
 import type { PortRef } from "./portRef";
 
@@ -48,7 +49,7 @@ import type { PortRef } from "./portRef";
  *   the value itself.
  *
  * The facts are read through `links(snapshot)`, which the product's
- * `snapshotFor` fills from `workbench.links`. Nothing here reads a store.
+ * `snapshotFor` fills from `workbench.linkSnapshot()`. Nothing here reads a store.
  */
 
 /** The link world's presented types. (`context` cells are not presented as references and declare no type.) */
@@ -164,7 +165,7 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
       scopes,
       test: ({ subject }) => (subject.value.sourcePort ? available() : inapplicable()),
       metadata: { label: ({ subject }) => `Go to ${subject.value.sourcePort ? (parsePortId(subject.value.sourcePort)?.viewId ?? "source") : "source"}`, description: "the tile this port reads from", order: 40 },
-      bind: ({ subject }) => workbenchVerbs.goTo(parsePortId(subject.value.sourcePort ?? "")?.viewId ?? ""),
+      bind: ({ subject }) => commands.goTo(parsePortId(subject.value.sourcePort ?? "")?.viewId ?? ""),
     }),
   ];
 
@@ -228,14 +229,14 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
       action: "link.go-to-source",
       scopes,
       metadata: { label: ({ subject }) => `Go to ${subject.value.sourceTitle}`, order: 20 },
-      bind: ({ subject }) => workbenchVerbs.goTo(parsePortId(subject.value.source)?.viewId ?? ""),
+      bind: ({ subject }) => commands.goTo(parsePortId(subject.value.source)?.viewId ?? ""),
     }),
     defineLink.exact("link", {
       id: "workbench.link.go-to-destination",
       action: "link.go-to-destination",
       scopes,
       metadata: { label: ({ subject }) => `Go to ${subject.value.destinationTitle}`, order: 21 },
-      bind: ({ subject }) => workbenchVerbs.goTo(parsePortId(subject.value.destination)?.viewId ?? ""),
+      bind: ({ subject }) => commands.goTo(parsePortId(subject.value.destination)?.viewId ?? ""),
     }),
   ];
   contributions.push(...(linkContributions as unknown as ActionContribution<PortValues, ProductFacts, WorkbenchVerb>[]));

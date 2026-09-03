@@ -59,4 +59,6 @@ export { plan } from "./planner/plan";
 export type { PlanResult, PreparedTransition } from "./planner/plan";
 export type { Choice, PlanWorld } from "./planner/world";
 export * from "./links";
+export { describeWorkbench, titleOfView } from "./describe";
+export type { DescribeOptions, DescribePresentation, DescribedApp, DescribedBinding, DescribedContext, DescribedLink, DescribedPort, DescribedSplit, DescribedTile, DescribedWorkspace, WorkbenchDescription } from "./describe";
 export { sequentialIds } from "./testing";

@@ -52,3 +52,24 @@ function dividerToken(root: HTMLElement): number {
   const token = Number.parseFloat(getComputedStyle(root).getPropertyValue("--pbui-space-4"));
   return Number.isFinite(token) && token >= 0 ? token : DEFAULT_DIVIDER_PX;
 }
+
+/**
+ * Geometry for ONE split — the divider's own refresh and pointer path, where
+ * measuring every tile per pointer move would be waste. The split's element
+ * and its rendered divider are all the engine's ratio math reads.
+ */
+export function measureSplitGeometry(element: HTMLElement | null, splitId: string): GeometrySnapshot | null {
+  if (!element || typeof element.getBoundingClientRect !== "function") return null;
+  const box = element.getBoundingClientRect();
+  if (!Number.isFinite(box.width) || box.width <= 0 || box.height <= 0) return null;
+  const divider = Array.from(element.children).find((child) => (child as HTMLElement).dataset?.part === "split-divider") as HTMLElement | undefined;
+  const measured = divider?.getBoundingClientRect();
+  const token = dividerToken(element);
+  const inline = measured && measured.width > 0 && measured.width < measured.height ? measured.width : token;
+  const block = measured && measured.height > 0 && measured.height < measured.width ? measured.height : token;
+  return {
+    divider: { inline, block },
+    placements: new Map(),
+    splits: new Map([[splitId, { x: 0, y: 0, width: box.width, height: box.height }]]),
+  };
+}

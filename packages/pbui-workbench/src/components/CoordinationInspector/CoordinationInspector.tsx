@@ -1,10 +1,9 @@
 import { AppBody, Button, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
-import { badgesOfView, checkInvariants, linkVerbs } from "@hyperslop-systems/pbui";
+import { badgesOfView, checkInvariants } from "@hyperslop-systems/pbui";
+import { defineWorkbenchApp, type AppProps, type WorkbenchApp } from "../../app";
 import { useWorkbench } from "../../context";
 import { useLinkSnapshot } from "../../links/hooks";
 import { linkRefsOf } from "../../links/linkRef";
-import type { AppProps } from "../../apps";
-import { defineApp, type AppDescriptor } from "../../apps";
 import styles from "./CoordinationInspector.module.css";
 
 /**
@@ -39,7 +38,7 @@ export function CoordinationInspector(_props: AppProps) {
         <Text size="tiny" tone="faint">
           {bindings.length} bound · {links.length} wires · {classes.length} classes · {violations.length === 0 ? "invariants hold" : `${violations.length} violations`}
         </Text>
-        <Button size="tiny" variant="framed" onClick={() => workbench.perform(linkVerbs.openMode())}>
+        <Button size="tiny" variant="framed" onClick={() => workbench.dispatch({ kind: "link.mode.open" })}>
           show wiring
         </Button>
       </Toolbar>
@@ -160,15 +159,16 @@ export interface CoordinationInspectorAppOptions {
 }
 
 /** The inspector as an application: a singleton, offered in the WORKBENCH launcher group. */
-export function createCoordinationInspectorApp(options: CoordinationInspectorAppOptions = {}): AppDescriptor {
-  return defineApp({
-    id: options.id ?? "coordination",
-    title: options.title ?? "Coordination",
-    tone: options.tone ?? "var(--pbui-tone-neutral)",
-    singleton: true,
-    group: options.group ?? "WORKBENCH",
-    blurb: "every bound port, wire, context and class in this workbench, with the kernel's invariants",
-    Component: CoordinationInspector,
+export function createCoordinationInspectorApp(options: CoordinationInspectorAppOptions = {}): WorkbenchApp {
+  return defineWorkbenchApp({
+    manifest: { id: options.id ?? "coordination", viewCardinality: "one" },
+    presentation: {
+      title: options.title ?? "Coordination",
+      tone: options.tone ?? "var(--pbui-tone-neutral)",
+      group: options.group ?? "WORKBENCH",
+      blurb: "every bound port, wire, context and class in this workbench, with the kernel's invariants",
+      Component: CoordinationInspector,
+    },
   });
 }
 

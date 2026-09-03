@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
 import { Text } from "@hyperslop-systems/pbui";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { demoApps } from "../../stories/demoApps";
 
 const meta: Meta = {

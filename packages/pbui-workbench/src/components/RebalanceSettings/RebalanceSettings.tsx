@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, CheckboxRow, Text, TextInput } from "@hyperslop-systems/pbui";
-import { defineApp, type AppDescriptor, type AppProps } from "../../apps";
+import { defineWorkbenchApp, type AppProps, type WorkbenchApp } from "../../app";
 import { useWorkbench } from "../../context";
 import { profileConfig, REBALANCE_PROFILES, RELAX_ITERS_MAX, RELAX_ITERS_MIN, type RebalanceConfig, type RebalanceProfileName } from "@hyperslop-systems/workbench-core/rebalance";
 import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
@@ -207,17 +207,18 @@ export interface RebalanceSettingsAppOptions {
  * Pass the SAME store to `<wb.Rebalance configStore={…}/>` so the dialog and
  * the tile agree on where the config lives.
  */
-export function createRebalanceSettingsApp(options: RebalanceSettingsAppOptions = {}): AppDescriptor {
+export function createRebalanceSettingsApp(options: RebalanceSettingsAppOptions = {}): WorkbenchApp {
   const store = options.store ?? documentRebalanceConfigStore;
-  return defineApp({
-    id: options.id ?? "rebalance-settings",
-    title: options.title ?? "Rebalance settings",
-    tone: options.tone ?? "var(--pbui-tone-neutral)",
-    singleton: true,
-    group: options.group ?? "WORKBENCH",
-    blurb: options.blurb ?? "Choose how layout repair proposals are generated and ranked.",
-    Component: function RebalanceSettingsTile(props: AppProps) {
-      return <RebalanceSettings {...props} store={store} />;
+  return defineWorkbenchApp({
+    manifest: { id: options.id ?? "rebalance-settings", viewCardinality: "one" },
+    presentation: {
+      title: options.title ?? "Rebalance settings",
+      tone: options.tone ?? "var(--pbui-tone-neutral)",
+      group: options.group ?? "WORKBENCH",
+      blurb: options.blurb ?? "Choose how layout repair proposals are generated and ranked.",
+      Component: function RebalanceSettingsTile(props: AppProps) {
+        return <RebalanceSettings {...props} store={store} />;
+      },
     },
   });
 }

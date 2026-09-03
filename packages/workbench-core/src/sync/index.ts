@@ -9,9 +9,12 @@
  * meant), exponential backoff for everything else, and a change stream that
  * refetches only while the outbox is idle.
  *
- * Imported from `@hyperslop-systems/pbui-workbench/sync` rather than the
+ * Imported from `@hyperslop-systems/workbench-core/sync` rather than the
  * package root: a product with no server should not pay for this, and
  * nothing here touches React or the DOM.
+ *
+ * Moved from pbui-workbench in PBUI-WORKBENCH-CORE-1 Phase 6 with its
+ * target changed to the core; Phase 7 makes the outbox batch-preserving.
  */
 import { toJsonString } from "@bufbuild/protobuf";
 import { MutationSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
@@ -107,8 +110,8 @@ export interface WorkbenchSync {
    * Give the loop the workbench to read and to replace, and start it.
    *
    * Separate from construction so a product can write
-   * `createWorkbench({ onMutate: sync.enqueue })` without a circular
-   * reference — the knot every one of these loops ties otherwise.
+   * `createWorkbenchCore({ onCommit: (r) => sync.enqueue(r.mutations) })`
+   * without a circular reference — the knot every one of these loops ties otherwise.
    */
   attach(target: SyncTarget): void;
   /** `queued`/`inFlight` count MUTATIONS, not batches: a rebase replays mutations. */
@@ -119,12 +122,10 @@ export interface WorkbenchSync {
   dispose(): void;
 }
 
-/** The half of a workbench this needs; `createWorkbench(...)` satisfies it. */
+/** The half of a core this needs; `createWorkbenchCore(...)` satisfies it. Replacement goes through the core's validated gateway. */
 export interface SyncTarget {
-  store: {
-    getState(): { document: WorkbenchDocument };
-    replaceDocument(document: WorkbenchDocument): void;
-  };
+  getState(): { document: WorkbenchDocument };
+  replaceDocument(document: WorkbenchDocument): unknown;
 }
 
 export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
@@ -163,7 +164,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
 
   const report = (error: unknown) => {
     if (options.onError) options.onError(error);
-    else console.warn("pbui-workbench/sync:", error);
+    else console.warn("workbench-core/sync:", error);
   };
 
   /**
@@ -184,12 +185,12 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     revision = result.revision;
     if (!target) return;
     if (outbox.length === 0) {
-      target.store.replaceDocument(result.document);
+      target.replaceDocument(result.document);
       return;
     }
     const { document, kept } = rebase(result.document, outbox);
     outbox = kept;
-    target.store.replaceDocument(document);
+    target.replaceDocument(document);
   };
 
   /**
@@ -259,7 +260,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
       adopt(existing);
       return true;
     }
-    adopt(await client.create(target!.store.getState().document));
+    adopt(await client.create(target!.getState().document));
     return true;
   }
 
@@ -270,7 +271,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
       try {
         if (revision === null) await bootstrap();
         while (!disposed && !detached() && outbox.length > 0) {
-          if (conflicts >= MAX_CONFLICTS) throw new Error("pbui-workbench/sync: too many conflicts in a row; backing off");
+          if (conflicts >= MAX_CONFLICTS) throw new Error("workbench-core/sync: too many conflicts in a row; backing off");
           inFlight = outbox;
           outbox = [];
           setPhase("pending");
@@ -327,7 +328,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
         conflicts += 1;
         const { document, kept } = rebase(fresh.document, [...batch, ...outbox]);
         revision = fresh.revision;
-        target!.store.replaceDocument(document);
+        target!.replaceDocument(document);
         outbox = kept;
         inFlight = [];
         return;

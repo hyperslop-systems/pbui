@@ -1,8 +1,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { badgeOf, badgesOfView, evaluatePort, portId, type Badge, type Evaluation, type LinkSnapshot, type SerializableReference } from "@hyperslop-systems/pbui";
+import type { LinkRuntimeState } from "@hyperslop-systems/workbench-core";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { useWorkbench } from "../context";
-import type { Workbench } from "../types";
+import type { WorkbenchShell } from "../types";
 
 /**
  * How an application reads and writes its ports (design §6.7). Applications
@@ -14,10 +15,10 @@ import type { Workbench } from "../types";
  */
 
 /** The current link facts, re-read when the document or the runtime changes. */
-export function useLinkSnapshot(workbench: Workbench): LinkSnapshot {
+export function useLinkSnapshot(workbench: WorkbenchShell): LinkSnapshot {
   const subscribe = useCallback(
     (listener: () => void) => {
-      const a = workbench.store.subscribe(listener);
+      const a = workbench.core.subscribe(listener);
       const b = workbench.links.runtime.subscribe(listener);
       return () => {
         a();
@@ -26,7 +27,12 @@ export function useLinkSnapshot(workbench: Workbench): LinkSnapshot {
     },
     [workbench],
   );
-  return useSyncExternalStore(subscribe, workbench.links.snapshot, workbench.links.snapshot);
+  return useSyncExternalStore(subscribe, workbench.linkSnapshot, workbench.linkSnapshot);
+}
+
+/** The runtime's values, for a product that reads them directly. */
+export function useLinkRuntime(workbench: WorkbenchShell): LinkRuntimeState {
+  return useSyncExternalStore(workbench.links.runtime.subscribe, workbench.links.runtime.getState, workbench.links.runtime.getState);
 }
 
 export interface PortReading<T> {
@@ -61,10 +67,10 @@ export function useEmitPort(view: AppView, name: string): (reference: Serializab
   return useCallback(
     (reference, options = {}) => {
       const id = portId(view.id, name);
-      const declaration = workbench.apps.get(view.appId)?.ports?.find((port) => port.name === name);
+      const declaration = workbench.core.apps.get(view.appId)?.ports?.find((port) => port.name === name);
       const drives = declaration?.drivesContext ? [declaration.drivesContext] : [];
       // A member of an identity class writes the shared cell (Phase 5).
-      const classId = workbench.links.snapshot().aliases.get(id);
+      const classId = workbench.linkSnapshot().aliases.get(id);
       workbench.links.runtime.emit(id, reference, { ...(options.attended ? { attended: true } : {}), drives, ...(classId ? { classId } : {}) });
     },
     [workbench, view.id, view.appId, name],

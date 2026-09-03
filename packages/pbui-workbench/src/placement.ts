@@ -1,5 +1,8 @@
 import { startTileCarry } from "@hyperslop-systems/pbui";
-import type { PlaceZone } from "./verbs";
+import type { Edge } from "@hyperslop-systems/workbench-core";
+
+/** Where placement mode aims a new tile: an edge docks, "center" splits the longer side, "replace" (Alt) swaps what the tile shows. */
+export type PlaceZone = Edge | "center" | "replace";
 
 /** Where the user aimed: a tile, and which part of it. */
 export interface PlacementAim {

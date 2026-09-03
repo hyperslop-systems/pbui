@@ -50,7 +50,7 @@ export function WireLayer({ renderWire }: WireLayerProps) {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || carry) return;
       event.preventDefault();
-      workbench.perform({ kind: "link.mode.close" });
+      workbench.dispatch({ kind: "link.mode.close" });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

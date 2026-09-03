@@ -1,6 +1,6 @@
 import { Button, JsonBlock, Stack, Text } from "@hyperslop-systems/pbui";
 import { useState } from "react";
-import { defineApp, type AppProps } from "../apps";
+import { defineWorkbenchApp, type AppProps } from "../app";
 import { useEmitPort, usePort } from "../links/hooks";
 
 /*
@@ -72,22 +72,14 @@ function NotesApp({ placementId, view }: AppProps) {
   );
 }
 
-export const counterApp = defineApp({
-  id: "counter",
-  title: "counter",
-  tone: "var(--pbui-cat-3)",
-  singleton: false,
-  ports: [{ name: "count", direction: "out", contract: "number", doc: "the count, each time the button is pressed" }],
-  Component: CounterApp,
+export const counterApp = defineWorkbenchApp({
+  manifest: { id: "counter", ports: [{ name: "count", direction: "out", contract: "number", doc: "the count, each time the button is pressed" }] },
+  presentation: { title: "counter", tone: "var(--pbui-cat-3)", Component: CounterApp },
 });
 
-export const notesApp = defineApp({
-  id: "notes",
-  title: "notes",
-  tone: "var(--pbui-selected)",
-  singleton: true,
-  ports: [{ name: "subject", direction: "in", contract: "any", doc: "anything at all; the tile shows what it was handed" }],
-  Component: NotesApp,
+export const notesApp = defineWorkbenchApp({
+  manifest: { id: "notes", viewCardinality: "one", ports: [{ name: "subject", direction: "in", contract: "any", doc: "anything at all; the tile shows what it was handed" }] },
+  presentation: { title: "notes", tone: "var(--pbui-selected)", Component: NotesApp },
 });
 
 export const demoApps = [counterApp, notesApp];

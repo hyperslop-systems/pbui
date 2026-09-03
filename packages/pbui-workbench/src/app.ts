@@ -63,7 +63,8 @@ export function defineWorkbenchApp(input: DefineWorkbenchAppInput): WorkbenchApp
   const manifest = defineAppManifest(input.manifest);
   if (!input.presentation.title) throw new Error(`pbui-workbench: application "${manifest.id}" needs a title`);
   if (!input.presentation.Component) throw new Error(`pbui-workbench: application "${manifest.id}" needs a Component`);
-  return { manifest, presentation: { id: manifest.id, ...input.presentation } };
+  // The id comes from the manifest, whatever a spread presentation carried.
+  return { manifest, presentation: { ...input.presentation, id: manifest.id } };
 }
 
 /** Is the application offered in this workspace's LAUNCHER? An app without a predicate always is. */
@@ -86,6 +87,16 @@ export function createPresentationRegistry(apps: readonly (WorkbenchApp | AppPre
   }
   const list = Object.freeze([...byId.values()]);
   return { get: (id) => byId.get(id) ?? null, list: () => list };
+}
+
+/**
+ * The derived tile label, computed the way the tile bar, the launcher, the
+ * link badges, and `describe` all compute it: the view's own title, else the
+ * presentation's `titleFor`, else its title, else the raw app id. One
+ * spelling, so "close the Gold Coins tile" never misses.
+ */
+export function labelOfView(view: AppView, presentation: AppPresentation | null): string {
+  return view.title || presentation?.titleFor?.(view) || presentation?.title || view.appId;
 }
 
 /** The manifests of a list of apps, for `createWorkbenchCore({ apps })`. */

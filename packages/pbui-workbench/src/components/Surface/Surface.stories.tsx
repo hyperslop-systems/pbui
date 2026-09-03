@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo, useState } from "react";
 import { Button, Kbd, Text, Toolbar } from "@hyperslop-systems/pbui";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
+import { commands, layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { demoApps } from "../../stories/demoApps";
 
 const meta: Meta = {
@@ -80,7 +80,7 @@ export const WithLauncherAndPersistence: StoryObj = {
           <Text size="small">
             press <Kbd>⌘K</Kbd> (or <Kbd>Ctrl+K</Kbd>) to place an application beside the active tile
           </Text>
-          <Button variant="framed" onClick={() => wb.verbs.openLauncher()}>
+          <Button variant="framed" onClick={() => wb.dispatch({ kind: "launcher.open" })}>
             open the launcher
           </Button>
           <Button variant="framed" onClick={() => wb.reset()}>
@@ -129,16 +129,10 @@ export const PlacementMode: StoryObj = {
       });
       if (outcome.kind !== "aimed") {
         setLog(outcome.kind === "default" ? `${fileName}: took the default spot` : `${fileName}: cancelled`);
-        if (outcome.kind === "default") wb.verbs.place("notes");
+        if (outcome.kind === "default") wb.execute(commands.place("notes"));
         return;
       }
-      wb.perform({
-        kind: "view.open",
-        appId: "notes",
-        documents: { source: fileName },
-        title: fileName,
-        at: { placementId: outcome.placementId, zone: outcome.zone },
-      });
+      wb.execute(commands.open("notes", {}, { title: fileName, at: { placementId: outcome.placementId, zone: outcome.zone } }));
       setLog(`${fileName} → ${outcome.zone} of ${outcome.placementId}`);
     };
 

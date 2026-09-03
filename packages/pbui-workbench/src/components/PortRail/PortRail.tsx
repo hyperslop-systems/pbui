@@ -39,16 +39,16 @@ export function PortRail({ view, renderPort }: PortRailProps) {
       // Ctrl (the toy's Alias modifier) asks for a SHARED cell instead of a follow; read live like Shift.
       acceptable: (target, { ctrl }) =>
         ctrl
-          ? planIdentityAdd(port.id, target, "prefer-left", workbench.links.snapshot(), workbench.links.deps).kind === "available"
-          : planFollow(port.id, target, workbench.links.snapshot(), workbench.links.deps).kind === "available",
+          ? planIdentityAdd(port.id, target, "prefer-left", workbench.linkSnapshot(), workbench.links.deps).kind === "available"
+          : planFollow(port.id, target, workbench.linkSnapshot(), workbench.links.deps).kind === "available",
       onDrop: (target, { shift, ctrl }) => {
         // The modifiers are read at RELEASE: Ctrl makes an identity, Shift means "and hold it there".
         if (ctrl) {
-          workbench.perform({ kind: "identity.add", left: port.id, right: target, mergePolicy: "prefer-left" });
+          workbench.execute({ kind: "identity.add", left: port.id, right: target, mergePolicy: "prefer-left" });
           return;
         }
-        if (!workbench.perform({ kind: "port.follow", source: port.id, destination: target })) return;
-        if (shift) workbench.perform({ kind: "port.pin", port: target });
+        if (!workbench.execute({ kind: "port.follow", source: port.id, destination: target }).ok) return;
+        if (shift) workbench.execute({ kind: "port.pin", port: target });
       },
       onCancel: () => undefined,
     });

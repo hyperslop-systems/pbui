@@ -20,10 +20,9 @@ import styles from "./Surface.module.css";
  */
 export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, renderWire, linkModeShortcut = true, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
   const workbench = useWorkbench();
-  const document = workbench.useDocument();
-  const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
-  const launcherOpen = workbench.useWorkbenchState((state) => state.launcherOpen);
-  const linkMode = workbench.useWorkbenchState((state) => state.linkModeOpen);
+  const tree = workbench.useCoreState((state) => state.index.workspaceById.get(state.session.workspaceId)?.tree);
+  const launcherOpen = workbench.useShellState((state) => state.launcher !== null);
+  const linkMode = workbench.useShellState((state) => state.linkModeOpen);
   const anySurfaceOpen = useAnyEscapeSurface();
 
   // Mod+Shift+L toggles connect mode (PBUI-LINK-1 Phase 3), under the same
@@ -38,12 +37,12 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
       const ownsFocus = !unowned && root.contains(focused);
       const lone = window.document.querySelectorAll("[data-workbench-shell]").length === 1;
       if (!ownsFocus && !(unowned && lone)) return;
-      const open = workbench.store.getState().linkModeOpen;
+      const open = workbench.shell.getState().linkModeOpen;
       const decision = routeWorkbenchKey(
         event,
         {
           targetIsEditable: isEditableTarget(event.target as HTMLElement | null),
-          launcherOpen: workbench.store.getState().launcherOpen,
+          launcherOpen: workbench.shell.getState().launcher !== null,
           // The wire layer is itself an escape surface: closing must stay possible while it is open.
           dialogOpen: anySurfaceOpen && !open,
           objectMenuOpen: false,
@@ -54,13 +53,12 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
       );
       if (decision.kind !== "toggle-link-mode") return;
       event.preventDefault();
-      workbench.perform({ kind: open ? "link.mode.close" : "link.mode.open" });
+      workbench.dispatch({ kind: open ? "link.mode.close" : "link.mode.open" });
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [linkModeShortcut, anySurfaceOpen, workbench]);
   const placing = usePlacement(workbench);
-  const tree = document.workspaces.find((workspace) => workspace.id === workspaceId)?.tree;
 
   const renderNode = useCallback(
     function renderNode(node: Node): ReactNode {

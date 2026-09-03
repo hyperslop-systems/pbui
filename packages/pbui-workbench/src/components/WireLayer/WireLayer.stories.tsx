@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { linkVerbs, terms } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useMemo } from "react";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
-import { linksMutation } from "../../links/document";
+import { createWorkbench } from "../../createWorkbenchShell";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
+import { linksMutation } from "@hyperslop-systems/workbench-core";
 import { demoApps } from "../../stories/demoApps";
 
 const meta: Meta = { title: "Workbench/WireLayer" };
@@ -17,10 +17,10 @@ function EveryStyle() {
       apps: demoApps,
       initial: layout(split("row", 0.45, tile("counter", { title: "Counter A" }), split("col", 0.5, tile("notes"), tile("counter", { title: "Counter B" })))),
     });
-    const ids = leaves(workspaceTree(workbench.store.getState().document, workbench.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
+    const ids = leaves(workspaceTree(workbench.core.getState().document, workbench.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
     const [a, notes, b] = ids;
     if (a && notes && b) {
-      workbench.mutate([
+      workbench.apply([
         linksMutation({
           bindings: new Map([
             [`${notes}/subject`, terms.hold({ type: "number", value: 3 }, terms.follow(`${a}/count`, "L1"))],

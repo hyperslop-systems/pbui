@@ -1,10 +1,11 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { layout, split, splitRatioBounds, tile } from "@hyperslop-systems/workbench-core";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
 import { demoApps } from "../../stories/demoApps";
+import { rebalanceGeometry } from "./RebalanceDialog";
 
 afterEach(cleanup);
 
@@ -21,20 +22,13 @@ function rootRatio(node: Node | undefined): number {
   return node.body.value.ratio;
 }
 
-describe("measureDividerPx", () => {
-  test("reads the track's THICKNESS, not a column divider's full span", async () => {
-    const { measureDividerPx } = await import("./RebalanceDialog");
-    const fake = (width: number, height: number) => {
-      const root = document.createElement("div");
-      const divider = document.createElement("div");
-      divider.setAttribute("data-part", "split-divider");
-      divider.getBoundingClientRect = () => ({ width, height }) as DOMRect;
-      root.append(divider);
-      return root;
-    };
-    expect(measureDividerPx(fake(700, 10))).toBe(10); // column divider: wide, thin
-    expect(measureDividerPx(fake(10, 500))).toBe(10); // row divider: tall, narrow
-    expect(measureDividerPx(fake(0, 0))).toBe(10); // unmeasurable → default (jsdom has no token)
+describe("rebalanceGeometry", () => {
+  test("reads the track's THICKNESS from the measured geometry, and falls back when nothing is laid out", () => {
+    const base = { placements: new Map(), splits: new Map() };
+    expect(rebalanceGeometry({ ...base, viewport: { x: 0, y: 0, width: 900, height: 500 }, divider: { inline: 10, block: 700 } }).dividerPx).toBe(10); // column divider: wide, thin
+    expect(rebalanceGeometry({ ...base, viewport: { x: 0, y: 0, width: 900, height: 500 }, divider: { inline: 500, block: 10 } }).dividerPx).toBe(10); // row divider: tall, narrow
+    expect(rebalanceGeometry(null)).toEqual({ rect: { x: 0, y: 0, w: 1024, h: 640 }, dividerPx: 10 }); // unmeasurable → fallback
+    expect(rebalanceGeometry({ ...base, viewport: { x: 0, y: 0, width: 900, height: 500 }, divider: { inline: 8, block: 8 } }).rect).toEqual({ x: 0, y: 0, w: 900, h: 500 });
   });
 });
 
@@ -51,7 +45,7 @@ describe("RebalanceDialog", () => {
     act(() => {
       fireEvent.keyDown(window, { key: "k", ctrlKey: true, shiftKey: true });
     });
-    expect(wb.store.getState().rebalanceOpen).toBe(true);
+    expect(wb.shell.getState().rebalanceOpen).toBe(true);
     expect(baseElement.querySelector('[data-part="rebalance"]')).not.toBeNull();
     const cards = [...baseElement.querySelectorAll('[data-part="rebalance-card"]')];
     expect(cards.length).toBeGreaterThan(1);
@@ -64,11 +58,11 @@ describe("RebalanceDialog", () => {
   });
 
   test("Apply commits the recommended resize batch atomically and arms Undo", () => {
-    const onMutate = vi.fn();
+    const onCommit = vi.fn();
     const wb = createWorkbench({
       apps: demoApps,
       initial: layout(split("row", 0.95, tile("counter"), tile("notes"))),
-      onMutate,
+      onCommit,
     });
     const { baseElement } = render(
       <>
@@ -79,36 +73,36 @@ describe("RebalanceDialog", () => {
     act(() => {
       wb.perform({ kind: "rebalance.open" });
     });
-    const before = rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    const before = rootRatio(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId));
     expect(before).toBeCloseTo(0.95, 6);
     const apply = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Apply");
     expect(apply).toBeDefined();
     act(() => {
       fireEvent.click(apply!);
     });
-    const after = rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    const after = rootRatio(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId));
     expect(after).toBeLessThan(0.95); // the sliver got its pixels back
     expect(baseElement.querySelector('[data-part="rebalance-status"]')?.textContent).toMatch(/Applied/);
     // The dialog stays open (lab behaviour) so Undo has a home.
-    expect(wb.store.getState().rebalanceOpen).toBe(true);
+    expect(wb.shell.getState().rebalanceOpen).toBe(true);
     const undo = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Undo");
-    const mutationsBeforeUndo = onMutate.mock.calls.length;
+    const mutationsBeforeUndo = onCommit.mock.calls.length;
     act(() => {
       fireEvent.click(undo!);
     });
-    const restored = rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    const restored = rootRatio(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId));
     expect(restored).toBeCloseTo(0.95, 6);
     // Undo notified the persistence hook (PR #19): it is a mutation, not a
     // silent document replacement that would look undone until reload.
-    expect(onMutate.mock.calls.length).toBe(mutationsBeforeUndo + 1);
+    expect(onCommit.mock.calls.length).toBe(mutationsBeforeUndo + 1);
   });
 
   test("the rebalance verbs are data: perform round-trips open and close", () => {
     const wb = brokenWorkbench();
     expect(wb.perform({ kind: "rebalance.open" })).toBe(true);
-    expect(wb.store.getState().rebalanceOpen).toBe(true);
+    expect(wb.shell.getState().rebalanceOpen).toBe(true);
     expect(wb.perform({ kind: "rebalance.close" })).toBe(true);
-    expect(wb.store.getState().rebalanceOpen).toBe(false);
+    expect(wb.shell.getState().rebalanceOpen).toBe(false);
   });
 
   test("a repair applies even when the rendered split is too small for the verb's clamp (PR #19)", () => {
@@ -122,13 +116,13 @@ describe("RebalanceDialog", () => {
     // Give the root split a rendered size below 2×minInlinePx: the
     // `split.resize` verb's ratioBounds would return null here and refuse the
     // whole repair. The dialog's raw mutation batch must not consult it.
-    const rootSplitId = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId)?.id ?? "";
+    const rootSplitId = workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId)?.id ?? "";
     const splitElement = baseElement.querySelector<HTMLElement>(`[data-split-id="${rootSplitId}"]`);
     if (splitElement) {
       splitElement.getBoundingClientRect = () =>
         ({ left: 0, top: 0, right: 300, bottom: 300, width: 300, height: 300, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
     }
-    expect(wb.verbs.ratioBounds(rootSplitId)).toBeNull(); // the clamp WOULD refuse
+    expect(splitRatioBounds(wb.measure(), rootSplitId, "row", wb.core.policy.split)).toBeNull(); // the clamp WOULD refuse
     act(() => {
       wb.perform({ kind: "rebalance.open" });
     });
@@ -136,7 +130,7 @@ describe("RebalanceDialog", () => {
     act(() => {
       fireEvent.click(apply!);
     });
-    const after = rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    const after = rootRatio(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId));
     expect(after).toBeLessThan(0.95); // committed despite the stale rendered bounds
   });
 
@@ -156,9 +150,9 @@ describe("RebalanceDialog", () => {
     act(() => {
       fireEvent.click(ripple!);
     });
-    const after = rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId));
+    const after = rootRatio(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId));
     expect(after).toBeLessThan(0.95); // applied…
-    expect(wb.store.getState().rebalanceOpen).toBe(false); // …and closed
+    expect(wb.shell.getState().rebalanceOpen).toBe(false); // …and closed
   });
 
   test("clicking LEAVE AS IS just closes — the layout is untouched", () => {
@@ -175,11 +169,11 @@ describe("RebalanceDialog", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector('[id="rebalance:none"]')!);
     });
-    expect(rootRatio(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId))).toBeCloseTo(0.95, 6);
-    expect(wb.store.getState().rebalanceOpen).toBe(false);
+    expect(rootRatio(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId))).toBeCloseTo(0.95, 6);
+    expect(wb.shell.getState().rebalanceOpen).toBe(false);
   });
 
-  test("a structural proposal applies through workspace.setTree and Undo restores", () => {
+  test("a structural proposal applies through workspace.rebalance and Undo restores", () => {
     // A column of four 160px-min tiles needs 4·160 + 3·10 = 670px of height
     // on a 640px fallback screen — impossible for weights, fixed by reshape.
     const wb = createWorkbench({
@@ -202,7 +196,7 @@ describe("RebalanceDialog", () => {
     act(() => {
       wb.perform({ kind: "rebalance.open" });
     });
-    const beforeDoc = wb.store.getState().document;
+    const beforeDoc = wb.core.getState().document;
     const structuralCard = [...baseElement.querySelectorAll('[data-part="rebalance-card"]')].find((card) =>
       /RESHAPE|REBUILD/.test(card.textContent ?? ""),
     );
@@ -211,10 +205,10 @@ describe("RebalanceDialog", () => {
     act(() => {
       fireEvent.click(structuralCard!, { shiftKey: true });
     });
-    const afterTree = workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId);
-    const beforeTree = workspaceTree(beforeDoc, wb.store.getState().workspaceId);
+    const afterTree = workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId);
+    const beforeTree = workspaceTree(beforeDoc, wb.core.getState().session.workspaceId);
     expect(afterTree).not.toEqual(beforeTree); // the tree was replaced wholesale
-    expect(wb.store.getState().rebalanceOpen).toBe(true); // Shift held it open
+    expect(wb.shell.getState().rebalanceOpen).toBe(true); // Shift held it open
     expect(baseElement.querySelector('[data-part="rebalance-status"]')?.textContent).toMatch(/Applied/);
     const undo = [...baseElement.querySelectorAll("button")].find((b) => b.textContent === "Undo");
     act(() => {
@@ -222,8 +216,8 @@ describe("RebalanceDialog", () => {
     });
     // Undo goes through the MUTATION path (PR #19), so the document is a new
     // object whose tree equals the original — not the same reference.
-    const wsId = wb.store.getState().workspaceId;
-    expect(workspaceTree(wb.store.getState().document, wsId)).toEqual(workspaceTree(beforeDoc, wsId));
+    const wsId = wb.core.getState().session.workspaceId;
+    expect(workspaceTree(wb.core.getState().document, wsId)).toEqual(workspaceTree(beforeDoc, wsId));
   });
 
   test("a healthy layout collapses to LEAVE AS IS with agreeing generators", () => {
@@ -253,7 +247,7 @@ describe("RebalanceDialog", () => {
 describe("live preview (Phase 6)", () => {
   test("selecting a repair renders its panes on the surface without touching the document", () => {
     const wb = brokenWorkbench();
-    const before = wb.store.getState().document;
+    const before = wb.core.getState().document;
     const { baseElement } = render(
       <>
         <wb.Surface />
@@ -270,7 +264,7 @@ describe("live preview (Phase 6)", () => {
     expect(overlay?.getAttribute("aria-hidden")).toBe("true");
     expect(overlay?.children.length).toBe(2);
     // Preview is never a mutation: the protocol document is untouched.
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   test("the baseline previews nothing — the surface itself is that preview", () => {

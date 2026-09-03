@@ -1,1 +1,1 @@
-export { WorkbenchRebalance } from "./RebalanceDialog";
+export { WorkbenchRebalance, rebalanceGeometry } from "./RebalanceDialog";

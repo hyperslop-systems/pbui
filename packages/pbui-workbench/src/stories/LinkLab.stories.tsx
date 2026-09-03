@@ -3,8 +3,8 @@ import { linkVerbs } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useMemo, useState } from "react";
 import { Button, Text } from "@hyperslop-systems/pbui";
-import { createWorkbench } from "../createWorkbench";
-import { layout, split, tile } from "../document";
+import { createWorkbench } from "../createWorkbenchShell";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { demoApps } from "./demoApps";
 
 /**
@@ -17,7 +17,7 @@ import { demoApps } from "./demoApps";
 function LinkLab() {
   const wb = useMemo(() => createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter", { title: "Counter A" }), tile("notes"))) }), []);
   const [, tick] = useState(0);
-  const views = () => leaves(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
+  const views = () => leaves(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
   const perform = (make: (counter: string, notes: string) => ReturnType<typeof linkVerbs.follow>) => {
     const [counter, notes] = views();
     if (!counter || !notes) return;

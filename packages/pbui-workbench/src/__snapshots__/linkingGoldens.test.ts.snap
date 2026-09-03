@@ -7,6 +7,7 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
   "apps": [
     {
       "docBound": false,
+      "duplicatePlacement": "clone",
       "id": "counter",
       "ports": [
         {
@@ -19,9 +20,11 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
       ],
       "singleton": false,
       "title": "counter",
+      "viewCardinality": "many",
     },
     {
       "docBound": false,
+      "duplicatePlacement": "link",
       "id": "notes",
       "ports": [
         {
@@ -34,6 +37,7 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
       ],
       "singleton": true,
       "title": "notes",
+      "viewCardinality": "one",
     },
     {
       "bindings": [
@@ -41,6 +45,7 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
       ],
       "blurb": "one product, in detail",
       "docBound": true,
+      "duplicatePlacement": "link",
       "group": "shop",
       "id": "sku",
       "ports": [
@@ -55,8 +60,10 @@ exports[`describeWorkbench golden > reports a doc-bound app and its tiles in the
       ],
       "singleton": false,
       "title": "SKU",
+      "viewCardinality": "many",
     },
   ],
+  "revision": 0,
   "workspaces": [
     {
       "active": true,

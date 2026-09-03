@@ -1,8 +1,9 @@
 import { definePresentation } from "@hyperslop-systems/pbui";
 import { describe, expect, test } from "vitest";
+import { commands } from "@hyperslop-systems/workbench-core";
 import { createWorkbenchPresentationFragment } from "./actions";
 import type { TileRef } from "./tileDescriptor";
-import { workbenchVerbs, type WorkbenchVerb } from "./verbs";
+import type { WorkbenchVerb } from "./types";
 
 /**
  * PBUI-ACTIONS-2 — the standalone row spec for the shared tile menu.
@@ -69,12 +70,12 @@ function kernelRows(value: TileRef) {
 describe("workbenchTileContributions — the shared tile menu, spelled out", () => {
   test("a plain tile", () => {
     expect(kernelRows(ref())).toEqual([
-      { label: "Split beside", verb: workbenchVerbs.split("n-1", "row"), danger: undefined, disabledBecause: undefined },
-      { label: "Split below", verb: workbenchVerbs.split("n-1", "col"), danger: undefined, disabledBecause: undefined },
-      { label: "Show something else here…", verb: workbenchVerbs.openLauncher("n-1"), danger: undefined, disabledBecause: undefined },
-      { label: "Duplicate", verb: workbenchVerbs.split("n-1", "row"), danger: undefined, disabledBecause: undefined },
-      { label: "Name this tile…", verb: workbenchVerbs.setTitle("v-1", ""), danger: undefined, disabledBecause: undefined },
-      { label: "Close tile", verb: workbenchVerbs.close("n-1"), danger: true, disabledBecause: undefined },
+      { label: "Split beside", verb: commands.duplicate("n-1", "row"), danger: undefined, disabledBecause: undefined },
+      { label: "Split below", verb: commands.duplicate("n-1", "col"), danger: undefined, disabledBecause: undefined },
+      { label: "Show something else here…", verb: { kind: "launcher.open", from: "n-1" }, danger: undefined, disabledBecause: undefined },
+      { label: "Duplicate", verb: commands.duplicate("n-1", "row"), danger: undefined, disabledBecause: undefined },
+      { label: "Name this tile…", verb: commands.setTitle("v-1", ""), danger: undefined, disabledBecause: undefined },
+      { label: "Close tile", verb: commands.close("n-1"), danger: true, disabledBecause: undefined },
     ]);
   });
 

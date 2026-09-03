@@ -1,8 +1,8 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { commands, layout, singleTile, split, tile } from "@hyperslop-systems/workbench-core";
 import { leaves } from "@hyperslop-systems/workbench-protocol/client";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, singleTile, split, tile } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
 import { demoApps } from "../../stories/demoApps";
 
 afterEach(() => {
@@ -10,19 +10,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const tree = (wb: ReturnType<typeof createWorkbench>) => wb.core.getState().document.workspaces[0]?.tree;
+
 describe("Surface", () => {
   test("renders one TileFrame per leaf, and a split container per split", () => {
-    const wb = createWorkbench({
-      apps: demoApps,
-      initial: layout(split("row", 0.6, tile("counter"), split("col", 0.5, tile("notes"), tile("counter")))),
-    });
+    const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.6, tile("counter"), split("col", 0.5, tile("notes"), tile("counter")))) });
     const { container } = render(<wb.Surface />);
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
     expect(container.querySelectorAll('[data-part="split"]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-part="split-divider"]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-part="counter-app"]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-part="notes-app"]')).toHaveLength(1);
-    // The tree re-renders from the store: a split button adds a tile.
+    // The tree re-renders from the core: a split button adds a tile.
     act(() => {
       fireEvent.click(container.querySelector('[aria-label="split side by side"]')!);
     });
@@ -36,13 +35,14 @@ describe("Surface", () => {
     expect(close.disabled).toBe(true);
     fireEvent.click(close);
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(1);
-    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
+    expect(leaves(tree(wb))).toHaveLength(1);
   });
 
-  test("an unknown application renders an empty state instead of crashing", () => {
-    const wb = createWorkbench({ apps: demoApps, initial: singleTile("retired") });
-    const { container } = render(<wb.Surface />);
-    expect(container.querySelector('[data-part="tile-body"]')?.textContent).toContain("no application called “retired”");
+  test("a view whose application is not registered cannot be constructed; the core says so", () => {
+    // The old shell rendered an empty state for `retired`; the core refuses
+    // the document at the door instead (Phase 2), so a stored layout naming a
+    // retired application falls back through readWorkbenchSnapshot's catalog check.
+    expect(() => createWorkbench({ apps: demoApps, initial: singleTile("retired") })).toThrow(/unknown_application/);
   });
 
   test("renderTitle replaces the plain label", () => {
@@ -63,19 +63,14 @@ describe("Surface", () => {
         )}
       />,
     );
-    // Link the notes view into the second pane: the badge is now meaningful.
-    const [first, second] = leaves(wb.store.getState().document.workspaces[0]?.tree).map((leaf) => leaf.id);
-    const notesView = (() => {
-      const leaf = leaves(wb.store.getState().document.workspaces[0]?.tree).find((node) => node.id === first)!;
-      return leaf.body.case === "leaf" ? leaf.body.value.viewId : "";
-    })();
+    const [first, second] = leaves(tree(wb)).map((leaf) => leaf.id);
+    const notesView = wb.core.getState().index.viewByPlacementId.get(first!)!;
     act(() => {
-      wb.verbs.link(second!, notesView);
+      wb.execute(commands.link(second!, notesView));
     });
     const badges = container.querySelectorAll('[data-part="custom-title"] [data-part="tile-linked"]');
     expect(badges).toHaveLength(2);
     expect(badges[0]?.textContent).toBe(" ×2");
-    // And the product's own chrome is still there beside it.
     expect(container.querySelectorAll('[data-part="product-chip"]')).toHaveLength(2);
   });
 
@@ -84,20 +79,15 @@ describe("Surface", () => {
     const { container } = render(<wb.Surface />);
     const doors = container.querySelectorAll('[aria-label="show something else in this tile"]');
     expect(doors).toHaveLength(2);
-    // In the action group, never the title: the title clips.
     expect(doors[0]?.closest('[data-part="tile-actions"]')).not.toBeNull();
     const second = container.querySelectorAll('[data-part="tile"]')[1]!;
     fireEvent.click(second.querySelector('[aria-label="show something else in this tile"]')!);
-    expect(wb.store.getState().launcherOpen).toBe(true);
-    expect(wb.store.getState().launcherFrom).toBe(second.getAttribute("data-placement-id"));
+    expect(wb.shell.getState().launcher).toEqual({ from: second.getAttribute("data-placement-id") });
   });
 
   test("tileAction replaces the default door, and null removes it", () => {
     const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
-    const { container, rerender } = render(
-      <wb.Surface tileAction={(placement) => (placement.app?.id === "notes" ? <i data-part="product-action" /> : undefined)} />,
-    );
-    // The notes tile took the slot; the counter tile declined and kept the default.
+    const { container, rerender } = render(<wb.Surface tileAction={(placement) => (placement.app?.id === "notes" ? <i data-part="product-action" /> : undefined)} />);
     expect(container.querySelectorAll('[data-part="product-action"]')).toHaveLength(1);
     expect(container.querySelectorAll('[aria-label="show something else in this tile"]')).toHaveLength(1);
     rerender(<wb.Surface tileAction={() => null} />);
@@ -120,7 +110,7 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
     expect(container.querySelector('[data-part="tile-linked"]')).toBeNull();
     const notes = container.querySelector('[data-part="tile"]')!.getAttribute("data-placement-id")!;
     act(() => {
-      wb.verbs.split(notes, "col");
+      wb.execute(commands.duplicate(notes, "col"));
     });
     const badges = [...container.querySelectorAll('[data-part="tile-linked"]')].map((n) => n.textContent);
     expect(badges).toEqual([" ×2", " ×2"]);
@@ -131,7 +121,7 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
     const { container } = render(<wb.Surface renderTitle={(_view, placement) => <b>{placement.label}</b>} />);
     const notes = container.querySelector('[data-part="tile"]')!.getAttribute("data-placement-id")!;
     act(() => {
-      wb.verbs.split(notes, "col");
+      wb.execute(commands.duplicate(notes, "col"));
     });
     expect(container.querySelector('[data-part="tile-linked"]')).toBeNull();
   });
@@ -146,7 +136,6 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
     const focused = document.activeElement;
     expect(focused?.getAttribute("data-part")).toBe("workbench-tile");
     expect(focused?.contains(tiles[1]!)).toBe(true);
-    // Focusing a tile also makes it the active placement, through the capture handler.
     expect(wb.activePlacementId()).toBe(second);
   });
 
@@ -154,13 +143,9 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
     const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
     const { container } = render(<wb.Surface />);
     const splitElement = container.querySelector<HTMLElement>('[data-part="split"]')!;
-    vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue({
-      x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400, toJSON: () => ({}),
-    } as DOMRect);
+    vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400, toJSON: () => ({}) } as DOMRect);
     const divider = container.querySelector<HTMLElement>('[data-part="split-divider"]')!;
-    vi.spyOn(divider, "getBoundingClientRect").mockReturnValue({
-      x: 295, y: 0, left: 295, top: 0, right: 305, bottom: 400, width: 10, height: 400, toJSON: () => ({}),
-    } as DOMRect);
+    vi.spyOn(divider, "getBoundingClientRect").mockReturnValue({ x: 295, y: 0, left: 295, top: 0, right: 305, bottom: 400, width: 10, height: 400, toJSON: () => ({}) } as DOMRect);
 
     fireEvent.pointerDown(divider);
     const move = new Event("pointermove") as PointerEvent;
@@ -175,9 +160,7 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
     const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
     const { container } = render(<wb.Surface />);
     const splitElement = container.querySelector<HTMLElement>('[data-part="split"]')!;
-    vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue({
-      x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400, toJSON: () => ({}),
-    } as DOMRect);
+    vi.spyOn(splitElement, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400, toJSON: () => ({}) } as DOMRect);
     const divider = container.querySelector('[data-part="split-divider"]')!;
     fireEvent(window, new Event("resize"));
 
@@ -195,7 +178,6 @@ describe("Surface · linked badge, focus and the divider (5.G)", () => {
     const divider = container.querySelector('[data-part="split-divider"]')!;
     expect(divider.getAttribute("aria-valuetext")).toBe("60 percent");
     expect(divider.getAttribute("aria-valuenow")).toBe("60");
-
     fireEvent.keyDown(divider, { key: "Home" });
     expect(container.querySelector('[data-part="split-divider"]')?.getAttribute("aria-valuetext")).toBe("10 percent");
     fireEvent.keyDown(divider, { key: "End" });

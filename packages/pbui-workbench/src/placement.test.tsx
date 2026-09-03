@@ -1,8 +1,8 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { leaves } from "@hyperslop-systems/workbench-protocol/client";
-import { createWorkbench } from "./createWorkbench";
-import { layout, split, tile } from "./document";
+import { createWorkbench } from "./createWorkbenchShell";
 import { demoApps } from "./stories/demoApps";
 import type { PlacementOutcome } from "./placement";
 
@@ -35,7 +35,7 @@ function twoTiles() {
         toJSON: () => ({}),
       }) as DOMRect;
   });
-  const ids = leaves(wb.store.getState().document.workspaces[0]?.tree).map((leaf) => leaf.id);
+  const ids = leaves(wb.core.getState().document.workspaces[0]?.tree).map((leaf) => leaf.id);
   return { wb, view, a: ids[0]!, b: ids[1]! };
 }
 
@@ -54,7 +54,7 @@ describe("placement mode (5.E)", () => {
     });
     expect(outcome).toEqual({ kind: "aimed", placementId: b, zone: "left" });
     // The controller PERFORMS nothing: the caller decides what an aim means.
-    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(2);
+    expect(leaves(wb.core.getState().document.workspaces[0]?.tree)).toHaveLength(2);
     expect(wb.placement.current()).toBeNull();
   });
 

@@ -1,7 +1,7 @@
 {
   "name": "@hyperslop-systems/pbui-workbench",
   "version": "0.4.0",
-  "description": "A local, server-free PBUI workbench: a split tree of tiles over a workbench-protocol document, with drag-to-swap/dock, split and close, resizable splits and a launcher",
+  "description": "The PBUI React shell over @hyperslop-systems/workbench-core: bound Surface/Launcher/WorkspaceStrip/Rebalance components, the shell-local store, placement mode, geometry measurement, and the presentation fragment",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -17,10 +17,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./sync": {
-      "types": "./dist/sync.d.ts",
-      "import": "./dist/sync.js"
     },
     "./styles.css": "./dist/pbui-workbench.css"
   },

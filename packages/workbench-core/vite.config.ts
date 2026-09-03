@@ -10,7 +10,7 @@ const external = [
 export default defineConfig({
   build: {
     lib: {
-      entry: { index: "src/index.ts", rebalance: "src/rebalance/index.ts" },
+      entry: { index: "src/index.ts", rebalance: "src/rebalance/index.ts", persistence: "src/persistence/index.ts", sync: "src/sync/index.ts" },
       formats: ["es"],
     },
     rollupOptions: {

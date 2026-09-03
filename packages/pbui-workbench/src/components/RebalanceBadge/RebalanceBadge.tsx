@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@hyperslop-systems/pbui";
 import { workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
-import type { Rect } from "@hyperslop-systems/workbench-core/rebalance";
-import type { RebalanceConfig } from "@hyperslop-systems/workbench-core/rebalance";
-import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
+import type { Rect, RebalanceConfig } from "@hyperslop-systems/workbench-core/rebalance";
 import { detectOnly } from "@hyperslop-systems/workbench-core/rebalance";
-import { measureDividerPx, measureRect } from "../RebalanceDialog/RebalanceDialog";
+import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
+import { rebalanceGeometry } from "../RebalanceDialog/RebalanceDialog";
 import styles from "./RebalanceBadge.module.css";
 
 /**
@@ -30,22 +29,23 @@ export function RebalanceStatusBadge({ config: configProp, configStore }: Rebala
   const doc = workbench.useDocument();
   const storedConfig = (configStore ?? documentRebalanceConfigStore).useConfig(workbench);
   const config = configProp ?? storedConfig;
-  const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
-  const [rect, setRect] = useState<Rect>(() => measureRect(workbench.root()));
+  const workspaceId = workbench.useCoreState((state) => state.session.workspaceId);
+  const [measured, setMeasured] = useState<{ rect: Rect; dividerPx: number }>(() => rebalanceGeometry(workbench.measure()));
 
   useEffect(() => {
     const element = workbench.root();
     if (!element || typeof ResizeObserver !== "function") return;
-    const observer = new ResizeObserver(() => setRect(measureRect(element)));
+    const observer = new ResizeObserver(() => setMeasured(rebalanceGeometry(workbench.measure())));
     observer.observe(element);
     return () => observer.disconnect();
   }, [workbench]);
 
   const tree = workspaceTree(doc, workspaceId);
+  const { rect } = measured;
   const diagnosis = useMemo(() => {
     if (!tree) return null;
-    return detectOnly({ tree, rect, dividerPx: measureDividerPx(workbench.root()), labels: EMPTY_LABELS }, config);
-  }, [doc, workspaceId, rect, config, workbench, tree]);
+    return detectOnly({ tree, rect: measured.rect, dividerPx: measured.dividerPx, labels: EMPTY_LABELS }, config);
+  }, [doc, workspaceId, measured, config, tree]);
 
   if (!diagnosis) return null;
   const under = diagnosis.violations.length;
@@ -66,7 +66,7 @@ export function RebalanceStatusBadge({ config: configProp, configStore }: Rebala
       className={styles.badge}
       data-part="rebalance-badge"
       title={`${detail} — open the rebalance dialog`}
-      onClick={() => workbench.verbs.openRebalance()}
+      onClick={() => workbench.dispatch({ kind: "rebalance.open" })}
     >
       ⚠ {pieces.join(" · ")}
     </Button>

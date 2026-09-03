@@ -18,6 +18,14 @@
     "./rebalance": {
       "types": "./dist/rebalance/index.d.ts",
       "import": "./dist/rebalance.js"
+    },
+    "./persistence": {
+      "types": "./dist/persistence/index.d.ts",
+      "import": "./dist/persistence.js"
+    },
+    "./sync": {
+      "types": "./dist/sync/index.d.ts",
+      "import": "./dist/sync.js"
     }
   },
   "publishConfig": {
