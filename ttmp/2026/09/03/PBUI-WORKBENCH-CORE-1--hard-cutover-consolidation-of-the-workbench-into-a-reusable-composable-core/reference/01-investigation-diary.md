@@ -725,3 +725,66 @@ Nothing in the shell changed yet; the old `pbui-workbench` modules keep running 
 ### Technical details
 
 - Core modules never name a variable `document`; the fence's DOM regex depends on it.
+
+## Step 9: Phase 2 — the app model and the core's constructor
+
+Phase 2 put the semantic policy into data the planner will read, and built the stateful half of the core: one immutable observable state, a validated raw-batch gateway, and validated replacement. The shell gained `defineWorkbenchApp`, the one declaration that yields both a manifest and a presentation.
+
+The binding policy is the visible semantic change of this phase: default document binding now operates over every declared document slot of the manifest and refuses undeclared slots or missing documents before a view exists, instead of filling one privileged `source` key on any application.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 6)
+
+**Assistant interpretation:** Deliver guide §17 Phase 2.
+
+**Inferred user intent:** Headless construction of a workbench with real manifests, so agents and tests never touch React.
+
+**Commit (code):** dfab835 — "PBUI-WORKBENCH-CORE-1 P2: policy, slot-aware bindings, session, createWorkbenchCore, defineWorkbenchApp"
+
+### What I did
+
+- `policy.ts`: `compilePolicy` — pane constraints plus `headlessAxis` (default `"row"`), `duplicate` (`"clone" | "link" | { app } | fn`), `emptyPlacement` (derived from an `{ app }` duplicate policy, `null` switches the fill rule off), `initialDocuments`.
+- `binding.ts`: `InitialDocumentPolicy`, `bindRequestedOnly` (default), `followTheCrowd` (per slot: request → crowd → first bindable → unbound; `isBindable`, `unbound`, `pick` options), `resolveInitialDocuments` (refuses `unknown_binding` / `unknown_document`).
+- `session.ts`: `WorkbenchSession` and `repairSession`.
+- `createWorkbenchCore.ts`: `WorkbenchCoreState { document, session, index, revision }`, `subscribe`, `apply(mutations)` (apply → validate → install → `onCommit`), `replaceDocument` / `restore` / `reset` (validated, session repaired, no `onCommit`), `onRejected`, `onPostCommitError`; construction validates the initial document and throws on failure. `createWorkbenchCoreWithInternals` exposes `install`/`prepare` for Phases 3–4 without making them public.
+- pbui-workbench `app.ts`: `AppPresentation`, `WorkbenchApp`, `defineWorkbenchApp`, `createPresentationRegistry`, `isAppAvailable`, `manifestsOf`; the package depends on `workbench-core` and externalises it in its build.
+- Tests: `policy.test.ts`, `binding.test.ts`, `createWorkbenchCore.test.ts` (atomic apply, refusal codes from applier then validation, post-commit isolation, replacement semantics, serialize/restore/reset), shell `app.test.ts`.
+
+### Why
+
+- F10 and S11: bindings over declared slots; one declaration, two projections.
+- F3/F8: every durable door validates and installs through one function.
+
+### What worked
+
+- `repairSession` after every install means no component can ever read an active placement that is not a leaf of the selected workspace.
+
+### What didn't work
+
+- The core tests typechecked only after the test helper's mutation body was typed as `MessageInitShape<typeof MutationSchema>["body"]` rather than `Mutation["body"]` (protobuf-es init shapes are looser than message shapes).
+
+### What I learned
+
+- Validating the initial document at construction is a behaviour change: a stored layout naming an application that is no longer registered used to render an empty tile; it now fails construction. `readWorkbenchSnapshot` will take the catalog in Phase 7 so persistence falls back to the default layout instead.
+
+### What was tricky to build
+
+- Keeping `install` and `prepare` off the public object while letting `execute` (Phase 3) and the links collaborator (Phase 4) use them: a second factory returns `{ core, internals }` and the public `createWorkbenchCore` discards the internals.
+
+### What warrants a second pair of eyes
+
+- `followTheCrowd` fills every declared slot, including a slot the caller left out of a non-empty request; the old code used a non-empty request verbatim. The goldens do not cover a multi-slot app, so this is a deliberate change, not a regression.
+
+### What should be done in the future
+
+- Phase 7: `readWorkbenchSnapshot({ apps })`.
+
+### Code review instructions
+
+- `packages/workbench-core/src/createWorkbenchCore.ts` (`prepare`/`install`), then `binding.ts`.
+- Validate: `pnpm --filter @hyperslop-systems/workbench-core test` and `pnpm --filter @hyperslop-systems/pbui-workbench test -- src/app.test.ts`.
+
+### Technical details
+
+- Rebuild rule: `pnpm --filter @hyperslop-systems/workbench-core build` before running pbui-workbench, which resolves the core through `dist/`.

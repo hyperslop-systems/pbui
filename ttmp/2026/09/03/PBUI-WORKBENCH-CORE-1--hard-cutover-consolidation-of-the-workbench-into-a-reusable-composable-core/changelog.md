@@ -70,3 +70,13 @@ Phase 1: protocol IdGenerator and createWorkbenchClient deletion; core manifests
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/graph.ts — The structural index
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/validation.ts — Essential validation with Go codes
 
+
+## 2026-09-03
+
+Phase 2: policy, slot-aware initial document policy, session repair, createWorkbenchCore with validated apply/replace gateway, defineWorkbenchApp (commit dfab835)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/app.ts — One declaration, two projections
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core/src/createWorkbenchCore.ts — State, the raw-batch gateway, validated replacement
+
