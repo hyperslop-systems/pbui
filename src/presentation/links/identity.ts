@@ -1,5 +1,6 @@
 import type { LinkSnapshot, PortDefinition } from "./snapshot";
-import { contractFingerprint, contractMismatches, type ContractMismatch, type PortId } from "./types";
+import { canShareCell } from "./compatibility";
+import { contractFingerprint, type ContractMismatch, type PortId } from "./types";
 
 /*
  * Identity classes over value ports (PBUI-LINK-1 Phase 5; design D8), the
@@ -55,21 +56,16 @@ export interface CompiledIdentity {
 
 export type Compatibility = { readonly ok: true; readonly fingerprint: string } | { readonly ok: false; readonly mismatches: readonly ContractMismatch[]; readonly because: string };
 
-const FIELD_WORDS: Record<ContractMismatch["field"], string> = {
-  valueType: "value type",
-  semanticRole: "semantic role",
-  cardinality: "cardinality",
-  mode: "mode",
-  authorityDomain: "authority domain",
-  updateAlgebra: "update algebra",
-  lifetime: "lifetime",
-};
-
+/**
+ * May two ports be one cell? The SHARING question (`canShareCell`,
+ * PBUI-KERNEL-3): equality on the value and the protocol projection, with
+ * the disagreements listed so the refusal names the field. Flow and
+ * acceptance are different questions and are not asked here.
+ */
 export function compatibilityOf(a: PortDefinition, b: PortDefinition): Compatibility {
-  const mismatches = contractMismatches(a.declaration.contract, b.declaration.contract);
-  if (mismatches.length === 0) return { ok: true, fingerprint: contractFingerprint(a.declaration.contract) };
-  const because = mismatches.map((m) => `different ${FIELD_WORDS[m.field]}: ${m.left} vs ${m.right}`).join("; ");
-  return { ok: false, mismatches, because };
+  const verdict = canShareCell(a.declaration.contract, b.declaration.contract);
+  if (verdict.ok) return { ok: true, fingerprint: contractFingerprint(a.declaration.contract) };
+  return { ok: false, mismatches: [...verdict.value, ...verdict.protocol], because: verdict.because };
 }
 
 export function checkIdentityCompatibility(a: PortId, b: PortId, s: LinkSnapshot): Compatibility {

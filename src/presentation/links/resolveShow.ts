@@ -2,6 +2,7 @@ import type { RuntimeTypeId } from "../actions/ids";
 import { effectiveBinding } from "./evaluate";
 import { planBind, planFollow } from "./plan";
 import { labelOf, reaches, type LinkDeps, type LinkSnapshot, type PortDefinition } from "./snapshot";
+import { canAccept } from "./compatibility";
 import { sourcePortOf, type SerializableReference } from "./terms";
 import type { PortId } from "./types";
 import type { LinkVerb } from "./verbs";
@@ -120,7 +121,8 @@ export function resolveShow(query: ShowQuery, s: LinkSnapshot, deps: LinkDeps, o
     if (declaration.direction === "out" || declaration.documentSlot) continue;
     if (port.viewId === fromView) continue;
     const distance = typeDistance(query.subject.type, declaration.contract.valueType, deps);
-    if (!Number.isFinite(distance) || !reaches(query.subject.type, declaration.contract.valueType, deps.graph)) continue;
+    // The ACCEPTANCE question (PBUI-KERNEL-3): may the subject be written into this port?
+    if (!Number.isFinite(distance) || !canAccept(query.subject, declaration.contract, deps.graph).ok) continue;
     const title = `${port.tileTitle} · ${declaration.name}`;
     const current = s.bindings.get(port.id);
     const effective = effectiveBinding(port.id, s);

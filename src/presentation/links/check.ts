@@ -6,6 +6,7 @@ import {
   type BindingExpression,
   type BindingProgram,
 } from "./expression";
+import { canFlow } from "./compatibility";
 import { reaches, titleOfPort, type LinkDeps, type LinkSnapshot } from "./snapshot";
 import type { Binding } from "./terms";
 import type { PortId } from "./types";
@@ -164,14 +165,15 @@ export function checkBinding(
         };
       }
     }
-    if (!reaches(resultType, definition.declaration.contract.valueType, deps.graph)) {
-      const to = `<${definition.declaration.contract.valueType}>`;
+    // The FLOW question (PBUI-KERNEL-3): may the inferred value be read by the destination?
+    const flow = canFlow(resultType, definition.declaration.contract, deps.graph);
+    if (!flow.ok) {
       const context = program.kind === "live" && program.expression.kind === "source" && program.expression.source.kind === "context" ? program.expression.source.key : null;
       return {
         kind: "invalid",
         diagnostic: {
           code: "type",
-          message: context ? `${context} holds <${resultType}>, which does not reach ${to}` : `<${resultType}> does not reach ${to}`,
+          message: context ? `${context} holds <${resultType}>, which does not reach <${definition.declaration.contract.valueType}>` : flow.because,
         },
       };
     }

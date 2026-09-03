@@ -12,7 +12,7 @@ import {
   planPin,
   planResume,
   planUnlink,
-  reaches,
+  canAccept,
   parsePortId,
   unavailable,
   type ActionContribution,
@@ -293,7 +293,7 @@ export function workbenchLinkContributions<Values extends { port: unknown; link?
             const from = links.sourceOf?.(value) ?? null;
             const fromView = from ? parsePortId(from)?.viewId : null;
             const targets = [...links.snapshot.ports.values()].filter(
-              (port) => port.declaration.direction !== "out" && !port.declaration.documentSlot && port.viewId !== fromView && reaches(value.type, port.declaration.contract.valueType, links.deps.graph),
+              (port) => port.declaration.direction !== "out" && !port.declaration.documentSlot && port.viewId !== fromView && canAccept(value, port.declaration.contract, links.deps.graph).ok,
             );
             return targets.map((target) => {
               const plan = from ? planFollow(from, target.id, links.snapshot, links.deps) : planBind(target.id, value, links.snapshot, links.deps);

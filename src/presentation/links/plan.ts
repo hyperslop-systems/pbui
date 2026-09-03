@@ -1,5 +1,6 @@
 import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
 import { candidateTermOf, type TermVerb } from "./candidate";
+import { canFlow } from "./compatibility";
 import { checkBinding } from "./check";
 import { checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
 import { labelOf, reaches, titleOfPort, type LinkDeps, type LinkSnapshot } from "./snapshot";
@@ -199,10 +200,7 @@ export function legalRelations(source: PortId, destination: PortId, s: LinkSnaps
       relation.match === "exact"
         ? S.declaration.contract.valueType === relation.from
         : reaches(S.declaration.contract.valueType, relation.from, deps.graph);
-    return (
-      sourceMatches &&
-      reaches(relation.to, D.declaration.contract.valueType, deps.graph)
-    );
+    return sourceMatches && canFlow(relation.to, D.declaration.contract, deps.graph).ok;
   });
 }
 
