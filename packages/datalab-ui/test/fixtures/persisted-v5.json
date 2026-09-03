@@ -42,16 +42,11 @@
         "parameters": {}
       }
     },
-    "docOrder": [
-      "701cd250-e503-4875-ae9c-7740d9b711ea"
-    ],
+    "docOrder": ["701cd250-e503-4875-ae9c-7740d9b711ea"],
     "activeDocId": "701cd250-e503-4875-ae9c-7740d9b711ea",
     "snapshots": {},
     "snapshotOrder": [],
-    "pins": [
-      null,
-      null
-    ],
+    "pins": [null, null],
     "watch": []
   },
   "layout": {
@@ -59,11 +54,7 @@
       {
         "id": "stage-signin",
         "name": "sign in",
-        "apps": [
-          "signin",
-          "signup",
-          "about"
-        ],
+        "apps": ["signin", "signup", "about"],
         "chrome": {
           "masthead": true,
           "workspaces": false,
@@ -108,14 +99,7 @@
       {
         "id": "stage-account",
         "name": "account",
-        "apps": [
-          "profile",
-          "tokens",
-          "upload",
-          "templates",
-          "about",
-          "launcher"
-        ],
+        "apps": ["profile", "tokens", "upload", "templates", "about", "launcher"],
         "chrome": {
           "masthead": true,
           "workspaces": true,
@@ -718,11 +702,7 @@
           "ratio": 0.5
         },
         "stageId": "stage-work",
-        "apps": [
-          "chart",
-          "table",
-          "launcher"
-        ]
+        "apps": ["chart", "table", "launcher"]
       }
     ],
     "currentSpaceId": "4c2f0d41-5291-469f-b371-3b73de91c30e",

@@ -5,11 +5,7 @@
     {
       "id": "stage-signin",
       "name": "sign in",
-      "apps": [
-        "signin",
-        "signup",
-        "about"
-      ],
+      "apps": ["signin", "signup", "about"],
       "chrome": {
         "masthead": true,
         "workspaces": false,
@@ -361,14 +357,7 @@
     {
       "id": "stage-account",
       "name": "account",
-      "apps": [
-        "profile",
-        "tokens",
-        "upload",
-        "templates",
-        "about",
-        "launcher"
-      ],
+      "apps": ["profile", "tokens", "upload", "templates", "about", "launcher"],
       "chrome": {
         "masthead": true,
         "workspaces": true,

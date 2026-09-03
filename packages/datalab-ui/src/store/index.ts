@@ -3,7 +3,9 @@ import { setupListeners } from "@reduxjs/toolkit/query";
 import { api } from "../api/client";
 import type { FixtureData } from "../api/fixtures";
 import { browserClipboard, noClipboard, type ClipboardPort } from "./clipboard";
+import type { DatalabController } from "./controller";
 import { layoutSlice, type LayoutState } from "./layout";
+import { emptyNavigation, navigationSlice, type NavigationState } from "./navigation";
 import { worldSlice, initialWorld, type WorldState } from "./world";
 import { defaultLayout } from "./stages";
 
@@ -48,6 +50,8 @@ import { defaultLayout } from "./stages";
 export interface PreloadedState {
   world?: Partial<WorldState>;
   layout?: LayoutState;
+  /** Stage definitions, workspace metadata and memory over the workbench document (PBUI-DATALAB-WORKBENCH-1). */
+  navigation?: NavigationState;
 }
 
 export interface MakeStoreOptions {
@@ -95,16 +99,33 @@ export interface MakeStoreOptions {
    * happen rather than silently succeeding into nowhere.
    */
   clipboard?: ClipboardPort;
+  /**
+   * The Datalab workbench controller this store belongs to
+   * (PBUI-DATALAB-WORKBENCH-1). A GETTER, because the controller is built
+   * over the store and the core after the store exists; a layout verb thunk
+   * calls it at dispatch time. A store with no workbench attached — a world
+   * test, a story of one panel — throws on the first spatial verb, which is
+   * the honest outcome: there is no layout for the verb to act on.
+   */
+  controller?: () => DatalabController;
 }
 
 /** The shape every thunk in this store receives as its third argument. */
 export interface ThunkExtra {
   fixtures?: FixtureData;
   clipboard: ClipboardPort;
+  controller: () => DatalabController;
 }
 
 export function makeStore(options: MakeStoreOptions = {}) {
   const { preloaded, seed = true, fixtures } = options;
+  const controller =
+    options.controller ??
+    (() => {
+      throw new Error(
+        "datalab: this store has no workbench attached; spatial verbs need createDatalabRuntime",
+      );
+    });
   const clipboard =
     options.clipboard ??
     (typeof navigator === "undefined" || !navigator.clipboard ? noClipboard : browserClipboard);
@@ -128,6 +149,7 @@ export function makeStore(options: MakeStoreOptions = {}) {
   const preloadedState = {
     world: { ...initialWorld, ...preloaded?.world },
     layout: preloaded?.layout ?? defaultLayout(),
+    navigation: preloaded?.navigation ?? emptyNavigation(),
   };
 
   const store = configureStore({
@@ -135,13 +157,14 @@ export function makeStore(options: MakeStoreOptions = {}) {
       [api.reducerPath]: api.reducer,
       world: worldSlice.reducer,
       layout: layoutSlice.reducer,
+      navigation: navigationSlice.reducer,
     },
     middleware: (getDefault) =>
       // The fixture map rides the thunk extra argument, which is the only
       // per-store channel RTK Query's base query can read (DR-48).
-      getDefault({ thunk: { extraArgument: { fixtures, clipboard } satisfies ThunkExtra } }).concat(
-        api.middleware,
-      ),
+      getDefault({
+        thunk: { extraArgument: { fixtures, clipboard, controller } satisfies ThunkExtra },
+      }).concat(api.middleware),
     preloadedState,
   });
 
