@@ -13,7 +13,7 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: "Phase 10 of the PBUI-KERNEL-1 clean-cutover guide: split out of PBUI-KERNEL-1; see KERNEL-1 guide §0.1"
-LastUpdated: 2026-09-02T18:47:30.042619328-04:00
+LastUpdated: 2026-09-02T22:00:00.042619328-04:00
 WhatFor: "Find the scope, specification pointer, and exit criteria for this follow-up to PBUI-KERNEL-1."
 WhenToUse: "After PBUI-KERNEL-1 Phase 7 has landed."
 ---
@@ -45,7 +45,9 @@ Split out of PBUI-KERNEL-1 on 2026-09-02 (guide §0.1) so that KERNEL-1 ships on
 
 ## Status
 
-Current status: **active**
+Implementation complete on the `task/add-plot-editor` branch (pbui 2ae05e8 → P6 commit). Phases: P1 `activationOutcome` with a table test, both DOM handlers on it; P2 the accept machine (`AcceptState`/`AcceptEvent`/`AcceptEffect`, `acceptStep`) with 200 fuzzed sequences; P3 the Provider as executor, `pbui.accept` still a promise outside React, Escape dispatched by the surfaces; P4 `RefusalNotice`, `pbui.refusal`, `describeRefusal`, `onRefuse` optional with an unobserved-refusal warning; P5 `explainResolution` and `pbui.explain` with public/developer disclosure; P6 §19.8 runtime tests, the Interaction stories, seven screenshots, README. Exit criteria: pointer and keyboard call one activation function (P1); accept-machine properties hold under generated sequences (P2) and through the DOM (P6); public introspection omits hidden detail and developer explains the same rows as the menu query (P5). Evidence: [diary](./reference/01-diary.md) Steps 1–6, [screenshots](./various/screenshots/README.md), [tasks](./tasks.md).
+
+Recorded for later: consumers can mount `RefusalNotice` and drop their `() => {}` handlers at the 0.11 release; a developer-disclosure panel in a product; the runtime does not enforce the gate around developer disclosure.
 
 ## Topics
 

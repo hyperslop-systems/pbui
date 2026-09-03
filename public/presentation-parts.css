@@ -207,6 +207,43 @@
   white-space: nowrap;
 }
 
+/* ---- the refusal notice (PBUI-KERNEL-4) --------------------------------- */
+
+[data-part="refusal-notice"] {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--pbui-space-3, 6px);
+  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
+  border: 1px solid var(--pbui-danger, #b64b37);
+  border-left-width: 4px;
+  background: var(--pbui-paper, #f6f4ef);
+  color: var(--pbui-ink, #1c1b19);
+  font-size: var(--pbui-fs-small, 11px);
+}
+
+[data-part="refusal-notice-headline"] {
+  font-weight: 700;
+}
+
+[data-part="refusal-notice-detail"]::before {
+  content: "— ";
+}
+
+[data-part="refusal-notice-hint"] {
+  color: var(--pbui-muted, #6b6760);
+}
+
+[data-part="refusal-notice-dismiss"] {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 var(--pbui-space-2, 4px);
+}
+
 /* ---- the mouse documentation line --------------------------------------- */
 
 [data-part="mouse-doc"] {

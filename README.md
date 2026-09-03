@@ -203,6 +203,35 @@ asks `canShareCell`. A subtype flows but cannot share a cell; a different
 authority cannot share but flows; do not answer one question with the other's
 test.
 
+## Interaction policy and introspection (PBUI-KERNEL-4)
+
+The runtime's stateful interaction policy is explicit and tested, and the
+React components only carry it out:
+
+- **Activation.** A left click or Enter/Space on a presentation asks one pure
+  function, `activationOutcome({ acceptable, activate, primary })`, which
+  returns `attempt-accept`, `activate-host` (bubbles to the host), `perform-primary`
+  or `open-menu`. Pointer and keyboard differ only in how they carry the
+  outcome out.
+- **Accept.** `acceptStep(state, event)` is a request-identified machine:
+  `idle` → `pending {requestId}` → `choosing` on an ambiguous offer, with
+  effects `close-menu`, `settle {requestId}` and `resolve-null {requestId, reason}`.
+  At most one request is pending; a second resolves null at once without
+  disturbing the first; Escape on the chooser keeps the request, Escape on
+  the banner aborts it. `pbui.accept(request)` is still a promise-returning
+  call usable outside React.
+- **Refusals.** A menu row is a proposal; when the fresh resolution at click
+  time disagrees, the runtime refuses and the refusal lands in `pbui.refusal`.
+  Mount `<pbui.RefusalNotice />` to show it (row, subject, the product's
+  reason, a hint); `onRefuse` is an optional hook for products that route
+  refusals elsewhere. A refusal that neither observes is logged as a warning.
+- **Introspection.** `pbui.explain(query, disclosure)` explains the query the
+  user is looking at — the menu or primary query, over the same snapshot,
+  never a synthetic invocation. `"public"` is what the menu shows (hidden and
+  rejected candidates, reason codes and the trace are omitted); `"developer"`
+  adds each row's trace and every other candidate with its fate, for a
+  product's own gate.
+
 ## Datalab UI workspace package
 
 `packages/datalab-ui` contains `@hyperslop-systems/datalab-ui`, the complete
