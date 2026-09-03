@@ -11,6 +11,10 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://src/presentation/links/apply.ts
+      Note: Persists candidateTermOf since Step 3
+    - Path: repo://src/presentation/links/candidate.ts
+      Note: candidateTermOf and friends (Step 3)
     - Path: repo://src/presentation/links/check.ts
       Note: The static checker whose coverage Step 1 proves
     - Path: repo://src/presentation/links/expression.ts
@@ -27,6 +31,7 @@ LastUpdated: 2026-09-02T20:33:04.350435303-04:00
 WhatFor: Continue or review the binding-program work without re-deriving what was tried, what failed, and why the planners look the way they do.
 WhenToUse: Before touching links/expression.ts, links/check.ts or links/plan.ts, or when a link refusal message changed.
 ---
+
 
 
 
@@ -151,4 +156,60 @@ The checker's cycle diagnostic also changes from port ids (`v-east/order already
 ```text
 before  v-east/order already reads from v-b/order
 after   Orders East · order already reads from Detail B · order; that would be a cycle
+```
+
+## Step 3: The planner checks the term the apply step writes
+
+Guide §12.7 says a planner "should construct the exact candidate term it proposes to persist". Before this step the follow planner checked `terms.follow(source, "__plan__")` and the apply case wrote `terms.follow(source, id)`; the derive planner checked `Derived(Follow(source, "__plan-source__"), ρ, "__plan-derived__")` and the apply case wrote `Derived(Follow(source, id), ρ, id)`. The shapes agreed by inspection, not by construction. `links/candidate.ts` now spells each shape once: `candidateTermOf(verb, linkId)` for the four verbs that write a term, `destinationOf(verb)`, `linkIdFor(verb, mint)`, and `PLAN_LINK_ID` for the planner's placeholder.
+
+The planners now build the verb they will return first and check `candidateTermOf(verb)`; apply stores `candidateTermOf(verb, linkIdFor(verb, newLinkId))`. The law added to `laws.test.ts` applies each term verb and asserts the persisted term equals the candidate under the minted id, and that bind and ambient mint no id at all (the counter must not advance, or link ids in documents would skip).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 3 of the plan slip: planner integration by construction rather than by inspection.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 2cf52b6 — "PBUI-KERNEL-2 P3: planners check the exact term apply persists"
+
+### What I did
+- New `src/presentation/links/candidate.ts` (`TermVerb`, `isTermVerb`, `destinationOf`, `linkIdFor`, `candidateTermOf`, `PLAN_LINK_ID`), exported from `links/index.ts`.
+- `apply.ts`: the four term cases persist `candidateTermOf`.
+- `plan.ts`: `checkedCandidate(verb, destination, s, deps)` takes the verb; `planFollow`, `planBind`, `planAmbient`, `planDerive` return the same verb object they checked.
+- `laws.test.ts`: "§12.7 a planner checks the term apply persists" (six assertions).
+- Typecheck clean; 136 link tests pass.
+
+### Why
+- One spelling per shape is the only way the planner's admissibility verdict is about the term that will exist in the document.
+
+### What worked
+- `linkVerbs.derive` already existed with the exact field set apply used, so the derive planner's hand-built verb literal could be replaced without a shape change.
+
+### What didn't work
+- N/A.
+
+### What I learned
+- The `LinkVerb` union is not discriminated by a shared field name for the destination (`destination` for follow/derive, `port` for bind/ambient), which is why `destinationOf` exists rather than a property access.
+
+### What was tricky to build
+- The `linkVerbs.*` constructors return `LinkVerb`, not the narrowed member, so the planners cast to `TermVerb` after construction. A typed overload per constructor would remove the casts; left for a later cleanup since the cast is local to four lines.
+
+### What warrants a second pair of eyes
+- `linkIdFor` returns `undefined` for bind/ambient and `candidateTermOf` then defaults to `PLAN_LINK_ID`, which those two shapes ignore. Confirm no future term shape carries a link id without being listed in `linkIdFor`.
+
+### What should be done in the future
+- Narrowed return types on `linkVerbs.follow/bind/derive/ambient` to drop the casts.
+
+### Code review instructions
+- `src/presentation/links/candidate.ts`; then `apply.ts` cases `port.follow/bind/derive/ambient`; then `checkedCandidate` in `plan.ts`.
+- `npx vitest run src/presentation/links/laws.test.ts`.
+
+### Technical details
+
+```text
+plan:   checkBinding(candidateTermOf(verb, PLAN_LINK_ID), s, deps, destinationOf(verb))
+apply:  bindings[destinationOf(verb)] = candidateTermOf(verb, linkIdFor(verb, mint))
+law:    apply(verb).bindings[dest] == candidateTermOf(verb, minted)
 ```

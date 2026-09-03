@@ -22,3 +22,12 @@ Step 2: one dependency walk (dependsOn in check.ts over the IR), titleOfPort on 
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/check.ts — dependsOn and the titled cycle diagnostic
 
+
+## 2026-09-02
+
+Step 3: links/candidate.ts; planners check candidateTermOf(verb), apply persists it; law added (commit 2cf52b6)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/candidate.ts — The one spelling of each term a verb persists
+
