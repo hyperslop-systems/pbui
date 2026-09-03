@@ -57,7 +57,7 @@ export { LINK_VERB_KINDS, describeLinkVerb, isLinkVerb, linkVerbs } from "./verb
 export type { LinkVerb, LinkVerbKind, UnlinkPolicy } from "./verbs";
 export { EMPTY_LINK_STATE, labelOf, reaches, titleOfPort } from "./snapshot";
 export type { ContextDefinition, LinkDeps, LinkRelationEvaluation, LinkSnapshot, LinkState, LinkValues, PortDefinition, RelationDefinition } from "./snapshot";
-export { checkIdentityCompatibility, compatibilityOf, compileIdentity, compileIdentityQuotient, identityQuotientOf, logicalCellOf } from "./identity";
+export { cellOf, checkIdentityCompatibility, compatibilityOf, compileIdentity, compileIdentityQuotient, identityQuotientOf, logicalCellOf, quotientOf } from "./identity";
 export type { ClassLineage, CompiledIdentity, Compatibility, IdentityClass, IdentityDeclaration, IdentityDiagnostic, IdentityQuotient, LogicalCell, MergePolicy, SplitPolicy } from "./identity";
 export { effectiveBinding, evaluateBinding, evaluatePort, valueToHold } from "./evaluate";
 export type { Evaluation } from "./evaluate";

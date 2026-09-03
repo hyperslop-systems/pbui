@@ -2,7 +2,7 @@ import { effectiveBinding, evaluatePort, valueToHold } from "./evaluate";
 import { candidateTermOf, type TermVerb } from "./candidate";
 import { canFlow } from "./compatibility";
 import { checkBinding } from "./check";
-import { checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
+import { cellOf, checkIdentityCompatibility, type MergePolicy, type SplitPolicy } from "./identity";
 import { labelOf, reaches, titleOfPort, type LinkDeps, type LinkSnapshot } from "./snapshot";
 import { sourcePortOf, terms, type Binding, type SerializableReference } from "./terms";
 import type { PortId } from "./types";
@@ -45,7 +45,7 @@ export function planFollow(source: PortId, destination: PortId, s: LinkSnapshot,
   if (D.declaration.direction === "out") return unavailable(`${titleOfPort(D)} is an output; it cannot follow anything`, "direction");
   const current = s.bindings.get(destination);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
-  if (s.aliases.has(destination)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(destination)} cell; leave the class first`, "shared");
+  if (cellOf(destination, s)) return unavailable(`${titleOfPort(D)} shares the ${cellOf(destination, s)!.id} cell; leave the cell first`, "shared");
   if (current?.kind === "follow" && current.source === source) return unavailable(`${titleOfPort(D)} already follows ${titleOfPort(S)}`, "already");
   const replacing = current && sourcePortOf(current) ? ` (replacing ${current.kind === "follow" ? titleOfPort(s.ports.get(current.source) ?? S) : "its current source"})` : "";
   const verb = linkVerbs.follow(source, destination) as TermVerb;
@@ -61,7 +61,7 @@ export function planBind(port: PortId, reference: SerializableReference, s: Link
   if (D.declaration.documentSlot) return unavailable(`${titleOfPort(D)} is a document slot; rebind the view instead`, "document-slot");
   const current = s.bindings.get(port);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
-  if (s.aliases.has(port)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(port)} cell; leave the class first`, "shared");
+  if (cellOf(port, s)) return unavailable(`${titleOfPort(D)} shares the ${cellOf(port, s)!.id} cell; leave the cell first`, "shared");
   const verb = linkVerbs.bind(port, reference) as TermVerb;
   const checked = checkedCandidate(verb, port, s, deps);
   if (checked) return checked;
@@ -218,7 +218,7 @@ export function planDerive(source: PortId, destination: PortId, relationId: stri
   if (D.declaration.direction === "out") return unavailable(`${titleOfPort(D)} is an output`, "direction");
   const current = s.bindings.get(destination);
   if (current?.kind === "hold") return unavailable(`${titleOfPort(D)} is held; resume or detach it first`, "held");
-  if (s.aliases.has(destination)) return unavailable(`${titleOfPort(D)} shares the ${s.aliases.get(destination)} cell; leave the class first`, "shared");
+  if (cellOf(destination, s)) return unavailable(`${titleOfPort(D)} shares the ${cellOf(destination, s)!.id} cell; leave the cell first`, "shared");
   const legal = legalRelations(source, destination, s, deps);
   if (legal.length === 0) {
     return unavailable(`no relation turns a <${S.declaration.contract.valueType}> into a <${D.declaration.contract.valueType}>`, "no-relation");

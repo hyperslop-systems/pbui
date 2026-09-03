@@ -272,3 +272,23 @@ export function logicalCellOf(
   const id = quotient.cellByPort.get(port);
   return id ? quotient.cells.find((cell) => cell.id === id) ?? null : null;
 }
+
+/**
+ * The quotient view of a SNAPSHOT (PBUI-KERNEL-3 P4): the compiled classes
+ * it carries as cells, the alias map as `cellByPort`. A snapshot persists
+ * classes but not the compile that made them, so lineage is empty and
+ * diagnostics are those of a fresh compile over the snapshot's ports. New
+ * reasoning reads this rather than `s.classes`/`s.aliases` directly;
+ * `Alias(classId)` stays what the wire and the effective binding say.
+ */
+export function quotientOf(s: Pick<LinkSnapshot, "classes" | "aliases" | "identity" | "ports">): IdentityQuotient {
+  const cells = [...s.classes.values()];
+  const compiled = compileIdentity(s.identity, s.ports, cells);
+  return { cells, cellByPort: s.aliases, lineage: new Map(), diagnostics: compiled.diagnostics };
+}
+
+/** The logical cell a port belongs to in a snapshot, or null when it reads its own value. */
+export function cellOf(port: PortId, s: Pick<LinkSnapshot, "classes" | "aliases">): LogicalCell | null {
+  const id = s.aliases.get(port);
+  return id ? s.classes.get(id) ?? null : null;
+}
