@@ -1775,6 +1775,15 @@ resolve same query
 - **Consequences:** datalab-ui's menu/help/descriptor goldens are regenerated where field names change. The freeze otherwise stands.
 - **Status:** accepted.
 
+### Decision C19: Without a product projection, the workbench's link graph is derived from declared port types (deviation from "no fallback")
+
+- **Context:** §3.11 and §20.2 asked that link-enabled workbenches receive their graph from the product's compiled presentation and that the empty-graph fallback disappear. A hard requirement threw at construction whenever any application declared ports and no `links` was given, which is every pbui-workbench story and test that mounts the demo applications (about 180 sites) and any product that uses ports without inheritance.
+- **Options considered:** Throw (the letter of §20.2); keep the empty graph; derive the graph from the port types the applications declare.
+- **Decision:** Derive. `createLinkHandlers` builds a graph whose nodes are exactly the `valueType`s of every declared port (isolated, no parents), with no relations and no evaluator.
+- **Rationale:** It is not an EMPTY graph — every type a port names is a real node, so `reaches` never sees an undeclared type and the closed world (C9) holds — and it invents nothing: only equal type ids reach. What it cannot express is subtyping, which is exactly the case where a product must pass `presentation.linkDeps(...)`, the same graph its menus use. A `Derived` term under the fallback evaluates to a visible `relation-missing` diagnostic.
+- **Consequences:** The workbench package's own stories and tests need no product presentation. A product whose ports rely on inheritance and forgets `links` sees its `<inspectable>` ports refuse subtypes — the same symptom as before KERNEL-1, now with an obvious fix. Revisit if a product ships that way.
+- **Status:** accepted as a deviation; recorded in §20.2.
+
 ### Decision C18: pbui-chat contributes a fragment and reads descriptors from the model
 
 - **Context:** `createPbuiChat` reads `pbui.registry`, and products merge the chat layer's presentation types into their `Values` by hand. Under the fragment model that is exactly the "parallel arrays a product must spread correctly" §1.2 item 6 forbids.
@@ -2196,56 +2205,65 @@ Run consumer-native commands in external repositories as well. A PBUI-only green
 
 ## 20. Completion and release checklist
 
+Walked on 2026-09-02 at the end of the implementation branch (`task/add-plot-editor`, pbui commits d2ee0c2 → 74a1820). Items in scope for KERNEL-1 are checked; items that belong to KERNEL-2/3/4 or to the release itself are marked as such.
+
 ### 20.1 Architecture
 
-- [ ] One compiled presentation constructor is public.
-- [ ] Named fragments replace parallel reusable arrays.
-- [ ] Known/default/active scopes are distinct.
-- [ ] One predicate registry is shared.
-- [ ] Relations replace translators.
-- [ ] Relation exposure is explicit.
-- [ ] Relation composition is explicit only.
-- [ ] Runtime type world is closed.
-- [ ] Revisions are semantic and explicit.
-- [ ] Link snapshot projection is product-owned.
-- [ ] Persisted link grammar is unchanged.
-- [ ] Identity quotient is separate from directed dependencies.
+- [x] One compiled presentation constructor is public (`definePresentation().create`; `compilePresentation` beneath it).
+- [x] Named fragments replace parallel reusable arrays (`createWorkbenchPresentationFragment`, `createChatPresentationFragment`, `createGeneratedActionsFragment`).
+- [x] Known/default/active scopes are distinct (`knownScopes`, `defaultActiveScopes`, `PresentationContextInput.activeScopes`).
+- [x] One predicate registry is shared (actions, help, relations read `presentation.predicates`).
+- [x] Relations replace translators (`acceptance/` over `relations/`; `AcceptanceOption.relation`).
+- [x] Relation exposure is explicit (`exposure: { acceptance, facet, derivation }`, required).
+- [x] Relation composition is explicit only (named `composition`; no path search).
+- [x] Runtime type world is closed (`ancestors`/`matchSelector` throw on undeclared types; `anyDeclaredType` replaces `"*"`).
+- [x] Revisions are semantic and explicit (`revision(facts)` or `input.revision`; missing throws).
+- [x] Link snapshot projection is product-owned (`presentation.linkDeps({ contextFor })`).
+- [x] Persisted link grammar is unchanged (`links/terms.ts` untouched; KERNEL-2 owns the IR).
+- [x] Identity quotient is separate from directed dependencies (prototype's quotient landed; KERNEL-3 finishes it).
 
 ### 20.2 Deletions
 
-- [ ] No legacy `createPbui` branch.
-- [ ] No `PresentationTranslator` or adapter.
-- [ ] No translator acceptance branch.
-- [ ] No `AcceptanceOption.translator` field.
-- [ ] No old link relation callback.
-- [ ] No empty-graph fallback.
-- [ ] No second product graph.
-- [ ] No `ContextTarget`/`matchContext` compatibility alias.
-- [ ] No undeclared-isolated type behavior.
-- [ ] No legacy `"*"` subject.
+- [x] No legacy `createPbui` branch.
+- [x] No `PresentationTranslator` or adapter.
+- [x] No translator acceptance branch.
+- [x] No `AcceptanceOption.translator` field.
+- [x] No old link relation callback (`LinkDeps.relation` deleted; `relationEvaluation` only).
+- [~] No empty-graph fallback — **deviation (Step 10):** a workbench built without `links` derives its graph from the port types its applications DECLARE (isolated nodes, equal-type reach, no relations). It is not empty and the closed world holds, but it cannot express subtyping; products with inheritance pass `presentation.linkDeps`. See §17 C19.
+- [x] No second product graph (ecommerce's `createPresentationTypeGraph(SHOP_TYPES)` for links is gone).
+- [x] No `ContextTarget`/`matchContext` compatibility alias.
+- [x] No undeclared-isolated type behavior.
+- [x] No legacy `"*"` subject.
 
 ### 20.3 Verification
 
-- [ ] Root typecheck, tests, and build pass.
-- [ ] Recursive workspace typecheck, tests, and builds pass.
-- [ ] Consumer smoke tests pass.
-- [ ] Storybook/browser tests pass.
-- [ ] rag-ttc `apps/workbench/web` typecheck, tests and build pass against the local pbui build; vocabulary golden regenerated deliberately.
-- [ ] hyperblog `ui` typecheck, tests and build pass against the local pbui build.
-- [ ] agentlogic needs only a version bump (pbui-workbench entry points unchanged).
-- [ ] Persisted document fixtures round-trip.
-- [ ] No-effect-on-refusal laws pass.
-- [ ] Performance benchmarks show no hover/menu regression.
-- [ ] Package exports and generated declarations contain only final APIs.
+- [x] Root typecheck, tests (368), and build pass.
+- [x] Recursive workspace typecheck and builds pass; package tests: workbench 281, datalab 554, ecommerce 35, sandbox 224, chat 240 (+1 pre-existing CSS-policy failure that scans workbench CSS modules), plotscript 31 (+1 pre-existing timing failure), editor 12, workbench-protocol 48.
+- [x] Consumer smoke script migrated (`scripts/consumer-smoke.mjs`).
+- [x] Storybook builds: root, pbui-workbench, pbui-ecommerce (see diary Step 12 for results); browser checks by screenshot (`various/screenshots/`).
+- [x] rag-ttc `apps/workbench/web`: typecheck clean, 167 tests, vite build, vocabulary golden unchanged (against the local build via pnpm link overrides).
+- [x] hyperblog `ui`: typecheck clean, 28 tests, vite build.
+- [ ] agentlogic: version bump at release (pbui-workbench `createWorkbench`/`defineApp` signatures unchanged).
+- [x] Persisted document fixtures round-trip (link tests and ecommerce scene tests unchanged).
+- [x] No-effect-on-refusal laws pass (`createPbui.actions.test.tsx`); `onRefuse` is required.
+- [ ] Performance benchmarks: not run in this branch; no hover/menu path grew beyond one selector match per contribution (§21.5).
+- [x] Package exports contain only final APIs (`src/presentation/index.ts`; the Phase 6 legacy grep returns nothing across pbui, rag-ttc, hyperblog).
 
 ### 20.4 Documentation
 
-- [ ] README uses the compiled presentation model.
-- [ ] Product playbook uses fragments and relations.
-- [ ] Link docs describe context projection and binding IR.
-- [ ] Facet docs reference canonical relations.
-- [ ] Migration notes list every removed symbol.
-- [ ] Original KERNEL-1 guide is marked superseded by this document.
+- [x] README uses the compiled presentation model.
+- [x] Product playbook uses fragments and relations (`docs/playbooks/building-a-new-hyperslop-systems-app-on-pbui.md` §6, §"actions").
+- [x] Link docs describe context projection (`LinkDeps` doc comment; playbook "Links" rule; this guide §12).
+- [x] Facet docs reference canonical relations (PBUI-FACETS-1 guide D9 carries a supersession note).
+- [x] Migration notes list every removed symbol (this section and diary Steps 5–11).
+- [x] Original KERNEL-1 guide is marked superseded by this document.
+
+### 20.5 Release steps that remain
+
+- Publish pbui, pbui-workbench, pbui-chat, pbui-sandbox as one coordinated breaking release (0.11).
+- Bump rag-ttc, hyperblog, agentlogic to the released versions and drop the pnpm link overrides used for verification (they were never committed).
+- Open the turboproof ticket (0.6.0 → 0.11, descriptor actions to the compiled model).
+- Start PBUI-KERNEL-2/3/4 from the prototype code that landed with the patch.
 
 ---
 

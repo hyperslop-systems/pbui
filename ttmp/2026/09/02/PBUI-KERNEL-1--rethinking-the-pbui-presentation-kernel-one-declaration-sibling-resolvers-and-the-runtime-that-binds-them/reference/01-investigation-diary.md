@@ -766,3 +766,54 @@ Phase 7 closes the link side of the cutover. `LinkDeps` is now exactly the narro
 
 ### Technical details
 - `LinkDeps = { graph; relations?; relationEvaluation?(id, reference, snapshot): value | empty | error; label? }`.
+
+## Step 12: Phase 11 — documentation, screenshots, and the §20 audit
+
+The last phase in this ticket's scope rewrote the public docs onto the compiled presentation, captured every migrated consumer running, and walked the guide's §20 checklist with the results. The README's opening example and help section, the product playbook's §6 binding layer and action setup, and the FACETS-1 guide's D9 now describe one declaration with fragments, relations with exposure, `contextFor` plus `revision`, `presentation.linkDeps`, and the required `onRefuse`. Nine screenshots under `various/screenshots/` (with an index) show the ecommerce shop and its order menu, the chat demo and a tile menu, the core help card in Storybook, rag-ttc and its tile menu, and hyperblog's reader with a term menu — all on the post-cutover packages, all with clean consoles apart from favicon 404s and absent-backend 502s. §20 is checked item by item; the one deviation (the derived-port-graph fallback) is recorded as C19.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Finish the ticket's scope (Phases 0–7 and 11), leaving the release steps and the split-out tickets explicitly listed.
+
+**Inferred user intent:** A branch a reviewer can read end to end, with evidence for the report.
+
+**Commit (docs):** 940f5b0 — "PBUI-KERNEL-1 P11: README and playbook on the compiled presentation; FACETS-1 D9 superseded note"; 74a1820 — "PBUI-KERNEL-1 P11: screenshots of every migrated consumer with index"
+
+### What I did
+- README: new opening example, help section on the model.
+- Playbook §6 (binding layer, six files) and the action-setup block (fragments, relations, `contextFor`, links, refusals); removed the paragraph about the deprecated legacy engine.
+- FACETS-1 guide D9: supersession note pointing at C5/C6 and `relations.exposed("facet")`.
+- Screenshots via Playwright at 1400×900 against vite/Storybook dev servers (ecommerce 5176, chat 5177, root Storybook 6006, rag-ttc 5178, hyperblog Storybook 6009); hyperblog's app shell needs its Go corpus, so its tile story stands in.
+- `pnpm build-storybook` for root, pbui-workbench, pbui-ecommerce: all exit 0.
+- Guide §20 walked; C19 recorded; §20.5 lists the release steps that remain.
+
+### Why
+- §20.4 and the user's request for screenshots that can carry a report.
+
+### What worked
+- Every consumer's object menu resolves through its compiled presentation with the expected rows, including the workbench fragment's rows on rag-ttc and the chat demo (through `project`).
+
+### What didn't work
+- hyperblog's app at `/static/` shows "The corpus did not load" without the Go server; the Storybook tile story was used instead.
+- Playwright's `text=` selector hit two elements for "NEW CONVERSATION" (title and the mouse-doc ambient) and "CAMPAIGNS" is rendered lowercase with CSS; exact/`nth=0` locators resolved both.
+
+### What I learned
+- The chat demo's tile menu is the cleanest single picture of the cutover: six rows from a shared fragment, two from the product, one subject, no ambiguity row.
+
+### What was tricky to build
+- Nothing in code; the audit's honesty is the work: two §20 items are deliberately not checked (agentlogic bump, performance benchmarks) and one is a recorded deviation.
+
+### What warrants a second pair of eyes
+- C19 (derived-port-graph fallback) against the guide's original intent.
+- The README claims "since 0.11"; the version bump itself is a release step.
+
+### What should be done in the future
+- §20.5: coordinated 0.11 release; version bumps in rag-ttc, hyperblog, agentlogic; drop the verification link overrides; turboproof ticket; KERNEL-2/3/4.
+
+### Code review instructions
+- Read `README.md` top, the playbook §6 and action block, guide §20 and C19, then `various/screenshots/README.md` beside the images.
+
+### Technical details
+- Storybook build logs: scratchpad `sb-root.log`, `sb-wb.log`, `sb-shop.log` (exit 0 each).

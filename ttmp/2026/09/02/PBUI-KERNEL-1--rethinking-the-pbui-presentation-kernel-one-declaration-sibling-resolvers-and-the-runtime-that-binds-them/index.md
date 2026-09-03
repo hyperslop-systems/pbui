@@ -63,7 +63,7 @@ Confirmed decisions: hard runtime cutover (C16), mechanical migration of the fro
 
 ## Status
 
-Research and design are complete. Implementation is in progress on the `task/add-plot-editor` workspace branch; progress is tracked in [tasks.md](./tasks.md) and the [diary](./reference/01-investigation-diary.md).
+Implementation of Phases 0–7 and 11 is complete on the `task/add-plot-editor` workspace branch (pbui d2ee0c2 → HEAD; rag-ttc 4658ef77; hyperblog 6b5c58f). The release steps that remain are listed in guide §20.5; the split-out work is PBUI-KERNEL-2/3/4. Evidence: [tasks.md](./tasks.md), the [diary](./reference/01-investigation-diary.md) Steps 4–12, and [screenshots](./various/screenshots/README.md).
 
 ## Ticket bookkeeping
 

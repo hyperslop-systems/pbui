@@ -108,3 +108,12 @@ Step 11 / Phase 7: LinkDeps without the compat relation callback; one relationEv
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/links/evaluate.ts — One relation evaluation path
 
+
+## 2026-09-02
+
+Step 12 / Phase 11: README, playbook, FACETS-1 note; nine screenshots with index; Storybook builds green; §20 walked with C19 deviation recorded. KERNEL-1 implementation complete on task/add-plot-editor; release steps in guide §20.5
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/02/PBUI-KERNEL-1--rethinking-the-pbui-presentation-kernel-one-declaration-sibling-resolvers-and-the-runtime-that-binds-them/various/screenshots/README.md — Screenshot index
+

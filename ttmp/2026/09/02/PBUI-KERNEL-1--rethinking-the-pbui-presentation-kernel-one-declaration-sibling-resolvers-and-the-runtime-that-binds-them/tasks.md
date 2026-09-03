@@ -75,8 +75,8 @@ Phases follow design-doc/02 §18 after the 2026-09-02 split (§0.1). Phases 8–
 
 ## Phase 11: Release and deletion audit
 
-- [ ] §20 checklist walked; README/playbook/link docs updated; doc 01 marked superseded <!-- t:p11 -->
-- [ ] Screenshots (Storybook, ecommerce, rag-ttc, hyperblog) filed under various/screenshots and linked from the diary <!-- t:shot -->
+- [x] §20 checklist walked; README/playbook/link docs updated; doc 01 marked superseded <!-- t:p11 -->
+- [x] Screenshots (Storybook, ecommerce, rag-ttc, hyperblog) filed under various/screenshots and linked from the diary <!-- t:shot -->
 
 ## Parked
 
