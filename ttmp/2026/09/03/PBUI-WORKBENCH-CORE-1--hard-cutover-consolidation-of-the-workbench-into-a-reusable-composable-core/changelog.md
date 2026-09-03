@@ -195,3 +195,8 @@ Validated and uploaded the Workbench stabilization design bundle to /ai/2026/09/
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/04-workbench-stabilization-transaction-safety-headless-boundary-and-typescript-go-parity.md — Delivered stabilization guide
 
+
+## 2026-09-03
+
+S0: seven review probes as expected-fail package tests, public-surface golden, stabilization inventory (commit 8dd9302)
+

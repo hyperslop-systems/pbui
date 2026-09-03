@@ -1602,3 +1602,61 @@ Phase → task: S0 mu7f, S1 umfy, S2 8q05, S3 dea6, S4 i6k3, S5 fcn6, S6 pul0, S
 Core's PBUI imports: apps, commands, effects, describe, links/{runtime,snapshot,collaborator,document}, planner/links
 Only non-links symbol used: createPresentationTypeGraph (presentation/actions/typeGraph)
 ```
+
+## Step 21: Phase S0 — the evidence, locked
+
+Phase S0 makes the review's evidence a property of the package rather than of a script under the ticket. The seven probes now live in `workbench-core/src/stabilization.probes.test.ts`, each asserting the behaviour the program requires and marked `it.fails`: the suite is green while the defect stands and turns red the moment a later phase fixes a case, which is the signal to remove the marker. A second test snapshots the export names of the four package entries so every surface change in S1–S6 is a deliberate snapshot update.
+
+The inventory (reference doc "Stabilization inventory") records who consumes each surface the program changes — document sources, `openBindings`, `onPostCommitError`, `SyncTarget.replaceDocument`, `readWorkbenchSnapshot` — in this repo and in the four external products, and the core's dependency graph as it stands.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 20)
+
+**Assistant interpretation:** Design doc 04 Phase S0: every known defect as a reproducible package test; API fixtures; dependency graph; consumer inventory.
+
+**Inferred user intent:** No phase can claim a fix without a test that flips.
+
+**Commit (code):** 8dd9302 — "PBUI-WORKBENCH-CORE-1 S0: review probes as expected-fail package tests, public-surface golden, inventory"
+
+### What I did
+
+- `stabilization.probes.test.ts`: EXPOSED_STATE_MUTATION (assignment throws), PREVIEW_ID_DRIFT (execute mints the previewed id), SUBSCRIBER_ESCAPE (result ok, receipt delivered, other subscriber attempted, `onObserverError` with stage `core-subscriber`), POST_COMMIT_ESCAPE (a throwing LINK subscriber, stage `link-subscriber`), REENTRANT_RECEIPTS (receipts `[3, 4]` with the delete after the close, awaiting a microtask), DROPPED_REPLACE_TITLE, CREATE_BOOTSTRAP_DROP (no drop, phase synced).
+- `publicSurface.test.ts` + snapshot.
+- The inventory doc; `pnpm why react` in the core (dev-only, used by nothing).
+
+### Why
+
+- §11 S0's exit gate: "every known defect has a reproducible package test".
+
+### What worked
+
+- Vitest's `it.fails` gives exactly the inversion semantics the design asks for without a second assertion style.
+
+### What didn't work
+
+- N/A.
+
+### What I learned
+
+- POST_COMMIT_ESCAPE in the review script replaced `links.afterCommit` with a throwing function; the package test throws from a link RUNTIME subscriber instead, which is the realistic failure and the stage the design names.
+
+### What was tricky to build
+
+- The SUBSCRIBER_ESCAPE probe names an option (`onObserverError`) that does not exist yet; it is passed through a cast so the file typechecks before S1.
+
+### What warrants a second pair of eyes
+
+- REENTRANT_RECEIPTS awaits one microtask after the close; if S3 chooses a longer deferral the test must follow.
+
+### What should be done in the future
+
+- S1.
+
+### Code review instructions
+
+- `packages/workbench-core/src/stabilization.probes.test.ts`; run `npx vitest run src/stabilization.probes.test.ts` (expect "7 expected fail").
+
+### Technical details
+
+- Surface snapshot: `packages/workbench-core/src/__snapshots__/publicSurface.test.ts.snap`.

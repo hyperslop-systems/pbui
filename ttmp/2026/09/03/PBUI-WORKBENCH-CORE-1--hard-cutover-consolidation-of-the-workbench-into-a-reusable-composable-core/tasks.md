@@ -22,7 +22,7 @@
 - [ ] Stabilize Workbench publication, document-source ordering, sync bootstrap/adoption, and owned snapshots <!-- t:2mfw -->
 - [ ] Extract a React-free PBUI link-kernel entry and enforce the built dependency boundary <!-- t:4m7u -->
 - [ ] Define binding and document-source semantics shared by TypeScript and Go, with parity fixtures <!-- t:ba1r -->
-- [ ] Phase S0: lock evidence — the seven review probes as failing package tests, API fixtures, dependency graph, openBindings/DocumentSource inventory <!-- t:mu7f -->
+- [x] Phase S0: lock evidence — the seven review probes as failing package tests, API fixtures, dependency graph, openBindings/DocumentSource inventory <!-- t:mu7f -->
 - [ ] Phase S1: safe observer primitive — attempt-all publication, observer errors as data, execution phase and reentrancy refusal <!-- t:umfy -->
 - [ ] Phase S2: staged core/link commit — pure link-runtime reducer, install core and link values before publication, replacement through the same path <!-- t:8q05 -->
 - [ ] Phase S3: source scheduling and sync — coalesced reconciliation after publication, bootstrap covered entries, acknowledged adoption, isolation overlay <!-- t:dea6 -->
