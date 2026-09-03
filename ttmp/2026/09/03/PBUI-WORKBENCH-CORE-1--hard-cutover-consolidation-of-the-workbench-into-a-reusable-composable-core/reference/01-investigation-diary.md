@@ -1532,3 +1532,73 @@ Dependency: A → B → C → Datalab adoption
 Upload: PBUI Workbench Stabilization.pdf
 Remote: /ai/2026/09/03/PBUI-WORKBENCH-CORE-1
 ```
+
+## Step 20: Stabilization kickoff — reading design doc 04 against the code
+
+Design doc 04 turns the review's seven probes into a program: safe publication (Track A), a React-free installed dependency graph for the core (Track B), and binding/source semantics that TypeScript and Go agree on (Track C). This step is the analysis before the first phase: every invariant in §5 was read against the module it constrains, and the places where the document leaves a choice were decided here so the phases can proceed without re-deriving them.
+
+The code confirms the review. `install` sets state, runs a `for … of` over listeners with no guard, then `onCommit` under a guard, then `links.afterCommit` outside it; the link runtime notifies from inside its own `commit`; `connectDocumentSource` re-enters `core.apply` from a core listener; `preview` plans against the same `ids` generator `execute` uses; `getState()` hands out the live protobuf messages and the index's `Map`s; sync's `bootstrap` creates from the optimistic document and then rebases the outbox that document already contains; `SyncTarget.replaceDocument` returns `unknown` and `adopt` advances `revision` before the target answers. The core imports `@hyperslop-systems/pbui`'s root entry in nine modules for symbols that all live under `src/presentation/links` plus `createPresentationTypeGraph` from `presentation/actions/typeGraph`.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Work on  PBUI-WORKBENCH-CORE-1/design-doc/04-workbench-stabilization-transaction-safety-headless-boundary-and-typescript-go-parity.md  commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)  Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done."
+
+**Assistant interpretation:** Implement design doc 04's phases S0–S7 as a hard cutover, with the same commit/diary/slip discipline as the first program.
+
+**Inferred user intent:** A core whose boundaries are as strong as its planner before Datalab adopts it; no second rewrite.
+
+**Commit (code):** 03fde84 — the other session's docs (design doc 04, review bookkeeping, the Datalab ticket scaffold) committed as the baseline.
+
+### What I did
+
+- Read design doc 04 end to end; read the seven probes and their recorded output; read `createWorkbenchCore.ts`, `links/runtime.ts`, `links/collaborator.ts`, `sources.ts`, `sync/index.ts`, `planner/plan.ts`, `planner/show.ts`, `persistence/index.ts`, `describe.ts`, `apps.ts`, the shell's focus and construction checks, PBUI's root exports and Vite entries, the links barrel, and the Go binding model and validator.
+- Printed the plan slip; added tasks mu7f (S0), umfy (S1), 8q05 (S2), dea6 (S3), i6k3 (S4), fcn6 (S5), pul0 (S6), 54ag (S7) beside the three track tasks 2mfw, 4m7u, ba1r.
+
+### Why
+
+- §15's checklist ("before or after the point of no return?", "can this callback call a mutation door?") is only answerable per line of the gateway, so the gateway was read first.
+
+### What worked
+
+- The design's §17 file references are exact; nothing had moved since the review.
+
+### What didn't work
+
+- N/A; analysis only.
+
+### What I learned
+
+- Decisions the document leaves open, taken here:
+  - Reentrancy: refuse with code `reentrant_execution` from every mutation door while `phase !== "idle"`; the refusal is NOT reported through `onRejected` (nothing was wrong with the batch). A document source tries to reconcile synchronously and, when refused as reentrant, retries in a microtask — so a stub still exists synchronously after `library.putProgram()` followed by `commands.open("script", …)` in the same tick (the sandbox tools do exactly that), while a reconcile triggered from inside a publication lands after the outer receipt.
+  - Observer errors: `onPostCommitError` is replaced by `onObserverError(finding: { stage, revision, error })`; the receipt observer, link subscribers and core subscribers are each attempted once; failures are collected and reported after all attempts.
+  - Publication order, per §6.2: receipt (`onCommit`) → link subscribers → core subscribers.
+  - Preview ids: a lookahead pool rather than a per-transaction factory. A plan draws from a per-prefix buffer that is refilled from the configured generator; a committed execution consumes what its plan drew, a preview or a refused execution consumes nothing. Preview and the following execute therefore mint the SAME ids, the goldens keep their ids, and `sequentialIds()` keeps working for fixtures.
+  - Ownership: clone at every ingress (`initial`, replace, restore, adoption); deep-freeze the document and wrap the index maps read-only when `process.env.NODE_ENV !== "production"` (overridable by an `ownership` option); add `core.snapshot()` (a clone) for untrusted integrations; no clone on `getState()`.
+  - No-op detection: after applying a transition's mutations, a document `equals` the current one with an unchanged session is `changed: false` and installs nothing.
+  - Sandbox bindings (§9.4): program INPUTS are per view, not per program — two tiles may run one program on two products — so they stay in `AppView.documents`, declared through a typed `additionalBindings: { formats? }` on the manifest with Go `AdditionalBindings *BindingRule`, not through `openBindings`.
+  - Source ownership: a stub carries its owner in a reserved body field `$source`; collisions are reported through `onCollision`, never applied.
+  - Shell construction: every manifest in the core must have a presentation (a tile with no component cannot render); the shell throws at construction.
+
+### What was tricky to build
+
+- Deciding between §6.7's per-transaction id factory and a pool: the factory restarts deterministic sequences per transaction (colliding ids across transactions unless seeded by revision, which changes every golden's ids). The pool keeps today's ids and still satisfies §5.5.
+
+### What warrants a second pair of eyes
+
+- The "try, then defer on reentrant refusal" source protocol: it is one line more than the document's pure microtask scheduling, in exchange for synchronous stubs outside publication.
+
+### What should be done in the future
+
+- Phases S0–S7 (Steps 21 onward).
+
+### Code review instructions
+
+- This step changes no code; start at design doc 04 §§5–9 with the file list in §17 open.
+
+### Technical details
+
+```text
+Phase → task: S0 mu7f, S1 umfy, S2 8q05, S3 dea6, S4 i6k3, S5 fcn6, S6 pul0, S7 54ag
+Core's PBUI imports: apps, commands, effects, describe, links/{runtime,snapshot,collaborator,document}, planner/links
+Only non-links symbol used: createPresentationTypeGraph (presentation/actions/typeGraph)
+```
