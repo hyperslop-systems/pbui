@@ -147,6 +147,9 @@ importers:
       '@hyperslop-systems/pbui-workbench':
         specifier: workspace:^
         version: link:../pbui-workbench
+      '@hyperslop-systems/workbench-core':
+        specifier: workspace:^
+        version: link:../workbench-core
       '@hyperslop-systems/workbench-protocol':
         specifier: workspace:^
         version: link:../workbench-protocol
@@ -223,6 +226,9 @@ importers:
       '@hyperslop-systems/pbui-workbench':
         specifier: workspace:^
         version: link:../../pbui-workbench
+      '@hyperslop-systems/workbench-core':
+        specifier: workspace:^
+        version: link:../../workbench-core
       '@hyperslop-systems/workbench-protocol':
         specifier: workspace:^
         version: link:../../workbench-protocol
@@ -275,6 +281,9 @@ importers:
       '@hyperslop-systems/plot':
         specifier: 0.3.1
         version: 0.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@hyperslop-systems/workbench-core':
+        specifier: workspace:^
+        version: link:../workbench-core
       '@hyperslop-systems/workbench-protocol':
         specifier: workspace:^
         version: link:../workbench-protocol
@@ -342,6 +351,9 @@ importers:
       '@hyperslop-systems/plot':
         specifier: 0.3.1
         version: 0.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@hyperslop-systems/workbench-core':
+        specifier: workspace:^
+        version: link:../../workbench-core
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -464,6 +476,9 @@ importers:
       '@hyperslop-systems/plot':
         specifier: 0.3.1
         version: 0.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@hyperslop-systems/workbench-core':
+        specifier: workspace:^
+        version: link:../workbench-core
       '@hyperslop-systems/workbench-protocol':
         specifier: workspace:^
         version: link:../workbench-protocol
@@ -534,6 +549,9 @@ importers:
       '@hyperslop-systems/plot':
         specifier: 0.3.1
         version: 0.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@hyperslop-systems/workbench-core':
+        specifier: workspace:^
+        version: link:../../workbench-core
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -562,6 +580,9 @@ importers:
 
   packages/pbui-sandbox:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.11.0
+        version: 2.11.0
       '@hyperslop-systems/pbui':
         specifier: workspace:^
         version: link:../..
@@ -571,6 +592,9 @@ importers:
       '@hyperslop-systems/pbui-workbench':
         specifier: workspace:^
         version: link:../pbui-workbench
+      '@hyperslop-systems/workbench-core':
+        specifier: workspace:^
+        version: link:../workbench-core
       '@hyperslop-systems/workbench-protocol':
         specifier: workspace:^
         version: link:../workbench-protocol
