@@ -1,34 +1,37 @@
 /**
- * Server sync for a workbench (PBUI-WORKBENCH-2 §5.F), React-free.
+ * Server sync for a workbench core (guide §15, chosen form §16.9), React-free.
  *
  * The union of agentlogic's and turboproof's loops, which were written twice
  * and agree on every hard part: an outbox fed by committed batches, a
  * debounced `mutate` carrying the revision it was built against, a 409 that
- * refetches and REBASES the outbox one mutation at a time, a 422 that drops
- * the batch the server called invalid (or isolates to find which mutation it
- * meant), exponential backoff for everything else, and a change stream that
- * refetches only while the outbox is idle.
+ * refetches and REBASES the outbox, a 422 that drops the batch the server
+ * called invalid, exponential backoff for everything else, and a change
+ * stream that refetches only while the outbox is idle.
+ *
+ * What changed in PBUI-WORKBENCH-CORE-1 (F6, S9): the outbox holds WHOLE
+ * committed batches. A local transition promised atomicity; the loop keeps
+ * that promise all the way to the server. A batch is retried, rebased,
+ * isolated, or dropped as one unit, never mutation by mutation, and a batch
+ * that replaces a workspace tree wholesale conflicts rather than replays once
+ * the server has moved.
  *
  * Imported from `@hyperslop-systems/workbench-core/sync` rather than the
- * package root: a product with no server should not pay for this, and
- * nothing here touches React or the DOM.
+ * package root: a product with no server should not pay for this.
  *
- * Moved from pbui-workbench in PBUI-WORKBENCH-CORE-1 Phase 6 with its
- * target changed to the core; Phase 7 makes the outbox batch-preserving.
+ * Version 1 provides optimistic single-user / multi-client persistence with
+ * batch-level conflict detection. It does not provide collaborative
+ * concurrent layout editing or CRDT convergence (§15.5).
  */
 import { toJsonString } from "@bufbuild/protobuf";
 import { MutationSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
-import { applyMutation, MutationError } from "@hyperslop-systems/workbench-protocol/client";
+import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 
 /**
- * Where the workbench stands with the server.
- *
- * `local`: not talking to one yet (never probed, or no row). `probing`: the
- * bootstrap request is out. `synced`: everything committed is on the server.
- * `pending`: local changes are queued or in flight. `offline`: a request
- * failed and a retry is scheduled. `detached`: the server says the row is
- * gone, and nothing will be sent again — the layout is the user's to export,
- * not something to keep retrying into a 404.
+ * Where the workbench stands with the server. `local`: not talking to one
+ * yet. `probing`: the bootstrap request is out. `synced`: everything
+ * committed is on the server. `pending`: batches are queued or in flight.
+ * `offline`: a request failed and a retry is scheduled. `detached`: the
+ * server says the row is gone, and nothing will be sent again.
  */
 export type SyncPhase = "local" | "probing" | "synced" | "pending" | "offline" | "detached";
 
@@ -40,36 +43,38 @@ export interface SyncResult {
   revision: Revision;
 }
 
-/**
- * What a product's HTTP layer must provide. Deliberately four small methods
- * over a transport this module never names: agentlogic's `POST /mutate` and
- * datalab's whole-document `PUT` differ in the wire, not in the loop.
- */
+/** One committed local transition, kept whole until the server has it (guide §15.2, reduced). */
+export interface OutboxEntry {
+  /** Stable for the life of the entry; NOT the request id (several entries may ride one request). */
+  readonly id: string;
+  readonly mutations: readonly Mutation[];
+  /**
+   * The batch replaces a workspace tree wholesale (a rebalance). Such a
+   * batch may apply structurally to a document another writer changed and
+   * still overwrite their layout, so after a 409 it is reported as a
+   * conflict instead of replayed.
+   */
+  readonly destructive: boolean;
+}
+
+/** What a product's HTTP layer must provide: four small methods over a transport this module never names. */
 export interface SyncClient {
   /** Fetch the current server state; null when the row does not exist. */
   get(): Promise<SyncResult | null>;
   /** Create the row from the local document. Called once, when `get` returns null. */
   create(document: WorkbenchDocument): Promise<SyncResult>;
   /**
-   * Send a batch against `revision`. `requestId` is stable for a batch's
-   * CONTENT, so a retry after a timeout is idempotent on the server side.
-   * Reject with a `SyncHttpError` to let this module tell 409 and 422 apart
-   * from a network failure.
+   * Send the mutations of one or more whole batches against `revision`.
+   * `requestId` is stable for the request's CONTENT, so a retry after a
+   * timeout is idempotent on the server side. Reject with a `SyncHttpError`
+   * to let this module tell 409 and 422 apart from a network failure.
    */
   mutate(revision: Revision, mutations: Mutation[], requestId: string): Promise<SyncResult>;
-  /**
-   * Subscribe to change notifications. Call `onChange` when the server says
-   * the document moved; return an unsubscribe. Optional — without it, other
-   * tabs' changes arrive only on the next conflict.
-   */
+  /** Subscribe to change notifications; return an unsubscribe. Optional. */
   stream?(onChange: (revision?: Revision) => void): () => void;
 }
 
-/**
- * The status a client attaches to a rejection so the loop can act on it.
- * 409 means "your revision is stale", 422 means "this batch is invalid",
- * 404 means "the row is gone"; anything else is treated as transport.
- */
+/** 409: "your revision is stale"; 422: "this batch is invalid"; 404: "the row is gone"; anything else is transport. */
 export class SyncHttpError extends Error {
   readonly status: number;
 
@@ -80,41 +85,43 @@ export class SyncHttpError extends Error {
   }
 }
 
+export type DropReason = "invalid" | "rebase" | "conflict";
+
 export interface SyncOptions {
   client: SyncClient;
-  /** Trailing debounce before a flush, in ms. Default 400 — turboproof's and agentlogic's. */
+  /** Trailing debounce before a flush, in ms. Default 400. */
   flushDelayMs?: number;
   /**
-   * What a 422 means. `"drop"` discards the whole refused batch; `"isolate"`
-   * re-sends the batch one mutation at a time so the survivors land and only
-   * the guilty mutation is lost. Default `"drop"`.
+   * What a 422 means when a request carried SEVERAL batches. `"drop"`
+   * discards them all; `"isolate"` re-sends the batches one at a time so the
+   * innocent ones land and only the guilty batch is lost. A batch itself is
+   * never split. Default `"drop"`.
    */
   onInvalid?: "drop" | "isolate";
   /** Backoff for transport failures, in ms; each retry doubles up to the last. Default [1000, 2000, 4000, 8000, 15000]. */
   backoffMs?: readonly number[];
   onPhase?(phase: SyncPhase): void;
-  /** Every dropped mutation, with the reason. A product surfaces this as a notice. */
-  onDropped?(mutations: Mutation[], reason: "invalid" | "rebase"): void;
+  /**
+   * Every dropped batch, whole, with the reason: `invalid` (the server
+   * refused it), `rebase` (it no longer applies to the server's document),
+   * `conflict` (a destructive batch built on a revision that moved). A
+   * product surfaces this as a notice; it must never claim the change landed.
+   */
+  onDropped?(entries: readonly OutboxEntry[], reason: DropReason): void;
   onError?(error: unknown): void;
 }
 
 export interface WorkbenchSync {
   /**
-   * Queue a committed batch. Wire it as the workbench's `onMutate`, which is
-   * the only thing that may add to the outbox: a batch nobody committed
-   * locally must never reach the server, and `onMutate` fires for exactly
-   * the batches that did.
+   * Queue a committed batch, whole. Wire it as the core's `onCommit`
+   * (`(receipt) => sync.enqueue(receipt.mutations)`): a batch nobody
+   * committed locally must never reach the server, and `onCommit` fires for
+   * exactly the batches that did.
    */
-  enqueue(mutations: Mutation[]): void;
-  /**
-   * Give the loop the workbench to read and to replace, and start it.
-   *
-   * Separate from construction so a product can write
-   * `createWorkbenchCore({ onCommit: (r) => sync.enqueue(r.mutations) })`
-   * without a circular reference — the knot every one of these loops ties otherwise.
-   */
+  enqueue(mutations: readonly Mutation[]): void;
+  /** Give the loop the core to read and to replace, and start it. */
   attach(target: SyncTarget): void;
-  /** `queued`/`inFlight` count MUTATIONS, not batches: a rebase replays mutations. */
+  /** `queued`/`inFlight` count BATCHES. */
   status(): { phase: SyncPhase; revision: Revision | null; queued: number; inFlight: number };
   /** Send whatever is queued now, and resolve when that attempt settles. */
   flush(): Promise<void>;
@@ -128,6 +135,8 @@ export interface SyncTarget {
   replaceDocument(document: WorkbenchDocument): unknown;
 }
 
+const isDestructive = (mutations: readonly Mutation[]) => mutations.some((mutation) => mutation.body.case === "workspaceSetTree");
+
 export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   const { client } = options;
   const flushDelayMs = options.flushDelayMs ?? 400;
@@ -136,8 +145,8 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
 
   let phase: SyncPhase = "local";
   let revision: Revision | null = null;
-  let outbox: Mutation[] = [];
-  let inFlight: Mutation[] = [];
+  let outbox: OutboxEntry[] = [];
+  let inFlight: OutboxEntry[] = [];
   let timer: ReturnType<typeof setTimeout> | null = null;
   let failures = 0;
   let disposed = false;
@@ -145,15 +154,11 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   let streamDirty = false;
   let stopStream: (() => void) | null = null;
   let target: SyncTarget | null = null;
-  // A server that keeps moving under us is a livelock, not a conflict. After
-  // this many rebases in a row the queue waits for a backoff instead of
-  // spinning against a writer it cannot win against.
+  let entryCounter = 0;
+  // A server that keeps moving under us is a livelock, not a conflict.
   let conflicts = 0;
   const MAX_CONFLICTS = 5;
 
-  // Read through a call, never the variable: `phase` is assigned from
-  // callbacks, and TypeScript's narrowing after an early `phase === "detached"`
-  // return would otherwise convince it the later checks are dead code.
   const detached = () => phase === "detached";
 
   const setPhase = (next: SyncPhase) => {
@@ -167,19 +172,14 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     else console.warn("workbench-core/sync:", error);
   };
 
+  const drop = (entries: readonly OutboxEntry[], reason: DropReason) => {
+    if (entries.length > 0) options.onDropped?.(entries, reason);
+  };
+
   /**
-   * Install a server document, keeping what is still queued (PR #23, P1).
-   *
-   * A response is a snapshot of what the server had when it answered, and
-   * that is never the whole local truth: a user can commit B while A is in
-   * flight, and A's response contains A and not B. Installing it wholesale
-   * puts the UI — and anything persisting the store — a committed edit
-   * behind, and a tab closed inside that window loses B for good even though
-   * B was safely queued.
-   *
-   * So the outstanding queue is always replayed on top. This is the same
-   * `rebase` the 409 path uses and for the same reason: the local document is
-   * the server's, plus everything not yet acknowledged.
+   * Install a server document, keeping what is still queued: a response is
+   * a snapshot of what the server had when it answered, and the local
+   * document is that plus everything not yet acknowledged.
    */
   const adopt = (result: SyncResult) => {
     revision = result.revision;
@@ -188,25 +188,13 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
       target.replaceDocument(result.document);
       return;
     }
-    const { document, kept } = rebase(result.document, outbox);
+    const { document, kept } = rebase(result.document, outbox, false);
     outbox = kept;
     target.replaceDocument(document);
   };
 
-  /**
-   * A stable id for a batch's CONTENT. A retry after a timeout must carry the
-   * id the first attempt carried, or the server applies the batch twice; two
-   * DIFFERENT batches must never share one, or the second is swallowed as a
-   * replay. Hashing the batch gives both without any bookkeeping.
-   *
-   * The PAYLOADS, not just the mutation kinds (PR #23, P1). A 422 drops a
-   * batch without advancing the revision, so the correction that follows is
-   * built at the same revision with the same shape — and a hash over kinds
-   * alone hands it the key the server already refused. A server that rejects
-   * a reused key carrying a different body would then drop the correction as
-   * a replay, and the fix would silently never land.
-   */
-  const requestIdOf = (mutations: Mutation[]): string => {
+  /** A stable id for a request's CONTENT (the payloads, not only the kinds), so a retry is idempotent and a correction is not a replay. */
+  const requestIdOf = (mutations: readonly Mutation[]): string => {
     const text = `${revision ?? ""}:${mutations.map((mutation) => toJsonString(MutationSchema, mutation)).join("|")}:${mutations.length}`;
     let hash = 2166136261;
     for (let index = 0; index < text.length; index += 1) {
@@ -217,27 +205,32 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   };
 
   /**
-   * Replay the queue onto a document that moved underneath it, ONE MUTATION
-   * AT A TIME. A rebase is not atomic and must not be: the point is to keep
-   * the mutations that still apply and drop only the ones the other writer
-   * made meaningless (a close of a tile they already closed). Routing this
-   * through the store's atomic `mutate` would throw the whole queue away for
-   * one stale entry — the mistake both products' comments warn about.
+   * Replay the queue onto a document that moved underneath it, ONE BATCH AT
+   * A TIME. A batch either applies whole or is dropped whole; the point is to
+   * keep the transitions that still make sense and drop only the ones the
+   * other writer made meaningless (a close of a tile they already closed).
+   * After a conflict, a destructive batch is never replayed.
    */
-  const rebase = (server: WorkbenchDocument, queue: Mutation[]): { document: WorkbenchDocument; kept: Mutation[] } => {
+  const rebase = (server: WorkbenchDocument, queue: readonly OutboxEntry[], afterConflict: boolean): { document: WorkbenchDocument; kept: OutboxEntry[] } => {
     let document = server;
-    const kept: Mutation[] = [];
-    const dropped: Mutation[] = [];
-    for (const mutation of queue) {
+    const kept: OutboxEntry[] = [];
+    const dropped: OutboxEntry[] = [];
+    const conflicted: OutboxEntry[] = [];
+    for (const entry of queue) {
+      if (afterConflict && entry.destructive) {
+        conflicted.push(entry);
+        continue;
+      }
       try {
-        document = applyMutation(document, mutation);
-        kept.push(mutation);
+        document = applyMutations(document, [...entry.mutations]);
+        kept.push(entry);
       } catch (error) {
         if (!(error instanceof MutationError)) throw error;
-        dropped.push(mutation);
+        dropped.push(entry);
       }
     }
-    if (dropped.length > 0) options.onDropped?.(dropped, "rebase");
+    drop(conflicted, "conflict");
+    drop(dropped, "rebase");
     return { document, kept };
   };
 
@@ -255,8 +248,6 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     setPhase("probing");
     const existing = await client.get();
     if (existing) {
-      // The server's document wins on adoption: the local one is either
-      // identical or a default nobody has touched yet.
       adopt(existing);
       return true;
     }
@@ -289,8 +280,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
           conflicts = 0;
         }
       } catch (error) {
-        // Anything that reached here is transport (the HTTP cases are handled
-        // in `send`): keep the queue, back off, try again.
+        // Transport: keep the queue, back off, try again.
         outbox = [...inFlight, ...outbox];
         inFlight = [];
         report(error);
@@ -305,14 +295,14 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     return running;
   }
 
-  async function send(batch: Mutation[]): Promise<void> {
+  /** One request carries several whole batches, in order; the server applies the request atomically. */
+  async function send(batches: readonly OutboxEntry[]): Promise<void> {
+    const mutations = batches.flatMap((entry) => [...entry.mutations]);
     try {
-      adopt(await client.mutate(revision!, batch, requestIdOf(batch)));
+      adopt(await client.mutate(revision!, mutations, requestIdOf(mutations)));
     } catch (error) {
       if (!(error instanceof SyncHttpError)) throw error;
       if (error.status === 404) {
-        // The row is gone. Retrying into a 404 forever is worse than saying
-        // so: the layout is still usable locally, and the product decides.
         outbox = [];
         inFlight = [];
         setPhase("detached");
@@ -326,7 +316,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
           return;
         }
         conflicts += 1;
-        const { document, kept } = rebase(fresh.document, [...batch, ...outbox]);
+        const { document, kept } = rebase(fresh.document, [...batches, ...outbox], true);
         revision = fresh.revision;
         target!.replaceDocument(document);
         outbox = kept;
@@ -334,19 +324,16 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
         return;
       }
       if (error.status === 422) {
-        if (onInvalid === "isolate" && batch.length > 1) {
-          // One of them is invalid and the server did not say which. Send
-          // them singly so the innocent ones land; the guilty one 422s alone
-          // and is dropped by the branch below.
-          for (const mutation of batch) {
-            await send([mutation]);
-          }
+        if (onInvalid === "isolate" && batches.length > 1) {
+          // One of the batches is invalid and the server did not say which.
+          // Send them one at a time — whole — so the innocent ones land and
+          // the guilty one 422s alone and is dropped below.
+          for (const entry of batches) await send([entry]);
           return;
         }
-        options.onDropped?.(batch, "invalid");
+        drop(batches, "invalid");
         report(error);
-        // The optimistic document contains a change the server refused. Only
-        // the server knows what it now holds, so take its word for it.
+        // The optimistic document contains a change the server refused.
         const fresh = await client.get();
         if (fresh) adopt(fresh);
         else setPhase("detached");
@@ -360,8 +347,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     stopStream = client.stream(() => {
       streamDirty = true;
       // Deferred while anything is queued: refetching mid-flush would adopt
-      // a document that does not yet contain what is about to be sent, and
-      // the queue would then rebase onto a version of itself.
+      // a document that does not yet contain what is about to be sent.
       if (idle()) schedule(0);
     });
   }
@@ -369,7 +355,8 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   return {
     enqueue(mutations) {
       if (disposed || mutations.length === 0) return;
-      outbox = [...outbox, ...mutations];
+      entryCounter += 1;
+      outbox = [...outbox, { id: `tx-${entryCounter}`, mutations: [...mutations], destructive: isDestructive(mutations) }];
       if (!detached()) setPhase("pending");
       schedule();
     },
