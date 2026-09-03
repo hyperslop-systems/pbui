@@ -200,3 +200,8 @@ Validated and uploaded the Workbench stabilization design bundle to /ai/2026/09/
 
 S0: seven review probes as expected-fail package tests, public-surface golden, stabilization inventory (commit 8dd9302)
 
+
+## 2026-09-03
+
+S1+S2: attemptAll publication, onObserverError, reentrant_execution refusal, deferred source reconcile, staged link runtime (commit 740ef57)
+

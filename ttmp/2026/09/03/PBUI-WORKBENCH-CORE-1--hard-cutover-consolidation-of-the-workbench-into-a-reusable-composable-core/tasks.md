@@ -23,8 +23,8 @@
 - [ ] Extract a React-free PBUI link-kernel entry and enforce the built dependency boundary <!-- t:4m7u -->
 - [ ] Define binding and document-source semantics shared by TypeScript and Go, with parity fixtures <!-- t:ba1r -->
 - [x] Phase S0: lock evidence — the seven review probes as failing package tests, API fixtures, dependency graph, openBindings/DocumentSource inventory <!-- t:mu7f -->
-- [ ] Phase S1: safe observer primitive — attempt-all publication, observer errors as data, execution phase and reentrancy refusal <!-- t:umfy -->
-- [ ] Phase S2: staged core/link commit — pure link-runtime reducer, install core and link values before publication, replacement through the same path <!-- t:8q05 -->
+- [x] Phase S1: safe observer primitive — attempt-all publication, observer errors as data, execution phase and reentrancy refusal <!-- t:umfy -->
+- [x] Phase S2: staged core/link commit — pure link-runtime reducer, install core and link values before publication, replacement through the same path <!-- t:8q05 -->
 - [ ] Phase S3: source scheduling and sync — coalesced reconciliation after publication, bootstrap covered entries, acknowledged adoption, isolation overlay <!-- t:dea6 -->
 - [ ] Phase S4: owned state and planner cleanup — ingress clone, development freeze, snapshot(), non-consuming preview ids, replacement title, description capture, focus scoping, no-op detection <!-- t:i6k3 -->
 - [ ] Phase S5: pure PBUI link-kernel entry — subpath export, core imports repointed, packed no-React consumer test, built-import scan, package docs <!-- t:fcn6 -->

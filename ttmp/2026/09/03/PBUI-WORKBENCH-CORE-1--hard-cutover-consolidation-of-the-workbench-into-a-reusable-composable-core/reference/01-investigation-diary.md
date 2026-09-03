@@ -1660,3 +1660,123 @@ The inventory (reference doc "Stabilization inventory") records who consumes eac
 ### Technical details
 
 - Surface snapshot: `packages/workbench-core/src/__snapshots__/publicSurface.test.ts.snap`.
+
+## Step 22: Phase S1 — the safe observer primitive and the reentrancy rule
+
+Phase S1 replaced the core's `for (const l of listeners) l()` with one primitive, `attemptAll`, and made observer failures data. The receipt hook, the link runtime's subscribers and the core's subscribers are each attempted exactly once per publication; a throw is recorded as `{ stage, revision, error }` and the collection is handed to `onObserverError` after all attempts, through a sink that cannot itself break the publication. The mutation doors carry a phase — idle, preparing, publishing — and refuse with `reentrant_execution` while not idle; `try/finally` guarantees the phase cannot wedge on an unexpected exception.
+
+The document source is the one integration that mutated from a subscriber. It now tries to reconcile synchronously and, when refused as reentrant, retries once in a microtask; a resource added and bound in the same tick still finds its stub synchronously, while a delete triggered by a close lands as the next transaction, after the receipt that made it legal.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 20)
+
+**Assistant interpretation:** Design doc 04 Phase S1: attempt-all publication, observer errors as data, phase and reentrancy guard, applied to the core and the link runtime.
+
+**Inferred user intent:** No exception past the point of no return; no observer suppressed by another; no nested transaction.
+
+**Commit (code):** 740ef57 — "PBUI-WORKBENCH-CORE-1 S1+S2: safe publication, reentrancy refusal, staged link runtime" (S1 and S2 share the commit; see Step 23 for why)
+
+### What I did
+
+- `src/publication.ts`: `ObserverStage`, `WorkbenchObserverError`, `attemptAll` (snapshots the observer set first), `reportFailures`.
+- `createWorkbenchCore.ts`: `phase`; `REENTRANT` refusal on `execute`, `apply`, `replace` (hence `restore`, `reset`); `onObserverError` replaces `onPostCommitError`; `install` publishes receipt → links → core listeners under `attemptAll` and reports afterwards.
+- `links/runtime.ts`: runtime-only writes (emit, setContext, setClass) publish under `attemptAll` with the runtime's own sink (`createLinkRuntime({ onObserverError })`).
+- `sources.ts`: try-then-defer; `disposed` flag so a disconnected source never applies from a stale microtask.
+- Tests: three publication cases in `createWorkbenchCore.test.ts` (nested execute refused with the outer receipt alone; apply and replace refused during publication; attempt order and reporting); `sources.test.ts` awaits the microtask; probes SUBSCRIBER_ESCAPE and REENTRANT_RECEIPTS un-failed; surface snapshot updated (`attemptAll`, `reportFailures`, the observer types).
+- README: "Publication order and observer failures".
+
+### Why
+
+- §5.1–5.3 and Decision B.
+
+### What worked
+
+- The REENTRANT_RECEIPTS probe flipped with the S1 guard plus the source's retry alone: the delete is refused inside the close's publication and lands one microtask later as revision 4 after revision 3.
+
+### What didn't work
+
+- The first patch script matched an old comment inside `install` and aborted; the rewrite switched to index-based block replacement between stable markers.
+
+### What I learned
+
+- "Try, then defer on reentrant refusal" gives synchronous stubs outside publication for free, which the sandbox tools rely on (`putProgram` then `commands.open` in one tick).
+
+### What was tricky to build
+
+- The phase must be restored on every early return of `execute`/`apply` (refusals before install) but NOT reset by them after `install` already set it back — hence `if (phase === "preparing") phase = "idle"` in the `finally`.
+
+### What warrants a second pair of eyes
+
+- `preview` is allowed during publication (it is read-only); a preview from a subscriber plans against the newly installed state, which is the state the subscriber sees.
+
+### What should be done in the future
+
+- Shell and placement stores still notify with a bare loop (§11 S1: "shell/placement stores may follow").
+
+### Code review instructions
+
+- `packages/workbench-core/src/publication.ts`, then `install` and the three doors in `createWorkbenchCore.ts`; `npx vitest run src/createWorkbenchCore.test.ts src/stabilization.probes.test.ts`.
+
+### Technical details
+
+- Refusal payloads: execute `{ ok: false, code: "reentrant_execution", because }`; apply adds `diagnostics: []`; replace `{ ok: false, diagnostics: [reentrant_execution] }`. None is reported through `onRejected`.
+
+## Step 23: Phase S2 — the link runtime staged as a value
+
+Phase S2 made the link runtime's post-commit effects a pure function. `reduceRuntimeEffects(state, effects)` and `forgetViewValues(state, viewId)` return the next runtime state (the same object when nothing changes); the collaborator's `stage(effects)` folds a transition's effects into a value, `stageReplace(doc)` does the same for a wholesale replacement, and the core computes that value before the point of no return, installs it beside the document without notifying, and publishes both afterwards. `afterCommit`, `afterReplace`, `runtime.apply` and `runtime.forgetView` are gone.
+
+S2 was implemented in the same pass as S1 because the POST_COMMIT_ESCAPE probe cannot pass without it: with `afterCommit` notifying from inside the runtime, a throwing link subscriber was reported through the runtime's own sink, not the core's, and the design's publication order (receipt → link observers → core observers) is only possible once the runtime's notification belongs to the core's publish step.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 20)
+
+**Assistant interpretation:** Design doc 04 Phase S2: pure link-runtime reducer, stage core and link values before installation, publish after both are current, replacement through the same path.
+
+**Inferred user intent:** A mixed core/link selector can never observe a new durable link program with stale runtime values.
+
+**Commit (code):** 740ef57 (shared with Step 22)
+
+### What I did
+
+- `links/runtime.ts`: `reduceRuntimeEffects`, `forgetViewValues` (exported); `LinkRuntime.install(next)` (no notify) and `publish(revision, failures)`; `apply`/`forgetView` removed.
+- `links/collaborator.ts`: `stage`, `stageReplace`, `install`, `publish` replace `afterCommit`/`afterReplace`.
+- `createWorkbenchCore.ts`: `install` takes `effects` or a pre-staged `linkState`, stages before assigning `state`, installs both, publishes in order.
+- POST_COMMIT_ESCAPE un-failed (the probe now emits a value on the closed view first, so the close carries a forget effect).
+
+### Why
+
+- §6.6 and the S2 exit gate.
+
+### What worked
+
+- Shell (114) and chat (241) suites pass unchanged: nothing outside the core called the removed methods.
+
+### What didn't work
+
+- The block rewrite of the runtime dropped the `CreateLinkRuntimeOptions` interface added minutes earlier; restored.
+
+### What I learned
+
+- A close whose view holds no runtime value stages nothing and publishes no link notification; observers of the runtime are told only when its state changed, which keeps `useSyncExternalStore` consumers quiet.
+
+### What was tricky to build
+
+- Deciding who publishes the runtime: a runtime-only write (a tile emitting) has no core transaction around it, so the runtime keeps a self-publishing `commit` with its own sink; a core transaction publishes the runtime through `links.publish` into the core's failure list.
+
+### What warrants a second pair of eyes
+
+- `stage` runs during prepare, so a reducer exception surfaces as a thrown error from `execute` with nothing installed — correct, but it is the one place a throw is still the answer.
+
+### What should be done in the future
+
+- N/A.
+
+### Code review instructions
+
+- `packages/workbench-core/src/links/runtime.ts` (the two reducers, `install`/`publish`), `collaborator.ts` (`stage`), then `install` in the core.
+
+### Technical details
+
+- Publication order: `onCommit(receipt)` → `links.publish` → core listeners → `reportFailures`.
