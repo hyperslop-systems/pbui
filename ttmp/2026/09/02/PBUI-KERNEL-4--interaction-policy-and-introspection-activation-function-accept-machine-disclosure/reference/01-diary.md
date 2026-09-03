@@ -122,3 +122,49 @@ The `reason` on `resolve-null` was added after the first draft: the old code res
 
 ### Code review instructions
 - `interaction/accept.ts` top comment lists the invariants; `accept.test.ts` "§14.5 invariants" is the fuzz.
+
+## Step 3: The Provider on the machine
+
+With the machine proven, the Provider's accept code became an executor. One `useRef` holds the current `AcceptState` (so `accept()` and the executor read it outside React's render cycle) and a `useState` mirrors it for rendering; `accepting` and `acceptChooser` are derived from it, so every consumer that reads those context fields is unchanged. Resolvers are a `Map<requestId, resolve>`; `accept(request)` mints an id, files the resolver and dispatches `request`. The executor handles three effects: `close-menu`, `settle` (resolve and tell `onAccept`), `resolve-null` (resolve; tell `onAccept` only for `aborted`).
+
+`AcceptBanner` and `AcceptChooser` no longer decide anything on Escape: both dispatch `{ type: "escape" }` and the machine's rule applies. The escape-surface stack still decides which of the two surfaces forwards the key, so a dialog above keeps its own Escape.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 3: wire the machine in without changing the context API the consumers read.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** db767eb — "PBUI-KERNEL-4 P3: Provider dispatches accept events and executes effects"
+
+### What I did
+- `createPbui.tsx`: `acceptRef`, `acceptState`, `acceptResolvers`, `acceptRequestIds`, `onAcceptRef`; `executeAcceptEffect`, `acceptDispatch`; `accept`, `satisfyAccept`, `abortAccept`, `chooseAcceptance`, `dismissAcceptChooser` over dispatch; `acceptDispatch` on the context; banner and chooser Escape handlers dispatch.
+- `tsc` clean; `npx vitest run src/presentation` → 33 files, 704 tests (the existing "resolves typed accept requests" and chooser tests pass unchanged).
+
+### Why
+- §14.5: "React components dispatch events and execute effects; transition policy stays pure."
+- §3.13.1 constraint: rag-ttc's `acceptBridge.tsx` captures `pbui.accept` and calls it from its verb sink; it must remain a stable promise-returning function, which it is (a `useCallback` over a stable dispatch).
+
+### What worked
+- `onAccept` through a ref: the executor is stable across renders and still calls the latest handler.
+
+### What didn't work
+- N/A.
+
+### What I learned
+- `isAcceptable` must read the MIRRORED state (it is a render-time predicate that highlights presentations), while `satisfyAccept` must read the REF (a click may arrive before the mirror re-renders). Reading the ref in both would make highlighting stale; reading state in both would let a click be lost.
+
+### What was tricky to build
+- The reason on `resolve-null` (Step 2) is what made the executor simple: it does not consult the machine to know whether the product should hear about a null.
+
+### What warrants a second pair of eyes
+- `acceptDispatch` runs effects synchronously inside the dispatch, including `setMenu(null)`; that matches the old `accept()` which also set the menu in the same tick.
+
+### What should be done in the future
+- N/A.
+
+### Code review instructions
+- `createPbui.tsx`: search `acceptDispatch`; the executor is the switch above it.
+- `npx vitest run src/presentation/createPbui.test.tsx`.

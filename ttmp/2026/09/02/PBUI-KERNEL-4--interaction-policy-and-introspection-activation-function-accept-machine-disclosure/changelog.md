@@ -22,3 +22,8 @@ Step 2: accept machine with fuzzed §14.5 invariants (commit 65ae198)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/interaction/accept.ts — AcceptState/Event/Effect and acceptStep
 
+
+## 2026-09-02
+
+Step 3: Provider on the accept machine; Escape dispatched, not decided, by the surfaces (commit db767eb)
+
