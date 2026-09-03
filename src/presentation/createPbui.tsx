@@ -18,6 +18,7 @@ import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
 import { activationOutcome } from "./interaction/activation";
+import { acceptStep, chooserOptions, pendingRequest, type AcceptEffect, type AcceptEvent, type AcceptState } from "./interaction/accept";
 import { evaluateFresh } from "./actions/perform";
 import type {
   ActionQuery,
@@ -284,6 +285,8 @@ export interface PbuiContextValue<
   chooseAcceptance(option: AcceptanceOption<Values>): void;
   /** Dismisses the chooser; the accept request itself stays pending. */
   dismissAcceptChooser(): void;
+  /** The accept machine's event input (PBUI-KERNEL-4 §14.5); chrome dispatches, the machine decides. */
+  acceptDispatch(event: AcceptEvent<Values>): void;
   mouseDoc: string | null;
   setMouseDoc(text: string | null): void;
   /**
@@ -362,10 +365,22 @@ export function createPbui<
     actor,
     onRefuse,
   }: PbuiProviderProps<Values, Environment, Verb>) {
-    const [accepting, setAccepting] = useState<AcceptRequest<Values> | null>(null);
-    const [acceptChooser, setAcceptChooser] = useState<readonly AcceptanceOption<Values>[] | null>(
-      null,
-    );
+    /*
+     * The accept flow (PBUI-KERNEL-4 §14.5): ONE machine state, kept in a
+     * ref so `accept()` and the effect executor read the current value
+     * outside React's render cycle, mirrored into state for rendering.
+     * Components dispatch events; the machine decides; the Provider executes
+     * the effects it returns. Promise resolvers are keyed by request id, so a
+     * `settle` effect can only resolve the request it names.
+     */
+    const acceptRef = useRef<AcceptState<Values>>({ kind: "idle" });
+    const [acceptState, setAcceptState] = useState<AcceptState<Values>>({ kind: "idle" });
+    const acceptResolvers = useRef(new Map<number, (result: PresentationReference<Values> | null) => void>());
+    const acceptRequestIds = useRef(0);
+    const onAcceptRef = useRef(onAccept);
+    onAcceptRef.current = onAccept;
+    const accepting = pendingRequest(acceptState);
+    const acceptChooser = chooserOptions(acceptState);
     const [menu, setMenu] = useState<MenuState<Values> | null>(null);
     const [mouseDoc, setMouseDoc] = useState<string | null>(null);
     const helpSurfaceId = useId();
@@ -423,31 +438,52 @@ export function createPbui<
     useEffect(() => {
       helpDispatch({ type: menuOpen ? "menu-opened" : "menu-closed" });
     }, [menuOpen, helpDispatch]);
-    const pending = useRef<
-      ((result: PresentationReference<Values> | null) => void) | null
-    >(null);
+    const executeAcceptEffect = useCallback((effect: AcceptEffect<Values>) => {
+      switch (effect.kind) {
+        case "close-menu":
+          setMenu(null);
+          return;
+        case "settle": {
+          const resolve = acceptResolvers.current.get(effect.requestId);
+          acceptResolvers.current.delete(effect.requestId);
+          onAcceptRef.current?.(effect.reference);
+          resolve?.(effect.reference);
+          return;
+        }
+        case "resolve-null": {
+          const resolve = acceptResolvers.current.get(effect.requestId);
+          acceptResolvers.current.delete(effect.requestId);
+          // A refused second request never reached the product as a mode; only an abort is reported.
+          if (effect.reason === "aborted") onAcceptRef.current?.(null);
+          resolve?.(null);
+          return;
+        }
+      }
+    }, []);
 
-    const settle = useCallback((result: PresentationReference<Values> | null) => {
-      const resolve = pending.current;
-      pending.current = null;
-      setAccepting(null);
-      setAcceptChooser(null);
-      onAccept?.(result);
-      resolve?.(result);
-    }, [onAccept]);
+    const acceptDispatch = useCallback(
+      (event: AcceptEvent<Values>) => {
+        const step = acceptStep(acceptRef.current, event);
+        acceptRef.current = step.state;
+        setAcceptState(step.state);
+        for (const effect of step.effects) executeAcceptEffect(effect);
+      },
+      [executeAcceptEffect],
+    );
 
+    /*
+     * A promise-returning call usable OUTSIDE React (rag-ttc late-binds it
+     * from its verb sink): the resolver is filed under a fresh id and the
+     * machine is told; a refused second request resolves null at once.
+     */
     const accept = useCallback(
       (request: AcceptRequest<Values>) =>
         new Promise<PresentationReference<Values> | null>((resolve) => {
-          if (pending.current) {
-            resolve(null);
-            return;
-          }
-          pending.current = resolve;
-          setAccepting(request);
-          setMenu(null);
+          const requestId = (acceptRequestIds.current += 1);
+          acceptResolvers.current.set(requestId, resolve);
+          acceptDispatch({ type: "request", requestId, request });
         }),
-      [],
+      [acceptDispatch],
     );
 
     // Highlighting and clicking share ONE resolution (source guide §19.4):
@@ -461,17 +497,11 @@ export function createPbui<
 
     const satisfyAccept = useCallback(
       (reference: PresentationReference<Values>) => {
-        if (!accepting) return;
-        const resolution = acceptanceFor(accepting, reference, environment);
-        if (resolution.kind === "accepted") {
-          settle(resolution.option.result);
-        } else if (resolution.kind === "ambiguous") {
-          // A tie is the user's choice, never the registry's registration
-          // order — the request stays pending until they pick or abort.
-          setAcceptChooser(resolution.options);
-        }
+        const request = pendingRequest(acceptRef.current);
+        if (!request) return;
+        acceptDispatch({ type: "offer", reference, resolution: acceptanceFor(request, reference, environment) });
       },
-      [accepting, environment, settle],
+      [acceptDispatch, environment],
     );
 
     const value = useMemo<PbuiContextValue<Values, Environment, Verb>>(
@@ -479,7 +509,7 @@ export function createPbui<
         environment,
         accepting,
         accept,
-        abortAccept: () => settle(null),
+        abortAccept: () => acceptDispatch({ type: "abort" }),
         isAcceptable,
         satisfyAccept,
         menu,
@@ -491,8 +521,9 @@ export function createPbui<
         },
         closeMenu: () => setMenu(null),
         acceptChooser,
-        chooseAcceptance: (option) => settle(option.result),
-        dismissAcceptChooser: () => setAcceptChooser(null),
+        chooseAcceptance: (option) => acceptDispatch({ type: "choose", option }),
+        dismissAcceptChooser: () => acceptDispatch({ type: "dismiss-chooser" }),
+        acceptDispatch,
         mouseDoc,
         setMouseDoc,
         helpEnabled,
@@ -558,7 +589,7 @@ export function createPbui<
         helpSurface,
         helpSurfaceId,
         helpDispatch,
-        settle,
+        acceptDispatch,
         onPerform,
         onRefuse,
         actor,
@@ -1050,8 +1081,11 @@ export function createPbui<
   function AcceptBanner() {
     const pbui = usePbui();
     const accepting = pbui.accepting;
-    const abortAccept = pbui.abortAccept;
+    const acceptDispatch = pbui.acceptDispatch;
 
+    // Escape reaches the machine as ONE event; whether it aborts the request
+    // or only dismisses the chooser is the machine's rule (§14.5), and the
+    // escape-surface stack decides which surface forwards it.
     const ownsEscape = useEscapeSurface(accepting !== null);
     useEffect(() => {
       if (!accepting) return;
@@ -1059,12 +1093,12 @@ export function createPbui<
         if (event.key === "Escape") {
           if (!ownsEscape) return;
           event.preventDefault();
-          abortAccept();
+          acceptDispatch({ type: "escape" });
         }
       };
       window.addEventListener("keydown", onKey);
       return () => window.removeEventListener("keydown", onKey);
-    }, [accepting, abortAccept, ownsEscape]);
+    }, [accepting, acceptDispatch, ownsEscape]);
 
     if (!accepting) return null;
 
@@ -1097,7 +1131,7 @@ export function createPbui<
     const pbui = usePbui();
     const ref = useRef<HTMLDivElement>(null);
     const options = pbui.acceptChooser;
-    const dismiss = pbui.dismissAcceptChooser;
+    const acceptDispatch = pbui.acceptDispatch;
 
     const ownsEscape = useEscapeSurface(options !== null);
     useEffect(() => {
@@ -1108,7 +1142,7 @@ export function createPbui<
         if (event.key === "Escape") {
           if (!ownsEscape) return;
           event.preventDefault();
-          dismiss();
+          acceptDispatch({ type: "escape" });
         }
       };
       window.addEventListener("keydown", handleKey);
@@ -1116,7 +1150,7 @@ export function createPbui<
         window.removeEventListener("keydown", handleKey);
         queueFocusReturn(target);
       };
-    }, [options, dismiss, ownsEscape]);
+    }, [options, acceptDispatch, ownsEscape]);
 
     if (!options) return null;
 
