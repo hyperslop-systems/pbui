@@ -225,3 +225,8 @@ S5: pbui/link-kernel entry, optional React peers, core repointed, packed no-Reac
 
 S6: binding rules + launch policy, additionalBindings replaces openBindings, Go Formats/AdditionalBindings, shared fixtures contracts/workbench/v1, source ownership, persistence hydration (commit 7d76033)
 
+
+## 2026-09-03
+
+S7: whole-workspace audit green (1,508 tests, 12 builds, 5 storybooks, protocol-check, boundary, Go), shop-demo smoke, versions pbui 0.12.0 / core 0.2.0 / shell 0.6.0 (eabf8e1); consumers re-verified: agentlogic 8ce82b5, hyperblog 38f53ed, turboproof 25ef8eb, rag-ttc ea2bc79
+

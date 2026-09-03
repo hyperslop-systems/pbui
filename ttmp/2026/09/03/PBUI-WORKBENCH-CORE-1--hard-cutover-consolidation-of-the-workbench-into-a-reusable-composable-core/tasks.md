@@ -29,4 +29,4 @@
 - [x] Phase S4: owned state and planner cleanup — ingress clone, development freeze, snapshot(), non-consuming preview ids, replacement title, description capture, focus scoping, no-op detection <!-- t:i6k3 -->
 - [x] Phase S5: pure PBUI link-kernel entry — subpath export, core imports repointed, packed no-React consumer test, built-import scan, package docs <!-- t:fcn6 -->
 - [x] Phase S6: binding and source semantic cutover — binding rules and launch policy, openBindings replaced, source identity/ownership, hydration before validation, Go descriptor/validator, shared fixtures <!-- t:pul0 -->
-- [ ] Phase S7: product verification — all packages, in-repo and external consumers, Go, browser smokes <!-- t:54ag -->
+- [x] Phase S7: product verification — all packages, in-repo and external consumers, Go, browser smokes <!-- t:54ag -->

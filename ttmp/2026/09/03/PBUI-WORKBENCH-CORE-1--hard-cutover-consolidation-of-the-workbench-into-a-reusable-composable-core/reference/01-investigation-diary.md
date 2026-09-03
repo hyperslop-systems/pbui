@@ -2029,3 +2029,65 @@ Go carries the same facts: `BindingRule.Formats` and `ApplicationDescriptor.Addi
 
 - Fixture expectation shape: `{ name, catalog, document: <protobuf JSON>, expected: { ok } | { ok: false, code, path } }`.
 - Stub body after S6: `{ ...body, "$source": "<source id>" }`.
+
+## Step 28: Phase S7 — every product verified against the stabilized core
+
+Phase S7 ran the whole workspace and the four external products against S1–S6, and closed the program. In this repo: 13 typechecks, 1,508 tests across 10 suites (protocol 40, pbui 554, core 241, shell 116, ecommerce 35, editor 12, sandbox 224, chat 241, plotscript 32, datalab 13), 12 builds, 5 Storybook builds, `make protocol-check` clean, `pnpm boundary` (packed core installs and plans without React), and the Go suite plus lint through the pre-commit hook. A browser smoke of the shop demo restored the layout split during the Phase 9 smoke under the stabilized core, reset through the replacement path, reloaded, and logged nothing.
+
+The four external products were re-verified in parallel by agents from one brief: agentlogic 8ce82b5 (the transcript binding is finally what it is — optional context, `launch: "unbound"`; the launcher pane is `launch: "hidden"`), hyperblog 38f53ed (source ids, hydrated snapshot, `launch: "unbound"` on the slotted tiles), turboproof 25ef8eb (`launch` policies, the `incompatible` phase in its chip and runtime, a sync test that split into probe-time refusal and true 422 isolation), rag-ttc ea2bc79 (`adopt` returns the core's `ReplaceResult`; the ten bindings its Go host always required are now `required: true` in TypeScript, and the parity test compares the flag). All four typecheck, test and build; none is pushed.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 20)
+
+**Assistant interpretation:** Design doc 04 Phase S7: run the package, consumer, Go and browser checks; fix what they find.
+
+**Inferred user intent:** The stabilization is done when every product that depends on the core still works and the completion gates in §16 hold.
+
+**Commit (code):** eabf8e1 — versions (pbui 0.12.0, workbench-core 0.2.0, pbui-workbench 0.6.0); 306a3c6 — the migration note. Consumer commits as above.
+
+### What I did
+
+- Whole-workspace audit in the background while the agents ran; the browser smoke; the version bumps; the S7 brief for the agents (the MIGRATION "Stabilization" section plus the concrete list of surface changes).
+- Added the launch-policy default to MIGRATION.md after two products hit it.
+
+### Why
+
+- §11 S7 and the completion gates of §16.
+
+### What worked
+
+- The brief's "what changed, concretely" list let each agent finish in one pass; no agent found anything missing in pbui.
+
+### What didn't work
+
+- Nothing in this repo. In the consumers: turboproof's first `pnpm install --force` served a stale extraction for a same-named tarball (a sibling agent had packed to the same path); fixed by clearing the store entry.
+
+### What I learned
+
+- The one migration hazard of Track C is the launch-policy default: a `documentSlotPort` now implies `requires-bindings`, and products whose slot is filled by `followTheCrowd` (hyperblog, turboproof) must say `launch: "unbound"` or lose their tiles from the launcher. Two of four products needed it; the note is in MIGRATION.md.
+- Three external Go hosts pin the pbui Go module by pseudo-version, so `BindingRule.Formats` reaches them only after the module is published and `go.mod` bumped; each agent verified against the local module through a scratch `go.work` and left the pinned build untouched.
+- rag-ttc's Go host had required bindings the TypeScript manifests did not declare; the parity the fixtures enforce in this repo surfaced the same gap in a product the moment the flag existed.
+
+### What was tricky to build
+
+- Nothing new; the phase is verification.
+
+### What warrants a second pair of eyes
+
+- The publish order is now pbui 0.12.0 → workbench-protocol 0.5.0 → workbench-core 0.2.0 → pbui-workbench 0.6.0, and the Go module afterwards; agentlogic and turboproof commit lockfiles and embedded bundles only after the npm publish, and all three Go hosts bump `go.mod` after the module push.
+- The slate perf guard's line moved from 50ms to 1500ms (Step 27); the number it guards against is an exponential, which is seconds.
+
+### What should be done in the future
+
+- Publish (npm, then Go); push the four consumer branches; declare `formats` in the consumer catalogs once their `go.mod` moves.
+- The design's §16 gate "all first-party consumers and browser smokes pass" is met for the shop demo smoke; a chat-demo smoke needs the Go chat server and was not run.
+
+### Code review instructions
+
+- Diary Steps 20–28 in order; `git log 03fde84..HEAD` in pbui; the four consumer commits.
+- Validate: `pnpm -r typecheck && pnpm -r test && pnpm -r build && make protocol-check && pnpm --filter @hyperslop-systems/workbench-core boundary && GOWORK=off go test ./pkg/...`.
+
+### Technical details
+
+- §16 completion gates: all seventeen hold in this repo; "TypeScript and Go pass shared fixtures" holds for this repo's Go module, and for the external hosts once they take the module.
