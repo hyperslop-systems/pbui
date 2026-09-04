@@ -1,0 +1,21 @@
+digraph G {
+ graph [rankdir=TB,bgcolor="white",pad="0.2"];
+ node [shape=box,fontname="DejaVu Sans",fontsize=12,style="filled",fillcolor="#f5f5f5"];
+ edge [fontname="DejaVu Sans",fontsize=10];
+ resize [label="Window resize / divider drag / scroll"];
+ layout [label="DOM rectangles change
+(width, position, clipping)"];
+ rail [label="PortRail measures card centers
+setJacks compares local top + bound state"];
+ event [label="Changed jacks commit
+pbui:jacks-placed event"];
+ wires [label="WireLayer rerenders
+reads jack + obstacle rectangles"];
+ bug [label="Horizontal divider move:
+local jack top unchanged; root size unchanged",fillcolor="#ffe5df"];
+ stale [label="No geometry invalidation
+old paths remain until release",fillcolor="#ffe5df"];
+ resize -> layout;layout -> rail;rail -> event [label="if state changed"];event -> wires;
+ layout -> bug;bug -> stale;
+ resize -> wires [label="window resize event only"];
+}

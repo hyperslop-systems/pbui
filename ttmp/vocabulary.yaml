@@ -31,6 +31,8 @@ topics:
       description: Datalab UI architecture, analytical workspaces, and product integration
     - slug: workbench
       description: PBUI workbench document, core, shell, synchronization, and persistence architecture
+    - slug: embedded
+      description: Embedded targets (ESP32-P4, PicoCalc), firmware, keyboard-first UIs
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes

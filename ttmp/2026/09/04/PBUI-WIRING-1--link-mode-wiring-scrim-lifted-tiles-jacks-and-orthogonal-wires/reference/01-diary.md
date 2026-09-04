@@ -10,13 +10,22 @@ Topics:
 DocType: reference
 Intent: long-term
 Owners: []
-RelatedFiles: []
+RelatedFiles:
+    - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md
+      Note: Step 10 review and measured findings
+    - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/scripts/02-replay-route-and-seed.mjs
+      Note: Executed source-router and command refusal reproduction
+    - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/scripts/03-replay-browser.mjs
+      Note: Browser replay source validated syntactically
+    - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/scripts/04-prepare-remarkable.py
+      Note: PDF export preparation with readable title and source-reference layout
 ExternalSources: []
 Summary: ""
 LastUpdated: 2026-09-04T14:12:28.374469849-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # Diary
 
@@ -342,3 +351,89 @@ Screenshots: `various/screenshots/p9/001-workbench-wiringlab--crowded.png` (four
 
 ### Code review instructions
 - `git show 7d9b9a9`; `Workbench/WiringLab › Crowded` on :6008 in a short window; scroll the crowded tile's left column.
+
+
+## Step 10: Intern review with browser resizing, scrolling, and user assessment
+
+The user requested a detailed onboarding review of the completed wiring work and challenged its visual quality. I inspected the design, diary, phase report, vault project report, current source, and live Storybook pages, then wrote a new technical review rather than changing product code. The review distinguishes successful data propagation from incorrect visual geometry and proposes a file-level repair sequence.
+
+Playwright exposed settled diagonal routes, stale endpoints during a held divider drag, offscreen endpoints for clipped ports, a detached derived label, and misleading lab coverage. The user then called out horizontal scrollbars; a controlled DOM experiment isolated their cause to the output jacks protruding 7px into the auto-scrolling tile body. The final review gives this user-visible defect equal attention to the routing algorithm.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+> Look at the PBUI-WIRING ticket we just finished working on, and Create  a detailed analysis / design / implementation review that is for a new intern, explaining all the parts of the system needed to understand what it is, with prose paragraphs and bullet point sand pseudocode and diagrams and api references and file references. It should be very clear and technical. Store in the ticket and the nupload to remarkable.
+>
+> It's not really all that good. Use playwright to take screenshots and interact with it, also resize the window to see how resizing affects the wires. Store the screenshots next to the review and link them in there. You can also read the design doc + diary + project report in ~/code/wesen/go-go-golems/go-go-parc/Projects/2026/09/04/...
+
+**Additional user prompt (verbatim):** "also weird to have scrollbars horizontally when things seem to fit, btw. put yourself in the shoes of a user when assessing this, bth functionally and visually"
+
+**Assistant interpretation:** Produce an evidence-backed intern guide and implementation/design review, including real browser interactions, responsive geometry, user-visible quality, ticket storage, and reMarkable delivery.
+
+**Inferred user intent:** Understand the system well enough to improve it, and identify why the delivered wiring experience remains unsatisfactory.
+
+### What I did
+
+- Added `design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md`, about 9,400 words, with 28 source/API references, nine findings, decision records, pseudocode, and five proposed implementation phases.
+- Captured 22 screenshots through Playwright at 1440×1000, 1280×800, 1024×768, 768×900, 390×844, and crowded/product variants; stored them beside the review in `design-doc/review-assets/`.
+- Interacted with divider dragging, tick emission, Follow/Hold preview and release, incompatible targets, Escape, wire menus, jack dragging, and native wheel scrolling.
+- Stored raw JSON geometry, console evidence, three Graphviz diagrams and their sources, and numbered probe/replay scripts in the ticket.
+- Invoked the current source `routeAround` on captured browser rectangles; reproduced the same size-dependent diagonal defects. A minimal built-core replay confirmed `empty` and `bound` seed refusals.
+- Ran `pnpm exec vitest run src/components/WireLayer/route.test.ts src/links/connect.test.tsx src/links/identity.test.tsx`: 3 files and 11 tests passed.
+- Reused existing servers on :6008 and :6012. No product source or server lifecycle was changed.
+
+### Why
+
+A fixed screenshot and a passing semantic test do not prove an interactive diagram remains meaningful while the user resizes or scrolls. The review needed a reproducible link between what the person sees and what the source does.
+
+### What worked
+
+- Measured endpoint error during paused pointer-down: approximately 130px drift, returning to zero on release.
+- Browser/source agreement on the 768px diagonal crossing Transform.
+- Controlled scrollbar test: hiding the inert app did nothing, hiding jacks removed exactly 7px of horizontal overflow.
+- Real emission before Shift-drop created a held relationship successfully, separating kernel capability from a broken story setup.
+- Existing semantic tests passed, making their geometry coverage limits explicit rather than implying unrelated regressions.
+
+### What didn't work
+
+- Initial `tmux ls` could not access the sandbox socket: `error connecting to /tmp/tmux-1000/default (Operation not permitted)`. `ss -ltnp` reported `Cannot open netlink socket: Operation not permitted`. Existing servers were reachable through Playwright, so no escalation or new server was needed.
+- A Playwright probe tried to read `process.cwd()` and returned `ReferenceError: process is not defined`; the browser-tool probe was revised to use browser data and explicit workspace paths.
+- The lab repeatedly logged `pbui-workbench: refused port.pin — Sink B · anything shows nothing to hold (empty)` and `pbui-workbench: refused identity.add — Sink A · value is following a source; unlink it first (bound)`.
+- Several exploratory source-path guesses did not exist; file discovery located `public/chrome.css` and `src/ShopShell/ShopShell.tsx` before analysis continued. No software fix was attempted for those lookup errors.
+
+### What I learned
+
+The original report overstates the lab's held/identity coverage. The current identity command is refused before any shared cell exists. Endpoint alignment alone also misses severe routing defects: the 768px crossing had zero endpoint error.
+
+### What was tricky to build
+
+The important distinction was geometry validity versus geometry freshness. The diagonal persists after layout settles and reproduces in the pure source router; the divider bug instead retains an old valid path until a document commit. Scrollbar diagnosis required separating decorative jack overflow from invisible app content using temporary, removed style interventions.
+
+### What warrants a second pair of eyes
+
+- Proposed frame-level overlay and coherent geometry owner should preserve mounted application state and effect-driven emissions.
+- Route endpoint adapters must validate the final exact-coordinate polyline, not only the grid path.
+- The native browser replay script passed syntax validation but was not independently run end to end; actual evidence comes from the Playwright MCP actions and saved measurements.
+
+### What should be done in the future
+
+Implement the review's phases: truthful fixtures; final-route geometry; live geometry and scroll ownership; user and keyboard workflow; measured route scaling. These are recommendations, not changes made in this review.
+
+### Code review instructions
+
+Start with the new review's sections 6–7 and screenshots 04, 07, 14, 16, and 20. Run `node scripts/02-replay-route-and-seed.mjs` from this ticket to reproduce the source findings. Inspect `route.ts` reconstruction, `PortRail` jack comparison, `SplitPane` live ratio, and `public/chrome.css` overflow ownership. Use the 28-entry source map for the complete system context.
+
+### Technical details
+
+Reviewed source commit: `142b458a410ad8302cdf4afbc8c240d47b161c57`. Probe coordinates are surface-relative CSS pixels. Intersection diagnostics sample every 2px against tile interiors inset by 2px; they are not an exact collision proof. Temporary scrollbar styles were removed before the final capture. Delivery and documentation validation results are recorded below after completion.
+
+
+### Validation and delivery
+
+- `docmgr doctor --ticket PBUI-WIRING-1 --stale-after 30`: all checks passed.
+- All local Markdown links and JSON records checked; 22 browser PNGs plus three diagram PNGs are present.
+- Generated and visually inspected the PDF title, finding/table pages, and source-reference pages. Export preparation removes the filename-slug heading and formats long API references as a readable list. The canonical Markdown retains its reference table.
+- Final PDF: 29 pages, stored beside the review as `design-doc/review-assets/PBUI-WIRING-1 Intern Review and Browser Evidence.pdf`.
+- Dry-run completed for the prepared bundle. Upload returned: `OK: uploaded PBUI-WIRING-1 Intern Review and Browser Evidence.pdf -> /ai/2026/09/04/PBUI-WIRING-1`.
+- Upload used the user's existing authorization; no remote overwrite was requested. Product repair recommendations remain unimplemented.

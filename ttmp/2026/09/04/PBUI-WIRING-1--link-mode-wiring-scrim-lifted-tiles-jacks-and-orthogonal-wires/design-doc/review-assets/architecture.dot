@@ -1,0 +1,34 @@
+digraph G {
+ graph [rankdir=TB, bgcolor="white", pad="0.2", nodesep="0.3", ranksep="0.45"];
+ node [shape=box, style="rounded,filled", fillcolor="#f4f4f4", fontname="DejaVu Sans", fontsize=12];
+ edge [fontname="DejaVu Sans",fontsize=10];
+ app [label="Product app
+manifest + React presentation"];
+ core [label="workbench-core
+document, session, command transactions"];
+ kernel [label="PBUI link kernel
+contracts, plans, binding evaluation"];
+ runtime [label="Link runtime
+emitted values + context/shared cells"];
+ snapshot [label="LinkSnapshot
+ports + bindings + runtime facts"];
+ shell [label="React workbench shell
+Surface / SplitPane / Tile"];
+ rail [label="PortRail + carry
+cards, jacks, pointer feedback"];
+ wire [label="WireLayer
+anchors, routes, SVG, link presentation"];
+ router [label="routeAround
+grid + heading + lane costs"];
+ app -> core [label="manifest / execute"];
+ app -> shell [label="component / render slots"];
+ core -> kernel [label="plan + apply"];
+ core -> snapshot [label="durable terms"];
+ runtime -> snapshot [label="runtime revision"];
+ app -> runtime [label="emit"];
+ snapshot -> rail; snapshot -> wire;
+ shell -> rail [label="mounted geometry"];
+ rail -> core [label="drop command"];
+ rail -> wire [label="jacks-placed"];
+ wire -> router [label="rectangles + endpoints"];
+}

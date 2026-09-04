@@ -1,0 +1,427 @@
+{
+  "records": [
+    {
+      "name": "17-shop-wide",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "surface": {
+        "x": 22,
+        "y": 71.359375,
+        "width": 1396,
+        "height": 520.46875
+      },
+      "document": {
+        "width": 1440,
+        "height": 900
+      },
+      "tiles": [
+        {
+          "title": "orders",
+          "x": 0,
+          "y": 0,
+          "width": 686,
+          "height": 520.46875
+        },
+        {
+          "title": "order detail→orders",
+          "x": 710,
+          "y": 0,
+          "width": 686,
+          "height": 248.234375
+        },
+        {
+          "title": "inspector→orders",
+          "x": 710,
+          "y": 272.234375,
+          "width": 686,
+          "height": 248.234375
+        }
+      ],
+      "jacks": [
+        {
+          "id": "v-3dfc5e2c-dc4b/selection",
+          "side": "in",
+          "x": -5,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-3dfc5e2c-dc4b/filter",
+          "side": "in",
+          "x": -5,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-3dfc5e2c-dc4b/order",
+          "side": "out",
+          "x": 679,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-3dfc5e2c-dc4b/selection",
+          "side": "out",
+          "x": 679,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-db44fd21-f208/order",
+          "side": "in",
+          "x": 705,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-5f492ada-2f66/subject",
+          "side": "in",
+          "x": 705,
+          "y": 322.3125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        }
+      ],
+      "wires": [
+        {
+          "term": "follow",
+          "source": "v-3dfc5e2c-dc4b/order",
+          "destination": "v-5f492ada-2f66/subject",
+          "d": "M 691 48 L 702 48 L 702 328.3125 L 705 328.3125",
+          "points": [
+            {
+              "x": 691,
+              "y": 48
+            },
+            {
+              "x": 702,
+              "y": 48
+            },
+            {
+              "x": 702,
+              "y": 328.3125
+            },
+            {
+              "x": 705,
+              "y": 328.3125
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-3dfc5e2c-dc4b/order",
+          "destination": "v-db44fd21-f208/order",
+          "d": "M 691 48 L 690 56.078125 L 705 56.078125",
+          "points": [
+            {
+              "x": 691,
+              "y": 48
+            },
+            {
+              "x": 690,
+              "y": 56.078125
+            },
+            {
+              "x": 705,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [
+            {
+              "a": {
+                "x": 691,
+                "y": 48
+              },
+              "b": {
+                "x": 690,
+                "y": 56.078125
+              }
+            }
+          ],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        }
+      ],
+      "columns": [
+        {
+          "side": "in",
+          "view": "v-3dfc5e2c-dc4b",
+          "scrollTop": 0,
+          "clientHeight": 468,
+          "scrollHeight": 468
+        },
+        {
+          "side": "out",
+          "view": "v-3dfc5e2c-dc4b",
+          "scrollTop": 0,
+          "clientHeight": 468,
+          "scrollHeight": 468
+        },
+        {
+          "side": "in",
+          "view": "v-db44fd21-f208",
+          "scrollTop": 0,
+          "clientHeight": 209,
+          "scrollHeight": 209
+        },
+        {
+          "side": "out",
+          "view": "v-db44fd21-f208",
+          "scrollTop": 0,
+          "clientHeight": 209,
+          "scrollHeight": 209
+        },
+        {
+          "side": "in",
+          "view": "v-5f492ada-2f66",
+          "scrollTop": 0,
+          "clientHeight": 209,
+          "scrollHeight": 209
+        },
+        {
+          "side": "out",
+          "view": "v-5f492ada-2f66",
+          "scrollTop": 0,
+          "clientHeight": 209,
+          "scrollHeight": 209
+        }
+      ]
+    },
+    {
+      "name": "18-shop-narrow",
+      "viewport": {
+        "width": 768,
+        "height": 800
+      },
+      "surface": {
+        "x": 22,
+        "y": 71.359375,
+        "width": 724,
+        "height": 520.46875
+      },
+      "document": {
+        "width": 768,
+        "height": 800
+      },
+      "tiles": [
+        {
+          "title": "orders",
+          "x": 0,
+          "y": 0,
+          "width": 350,
+          "height": 520.46875
+        },
+        {
+          "title": "order detail→orders",
+          "x": 374,
+          "y": 0,
+          "width": 350,
+          "height": 248.234375
+        },
+        {
+          "title": "inspector→orders",
+          "x": 374,
+          "y": 272.234375,
+          "width": 350,
+          "height": 248.234375
+        }
+      ],
+      "jacks": [
+        {
+          "id": "v-3dfc5e2c-dc4b/selection",
+          "side": "in",
+          "x": -5,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-3dfc5e2c-dc4b/filter",
+          "side": "in",
+          "x": -5,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-3dfc5e2c-dc4b/order",
+          "side": "out",
+          "x": 343,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-3dfc5e2c-dc4b/selection",
+          "side": "out",
+          "x": 343,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-db44fd21-f208/order",
+          "side": "in",
+          "x": 369,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-5f492ada-2f66/subject",
+          "side": "in",
+          "x": 369,
+          "y": 322.3125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        }
+      ],
+      "wires": [
+        {
+          "term": "follow",
+          "source": "v-3dfc5e2c-dc4b/order",
+          "destination": "v-5f492ada-2f66/subject",
+          "d": "M 355 48 L 366 48 L 366 328.3125 L 369 328.3125",
+          "points": [
+            {
+              "x": 355,
+              "y": 48
+            },
+            {
+              "x": 366,
+              "y": 48
+            },
+            {
+              "x": 366,
+              "y": 328.3125
+            },
+            {
+              "x": 369,
+              "y": 328.3125
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-3dfc5e2c-dc4b/order",
+          "destination": "v-db44fd21-f208/order",
+          "d": "M 355 48 L 354 56.078125 L 369 56.078125",
+          "points": [
+            {
+              "x": 355,
+              "y": 48
+            },
+            {
+              "x": 354,
+              "y": 56.078125
+            },
+            {
+              "x": 369,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [
+            {
+              "a": {
+                "x": 355,
+                "y": 48
+              },
+              "b": {
+                "x": 354,
+                "y": 56.078125
+              }
+            }
+          ],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        }
+      ],
+      "columns": [
+        {
+          "side": "in",
+          "view": "v-3dfc5e2c-dc4b",
+          "scrollTop": 0,
+          "clientHeight": 468,
+          "scrollHeight": 468
+        },
+        {
+          "side": "out",
+          "view": "v-3dfc5e2c-dc4b",
+          "scrollTop": 0,
+          "clientHeight": 468,
+          "scrollHeight": 468
+        },
+        {
+          "side": "in",
+          "view": "v-db44fd21-f208",
+          "scrollTop": 0,
+          "clientHeight": 209,
+          "scrollHeight": 209
+        },
+        {
+          "side": "out",
+          "view": "v-db44fd21-f208",
+          "scrollTop": 0,
+          "clientHeight": 209,
+          "scrollHeight": 209
+        },
+        {
+          "side": "in",
+          "view": "v-5f492ada-2f66",
+          "scrollTop": 0,
+          "clientHeight": 209,
+          "scrollHeight": 209
+        },
+        {
+          "side": "out",
+          "view": "v-5f492ada-2f66",
+          "scrollTop": 0,
+          "clientHeight": 209,
+          "scrollHeight": 209
+        }
+      ]
+    }
+  ],
+  "menu": "<link> order detail · order → orders · order\nUnlink · keep the last value\nUnlink · clear\nUnlink · fall back to ambient\nChange to Derived…\nGo to orders · order\nGo to order detail · order"
+}

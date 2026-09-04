@@ -1,0 +1,2586 @@
+[
+  {
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "surface": {
+      "x": 8,
+      "y": 30.8125,
+      "width": 1424,
+      "height": 961.1875
+    },
+    "document": {
+      "width": 1440,
+      "height": 1000
+    },
+    "tiles": [
+      {
+        "title": "Source A",
+        "x": 0,
+        "y": 0,
+        "width": 462,
+        "height": 468.59375
+      },
+      {
+        "title": "Transform→Source A · none",
+        "x": 486,
+        "y": 0,
+        "width": 457,
+        "height": 468.59375
+      },
+      {
+        "title": "Sink A→Source A · none",
+        "x": 967,
+        "y": 0,
+        "width": 457,
+        "height": 468.59375
+      },
+      {
+        "title": "Source B",
+        "x": 0,
+        "y": 492.59375,
+        "width": 462,
+        "height": 468.59375
+      },
+      {
+        "title": "Wide→Transform · none",
+        "x": 486,
+        "y": 492.59375,
+        "width": 457,
+        "height": 468.59375
+      },
+      {
+        "title": "Sink B→Source B · none",
+        "x": 967,
+        "y": 492.59375,
+        "width": 457,
+        "height": 468.59375
+      }
+    ],
+    "jacks": [
+      {
+        "id": "v-1e62d79b-82dd/count",
+        "side": "out",
+        "x": 455,
+        "y": 42,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-1e62d79b-82dd/label",
+        "side": "out",
+        "x": 455,
+        "y": 82.984375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/in",
+        "side": "in",
+        "x": 481,
+        "y": 50.078125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/out",
+        "side": "out",
+        "x": 936,
+        "y": 43.671875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/value",
+        "side": "in",
+        "x": 962,
+        "y": 50.078125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/anything",
+        "side": "in",
+        "x": 962,
+        "y": 97.46875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/count",
+        "side": "out",
+        "x": 455,
+        "y": 534.59375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/label",
+        "side": "out",
+        "x": 455,
+        "y": 575.578125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/alpha",
+        "side": "in",
+        "x": 481,
+        "y": 536.265625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/beta",
+        "side": "in",
+        "x": 481,
+        "y": 583.65625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/gamma",
+        "side": "out",
+        "x": 936,
+        "y": 536.265625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/delta",
+        "side": "out",
+        "x": 936,
+        "y": 577.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/value",
+        "side": "in",
+        "x": 962,
+        "y": 536.265625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/anything",
+        "side": "in",
+        "x": 962,
+        "y": 583.65625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      }
+    ],
+    "wires": [
+      {
+        "term": "follow",
+        "source": "v-75404f89-a754/out",
+        "destination": "v-9692b4c6-c1cf/beta",
+        "d": "M 948 49.671875 L 954 49.671875 L 954 486 L 474 486 L 474 589.65625 L 481 589.65625",
+        "points": [
+          {
+            "x": 948,
+            "y": 49.671875
+          },
+          {
+            "x": 954,
+            "y": 49.671875
+          },
+          {
+            "x": 954,
+            "y": 486
+          },
+          {
+            "x": 474,
+            "y": 486
+          },
+          {
+            "x": 474,
+            "y": 589.65625
+          },
+          {
+            "x": 481,
+            "y": 589.65625
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-d079e8d1-055f/value",
+        "d": "M 467 48 L 480 48 L 480 -6 L 954 -6 L 954 56.078125 L 962 56.078125",
+        "points": [
+          {
+            "x": 467,
+            "y": 48
+          },
+          {
+            "x": 480,
+            "y": 48
+          },
+          {
+            "x": 480,
+            "y": -6
+          },
+          {
+            "x": 954,
+            "y": -6
+          },
+          {
+            "x": 954,
+            "y": 56.078125
+          },
+          {
+            "x": 962,
+            "y": 56.078125
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-ac20aa5c-15bd/label",
+        "destination": "v-eac31a59-5824/anything",
+        "d": "M 467 581.578125 L 480 581.578125 L 480 480 L 954 480 L 954 589.65625 L 962 589.65625",
+        "points": [
+          {
+            "x": 467,
+            "y": 581.578125
+          },
+          {
+            "x": 480,
+            "y": 581.578125
+          },
+          {
+            "x": 480,
+            "y": 480
+          },
+          {
+            "x": 954,
+            "y": 480
+          },
+          {
+            "x": 954,
+            "y": 589.65625
+          },
+          {
+            "x": 962,
+            "y": 589.65625
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-75404f89-a754/in",
+        "d": "M 467 48 L 468 56.078125 L 481 56.078125",
+        "points": [
+          {
+            "x": 467,
+            "y": 48
+          },
+          {
+            "x": 468,
+            "y": 56.078125
+          },
+          {
+            "x": 481,
+            "y": 56.078125
+          }
+        ],
+        "diagonals": [
+          {
+            "a": {
+              "x": 467,
+              "y": 48
+            },
+            "b": {
+              "x": 468,
+              "y": 56.078125
+            }
+          }
+        ],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      }
+    ],
+    "columns": [
+      {
+        "side": "in",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 416,
+        "scrollHeight": 416
+      },
+      {
+        "side": "out",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 416,
+        "scrollHeight": 416
+      },
+      {
+        "side": "in",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 414,
+        "scrollHeight": 414
+      },
+      {
+        "side": "out",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 414,
+        "scrollHeight": 414
+      },
+      {
+        "side": "in",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 429,
+        "scrollHeight": 429
+      },
+      {
+        "side": "out",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 429,
+        "scrollHeight": 429
+      },
+      {
+        "side": "in",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 416,
+        "scrollHeight": 416
+      },
+      {
+        "side": "out",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 416,
+        "scrollHeight": 416
+      },
+      {
+        "side": "in",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 414,
+        "scrollHeight": 414
+      },
+      {
+        "side": "out",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 414,
+        "scrollHeight": 414
+      },
+      {
+        "side": "in",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 429,
+        "scrollHeight": 429
+      },
+      {
+        "side": "out",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 429,
+        "scrollHeight": 429
+      }
+    ]
+  },
+  {
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "surface": {
+      "x": 8,
+      "y": 49.625,
+      "width": 1264,
+      "height": 742.375
+    },
+    "document": {
+      "width": 1280,
+      "height": 800
+    },
+    "tiles": [
+      {
+        "title": "Source A",
+        "x": 0,
+        "y": 0,
+        "width": 409.1875,
+        "height": 359.1875
+      },
+      {
+        "title": "Transform→Source A · none",
+        "x": 433.1875,
+        "y": 0,
+        "width": 403.40625,
+        "height": 359.1875
+      },
+      {
+        "title": "Sink A→Source A · none",
+        "x": 860.59375,
+        "y": 0,
+        "width": 403.40625,
+        "height": 359.1875
+      },
+      {
+        "title": "Source B",
+        "x": 0,
+        "y": 383.1875,
+        "width": 409.1875,
+        "height": 359.1875
+      },
+      {
+        "title": "Wide→Transform · none",
+        "x": 433.1875,
+        "y": 383.1875,
+        "width": 403.40625,
+        "height": 359.1875
+      },
+      {
+        "title": "Sink B→Source B · none",
+        "x": 860.59375,
+        "y": 383.1875,
+        "width": 403.40625,
+        "height": 359.1875
+      }
+    ],
+    "jacks": [
+      {
+        "id": "v-1e62d79b-82dd/count",
+        "side": "out",
+        "x": 402.1875,
+        "y": 42,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-1e62d79b-82dd/label",
+        "side": "out",
+        "x": 402.1875,
+        "y": 82.984375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/in",
+        "side": "in",
+        "x": 428.1875,
+        "y": 50.078125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/out",
+        "side": "out",
+        "x": 829.59375,
+        "y": 43.671875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/value",
+        "side": "in",
+        "x": 855.59375,
+        "y": 50.078125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/anything",
+        "side": "in",
+        "x": 855.59375,
+        "y": 97.46875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/count",
+        "side": "out",
+        "x": 402.1875,
+        "y": 425.1875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/label",
+        "side": "out",
+        "x": 402.1875,
+        "y": 466.171875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/alpha",
+        "side": "in",
+        "x": 428.1875,
+        "y": 426.859375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/beta",
+        "side": "in",
+        "x": 428.1875,
+        "y": 474.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/gamma",
+        "side": "out",
+        "x": 829.59375,
+        "y": 426.859375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/delta",
+        "side": "out",
+        "x": 829.59375,
+        "y": 467.84375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/value",
+        "side": "in",
+        "x": 855.59375,
+        "y": 426.859375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/anything",
+        "side": "in",
+        "x": 855.59375,
+        "y": 474.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      }
+    ],
+    "wires": [
+      {
+        "term": "follow",
+        "source": "v-75404f89-a754/out",
+        "destination": "v-9692b4c6-c1cf/beta",
+        "d": "M 841.59375 49.671875 L 846 49.671875 L 846 372 L 420 372 L 420 480.25 L 428.1875 480.25",
+        "points": [
+          {
+            "x": 841.59375,
+            "y": 49.671875
+          },
+          {
+            "x": 846,
+            "y": 49.671875
+          },
+          {
+            "x": 846,
+            "y": 372
+          },
+          {
+            "x": 420,
+            "y": 372
+          },
+          {
+            "x": 420,
+            "y": 480.25
+          },
+          {
+            "x": 428.1875,
+            "y": 480.25
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-d079e8d1-055f/value",
+        "d": "M 414.1875 48 L 426 48 L 426 -6 L 852 -6 L 852 56.078125 L 855.59375 56.078125",
+        "points": [
+          {
+            "x": 414.1875,
+            "y": 48
+          },
+          {
+            "x": 426,
+            "y": 48
+          },
+          {
+            "x": 426,
+            "y": -6
+          },
+          {
+            "x": 852,
+            "y": -6
+          },
+          {
+            "x": 852,
+            "y": 56.078125
+          },
+          {
+            "x": 855.59375,
+            "y": 56.078125
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-ac20aa5c-15bd/label",
+        "destination": "v-eac31a59-5824/anything",
+        "d": "M 414.1875 472.171875 L 426 472.171875 L 426 366 L 852 366 L 852 480.25 L 855.59375 480.25",
+        "points": [
+          {
+            "x": 414.1875,
+            "y": 472.171875
+          },
+          {
+            "x": 426,
+            "y": 472.171875
+          },
+          {
+            "x": 426,
+            "y": 366
+          },
+          {
+            "x": 852,
+            "y": 366
+          },
+          {
+            "x": 852,
+            "y": 480.25
+          },
+          {
+            "x": 855.59375,
+            "y": 480.25
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-75404f89-a754/in",
+        "d": "M 414.1875 48 L 414 56.078125 L 428.1875 56.078125",
+        "points": [
+          {
+            "x": 414.1875,
+            "y": 48
+          },
+          {
+            "x": 414,
+            "y": 56.078125
+          },
+          {
+            "x": 428.1875,
+            "y": 56.078125
+          }
+        ],
+        "diagonals": [
+          {
+            "a": {
+              "x": 414.1875,
+              "y": 48
+            },
+            "b": {
+              "x": 414,
+              "y": 56.078125
+            }
+          }
+        ],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      }
+    ],
+    "columns": [
+      {
+        "side": "in",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 307,
+        "scrollHeight": 307
+      },
+      {
+        "side": "out",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 307,
+        "scrollHeight": 307
+      },
+      {
+        "side": "in",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 305,
+        "scrollHeight": 305
+      },
+      {
+        "side": "out",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 305,
+        "scrollHeight": 305
+      },
+      {
+        "side": "in",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 320,
+        "scrollHeight": 320
+      },
+      {
+        "side": "out",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 320,
+        "scrollHeight": 320
+      },
+      {
+        "side": "in",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 307,
+        "scrollHeight": 307
+      },
+      {
+        "side": "out",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 307,
+        "scrollHeight": 307
+      },
+      {
+        "side": "in",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 305,
+        "scrollHeight": 305
+      },
+      {
+        "side": "out",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 305,
+        "scrollHeight": 305
+      },
+      {
+        "side": "in",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 320,
+        "scrollHeight": 320
+      },
+      {
+        "side": "out",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 320,
+        "scrollHeight": 320
+      }
+    ]
+  },
+  {
+    "viewport": {
+      "width": 1024,
+      "height": 768
+    },
+    "surface": {
+      "x": 8,
+      "y": 49.625,
+      "width": 1008,
+      "height": 710.375
+    },
+    "document": {
+      "width": 1024,
+      "height": 768
+    },
+    "tiles": [
+      {
+        "title": "Source A",
+        "x": 0,
+        "y": 0,
+        "width": 324.71875,
+        "height": 343.1875
+      },
+      {
+        "title": "Transform→Source A · none",
+        "x": 348.71875,
+        "y": 0,
+        "width": 317.640625,
+        "height": 343.1875
+      },
+      {
+        "title": "Sink A→Source A · none",
+        "x": 690.359375,
+        "y": 0,
+        "width": 317.640625,
+        "height": 343.1875
+      },
+      {
+        "title": "Source B",
+        "x": 0,
+        "y": 367.1875,
+        "width": 324.71875,
+        "height": 343.1875
+      },
+      {
+        "title": "Wide→Transform · none",
+        "x": 348.71875,
+        "y": 367.1875,
+        "width": 317.640625,
+        "height": 343.1875
+      },
+      {
+        "title": "Sink B→Source B · none",
+        "x": 690.359375,
+        "y": 367.1875,
+        "width": 317.640625,
+        "height": 343.1875
+      }
+    ],
+    "jacks": [
+      {
+        "id": "v-1e62d79b-82dd/count",
+        "side": "out",
+        "x": 317.71875,
+        "y": 42,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-1e62d79b-82dd/label",
+        "side": "out",
+        "x": 317.71875,
+        "y": 82.984375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/in",
+        "side": "in",
+        "x": 343.71875,
+        "y": 50.078125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/out",
+        "side": "out",
+        "x": 659.359375,
+        "y": 43.671875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/value",
+        "side": "in",
+        "x": 685.359375,
+        "y": 50.078125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/anything",
+        "side": "in",
+        "x": 685.359375,
+        "y": 97.46875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/count",
+        "side": "out",
+        "x": 317.71875,
+        "y": 409.1875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/label",
+        "side": "out",
+        "x": 317.71875,
+        "y": 450.171875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/alpha",
+        "side": "in",
+        "x": 343.71875,
+        "y": 410.859375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/beta",
+        "side": "in",
+        "x": 343.71875,
+        "y": 458.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/gamma",
+        "side": "out",
+        "x": 659.359375,
+        "y": 410.859375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/delta",
+        "side": "out",
+        "x": 659.359375,
+        "y": 451.84375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/value",
+        "side": "in",
+        "x": 685.359375,
+        "y": 410.859375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/anything",
+        "side": "in",
+        "x": 685.359375,
+        "y": 458.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      }
+    ],
+    "wires": [
+      {
+        "term": "follow",
+        "source": "v-75404f89-a754/out",
+        "destination": "v-9692b4c6-c1cf/beta",
+        "d": "M 671.359375 49.671875 L 678 49.671875 L 678 360 L 336 360 L 336 464.25 L 343.71875 464.25",
+        "points": [
+          {
+            "x": 671.359375,
+            "y": 49.671875
+          },
+          {
+            "x": 678,
+            "y": 49.671875
+          },
+          {
+            "x": 678,
+            "y": 360
+          },
+          {
+            "x": 336,
+            "y": 360
+          },
+          {
+            "x": 336,
+            "y": 464.25
+          },
+          {
+            "x": 343.71875,
+            "y": 464.25
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-d079e8d1-055f/value",
+        "d": "M 329.71875 48 L 342 48 L 342 -6 L 678 -6 L 678 56.078125 L 685.359375 56.078125",
+        "points": [
+          {
+            "x": 329.71875,
+            "y": 48
+          },
+          {
+            "x": 342,
+            "y": 48
+          },
+          {
+            "x": 342,
+            "y": -6
+          },
+          {
+            "x": 678,
+            "y": -6
+          },
+          {
+            "x": 678,
+            "y": 56.078125
+          },
+          {
+            "x": 685.359375,
+            "y": 56.078125
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-ac20aa5c-15bd/label",
+        "destination": "v-eac31a59-5824/anything",
+        "d": "M 329.71875 456.171875 L 342 456.171875 L 342 354 L 678 354 L 678 464.25 L 685.359375 464.25",
+        "points": [
+          {
+            "x": 329.71875,
+            "y": 456.171875
+          },
+          {
+            "x": 342,
+            "y": 456.171875
+          },
+          {
+            "x": 342,
+            "y": 354
+          },
+          {
+            "x": 678,
+            "y": 354
+          },
+          {
+            "x": 678,
+            "y": 464.25
+          },
+          {
+            "x": 685.359375,
+            "y": 464.25
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-75404f89-a754/in",
+        "d": "M 329.71875 48 L 330 56.078125 L 343.71875 56.078125",
+        "points": [
+          {
+            "x": 329.71875,
+            "y": 48
+          },
+          {
+            "x": 330,
+            "y": 56.078125
+          },
+          {
+            "x": 343.71875,
+            "y": 56.078125
+          }
+        ],
+        "diagonals": [
+          {
+            "a": {
+              "x": 329.71875,
+              "y": 48
+            },
+            "b": {
+              "x": 330,
+              "y": 56.078125
+            }
+          }
+        ],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      }
+    ],
+    "columns": [
+      {
+        "side": "in",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 291,
+        "scrollHeight": 291
+      },
+      {
+        "side": "out",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 291,
+        "scrollHeight": 291
+      },
+      {
+        "side": "in",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 289,
+        "scrollHeight": 289
+      },
+      {
+        "side": "out",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 289,
+        "scrollHeight": 289
+      },
+      {
+        "side": "in",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 304,
+        "scrollHeight": 304
+      },
+      {
+        "side": "out",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 304,
+        "scrollHeight": 304
+      },
+      {
+        "side": "in",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 291,
+        "scrollHeight": 291
+      },
+      {
+        "side": "out",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 291,
+        "scrollHeight": 291
+      },
+      {
+        "side": "in",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 289,
+        "scrollHeight": 289
+      },
+      {
+        "side": "out",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 289,
+        "scrollHeight": 289
+      },
+      {
+        "side": "in",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 304,
+        "scrollHeight": 304
+      },
+      {
+        "side": "out",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 304,
+        "scrollHeight": 304
+      }
+    ]
+  },
+  {
+    "viewport": {
+      "width": 768,
+      "height": 900
+    },
+    "surface": {
+      "x": 8,
+      "y": 62.4375,
+      "width": 752,
+      "height": 829.5625
+    },
+    "document": {
+      "width": 768,
+      "height": 900
+    },
+    "tiles": [
+      {
+        "title": "Source A",
+        "x": 0,
+        "y": 0,
+        "width": 240.234375,
+        "height": 402.78125
+      },
+      {
+        "title": "Transform→Source A · none",
+        "x": 264.234375,
+        "y": 0,
+        "width": 231.875,
+        "height": 402.78125
+      },
+      {
+        "title": "Sink A→Source A · none",
+        "x": 520.109375,
+        "y": 0,
+        "width": 231.890625,
+        "height": 402.78125
+      },
+      {
+        "title": "Source B",
+        "x": 0,
+        "y": 426.78125,
+        "width": 240.234375,
+        "height": 402.78125
+      },
+      {
+        "title": "Wide→Transform · none",
+        "x": 264.234375,
+        "y": 426.78125,
+        "width": 231.875,
+        "height": 402.78125
+      },
+      {
+        "title": "Sink B→Source B · none",
+        "x": 520.109375,
+        "y": 426.78125,
+        "width": 231.890625,
+        "height": 402.78125
+      }
+    ],
+    "jacks": [
+      {
+        "id": "v-1e62d79b-82dd/count",
+        "side": "out",
+        "x": 233.234375,
+        "y": 42,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-1e62d79b-82dd/label",
+        "side": "out",
+        "x": 233.234375,
+        "y": 82.984375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/in",
+        "side": "in",
+        "x": 259.234375,
+        "y": 56.484375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/out",
+        "side": "out",
+        "x": 489.109375,
+        "y": 43.671875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/value",
+        "side": "in",
+        "x": 515.109375,
+        "y": 56.484375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/anything",
+        "side": "in",
+        "x": 515.109375,
+        "y": 110.28125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/count",
+        "side": "out",
+        "x": 233.234375,
+        "y": 468.78125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/label",
+        "side": "out",
+        "x": 233.234375,
+        "y": 509.765625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/alpha",
+        "side": "in",
+        "x": 259.234375,
+        "y": 470.453125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/beta",
+        "side": "in",
+        "x": 259.234375,
+        "y": 524.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/gamma",
+        "side": "out",
+        "x": 489.109375,
+        "y": 470.453125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/delta",
+        "side": "out",
+        "x": 489.109375,
+        "y": 511.4375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/value",
+        "side": "in",
+        "x": 515.109375,
+        "y": 470.453125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/anything",
+        "side": "in",
+        "x": 515.109375,
+        "y": 524.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      }
+    ],
+    "wires": [
+      {
+        "term": "follow",
+        "source": "v-75404f89-a754/out",
+        "destination": "v-9692b4c6-c1cf/beta",
+        "d": "M 501.109375 49.671875 L 504 49.671875 L 252 420 L 252 530.25 L 259.234375 530.25",
+        "points": [
+          {
+            "x": 501.109375,
+            "y": 49.671875
+          },
+          {
+            "x": 504,
+            "y": 49.671875
+          },
+          {
+            "x": 252,
+            "y": 420
+          },
+          {
+            "x": 252,
+            "y": 530.25
+          },
+          {
+            "x": 259.234375,
+            "y": 530.25
+          }
+        ],
+        "diagonals": [
+          {
+            "a": {
+              "x": 504,
+              "y": 49.671875
+            },
+            "b": {
+              "x": 252,
+              "y": 420
+            }
+          }
+        ],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [
+          {
+            "tile": "Transform→Source A · none",
+            "samples": 202
+          }
+        ],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-d079e8d1-055f/value",
+        "d": "M 245.234375 48 L 258 48 L 258 -6 L 510 -6 L 510 62.484375 L 515.109375 62.484375",
+        "points": [
+          {
+            "x": 245.234375,
+            "y": 48
+          },
+          {
+            "x": 258,
+            "y": 48
+          },
+          {
+            "x": 258,
+            "y": -6
+          },
+          {
+            "x": 510,
+            "y": -6
+          },
+          {
+            "x": 510,
+            "y": 62.484375
+          },
+          {
+            "x": 515.109375,
+            "y": 62.484375
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-ac20aa5c-15bd/label",
+        "destination": "v-eac31a59-5824/anything",
+        "d": "M 245.234375 515.765625 L 258 515.765625 L 258 414 L 510 414 L 510 530.25 L 515.109375 530.25",
+        "points": [
+          {
+            "x": 245.234375,
+            "y": 515.765625
+          },
+          {
+            "x": 258,
+            "y": 515.765625
+          },
+          {
+            "x": 258,
+            "y": 414
+          },
+          {
+            "x": 510,
+            "y": 414
+          },
+          {
+            "x": 510,
+            "y": 530.25
+          },
+          {
+            "x": 515.109375,
+            "y": 530.25
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-75404f89-a754/in",
+        "d": "M 245.234375 48 L 252 48 L 252 62.484375 L 259.234375 62.484375",
+        "points": [
+          {
+            "x": 245.234375,
+            "y": 48
+          },
+          {
+            "x": 252,
+            "y": 48
+          },
+          {
+            "x": 252,
+            "y": 62.484375
+          },
+          {
+            "x": 259.234375,
+            "y": 62.484375
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      }
+    ],
+    "columns": [
+      {
+        "side": "in",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 350,
+        "scrollHeight": 350
+      },
+      {
+        "side": "out",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 350,
+        "scrollHeight": 350
+      },
+      {
+        "side": "in",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 349,
+        "scrollHeight": 349
+      },
+      {
+        "side": "out",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 349,
+        "scrollHeight": 349
+      },
+      {
+        "side": "in",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 364,
+        "scrollHeight": 364
+      },
+      {
+        "side": "out",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 364,
+        "scrollHeight": 364
+      },
+      {
+        "side": "in",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 350,
+        "scrollHeight": 350
+      },
+      {
+        "side": "out",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 350,
+        "scrollHeight": 350
+      },
+      {
+        "side": "in",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 349,
+        "scrollHeight": 349
+      },
+      {
+        "side": "out",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 349,
+        "scrollHeight": 349
+      },
+      {
+        "side": "in",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 364,
+        "scrollHeight": 364
+      },
+      {
+        "side": "out",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 364,
+        "scrollHeight": 364
+      }
+    ]
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "surface": {
+      "x": 8,
+      "y": 75.25,
+      "width": 359,
+      "height": 760.75
+    },
+    "document": {
+      "width": 394,
+      "height": 844
+    },
+    "tiles": [
+      {
+        "title": "Source A",
+        "x": 0,
+        "y": 0,
+        "width": 110.546875,
+        "height": 368.375
+      },
+      {
+        "title": "Transform→Source A · none",
+        "x": 134.546875,
+        "y": 0,
+        "width": 100.21875,
+        "height": 368.375
+      },
+      {
+        "title": "Sink A→Source A · none",
+        "x": 258.765625,
+        "y": 0,
+        "width": 100.234375,
+        "height": 368.375
+      },
+      {
+        "title": "Source B",
+        "x": 0,
+        "y": 392.375,
+        "width": 110.546875,
+        "height": 368.375
+      },
+      {
+        "title": "Wide→Transform · none",
+        "x": 134.546875,
+        "y": 392.375,
+        "width": 100.21875,
+        "height": 368.375
+      },
+      {
+        "title": "Sink B→Source B · none",
+        "x": 258.765625,
+        "y": 392.375,
+        "width": 100.234375,
+        "height": 368.375
+      }
+    ],
+    "jacks": [
+      {
+        "id": "v-1e62d79b-82dd/count",
+        "side": "out",
+        "x": 103.546875,
+        "y": 42,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-1e62d79b-82dd/label",
+        "side": "out",
+        "x": 103.546875,
+        "y": 82.984375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/in",
+        "side": "in",
+        "x": 129.546875,
+        "y": 56.484375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/out",
+        "side": "out",
+        "x": 227.765625,
+        "y": 43.671875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/value",
+        "side": "in",
+        "x": 253.765625,
+        "y": 56.484375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/anything",
+        "side": "in",
+        "x": 253.765625,
+        "y": 110.28125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/count",
+        "side": "out",
+        "x": 103.546875,
+        "y": 434.375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/label",
+        "side": "out",
+        "x": 103.546875,
+        "y": 475.359375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/alpha",
+        "side": "in",
+        "x": 129.546875,
+        "y": 436.046875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/beta",
+        "side": "in",
+        "x": 129.546875,
+        "y": 489.84375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/gamma",
+        "side": "out",
+        "x": 227.765625,
+        "y": 436.046875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/delta",
+        "side": "out",
+        "x": 227.765625,
+        "y": 477.03125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/value",
+        "side": "in",
+        "x": 253.765625,
+        "y": 436.046875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/anything",
+        "side": "in",
+        "x": 253.765625,
+        "y": 489.84375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      }
+    ],
+    "wires": [
+      {
+        "term": "follow",
+        "source": "v-75404f89-a754/out",
+        "destination": "v-9692b4c6-c1cf/beta",
+        "d": "M 239.765625 49.671875 L 246 49.671875 L 246 384 L 126 384 L 126 495.84375 L 129.546875 495.84375",
+        "points": [
+          {
+            "x": 239.765625,
+            "y": 49.671875
+          },
+          {
+            "x": 246,
+            "y": 49.671875
+          },
+          {
+            "x": 246,
+            "y": 384
+          },
+          {
+            "x": 126,
+            "y": 384
+          },
+          {
+            "x": 126,
+            "y": 495.84375
+          },
+          {
+            "x": 129.546875,
+            "y": 495.84375
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-d079e8d1-055f/value",
+        "d": "M 115.546875 48 L 126 48 L 126 -6 L 246 -6 L 246 62.484375 L 253.765625 62.484375",
+        "points": [
+          {
+            "x": 115.546875,
+            "y": 48
+          },
+          {
+            "x": 126,
+            "y": 48
+          },
+          {
+            "x": 126,
+            "y": -6
+          },
+          {
+            "x": 246,
+            "y": -6
+          },
+          {
+            "x": 246,
+            "y": 62.484375
+          },
+          {
+            "x": 253.765625,
+            "y": 62.484375
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-ac20aa5c-15bd/label",
+        "destination": "v-eac31a59-5824/anything",
+        "d": "M 115.546875 481.359375 L 120 481.359375 L 120 378 L 246 378 L 246 495.84375 L 253.765625 495.84375",
+        "points": [
+          {
+            "x": 115.546875,
+            "y": 481.359375
+          },
+          {
+            "x": 120,
+            "y": 481.359375
+          },
+          {
+            "x": 120,
+            "y": 378
+          },
+          {
+            "x": 246,
+            "y": 378
+          },
+          {
+            "x": 246,
+            "y": 495.84375
+          },
+          {
+            "x": 253.765625,
+            "y": 495.84375
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-75404f89-a754/in",
+        "d": "M 115.546875 48 L 120 48 L 120 62.484375 L 129.546875 62.484375",
+        "points": [
+          {
+            "x": 115.546875,
+            "y": 48
+          },
+          {
+            "x": 120,
+            "y": 48
+          },
+          {
+            "x": 120,
+            "y": 62.484375
+          },
+          {
+            "x": 129.546875,
+            "y": 62.484375
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      }
+    ],
+    "columns": [
+      {
+        "side": "in",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 316,
+        "scrollHeight": 316
+      },
+      {
+        "side": "out",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 316,
+        "scrollHeight": 316
+      },
+      {
+        "side": "in",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 314,
+        "scrollHeight": 314
+      },
+      {
+        "side": "out",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 314,
+        "scrollHeight": 314
+      },
+      {
+        "side": "in",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 329,
+        "scrollHeight": 329
+      },
+      {
+        "side": "out",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 329,
+        "scrollHeight": 329
+      },
+      {
+        "side": "in",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 316,
+        "scrollHeight": 316
+      },
+      {
+        "side": "out",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 316,
+        "scrollHeight": 316
+      },
+      {
+        "side": "in",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 314,
+        "scrollHeight": 314
+      },
+      {
+        "side": "out",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 314,
+        "scrollHeight": 314
+      },
+      {
+        "side": "in",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 329,
+        "scrollHeight": 329
+      },
+      {
+        "side": "out",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 329,
+        "scrollHeight": 329
+      }
+    ]
+  },
+  {
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "surface": {
+      "x": 8,
+      "y": 30.8125,
+      "width": 1424,
+      "height": 961.1875
+    },
+    "document": {
+      "width": 1440,
+      "height": 1000
+    },
+    "tiles": [
+      {
+        "title": "Source A",
+        "x": 0,
+        "y": 0,
+        "width": 462,
+        "height": 468.59375
+      },
+      {
+        "title": "Transform→Source A · none",
+        "x": 486,
+        "y": 0,
+        "width": 457,
+        "height": 468.59375
+      },
+      {
+        "title": "Sink A→Source A · none",
+        "x": 967,
+        "y": 0,
+        "width": 457,
+        "height": 468.59375
+      },
+      {
+        "title": "Source B",
+        "x": 0,
+        "y": 492.59375,
+        "width": 462,
+        "height": 468.59375
+      },
+      {
+        "title": "Wide→Transform · none",
+        "x": 486,
+        "y": 492.59375,
+        "width": 457,
+        "height": 468.59375
+      },
+      {
+        "title": "Sink B→Source B · none",
+        "x": 967,
+        "y": 492.59375,
+        "width": 457,
+        "height": 468.59375
+      }
+    ],
+    "jacks": [
+      {
+        "id": "v-1e62d79b-82dd/count",
+        "side": "out",
+        "x": 455,
+        "y": 42,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-1e62d79b-82dd/label",
+        "side": "out",
+        "x": 455,
+        "y": 82.984375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/in",
+        "side": "in",
+        "x": 481,
+        "y": 50.078125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/out",
+        "side": "out",
+        "x": 936,
+        "y": 43.671875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/value",
+        "side": "in",
+        "x": 962,
+        "y": 50.078125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/anything",
+        "side": "in",
+        "x": 962,
+        "y": 97.46875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/count",
+        "side": "out",
+        "x": 455,
+        "y": 534.59375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/label",
+        "side": "out",
+        "x": 455,
+        "y": 575.578125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/alpha",
+        "side": "in",
+        "x": 481,
+        "y": 536.265625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/beta",
+        "side": "in",
+        "x": 481,
+        "y": 583.65625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/gamma",
+        "side": "out",
+        "x": 936,
+        "y": 536.265625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/delta",
+        "side": "out",
+        "x": 936,
+        "y": 577.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/value",
+        "side": "in",
+        "x": 962,
+        "y": 536.265625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/anything",
+        "side": "in",
+        "x": 962,
+        "y": 583.65625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      }
+    ],
+    "wires": [
+      {
+        "term": "follow",
+        "source": "v-75404f89-a754/out",
+        "destination": "v-9692b4c6-c1cf/beta",
+        "d": "M 948 49.671875 L 954 49.671875 L 954 486 L 474 486 L 474 589.65625 L 481 589.65625",
+        "points": [
+          {
+            "x": 948,
+            "y": 49.671875
+          },
+          {
+            "x": 954,
+            "y": 49.671875
+          },
+          {
+            "x": 954,
+            "y": 486
+          },
+          {
+            "x": 474,
+            "y": 486
+          },
+          {
+            "x": 474,
+            "y": 589.65625
+          },
+          {
+            "x": 481,
+            "y": 589.65625
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-d079e8d1-055f/value",
+        "d": "M 467 48 L 480 48 L 480 -6 L 954 -6 L 954 56.078125 L 962 56.078125",
+        "points": [
+          {
+            "x": 467,
+            "y": 48
+          },
+          {
+            "x": 480,
+            "y": 48
+          },
+          {
+            "x": 480,
+            "y": -6
+          },
+          {
+            "x": 954,
+            "y": -6
+          },
+          {
+            "x": 954,
+            "y": 56.078125
+          },
+          {
+            "x": 962,
+            "y": 56.078125
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-ac20aa5c-15bd/label",
+        "destination": "v-eac31a59-5824/anything",
+        "d": "M 467 581.578125 L 480 581.578125 L 480 480 L 954 480 L 954 589.65625 L 962 589.65625",
+        "points": [
+          {
+            "x": 467,
+            "y": 581.578125
+          },
+          {
+            "x": 480,
+            "y": 581.578125
+          },
+          {
+            "x": 480,
+            "y": 480
+          },
+          {
+            "x": 954,
+            "y": 480
+          },
+          {
+            "x": 954,
+            "y": 589.65625
+          },
+          {
+            "x": 962,
+            "y": 589.65625
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-75404f89-a754/in",
+        "d": "M 467 48 L 468 56.078125 L 481 56.078125",
+        "points": [
+          {
+            "x": 467,
+            "y": 48
+          },
+          {
+            "x": 468,
+            "y": 56.078125
+          },
+          {
+            "x": 481,
+            "y": 56.078125
+          }
+        ],
+        "diagonals": [
+          {
+            "a": {
+              "x": 467,
+              "y": 48
+            },
+            "b": {
+              "x": 468,
+              "y": 56.078125
+            }
+          }
+        ],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      }
+    ],
+    "columns": [
+      {
+        "side": "in",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 416,
+        "scrollHeight": 416
+      },
+      {
+        "side": "out",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 416,
+        "scrollHeight": 416
+      },
+      {
+        "side": "in",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 414,
+        "scrollHeight": 414
+      },
+      {
+        "side": "out",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 414,
+        "scrollHeight": 414
+      },
+      {
+        "side": "in",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 429,
+        "scrollHeight": 429
+      },
+      {
+        "side": "out",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 429,
+        "scrollHeight": 429
+      },
+      {
+        "side": "in",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 416,
+        "scrollHeight": 416
+      },
+      {
+        "side": "out",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 416,
+        "scrollHeight": 416
+      },
+      {
+        "side": "in",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 414,
+        "scrollHeight": 414
+      },
+      {
+        "side": "out",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 414,
+        "scrollHeight": 414
+      },
+      {
+        "side": "in",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 429,
+        "scrollHeight": 429
+      },
+      {
+        "side": "out",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 429,
+        "scrollHeight": 429
+      }
+    ]
+  }
+]

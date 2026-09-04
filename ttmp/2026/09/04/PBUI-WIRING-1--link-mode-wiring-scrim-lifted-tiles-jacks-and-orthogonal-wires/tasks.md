@@ -11,3 +11,5 @@
 - [x] P7 WiringLab story <!-- t:sze5 -->
 - [x] P8 obstacle-aware routing via gutters <!-- t:lr2k -->
 - [x] P9 rail scrolls, jacks stay on the frame <!-- t:3gfv -->
+- [x] Write intern architecture and implementation review with live Playwright resize scroll and user-experience evidence <!-- t:z83p -->
+- [x] Validate and upload the illustrated intern review to reMarkable <!-- t:vl37 -->

@@ -1,0 +1,15 @@
+{
+  "jackStartsCarry": 0,
+  "refusal": "cannot land on Sink A · value",
+  "afterCancel": {
+    "rails": 6,
+    "cursor": 0,
+    "wires": 4
+  },
+  "labMenusAfterRightClick": 0,
+  "portSemantics": {
+    "tag": "DIV",
+    "tabIndex": -1,
+    "role": null
+  }
+}

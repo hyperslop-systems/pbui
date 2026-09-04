@@ -22,7 +22,11 @@ WhenToUse: ""
 
 ## Overview
 
-<!-- Provide a brief overview of the ticket, its goals, and current status -->
+Nine implementation phases introduced link-mode rails, frame jacks, orthogonal routing, and scrolling. A subsequent browser-based review found outstanding routing, live-resize, overflow, visibility, and usability defects; the checked implementation tasks are historical phase completion, not final UX acceptance.
+
+Read the [intern architecture and implementation review](design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md) for the current assessment, measured evidence, and proposed repair sequence. Its adjacent `review-assets/` directory contains 22 fresh browser screenshots, three diagrams, and raw geometry records. Product source was not modified by the review.
+
+The [illustrated PDF](<design-doc/review-assets/PBUI-WIRING-1 Intern Review and Browser Evidence.pdf>) is 29 pages. It was uploaded to reMarkable as **PBUI-WIRING-1 Intern Review and Browser Evidence** under `/ai/2026/09/04/PBUI-WIRING-1`.
 
 ## Key Links
 

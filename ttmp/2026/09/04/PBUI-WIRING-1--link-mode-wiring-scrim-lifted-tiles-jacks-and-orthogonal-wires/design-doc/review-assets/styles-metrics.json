@@ -1,0 +1,219 @@
+{
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "surface": {
+    "x": 17,
+    "y": 64.71875,
+    "width": 718,
+    "height": 318.625
+  },
+  "document": {
+    "width": 1280,
+    "height": 800
+  },
+  "tiles": [
+    {
+      "title": "Counter A",
+      "x": 0,
+      "y": 0,
+      "width": 235.953125,
+      "height": 318.625
+    },
+    {
+      "title": "notes⏸<number>",
+      "x": 259.953125,
+      "y": 0,
+      "width": 217.015625,
+      "height": 318.625
+    },
+    {
+      "title": "Many ports←alpha ← double",
+      "x": 500.96875,
+      "y": 0,
+      "width": 217.03125,
+      "height": 318.625
+    }
+  ],
+  "jacks": [
+    {
+      "id": "v-a17f8a76-6609/count",
+      "side": "out",
+      "x": 228.953125,
+      "y": 42,
+      "width": 12,
+      "height": 12,
+      "clipped": false
+    },
+    {
+      "id": "v-84bedaba-8279/subject",
+      "side": "in",
+      "x": 254.953125,
+      "y": 50.078125,
+      "width": 12,
+      "height": 12,
+      "clipped": false
+    },
+    {
+      "id": "v-901bbaba-12c9/alpha",
+      "side": "in",
+      "x": 495.96875,
+      "y": 50.078125,
+      "width": 12,
+      "height": 12,
+      "clipped": false
+    },
+    {
+      "id": "v-901bbaba-12c9/beta",
+      "side": "in",
+      "x": 495.96875,
+      "y": 97.46875,
+      "width": 12,
+      "height": 12,
+      "clipped": false
+    },
+    {
+      "id": "v-901bbaba-12c9/gamma",
+      "side": "out",
+      "x": 711,
+      "y": 43.671875,
+      "width": 12,
+      "height": 12,
+      "clipped": false
+    },
+    {
+      "id": "v-901bbaba-12c9/delta",
+      "side": "out",
+      "x": 711,
+      "y": 84.65625,
+      "width": 12,
+      "height": 12,
+      "clipped": false
+    }
+  ],
+  "wires": [
+    {
+      "term": "derived",
+      "source": "v-a17f8a76-6609/count",
+      "destination": "v-901bbaba-12c9/alpha",
+      "d": "M 240.953125 48 L 252 48 L 252 -6 L 492 -6 L 492 56.078125 L 495.96875 56.078125",
+      "points": [
+        {
+          "x": 240.953125,
+          "y": 48
+        },
+        {
+          "x": 252,
+          "y": 48
+        },
+        {
+          "x": 252,
+          "y": -6
+        },
+        {
+          "x": 492,
+          "y": -6
+        },
+        {
+          "x": 492,
+          "y": 56.078125
+        },
+        {
+          "x": 495.96875,
+          "y": 56.078125
+        }
+      ],
+      "diagonals": [],
+      "fromError": 0,
+      "toError": 0,
+      "sourceClipped": false,
+      "destinationClipped": false,
+      "intersections": [],
+      "label": "double",
+      "labelDistance": 58.007830913296736
+    },
+    {
+      "term": "held",
+      "source": "v-a17f8a76-6609/count",
+      "destination": "v-84bedaba-8279/subject",
+      "d": "M 240.953125 48 L 240 56.078125 L 254.953125 56.078125",
+      "points": [
+        {
+          "x": 240.953125,
+          "y": 48
+        },
+        {
+          "x": 240,
+          "y": 56.078125
+        },
+        {
+          "x": 254.953125,
+          "y": 56.078125
+        }
+      ],
+      "diagonals": [
+        {
+          "a": {
+            "x": 240.953125,
+            "y": 48
+          },
+          "b": {
+            "x": 240,
+            "y": 56.078125
+          }
+        }
+      ],
+      "fromError": 0,
+      "toError": 0,
+      "sourceClipped": false,
+      "destinationClipped": false,
+      "intersections": [],
+      "labelDistance": null
+    }
+  ],
+  "columns": [
+    {
+      "side": "in",
+      "view": "v-a17f8a76-6609",
+      "scrollTop": 0,
+      "clientHeight": 266,
+      "scrollHeight": 266
+    },
+    {
+      "side": "out",
+      "view": "v-a17f8a76-6609",
+      "scrollTop": 0,
+      "clientHeight": 266,
+      "scrollHeight": 266
+    },
+    {
+      "side": "in",
+      "view": "v-84bedaba-8279",
+      "scrollTop": 0,
+      "clientHeight": 279,
+      "scrollHeight": 279
+    },
+    {
+      "side": "out",
+      "view": "v-84bedaba-8279",
+      "scrollTop": 0,
+      "clientHeight": 279,
+      "scrollHeight": 279
+    },
+    {
+      "side": "in",
+      "view": "v-901bbaba-12c9",
+      "scrollTop": 0,
+      "clientHeight": 264,
+      "scrollHeight": 264
+    },
+    {
+      "side": "out",
+      "view": "v-901bbaba-12c9",
+      "scrollTop": 0,
+      "clientHeight": 264,
+      "scrollHeight": 264
+    }
+  ]
+}

@@ -85,3 +85,17 @@ P9 scrolling rail with a jack layer; wire hit order (commit 7d9b9a9)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/PortRail/PortRail.tsx — jack layer
 
+
+## 2026-09-04
+
+Added detailed intern review with 22 Playwright screenshots, resize/drag/scroll measurements, confirmed seven-pixel jack overflow, nine findings, source replay, and a phased repair design. Existing route/connect/identity tests pass (11 tests); no product code changed.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md — Current evidence-based implementation and user-experience assessment
+
+
+## 2026-09-04
+
+Validated ticket and evidence links; generated and inspected the 29-page illustrated PDF, then uploaded successfully to reMarkable at /ai/2026/09/04/PBUI-WIRING-1 as PBUI-WIRING-1 Intern Review and Browser Evidence.
+

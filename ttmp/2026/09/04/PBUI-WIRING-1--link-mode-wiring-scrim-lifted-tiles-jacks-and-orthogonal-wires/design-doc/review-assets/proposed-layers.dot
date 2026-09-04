@@ -1,0 +1,19 @@
+digraph G {
+ graph [rankdir=TB,bgcolor="white",pad="0.2"];
+ node [shape=box,fontname="DejaVu Sans",fontsize=12,style="rounded,filled",fillcolor="#f5f5f5"];
+ edge [fontname="DejaVu Sans",fontsize=10];
+ frame [label="Tile frame (positioned; stable physical boundary)"];
+ scroll [label="Port-card scrollports
+vertical scrolling inside the body"];
+ jack [label="Jack overlay sibling
+frame coordinates; explicit visibility / portals"];
+ wire [label="Surface wire overlay
+validated routes + labels + hit targets"];
+ geo [label="Surface geometry snapshot
+one coordinate origin + revision"];
+ frame -> scroll;frame -> jack;
+ scroll -> geo [label="card rects / clipping"];
+ frame -> geo [label="frame rects"];
+ geo -> jack [label="anchor positions"];
+ geo -> wire [label="same revision"];
+}
