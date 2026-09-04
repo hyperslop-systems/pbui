@@ -1,7 +1,7 @@
 {
   "name": "@hyperslop-systems/pbui-editor",
   "version": "0.1.0",
-  "description": "A CodeMirror 6 code editor for PBUI products: JavaScript highlighting, line numbers, diagnostics, a theme built from pbui tokens, and an optional pbui-workbench application",
+  "description": "A CodeMirror 6 code editor for PBUI products: JavaScript highlighting, line numbers, diagnostics, and a theme built from pbui tokens",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -46,7 +46,6 @@
     "@codemirror/state": "6.7.1",
     "@codemirror/view": "6.43.9",
     "@hyperslop-systems/pbui": "workspace:^",
-    "@hyperslop-systems/pbui-workbench": "workspace:^",
     "@lezer/highlight": "1.2.3"
   },
   "peerDependencies": {
