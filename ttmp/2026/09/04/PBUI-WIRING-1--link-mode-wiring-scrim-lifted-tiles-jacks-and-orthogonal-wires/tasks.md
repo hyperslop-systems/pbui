@@ -2,7 +2,7 @@
 
 ## TODO
 
-- [ ] P1 anchors: every mounted element, nearest source <!-- t:lgg1 -->
+- [x] P1 anchors: every mounted element, nearest source <!-- t:lgg1 -->
 - [ ] P2 jacks on the tile frame <!-- t:rec8 -->
 - [ ] P3 orthogonal wires, no arrowheads <!-- t:doc1 -->
 - [ ] P4 scrim the page, lift the tiles <!-- t:vchx -->
