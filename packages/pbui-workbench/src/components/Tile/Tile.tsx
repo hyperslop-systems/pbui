@@ -70,7 +70,7 @@ export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, 
   const title = (
     <>
       {view && renderTitle ? renderTitle(view, info, defaultTitle) : defaultTitle}
-      {badgeNodes}
+      {badgeNodes ? <span data-part="tile-badges">{badgeNodes}</span> : null}
     </>
   );
 

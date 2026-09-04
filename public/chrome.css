@@ -55,6 +55,9 @@
   /* Shrinks before anything after it (a port badge) is pushed out of the bar. */
   flex: 0 1 auto;
   min-width: 3ch;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pbui-space-2);
   font-weight: 700;
   font-size: var(--pbui-fs-tiny);
   text-transform: uppercase;
@@ -63,6 +66,39 @@
   white-space: nowrap;
   overflow: hidden;
   min-width: 0;
+}
+
+[data-part="tile-badges"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pbui-space-1);
+  flex-shrink: 0;
+}
+
+/* In link mode the title and its badges are ONE label — "ORDERS → ORDERS ·
+ * NONE" — a single hairline box on the pane; the pieces inside lose their
+ * own boxes and an arrow joins them (PBUI-WIRING-1 P6). */
+[data-part="workbench"][data-link-mode] [data-part="tile-title"] {
+  padding: 0 var(--pbui-space-3);
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane);
+  color: var(--pbui-ink-on-pane);
+}
+
+[data-part="workbench"][data-link-mode] [data-part="tile-title"] [data-part="presentation"],
+[data-part="workbench"][data-link-mode] [data-part="tile-title"] [data-chip] {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+[data-part="workbench"][data-link-mode] [data-part="tile-badges"]::before {
+  content: "→";
+  font-weight: 700;
+}
+
+[data-part="workbench"][data-link-mode] [data-part="tile-badges"] [data-part="chip-glyph"] {
+  display: none;
 }
 
 [data-part="tile-actions"] {
