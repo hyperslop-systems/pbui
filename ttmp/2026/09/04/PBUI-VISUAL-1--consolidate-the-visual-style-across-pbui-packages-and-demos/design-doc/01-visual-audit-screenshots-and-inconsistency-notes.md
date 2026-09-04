@@ -56,6 +56,22 @@ The ten things I would fix first, in order of leverage:
 9. **One label idiom.** Seven uppercase-tracked-label implementations with tracking 0.02/0.04/0.06/0.08/0.1/0.14/0.28em. Route all through `Text[SectionLabel]` and `--pbui-track-label`.
 10. **Native controls.** Raw checkboxes, radios, selects and sandboxed program buttons sit unstyled next to styled buttons (`I-SB-001`, `I-C-005`, `C-155`, `DW-001` doc select). Either skin them in `styles.css` at zero specificity or wrap them.
 
+## Decisions (feedback of 2026-09-04)
+
+Answers to the ten priorities, by number:
+
+1. **Tile chrome = datalab's**: every tile tinted by application kind, dark masthead, status footer. Adopted.
+2. **One chip.** Adopted.
+3. **Never rounded, always the brutalist style.** Applied to the Dialog this means: the dialog panel is the object-menu recipe scaled up (paper, firm ink border, zero radius, no blurred shadow, inverted title bar in the tracked-uppercase label style, tiny bordered close button like the tile bar), body on the px space scale. Backdrop: flat translucent-ink dim, no blur (open: keep the dim at all?).
+4. **Kill nested double borders.** Adopted.
+5. **Un-overload the tan** (see the note on "wash" below). Adopted.
+6. Adopted. 7. Adopted. 8. Adopted. 9. Adopted.
+10. **Native controls**: pending the explanation below.
+
+**What a wash is.** A flat, very light background tint with no border (`--pbui-pane-alt` #f1f1ee, or datalab's `--pbui-wash` #f7f7f4), used to set a region apart by tone instead of by a line. In item 4 the inner nesting level becomes a wash instead of a third border; in item 6 chips and tags that carry no state get a neutral wash so the tan is left to mean selected/acceptable only.
+
+**What native controls are.** Checkboxes, radios, `<select>` dropdowns and the buttons drawn by sandboxed programs still render with the browser's default look (grey bevel, rounded, system font) beside pbui's flat square buttons: `I-SB-001` (the Counter's − / + buttons), `I-C-005` (public/developer radios), `C-155` (raw buttons in the Toolbar story), `DW-001` (the "α · —" select in the doc bar), `D-CH-001` (the approver-role checkbox). The fix is either a zero-specificity skin for these elements in `styles.css`, or using the existing `SelectInput`/`CheckboxRow` atoms everywhere and mapping sandbox program buttons onto `Button`.
+
 ## The reference and what "consistent" means here
 
 `REF-001` sets the constraints the rest of the analysis uses:

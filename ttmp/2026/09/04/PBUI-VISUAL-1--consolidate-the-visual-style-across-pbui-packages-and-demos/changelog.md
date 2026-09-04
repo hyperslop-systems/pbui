@@ -31,3 +31,12 @@ Step 3: analysis + generated 663-exhibit catalog in the design doc; exhibit code
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/design-doc/01-visual-audit-screenshots-and-inconsistency-notes.md — The feedback document
 
+
+## 2026-09-04
+
+Step 4: feedback round one recorded as a Decisions section (1 datalab chrome + dark masthead, 2 one chip, 3 brutalist dialog, 4–9 adopted, 5/10 explained)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/design-doc/01-visual-audit-screenshots-and-inconsistency-notes.md — Decisions section
+
