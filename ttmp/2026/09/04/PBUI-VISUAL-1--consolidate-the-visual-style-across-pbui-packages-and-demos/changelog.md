@@ -40,3 +40,12 @@ Step 4: feedback round one recorded as a Decisions section (1 datalab chrome + d
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/design-doc/01-visual-audit-screenshots-and-inconsistency-notes.md — Decisions section
 
+
+## 2026-09-04
+
+P1 tokens: one definition site, fallbacks stripped, datalab tokens.css deleted (commit b1e351f)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/tokens.css — All family tokens
+

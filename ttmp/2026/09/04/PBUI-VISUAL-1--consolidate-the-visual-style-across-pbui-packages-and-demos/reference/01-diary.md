@@ -254,3 +254,59 @@ The user answered the ten priorities by number after reviewing the document in m
 
 ### Code review instructions
 - Design doc, "Decisions" section.
+
+## Step 5: Phase 1, tokens
+
+Every token the family reads now has exactly one definition site, `src/tokens.css`. The 27 names that only datalab-ui defined are promoted (with datalab's values, which were the family's anyway), the whole tone family gets core defaults, a new `--pbui-tag-wash` exists for stateless chip fills, and every inline `var(--x, fallback)` in the four global sheets is gone. datalab's tokens sheet, a byte-for-byte copy of core plus those 27, is deleted.
+
+The visible effect in this step is small and precise: pbui-chat's grid and rule borders render outside datalab for the first time, and the sandbox's widget tone no longer depends on the chat demo being the host.
+
+### Prompt Context
+
+**User prompt (verbatim):** "10. global skin. 
+3. never ronuded
+
+create a proper design doc and then work on it, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill). Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done."
+
+**Assistant interpretation:** Lock the last two decisions, write the phase-by-phase design (doc 02), then implement phase by phase with commits, diary steps, and a thermal slip at each phase boundary.
+
+**Inferred user intent:** A traceable consolidation the user can follow from the printed slips and the diary, and re-run later.
+
+**Commit (code):** b1e351f — "PBUI-VISUAL-1 P1: one token definition site"
+
+### What I did
+- `src/tokens.css`: added the family block (wash, selected-wash, tag-wash, neutral, space-6, border-rule, border-grid, track-banner, shadow-hard, shadow-menu), the tones (field, source, doc, step, chart, cat, geom, traceEntry, trace, tool, proposal, widget, row, product, order, metal, message, category), type-q/n, and the generated palette block (cat-1..8, ramp) with datalab's BEGIN/END markers so `make-tokens.ts` keeps working against core.
+- Stripped fallbacks with a balanced-parenthesis rewrite (a regex on `[^)]*` would have broken `rgb(… / 45%)` fallbacks) in `public/components.css`, `public/presentation-parts.css`, `public/chrome.css`, `src/styles.css`; fixed `--pbui-well` → pane-alt, `--pbui-muted` → faint, `--pbui-border-hairline` → border-hair, `--pbui-shadow` → shadow-menu.
+- Deleted `packages/datalab-ui/src/styles/tokens.css`; removed its import from `styles.ts` and datalab's storybook preview; root storybook preview imports `src/tokens.css` instead.
+- datalab tests `tokens.test.ts`, `brand-tokens.test.ts`, `descriptor-coverage.test.ts`, `tokens-used.test.ts` and `scripts/make-tokens.ts` now read core's sheet (the two walkers prepend it to the `src/styles` walk; the value test strips comments first).
+- Chat demo `tokens.css` reduced to its one real override (`--pbui-tone-source` red); `UploadApp.tsx` dead `--pbui-tone-datum` → `--pbui-tone-source`.
+- Rebuilt `dist` and re-shot the chat widget story.
+
+### Why
+- A fallback literal is a second palette that only shows when the first is missing, which is exactly when nobody is looking.
+- Packages consume `dist/pbui.css`, so the tokens must ship in core, not in one product.
+
+### What worked
+- All suites green after re-pointing the three datalab tests: core 51 files, workbench 23, chat 25 + demo 3, datalab 55 (602 tests), sandbox 18, ecommerce 7, editor 2.
+
+### What didn't work
+- First test run: datalab failed in three files that read `src/styles/*.css` for declarations, and the contrast test returned NaN because core's header comment contains the literal text `--pbui-ink: …`, which its unstripped regex matched. Fixed by stripping comments and adding core's sheet to the walked list.
+- First re-shoot showed the widget edge grey instead of purple: the chat storybook reads `@hyperslop-systems/pbui/styles.css`, i.e. the built `dist`, which was stale. `pnpm build` at the root fixed it. Every later phase must rebuild before screenshotting a package storybook.
+
+### What I learned
+- The chat streaming table's heavy dashed frame was an artefact of `--pbui-border-rule` being undefined; with the token defined it is the intended faint dashed rule.
+
+### What was tricky to build
+- Keeping datalab's `tokens.test.ts` honest: it must still prove the cat palette equals `@hyperslop-systems/plot`'s, but core cannot depend on plot. The hex values are copied into core and the test reads core; `make-tokens.ts` regenerates core's block from plot when the palette changes.
+
+### What warrants a second pair of eyes
+- The tone assignments for names that had two definitions: core takes datalab's green for `tone-source` and the chat demo overrides it red locally.
+
+### What should be done in the future
+- N/A
+
+### Code review instructions
+- `git show b1e351f -- src/tokens.css public/ src/styles.css`; run `pnpm -s vitest run` at the root and in `packages/datalab-ui`.
+
+### Technical details
+- The rewrite: find `var(--pbui-x,`, walk forward counting parentheses to the matching close, replace the whole call with `var(--pbui-x)`.
