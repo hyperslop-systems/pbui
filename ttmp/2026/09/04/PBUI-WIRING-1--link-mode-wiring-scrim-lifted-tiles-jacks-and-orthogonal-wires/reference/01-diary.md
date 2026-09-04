@@ -236,3 +236,34 @@ Screenshots: `various/screenshots/p6/004-completed-link-wires-and-badges.png` (l
 
 ### Code review instructions
 - `git show a8ef47d`; scene 7 on :6012.
+
+## Step 7: Phase 7, the WiringLab story
+
+The user asked for a storybook to try the wiring by hand, with different port configurations and more than one row of tiles. `Workbench/WiringLab` on :6008 is that: two rows of three tiles, four apps with number/text/any ports in both directions, five seeded links, the mode open on mount, and buttons to close, reopen and reset.
+
+Screenshot: `various/screenshots/p7/001-workbench-wiringlab--lab.png`. It is also the Phase 8 brief: three of the seeded wires cross a tile that sits between their ends.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Ok, continue. Also, isthere a storybook where I can test it for myself? (connecting a variety of different ports in different configurations, including having multiple rows of tiles horizontally"
+
+**Assistant interpretation:** Keep going through the open items, and add a hand-driveable lab story with mixed ports and a two-row layout.
+
+**Inferred user intent:** Try the wiring interactively and see it hold up in a real grid.
+
+**Commit (code):** 1bfce25 — "PBUI-WIRING-1 P7: WiringLab story"
+
+### What I did
+- `packages/pbui-workbench/src/stories/WiringLab.stories.tsx`: four apps (`lab-source` count/label out; `lab-sink` value/anything in; `lab-transform` in→out doubling via `useEmitPort` in an effect; `lab-wide` two in, two out), a col split of two row splits, seeded `port.follow` ×4, `port.pin`, `identity.add`, `link.mode.open` on mount, a `generation` key to reset.
+
+### What worked
+- Typecheck clean; the story renders every wire style: two solid follows, a dotted held, the cross-row detour, and the bar labels read `TRANSFORM → SOURCE A · NONE`.
+
+### What didn't work
+- N/A for the story itself; what it exposes belongs to Phase 8: the H-V-H route ignores tiles between the ends.
+
+### What warrants a second pair of eyes
+- The identity between the two sinks' `value` inputs draws no wire (both ends are inputs, and the wire layer pairs out→in); the cell is shared, the badge says so.
+
+### Code review instructions
+- Open `Workbench/WiringLab` on :6008; press tick in Source A; drag `gamma` from Wide onto Sink A's `anything`.

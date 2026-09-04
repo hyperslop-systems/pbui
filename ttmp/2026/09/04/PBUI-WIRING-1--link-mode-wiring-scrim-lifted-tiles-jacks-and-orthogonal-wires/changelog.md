@@ -58,3 +58,12 @@ P6 bar binding: one label in link mode (commit a8ef47d)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/public/chrome.css — tile-badges + link-mode label
 
+
+## 2026-09-04
+
+P7 WiringLab story (commit 1bfce25)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/stories/WiringLab.stories.tsx — The lab
+
