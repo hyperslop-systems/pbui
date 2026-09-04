@@ -60,7 +60,7 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
               );
             }}
             renderPort={(port, node) => (
-              <Presentation reference={{ type: "port", value: port }} doc={port.doc} inComposite>
+              <Presentation reference={{ type: "port", value: port }} doc={port.doc} inComposite block>
                 {node}
               </Presentation>
             )}

@@ -90,7 +90,11 @@ export function PortRail({ view, renderPort }: PortRailProps) {
         <span className={styles.doc}>{port.declaration.doc}</span>
       </div>
     );
-    return renderPort && ref ? <span key={`${side}:${port.id}`}>{renderPort(ref, node)}</span> : node;
+    return renderPort && ref ? (
+      <div key={`${side}:${port.id}`} className={styles.slot}>
+        {renderPort(ref, node)}
+      </div>
+    ) : node;
   };
 
   return (

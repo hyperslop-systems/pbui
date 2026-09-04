@@ -27,6 +27,19 @@
   justify-items: end;
 }
 
+/* A product's presentation around a card: a block region that draws nothing
+ * (PBUI-WIRING-1 P5); the card stays the only box. */
+.slot {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.slot > * {
+  display: block;
+  min-width: 0;
+}
+
 .port {
   position: relative;
   display: grid;
