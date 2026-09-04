@@ -62,3 +62,36 @@ Screenshot: `various/screenshots/p1/004-completed-link-wires-and-badges.png` (wi
 
 ### Code review instructions
 - `git show e06e068`; `packages/pbui-ecommerce`: `pnpm e2e` with the :6012 storybook up.
+
+## Step 2: Phase 2, jacks
+
+Each port card now has a jack on the tile frame: a 12px ink-bordered square astride the 2px border, inputs on the left edge, outputs on the right, filled once the port is bound. Wires meet the jacks.
+
+Screenshot: `various/screenshots/p2/004-completed-link-wires-and-badges.png` (jacks visible at both frames; the wire drawing itself is still Phase 3's).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 2 of the design.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** f88bc43 — "PBUI-WIRING-1 P2: jacks on the tile frame"
+
+### What I did
+- `PortRail`: `<span data-part="port-jack" data-side data-bound>` per card, absolutely positioned at `top: 50%` and `left/right: calc(-1 * space-3 - 7px)`; the card is `position: relative` and its grid drops the glyph column; the rail's overflow is visible.
+- `WireLayer.anchorOf` prefers the jack inside the registered card.
+- Probe (playwright evaluate) confirmed jack rectangles at x=3 (inputs, left frame) and x=789 (outputs, right frame) of the orders tile, and a jack-to-jack path `M 800.9 54.3 … 816.9 60.7` between the orders and order-detail tiles.
+
+### What worked
+- Workbench 23 green; ecommerce e2e unaffected (selectors unchanged).
+
+### What didn't work
+- Scenario 004 of the interaction script shows two wires ending at the source tile's right frame rather than at the destination jacks, while the seeded scene probes correctly. Not resolved in this step; Phase 3 replaces the path builder and the probe runs against that scenario next.
+
+### What warrants a second pair of eyes
+- A rail with more ports than height now overflows instead of scrolling (design doc calls it a follow-up).
+
+### Code review instructions
+- `git show f88bc43`; the ecommerce seeded scene with Mod+Shift+L on :6012.

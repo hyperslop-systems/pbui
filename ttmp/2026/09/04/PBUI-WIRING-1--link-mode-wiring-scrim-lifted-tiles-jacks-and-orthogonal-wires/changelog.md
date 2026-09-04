@@ -13,3 +13,12 @@ P1 anchors: multi-element port registry, one wire per destination (commit e06e06
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/chrome/usePortCarry.ts — Port registry
 
+
+## 2026-09-04
+
+P2 jacks on the frame (commit f88bc43)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/PortRail/PortRail.tsx — port-jack
+
