@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { useWorkbench } from "../../context";
 import { useLinkSnapshot } from "../../links/hooks";
 import { linkRefsOf, type LinkRef } from "../../links/linkRef";
+import { Lanes, routeAround, toPath, type Rect } from "./route";
 import styles from "./WireLayer.module.css";
 
 export interface WireLayerProps {
@@ -34,6 +35,15 @@ function route(a: Point, b: Point, channel = 0): string {
   }
   const my = Math.round((a.y + b.y) / 2 + channel);
   return `M ${a.x} ${a.y} H ${a.x + stub + Math.abs(channel)} V ${my} H ${b.x - stub - Math.abs(channel)} V ${b.y} H ${b.x}`;
+}
+
+/** Every tile's frame, relative to the surface: what a wire must not cross. */
+function tileRects(root: HTMLElement): Rect[] {
+  const origin = root.getBoundingClientRect();
+  return [...root.querySelectorAll<HTMLElement>('[data-part="workbench-tile"] > [data-part="tile"]')].map((element) => {
+    const box = element.getBoundingClientRect();
+    return { left: box.left - origin.left, top: box.top - origin.top, right: box.right - origin.left, bottom: box.bottom - origin.top };
+  });
 }
 
 /** Where a derived wire's label sits: on the vertical run. */
@@ -127,8 +137,19 @@ export function WireLayer({ renderWire }: WireLayerProps) {
   const links = linkRefsOf(snapshot);
   const rootBox = root?.getBoundingClientRect();
   const wires = root ? links.flatMap((link) => wireEnds(link, root).map((ends) => ({ link, ...ends }))) : [];
-  // One channel per wire, centred on zero, six pixels apart.
+  // One channel per wire, centred on zero, six pixels apart (the fallback route).
   const channelOf = (index: number) => (index - (wires.length - 1) / 2) * 6;
+  // The tiles are the obstacles; wires go around them through the gutters.
+  const obstacles: Rect[] = root ? tileRects(root) : [];
+  // The routing field is the surface plus an 18px strip around it: when tiles
+  // fill the surface edge to edge there is no gutter row, and the only way
+  // around a tile in the middle is along the outside (the SVG overflows).
+  const bounds: Rect | null = rootBox ? { left: -18, top: -18, right: rootBox.width + 18, bottom: rootBox.height + 18 } : null;
+  const lanes = new Lanes();
+  const pathFor = (from: Point, to: Point, channel: number): string => {
+    const around = bounds ? routeAround(from, to, obstacles, lanes, { bounds }) : null;
+    return around ? toPath(around) : route(from, to, channel);
+  };
   const band = carry && root ? { from: anchor(carry.from, "out", root), to: rootBox ? { x: carry.x - rootBox.left, y: carry.y - rootBox.top } : null } : null;
   const sourceOfCarry = carry ? snapshot.ports.get(carry.from) : undefined;
   const overDefinition = carry?.over ? snapshot.ports.get(carry.over) : undefined;
@@ -148,7 +169,7 @@ export function WireLayer({ renderWire }: WireLayerProps) {
       <svg className={styles.svg} aria-hidden="true">
         {wires.map(({ link, key, from, to }, index) => {
           const channel = channelOf(index);
-          const path = from && to ? route(from, to, channel) : null;
+          const path = from && to ? pathFor(from, to, channel) : null;
           const at = from && to ? labelPoint(from, to, channel) : null;
           const node = (
             <g data-part="wire" data-link-id={link.linkId} data-term={link.kind} data-source={link.source} data-destination={link.destination} className={styles.wire}>
