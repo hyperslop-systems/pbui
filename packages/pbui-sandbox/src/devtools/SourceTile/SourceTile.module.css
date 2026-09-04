@@ -8,11 +8,6 @@
   padding: var(--pbui-space-2);
 }
 
-.header {
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
 .spacer {
   flex: 1 1 auto;
 }

@@ -63,7 +63,7 @@
   font-weight: 600;
   font-size: var(--pbui-fs-tiny);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--pbui-track-label);
 }
 
 .table td[data-numeric="true"] {

@@ -1,4 +1,4 @@
-import { AppBody, Chip, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, Chip, TileHeader } from "@hyperslop-systems/pbui";
 import { useEmitPort, usePort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import { useMemo } from "react";
 import type { Shop } from "../../createShop";
@@ -51,17 +51,12 @@ export function OrdersTable({ shop, view }: OrdersTableProps) {
 
   return (
     <div data-part="orders-table" className={styles.app}>
-      <Toolbar tight>
-        <Text size="tiny" strong>
-          orders
-        </Text>
+      <TileHeader
+        title="orders"
+        status={`${orders.length} orders · ${money(orders.reduce((n, order) => n + (order.status === "cancelled" ? 0 : order.total), 0))} booked${selected.size > 0 ? ` · ${selected.size} selected` : ""}`}
+      >
         {filter.value ? <Chip label={`in ${filter.value.name}`} state="active" title={filter.badge.explanation} /> : null}
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {orders.length} orders · {money(orders.reduce((n, order) => n + (order.status === "cancelled" ? 0 : order.total), 0))} booked
-          {selected.size > 0 ? ` · ${selected.size} selected` : ""}
-        </Text>
-      </Toolbar>
+      </TileHeader>
       <AppBody flush className={styles.body}>
         <table className={styles.table}>
           <thead>

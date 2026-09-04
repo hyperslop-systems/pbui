@@ -1,4 +1,4 @@
-import { Button, Chip, EmptyState, JsonBlock, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, Chip, EmptyState, JsonBlock, KeyValueList, Text, TileHeader } from "@hyperslop-systems/pbui";
 import type { AppProps } from "@hyperslop-systems/pbui-workbench";
 import { useState } from "react";
 import { RefPresentation } from "../../components/RefPresentation";
@@ -72,27 +72,32 @@ function Context({ conversationId }: { conversationId: string }) {
 
   return (
     <div data-part="conversation-context" className={styles.app}>
-      <Toolbar tight className={styles.header}>
-        <RefPresentation reference={conversationReference(snapshot)} doc="the conversation this describes">
-          <Text size="tiny" strong>
+      <TileHeader
+        title={
+          <RefPresentation reference={conversationReference(snapshot)} doc="the conversation this describes">
             {snapshot.title}
-          </Text>
-        </RefPresentation>
+          </RefPresentation>
+        }
+        actions={
+          <Button size="tiny" variant="bare" onClick={() => void resync()} disabled={!runtime || syncing} title="advertise the tools again, as they are right now">
+            {syncing ? "syncing…" : "re-sync manifest"}
+          </Button>
+        }
+      >
         <Chip label={snapshot.open ? snapshot.runStatus : "closed"} tone="var(--pbui-tone-neutral)" />
-        <span className={styles.spacer} />
-        <Button size="tiny" variant="bare" onClick={() => void resync()} disabled={!runtime || syncing} title="advertise the tools again, as they are right now">
-          {syncing ? "syncing…" : "re-sync manifest"}
-        </Button>
-      </Toolbar>
+      </TileHeader>
 
       <Section title="session">
-        <dl className={styles.facts}>
-          <Fact label="id" value={snapshot.id} />
-          <Fact label="model" value={snapshot.stats?.model ?? snapshot.model ?? "not reported yet"} />
-          <Fact label="provider" value={snapshot.stats?.provider ?? snapshot.provider ?? "not reported yet"} />
-          <Fact label="connection" value={snapshot.open ? snapshot.wsStatus : "closed"} />
-          <Fact label="messages" value={String(snapshot.messageCount)} />
-        </dl>
+        <KeyValueList
+          dense
+          items={[
+            { key: "id", value: snapshot.id },
+            { key: "model", value: snapshot.stats?.model ?? snapshot.model ?? "not reported yet" },
+            { key: "provider", value: snapshot.stats?.provider ?? snapshot.provider ?? "not reported yet" },
+            { key: "connection", value: snapshot.open ? snapshot.wsStatus : "closed" },
+            { key: "messages", value: String(snapshot.messageCount) },
+          ]}
+        />
       </Section>
 
       <Section
@@ -177,21 +182,6 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
       </div>
       {children}
     </section>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <>
-      <dt>
-        <Text size="micro" tone="faint">
-          {label}
-        </Text>
-      </dt>
-      <dd>
-        <Text size="tiny">{value}</Text>
-      </dd>
-    </>
   );
 }
 

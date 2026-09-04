@@ -1,0 +1,9 @@
+.header {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.spacer {
+  flex: 1;
+  min-width: var(--pbui-space-2);
+}

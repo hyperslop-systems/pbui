@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, DiffHunk, EmptyState, SelectInput, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, Chip, Dialog, DiffHunk, EmptyState, SelectInput, Text, TileHeader, Toolbar } from "@hyperslop-systems/pbui";
 import { CodeEditor } from "@hyperslop-systems/pbui-editor";
 import { useWorkbench } from "@hyperslop-systems/pbui-workbench";
 import { commands } from "@hyperslop-systems/workbench-core";
@@ -79,16 +79,16 @@ export function SourceTile({ view, host, playground }: SourceTileProps) {
 
   return (
     <div data-part="program-source" className={styles.app}>
-      <Toolbar tight className={styles.header}>
-        <Chip label={`${record.title} · v${record.version} · ${record.by}`} tone="var(--pbui-tone-widget)" />
-        {record.pinned ? <Chip label="pinned" /> : null}
-        <span className={styles.spacer} />
-        {PANES.map((p) => (
+      <TileHeader
+        title={`${record.title} · v${record.version} · ${record.by}`}
+        actions={PANES.map((p) => (
           <Button key={p} size="tiny" variant="bare" selected={pane === p} aria-pressed={pane === p} onClick={() => setPane(p)}>
             {p}
           </Button>
         ))}
-      </Toolbar>
+      >
+        {record.pinned ? <Chip label="pinned" /> : null}
+      </TileHeader>
 
       {pane === "source" ? (
         <>

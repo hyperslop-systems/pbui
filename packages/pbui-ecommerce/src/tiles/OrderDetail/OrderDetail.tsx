@@ -1,4 +1,4 @@
-import { AppBody, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, EmptyState, KeyValueList, TileHeader } from "@hyperslop-systems/pbui";
 import { usePort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { useHostRevision } from "../../host";
@@ -39,38 +39,34 @@ export function OrderDetail({ shop, view }: OrderDetailProps) {
   const lines = shop.host.relations.orderLineItems(order.id);
   return (
     <div data-part="order-detail" className={styles.app}>
-      <Toolbar tight>
-        <Presentation reference={{ type: "order", value: orderValue(order) }} doc={`order #${order.id}`} inComposite>
-          <Text size="tiny" strong>
+      <TileHeader
+        title={
+          <Presentation reference={{ type: "order", value: orderValue(order) }} doc={`order #${order.id}`} inComposite>
             order #{order.id}
-          </Text>
-        </Presentation>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {order.status} · {order.placedAt}
-        </Text>
-      </Toolbar>
+          </Presentation>
+        }
+        status={`${order.status} · ${order.placedAt}`}
+      />
       <AppBody flush className={styles.body}>
         <div className={styles.detail}>
           <div className={styles.big}>{money(order.total)}</div>
-          <dl className={styles.facts}>
-            <dt>customer</dt>
-            <dd>
-              {customer ? (
-                <Presentation reference={{ type: "customer", value: customerValue(customer) }} doc={`${customer.name}, ${customer.kind}`}>
-                  {customer.name}
-                </Presentation>
-              ) : (
-                order.customer
-              )}
-            </dd>
-            <dt>placed</dt>
-            <dd>{order.placedAt}</dd>
-            <dt>status</dt>
-            <dd>{order.status}</dd>
-            <dt>units</dt>
-            <dd>{order.items}</dd>
-          </dl>
+          <KeyValueList
+            items={[
+              {
+                key: "customer",
+                value: customer ? (
+                  <Presentation reference={{ type: "customer", value: customerValue(customer) }} doc={`${customer.name}, ${customer.kind}`}>
+                    {customer.name}
+                  </Presentation>
+                ) : (
+                  order.customer
+                ),
+              },
+              { key: "placed", value: order.placedAt },
+              { key: "status", value: order.status },
+              { key: "units", value: order.items },
+            ]}
+          />
           <table className={styles.table}>
             <thead>
               <tr>

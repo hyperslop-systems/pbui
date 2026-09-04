@@ -1,4 +1,4 @@
-import { AppBody, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, EmptyState, Text, TileHeader } from "@hyperslop-systems/pbui";
 import { useEmitPort, usePort, useWorkbench, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { DatumId, InteractionIndex, InteractionTargetRecord, PlotEvent, PlotOutcome } from "@hyperslop-systems/plot";
 import { ResponsivePlot } from "@hyperslop-systems/plot/react";
@@ -121,16 +121,10 @@ export function ShopPlot({ shop, view, onEvent }: ShopPlotProps) {
 
   return (
     <div data-part="shop-plot" className={styles.app} data-selected-count={selectedRows.size || undefined}>
-      <Toolbar tight>
-        <Text size="tiny" strong truncate>
-          {plot.description ?? plot.id}
-        </Text>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {data.coverage.rowCount} rows of {table}
-          {selectedRows.size > 0 ? ` · ${selectedRows.size} selected` : ""}
-        </Text>
-      </Toolbar>
+      <TileHeader
+        title={plot.description ?? plot.id}
+        status={`${data.coverage.rowCount} rows of ${table}${selectedRows.size > 0 ? ` · ${selectedRows.size} selected` : ""}`}
+      />
       <AppBody flush className={styles.body}>
         <ResponsivePlot
           document={plot}

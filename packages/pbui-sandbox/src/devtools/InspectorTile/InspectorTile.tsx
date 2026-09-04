@@ -1,4 +1,4 @@
-import { Button, Chip, EmptyState, JsonBlock, SelectInput, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, Chip, EmptyState, JsonBlock, KeyValueList, SelectInput, Text, TileHeader } from "@hyperslop-systems/pbui";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { useMemo, useState } from "react";
 import type { SandboxHost } from "../../host/hostOptions";
@@ -61,9 +61,7 @@ export function InspectorTile({ view, host }: InspectorTileProps) {
   if (!snapshot) {
     return (
       <div className={styles.app}>
-        <Toolbar tight className={styles.header}>
-          <Chip label={program?.title ?? programId} tone="var(--pbui-tone-widget)" />
-        </Toolbar>
+        <TileHeader title={program?.title ?? programId} />
         <EmptyState message={`${program?.title ?? programId} is not running`} hint="open it in a tile (launcher, or an object's menu) and come back" />
       </div>
     );
@@ -74,8 +72,14 @@ export function InspectorTile({ view, host }: InspectorTileProps) {
 
   return (
     <div data-part="program-inspector" className={styles.app}>
-      <Toolbar tight className={styles.header}>
-        <Chip label={`${program?.title ?? programId} · v${snapshot.version}`} tone="var(--pbui-tone-widget)" />
+      <TileHeader
+        title={`${program?.title ?? programId} · v${snapshot.version}`}
+        actions={PANES.map((p) => (
+          <Button key={p} size="tiny" variant="bare" selected={pane === p} aria-pressed={pane === p} onClick={() => setPane(p)}>
+            {p}
+          </Button>
+        ))}
+      >
         <Chip label={snapshot.status} state={snapshot.status === "error" ? "stale" : undefined} />
         {candidates.length > 1 ? (
           <SelectInput
@@ -90,13 +94,7 @@ export function InspectorTile({ view, host }: InspectorTileProps) {
             }}
           />
         ) : null}
-        <span className={styles.spacer} />
-        {PANES.map((p) => (
-          <Button key={p} size="tiny" variant="bare" selected={pane === p} aria-pressed={pane === p} onClick={() => setPane(p)}>
-            {p}
-          </Button>
-        ))}
-      </Toolbar>
+      </TileHeader>
 
       <div className={styles.body}>
         {pane === "state" ? (
@@ -189,19 +187,18 @@ function MetaPane({ snapshot, engine }: { snapshot: InstanceSnapshot; engine: st
   const ms = (value: number | undefined) => (value === undefined ? "—" : `${value.toFixed(1)} ms`);
   return (
     <>
-      <div className={styles.facts} data-part="inspector-facts">
-        {[
-          ["instance", snapshot.instanceId ?? "—"],
-          ["engine", engine],
-          ["placements", snapshot.placementIds.join(", ") || "—"],
-          ["load", ms(t.loadMs)],
-          ["last render", `${ms(t.lastRenderMs)} · ${t.renders} renders`],
-          ["last event", `${ms(t.lastEventMs)} · ${t.events} events`],
-          ["errors", `${t.errors} (${t.timeouts} timeouts)`],
-        ].map(([label, value]) => (
-          <Fact key={label} label={label!} value={value!} />
-        ))}
-      </div>
+      <KeyValueList
+        dense
+        items={[
+          { key: "instance", value: <span className={styles.mono}>{snapshot.instanceId ?? "—"}</span> },
+          { key: "engine", value: <span className={styles.mono}>{engine}</span> },
+          { key: "placements", value: <span className={styles.mono}>{snapshot.placementIds.join(", ") || "—"}</span> },
+          { key: "load", value: <span className={styles.mono}>{ms(t.loadMs)}</span> },
+          { key: "last render", value: <span className={styles.mono}>{`${ms(t.lastRenderMs)} · ${t.renders} renders`}</span> },
+          { key: "last event", value: <span className={styles.mono}>{`${ms(t.lastEventMs)} · ${t.events} events`}</span> },
+          { key: "errors", value: <span className={styles.mono}>{`${t.errors} (${t.timeouts} timeouts)`}</span> },
+        ]}
+      />
       {snapshot.error ? (
         <Text size="tiny" tone="danger" className={styles.mono}>
           {snapshot.error.phase ?? "run"} · {snapshot.error.code} · {snapshot.error.message}
@@ -211,19 +208,6 @@ function MetaPane({ snapshot, engine }: { snapshot: InstanceSnapshot; engine: st
         meta
       </Text>
       <JsonBlock value={snapshot.meta ?? null} maxHeight={200} />
-    </>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <>
-      <Text size="tiny" tone="faint">
-        {label}
-      </Text>
-      <Text size="tiny" className={styles.mono}>
-        {value}
-      </Text>
     </>
   );
 }

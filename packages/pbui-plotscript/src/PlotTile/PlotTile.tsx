@@ -1,4 +1,4 @@
-import { AppBody, Chip, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, Chip, EmptyState, Text, TileHeader } from "@hyperslop-systems/pbui";
 import { useWorkbench, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { PlotOutcome } from "@hyperslop-systems/plot";
 import { ResponsivePlot } from "@hyperslop-systems/plot/react";
@@ -57,21 +57,21 @@ export function PlotTile({ view, host }: PlotTileProps) {
 
   return (
     <div data-part="plot-view" className={styles.app}>
-      <Toolbar tight>
-        <Text size="tiny" strong truncate>
-          {many ? `${all.length} plots` : (result?.document.description ?? result?.document.id ?? script.name)}
-        </Text>
+      <TileHeader
+        title={many ? `${all.length} plots` : (result?.document.description ?? result?.document.id ?? script.name)}
+        status={
+          <>
+            {many
+              ? `${all.reduce((n, r) => n + r.data.coverage.rowCount, 0)} rows across ${all.length}`
+              : coverage
+                ? `${coverage.rowCount} rows · ${coverage.kind}${coverage.kind === "bounded" && coverage.hasMore ? " · more" : ""}`
+                : "no plot yet"}
+            {errors > 0 ? ` · ${errors} error${errors === 1 ? "" : "s"}` : ""}
+          </>
+        }
+      >
         {stale ? <Chip label="stale" state="stale" title="the script changed or failed since this was drawn" /> : null}
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {many
-            ? `${all.reduce((n, r) => n + r.data.coverage.rowCount, 0)} rows across ${all.length}`
-            : coverage
-              ? `${coverage.rowCount} rows · ${coverage.kind}${coverage.kind === "bounded" && coverage.hasMore ? " · more" : ""}`
-              : "no plot yet"}
-          {errors > 0 ? ` · ${errors} error${errors === 1 ? "" : "s"}` : ""}
-        </Text>
-      </Toolbar>
+      </TileHeader>
       <AppBody flush className={styles.body}>
         {result ? (
           many ? (

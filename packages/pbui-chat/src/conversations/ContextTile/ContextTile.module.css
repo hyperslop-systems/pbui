@@ -9,15 +9,6 @@
   padding: var(--pbui-space-2);
 }
 
-.header {
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.spacer {
-  flex: 1 1 auto;
-}
-
 .section {
   min-width: 0;
   border-top: var(--pbui-border-hair);
@@ -30,22 +21,6 @@
   align-items: baseline;
   flex-wrap: wrap;
   min-width: 0;
-}
-
-/* Label beside value; the value takes what is left and wraps rather than
- * pushing the tile wide — a session id is longer than any tile. */
-.facts {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: var(--pbui-space-2);
-  margin: 0;
-  min-width: 0;
-}
-
-.facts dd {
-  margin: 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .tools {

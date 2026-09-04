@@ -4,7 +4,7 @@ import { create } from "@bufbuild/protobuf";
 import { DocumentPayloadSchema, MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import { layout, split, tile } from "@hyperslop-systems/workbench-core";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { createPlotScriptApps } from "./apps";
 import { connectPlotScriptDocuments } from "./connect";
@@ -47,7 +47,8 @@ describe("the script tile and the plot tile over one document", () => {
     expect(editorOf(container).state.doc.toString()).toBe(OK);
     await waitFor(() => expect(host.runner.getState("s1").status).toBe("ok"));
     await waitFor(() => expect(container.querySelector('[data-part="plot-view"] svg')).not.toBeNull());
-    expect(screen.getByText("three points", { selector: "span, div, strong, b, p" })).toBeTruthy();
+    const plotView = container.querySelector('[data-part="plot-view"]') as HTMLElement;
+    expect(within(plotView).getByText("three points", { selector: "span, div, strong, b, p" })).toBeTruthy();
     expect(container.textContent).toContain("3 rows · complete");
     expect(container.querySelector('[data-part="plot-script"]')?.textContent).toContain("ok");
   });

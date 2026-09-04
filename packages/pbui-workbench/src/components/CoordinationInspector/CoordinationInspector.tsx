@@ -1,4 +1,4 @@
-import { AppBody, Button, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, Button, EmptyState, Text, TileHeader } from "@hyperslop-systems/pbui";
 import { badgesOfView, checkInvariants } from "@hyperslop-systems/pbui";
 import { defineWorkbenchApp, type AppProps, type WorkbenchApp } from "../../app";
 import { useWorkbench } from "../../context";
@@ -30,18 +30,15 @@ export function CoordinationInspector(_props: AppProps) {
 
   return (
     <div data-part="coordination-inspector" className={styles.app}>
-      <Toolbar tight>
-        <Text size="tiny" strong>
-          coordination
-        </Text>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {bindings.length} bound · {links.length} wires · {classes.length} classes · {violations.length === 0 ? "invariants hold" : `${violations.length} violations`}
-        </Text>
-        <Button size="tiny" variant="framed" onClick={() => workbench.dispatch({ kind: "link.mode.open" })}>
-          show wiring
-        </Button>
-      </Toolbar>
+      <TileHeader
+        title="coordination"
+        status={`${bindings.length} bound · ${links.length} wires · ${classes.length} classes · ${violations.length === 0 ? "invariants hold" : `${violations.length} violations`}`}
+        actions={
+          <Button size="tiny" variant="framed" onClick={() => workbench.dispatch({ kind: "link.mode.open" })}>
+            show wiring
+          </Button>
+        }
+      />
       <AppBody flush className={styles.body}>
         {empty ? (
           <div className={styles.pad}>

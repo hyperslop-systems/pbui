@@ -6,10 +6,6 @@
   height: 100%;
 }
 
-.spacer {
-  flex: 1 1 auto;
-}
-
 .body {
   display: grid;
   grid-template-rows: minmax(0, 1fr);

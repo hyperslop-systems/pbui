@@ -1,4 +1,4 @@
-import { AppBody, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, EmptyState, KeyValueList, TileHeader } from "@hyperslop-systems/pbui";
 import { usePort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { useHostRevision } from "../../host";
@@ -28,26 +28,23 @@ export function CustomerDetail({ shop, view }: CustomerDetailProps) {
   const spent = orders.filter((order) => order.status !== "cancelled").reduce((n, order) => n + order.total, 0);
   return (
     <div data-part="customer-detail" className={styles.app}>
-      <Toolbar tight>
-        <Presentation reference={{ type: "customer", value: customerValue(customer) }} doc={customer.name} inComposite>
-          <Text size="tiny" strong>
+      <TileHeader
+        title={
+          <Presentation reference={{ type: "customer", value: customerValue(customer) }} doc={customer.name} inComposite>
             {customer.name}
-          </Text>
-        </Presentation>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {customer.kind} · {customer.city}
-        </Text>
-      </Toolbar>
+          </Presentation>
+        }
+        status={`${customer.kind} · ${customer.city}`}
+      />
       <AppBody flush className={styles.body}>
         <div className={styles.detail}>
           <div className={styles.big}>{money(spent)}</div>
-          <dl className={styles.facts}>
-            <dt>since</dt>
-            <dd>{customer.since}</dd>
-            <dt>orders</dt>
-            <dd>{orders.length}</dd>
-          </dl>
+          <KeyValueList
+            items={[
+              { key: "since", value: customer.since },
+              { key: "orders", value: orders.length },
+            ]}
+          />
           <table className={styles.table}>
             <thead>
               <tr>

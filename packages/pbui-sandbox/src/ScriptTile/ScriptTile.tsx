@@ -1,4 +1,4 @@
-import { Button, Callout, Chip, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, Callout, Chip, EmptyState, Text, TileHeader, Toolbar } from "@hyperslop-systems/pbui";
 import { useWorkbench } from "@hyperslop-systems/pbui-workbench";
 import { commands } from "@hyperslop-systems/workbench-core";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
@@ -89,15 +89,19 @@ export function ScriptTile({ placementId, view, host }: ScriptTileProps) {
     // focus inside it (a button, an input) or a click is how "the tile the
     // user is looking at" becomes the selected sandbox.
     <div data-part="script-app" className={styles.app} tabIndex={-1} onFocusCapture={select} onClickCapture={select}>
-      <Toolbar tight className={styles.header}>
-        <Chip label={`generated · v${program.version} · by ${program.by}`} tone="var(--pbui-tone-widget)" />
+      <TileHeader
+        title={`generated · v${program.version} · by ${program.by}`}
+        actions={
+          <>
+            {host.devtools ? <DevtoolButtons programId={program.id} viewId={view.id} placementId={placementId} /> : null}
+            <Button size="tiny" variant="bare" onClick={() => setShowLog((s) => !s)} aria-expanded={showLog}>
+              {showLog ? "hide details" : "details"}
+            </Button>
+          </>
+        }
+      >
         {program.pinned ? <Chip label="pinned" /> : null}
-        <span className={styles.spacer} />
-        {host.devtools ? <DevtoolButtons programId={program.id} viewId={view.id} placementId={placementId} /> : null}
-        <Button size="tiny" variant="bare" onClick={() => setShowLog((s) => !s)} aria-expanded={showLog}>
-          {showLog ? "hide details" : "details"}
-        </Button>
-      </Toolbar>
+      </TileHeader>
 
       {instance.error ? (
         <Callout variant="danger" title={`program error (${instance.error.phase ?? "run"}, ${instance.error.code})`}>

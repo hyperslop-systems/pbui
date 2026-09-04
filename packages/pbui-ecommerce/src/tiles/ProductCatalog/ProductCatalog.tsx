@@ -1,4 +1,4 @@
-import { AppBody, Chip, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, Chip, TileHeader } from "@hyperslop-systems/pbui";
 import { useEmitPort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { isLowStock } from "../../fixtures";
@@ -27,15 +27,7 @@ export function ProductCatalog({ shop, view }: ProductCatalogProps) {
   const low = products.filter(isLowStock).length;
   return (
     <div data-part="product-catalog" className={styles.app}>
-      <Toolbar tight>
-        <Text size="tiny" strong>
-          catalog
-        </Text>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {products.length} SKUs · {low} at or under the floor
-        </Text>
-      </Toolbar>
+      <TileHeader title="catalog" status={`${products.length} SKUs · ${low} at or under the floor`} />
       <AppBody flush className={styles.body}>
         <table className={styles.table}>
           <thead>

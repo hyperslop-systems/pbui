@@ -1,4 +1,4 @@
-import { AppBody, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, TileHeader } from "@hyperslop-systems/pbui";
 import { useEmitPort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { useHostRevision } from "../../host";
@@ -18,15 +18,7 @@ export function CustomersTable({ shop, view }: CustomersTableProps) {
   const customers = shop.host.rows("customers");
   return (
     <div data-part="customers-table" className={styles.app}>
-      <Toolbar tight>
-        <Text size="tiny" strong>
-          customers
-        </Text>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {customers.length} customers
-        </Text>
-      </Toolbar>
+      <TileHeader title="customers" status={`${customers.length} customers`} />
       <AppBody flush className={styles.body}>
         <table className={styles.table}>
           <thead>

@@ -8,15 +8,6 @@
   padding: var(--pbui-space-2);
 }
 
-.header {
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.spacer {
-  flex: 1 1 auto;
-}
-
 .body {
   display: flex;
   flex-direction: column;
@@ -81,13 +72,6 @@
 .key {
   flex: 0 0 auto;
   min-width: 6ch;
-}
-
-.facts {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--pbui-space-1) var(--pbui-space-3);
-  min-width: 0;
 }
 
 .mono {

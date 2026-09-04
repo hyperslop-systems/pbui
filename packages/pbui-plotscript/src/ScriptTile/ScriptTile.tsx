@@ -1,4 +1,4 @@
-import { AppBody, Button, Callout, Chip, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, Button, Callout, Chip, EmptyState, Text, TileHeader } from "@hyperslop-systems/pbui";
 import { CodeEditor } from "@hyperslop-systems/pbui-editor";
 import { byteLength, describeScriptResultProblem } from "@hyperslop-systems/pbui-sandbox";
 import { useWorkbench, type AppProps } from "@hyperslop-systems/pbui-workbench";
@@ -69,7 +69,15 @@ export function ScriptTile({ view, host }: ScriptTileProps) {
 
   return (
     <div data-part="plot-script" className={styles.app}>
-      <Toolbar tight>
+      <TileHeader
+        title={script.name}
+        status={
+          <>
+            {run.ms !== null ? `${Math.round(run.ms)} ms · ` : ""}
+            {bytes} bytes · {source.split("\n").length} lines
+          </>
+        }
+      >
         <Button size="tiny" variant="raised" onClick={runNow} title="Mod+Enter">
           run
         </Button>
@@ -77,12 +85,7 @@ export function ScriptTile({ view, host }: ScriptTileProps) {
           auto
         </Button>
         <Chip label={STATUS_LABEL[run.status]} tone={tone} state={run.status === "running" ? "active" : undefined} />
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {run.ms !== null ? `${Math.round(run.ms)} ms · ` : ""}
-          {bytes} bytes · {source.split("\n").length} lines
-        </Text>
-      </Toolbar>
+      </TileHeader>
       <AppBody flush className={styles.body}>
         <div className={styles.editor}>
           <CodeEditor value={source} onValueChange={onChange} onRun={runNow} accessibleName={`script ${script.name}`} language="javascript" />
