@@ -11,6 +11,7 @@ import { ShowChooser } from "../ShowChooser";
 import { WireLayer } from "../WireLayer";
 import { createGeometryStore } from "../../wiring/geometryStore";
 import { GeometryContext } from "../../wiring/geometryContext";
+import { useConnectedHighlight } from "../../wiring/connectedHighlight";
 import styles from "./Surface.module.css";
 
 /**
@@ -28,6 +29,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
   const launcherOpen = workbench.useShellState((state) => state.launcher !== null);
   const linkMode = workbench.useShellState((state) => state.linkModeOpen);
   useLayoutEffect(() => { geometry.invalidate(); geometry.flush(); }, [geometry, tree, linkMode]);
+  useConnectedHighlight(geometry, linkMode);
   const anySurfaceOpen = useAnyEscapeSurface();
 
   // Mod+Shift+L toggles connect mode (PBUI-LINK-1 Phase 3), under the same

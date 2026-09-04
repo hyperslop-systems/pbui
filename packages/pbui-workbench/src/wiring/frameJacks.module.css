@@ -6,6 +6,6 @@
   background: var(--pbui-pane);
   border: var(--pbui-border-hair);
   border-radius: var(--pbui-radius);
-  pointer-events: none;
+  pointer-events: auto;
 }
 .jack[data-bound] { background: var(--pbui-ink); }

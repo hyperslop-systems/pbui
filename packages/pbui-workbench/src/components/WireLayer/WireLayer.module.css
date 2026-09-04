@@ -101,3 +101,15 @@
   border-style: dashed;
   color: var(--pbui-faint);
 }
+
+.wire[data-connected-highlight] .stroke,
+.wire[data-connected-highlight] .portal {
+  stroke: var(--pbui-accent, #b54b00);
+  stroke-width: 3.5px;
+}
+.wire[data-connected-highlight][data-term="identity"] .stroke {
+  stroke-width: 6px;
+}
+.wire[data-connected-highlight] .label {
+  fill: var(--pbui-accent, #b54b00);
+}
