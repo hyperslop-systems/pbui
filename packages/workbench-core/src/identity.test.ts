@@ -37,15 +37,33 @@ describe("Workbench identity types", () => {
   test("keeps server revisions opaque while rejecting the absent token", () => {
     expect(serverRevision("00042")).toBe("00042");
     expect(serverRevision(" opaque ")).toBe(" opaque ");
-    expect(() => serverRevision("")).toThrow("server revision must not be empty");
+    expect(() => serverRevision("")).toThrow("server revision must be a non-empty string");
+    expect(() => serverRevision(42 as never)).toThrow("server revision must be a non-empty string");
   });
 
   test("constructs and mints operation IDs", () => {
     expect(operationId("workbench-operation")).toBe("workbench-operation");
-    expect(() => operationId("")).toThrow("operation id must not be empty");
+    expect(() => operationId("")).toThrow("operation id must be a non-empty string");
+    expect(() => operationId({} as never)).toThrow("operation id must be a non-empty string");
     expect(newOperationId(() => "123e4567-e89b-12d3-a456-426614174000")).toBe(
       "123e4567-e89b-12d3-a456-426614174000",
     );
-    expect(() => newOperationId(() => "")).toThrow("operation id must not be empty");
+    expect(() => newOperationId(() => "")).toThrow("operation id must be a non-empty string");
+  });
+
+  test("serializes brands as their wire primitives and validates them again at ingress", () => {
+    const wire = JSON.stringify({
+      localRevision: localRevision(9),
+      serverRevision: serverRevision("00000000000000000042"),
+      operationId: operationId("op-42"),
+    });
+    expect(wire).toBe(
+      '{"localRevision":9,"serverRevision":"00000000000000000042","operationId":"op-42"}',
+    );
+
+    const decoded = JSON.parse(wire) as Record<string, unknown>;
+    expect(localRevision(decoded.localRevision as number)).toBe(9);
+    expect(serverRevision(decoded.serverRevision as string)).toBe("00000000000000000042");
+    expect(operationId(decoded.operationId as string)).toBe("op-42");
   });
 });

@@ -23,12 +23,16 @@ export function nextLocalRevision(value: LocalRevision): LocalRevision {
 }
 
 export function serverRevision(value: string): ServerRevision {
-  if (value.length === 0) throw new Error("server revision must not be empty");
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error("server revision must be a non-empty string");
+  }
   return value as ServerRevision;
 }
 
 export function operationId(value: string): OperationId {
-  if (value.length === 0) throw new Error("operation id must not be empty");
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error("operation id must be a non-empty string");
+  }
   return value as OperationId;
 }
 

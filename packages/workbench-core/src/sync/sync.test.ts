@@ -128,6 +128,12 @@ describe("the sync module (guide §15, batch-preserving)", () => {
     const batchB: OutboxEntry = { id: operationId("batch-b"), mutations: mutationB, destructive: false };
     const revisionOne = serverRevision("1");
 
+    expect(
+      await syncRequestOperationId(serverRevision("00042"), [
+        { id: operationId("batch-α"), mutations: [], destructive: false },
+      ]),
+    ).toBe("wb-sha256-d2ce51d8d36a730e10bad3e1cba21763edf2b169446d15dfe9333a30d15a24a2");
+
     const stableA = await syncRequestOperationId(revisionOne, [batchA]);
     expect(stableA).toMatch(/^wb-sha256-[0-9a-f]{64}$/);
     expect(await syncRequestOperationId(revisionOne, [batchA])).toBe(stableA);
@@ -168,6 +174,10 @@ describe("the sync module (guide §15, batch-preserving)", () => {
     expect(leafCount(server.document)).toBe(2);
     expect(leafCount(core.getState().document)).toBe(2);
     expect(sync.status().phase).toBe("synced");
+    // Attempt one used the stale base revision; the replay retained its batch
+    // identity/content but bound a fresh send identity to revision two.
+    expect(server.seen.map(({ revision }) => revision)).toEqual(["1", "2"]);
+    expect(server.seen[0]!.operationId).not.toBe(server.seen[1]!.operationId);
     sync.dispose();
   });
 
@@ -219,6 +229,7 @@ describe("the sync module (guide §15, batch-preserving)", () => {
     // Three mutations refused as one request, then the two batches sent one at
     // a time: the split (2 mutations, never halved) and the rename (1).
     expect(server.seen.map((entry) => entry.count)).toEqual([3, 2, 1]);
+    expect(new Set(server.seen.map((entry) => entry.operationId)).size).toBe(3);
     expect(sync.status().phase).toBe("synced");
     sync.dispose();
   });
