@@ -24,3 +24,98 @@
   font-size: var(--pbui-fs-base);
   line-height: var(--pbui-lh-tight);
 }
+
+/* ---- native controls ----------------------------------------------------- */
+
+/*
+ * The floor under every product's form controls (PBUI-VISUAL-1 P7). The atoms
+ * (Button, CheckboxRow, SelectInput, TextInput) are what products should use;
+ * these zero-specificity rules catch the raw element a story, a sandboxed
+ * program or a quick form still renders, so it reads as family rather than as
+ * the browser's grey bevel. Any class or data-part on the element opts out:
+ * the atoms' modules and the parts sheets carry (0,1,0) and win.
+ */
+:where(input[type="checkbox"], input[type="radio"]):not([class]):not([data-part]) {
+  appearance: none;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  margin: 0 var(--pbui-space-2) 0 0;
+  vertical-align: -1px;
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
+  cursor: pointer;
+}
+
+:where(input[type="radio"]):not([class]):not([data-part]) {
+  /* A radio is the one circle the family allows: it is the control's name. */
+  border-radius: 50%;
+}
+
+:where(input[type="checkbox"], input[type="radio"]):not([class]):not([data-part]):checked {
+  background: var(--pbui-ink);
+  box-shadow: inset 0 0 0 2px var(--pbui-pane);
+}
+
+:where(input[type="checkbox"], input[type="radio"]):not([class]):not([data-part]):focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}
+
+:where(select):not([class]):not([data-part]) {
+  appearance: none;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  line-height: 1.6;
+  color: var(--pbui-ink-on-pane);
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  padding: 0 var(--pbui-space-5) 0 var(--pbui-space-3);
+  /* The chevron, drawn in ink; a select cannot carry a pseudo-element. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%2323262b' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--pbui-space-2) center;
+  cursor: pointer;
+}
+
+:where(button):not([class]):not([data-part]) {
+  appearance: none;
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  line-height: 1.6;
+  color: var(--pbui-ink-on-pane);
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  padding: 0 var(--pbui-space-3);
+  cursor: pointer;
+}
+
+:where(button):not([class]):not([data-part]):hover {
+  background: var(--pbui-selected-wash);
+}
+
+:where(button):not([class]):not([data-part]):disabled {
+  color: var(--pbui-faint);
+  background: var(--pbui-pane-alt);
+  cursor: default;
+}
+
+:where(input:not([type]), input[type="text"], input[type="search"], input[type="number"], textarea):not([class]):not([data-part]) {
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  color: var(--pbui-ink-on-pane);
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+}
+
+:where(select, button, input, textarea):not([class]):not([data-part]):focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}
