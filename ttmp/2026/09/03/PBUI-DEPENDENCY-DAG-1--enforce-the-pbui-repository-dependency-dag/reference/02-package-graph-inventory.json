@@ -1,0 +1,1010 @@
+{
+  "packages": [
+    {
+      "name": "@hyperslop-systems/pbui",
+      "path": "package.json"
+    },
+    {
+      "name": "@hyperslop-systems/datalab-ui",
+      "path": "packages/datalab-ui/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-chat-demo",
+      "path": "packages/pbui-chat/demo/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-chat",
+      "path": "packages/pbui-chat/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-ecommerce-demo",
+      "path": "packages/pbui-ecommerce/demo/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-ecommerce",
+      "path": "packages/pbui-ecommerce/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-editor",
+      "path": "packages/pbui-editor/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-plotscript-demo",
+      "path": "packages/pbui-plotscript/demo/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-plotscript",
+      "path": "packages/pbui-plotscript/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-sandbox",
+      "path": "packages/pbui-sandbox/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/pbui-workbench",
+      "path": "packages/pbui-workbench/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/workbench-core",
+      "path": "packages/workbench-core/package.json"
+    },
+    {
+      "name": "@hyperslop-systems/workbench-protocol",
+      "path": "packages/workbench-protocol/package.json"
+    }
+  ],
+  "edges": [
+    {
+      "from": "@hyperslop-systems/datalab-ui",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/datalab-ui/src/appkit/useTransientSurface.ts",
+        "packages/datalab-ui/src/apps/AboutApp/AboutApp.tsx",
+        "packages/datalab-ui/src/apps/BriefApp/BriefApp.tsx",
+        "packages/datalab-ui/src/apps/ChartApp/ChartApp.tsx",
+        "packages/datalab-ui/src/apps/CheatApp/CheatApp.tsx",
+        "packages/datalab-ui/src/apps/InspectorApp/InspectorApp.tsx",
+        "packages/datalab-ui/src/apps/LauncherApp/LauncherApp.tsx",
+        "packages/datalab-ui/src/apps/LessonsApp/LessonsApp.tsx",
+        "packages/datalab-ui/src/apps/ModulesApp/ModulesApp.tsx",
+        "packages/datalab-ui/src/apps/ProfileApp/ProfileApp.tsx",
+        "packages/datalab-ui/src/apps/TokensApp/TokensApp.tsx",
+        "packages/datalab-ui/src/apps/UploadApp/UploadApp.tsx",
+        "packages/datalab-ui/src/apps/tiles.stories.tsx",
+        "packages/datalab-ui/src/apps/tutorials/Tut1.tsx",
+        "packages/datalab-ui/src/apps/tutorials/Tutorial.tsx",
+        "packages/datalab-ui/src/components/atoms/DocChip/DocChip.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/DocChip/DocChip.tsx",
+        "packages/datalab-ui/src/components/atoms/FieldChip/FieldChip.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/FieldChip/FieldChip.tsx",
+        "packages/datalab-ui/src/components/atoms/ProvenanceBadge/ProvenanceBadge.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/RoleBadge/RoleBadge.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/ScopeChip/ScopeChip.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/SourceChip/SourceChip.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/SourceChip/SourceChip.tsx",
+        "packages/datalab-ui/src/components/atoms/StateGlyph/StateGlyph.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/TokenChip/TokenChip.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/TokenChip/TokenChip.tsx",
+        "packages/datalab-ui/src/components/atoms/TypeBadge/TypeBadge.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/UserChip/UserChip.stories.tsx",
+        "packages/datalab-ui/src/components/atoms/UserChip/UserChip.tsx",
+        "packages/datalab-ui/src/components/molecules/ChannelRow/ChannelRow.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/ChannelRow/ChannelRow.tsx",
+        "packages/datalab-ui/src/components/molecules/CheatCard/CheatCard.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/CheatCard/CheatCard.tsx",
+        "packages/datalab-ui/src/components/molecules/DocBar/DocBar.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/DocBar/DocBar.tsx",
+        "packages/datalab-ui/src/components/molecules/DraftResumeList/DraftResumeList.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/DraftResumeList/DraftResumeList.tsx",
+        "packages/datalab-ui/src/components/molecules/ErrorNotice/ErrorNotice.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/ErrorNotice/ErrorNotice.tsx",
+        "packages/datalab-ui/src/components/molecules/GoalItem/GoalItem.tsx",
+        "packages/datalab-ui/src/components/molecules/HintList/HintList.tsx",
+        "packages/datalab-ui/src/components/molecules/LessonStep/LessonStep.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/LessonStep/LessonStep.tsx",
+        "packages/datalab-ui/src/components/molecules/MemberInvite/MemberInvite.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/MemberInvite/MemberInvite.tsx",
+        "packages/datalab-ui/src/components/molecules/MemberRow/MemberRow.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/MemberRow/MemberRow.tsx",
+        "packages/datalab-ui/src/components/molecules/ModuleCard/ModuleCard.tsx",
+        "packages/datalab-ui/src/components/molecules/PredictPrompt/PredictPrompt.tsx",
+        "packages/datalab-ui/src/components/molecules/ScopeChecklist/ScopeChecklist.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/ScopeChecklist/ScopeChecklist.tsx",
+        "packages/datalab-ui/src/components/molecules/SpecDiff/SpecDiff.tsx",
+        "packages/datalab-ui/src/components/molecules/SpecSummary/SpecSummary.tsx",
+        "packages/datalab-ui/src/components/molecules/StepEditor/StepEditor.tsx",
+        "packages/datalab-ui/src/components/molecules/StepRow/StepRow.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/StepRow/StepRow.tsx",
+        "packages/datalab-ui/src/components/molecules/TokenRow/TokenRow.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/TokenRow/TokenRow.tsx",
+        "packages/datalab-ui/src/components/molecules/TruncationNotice/TruncationNotice.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/TruncationNotice/TruncationNotice.tsx",
+        "packages/datalab-ui/src/components/molecules/UploadItemRow/UploadItemRow.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/UploadItemRow/UploadItemRow.tsx",
+        "packages/datalab-ui/src/components/molecules/UploadQueueList/UploadQueueList.stories.tsx",
+        "packages/datalab-ui/src/components/molecules/UploadQueueList/UploadQueueList.tsx",
+        "packages/datalab-ui/src/components/organisms/BriefChecklist/BriefChecklist.tsx",
+        "packages/datalab-ui/src/components/organisms/BundleDialog/BundleDialog.tsx",
+        "packages/datalab-ui/src/components/organisms/ChartPanel/ChartPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/ChartsPanel/ChartsPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/ComparePanel/ComparePanel.tsx",
+        "packages/datalab-ui/src/components/organisms/EncodingPanel/EncodingPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/GalleryPanel/GalleryPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx",
+        "packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherResults.tsx",
+        "packages/datalab-ui/src/components/organisms/LessonRail/LessonRail.stories.tsx",
+        "packages/datalab-ui/src/components/organisms/LessonRail/LessonRail.tsx",
+        "packages/datalab-ui/src/components/organisms/LessonRail/RailHeader.tsx",
+        "packages/datalab-ui/src/components/organisms/MemberPanel/MemberPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/ModuleRack/ModuleRack.tsx",
+        "packages/datalab-ui/src/components/organisms/PipelinePanel/PipelinePanel.tsx",
+        "packages/datalab-ui/src/components/organisms/ProfilePanel/ProfilePanel.tsx",
+        "packages/datalab-ui/src/components/organisms/SignInPanel/SignInPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/SignUpPanel/SignUpPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/SourcePanel/SourcePanel.tsx",
+        "packages/datalab-ui/src/components/organisms/StageBar/StageBar.stories.tsx",
+        "packages/datalab-ui/src/components/organisms/StageBar/StageBar.tsx",
+        "packages/datalab-ui/src/components/organisms/TablePanel/TablePanel.tsx",
+        "packages/datalab-ui/src/components/organisms/TemplateTable/TemplateTable.tsx",
+        "packages/datalab-ui/src/components/organisms/Tile/Tile.tsx",
+        "packages/datalab-ui/src/components/organisms/TokensPanel/TokensPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/TracePanel/TracePanel.tsx",
+        "packages/datalab-ui/src/components/organisms/UploadPanel/UploadPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/ViewSwitcher/ViewSwitcher.tsx",
+        "packages/datalab-ui/src/components/organisms/WatchlistPanel/WatchlistPanel.tsx",
+        "packages/datalab-ui/src/components/organisms/WorkspaceStrip/WorkspaceStrip.stories.tsx",
+        "packages/datalab-ui/src/components/organisms/WorkspaceStrip/WorkspaceStrip.tsx",
+        "packages/datalab-ui/src/components/pages/DeviceApprovalPage/DeviceApprovalPage.tsx",
+        "packages/datalab-ui/src/components/pages/MarketingPage/MarketingPage.tsx",
+        "packages/datalab-ui/src/components/pages/TourSection/TourSection.tsx",
+        "packages/datalab-ui/src/components/pages/TutorialBand/TutorialBand.tsx",
+        "packages/datalab-ui/src/components/pages/Workbench/Workbench.tsx",
+        "packages/datalab-ui/src/components/pages/Workbench/WorkbenchProviders.test.tsx",
+        "packages/datalab-ui/src/components/pages/Workbench/WorkbenchShell.tsx",
+        "packages/datalab-ui/src/pbui/Pbui.stories.tsx",
+        "packages/datalab-ui/src/pbui/actions.ts",
+        "packages/datalab-ui/src/pbui/help.tsx",
+        "packages/datalab-ui/src/pbui/presentation.ts",
+        "packages/datalab-ui/src/pbui/registry.ts",
+        "packages/datalab-ui/src/pbui/runtime.tsx",
+        "packages/datalab-ui/src/styles.ts",
+        "packages/datalab-ui/test/shortcut-routing.test.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/datalab-ui",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": [
+        "packages/datalab-ui/src/appkit/workbench.ts",
+        "packages/datalab-ui/src/appkit/workbenchApps.ts",
+        "packages/datalab-ui/src/components/organisms/Tile/Tile.stories.tsx",
+        "packages/datalab-ui/src/components/organisms/Tile/Tile.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/datalab-ui",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/datalab-ui/src/appkit/lessons.ts",
+        "packages/datalab-ui/src/appkit/workbench.ts",
+        "packages/datalab-ui/src/appkit/workbenchApps.ts",
+        "packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx",
+        "packages/datalab-ui/src/components/pages/Workbench/WorkbenchShell.tsx",
+        "packages/datalab-ui/src/store/bundles.ts",
+        "packages/datalab-ui/src/store/controller.ts",
+        "packages/datalab-ui/src/store/effects.ts",
+        "packages/datalab-ui/src/store/graphicSource.ts",
+        "packages/datalab-ui/src/store/merge.ts",
+        "packages/datalab-ui/src/store/migrateV5.ts",
+        "packages/datalab-ui/src/store/persist.ts",
+        "packages/datalab-ui/src/store/runtime.ts",
+        "packages/datalab-ui/src/store/seed.ts",
+        "packages/datalab-ui/src/tour/lessons/brief.tsx",
+        "packages/datalab-ui/src/tour/lessons/layout.tsx",
+        "packages/datalab-ui/test/controller.test.ts",
+        "packages/datalab-ui/test/effects.test.ts",
+        "packages/datalab-ui/test/graphic-source.test.ts",
+        "packages/datalab-ui/test/lessons.test.ts",
+        "packages/datalab-ui/test/portable.test.ts",
+        "packages/datalab-ui/test/remote-load.test.ts",
+        "packages/datalab-ui/test/seed.test.ts",
+        "packages/datalab-ui/test/stages.test.ts",
+        "packages/datalab-ui/test/store.test.ts",
+        "packages/datalab-ui/test/workbench-verbs.test.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/datalab-ui",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": "dependencies",
+      "imports": [
+        "packages/datalab-ui/src/api/client.ts",
+        "packages/datalab-ui/src/api/workbenchProtocol.ts",
+        "packages/datalab-ui/src/appkit/DatalabWorkbenchContext.tsx",
+        "packages/datalab-ui/src/appkit/registry.ts",
+        "packages/datalab-ui/src/apps/tiles.stories.tsx",
+        "packages/datalab-ui/src/components/organisms/BriefChecklist/BriefChecklist.stories.tsx",
+        "packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.stories.tsx",
+        "packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx",
+        "packages/datalab-ui/src/components/organisms/Tile/Tile.tsx",
+        "packages/datalab-ui/src/components/organisms/ViewSwitcher/ViewSwitcher.stories.tsx",
+        "packages/datalab-ui/src/components/organisms/ViewSwitcher/launcherIndex.logic.ts",
+        "packages/datalab-ui/src/components/organisms/ViewSwitcher/model.ts",
+        "packages/datalab-ui/src/components/pages/TutorialBand/TutorialBand.tsx",
+        "packages/datalab-ui/src/remote/codec.ts",
+        "packages/datalab-ui/src/remote/projection.ts",
+        "packages/datalab-ui/src/store/bundles.ts",
+        "packages/datalab-ui/src/store/controller.ts",
+        "packages/datalab-ui/src/store/effects.ts",
+        "packages/datalab-ui/src/store/graphicSource.ts",
+        "packages/datalab-ui/src/store/merge.ts",
+        "packages/datalab-ui/src/store/migrateV5.ts",
+        "packages/datalab-ui/src/store/persist.ts",
+        "packages/datalab-ui/src/store/runtime.ts",
+        "packages/datalab-ui/src/store/seed.ts",
+        "packages/datalab-ui/test/controller.test.ts",
+        "packages/datalab-ui/test/effects.test.ts",
+        "packages/datalab-ui/test/graphic-source.test.ts",
+        "packages/datalab-ui/test/helpers/layoutShape.ts",
+        "packages/datalab-ui/test/launcher-index.test.ts",
+        "packages/datalab-ui/test/migration-goldens.test.ts",
+        "packages/datalab-ui/test/portable.test.ts",
+        "packages/datalab-ui/test/remote-codec.test.ts",
+        "packages/datalab-ui/test/remote-load.test.ts",
+        "packages/datalab-ui/test/stages.test.ts",
+        "packages/datalab-ui/test/store.test.ts",
+        "packages/datalab-ui/test/view-switcher.test.ts",
+        "packages/datalab-ui/test/workbench-verbs.test.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat-demo",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/demo/src/App.tsx",
+        "packages/pbui-chat/demo/src/apps/InventoryApp/InventoryApp.tsx",
+        "packages/pbui-chat/demo/src/apps/MetalsApp/MetalsApp.tsx",
+        "packages/pbui-chat/demo/src/apps/NotesApp/NotesApp.tsx",
+        "packages/pbui-chat/demo/src/apps/SkuApp/SkuApp.tsx",
+        "packages/pbui-chat/demo/src/apps/createDemoApps.ts",
+        "packages/pbui-chat/demo/src/main.tsx",
+        "packages/pbui-chat/demo/src/pbui/actions.ts",
+        "packages/pbui-chat/demo/src/pbui/menu-goldens.test.ts",
+        "packages/pbui-chat/demo/src/pbui/registry.ts",
+        "packages/pbui-chat/demo/src/pbui/relations.ts",
+        "packages/pbui-chat/demo/src/pbui/runtime.tsx",
+        "packages/pbui-chat/demo/src/world.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat-demo",
+      "to": "@hyperslop-systems/pbui-chat",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/demo/scripts/export-vocabulary.ts",
+        "packages/pbui-chat/demo/src/App.tsx",
+        "packages/pbui-chat/demo/src/chat.ts",
+        "packages/pbui-chat/demo/src/main.tsx",
+        "packages/pbui-chat/demo/src/pbui/actions.ts",
+        "packages/pbui-chat/demo/src/pbui/types.ts",
+        "packages/pbui-chat/demo/src/pbui/verbs.ts",
+        "packages/pbui-chat/demo/src/pbui/vocabulary.ts",
+        "packages/pbui-chat/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat-demo",
+      "to": "@hyperslop-systems/pbui-sandbox",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/demo/src/App.tsx",
+        "packages/pbui-chat/demo/src/chat.ts",
+        "packages/pbui-chat/demo/src/main.tsx",
+        "packages/pbui-chat/demo/src/pbui/actions.ts",
+        "packages/pbui-chat/demo/src/pbui/vocabulary.ts",
+        "packages/pbui-chat/demo/src/sandbox.ts",
+        "packages/pbui-chat/demo/src/sandbox.worker.ts",
+        "packages/pbui-chat/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat-demo",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/demo/src/App.tsx",
+        "packages/pbui-chat/demo/src/apps/InventoryApp/InventoryApp.tsx",
+        "packages/pbui-chat/demo/src/apps/NotesApp/NotesApp.tsx",
+        "packages/pbui-chat/demo/src/apps/SkuApp/SkuApp.tsx",
+        "packages/pbui-chat/demo/src/apps/createDemoApps.ts",
+        "packages/pbui-chat/demo/src/chat.ts",
+        "packages/pbui-chat/demo/src/main.tsx",
+        "packages/pbui-chat/demo/src/pbui/actions.ts",
+        "packages/pbui-chat/demo/src/pbui/verbs.ts",
+        "packages/pbui-chat/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat-demo",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/demo/src/App.tsx",
+        "packages/pbui-chat/demo/src/chat.ts",
+        "packages/pbui-chat/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat-demo",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/demo/src/apps/NotesApp/NotesApp.tsx",
+        "packages/pbui-chat/demo/src/apps/SkuApp/SkuApp.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "peerDependencies",
+      "imports": [
+        "packages/pbui-chat/src/apps/ChatApp/ChatApp.tsx",
+        "packages/pbui-chat/src/apps/WidgetApp/WidgetApp.tsx",
+        "packages/pbui-chat/src/apps/createChatApps.tsx",
+        "packages/pbui-chat/src/apps/createConversationApps.tsx",
+        "packages/pbui-chat/src/composer/Composer/Composer.tsx",
+        "packages/pbui-chat/src/context.tsx",
+        "packages/pbui-chat/src/conversations/ActiveConversationScope.tsx",
+        "packages/pbui-chat/src/conversations/ContextTile/ContextTile.tsx",
+        "packages/pbui-chat/src/conversations/ConversationScope.tsx",
+        "packages/pbui-chat/src/conversations/ConversationsTile/ConversationsTile.tsx",
+        "packages/pbui-chat/src/conversations/EventsTile/EventsTile.tsx",
+        "packages/pbui-chat/src/conversations/RunsTile/RunsTile.tsx",
+        "packages/pbui-chat/src/conversations/ToolsTile/ToolsTile.tsx",
+        "packages/pbui-chat/src/createPbuiChat.tsx",
+        "packages/pbui-chat/src/markdown/PbuiMarkdown/PbuiMarkdown.tsx",
+        "packages/pbui-chat/src/messages/MessageRow/MessageRow.tsx",
+        "packages/pbui-chat/src/messages/Messages/Messages.tsx",
+        "packages/pbui-chat/src/messages/ToolCard/ToolCard.tsx",
+        "packages/pbui-chat/src/panels/ChatInspectorPanel/ChatInspectorPanel.tsx",
+        "packages/pbui-chat/src/panels/TilesPanel/TilesPanel.tsx",
+        "packages/pbui-chat/src/panels/TracePanel/TracePanel.tsx",
+        "packages/pbui-chat/src/panels/WatchlistPanel/WatchlistPanel.tsx",
+        "packages/pbui-chat/src/presentation.ts",
+        "packages/pbui-chat/src/tools/AcceptStatus/AcceptStatus.tsx",
+        "packages/pbui-chat/src/tools/ProposalCard/ProposalCard.tsx",
+        "packages/pbui-chat/src/tools/sandboxTools.test.ts",
+        "packages/pbui-chat/src/tools/workbenchTools.test.ts",
+        "packages/pbui-chat/src/types.ts",
+        "packages/pbui-chat/src/widget/PbuiWidget/PbuiWidget.stories.tsx",
+        "packages/pbui-chat/src/widget/PbuiWidget/PbuiWidget.tsx",
+        "packages/pbui-chat/src/widget/VerbChips/VerbChips.tsx",
+        "packages/pbui-chat/src/widget/children/FormChild/FormChild.tsx",
+        "packages/pbui-chat/src/widget/children/LogChild/LogChild.tsx",
+        "packages/pbui-chat/src/widget/children/StatChild/StatChild.tsx",
+        "packages/pbui-chat/src/widget/children/TableChild/TableChild.tsx",
+        "packages/pbui-chat/src/widget/children/WidgetChild/WidgetChild.tsx",
+        "packages/pbui-chat/src/widget/definitions.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat",
+      "to": "@hyperslop-systems/pbui-sandbox",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/src/createPbuiChat.tsx",
+        "packages/pbui-chat/src/tools/sandboxTools.test.ts",
+        "packages/pbui-chat/src/tools/sandboxTools.ts",
+        "packages/pbui-chat/src/vocabulary/defineVocabulary.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/src/apps/ChatApp/ChatApp.tsx",
+        "packages/pbui-chat/src/apps/createChatApps.tsx",
+        "packages/pbui-chat/src/apps/createConversationApps.tsx",
+        "packages/pbui-chat/src/conversations/ContextTile/ContextTile.tsx",
+        "packages/pbui-chat/src/conversations/verbs.ts",
+        "packages/pbui-chat/src/createPbuiChat.tsx",
+        "packages/pbui-chat/src/tools/sandboxTools.test.ts",
+        "packages/pbui-chat/src/tools/sandboxTools.ts",
+        "packages/pbui-chat/src/tools/workbenchTools.test.ts",
+        "packages/pbui-chat/src/tools/workbenchTools.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/src/conversations/verbs.ts",
+        "packages/pbui-chat/src/createPbuiChat.tsx",
+        "packages/pbui-chat/src/tools/sandboxTools.test.ts",
+        "packages/pbui-chat/src/tools/workbenchTools.test.ts",
+        "packages/pbui-chat/src/tools/workbenchTools.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-chat",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-chat/src/apps/ChatApp/ChatApp.stories.tsx",
+        "packages/pbui-chat/src/apps/WidgetApp/WidgetApp.stories.tsx",
+        "packages/pbui-chat/src/apps/WidgetApp/WidgetApp.tsx",
+        "packages/pbui-chat/src/createPbuiChat.tsx",
+        "packages/pbui-chat/src/tools/workbenchTools.test.ts",
+        "packages/pbui-chat/src/tools/workbenchTools.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-ecommerce-demo",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-ecommerce/demo/src/App.tsx",
+        "packages/pbui-ecommerce/demo/src/main.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-ecommerce-demo",
+      "to": "@hyperslop-systems/pbui-ecommerce",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-ecommerce/demo/src/App.tsx",
+        "packages/pbui-ecommerce/demo/src/main.tsx",
+        "packages/pbui-ecommerce/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-ecommerce-demo",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-ecommerce/demo/src/main.tsx",
+        "packages/pbui-ecommerce/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-ecommerce-demo",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-ecommerce/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-ecommerce",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-ecommerce/src/ShopShell/ShopShell.stories.tsx",
+        "packages/pbui-ecommerce/src/ShopShell/ShopShell.tsx",
+        "packages/pbui-ecommerce/src/apps.tsx",
+        "packages/pbui-ecommerce/src/linking.test.tsx",
+        "packages/pbui-ecommerce/src/presentation/actions.ts",
+        "packages/pbui-ecommerce/src/presentation/registry.ts",
+        "packages/pbui-ecommerce/src/presentation/relations.ts",
+        "packages/pbui-ecommerce/src/presentation/runtime.tsx",
+        "packages/pbui-ecommerce/src/stories/harness.tsx",
+        "packages/pbui-ecommerce/src/tiles/CustomerDetail/CustomerDetail.stories.tsx",
+        "packages/pbui-ecommerce/src/tiles/CustomerDetail/CustomerDetail.tsx",
+        "packages/pbui-ecommerce/src/tiles/CustomersTable/CustomersTable.tsx",
+        "packages/pbui-ecommerce/src/tiles/Inspector/Inspector.stories.tsx",
+        "packages/pbui-ecommerce/src/tiles/Inspector/Inspector.tsx",
+        "packages/pbui-ecommerce/src/tiles/OrderDetail/OrderDetail.tsx",
+        "packages/pbui-ecommerce/src/tiles/OrdersTable/OrdersTable.tsx",
+        "packages/pbui-ecommerce/src/tiles/ProductCatalog/ProductCatalog.tsx",
+        "packages/pbui-ecommerce/src/tiles/ShopPlot/ShopPlot.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-ecommerce",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-ecommerce/src/ShopShell/ShopShell.tsx",
+        "packages/pbui-ecommerce/src/apps.tsx",
+        "packages/pbui-ecommerce/src/createShop.ts",
+        "packages/pbui-ecommerce/src/presentation/actions.ts",
+        "packages/pbui-ecommerce/src/presentation/runtime.tsx",
+        "packages/pbui-ecommerce/src/presentation/types.ts",
+        "packages/pbui-ecommerce/src/stories/harness.tsx",
+        "packages/pbui-ecommerce/src/tiles/CustomerDetail/CustomerDetail.tsx",
+        "packages/pbui-ecommerce/src/tiles/CustomersTable/CustomersTable.tsx",
+        "packages/pbui-ecommerce/src/tiles/Inspector/Inspector.tsx",
+        "packages/pbui-ecommerce/src/tiles/OrderDetail/OrderDetail.tsx",
+        "packages/pbui-ecommerce/src/tiles/OrdersTable/OrdersTable.tsx",
+        "packages/pbui-ecommerce/src/tiles/ProductCatalog/ProductCatalog.tsx",
+        "packages/pbui-ecommerce/src/tiles/ShopPlot/ShopPlot.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-ecommerce",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-ecommerce/src/ShopShell/ShopShell.stories.tsx",
+        "packages/pbui-ecommerce/src/linking.test.tsx",
+        "packages/pbui-ecommerce/src/seed.ts",
+        "packages/pbui-ecommerce/src/shop.test.tsx",
+        "packages/pbui-ecommerce/src/stories/harness.tsx",
+        "packages/pbui-ecommerce/src/tiles/CustomerDetail/CustomerDetail.stories.tsx",
+        "packages/pbui-ecommerce/src/tiles/CustomersTable/CustomersTable.stories.tsx",
+        "packages/pbui-ecommerce/src/tiles/Inspector/Inspector.stories.tsx",
+        "packages/pbui-ecommerce/src/tiles/OrderDetail/OrderDetail.stories.tsx",
+        "packages/pbui-ecommerce/src/tiles/OrdersTable/OrdersTable.stories.tsx",
+        "packages/pbui-ecommerce/src/tiles/ProductCatalog/ProductCatalog.stories.tsx",
+        "packages/pbui-ecommerce/src/tiles/ShopPlot/ShopPlot.stories.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-ecommerce",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-ecommerce/src/createShop.ts",
+        "packages/pbui-ecommerce/src/document.ts",
+        "packages/pbui-ecommerce/src/seed.ts",
+        "packages/pbui-ecommerce/src/stories/harness.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-editor",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-editor/scripts/consumer-smoke.mjs",
+        "packages/pbui-editor/src/CodeEditor/CodeEditor.stories.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-editor",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": []
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript-demo",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/demo/src/App.tsx",
+        "packages/pbui-plotscript/demo/src/main.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript-demo",
+      "to": "@hyperslop-systems/pbui-editor",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/demo/src/main.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript-demo",
+      "to": "@hyperslop-systems/pbui-plotscript",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/demo/src/main.tsx",
+        "packages/pbui-plotscript/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript-demo",
+      "to": "@hyperslop-systems/pbui-sandbox",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/demo/src/main.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript-demo",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/demo/src/main.tsx",
+        "packages/pbui-plotscript/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript-demo",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript-demo",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": null,
+      "imports": [
+        "packages/pbui-plotscript/demo/src/workbench.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/src/PlotTile/PlotTile.tsx",
+        "packages/pbui-plotscript/src/ScriptTile/ScriptTile.tsx",
+        "packages/pbui-plotscript/src/apps.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript",
+      "to": "@hyperslop-systems/pbui-editor",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/src/ScriptTile/ScriptTile.tsx",
+        "packages/pbui-plotscript/src/tiles.test.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript",
+      "to": "@hyperslop-systems/pbui-sandbox",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/src/ScriptTile/ScriptTile.tsx",
+        "packages/pbui-plotscript/src/examples.test.ts",
+        "packages/pbui-plotscript/src/host.ts",
+        "packages/pbui-plotscript/src/runner.test.ts",
+        "packages/pbui-plotscript/src/runner.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/src/PlotTile/PlotTile.tsx",
+        "packages/pbui-plotscript/src/ScriptTile/ScriptTile.tsx",
+        "packages/pbui-plotscript/src/Tiles.stories.tsx",
+        "packages/pbui-plotscript/src/apps.tsx",
+        "packages/pbui-plotscript/src/connect.test.ts",
+        "packages/pbui-plotscript/src/examples.test.ts",
+        "packages/pbui-plotscript/src/tiles.test.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/src/Tiles.stories.tsx",
+        "packages/pbui-plotscript/src/connect.test.ts",
+        "packages/pbui-plotscript/src/connect.ts",
+        "packages/pbui-plotscript/src/document.test.ts",
+        "packages/pbui-plotscript/src/examples.test.ts",
+        "packages/pbui-plotscript/src/tiles.test.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-plotscript",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-plotscript/src/Tiles.stories.tsx",
+        "packages/pbui-plotscript/src/apps.tsx",
+        "packages/pbui-plotscript/src/connect.test.ts",
+        "packages/pbui-plotscript/src/document.test.ts",
+        "packages/pbui-plotscript/src/document.ts",
+        "packages/pbui-plotscript/src/examples.test.ts",
+        "packages/pbui-plotscript/src/tiles.test.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-sandbox",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-sandbox/src/ScriptTile/ScriptTile.tsx",
+        "packages/pbui-sandbox/src/actions.ts",
+        "packages/pbui-sandbox/src/createScriptApp.tsx",
+        "packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.tsx",
+        "packages/pbui-sandbox/src/devtools/InspectorTile/StatePane.tsx",
+        "packages/pbui-sandbox/src/devtools/InspectorTile/TreeOutline.tsx",
+        "packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.tsx",
+        "packages/pbui-sandbox/src/devtools/ReplTile/ReplTile.tsx",
+        "packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx",
+        "packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx",
+        "packages/pbui-sandbox/src/devtools/createSandboxDevtools.tsx",
+        "packages/pbui-sandbox/src/render/UINodeRenderer/UINodeRenderer.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-sandbox",
+      "to": "@hyperslop-systems/pbui-editor",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.test.tsx",
+        "packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.tsx",
+        "packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.test.tsx",
+        "packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-sandbox",
+      "to": "@hyperslop-systems/pbui-workbench",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-sandbox/src/ScriptTile/ScriptTile.tsx",
+        "packages/pbui-sandbox/src/createScriptApp.tsx",
+        "packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx",
+        "packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx",
+        "packages/pbui-sandbox/src/devtools/createSandboxDevtools.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-sandbox",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-sandbox/src/ScriptTile/ScriptTile.tsx",
+        "packages/pbui-sandbox/src/connect.ts",
+        "packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx",
+        "packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-sandbox",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-sandbox/src/ScriptTile/ScriptTile.tsx",
+        "packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.tsx",
+        "packages/pbui-sandbox/src/devtools/PlaygroundTile/PlaygroundTile.tsx",
+        "packages/pbui-sandbox/src/devtools/ReplTile/ReplTile.tsx",
+        "packages/pbui-sandbox/src/devtools/SourceTile/SourceTile.tsx",
+        "packages/pbui-sandbox/src/devtools/TimelineTile/TimelineTile.tsx"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-workbench",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-workbench/src/actions.test.ts",
+        "packages/pbui-workbench/src/actions.ts",
+        "packages/pbui-workbench/src/app.test.ts",
+        "packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.stories.tsx",
+        "packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.tsx",
+        "packages/pbui-workbench/src/components/Launcher/Launcher.test.tsx",
+        "packages/pbui-workbench/src/components/Launcher/Launcher.tsx",
+        "packages/pbui-workbench/src/components/LinkAnnouncer/LinkAnnouncer.stories.tsx",
+        "packages/pbui-workbench/src/components/LinkAnnouncer/LinkAnnouncer.tsx",
+        "packages/pbui-workbench/src/components/PortBadge/PortBadge.stories.tsx",
+        "packages/pbui-workbench/src/components/PortBadge/PortBadge.tsx",
+        "packages/pbui-workbench/src/components/PortRail/PortRail.stories.tsx",
+        "packages/pbui-workbench/src/components/PortRail/PortRail.tsx",
+        "packages/pbui-workbench/src/components/RebalanceBadge/RebalanceBadge.tsx",
+        "packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx",
+        "packages/pbui-workbench/src/components/RebalanceSettings/RebalanceSettings.tsx",
+        "packages/pbui-workbench/src/components/RelationPalette/RelationPalette.stories.tsx",
+        "packages/pbui-workbench/src/components/RelationPalette/RelationPalette.tsx",
+        "packages/pbui-workbench/src/components/ShowChooser/ShowChooser.stories.tsx",
+        "packages/pbui-workbench/src/components/ShowChooser/ShowChooser.tsx",
+        "packages/pbui-workbench/src/components/Surface/Surface.stories.tsx",
+        "packages/pbui-workbench/src/components/Surface/Surface.tsx",
+        "packages/pbui-workbench/src/components/Tile/Tile.stories.tsx",
+        "packages/pbui-workbench/src/components/Tile/Tile.tsx",
+        "packages/pbui-workbench/src/components/WireLayer/WireLayer.stories.tsx",
+        "packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx",
+        "packages/pbui-workbench/src/components/WorkspaceStrip/WorkspaceStrip.stories.tsx",
+        "packages/pbui-workbench/src/components/WorkspaceStrip/WorkspaceStrip.tsx",
+        "packages/pbui-workbench/src/createWorkbenchShell.tsx",
+        "packages/pbui-workbench/src/launcherRows.ts",
+        "packages/pbui-workbench/src/linkingGoldens.test.ts",
+        "packages/pbui-workbench/src/links/connect.test.tsx",
+        "packages/pbui-workbench/src/links/contributions.ts",
+        "packages/pbui-workbench/src/links/derive.test.tsx",
+        "packages/pbui-workbench/src/links/hooks.ts",
+        "packages/pbui-workbench/src/links/identity.test.tsx",
+        "packages/pbui-workbench/src/links/linkRef.ts",
+        "packages/pbui-workbench/src/links/links.test.tsx",
+        "packages/pbui-workbench/src/links/portRef.ts",
+        "packages/pbui-workbench/src/links/show.test.tsx",
+        "packages/pbui-workbench/src/placement.ts",
+        "packages/pbui-workbench/src/stories/IdentityLab.stories.tsx",
+        "packages/pbui-workbench/src/stories/LinkLab.stories.tsx",
+        "packages/pbui-workbench/src/stories/RebalanceLab.stories.tsx",
+        "packages/pbui-workbench/src/stories/demoApps.tsx",
+        "packages/pbui-workbench/src/tileDescriptor.ts",
+        "packages/pbui-workbench/src/types.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-workbench",
+      "to": "@hyperslop-systems/workbench-core",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-workbench/src/actions.test.ts",
+        "packages/pbui-workbench/src/actions.ts",
+        "packages/pbui-workbench/src/app.ts",
+        "packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.stories.tsx",
+        "packages/pbui-workbench/src/components/Launcher/Launcher.stories.tsx",
+        "packages/pbui-workbench/src/components/Launcher/Launcher.test.tsx",
+        "packages/pbui-workbench/src/components/Launcher/Launcher.tsx",
+        "packages/pbui-workbench/src/components/LinkAnnouncer/LinkAnnouncer.stories.tsx",
+        "packages/pbui-workbench/src/components/PortRail/PortRail.stories.tsx",
+        "packages/pbui-workbench/src/components/RebalanceBadge/RebalanceBadge.stories.tsx",
+        "packages/pbui-workbench/src/components/RebalanceBadge/RebalanceBadge.test.tsx",
+        "packages/pbui-workbench/src/components/RebalanceBadge/RebalanceBadge.tsx",
+        "packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.stories.tsx",
+        "packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.test.tsx",
+        "packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx",
+        "packages/pbui-workbench/src/components/RebalanceSettings/RebalanceSettings.stories.tsx",
+        "packages/pbui-workbench/src/components/RebalanceSettings/RebalanceSettings.test.tsx",
+        "packages/pbui-workbench/src/components/RebalanceSettings/RebalanceSettings.tsx",
+        "packages/pbui-workbench/src/components/RelationPalette/RelationPalette.stories.tsx",
+        "packages/pbui-workbench/src/components/ShowChooser/ShowChooser.stories.tsx",
+        "packages/pbui-workbench/src/components/ShowChooser/ShowChooser.tsx",
+        "packages/pbui-workbench/src/components/SplitPane/SplitPane.stories.tsx",
+        "packages/pbui-workbench/src/components/SplitPane/SplitPane.tsx",
+        "packages/pbui-workbench/src/components/Surface/Surface.stories.tsx",
+        "packages/pbui-workbench/src/components/Surface/Surface.test.tsx",
+        "packages/pbui-workbench/src/components/Tile/Tile.stories.tsx",
+        "packages/pbui-workbench/src/components/Tile/Tile.tsx",
+        "packages/pbui-workbench/src/components/WireLayer/WireLayer.stories.tsx",
+        "packages/pbui-workbench/src/components/WorkspaceStrip/WorkspaceStrip.stories.tsx",
+        "packages/pbui-workbench/src/components/WorkspaceStrip/WorkspaceStrip.test.tsx",
+        "packages/pbui-workbench/src/components/WorkspaceStrip/WorkspaceStrip.tsx",
+        "packages/pbui-workbench/src/createWorkbenchShell.test.ts",
+        "packages/pbui-workbench/src/createWorkbenchShell.tsx",
+        "packages/pbui-workbench/src/geometry.test.ts",
+        "packages/pbui-workbench/src/geometry.ts",
+        "packages/pbui-workbench/src/launcherRows.ts",
+        "packages/pbui-workbench/src/linkingGoldens.test.ts",
+        "packages/pbui-workbench/src/links/connect.test.tsx",
+        "packages/pbui-workbench/src/links/contributions.ts",
+        "packages/pbui-workbench/src/links/derive.test.tsx",
+        "packages/pbui-workbench/src/links/hooks.ts",
+        "packages/pbui-workbench/src/links/identity.test.tsx",
+        "packages/pbui-workbench/src/links/links.test.tsx",
+        "packages/pbui-workbench/src/links/show.test.tsx",
+        "packages/pbui-workbench/src/placement.test.tsx",
+        "packages/pbui-workbench/src/placement.ts",
+        "packages/pbui-workbench/src/rebalance/configStore.ts",
+        "packages/pbui-workbench/src/shellState.ts",
+        "packages/pbui-workbench/src/stories/IdentityLab.stories.tsx",
+        "packages/pbui-workbench/src/stories/LinkLab.stories.tsx",
+        "packages/pbui-workbench/src/stories/RebalanceLab.stories.tsx",
+        "packages/pbui-workbench/src/tileDescriptor.test.ts",
+        "packages/pbui-workbench/src/tileDescriptor.ts",
+        "packages/pbui-workbench/src/types.ts",
+        "packages/pbui-workbench/src/verb.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/pbui-workbench",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": "dependencies",
+      "imports": [
+        "packages/pbui-workbench/src/app.ts",
+        "packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.stories.tsx",
+        "packages/pbui-workbench/src/components/Launcher/Launcher.test.tsx",
+        "packages/pbui-workbench/src/components/LinkAnnouncer/LinkAnnouncer.stories.tsx",
+        "packages/pbui-workbench/src/components/PortRail/PortRail.stories.tsx",
+        "packages/pbui-workbench/src/components/PortRail/PortRail.tsx",
+        "packages/pbui-workbench/src/components/RebalanceBadge/RebalanceBadge.tsx",
+        "packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.test.tsx",
+        "packages/pbui-workbench/src/components/RebalanceDialog/RebalanceDialog.tsx",
+        "packages/pbui-workbench/src/components/RelationPalette/RelationPalette.stories.tsx",
+        "packages/pbui-workbench/src/components/ShowChooser/ShowChooser.stories.tsx",
+        "packages/pbui-workbench/src/components/SplitPane/SplitPane.tsx",
+        "packages/pbui-workbench/src/components/Surface/Surface.test.tsx",
+        "packages/pbui-workbench/src/components/Surface/Surface.tsx",
+        "packages/pbui-workbench/src/components/Tile/Tile.tsx",
+        "packages/pbui-workbench/src/components/WireLayer/WireLayer.stories.tsx",
+        "packages/pbui-workbench/src/components/WorkspaceStrip/WorkspaceStrip.tsx",
+        "packages/pbui-workbench/src/launcherRows.ts",
+        "packages/pbui-workbench/src/linkingGoldens.test.ts",
+        "packages/pbui-workbench/src/links/connect.test.tsx",
+        "packages/pbui-workbench/src/links/derive.test.tsx",
+        "packages/pbui-workbench/src/links/hooks.ts",
+        "packages/pbui-workbench/src/links/identity.test.tsx",
+        "packages/pbui-workbench/src/links/links.test.tsx",
+        "packages/pbui-workbench/src/links/show.test.tsx",
+        "packages/pbui-workbench/src/placement.test.tsx",
+        "packages/pbui-workbench/src/rebalance/configStore.ts",
+        "packages/pbui-workbench/src/stories/IdentityLab.stories.tsx",
+        "packages/pbui-workbench/src/stories/LinkLab.stories.tsx",
+        "packages/pbui-workbench/src/tileDescriptor.test.ts",
+        "packages/pbui-workbench/src/types.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/workbench-core",
+      "to": "@hyperslop-systems/pbui",
+      "declared": "dependencies",
+      "imports": [
+        "packages/workbench-core/src/apps.ts",
+        "packages/workbench-core/src/binding.test.ts",
+        "packages/workbench-core/src/commands.test.ts",
+        "packages/workbench-core/src/commands.ts",
+        "packages/workbench-core/src/describe.test.ts",
+        "packages/workbench-core/src/describe.ts",
+        "packages/workbench-core/src/effects.ts",
+        "packages/workbench-core/src/execute.test.ts",
+        "packages/workbench-core/src/gateway.test.ts",
+        "packages/workbench-core/src/goldens/transitions.test.ts",
+        "packages/workbench-core/src/links/collaborator.ts",
+        "packages/workbench-core/src/links/document.ts",
+        "packages/workbench-core/src/links/runtime.ts",
+        "packages/workbench-core/src/links/snapshot.ts",
+        "packages/workbench-core/src/planner/links.ts",
+        "packages/workbench-core/src/sources.test.ts",
+        "packages/workbench-core/src/sync/sync.test.ts",
+        "packages/workbench-core/src/validation.test.ts"
+      ]
+    },
+    {
+      "from": "@hyperslop-systems/workbench-core",
+      "to": "@hyperslop-systems/workbench-protocol",
+      "declared": "dependencies",
+      "imports": [
+        "packages/workbench-core/scripts/generate-binding-fixtures.ts",
+        "packages/workbench-core/src/binding.test.ts",
+        "packages/workbench-core/src/binding.ts",
+        "packages/workbench-core/src/bindingFixtures.test.ts",
+        "packages/workbench-core/src/commands.ts",
+        "packages/workbench-core/src/createWorkbenchCore.test.ts",
+        "packages/workbench-core/src/createWorkbenchCore.ts",
+        "packages/workbench-core/src/describe.test.ts",
+        "packages/workbench-core/src/describe.ts",
+        "packages/workbench-core/src/document.test.ts",
+        "packages/workbench-core/src/document.ts",
+        "packages/workbench-core/src/effects.ts",
+        "packages/workbench-core/src/execute.test.ts",
+        "packages/workbench-core/src/gateway.test.ts",
+        "packages/workbench-core/src/goldens/transitions.test.ts",
+        "packages/workbench-core/src/graph.test.ts",
+        "packages/workbench-core/src/graph.ts",
+        "packages/workbench-core/src/ids.ts",
+        "packages/workbench-core/src/links/collaborator.ts",
+        "packages/workbench-core/src/links/document.ts",
+        "packages/workbench-core/src/links/snapshot.ts",
+        "packages/workbench-core/src/persistence/index.ts",
+        "packages/workbench-core/src/persistence/persistence.test.ts",
+        "packages/workbench-core/src/planner/placement.ts",
+        "packages/workbench-core/src/planner/plan.ts",
+        "packages/workbench-core/src/planner/show.ts",
+        "packages/workbench-core/src/planner/workspace.ts",
+        "packages/workbench-core/src/planner/world.ts",
+        "packages/workbench-core/src/policy.ts",
+        "packages/workbench-core/src/queries.test.ts",
+        "packages/workbench-core/src/queries.ts",
+        "packages/workbench-core/src/rebalance/analysisTree.test.ts",
+        "packages/workbench-core/src/rebalance/analysisTree.ts",
+        "packages/workbench-core/src/rebalance/configDocument.ts",
+        "packages/workbench-core/src/rebalance/law.test.ts",
+        "packages/workbench-core/src/rebalance/law.ts",
+        "packages/workbench-core/src/rebalance/propagate.test.ts",
+        "packages/workbench-core/src/rebalance/slate.perf.test.ts",
+        "packages/workbench-core/src/rebalance/slate.test.ts",
+        "packages/workbench-core/src/rebalance/slate.ts",
+        "packages/workbench-core/src/rebalance/strategies.test.ts",
+        "packages/workbench-core/src/rebalance/structural.test.ts",
+        "packages/workbench-core/src/rebalance/structural.ts",
+        "packages/workbench-core/src/rebalance/testTrees.ts",
+        "packages/workbench-core/src/session.ts",
+        "packages/workbench-core/src/sources.test.ts",
+        "packages/workbench-core/src/sources.ts",
+        "packages/workbench-core/src/sync/index.ts",
+        "packages/workbench-core/src/sync/sync.test.ts",
+        "packages/workbench-core/src/testing.ts",
+        "packages/workbench-core/src/validation.test.ts",
+        "packages/workbench-core/src/validation.ts"
+      ]
+    }
+  ]
+}
