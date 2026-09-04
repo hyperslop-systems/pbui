@@ -43,7 +43,7 @@ export function ProposalCard({ id, toolCallId, title, body, danger = false, fiel
   return (
     <Surface
       tone="pane"
-      border="firm"
+      border="none"
       padding={3}
       className={styles.card}
       role="group"

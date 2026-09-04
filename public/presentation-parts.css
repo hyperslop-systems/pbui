@@ -235,33 +235,44 @@ div[data-part="menu-item"] {
 
 /* ---- the accept banner -------------------------------------------------- */
 
+/* The mode banner: ink bar, paper text, the mode word in gold — the same
+ * recipe as the mouse-doc line and the workbench's placing banner. */
 [data-part="accept-banner"] {
   display: flex;
   align-items: center;
   gap: var(--pbui-space-3);
   flex-shrink: 0;
   padding: var(--pbui-space-1) var(--pbui-space-4);
-  background: var(--pbui-danger);
+  background: var(--pbui-ink);
   color: var(--pbui-paper);
-  font-weight: 700;
   font-size: var(--pbui-fs-small);
+}
+
+[data-part="accept-banner-mode"] {
+  color: var(--pbui-cat-3);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 [data-part="accept-banner-hint"] {
   margin-left: auto;
+  color: var(--pbui-faint-inverted);
   white-space: nowrap;
 }
 
 /* ---- the refusal notice (PBUI-KERNEL-4) --------------------------------- */
 
+/* The kernel's notice: the Callout recipe (paper, hairline, 4px tone edge),
+ * severity danger. */
 [data-part="refusal-notice"] {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--pbui-space-3);
-  padding: var(--pbui-space-2) var(--pbui-space-4);
-  border: 1px solid var(--pbui-danger);
-  border-left-width: 4px;
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  border: var(--pbui-border-hair);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-danger);
+  border-radius: var(--pbui-radius);
   background: var(--pbui-paper);
   color: var(--pbui-ink);
   font-size: var(--pbui-fs-small);

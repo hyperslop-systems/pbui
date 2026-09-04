@@ -16,7 +16,7 @@ function DocumentWidget({ instanceId, status, props }: WidgetProps) {
   const problem = validateWidgetDocument(chat.vocabulary, props, DEFAULT_WIDGET_LIMITS, { verbs: "lenient" });
   if (problem) {
     return (
-      <Callout variant="warning" title="invalid widget document">
+      <Callout variant="danger" title="invalid widget document">
         {problem}
       </Callout>
     );
@@ -35,7 +35,7 @@ function DocumentWidget({ instanceId, status, props }: WidgetProps) {
 function ErrorWidget({ props }: WidgetProps) {
   const message = typeof props.message === "string" ? props.message : "the server could not publish this widget";
   return (
-    <Callout variant="warning" title="widget error">
+    <Callout variant="danger" title="widget error">
       {message}
     </Callout>
   );

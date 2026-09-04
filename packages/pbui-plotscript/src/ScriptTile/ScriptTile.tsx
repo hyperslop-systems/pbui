@@ -1,4 +1,4 @@
-import { AppBody, Button, Chip, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, Button, Callout, Chip, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
 import { CodeEditor } from "@hyperslop-systems/pbui-editor";
 import { byteLength, describeScriptResultProblem } from "@hyperslop-systems/pbui-sandbox";
 import { useWorkbench, type AppProps } from "@hyperslop-systems/pbui-workbench";
@@ -99,9 +99,11 @@ function RunPane({ run }: { run: ScriptRunState }) {
   return (
     <div data-part="plot-script-output" className={styles.output} aria-live="polite">
       {message ? (
-        <Text size="tiny" tone="danger" className={styles.message}>
-          {message}
-        </Text>
+        <Callout variant="danger" title={run.status === "invalid" ? "the script returned something the plot cannot draw" : "the script threw"}>
+          <Text size="tiny" className={styles.message}>
+            {message}
+          </Text>
+        </Callout>
       ) : null}
       {run.logs.map((log, index) => (
         <Text key={index} size="tiny" tone={log.level === "error" || log.level === "warn" ? "danger" : "faint"} className={styles.log}>

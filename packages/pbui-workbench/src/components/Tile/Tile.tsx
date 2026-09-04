@@ -161,7 +161,7 @@ class TileBoundary extends ReactComponent<TileBoundaryProps, { error: Error | nu
     if (!this.state.error) return this.props.children;
     return (
       <div className={styles.empty}>
-        <Callout variant="warning" title={`${this.props.title} could not render`}>
+        <Callout variant="danger" title={`${this.props.title} could not render`}>
           <Text size="small" prose>
             {this.state.error.message}
           </Text>

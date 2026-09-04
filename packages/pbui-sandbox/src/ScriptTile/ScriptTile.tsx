@@ -100,7 +100,7 @@ export function ScriptTile({ placementId, view, host }: ScriptTileProps) {
       </Toolbar>
 
       {instance.error ? (
-        <Callout variant="warning" title={`program error (${instance.error.phase ?? "run"}, ${instance.error.code})`}>
+        <Callout variant="danger" title={`program error (${instance.error.phase ?? "run"}, ${instance.error.code})`}>
           <Text size="tiny" prose>
             {instance.error.message}
           </Text>

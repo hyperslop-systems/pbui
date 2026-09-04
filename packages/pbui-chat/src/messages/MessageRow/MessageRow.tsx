@@ -64,7 +64,7 @@ export function MessageRow({ entity }: MessageRowProps) {
   if (role === "error") {
     return (
       <div data-part="message" data-role="error">
-        <Callout variant="warning" title="the run failed">
+        <Callout variant="danger" title="the run failed">
           {content}
         </Callout>
       </div>

@@ -1147,7 +1147,7 @@ export function createPbui<
         role="status"
         aria-live="assertive"
       >
-        <span>ACCEPTING &lt;{wanted}&gt;</span>
+        <span data-part="accept-banner-mode">ACCEPTING &lt;{wanted}&gt;</span>
         <span>{accepting.prompt}</span>
         <span data-part="accept-banner-hint">works across tiles and workspaces · Esc aborts</span>
       </div>

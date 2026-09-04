@@ -77,23 +77,25 @@ export const TheOneTimeSecret: Story = {
 };
 
 /**
- * Why there is no `danger` variant.
- *
- * A Callout reports a state worth knowing. A *failure* is `ErrorNotice`, which
- * announces as an alert. Merging them would mean either announcing every
- * informational panel as an alert, or announcing no failure as one.
+ * Four severities, one recipe. The 4px edge is the severity in colour; the
+ * glyph in the title is the severity in greyscale. `danger` announces as an
+ * alert, the other three as status — which is why a danger variant used to be
+ * refused, and why it is drawn as the same box now that the role differs.
  */
 export const VariantsSurviveGreyscale: Story = {
   render: () => (
     <Stack gap={3}>
       <Callout variant="info" title="Info">
-        <Text size="small">no glyph</Text>
+        <Text size="small">no glyph, neutral edge</Text>
       </Callout>
       <Callout variant="ok" title="Done">
-        <Text size="small">✓ prefix</Text>
+        <Text size="small">✓ prefix, ok edge</Text>
       </Callout>
       <Callout variant="warning" title="Waiting">
-        <Text size="small">⚠ prefix</Text>
+        <Text size="small">⚠ prefix, gold edge</Text>
+      </Callout>
+      <Callout variant="danger" title="Program error (run, E_RUNTIME)" hint="fix the script and run it again" onDismiss={() => {}}>
+        <Text size="small">✕ prefix, danger edge, announced as an alert</Text>
       </Callout>
     </Stack>
   ),

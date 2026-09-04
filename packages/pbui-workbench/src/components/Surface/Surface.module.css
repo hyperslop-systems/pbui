@@ -34,5 +34,6 @@
 }
 
 .placing b {
+  color: var(--pbui-cat-3);
   font-weight: 700;
 }
