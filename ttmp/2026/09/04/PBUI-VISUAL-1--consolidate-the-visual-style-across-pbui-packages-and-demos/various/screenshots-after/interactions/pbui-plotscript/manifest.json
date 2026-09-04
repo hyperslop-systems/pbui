@@ -1,0 +1,9 @@
+[
+  {
+    "n": 1,
+    "story": "plotscript-tiles--editor-beside-plot",
+    "slug": "live-edit-error-diagnostic",
+    "description": "Typing a script that throws into the live script tile: the plot pane drops its last plot and shows the engine's error, without navigating to a dedicated 'throwing' story.",
+    "file": "001-live-edit-error-diagnostic.png"
+  }
+]

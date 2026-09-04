@@ -1,0 +1,26 @@
+[
+  {
+    "n": 1,
+    "id": "sandbox-devtools--playground",
+    "title": "Sandbox/Devtools",
+    "name": "playground: the draft in a CodeEditor, run live",
+    "file": "001-sandbox-devtools--playground.png",
+    "size": "1280x569"
+  },
+  {
+    "n": 2,
+    "id": "sandbox-devtools--source",
+    "title": "Sandbox/Devtools",
+    "name": "source: a read-only CodeEditor with versions and diff",
+    "file": "002-sandbox-devtools--source.png",
+    "size": "1280x569"
+  },
+  {
+    "n": 3,
+    "id": "visual-audit-sandbox-devtools--all-devtools",
+    "title": "Visual Audit/Sandbox Devtools",
+    "name": "script tile + inspector + timeline + REPL, one running instance",
+    "file": "003-visual-audit-sandbox-devtools--all-devtools.png",
+    "size": "1280x682"
+  }
+]

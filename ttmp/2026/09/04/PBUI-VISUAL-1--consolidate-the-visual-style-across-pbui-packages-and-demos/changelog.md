@@ -103,3 +103,12 @@ P6 labels/TileHeader/KeyValueList: 16 headers and 5 facts grids on shared compon
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/organisms/TileHeader/TileHeader.tsx — Shared tile header
 
+
+## 2026-09-04
+
+P8 story hygiene, after-corpus (scripts 07/08), doc 03 before/after exhibits (commit 8004224)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/scripts/07-after-corpus.sh — Re-shoots the corpus
+

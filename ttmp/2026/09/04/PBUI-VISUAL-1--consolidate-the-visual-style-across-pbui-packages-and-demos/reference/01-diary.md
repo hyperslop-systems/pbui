@@ -601,3 +601,53 @@ No new screenshots for this step: the header row and the facts grid look as befo
 
 ### Code review instructions
 - `git show 5d72e5f --stat`; `src/components/organisms/TileHeader`, `src/components/molecules/KeyValueList`; the ecommerce `Shop Scenes` stories on :6012.
+
+## Step 12: Phase 8, story hygiene and the after-corpus
+
+The last phase fixes the stories that lied about the components and re-shoots the whole corpus with the same scripts and port map. Doc 03 sets the before-corpus and the after-corpus side by side for the ten priorities (38 paired exhibits, matched by story id or scenario slug so renumbering between sweeps does not matter) and lists what remains open.
+
+Screenshots: `various/screenshots-after/` (the full after-corpus: core 167, chat 19, workbench 44, sandbox 3, editor 5, plotscript 4, ecommerce 29, datalab 332, demos 36, workbench interactions 7, interactions 21) and `various/screenshots-phases/p8/` (PhaseIcon ink, PhaseRule bars, Tour section, WireLayer story, Composer insert-object after).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Phase 8 of doc 02, then the after-corpus and the comparison document.
+
+**Inferred user intent:** See the result of the whole pass in one place, in the same form as the audit that started it.
+
+**Commit (code):** 8004224 — "PBUI-VISUAL-1 P8: story hygiene"
+
+### What I did
+- `.storybook/base.css` + import in the six package previews (chat, workbench, sandbox, editor, plotscript, ecommerce); datalab's preview imports `brand.css`.
+- datalab: PhaseIcon "Ink" story gets `color: paper`; TourSection stories wrap in `AnalysisProvider` like TutorialBand's.
+- workbench: the WireLayer audit story performs `linkVerbs.openMode()` in a `useEffect` after mount.
+- chat: `Composer.insertObject` filters the vocabulary's types through `chat.registry.has`; verified in the storybook with a playwright click (no page errors, the accept banner appears).
+- `scripts/07-after-corpus.sh`: waits for the twelve ports, runs scripts 01 (×8), 03, 04, 05 into `screenshots-after/`. `scripts/08-build-after-doc.py`: builds doc 03's exhibits from the two corpora.
+- Rebuilt every library, restarted the eight storybooks, ran `pnpm -r test` (ten packages green as of writing; root reported green in every phase).
+
+### Why
+- A story that renders blank or black-on-black is a false negative in every future audit; the after-corpus is only comparable if the stories are honest.
+
+### What worked
+- The id-matched pairing: 38 of 38 exhibits found both halves after two id corrections (the guessed `typebadge--all-types` and `workbench-tile--default` did not exist; the manifests gave the real ids).
+
+### What didn't work
+- Storybook's index reported "Could not parse import/exports with acorn" for the two story files I had just edited; it was a stale indexing failure from a mid-write read and cleared on `touch`. Recorded because it looks like a syntax error and is not one.
+- Playwright's first Composer probe targeted a story id that does not exist (`composer--default`); the index lists `composer--empty`.
+
+### What I learned
+- Storybook's preview stylesheet is a consumer like any product: it sets `body`'s font at class specificity, so the library's zero-specificity baseline never reaches a package storybook without a base sheet. The root storybook had one since the audit began; the packages did not, which is why their inherited text looked sans in the before-corpus.
+
+### What was tricky to build
+- Keeping the before-corpus intact: scripts 03/04/05 defaulted to the before directories; 03 got an `OUT_ROOT` override in Phase 3 and 04/05 already took an argument. Script 07 passes all three.
+
+### What warrants a second pair of eyes
+- Doc 03's "still open" list is my judgement of what is polish versus what is a decision; the accept banner's long type list and the wire routing are the two that need one.
+
+### What should be done in the future
+- Write `playbooks/01-visual-audit.md` from Steps 1, 2 and 12 plus script 07 after the next pass; open the follow-up tickets listed in doc 03.
+
+### Code review instructions
+- Read doc 03 top to bottom (the exhibits are images; the prose is 60 lines); then `git log --oneline b1e351f^..HEAD` for the eight phase commits.
+- Regenerate: `bash scripts/07-after-corpus.sh && python3 scripts/08-build-after-doc.py > various/before-after.md`.
