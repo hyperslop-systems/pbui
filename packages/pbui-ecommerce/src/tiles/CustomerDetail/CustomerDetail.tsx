@@ -14,7 +14,7 @@ export interface CustomerDetailProps extends AppProps {
 /** One customer and their orders, read through the `customer` in port; the orders are `<order>` presentations, so the loop closes. */
 export function CustomerDetail({ shop, view }: CustomerDetailProps) {
   useHostRevision(shop.host);
-  const { Presentation } = shop.pbui;
+  const { ObjectChip } = shop.pbui;
   const port = usePort<CustomerValue>(view, "customer");
   const customer = port.value ? (shop.host.customer(port.value.id) ?? null) : null;
   if (!customer) {
@@ -30,9 +30,9 @@ export function CustomerDetail({ shop, view }: CustomerDetailProps) {
     <div data-part="customer-detail" className={styles.app}>
       <TileHeader
         title={
-          <Presentation reference={{ type: "customer", value: customerValue(customer) }} doc={customer.name} inComposite>
+          <ObjectChip reference={{ type: "customer", value: customerValue(customer) }} doc={customer.name} inComposite>
             {customer.name}
-          </Presentation>
+          </ObjectChip>
         }
         status={`${customer.kind} · ${customer.city}`}
       />
@@ -58,9 +58,9 @@ export function CustomerDetail({ shop, view }: CustomerDetailProps) {
               {orders.map((order) => (
                 <tr key={order.id}>
                   <td>
-                    <Presentation reference={{ type: "order", value: orderValue(order) }} doc={`order #${order.id}`}>
+                    <ObjectChip reference={{ type: "order", value: orderValue(order) }} doc={`order #${order.id}`}>
                       #{order.id}
-                    </Presentation>
+                    </ObjectChip>
                   </td>
                   <td>{order.placedAt}</td>
                   <td>{order.status}</td>

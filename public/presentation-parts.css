@@ -55,15 +55,16 @@
   border-left: var(--pbui-border-hair);
 }
 
-/* A presentation whose body is a Chip: the chip IS the box. Drawing the
- * presentation's own border around it made every badge a box in a box. */
-[data-part="presentation"]:has(> [data-chip]) {
+/* A presentation whose body is a Chip, or another presentation (a line item
+ * around its product): the inner one IS the box. Drawing the outer border
+ * too made every badge and every nested object a box in a box. */
+[data-part="presentation"]:has(> [data-chip], > [data-part="presentation"]) {
   border: 0;
   padding: 0;
   background: transparent;
 }
 
-[data-part="presentation"]:has(> [data-chip]):hover {
+[data-part="presentation"]:has(> [data-chip], > [data-part="presentation"]):hover {
   outline: 0;
   background: transparent;
 }

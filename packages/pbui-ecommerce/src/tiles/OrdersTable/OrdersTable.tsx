@@ -28,7 +28,7 @@ export interface OrdersTableProps extends AppProps {
  */
 export function OrdersTable({ shop, view }: OrdersTableProps) {
   useHostRevision(shop.host);
-  const { Presentation } = shop.pbui;
+  const { ObjectChip } = shop.pbui;
   const emit = useEmitPort(view, "order");
   const emitSelection = useEmitPort(view, "selection");
   const selection = usePort<DatumValue[]>(view, "selection");
@@ -93,9 +93,9 @@ export function OrdersTable({ shop, view }: OrdersTableProps) {
                   onPointerEnter={() => emit(reference, { attended: true })}
                 >
                   <td>
-                    <Presentation reference={reference} doc={`order #${order.id} for ${order.customer}`}>
+                    <ObjectChip reference={reference} doc={`order #${order.id} for ${order.customer}`}>
                       #{order.id}
-                    </Presentation>
+                    </ObjectChip>
                   </td>
                   <td>{order.placedAt}</td>
                   <td>{order.customer}</td>

@@ -23,7 +23,7 @@ export interface OrderDetailProps extends AppProps {
  */
 export function OrderDetail({ shop, view }: OrderDetailProps) {
   useHostRevision(shop.host);
-  const { Presentation } = shop.pbui;
+  const { Presentation, ObjectChip } = shop.pbui;
   const port = usePort<OrderValue>(view, "order");
   // The port carries the order as it was presented; the host has the facts as they are now.
   const order = port.value ? (shop.host.order(port.value.id) ?? null) : null;
@@ -41,9 +41,9 @@ export function OrderDetail({ shop, view }: OrderDetailProps) {
     <div data-part="order-detail" className={styles.app}>
       <TileHeader
         title={
-          <Presentation reference={{ type: "order", value: orderValue(order) }} doc={`order #${order.id}`} inComposite>
+          <ObjectChip reference={{ type: "order", value: orderValue(order) }} doc={`order #${order.id}`} inComposite>
             order #{order.id}
-          </Presentation>
+          </ObjectChip>
         }
         status={`${order.status} · ${order.placedAt}`}
       />
@@ -55,9 +55,9 @@ export function OrderDetail({ shop, view }: OrderDetailProps) {
               {
                 key: "customer",
                 value: customer ? (
-                  <Presentation reference={{ type: "customer", value: customerValue(customer) }} doc={`${customer.name}, ${customer.kind}`}>
+                  <ObjectChip reference={{ type: "customer", value: customerValue(customer) }} doc={`${customer.name}, ${customer.kind}`}>
                     {customer.name}
-                  </Presentation>
+                  </ObjectChip>
                 ) : (
                   order.customer
                 ),
@@ -84,9 +84,9 @@ export function OrderDetail({ shop, view }: OrderDetailProps) {
                     <td>
                       <Presentation reference={{ type: "lineItem", value: lineItemValue(line) }} doc={`${line.qty} × ${product?.name ?? line.productId}`} inComposite>
                         {product ? (
-                          <Presentation reference={{ type: "product", value: productValue(product, shop.host) }} doc={product.name}>
+                          <ObjectChip reference={{ type: "product", value: productValue(product, shop.host) }} doc={product.name}>
                             {product.name}
-                          </Presentation>
+                          </ObjectChip>
                         ) : (
                           line.productId
                         )}

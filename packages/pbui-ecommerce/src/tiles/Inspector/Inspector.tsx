@@ -16,7 +16,7 @@ export interface InspectorProps extends AppProps {
  * reachability alone.
  */
 export function Inspector({ shop, view }: InspectorProps) {
-  const { Presentation } = shop.pbui;
+  const { ObjectChip } = shop.pbui;
   const port = usePort(view, "subject");
   const subject = port.reference as PresentationReference<Values> | null;
   if (!subject) {
@@ -30,9 +30,9 @@ export function Inspector({ shop, view }: InspectorProps) {
     <div data-part="inspector" className={styles.app}>
       <TileHeader
         title={
-          <Presentation reference={subject} doc={`the inspected <${subject.type}>`} inComposite>
+          <ObjectChip reference={subject} doc={`the inspected <${subject.type}>`} inComposite>
             &lt;{subject.type}&gt;
-          </Presentation>
+          </ObjectChip>
         }
         status={port.badge.explanation}
       />

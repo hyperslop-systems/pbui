@@ -38,7 +38,7 @@ export type {
   PbuiContextValue,
   PbuiInstance,
   PbuiProviderProps,
-  PresentationProps,
+  PresentationProps, ObjectChipProps,
 } from "./createPbui";
 export type { PresentationDescriptorRegistry } from "./registry";
 export type {

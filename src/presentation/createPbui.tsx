@@ -1,4 +1,5 @@
 import {
+  Children,
   createContext,
   type KeyboardEvent,
   type MouseEvent,
@@ -15,6 +16,7 @@ import {
 } from "react";
 import { HelpContent } from "../components/ContextHelp";
 import type { HelpRendererRegistry } from "../components/ContextHelp";
+import { Chip, type ChipSize, type ChipState } from "../components/atoms/Chip";
 import { VisuallyHidden } from "../components/foundation";
 import { captureFocusReturn, isRestoringFocus, queueFocusReturn } from "../focus";
 import { useEscapeSurface } from "../surfaces";
@@ -272,6 +274,25 @@ export interface PresentationProps<Values extends PresentationValues> {
    */
   inComposite?: boolean;
   testId?: string;
+}
+
+/**
+ * `ObjectChip`: the object as the family's chip. The Presentation element
+ * (the thing with `data-ptype`, the menu, the accept protocol) is the outer
+ * element as always; the Chip is its body, labelled by the descriptor, toned
+ * by the type. Products that used to hand `Presentation` raw text in one
+ * place and a `Chip` in another get the same token everywhere by using this
+ * (PBUI-VISUAL-1, feedback round five).
+ */
+export interface ObjectChipProps<Values extends PresentationValues>
+  extends Omit<PresentationProps<Values>, "children" | "svg" | "block"> {
+  /** The label as text (fragments are joined); the descriptor's label when omitted. */
+  children?: ReactNode;
+  size?: ChipSize;
+  glyph?: ReactNode;
+  state?: ChipState;
+  strong?: boolean;
+  badge?: ReactNode;
 }
 
 export interface PbuiContextValue<
@@ -1388,9 +1409,26 @@ export function createPbui<
     );
   }
 
+  function ObjectChip({ reference, children, size = "small", glyph, state, strong, badge, ...presentation }: ObjectChipProps<Values>) {
+    const pbui = usePbui();
+    const label = registry.labelFor(reference, pbui.environment);
+    const text =
+      children !== undefined && children !== null
+        ? Children.toArray(children).join("")
+        : typeof label === "string" || typeof label === "number"
+          ? String(label)
+          : reference.type;
+    return (
+      <Presentation reference={reference} {...presentation}>
+        <Chip label={text} size={size} glyph={glyph} state={state} strong={strong} badge={badge} title={presentation.doc ?? text} />
+      </Presentation>
+    );
+  }
+
   return {
     Provider,
     Presentation,
+    ObjectChip,
     ObjectMenu,
     MouseDocLine,
     AcceptBanner,
