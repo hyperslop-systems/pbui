@@ -132,3 +132,41 @@ Screenshots: `various/screenshots/p3/004-completed-link-wires-and-badges.png` (t
 
 ### Code review instructions
 - `git show d1bde68`; `shop-scenes--scene-7-connect-mode` on :6012.
+
+## Step 4: Phase 4, scrim and lift
+
+Link mode now reads as a mode: the page washes out, the tiles in the mode stand on top with only their ports showing, and the wires run in wide gutters between them. This is the step where the ecommerce scene first looks like the mock.
+
+Screenshots: `various/screenshots/p4/004-completed-link-wires-and-badges.png` (the whole scene), `p4/002-connect-mode-acceptable-highlighted.png` (carry), `p4-stories/001-visual-audit--wire-layer-styles.png` (held dotted and derived dashed).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 4 of the design.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 5b35065 — "PBUI-WIRING-1 P4: scrim the page, lift the tiles"
+
+### What I did
+- `Surface.module.css`: `.surface[data-link-mode]` isolates; `::before` is a fixed scrim (`color-mix(wash 82%, transparent)`); tiles get `position: relative; z-index: 1` and a pane background; split dividers get `min-width/min-height: space-6`.
+- `Tile.module.css`: `.body[data-link-mode] > .app { visibility: hidden }` (it was already inert).
+- `PortRail.module.css`: the rail is opaque pane (no translucency to blend with a hidden app).
+- `VisualAudit.stories.tsx` WireLayer story: third tile is the many-ports app and the derived term binds its `alpha` input.
+
+### What worked
+- Workbench 23 green; scene 7 shows both wires in the gutter, jack to jack.
+
+### What didn't work
+- With a 10px gutter and two 6px channels, one wire ran 2px from the destination tile's frame and read as part of it (the crop in scratch showed it). Wider gutters in the mode fixed it; changing layout on mode toggle is a deliberate trade.
+- The story's derived wire was never going to draw: it bound a counter's `count` (an output) as the destination, so there was no input jack; the dotted portal circle at the source was the tell.
+
+### What I learned
+- "Missing wire" had three different causes across three phases: a stale registry element (P1), the layer's containing block (P3), and a fixture binding an output as a destination (P4). The probe script (jack rectangles + path data) found each in one run.
+
+### What warrants a second pair of eyes
+- The fixed scrim covers the whole viewport, including any product chrome outside the workbench (masthead, status bar); that is the mock's look, but a product embedding a small workbench in a page will scrim the page too.
+
+### Code review instructions
+- `git show 5b35065`; scene 7 on :6012 and `Visual Audit/WireLayer` on :6008.

@@ -31,3 +31,12 @@ P3 orthogonal wires; surface positioned (commit d1bde68)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx — route()
 
+
+## 2026-09-04
+
+P4 scrim + lifted tiles, wide gutters, story fixture (commit 5b35065)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/Surface/Surface.module.css — link-mode scrim
+
