@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AppBody, Button, Stack, Text } from "@hyperslop-systems/pbui";
+import { AppBody, Button, Stack, Text, createPresentationTypeGraph } from "@hyperslop-systems/pbui";
 import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useEffect, useMemo, useState } from "react";
@@ -50,6 +50,8 @@ function SourceApp({ view }: AppProps) {
 function SinkApp({ view }: AppProps) {
   const value = usePort(view, "value");
   const anything = usePort(view, "anything");
+  const shared = usePort(view, "shared");
+  const emitShared = useEmitPort(view, "shared");
   return (
     <AppBody>
       <Stack gap={2}>
@@ -62,6 +64,7 @@ function SinkApp({ view }: AppProps) {
         <Text size="small">
           anything: <b>{anything.reference ? JSON.stringify(anything.reference.value) : "—"}</b> · {anything.badge.explanation}
         </Text>
+        <Button onClick={() => emitShared({ type: "number", value: Number(shared.value ?? 0) + 1 })}>shared: {String(shared.value ?? 0)}</Button>
       </Stack>
     </AppBody>
   );
@@ -131,6 +134,7 @@ const sinkApp = defineWorkbenchApp({
     ports: [
       { name: "value", direction: "in", contract: "number", doc: "a number to show" },
       { name: "anything", direction: "in", contract: "any", doc: "anything at all" },
+      { name: "shared", direction: "inout", contract: "number", doc: "a shared counter" },
     ],
   },
   presentation: { title: "sink", tone: "var(--pbui-tone-row)", Component: SinkApp },
@@ -160,6 +164,12 @@ const wideApp = defineWorkbenchApp({
   presentation: { title: "wide", tone: "var(--pbui-tone-field)", Component: WideApp },
 });
 
+function CrowdedApp({ view }: AppProps) {
+  const value = usePort(view, "theta");
+  const emit = useEmitPort(view, "one");
+  return <AppBody><Text>theta: {String(value.value ?? "—")}</Text><Button onClick={() => emit({ type: "text", value: "one" })}>emit one</Button></AppBody>;
+}
+
 const crowdedApp = defineWorkbenchApp({
   manifest: {
     id: "lab-crowded",
@@ -168,16 +178,19 @@ const crowdedApp = defineWorkbenchApp({
       ...["one", "two", "three", "four", "five", "six"].map((name) => ({ name, direction: "out" as const, contract: "text", doc: `output ${name}` })),
     ],
   },
-  presentation: { title: "crowded", tone: "var(--pbui-tone-cat)", Component: WideApp },
+  presentation: { title: "crowded", tone: "var(--pbui-tone-cat)", Component: CrowdedApp },
 });
 
 const apps = [sourceApp, sinkApp, transformApp, wideApp, crowdedApp];
 
-function WiringLab({ crowded = false }: { crowded?: boolean }) {
-  const [generation, setGeneration] = useState(0);
-  const wb = useMemo(() => {
+export function createWiringLab(crowded = false) {
     const workbench = createWorkbench({
       apps,
+      links: {
+        graph: createPresentationTypeGraph([{ id: "number" }, { id: "text" }]),
+        relations: [{ id: "double", from: "number", to: "number", label: "doubled" }],
+        relationEvaluation: (_id, reference) => ({ kind: "value", reference: { type: "number", value: Number(reference.value) * 2 } }),
+      },
       initial: layout(
         split(
           "col",
@@ -189,20 +202,27 @@ function WiringLab({ crowded = false }: { crowded?: boolean }) {
     });
     const ids = leaves(workspaceTree(workbench.core.getState().document, workbench.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
     const [sourceA, transform, sinkA, sourceB, wide, sinkB] = ids;
-    if (sourceA && transform && sinkA && sourceB && wide && sinkB) {
-      // Seeded so every wire style is on screen: a follow in the top row, a
-      // follow into the transform, a held link in the bottom row, a follow
-      // ACROSS rows (the routing case), and an identity between the two sinks.
-      workbench.execute({ kind: "port.follow", source: `${sourceA}/count`, destination: `${sinkA}/value` });
-      workbench.execute({ kind: "port.follow", source: `${sourceA}/count`, destination: `${transform}/in` });
-      workbench.execute({ kind: "port.follow", source: `${sourceB}/label`, destination: `${sinkB}/anything` });
-      workbench.execute({ kind: "port.pin", port: `${sinkB}/anything` });
-      workbench.execute({ kind: "port.follow", source: `${transform}/out`, destination: `${wide}/${crowded ? "theta" : "beta"}` });
-      workbench.execute({ kind: "identity.add", left: `${sinkA}/value`, right: `${sinkB}/value`, mergePolicy: "prefer-left" });
-    }
+    if (!sourceA || !transform || !sinkA || !sourceB || !wide || !sinkB) throw new Error("WiringLab requires six views");
+    workbench.links.runtime.emit(`${sourceA}/count`, { type: "number", value: 0 });
+    workbench.links.runtime.emit(`${sourceB}/label`, { type: "text", value: "tick 0" });
+    workbench.links.runtime.emit(`${sinkA}/shared`, { type: "number", value: 0 });
+    const result = workbench.execute([
+      { kind: "port.follow", source: `${sourceA}/count`, destination: `${sinkA}/value` },
+      { kind: "port.follow", source: `${sourceA}/count`, destination: `${transform}/in` },
+      { kind: "port.follow", source: `${sourceB}/label`, destination: `${sinkB}/anything` },
+      { kind: "port.pin", port: `${sinkB}/anything` },
+      { kind: "port.follow", source: `${transform}/out`, destination: `${wide}/${crowded ? "theta" : "beta"}` },
+      { kind: "port.derive", source: `${sourceA}/count`, destination: `${sinkB}/value`, relation: "double" },
+      { kind: "identity.add", left: `${sinkA}/shared`, right: `${sinkB}/shared`, mergePolicy: "prefer-left" },
+    ]);
+    if (!result.ok) throw new Error(`WiringLab seed refused: ${result.because}`);
     return workbench;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generation, crowded]);
+}
+
+function WiringLab({ crowded = false }: { crowded?: boolean }) {
+  const [generation, setGeneration] = useState(0);
+  // Reset intentionally creates a new shell and application tree.
+  const wb = useMemo(() => createWiringLab(crowded), [generation, crowded]);
   useEffect(() => {
     wb.dispatch({ kind: "link.mode.open" });
   }, [wb]);
@@ -222,7 +242,7 @@ function WiringLab({ crowded = false }: { crowded?: boolean }) {
           reset links
         </Button>
         <Text size="tiny" tone="faint">
-          Mod+Shift+L toggles · drag an output card onto an input · Shift while dropping pins it · Ctrl shares one cell · Esc leaves the mode · right-click a badge for its verbs
+          Mod+Shift+L toggles · drag an output card onto an input · Shift while dropping pins it · Ctrl shares one cell · Esc leaves the mode
         </Text>
       </div>
       <div style={{ minHeight: 0, display: "grid", gridTemplateRows: "minmax(0, 1fr)" }}>
