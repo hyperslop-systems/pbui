@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { datadropRegistry } from "../src/pbui/presentation";
 import type { PresentationType } from "../src/pbui/types";
 
@@ -38,7 +38,8 @@ function declaredTypes(): string[] {
   return [...body.matchAll(/\|\s*"([a-zA-Z]+)"/g)].map((m) => m[1] as string);
 }
 
-/** Every `--pbui-x:` declared anywhere under src/styles. */
+/** Every `--pbui-x:` declared by pbui core (src/tokens.css) or under src/styles. */
+const CORE_TOKENS = resolve(import.meta.dirname, "../../../src/tokens.css");
 function declaredTokens(): Set<string> {
   const names = new Set<string>();
   const walk = (dir: string): string[] => {
@@ -50,7 +51,7 @@ function declaredTokens(): Set<string> {
     }
     return out;
   };
-  for (const file of walk(join(SRC, "styles"))) {
+  for (const file of [CORE_TOKENS, ...walk(join(SRC, "styles"))]) {
     const source = readFileSync(file, "utf8");
     for (const match of source.matchAll(/(--pbui-[\w-]+)\s*:/g)) names.add(match[1] as string);
   }

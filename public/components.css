@@ -5,8 +5,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--pbui-dialog-space, 1rem);
-  background: var(--pbui-dialog-backdrop, rgb(15 23 42 / 45%));
+  padding: var(--pbui-dialog-space);
+  background: var(--pbui-dialog-backdrop);
 }
 
 :where([data-pbui-component="dialog"]):not([data-unstyled="true"])
@@ -17,10 +17,10 @@
   max-height: 100%;
   min-height: 0;
   overflow: auto;
-  border: 1px solid var(--pbui-dialog-border, #cbd5e1);
-  border-radius: var(--pbui-dialog-radius, 0.5rem);
-  background: var(--pbui-dialog-surface, #ffffff);
-  color: var(--pbui-dialog-text, #0f172a);
+  border: 1px solid var(--pbui-dialog-border);
+  border-radius: var(--pbui-dialog-radius);
+  background: var(--pbui-dialog-surface);
+  color: var(--pbui-dialog-text);
 }
 
 :where([data-pbui-component="dialog"]):not([data-unstyled="true"])
@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: var(--pbui-dialog-space, 1rem);
+  padding: var(--pbui-dialog-space);
 }
 
 :where([data-pbui-component="dialog"]):not([data-unstyled="true"])
@@ -42,7 +42,7 @@
 
 :where([data-pbui-component="dialog"]):not([data-unstyled="true"])
   [data-part="dialog-close"] {
-  border: 1px solid var(--pbui-dialog-border, #cbd5e1);
+  border: 1px solid var(--pbui-dialog-border);
   border-radius: 0.25rem;
   background: transparent;
   color: inherit;
@@ -50,13 +50,13 @@
 
 :where([data-pbui-component="dialog"]):not([data-unstyled="true"])
   [data-part="dialog-body"] {
-  padding: 0 var(--pbui-dialog-space, 1rem) var(--pbui-dialog-space, 1rem);
+  padding: 0 var(--pbui-dialog-space) var(--pbui-dialog-space);
 }
 
 :where([data-pbui-component="dialog"]):not([data-unstyled="true"])
   [data-part="dialog-footer"] {
   justify-content: flex-end;
-  border-top: 1px solid var(--pbui-dialog-border, #cbd5e1);
+  border-top: 1px solid var(--pbui-dialog-border);
 }
 
 :where([data-pbui-component="json-block"]):not([data-unstyled="true"]) {
@@ -65,8 +65,8 @@
   margin: 0;
   overflow: auto;
   border-radius: 0.25rem;
-  background: var(--pbui-code-surface, #0f172a);
-  color: var(--pbui-code-text, #e2e8f0);
+  background: var(--pbui-code-surface);
+  color: var(--pbui-code-text);
   font: 0.8125rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
   padding: 0.75rem;
   white-space: pre-wrap;
@@ -74,7 +74,7 @@
 }
 
 :where([data-pbui-component="json-block"])[data-failed="true"] {
-  color: var(--pbui-code-danger, #fecaca);
+  color: var(--pbui-code-danger);
 }
 
 :where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"]) {

@@ -93,22 +93,22 @@
  * must not touch the second.
  */
 :where(body) {
-  font-family: var(--pbui-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: var(--pbui-fs-base, 11.5px);
-  line-height: var(--pbui-lh-tight, 1.35);
+  font-family: var(--pbui-font);
+  font-size: var(--pbui-fs-base);
+  line-height: var(--pbui-lh-tight);
 }
 
 /* ---- the presentation --------------------------------------------------- */
 
 :where([data-pbui="presentation"]) {
   appearance: none;
-  border: var(--pbui-border-hair, 1px solid #23262b);
-  border-radius: var(--pbui-radius, 0);
-  background: var(--pbui-pane, #ffffff);
-  color: var(--pbui-ink-on-pane, #23262b);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
+  color: var(--pbui-ink-on-pane);
   cursor: context-menu;
   font: inherit;
-  padding: var(--pbui-space-1, 2px) var(--pbui-space-3, 6px);
+  padding: var(--pbui-space-1) var(--pbui-space-3);
 }
 
 /*
@@ -117,16 +117,16 @@
  * commits to something.
  */
 :where([data-pbui="presentation"])[data-state="acceptable"] {
-  outline: var(--pbui-border-firm, 2px solid #23262b);
-  outline-color: var(--pbui-danger, #b64b37);
-  background: var(--pbui-selected, #fdeec6);
+  outline: var(--pbui-border-firm);
+  outline-color: var(--pbui-danger);
+  background: var(--pbui-selected);
   cursor: pointer;
 }
 
 :where([data-pbui="presentation"]):focus-visible,
 :where([data-pbui="menu"]) button:focus-visible {
-  outline: var(--pbui-focus-ring, 2px solid #23262b);
-  outline-offset: var(--pbui-focus-offset, 1px);
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
 }
 
 /* ---- the object menu ---------------------------------------------------- */
@@ -142,17 +142,17 @@
   display: grid;
   min-width: 13rem;
   overflow: hidden;
-  border: var(--pbui-border-hair, 1px solid #23262b);
-  border-radius: var(--pbui-radius, 0);
-  background: var(--pbui-pane, #ffffff);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
   /* Shadows are off. Separation comes from the border. */
-  box-shadow: var(--pbui-shadow-menu, none);
-  color: var(--pbui-ink-on-pane, #23262b);
+  box-shadow: var(--pbui-shadow-menu);
+  color: var(--pbui-ink-on-pane);
 }
 
 :where([data-pbui="menu"]) [data-part="menu-header"] {
-  padding: var(--pbui-space-3, 6px) var(--pbui-space-4, 10px);
-  border-bottom: var(--pbui-border-hair, 1px solid #23262b);
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+  border-bottom: var(--pbui-border-hair);
   font-weight: 700;
 }
 
@@ -162,16 +162,16 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
+  padding: var(--pbui-space-2) var(--pbui-space-4);
   text-align: left;
 }
 
 :where([data-pbui="menu"]) button:not(:disabled):hover {
-  background: var(--pbui-selected, #fdeec6);
+  background: var(--pbui-selected);
 }
 
 :where([data-pbui="menu"]) button[data-danger="true"] {
-  color: var(--pbui-danger, #b64b37);
+  color: var(--pbui-danger);
 }
 
 /*
@@ -184,7 +184,7 @@
  */
 :where([data-pbui="menu"]) button:disabled,
 :where([data-pbui="menu"]) div[data-part="menu-item"] {
-  color: var(--pbui-faint, #696e75);
+  color: var(--pbui-faint);
 }
 
 /*
@@ -192,6 +192,6 @@
  * so it reads as an annotation on the verb rather than part of its name.
  */
 :where([data-pbui="menu"]) [data-part="menu-reason"] {
-  color: var(--pbui-faint, #696e75);
-  font-size: var(--pbui-fs-tiny, 9.5px);
+  color: var(--pbui-faint);
+  font-size: var(--pbui-fs-tiny);
 }

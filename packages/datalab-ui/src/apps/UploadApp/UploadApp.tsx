@@ -323,7 +323,7 @@ interface DraftVersion {
 registerApp({
   id: "upload",
   title: "upload",
-  tone: "var(--pbui-tone-datum)",
+  tone: "var(--pbui-tone-source)",
   docBound: false,
   duplicable: false,
   singleton: true,

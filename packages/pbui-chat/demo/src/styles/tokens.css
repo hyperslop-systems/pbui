@@ -1,25 +1,12 @@
 /*
- * The product's tokens: only the DIFFERENCE from pbui's defaults plus the
- * tokens pbui does not read (playbook §4). pbui ships a default for every
- * token its components read, wrapped in :where(:root), so this :root wins.
+ * The product's tokens: only the DIFFERENCE from pbui's defaults (playbook §4).
+ * pbui ships a default for every token its components read, including the
+ * whole tone family, wrapped in :where(:root), so this :root wins.
  *
- * The tone tokens are the one place a colour literal is allowed in this
- * product; every other stylesheet reads them through var(). test/no-hex
- * exempts exactly this file.
+ * This is the one file in the product where a colour literal is allowed;
+ * test/no-hex exempts exactly this file.
  */
 :root {
-  /* ---- presentation-type tones: the 4px left edge of every chip --------- */
-  --pbui-tone-product: #e0b95c; /* gold */
-  --pbui-tone-category: #d59a86;
-  --pbui-tone-metal: #a99fc9;
-  --pbui-tone-order: #7cae9b;
-  --pbui-tone-field: #7aa6c9;
-  --pbui-tone-row: #8fc7b0;
+  /* The shop reads a citation as a warning, not as data: red, not green. */
   --pbui-tone-source: #c2503a;
-  --pbui-tone-widget: #805bd7;
-  --pbui-tone-tool: #696e75;
-  --pbui-tone-proposal: #f2ad00;
-  --pbui-tone-trace: var(--pbui-neutral);
-  --pbui-tone-message: var(--pbui-line);
-  --pbui-tone-neutral: #8892a8;
 }

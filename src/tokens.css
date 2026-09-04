@@ -182,4 +182,57 @@
   --pbui-syntax-function: #23262b;
   --pbui-syntax-property: #5b4a8a;
   --pbui-syntax-comment: var(--pbui-faint);
+
+  /* ---- family tokens promoted from datalab-ui (PBUI-VISUAL-1 P1) ---------- */
+  /*
+   * Until this block existed these names were defined only in datalab-ui's
+   * tokens.css and read by pbui-chat (border-grid, border-rule: no fallback,
+   * so the grid lines never rendered outside datalab), pbui-workbench (wash)
+   * and pbui-sandbox (tone-widget, defined by nobody but the chat demo). One
+   * definition site; every product overrides from its own :root.
+   */
+  --pbui-wash: #f7f7f4; /* the page behind the tiles */
+  --pbui-selected-wash: #fffdf4; /* hover, one step lighter than selected */
+  --pbui-tag-wash: var(--pbui-pane-alt); /* a chip or tag fill that carries NO state */
+  --pbui-neutral: #f3f3ef;
+  --pbui-space-6: 24px;
+  --pbui-border-rule: 1px dashed var(--pbui-line);
+  --pbui-border-grid: 1px solid var(--pbui-line);
+  --pbui-track-banner: 0.28em; /* the masthead wordmark only */
+  --pbui-shadow-hard: none;
+  --pbui-shadow-menu: none;
+
+  /* ---- tones: the 4px edge and the tile-bar tint, keyed to object kind ---- */
+  --pbui-tone-field: #7aa6c9;
+  --pbui-tone-source: #7cae9b;
+  --pbui-tone-doc: #c2503a;
+  --pbui-tone-step: #a99fc9;
+  --pbui-tone-chart: #e0b95c;
+  --pbui-tone-cat: #d59a86;
+  --pbui-tone-geom: #8fc7b0;
+  --pbui-tone-traceEntry: var(--pbui-neutral);
+  --pbui-tone-trace: var(--pbui-neutral);
+  --pbui-tone-tool: #696e75;
+  --pbui-tone-proposal: #f2ad00;
+  --pbui-tone-widget: #805bd7;
+  --pbui-tone-row: #8fc7b0;
+  --pbui-tone-product: #e0b95c;
+  --pbui-tone-order: #7cae9b;
+  --pbui-tone-metal: #a99fc9;
+  --pbui-tone-message: var(--pbui-line);
+  --pbui-tone-category: #d59a86;
+  --pbui-type-q: #7aa6c9;
+  --pbui-type-n: #e0b95c;
+
+  /* ---- BEGIN GENERATED PALETTE ---- */
+  --pbui-cat-1: #2db878;
+  --pbui-cat-2: #805bd7;
+  --pbui-cat-4: #ef4038;
+  --pbui-cat-5: #7bd3aa;
+  --pbui-cat-6: #ad9ae3;
+  --pbui-cat-7: #f7cd66;
+  --pbui-cat-8: #f47570;
+  --pbui-ramp-low: #805bd7;
+  --pbui-ramp-high: #f2ad00;
+  /* ---- END GENERATED PALETTE ---- */
 }

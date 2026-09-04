@@ -3,7 +3,6 @@ import type { Preview } from "@storybook/react-vite";
 // The whole foundation, in dependency order. There is no CSS framework to
 // import ahead of them (DR-13).
 import "../src/styles/reset.css";
-import "../src/styles/tokens.css";
 import "@hyperslop-systems/pbui/styles.css";
 import "@hyperslop-systems/pbui/components.css";
 import "@hyperslop-systems/plot/styles.css";

@@ -30,22 +30,22 @@
 }
 
 [data-part="presentation"]:hover {
-  outline: 1px dotted var(--pbui-ink, #1f2430);
-  background: var(--pbui-selected, #e6ecf5);
+  outline: 1px dotted var(--pbui-ink);
+  background: var(--pbui-selected);
 }
 
 /* Acceptable: this object can satisfy the command currently waiting.
  * Outline AND animation, never animation alone — the reduced-motion rule
  * removes the pulse, so the solid outline carries the whole meaning. */
 [data-part="presentation"][data-state="acceptable"] {
-  outline: 2px solid var(--pbui-danger, #b64b37);
-  background: var(--pbui-selected, #e6ecf5);
+  outline: 2px solid var(--pbui-danger);
+  background: var(--pbui-selected);
   animation: pbui-pulse 0.9s infinite;
 }
 
 @keyframes pbui-pulse {
   50% {
-    outline-color: var(--pbui-cat-3, #f2ad00);
+    outline-color: var(--pbui-cat-3);
   }
 }
 
@@ -57,17 +57,17 @@
 }
 
 [data-part="presentation-svg"]:hover {
-  filter: drop-shadow(0 0 1.5px var(--pbui-ink, #1f2430));
+  filter: drop-shadow(0 0 1.5px var(--pbui-ink));
 }
 
 [data-part="presentation-svg"][data-state="acceptable"] {
-  filter: drop-shadow(0 0 2.5px var(--pbui-danger, #b64b37));
+  filter: drop-shadow(0 0 2.5px var(--pbui-danger));
   animation: pbui-pulse-svg 0.9s infinite;
 }
 
 @keyframes pbui-pulse-svg {
   50% {
-    filter: drop-shadow(0 0 3.5px var(--pbui-cat-3, #f2ad00));
+    filter: drop-shadow(0 0 3.5px var(--pbui-cat-3));
   }
 }
 
@@ -89,29 +89,29 @@
   min-width: 260px;
   max-height: 320px;
   overflow: auto;
-  background: var(--pbui-pane, #ffffff);
-  border: var(--pbui-border-firm, 1.5px solid #1f2430);
-  border-radius: var(--pbui-radius, 2px);
+  background: var(--pbui-pane);
+  border: var(--pbui-border-firm);
+  border-radius: var(--pbui-radius);
 }
 
 [data-part="menu-header"] {
   position: sticky;
   top: 0;
-  padding: var(--pbui-space-1, 2px) var(--pbui-space-4, 10px);
-  background: var(--pbui-ink, #1f2430);
-  color: var(--pbui-paper, #f6f4ef);
-  font-size: var(--pbui-fs-tiny, 10px);
+  padding: var(--pbui-space-1) var(--pbui-space-4);
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  font-size: var(--pbui-fs-tiny);
   font-weight: 700;
-  letter-spacing: var(--pbui-track-label, 0.06em);
+  letter-spacing: var(--pbui-track-label);
 }
 
 [data-part="menu-item"] {
   display: block;
   width: 100%;
   text-align: left;
-  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
-  font-size: var(--pbui-fs-small, 11px);
-  border-top: 1px dotted var(--pbui-line, #cfc9bd);
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+  font-size: var(--pbui-fs-small);
+  border-top: 1px dotted var(--pbui-line);
   background: transparent;
 }
 
@@ -121,30 +121,30 @@
 
 [data-part="menu-item"]:hover:not(:disabled),
 [data-part="menu-item"]:focus-visible:not(:disabled) {
-  background: var(--pbui-selected, #e6ecf5);
+  background: var(--pbui-selected);
 }
 
 /* Disabled entries are shown, not hidden: hiding a verb hides the rule that
  * makes it unavailable, so the user never learns why. */
 [data-part="menu-item"]:disabled {
-  color: var(--pbui-faint, #8b857a);
+  color: var(--pbui-faint);
   cursor: default;
 }
 
 [data-part="menu-reason"] {
-  color: var(--pbui-faint, #8b857a);
-  font-size: var(--pbui-fs-tiny, 10px);
+  color: var(--pbui-faint);
+  font-size: var(--pbui-fs-tiny);
 }
 
 /* A tie the declarations do not decide (PBUI-ACTIONS-2): diagnostic, never
  * executable — deliberately not a button, so it can never be clicked into
  * running an ambiguous action. */
 [data-part="menu-ambiguity"] {
-  padding: var(--pbui-space-2, 4px) var(--pbui-space-3, 6px);
-  color: var(--pbui-faint, #8b857a);
-  font-size: var(--pbui-fs-tiny, 10px);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  color: var(--pbui-faint);
+  font-size: var(--pbui-fs-tiny);
   font-style: italic;
-  border-top: 1px dashed var(--pbui-line, #d8d2c6);
+  border-top: 1px dashed var(--pbui-line);
 }
 
 /* A translator tie (PBUI-ACTIONS-2 P6): the user picks; the registry never
@@ -158,20 +158,20 @@
   display: flex;
   flex-direction: column;
   min-width: 240px;
-  background: var(--pbui-pane, #fffdf7);
-  border: 1px solid var(--pbui-line, #d8d2c6);
+  background: var(--pbui-pane);
+  border: 1px solid var(--pbui-line);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
 }
 
 [data-part="accept-chooser-header"] {
-  padding: var(--pbui-space-2, 4px) var(--pbui-space-3, 6px);
-  font-size: var(--pbui-fs-tiny, 10px);
-  color: var(--pbui-faint, #8b857a);
-  border-bottom: 1px solid var(--pbui-line, #d8d2c6);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  font-size: var(--pbui-fs-tiny);
+  color: var(--pbui-faint);
+  border-bottom: 1px solid var(--pbui-line);
 }
 
 [data-part="accept-chooser-option"] {
-  padding: var(--pbui-space-2, 4px) var(--pbui-space-3, 6px);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
   text-align: left;
   background: none;
   border: none;
@@ -180,12 +180,12 @@
 
 [data-part="accept-chooser-option"]:hover,
 [data-part="accept-chooser-option"]:focus-visible {
-  background: var(--pbui-pane-alt, #f4efe4);
+  background: var(--pbui-pane-alt);
 }
 
 [data-part="accept-chooser-via"] {
-  color: var(--pbui-faint, #8b857a);
-  font-size: var(--pbui-fs-tiny, 10px);
+  color: var(--pbui-faint);
+  font-size: var(--pbui-fs-tiny);
 }
 
 /* ---- the accept banner -------------------------------------------------- */
@@ -193,13 +193,13 @@
 [data-part="accept-banner"] {
   display: flex;
   align-items: center;
-  gap: var(--pbui-space-3, 6px);
+  gap: var(--pbui-space-3);
   flex-shrink: 0;
-  padding: var(--pbui-space-1, 2px) var(--pbui-space-4, 10px);
-  background: var(--pbui-danger, #b64b37);
-  color: var(--pbui-paper, #f6f4ef);
+  padding: var(--pbui-space-1) var(--pbui-space-4);
+  background: var(--pbui-danger);
+  color: var(--pbui-paper);
   font-weight: 700;
-  font-size: var(--pbui-fs-small, 11px);
+  font-size: var(--pbui-fs-small);
 }
 
 [data-part="accept-banner-hint"] {
@@ -213,13 +213,13 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: var(--pbui-space-3, 6px);
-  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
-  border: 1px solid var(--pbui-danger, #b64b37);
+  gap: var(--pbui-space-3);
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+  border: 1px solid var(--pbui-danger);
   border-left-width: 4px;
-  background: var(--pbui-paper, #f6f4ef);
-  color: var(--pbui-ink, #1c1b19);
-  font-size: var(--pbui-fs-small, 11px);
+  background: var(--pbui-paper);
+  color: var(--pbui-ink);
+  font-size: var(--pbui-fs-small);
 }
 
 [data-part="refusal-notice-headline"] {
@@ -231,7 +231,7 @@
 }
 
 [data-part="refusal-notice-hint"] {
-  color: var(--pbui-muted, #6b6760);
+  color: var(--pbui-faint);
 }
 
 [data-part="refusal-notice-dismiss"] {
@@ -241,7 +241,7 @@
   color: inherit;
   cursor: pointer;
   font: inherit;
-  padding: 0 var(--pbui-space-2, 4px);
+  padding: 0 var(--pbui-space-2);
 }
 
 /* ---- the mouse documentation line --------------------------------------- */
@@ -249,16 +249,16 @@
 [data-part="mouse-doc"] {
   display: flex;
   align-items: center;
-  gap: var(--pbui-space-5, 14px);
+  gap: var(--pbui-space-5);
   flex-shrink: 0;
-  padding: var(--pbui-space-1, 2px) var(--pbui-space-4, 10px);
-  background: var(--pbui-ink, #1f2430);
-  color: var(--pbui-paper, #f6f4ef);
-  font-size: var(--pbui-fs-small, 11px);
+  padding: var(--pbui-space-1) var(--pbui-space-4);
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  font-size: var(--pbui-fs-small);
 }
 
 [data-part="mouse-doc-mode"] {
-  color: var(--pbui-cat-3, #f2ad00);
+  color: var(--pbui-cat-3);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -272,7 +272,7 @@
 }
 
 [data-part="mouse-doc-ambient"] {
-  color: var(--pbui-faint-inverted, #918c85);
+  color: var(--pbui-faint-inverted);
   white-space: nowrap;
 }
 
@@ -285,11 +285,11 @@
   max-width: 320px;
   max-height: 280px;
   overflow: auto;
-  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
-  background: var(--pbui-pane, #ffffff);
-  border: var(--pbui-border-firm, 1.5px solid #1f2430);
-  border-radius: var(--pbui-radius, 2px);
-  box-shadow: var(--pbui-shadow, 0 2px 8px rgba(31, 36, 48, 0.18));
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+  background: var(--pbui-pane);
+  border: var(--pbui-border-firm);
+  border-radius: var(--pbui-radius);
+  box-shadow: var(--pbui-shadow-menu);
   /*
    * The card receives pointer events so overflowing content stays REACHABLE
    * (PR #20 review): wheel and scrollbar must work when help exceeds the
@@ -301,9 +301,9 @@
 }
 
 [data-part="help-item"] + [data-part="help-item"] {
-  margin-top: var(--pbui-space-2, 4px);
-  padding-top: var(--pbui-space-2, 4px);
-  border-top: var(--pbui-border-hairline, 1px solid #d8d4cc);
+  margin-top: var(--pbui-space-2);
+  padding-top: var(--pbui-space-2);
+  border-top: var(--pbui-border-hair);
 }
 
 [data-part="help-title"] {
@@ -319,16 +319,16 @@
 [data-part="help-markdown"] p + p,
 [data-part="help-markdown-list"],
 [data-part="help-markdown-code"] {
-  margin: var(--pbui-space-1, 2px) 0 0;
+  margin: var(--pbui-space-1) 0 0;
 }
 
 [data-part="help-markdown-list"] {
-  padding-left: var(--pbui-space-5, 14px);
+  padding-left: var(--pbui-space-5);
 }
 
 [data-part="help-markdown-code"] {
-  padding: var(--pbui-space-1, 2px) var(--pbui-space-2, 4px);
-  background: var(--pbui-well, #f1efe9);
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  background: var(--pbui-pane-alt);
   overflow-x: auto;
 }
 
@@ -336,7 +336,7 @@
   margin: 0;
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0 var(--pbui-space-3, 7px);
+  gap: 0 var(--pbui-space-3);
 }
 
 [data-part="help-field"] {
@@ -349,16 +349,16 @@
 }
 
 [data-part="help-notice"] {
-  padding: var(--pbui-space-1, 2px) var(--pbui-space-2, 4px);
-  border-left: 3px solid var(--pbui-faint, #918c85);
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-left: 3px solid var(--pbui-faint);
 }
 
 [data-part="help-notice"][data-tone="warning"] {
-  border-left-color: var(--pbui-cat-3, #f2ad00);
+  border-left-color: var(--pbui-cat-3);
 }
 
 [data-part="help-notice"][data-tone="error"] {
-  border-left-color: var(--pbui-danger, #c0392b);
+  border-left-color: var(--pbui-danger);
 }
 
 [data-part="help-actions"] {
@@ -368,5 +368,5 @@
 }
 
 [data-part="help-action"][data-danger] {
-  color: var(--pbui-danger, #c0392b);
+  color: var(--pbui-danger);
 }

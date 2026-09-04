@@ -24,7 +24,7 @@ import {
   QUANTITATIVE_RAMP_LOW as RAMP_LOW,
 } from "@hyperslop-systems/plot";
 
-const TOKENS = fileURLToPath(new URL("../src/styles/tokens.css", import.meta.url));
+const TOKENS = fileURLToPath(new URL("../../../src/tokens.css", import.meta.url));
 const BEGIN = "  /* ---- BEGIN GENERATED PALETTE ---- */";
 const END = "  /* ---- END GENERATED PALETTE ---- */";
 

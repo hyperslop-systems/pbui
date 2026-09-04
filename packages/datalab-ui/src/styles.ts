@@ -1,5 +1,4 @@
 import "./styles/reset.css";
-import "./styles/tokens.css";
 import "@hyperslop-systems/pbui/styles.css";
 import "@hyperslop-systems/pbui/components.css";
 // The shared presentation-part and chrome styles (PBUI-UNIFY-001): previously
