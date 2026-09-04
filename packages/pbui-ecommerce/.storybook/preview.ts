@@ -1,5 +1,6 @@
 import type { Preview } from "@storybook/react-vite";
 import "@hyperslop-systems/pbui/styles.css";
+import "./base.css";
 import "@hyperslop-systems/pbui-workbench/styles.css";
 import "@hyperslop-systems/plot/styles.css";
 import "../src/styles.css";

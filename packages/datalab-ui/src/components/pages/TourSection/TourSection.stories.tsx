@@ -1,3 +1,4 @@
+import { AnalysisProvider } from "../../../appkit/AnalysisProvider";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { TourSection } from "./TourSection";
 import "../../../apps/all";
@@ -44,9 +45,11 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div style={{ padding: 20, maxWidth: 1180 }}>
-        <Story />
-      </div>
+      <AnalysisProvider principalKey="storybook-tour-fixtures">
+        <div style={{ padding: 20, maxWidth: 1180 }}>
+          <Story />
+        </div>
+      </AnalysisProvider>
     ),
   ],
   args: {

@@ -8,6 +8,8 @@ import "@hyperslop-systems/pbui-workbench/styles.css";
 import "@hyperslop-systems/plot/styles.css";
 import "../src/styles/plot.css";
 import "../src/styles/scrollbars.css";
+// The brand components (PhaseRule, PhaseIcon, Lockup) read --brand-* tokens.
+import "../src/styles/brand.css";
 
 import { withStore, withTile } from "./decorators";
 import { withPbui } from "./withPbui";

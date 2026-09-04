@@ -37,7 +37,7 @@ export const Small: Story = { render: () => <Row size={14} /> };
 
 export const Ink: Story = {
   render: () => (
-    <div style={{ background: "var(--pbui-ink)", padding: 32 }}>
+    <div style={{ background: "var(--pbui-ink)", color: "var(--pbui-paper)", padding: 32 }}>
       <Row size={48} />
     </div>
   ),

@@ -65,7 +65,10 @@ export function Composer({ placeholder = "ask the agent… (Enter sends, Shift+E
   };
 
   const insertObject = async () => {
-    const types = Object.keys(chat.vocabulary.types).filter((t) => t !== "unresolved");
+    // Only types the product described: the vocabulary can name a type (say
+    // "message") that no descriptor was bound for, and under the closed world
+    // (PBUI-KERNEL-1 C9) asking to accept an undeclared type throws.
+    const types = Object.keys(chat.vocabulary.types).filter((t) => t !== "unresolved" && chat.registry.has(t));
     const picked = await pbui.accept({ types, prompt: "pick an object to mention" });
     if (!picked) return;
     const reference = chat.refs.fromProduct(picked);

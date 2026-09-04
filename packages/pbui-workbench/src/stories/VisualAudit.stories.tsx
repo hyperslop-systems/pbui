@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Button, Stack, Text, terms, linkVerbs, createPresentationTypeGraph, type Badge, type BadgeState } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { createWorkbench } from "../createWorkbenchShell";
@@ -355,9 +355,13 @@ export const WireLayerStyles: StoryObj = {
           }),
         ]);
       }
-      workbench.perform(linkVerbs.openMode());
       return workbench;
     }, []);
+    // Link mode after mount: the wire layer measures port positions from the
+    // DOM, so opening it before the surface exists draws nothing.
+    useEffect(() => {
+      wb.perform(linkVerbs.openMode());
+    }, [wb]);
     return (
       <Page title="WireLayer — wire styles">
         <Panel label="held (dotted) + derived (dashed, labelled)" width={720} height={460}>

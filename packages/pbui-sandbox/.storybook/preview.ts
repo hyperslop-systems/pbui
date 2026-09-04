@@ -3,6 +3,7 @@ import type { Preview } from "@storybook/react-vite";
 // composes (workbench chrome, the editor), then our own module CSS arrives
 // with the components the stories import.
 import "@hyperslop-systems/pbui/styles.css";
+import "./base.css";
 import "@hyperslop-systems/pbui-workbench/styles.css";
 import "@hyperslop-systems/pbui-editor/styles.css";
 
