@@ -80,8 +80,6 @@
 
 /* Connection inspection does not change box geometry or wire dash semantics. */
 .surface[data-link-mode] :global([data-port-id][data-connected-highlight]) {
-  outline: 2px solid var(--pbui-accent, #b54b00);
-  outline-offset: 2px;
   background: color-mix(in srgb, var(--pbui-accent, #b54b00) 16%, var(--pbui-pane));
 }
 .surface[data-link-mode] :global([data-part="port-jack"][data-connected-highlight]) {
