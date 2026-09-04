@@ -31,8 +31,6 @@ RelatedFiles:
       Note: 'Controller: policy, metadata sequencing, close-view batch (commit 93cbf64)'
     - Path: repo://packages/datalab-ui/src/store/effects.ts
       Note: Import as one validated batch in dependency order (commit 0b980f3)
-    - Path: repo://packages/datalab-ui/src/store/layout.ts
-      Note: Primary duplicate spatial implementation inspected
     - Path: repo://packages/datalab-ui/src/store/merge.ts
       Note: Pinned merge with singleton dedupe (commit 0b980f3)
     - Path: repo://packages/datalab-ui/src/store/navigation.ts

@@ -19,8 +19,6 @@ RelatedFiles:
       Note: Rich Stage/workspace launcher retained and adapted
     - Path: repo://packages/datalab-ui/src/components/organisms/Tile/Tile.tsx
       Note: Product presentation separated from duplicate spatial rendering
-    - Path: repo://packages/datalab-ui/src/store/layout.ts
-      Note: Duplicate spatial Redux implementation and Stage metadata seam
     - Path: repo://packages/datalab-ui/src/store/persist.ts
       Note: Local migration, pinned merge, and secret guard
     - Path: repo://packages/datalab-ui/src/store/stages.ts
