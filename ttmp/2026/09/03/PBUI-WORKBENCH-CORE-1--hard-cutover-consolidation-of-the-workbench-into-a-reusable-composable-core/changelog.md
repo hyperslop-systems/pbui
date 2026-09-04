@@ -230,3 +230,8 @@ S6: binding rules + launch policy, additionalBindings replaces openBindings, Go 
 
 S7: whole-workspace audit green (1,508 tests, 12 builds, 5 storybooks, protocol-check, boundary, Go), shop-demo smoke, versions pbui 0.12.0 / core 0.2.0 / shell 0.6.0 (eabf8e1); consumers re-verified: agentlogic 8ce82b5, hyperblog 38f53ed, turboproof 25ef8eb, rag-ttc ea2bc79
 
+
+## 2026-09-04
+
+PR 25: reject blank workbench ID and name at ingress; 254 core tests, build, and typecheck pass (a5eebce).
+

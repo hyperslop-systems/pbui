@@ -15,12 +15,20 @@ Owners: []
 RelatedFiles:
     - Path: repo://packages/pbui-chat/demo/src/workbench.ts
       Note: Wiring order of sources, restore and persistence in the largest consumer
+    - Path: repo://packages/workbench-core/src/createWorkbenchCore.test.ts
+      Note: Refused construction and atomic replacement tests
     - Path: repo://packages/workbench-core/src/goldens/transitions.test.ts
       Note: Phase 0 behavior goldens ported to the core
     - Path: repo://packages/workbench-core/src/rebalance/slate.ts
       Note: Pure rebalance engine after package move
     - Path: repo://packages/workbench-core/src/sources.ts
       Note: Document sources, the one new core facility of Phase 8
+    - Path: repo://packages/workbench-core/src/validation.test.ts
+      Note: Empty and whitespace ingress regressions
+    - Path: repo://packages/workbench-core/src/validation.ts
+      Note: PR 25 required workbench identity (a5eebce)
+    - Path: repo://pkg/workbench/validate.go
+      Note: Server required identity diagnostic contract
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/01-intern-guide-to-the-pbui-workbench-core-consolidation-and-hard-cutover.md
       Note: Final evidence-backed architecture and implementation guide produced by the investigation
     - Path: repo://ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/design-doc/03-post-implementation-architecture-and-code-review.md
@@ -37,6 +45,7 @@ LastUpdated: 2026-09-03T15:00:00-04:00
 WhatFor: Preserve how the consolidation design was derived so an implementer or reviewer can reproduce findings and continue without repeating the investigation.
 WhenToUse: Read before resuming PBUI-WORKBENCH-CORE-1, reviewing its architecture recommendations, or reproducing the planner-purity finding.
 ---
+
 
 
 
@@ -2091,3 +2100,66 @@ The four external products were re-verified in parallel by agents from one brief
 ### Technical details
 
 - §16 completion gates: all seventeen hold in this repo; "TypeScript and Go pass shared fixtures" holds for this repo's Go module, and for the external hosts once they take the module.
+
+
+## Step 29: PR #25 — validate workbench identity at ingress
+
+The review found that local validation checked the format and version but omitted required workbench ID and name checks. The Go server already rejects blank values. Local parsing, core construction, and whole-document replacement now reject them with the same `required` diagnostic code, field path, and detail.
+
+The regressions check empty and whitespace-only values, with and without a catalog, and verify that a rejected replacement preserves the previous state and does not notify subscribers. This closes the interval in which a user could accumulate local work on an identity the server would refuse.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Address code review comments: https://github.com/hyperslop-systems/pbui/pull/25"
+
+**Assistant interpretation:** Align the core's required identity validation with the server and verify every relevant ingress path.
+
+**Inferred user intent:** Refuse invalid workbench snapshots immediately, before they can accumulate unsaveable local changes.
+
+**Commit (code):** a5eebce — "fix(core): reject blank workbench identities at ingress"
+
+### What I did
+
+- Read the [P2 review comment](https://github.com/hyperslop-systems/pbui/pull/25#discussion_r3938624345) and `pkg/workbench/validate.go`, including `validText`.
+- Added trimmed-emptiness checks for `doc.id` and `doc.name` in `validateWorkbenchDocument`.
+- Added parameterized validation/parsing and core construction/replacement regressions.
+- Ran `pnpm --filter @hyperslop-systems/workbench-core test src/validation.test.ts src/createWorkbenchCore.test.ts` (22 tests), full core tests (254 tests), build, and typecheck.
+
+### Why
+
+- Required envelope identity is a local structural invariant, so it must be checked even when parsing without an application catalog.
+
+### What worked
+
+- Focused tests, all 254 core tests, the core build, and typecheck passed on the first run.
+- The existing ingress calls already share the validator, so a single production change covers all three paths.
+
+### What didn't work
+
+- No implementation or test failures. The initial restricted GitHub read needed an authorized escalated retry; see Datalab diary Step 7 for the exact command and error.
+
+### What I learned
+
+- The server uses `required`, the field path (`id` or `name`), and `value is required` for empty or whitespace-only text. The new local diagnostics match that contract.
+
+### What was tricky to build
+
+- Replacement must reject before installing or notifying, not merely report an error after publication. The regression retains the prior state reference and counts subscriber calls to verify that ordering.
+
+### What warrants a second pair of eyes
+
+- The change intentionally enforces requiredness, following the validator's existing trimmed-text conventions. Server-specific byte limits and other server-only checks remain outside this review fix.
+
+### What should be done in the future
+
+- N/A for this review request.
+
+### Code review instructions
+
+- Read the two new checks in `validation.ts`, then the parameterized tests in `validation.test.ts` and `createWorkbenchCore.test.ts`.
+- Validate with `pnpm --filter @hyperslop-systems/workbench-core test`, `build`, and `typecheck`.
+
+### Technical details
+
+- Refusal shape: `{ code: "required", path: "id" | "name", detail: "value is required" }`.
+- The implementation reports both missing fields if both are blank; the server stops at its first validation error.

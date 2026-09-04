@@ -67,3 +67,8 @@ Step 6 / Phase 8: workspace audit green, browser smoke, performance recording, M
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/MIGRATION.md — External shape changes for embedders
 
+
+## 2026-09-04
+
+PR 25: preserve unbound world graphics in remote snapshots; 605 Datalab tests and build pass (70c3dd2).
+

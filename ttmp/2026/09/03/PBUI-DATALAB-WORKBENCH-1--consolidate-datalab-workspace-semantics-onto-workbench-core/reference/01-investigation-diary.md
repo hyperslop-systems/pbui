@@ -26,7 +26,9 @@ RelatedFiles:
     - Path: repo://packages/datalab-ui/src/remote/codec.ts
       Note: Current local-to-protocol conversion inspected
     - Path: repo://packages/datalab-ui/src/remote/projection.ts
-      Note: Work-stage projection and adoption (commit 0b980f3)
+      Note: |-
+        Work-stage projection and adoption (commit 0b980f3)
+        PR 25 unbound graphic retention (70c3dd2)
     - Path: repo://packages/datalab-ui/src/store/controller.ts
       Note: 'Controller: policy, metadata sequencing, close-view batch (commit 93cbf64)'
     - Path: repo://packages/datalab-ui/src/store/effects.ts
@@ -47,6 +49,10 @@ RelatedFiles:
       Note: Machine-enforced Datalab dependency graph
     - Path: repo://packages/datalab-ui/test/migration-goldens.test.ts
       Note: Phase 0 golden test (commit bc3f027)
+    - Path: repo://packages/datalab-ui/test/remote-codec.test.ts
+      Note: Unbound edit save reload regression
+    - Path: repo://packages/datalab-ui/test/remote-load.test.ts
+      Note: Local-only namespace exclusion regression
     - Path: repo://ttmp/2026/09/03/PBUI-DATALAB-WORKBENCH-1--consolidate-datalab-workspace-semantics-onto-workbench-core/design-doc/01-intern-guide-to-consolidating-datalab-onto-workbench-core.md
       Note: Design produced by Step 1
 ExternalSources: []
@@ -55,6 +61,7 @@ LastUpdated: 2026-09-03T17:45:00-04:00
 WhatFor: Preserve how the Datalab Workbench migration design was derived and make implementation continuation reproducible.
 WhenToUse: Read before implementing or reviewing PBUI-DATALAB-WORKBENCH-1.
 ---
+
 
 
 
@@ -533,3 +540,67 @@ core index over 15 tiles                     0.005 ms/op
 close back to 1 tile                         0.291 ms/close
 workspace: 10 package suites green; builds green; storybook green; protocol generated code unchanged; go test ok
 ```
+
+
+## Step 7: PR #25 — retain unbound graphics in remote snapshots
+
+The review identified a data-loss path: projection selected graphics only through explicit view bindings, although unbound document-aware tiles follow the active world document. Editing such a document did not affect the outgoing snapshot, and a subsequent layout save could remove it from the server snapshot. Graphics now have a lifetime independent of view placement reachability: projection includes world documents outside the namespace preserved for local-only stages, in addition to explicitly bound documents.
+
+This retains both remotely loaded and newly created unbound graphics. The existing protection for local-only stage documents and the refusal for missing explicitly bound documents remain covered by regression tests.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Address code review comments: https://github.com/hyperslop-systems/pbui/pull/25"
+
+**Assistant interpretation:** Address both actionable review comments on the PR branch, validate them, and commit and push the fixes.
+
+**Inferred user intent:** Prevent data loss and invalid local documents before the refactoring merges.
+
+**Commit (code):** 70c3dd2 — "fix(datalab): preserve unbound graphics in remote snapshots"
+
+### What I did
+
+- Read the [P1 review comment](https://github.com/hyperslop-systems/pbui/pull/25#discussion_r3938624340), projection/adoption policy, world reducers, seed stage ownership, and the remote controller's fingerprint path.
+- Updated `projectWorkStage` to retain unbound world graphics outside the preserved local-only namespace; removed the stale `managedViewIds` comment.
+- Added regressions for an unbound remote graphic, a new unbound graphic, content edits changing the serialized fingerprint input, an unrelated layout save, reload, local-only document exclusion, and missing bound-document refusal.
+- Ran `pnpm --filter @hyperslop-systems/datalab-ui test test/remote-codec.test.ts test/remote-load.test.ts` (10 tests), then the full Datalab suite (605 tests) and package build.
+
+### Why
+
+- View bindings describe consumers, not document ownership. Closing or unbinding a view must not implicitly delete a graphic from a whole-document save.
+
+### What worked
+
+- All focused and full package tests passed on the first run; the package build passed.
+- Pure projection/codec tests cover the data that the controller fingerprints and uploads, without depending on debounce timing or a live server.
+
+### What didn't work
+
+- The initial sandboxed `gh pr view 25 --repo hyperslop-systems/pbui --json title,body,headRefName,headRefOid,baseRefName,comments,reviews,url` returned `error connecting to api.github.com`; the authorized escalated read succeeded.
+- The successful Datalab build reported the existing bundling warning `[INEFFECTIVE_DYNAMIC_IMPORT]`: `src/analysis/browser.ts` is imported dynamically by `AnalysisProvider.tsx` and statically by `src/index.ts`.
+
+### What I learned
+
+- The world has a document order and active selection but no separate stage ownership field per graphic. The existing local-only preservation set provides the projection boundary; other world graphics must survive regardless of current bindings.
+
+### What was tricky to build
+
+- Selecting only currently reachable bindings drops valid work; selecting every world document would also upload local demo documents. The fix reuses the preservation policy and keeps explicit binding checks, rather than introducing another remotely managed-ID registry.
+
+### What warrants a second pair of eyes
+
+- Explicitly binding a local-stage document into the work stage retains the previous projection behavior; the inbound namespace collision guard still applies. This patch does not redefine cross-stage sharing policy.
+
+### What should be done in the future
+
+- N/A for this review request.
+
+### Code review instructions
+
+- Start at `projectWorkStage`, then read the new remote codec and loading regressions.
+- Validate with `pnpm --filter @hyperslop-systems/datalab-ui test` and `pnpm --filter @hyperslop-systems/datalab-ui build`.
+
+### Technical details
+
+- Inclusion predicate for an existing ordered world graphic: explicitly bound by a reachable work view OR absent from the local-only preserved document set.
+- No compatibility layer, migration, or remote controller API change was introduced.
