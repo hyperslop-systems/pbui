@@ -690,7 +690,7 @@ The original design bundle remains separate, preserving the pre-implementation s
 - Uploaded `PBUI Dependency DAG Implementation.pdf` successfully.
 - Marked the upload task and ticket complete.
 - Ran final `docmgr doctor` validation.
-- Prepared the `P5 DONE` work slip with the final documentation commit QR.
+- Printed the `P5 DONE` work slip successfully with the final ticket commit QR.
 
 ### Why
 
@@ -701,6 +701,7 @@ The original design bundle remains separate, preserving the pre-implementation s
 
 - Upload returned `OK: uploaded PBUI Dependency DAG Implementation.pdf -> /ai/2026/09/03/PBUI-DEPENDENCY-DAG-1`.
 - All ticket tasks are checked and doctor is clean.
+- The final `P5 DONE` slip printed successfully in two bitmap segments.
 
 ### What didn't work
 
