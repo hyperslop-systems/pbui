@@ -30,7 +30,13 @@ export interface PortCarryState {
 
 export type PortAnchorSide = "in" | "out";
 
-type PortAnchors = Partial<Record<PortAnchorSide, HTMLElement>>;
+/*
+ * Every mounted element per port and side. A view shown in two tiles mounts
+ * its ports twice; keeping one element per port meant the last registration
+ * won and a wire could anchor to whichever tile registered last — or to an
+ * element that had since unmounted (PBUI-WIRING-1 P1).
+ */
+type PortAnchors = Partial<Record<PortAnchorSide, Set<HTMLElement>>>;
 const PORTS = new Map<string, PortAnchors>();
 let state: PortCarryState | null = null;
 const listeners = new Set<() => void>();
@@ -44,17 +50,36 @@ function setState(next: PortCarryState | null): void {
 export function registerPort(id: string, side: PortAnchorSide, element: HTMLElement | null): void {
   const anchors = PORTS.get(id) ?? {};
   if (element) {
-    anchors[side] = element;
+    (anchors[side] ??= new Set()).add(element);
     PORTS.set(id, anchors);
     return;
   }
-  delete anchors[side];
-  if (anchors.in || anchors.out) PORTS.set(id, anchors);
+  // A ref callback with null carries no element: drop whatever left the
+  // document on this side; if nothing did, the side is gone as a whole.
+  const set = anchors[side];
+  if (set) {
+    let pruned = false;
+    for (const candidate of set) {
+      if (candidate.isConnected) continue;
+      set.delete(candidate);
+      pruned = true;
+    }
+    if (!pruned) set.clear();
+    if (set.size === 0) delete anchors[side];
+  }
+  if (anchors.in?.size || anchors.out?.size) PORTS.set(id, anchors);
   else PORTS.delete(id);
 }
 
+/** Every mounted element for a port and side, in registration order. */
+export function portElements(id: string, side: PortAnchorSide): readonly HTMLElement[] {
+  const set = PORTS.get(id)?.[side];
+  return set ? [...set] : [];
+}
+
+/** The first mounted element for a port and side, or null. */
 export function portElement(id: string, side: PortAnchorSide): HTMLElement | null {
-  return PORTS.get(id)?.[side] ?? null;
+  return portElements(id, side)[0] ?? null;
 }
 
 export function registeredPorts(): readonly string[] {

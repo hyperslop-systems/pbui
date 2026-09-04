@@ -1,4 +1,4 @@
-import { portElement, useEscapeSurface, usePortCarry } from "@hyperslop-systems/pbui";
+import { portElement, portElements, useEscapeSurface, usePortCarry } from "@hyperslop-systems/pbui";
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { useWorkbench } from "../../context";
 import { useLinkSnapshot } from "../../links/hooks";
@@ -21,12 +21,39 @@ function cubic(a: Point, b: Point): string {
   return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
 }
 
-function anchor(id: string, side: "in" | "out", root: HTMLElement): Point | null {
-  const element = portElement(id, side);
-  if (!element) return null;
+function anchorOf(element: HTMLElement, side: "in" | "out", root: HTMLElement): Point {
   const box = element.getBoundingClientRect();
   const origin = root.getBoundingClientRect();
   return { x: (side === "out" ? box.right : box.left) - origin.left, y: box.top + box.height / 2 - origin.top };
+}
+
+function anchor(id: string, side: "in" | "out", root: HTMLElement): Point | null {
+  const element = portElement(id, side);
+  return element ? anchorOf(element, side, root) : null;
+}
+
+/*
+ * A view shown in two tiles has two elements per port. One wire per mounted
+ * DESTINATION, from whichever mounted source is nearest to it: the reader
+ * sees every place the link lands, and never a wire to a tile that is not
+ * there (PBUI-WIRING-1 P1).
+ */
+function wireEnds(link: LinkRef, root: HTMLElement): Array<{ key: string; from: Point | null; to: Point | null }> {
+  const sources = portElements(link.source, "out").map((element) => anchorOf(element, "out", root));
+  const destinations = portElements(link.destination, "in").map((element) => anchorOf(element, "in", root));
+  if (destinations.length === 0) return [{ key: link.linkId, from: sources[0] ?? null, to: null }];
+  return destinations.map((to, index) => {
+    let from: Point | null = null;
+    let best = Number.POSITIVE_INFINITY;
+    for (const candidate of sources) {
+      const d = Math.hypot(candidate.x - to.x, candidate.y - to.y);
+      if (d < best) {
+        best = d;
+        from = candidate;
+      }
+    }
+    return { key: `${link.linkId}:${index}`, from, to };
+  });
 }
 
 /**
@@ -74,9 +101,7 @@ export function WireLayer({ renderWire }: WireLayerProps) {
   const root = workbench.root();
   const links = linkRefsOf(snapshot);
   const rootBox = root?.getBoundingClientRect();
-  const wires = root
-    ? links.map((link) => ({ link, from: anchor(link.source, "out", root), to: anchor(link.destination, "in", root) }))
-    : [];
+  const wires = root ? links.flatMap((link) => wireEnds(link, root).map((ends) => ({ link, ...ends }))) : [];
   const band = carry && root ? { from: anchor(carry.from, "out", root), to: rootBox ? { x: carry.x - rootBox.left, y: carry.y - rootBox.top } : null } : null;
   const sourceOfCarry = carry ? snapshot.ports.get(carry.from) : undefined;
   const overDefinition = carry?.over ? snapshot.ports.get(carry.over) : undefined;
@@ -99,7 +124,7 @@ export function WireLayer({ renderWire }: WireLayerProps) {
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
           </marker>
         </defs>
-        {wires.map(({ link, from, to }) => {
+        {wires.map(({ link, key, from, to }) => {
           const path = from && to ? cubic(from, to) : null;
           const node = (
             <g data-part="wire" data-link-id={link.linkId} data-term={link.kind} data-source={link.source} data-destination={link.destination} className={styles.wire}>
@@ -121,7 +146,7 @@ export function WireLayer({ renderWire }: WireLayerProps) {
               <title>{`${link.destinationTitle} ${link.kind === "held" ? "(held) ← " : "← "}${link.sourceTitle}`}</title>
             </g>
           );
-          return <g key={link.linkId}>{renderWire ? renderWire(link, node) : node}</g>;
+          return <g key={key}>{renderWire ? renderWire(link, node) : node}</g>;
         })}
         {band?.from && band.to ? <path d={cubic(band.from, band.to)} className={styles.band} data-part="wire-band" data-acceptable={String(carry?.acceptable ?? false)} /> : null}
       </svg>
