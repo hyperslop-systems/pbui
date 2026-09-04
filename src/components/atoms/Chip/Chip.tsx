@@ -58,6 +58,9 @@ export function Chip({
   return (
     <span
       data-part="chip"
+      /* Stable even when a wrapper renames data-part (the port badge does):
+       * the parts sheet uses it to let a chip BE its presentation's box. */
+      data-chip=""
       data-state={state}
       data-size={size === "small" ? undefined : size}
       className={[
