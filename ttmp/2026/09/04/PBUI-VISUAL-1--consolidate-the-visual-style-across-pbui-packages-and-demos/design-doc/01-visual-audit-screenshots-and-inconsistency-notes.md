@@ -62,11 +62,11 @@ Answers to the ten priorities, by number:
 
 1. **Tile chrome = datalab's**: every tile tinted by application kind, dark masthead, status footer. Adopted.
 2. **One chip.** Adopted.
-3. **Never rounded, always the brutalist style.** Applied to the Dialog this means: the dialog panel is the object-menu recipe scaled up (paper, firm ink border, zero radius, no blurred shadow, inverted title bar in the tracked-uppercase label style, tiny bordered close button like the tile bar), body on the px space scale. Backdrop: flat translucent-ink dim, no blur (open: keep the dim at all?).
+3. **Never rounded, always the brutalist style.** Applied to the Dialog this means: the dialog panel is the object-menu recipe scaled up (paper, firm ink border, zero radius, no blurred shadow, inverted title bar in the tracked-uppercase label style, tiny bordered close button like the tile bar), body on the px space scale. Backdrop: flat translucent-ink dim, no blur. Confirmed: never rounded, anywhere.
 4. **Kill nested double borders.** Adopted.
 5. **Un-overload the tan** (see the note on "wash" below). Adopted.
 6. Adopted. 7. Adopted. 8. Adopted. 9. Adopted.
-10. **Native controls**: pending the explanation below.
+10. **Native controls**: global zero-specificity skin in `styles.css` (confirmed), atoms second.
 
 **What a wash is.** A flat, very light background tint with no border (`--pbui-pane-alt` #f1f1ee, or datalab's `--pbui-wash` #f7f7f4), used to set a region apart by tone instead of by a line. In item 4 the inner nesting level becomes a wash instead of a third border; in item 6 chips and tags that carry no state get a neutral wash so the tan is left to mean selected/acceptable only.
 
