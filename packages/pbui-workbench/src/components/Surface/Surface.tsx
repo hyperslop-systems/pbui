@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, type ReactNode } from "react";
 import { EmptyState, isEditableTarget, routeWorkbenchKey, useAnyEscapeSurface } from "@hyperslop-systems/pbui";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { usePlacement, useWorkbench } from "../../context";
@@ -9,6 +9,8 @@ import { LinkAnnouncer } from "../LinkAnnouncer";
 import { RelationPalette } from "../RelationPalette";
 import { ShowChooser } from "../ShowChooser";
 import { WireLayer } from "../WireLayer";
+import { createGeometryStore } from "../../wiring/geometryStore";
+import { GeometryContext } from "../../wiring/geometryContext";
 import styles from "./Surface.module.css";
 
 /**
@@ -20,9 +22,12 @@ import styles from "./Surface.module.css";
  */
 export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, renderWire, linkModeShortcut = true, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
   const workbench = useWorkbench();
+  const geometry = useMemo(() => createGeometryStore(), []);
+  const setRoot = useCallback((element: HTMLDivElement | null) => { workbench.setRoot(element); geometry.setRoot(element); }, [workbench, geometry]);
   const tree = workbench.useCoreState((state) => state.index.workspaceById.get(state.session.workspaceId)?.tree);
   const launcherOpen = workbench.useShellState((state) => state.launcher !== null);
   const linkMode = workbench.useShellState((state) => state.linkModeOpen);
+  useLayoutEffect(() => { geometry.invalidate(); geometry.flush(); }, [geometry, tree, linkMode]);
   const anySurfaceOpen = useAnyEscapeSurface();
 
   // Mod+Shift+L toggles connect mode (PBUI-LINK-1 Phase 3), under the same
@@ -82,8 +87,9 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
   );
 
   return (
+    <GeometryContext.Provider value={geometry}>
     <div
-      ref={workbench.setRoot}
+      ref={setRoot}
       data-part="workbench"
       data-workbench-shell=""
       data-launcher-open={launcherOpen || undefined}
@@ -110,5 +116,6 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
         </div>
       ) : null}
     </div>
+    </GeometryContext.Provider>
   );
 }

@@ -1,0 +1,27 @@
+{
+  "phase": 0,
+  "title": "Truthful fixtures and regression inputs",
+  "commit": "1cfa1e1",
+  "task": "99su",
+  "summary": "Both Lab variants now contain six real relationships; semantic fixture tests and typecheck pass. Overall, start, and completion slips printed successfully.",
+  "narrative": "Replaced the lab's unchecked seeding sequence with one checked batch. It now creates three follows, one held source, one derived relationship, and a genuine identity between dedicated inout ports. The crowded app now emits only a port its manifest declares.\n\nCaptured the 768px geometry from the previous review as a source-linked regression input, ready for the new router's independent validator.",
+  "did": [
+    "Extracted createWiringLab and added actual emitted initial values before Pin.",
+    "Added shared counters and a double relation, leaving existing number inputs available for Follow.",
+    "Added two fixture tests that verify evaluated derived, held, and shared values after emissions.",
+    "Saved the captured 768px geometry with its original review path."
+  ],
+  "why": "The original lab advertised states that never existed because Pin and identity creation were refused. A visual refactoring requires fixtures whose semantic state is independently verified.",
+  "worked": [
+    "pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/fixtures.test.ts: 2 tests passed.",
+    "pnpm --filter @hyperslop-systems/pbui-workbench typecheck: passed.",
+    "Overall plan, P0 start, and P0 completion printing returned printed: true."
+  ],
+  "failed": "No implementation or validation failures in this phase.",
+  "learned": "Dedicated inout shared ports allow identity coverage without conflicting with already-followed number inputs.",
+  "tricky": "Hold must capture a real emitted value before application effects run. The fixture emits before the single seed transaction; tests then mutate the sources and prove that held values remain captured.",
+  "review": "Check the semantic relation counts and that CrowdedApp uses theta/one rather than the old undeclared gamma output.",
+  "future": "P1 builds isolated surface geometry and exact registration lifetimes; P3 consumes the captured regression input.",
+  "instructions": "Read createWiringLab in WiringLab.stories.tsx, then src/wiring/fixtures.test.ts. Run the two commands recorded under What worked.",
+  "details": "No compatibility code was introduced. Code commit contains fixtures, story corrections, and regression geometry. Slips are archived under various/slips; the thermal service reported successful physical printing."
+}

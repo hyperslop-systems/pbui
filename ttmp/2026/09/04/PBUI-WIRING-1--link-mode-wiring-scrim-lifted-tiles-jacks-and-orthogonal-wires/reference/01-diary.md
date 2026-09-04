@@ -550,3 +550,64 @@ The guide is `design-doc/04-wiring-scene-refactoring-architecture-and-intern-imp
 - Confirmed all 22 historical browser screenshots remain in `design-doc/review-assets/`; the new guide embeds two of them and stores its four new diagrams in `design-doc/refactor-assets/`.
 - Dry-run completed before upload. Actual upload returned `OK: uploaded PBUI-WIRING-1 Refactoring Design and Implementation Guide.pdf -> /ai/2026/09/04/PBUI-WIRING-1`.
 - Product source remains unchanged. The ticket index now links the standalone design, local PDF, and atomic probe evidence.
+
+## Step 13: Refactor P0 — Truthful fixtures and regression inputs
+
+Replaced the lab's unchecked seeding sequence with one checked batch. It now creates three follows, one held source, one derived relationship, and a genuine identity between dedicated inout ports. The crowded app now emits only a port its manifest declares.
+
+Captured the 768px geometry from the previous review as a source-linked regression input, ready for the new router's independent validator.
+
+### Prompt Context
+
+**User prompt (verbatim):** Implement, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill). Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done.
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 1cfa1e1
+
+### What I did
+
+- Extracted createWiringLab and added actual emitted initial values before Pin.
+- Added shared counters and a double relation, leaving existing number inputs available for Follow.
+- Added two fixture tests that verify evaluated derived, held, and shared values after emissions.
+- Saved the captured 768px geometry with its original review path.
+
+### Why
+
+The original lab advertised states that never existed because Pin and identity creation were refused. A visual refactoring requires fixtures whose semantic state is independently verified.
+
+### What worked
+
+- pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/fixtures.test.ts: 2 tests passed.
+- pnpm --filter @hyperslop-systems/pbui-workbench typecheck: passed.
+- Overall plan, P0 start, and P0 completion printing returned printed: true.
+
+### What didn't work
+
+No implementation or validation failures in this phase.
+
+### What I learned
+
+Dedicated inout shared ports allow identity coverage without conflicting with already-followed number inputs.
+
+### What was tricky to build
+
+Hold must capture a real emitted value before application effects run. The fixture emits before the single seed transaction; tests then mutate the sources and prove that held values remain captured.
+
+### What warrants a second pair of eyes
+
+Check the semantic relation counts and that CrowdedApp uses theta/one rather than the old undeclared gamma output.
+
+### What should be done in the future
+
+P1 builds isolated surface geometry and exact registration lifetimes; P3 consumes the captured regression input.
+
+### Code review instructions
+
+Read createWiringLab in WiringLab.stories.tsx, then src/wiring/fixtures.test.ts. Run the two commands recorded under What worked.
+
+### Technical details
+
+No compatibility code was introduced. Code commit contains fixtures, story corrections, and regression geometry. Slips are archived under various/slips; the thermal service reported successful physical printing.

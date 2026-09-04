@@ -9,6 +9,7 @@ import type { PlaceZone } from "../../placement";
 import { PortBadge } from "../PortBadge";
 import { PortRail } from "../PortRail";
 import type { SurfaceProps, TilePlacementInfo } from "../../types";
+import { useFrameRegistration } from "../../wiring/geometryContext";
 import styles from "./Tile.module.css";
 
 export interface TileProps
@@ -28,6 +29,7 @@ export interface TileProps
  */
 export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
   const workbench = useWorkbench();
+  const registerFrame = useFrameRegistration(node.id);
   const document = workbench.useDocument();
   const index = workbench.useCoreState((state) => state.index);
   const active = workbench.useCoreState((state) => state.session.activePlacementId === node.id);
@@ -88,6 +90,7 @@ export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, 
 
   return (
     <div
+      ref={registerFrame}
       className={styles.cell}
       data-part="workbench-tile"
       data-active={active || undefined}

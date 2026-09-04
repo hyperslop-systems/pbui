@@ -119,3 +119,8 @@ Created standalone wiring refactoring design 04: surface-owned geometry, pure va
 
 Validated and uploaded the 29-page standalone refactoring guide to /ai/2026/09/04/PBUI-WIRING-1 as PBUI-WIRING-1 Refactoring Design and Implementation Guide. Updated index and diary; confirmed 22 browser screenshots remain in the ticket and four new design diagrams are stored beside the guide.
 
+
+## 2026-09-04
+
+Refactor P0: Truthful fixtures and regression inputs (commit 1cfa1e1). Both Lab variants now contain six real relationships; semantic fixture tests and typecheck pass. Overall, start, and completion slips printed successfully.
+

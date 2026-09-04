@@ -4,6 +4,7 @@ import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
 import { snapRatio } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
 import { measureSplitGeometry } from "../../geometry";
+import { useGeometryStore } from "../../wiring/geometryContext";
 import styles from "./SplitPane.module.css";
 
 export interface SplitPaneProps {
@@ -22,6 +23,7 @@ export interface SplitPaneProps {
  */
 export function SplitPane({ node, renderNode }: SplitPaneProps) {
   const workbench = useWorkbench();
+  const geometry = useGeometryStore();
   const container = useRef<HTMLDivElement>(null);
   const split = node.body.case === "split" ? node.body.value : null;
   const row = split?.direction !== Direction.COLUMN;
@@ -29,6 +31,7 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
   const [live, setLive] = useState<{ ratio: number; snapped: boolean } | null>(null);
   const [bounds, setBounds] = useState<{ min: number; max: number } | null>(null);
   const ratio = live?.ratio ?? committed;
+  useLayoutEffect(() => { geometry?.invalidate(); }, [geometry, ratio]);
   // The same rendered pixel bounds an agent's `placement.resize` sees: the
   // engine's math over a geometry measured for this one split.
   const ratioBounds = () => splitRatioBounds(measureSplitGeometry(container.current, node.id), node.id, row ? "row" : "col", workbench.core.policy.split);
