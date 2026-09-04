@@ -628,7 +628,7 @@ I assembled the ticket hub, intern guide, validation summary, full diary, tasks,
 
 **Inferred user intent:** Leave the work reviewable away from the repository and close only after delivery is proven.
 
-**Commit (code):** pending delivery-documentation commit at the time of this entry.
+**Commit (code):** `788442607fea80e1f340ac57d4449410d455550e` — "Deliver Workbench identity implementation guide".
 
 ### What I did
 
@@ -684,4 +684,68 @@ Bundle inputs: 6 Markdown documents
 Remote artifact: PBUI Identity Revision Implementation.pdf
 Remote directory: /ai/2026/09/03/PBUI-IDENTITY-REVISION-1
 Upload: PASS
+```
+
+## Step 8: Print the final phase receipt and close
+
+The final `P5 DONE` thermal slip printed in two segments with an acknowledged printer response. It records commit `7884426`, all seven tasks, the focused/root/child test counts, Go and packed-consumer success, and reMarkable delivery. I then changed the last pending completion-audit row to PASS and prepared the ticket closure.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 4)
+
+**Assistant interpretation:** Perform the last physical and metadata closure actions, then rerun the concise completion audit.
+
+**Inferred user intent:** End with no unverified phase, dirty tree, or open durable-goal requirement.
+
+**Commit (code):** pending closure-metadata commit at the time of this entry.
+
+### What I did
+
+- Printed `P5 DONE` through the Almanach remote renderer.
+- Received HTTP 200, `printed: true`, and `segments: 2`.
+- Updated the completion audit, guide, index, and diary for closure.
+
+### Why
+
+- Thermal phase completion was an explicit delivery constraint and could not be inferred from tests or documentation.
+
+### What worked
+
+```text
+printed: true
+printerResponse.ok: true
+segments: 2
+```
+
+### What didn't work
+
+- N/A. The recovered printer completed the final slip on the first attempt.
+
+### What I learned
+
+- Closure evidence needs to include physical side effects when they are part of the requested workflow, not merely code state.
+
+### What was tricky to build
+
+- The final slip must reference a stable implementation/delivery commit, while the slip receipt itself can only be recorded in a subsequent closure commit.
+
+### What warrants a second pair of eyes
+
+- Confirm the final concise audit is run after the closure commit and the repository is clean.
+
+### What should be done in the future
+
+- Begin the separate property/conformance ticket only after this ticket remains closed and clean.
+
+### Code review instructions
+
+- Verify commit `7884426`, the final audit row, ticket closed status, and clean Git status.
+
+### Technical details
+
+```text
+P5 DONE: PASS
+Almanach HTTP status: 200
+Printer segments: 2
 ```

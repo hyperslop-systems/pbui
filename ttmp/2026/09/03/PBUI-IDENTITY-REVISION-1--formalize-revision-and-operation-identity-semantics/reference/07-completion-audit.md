@@ -1,7 +1,7 @@
 ---
 Title: PBUI identity and revision completion audit
 Ticket: PBUI-IDENTITY-REVISION-1
-Status: active
+Status: complete
 Topics:
     - architecture
     - pbui
@@ -85,7 +85,7 @@ No item is satisfied by probability, scope narrowing, or a passing test that doe
 | No task-introduced TODO/shim/dead compatibility code | changed-production-file search plus no-legacy audit | PASS |
 | Documentation | guide §20, diary Steps 1–7, validation summary, tasks, changelog, RelatedFiles | PASS |
 | docmgr health | final `docmgr doctor --ticket PBUI-IDENTITY-REVISION-1 --stale-after 30` reports all checks passed | PASS |
-| Thermal slips | Overall plan and P0–P4 start/done plus P5 start printed; P2 recovery chronology disclosed in diary; final P5 done receipt is the last closure action | PENDING FINAL PRINT |
+| Thermal slips | Overall plan and P0–P5 start/done sequence printed; P2 recovery chronology disclosed in diary; P5 done returned HTTP 200, `printed: true`, and two segments | PASS |
 | reMarkable | `reference/06`: dry run plus `OK: uploaded PBUI Identity Revision Implementation.pdf -> /ai/2026/09/03/PBUI-IDENTITY-REVISION-1` | PASS |
 
 ## Failure-resolution audit
@@ -107,4 +107,4 @@ No item is satisfied by probability, scope narrowing, or a passing test that doe
 
 ## Final condition
 
-After the final closure metadata and `P5 DONE` print receipt are committed, rerun the concise core/root/docmgr/no-legacy/git-status audit. Mark the durable pi goal complete only if those fresh checks pass and the working tree is clean.
+The final closure metadata and `P5 DONE` print receipt are recorded. Rerun the concise core/root/docmgr/no-legacy/git-status audit after the closure commit. Mark the durable pi goal complete only if those fresh checks pass and the working tree is clean.
