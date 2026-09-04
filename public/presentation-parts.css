@@ -39,6 +39,16 @@
   border-left: var(--pbui-tone-edge) solid var(--pbui-presentation-tone, var(--pbui-tone-neutral));
 }
 
+/* A block presentation is a REGION (a stat, a meter, a row), not a token: no
+ * box, no edge, no padding of its own; the hover outline still says it is an
+ * object. The inline form is the chip. */
+[data-part="presentation"][data-layout="block"] {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: context-menu;
+}
+
 /* Inside a composite (a tile title, a port badge slot) the container owns
  * the look: a plain hairline box, no edge. */
 [data-part="presentation"][role="none"] {

@@ -895,6 +895,7 @@ export function createPbui<
         data-part={svg ? "presentation-svg" : "presentation"}
         data-ptype={reference.type}
         data-tone={tone}
+        data-layout={block ? "block" : undefined}
         /*
          * The 4px edge that names the type (PBUI-VISUAL-1): the sheet reads
          * `--pbui-presentation-tone`, which is the type's own tone token when
