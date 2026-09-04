@@ -38,7 +38,7 @@ Documents:
 
 ## Status
 
-Current status: **active**
+Current status: **active** — corpus collected and the feedback document written (Steps 1–3); awaiting feedback by exhibit number before the consolidation passes. Read the design doc's top section first; the catalog below it is the full numbered corpus.
 
 ## Topics
 

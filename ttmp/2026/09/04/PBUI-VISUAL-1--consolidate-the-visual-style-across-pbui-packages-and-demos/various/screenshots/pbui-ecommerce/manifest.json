@@ -1,0 +1,234 @@
+[
+  {
+    "n": 1,
+    "id": "shop-scenes--scene-1-ambient",
+    "title": "Shop/Scenes",
+    "name": "1 · ambient: an unlinked detail follows the workspace's current order; click rows to move it (Phase 2)",
+    "file": "001-shop-scenes--scene-1-ambient.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 2,
+    "id": "shop-scenes--scene-2-follow",
+    "title": "Shop/Scenes",
+    "name": "2a · follow: right-click an order → Link to order detail · order; the badge reads → orders (Phase 2)",
+    "file": "002-shop-scenes--scene-2-follow.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 3,
+    "id": "shop-scenes--scene-2-hold",
+    "title": "Shop/Scenes",
+    "name": "2b · hold: the detail is pinned on #88213; click the badge for Resume / Detach (Phase 2)",
+    "file": "003-shop-scenes--scene-2-hold.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 4,
+    "id": "shop-scenes--scene-3-show",
+    "title": "Shop/Scenes",
+    "name": "3 · show with routing: detail A is held; right-click an order → “Show details…” goes to detail B; with no detail open it spawns one (Phase 4)",
+    "file": "004-shop-scenes--scene-3-show.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 5,
+    "id": "shop-scenes--scene-3-spawn",
+    "title": "Shop/Scenes",
+    "name": "3b · show with nothing to take it: “Show details…” opens a detail beside the table and links it in one plan (Phase 4)",
+    "file": "005-shop-scenes--scene-3-spawn.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 6,
+    "id": "shop-scenes--scene-4-derived",
+    "title": "Shop/Scenes",
+    "name": "4 · derived: the customer detail derives through order.customer from the orders table (badge customer ← its customer); the order detail follows (Phase 6)",
+    "file": "006-shop-scenes--scene-4-derived.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 7,
+    "id": "shop-scenes--scene-4-palette",
+    "title": "Shop/Scenes",
+    "name": "4b · the relation palette: click the customer detail's badge → “Derive through…”, or open it here (Phase 6)",
+    "file": "007-shop-scenes--scene-4-palette.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 8,
+    "id": "shop-scenes--scene-5-identity",
+    "title": "Shop/Scenes",
+    "name": "5 · identity: the orders table and the orders-by-status plot share a selection ≡ σ1 — Shift-click rows, brush the plot (Phase 5)",
+    "file": "008-shop-scenes--scene-5-identity.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 9,
+    "id": "shop-scenes--scene-5-incompatible",
+    "title": "Shop/Scenes",
+    "name": "5b · not identity-compatible: the revenue-by-category plot selects daily_sales cells, not orders — Ctrl-drag in connect mode says why (Phase 5)",
+    "file": "009-shop-scenes--scene-5-incompatible.png",
+    "size": "1280x805"
+  },
+  {
+    "n": 10,
+    "id": "shop-scenes--scene-6-follow-vs-identity",
+    "title": "Shop/Scenes",
+    "name": "6 · follow versus identity: the orders filter FOLLOWS the plot's category (badge → plot), a follow rather than a shared cell (Phase 5)",
+    "file": "010-shop-scenes--scene-6-follow-vs-identity.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 11,
+    "id": "shop-scenes--scene-7-connect-mode",
+    "title": "Shop/Scenes",
+    "name": "7 · connect mode: every tile flips to its rail, every link is a wire; drag ▸ onto ◂, Shift to hold, Esc to leave (Phase 3)",
+    "file": "011-shop-scenes--scene-7-connect-mode.png",
+    "size": "1280x805"
+  },
+  {
+    "n": 12,
+    "id": "shop-scenes--scene-8-inspector",
+    "title": "Shop/Scenes",
+    "name": "8 · the coordination inspector beside a linked pair: what an agent reads through workbench_describe, for a person (Phase 7)",
+    "file": "012-shop-scenes--scene-8-inspector.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 13,
+    "id": "shop-scenes--seeded",
+    "title": "Shop/Scenes",
+    "name": "the seeded workbench: four workspaces (orders, customers, sales, catalog)",
+    "file": "013-shop-scenes--seeded.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 14,
+    "id": "shop-tiles-customerdetail--following",
+    "title": "Shop/Tiles/CustomerDetail",
+    "name": "following the customers table: Northgate Capital, a fund",
+    "file": "014-shop-tiles-customerdetail--following.png",
+    "size": "1280x500"
+  },
+  {
+    "n": 15,
+    "id": "shop-tiles-customerdetail--waiting",
+    "title": "Shop/Tiles/CustomerDetail",
+    "name": "nothing bound yet",
+    "file": "015-shop-tiles-customerdetail--waiting.png",
+    "size": "1280x486"
+  },
+  {
+    "n": 16,
+    "id": "shop-tiles-customerstable--alone",
+    "title": "Shop/Tiles/CustomersTable",
+    "name": "twelve customers with their summer spend",
+    "file": "016-shop-tiles-customerstable--alone.png",
+    "size": "1280x560"
+  },
+  {
+    "n": 17,
+    "id": "shop-tiles-inspector--a-product",
+    "title": "Shop/Tiles/Inspector",
+    "name": "inspecting a SKU, fixed on the value (port.bind)",
+    "file": "017-shop-tiles-inspector--a-product.png",
+    "size": "1280x440"
+  },
+  {
+    "n": 18,
+    "id": "shop-tiles-inspector--an-order",
+    "title": "Shop/Tiles/Inspector",
+    "name": "inspecting an order the table presented: subject follows orders.order through <inspectable>",
+    "file": "018-shop-tiles-inspector--an-order.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 19,
+    "id": "shop-tiles-inspector--waiting",
+    "title": "Shop/Tiles/Inspector",
+    "name": "nothing inspected yet",
+    "file": "019-shop-tiles-inspector--waiting.png",
+    "size": "1280x302"
+  },
+  {
+    "n": 20,
+    "id": "shop-tiles-orderdetail--ambient",
+    "title": "Shop/Tiles/OrderDetail",
+    "name": "ambient: an unlinked detail shows the workspace's current order (#88213, J. Alvarez); badge ○",
+    "file": "020-shop-tiles-orderdetail--ambient.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 21,
+    "id": "shop-tiles-orderdetail--following",
+    "title": "Shop/Tiles/OrderDetail",
+    "name": "following the orders table (#88214, Northgate Capital); badge →",
+    "file": "021-shop-tiles-orderdetail--following.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 22,
+    "id": "shop-tiles-orderdetail--held",
+    "title": "Shop/Tiles/OrderDetail",
+    "name": "held on #88213 while the table has moved on to #88201; badge ⏸",
+    "file": "022-shop-tiles-orderdetail--held.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 23,
+    "id": "shop-tiles-orderdetail--waiting",
+    "title": "Shop/Tiles/OrderDetail",
+    "name": "nothing presented yet: the empty state names the port and its fallback",
+    "file": "023-shop-tiles-orderdetail--waiting.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 24,
+    "id": "shop-tiles-orderstable--alone",
+    "title": "Shop/Tiles/OrdersTable",
+    "name": "the order book, sixty-five orders; every id is an <order> presentation",
+    "file": "024-shop-tiles-orderstable--alone.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 25,
+    "id": "shop-tiles-productcatalog--alone",
+    "title": "Shop/Tiles/ProductCatalog",
+    "name": "the eight SKUs; product, category and metal are three presentation types in one row",
+    "file": "025-shop-tiles-productcatalog--alone.png",
+    "size": "1280x400"
+  },
+  {
+    "n": 26,
+    "id": "shop-tiles-shopplot--orders-by-status",
+    "title": "Shop/Tiles/ShopPlot",
+    "name": "orders by status over the orders table; every segment is one order",
+    "file": "026-shop-tiles-shopplot--orders-by-status.png",
+    "size": "1280x460"
+  },
+  {
+    "n": 27,
+    "id": "shop-tiles-shopplot--revenue-by-category",
+    "title": "Shop/Tiles/ShopPlot",
+    "name": "revenue by category, stacked from the daily cells",
+    "file": "027-shop-tiles-shopplot--revenue-by-category.png",
+    "size": "1280x460"
+  },
+  {
+    "n": 28,
+    "id": "shop-tiles-shopplot--revenue-by-day",
+    "title": "Shop/Tiles/ShopPlot",
+    "name": "revenue by day over daily_sales, coloured by metal",
+    "file": "028-shop-tiles-shopplot--revenue-by-day.png",
+    "size": "1280x460"
+  },
+  {
+    "n": 29,
+    "id": "shop-tiles-shopplot--three-up",
+    "title": "Shop/Tiles/ShopPlot",
+    "name": "the sales workspace: all three",
+    "file": "029-shop-tiles-shopplot--three-up.png",
+    "size": "1280x660"
+  }
+]
