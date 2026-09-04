@@ -1,3 +1,23 @@
+---
+Title: 'Collector notes: demo apps'
+Ticket: PBUI-VISUAL-1
+Status: active
+Topics:
+    - pbui
+    - frontend
+    - design
+    - review
+DocType: reference
+Intent: short-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: "Raw working material for the visual audit; the design doc is the curated view."
+LastUpdated: 2026-09-04T11:41:19.797959-04:00
+WhatFor: ""
+WhenToUse: ""
+---
+
 # Demo screenshot notes (PBUI-VISUAL-1)
 
 Screenshots: `various/screenshots/demos/<demo>/NNN-<slug>.png`, manifests alongside.

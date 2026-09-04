@@ -1,3 +1,23 @@
+---
+Title: 'CSS structure inventory'
+Ticket: PBUI-VISUAL-1
+Status: active
+Topics:
+    - pbui
+    - frontend
+    - design
+    - review
+DocType: reference
+Intent: short-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: "Raw working material for the visual audit; the design doc is the curated view."
+LastUpdated: 2026-09-04T11:41:19.797959-04:00
+WhatFor: ""
+WhenToUse: ""
+---
+
 # CSS Structure Inventory — PBUI-VISUAL-1
 
 Read-only audit of styling mechanisms, tokens, hardcoded values, recurring patterns, box nesting, and

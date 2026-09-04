@@ -1,3 +1,23 @@
+---
+Title: 'Collector notes: interaction states'
+Ticket: PBUI-VISUAL-1
+Status: active
+Topics:
+    - pbui
+    - frontend
+    - design
+    - review
+DocType: reference
+Intent: short-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: "Raw working material for the visual audit; the design doc is the curated view."
+LastUpdated: 2026-09-04T11:41:19.797959-04:00
+WhatFor: ""
+WhenToUse: ""
+---
+
 # Interaction-state screenshots — visual notes
 
 Captured by `scripts/05-screenshot-interactions.mjs` into

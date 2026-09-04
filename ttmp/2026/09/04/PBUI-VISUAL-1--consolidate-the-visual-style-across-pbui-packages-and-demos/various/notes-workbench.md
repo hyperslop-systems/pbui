@@ -1,3 +1,23 @@
+---
+Title: 'Collector notes: workbench and linking'
+Ticket: PBUI-VISUAL-1
+Status: active
+Topics:
+    - pbui
+    - frontend
+    - design
+    - review
+DocType: reference
+Intent: short-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: "Raw working material for the visual audit; the design doc is the curated view."
+LastUpdated: 2026-09-04T11:41:19.797959-04:00
+WhatFor: ""
+WhenToUse: ""
+---
+
 # Visual audit notes — WORKBENCH + TILE-LINKING
 
 Screenshots: `various/screenshots/workbench-audit/` (static Visual Audit stories, pbui-workbench storybook :6008),

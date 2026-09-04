@@ -1,3 +1,23 @@
+---
+Title: 'Generated screenshot catalog (also embedded in the design doc)'
+Ticket: PBUI-VISUAL-1
+Status: active
+Topics:
+    - pbui
+    - frontend
+    - design
+    - review
+DocType: reference
+Intent: short-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: "Raw working material for the visual audit; the design doc is the curated view."
+LastUpdated: 2026-09-04T11:41:19.797959-04:00
+WhatFor: ""
+WhenToUse: ""
+---
+
 ## Screenshot catalog
 
 Every screenshot in the corpus, numbered `CODE-NNN` (the code names the corpus directory, the number is the file's own prefix). Under each image: what the collector saw in italics, and its noted oddity after an arrow. The images are relative links into `various/screenshots/`.

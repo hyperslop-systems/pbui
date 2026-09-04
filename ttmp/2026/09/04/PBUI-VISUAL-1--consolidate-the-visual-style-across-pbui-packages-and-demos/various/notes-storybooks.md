@@ -1,3 +1,23 @@
+---
+Title: 'Collector notes: static storybook sweep (583 shots)'
+Ticket: PBUI-VISUAL-1
+Status: active
+Topics:
+    - pbui
+    - frontend
+    - design
+    - review
+DocType: reference
+Intent: short-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: "Raw working material for the visual audit; the design doc is the curated view."
+LastUpdated: 2026-09-04T11:41:19.797959-04:00
+WhatFor: ""
+WhenToUse: ""
+---
+
 # Visual audit notes — pbui Storybooks
 
 Screenshots captured with `$T/scripts/01-screenshot-storybook.mjs` against the 8 running Storybooks (tmux session `pbui-visual`). Every PNG was viewed with the Read tool. Format per line:
