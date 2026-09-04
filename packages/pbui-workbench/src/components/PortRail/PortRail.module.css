@@ -10,7 +10,7 @@
   padding: var(--pbui-space-3);
   /* Visible: the jacks sit outside the rail, on the tile frame. */
   overflow: visible;
-  background: color-mix(in srgb, var(--pbui-pane) 92%, transparent);
+  background: var(--pbui-pane);
   font-size: var(--pbui-fs-small);
   z-index: 2;
 }

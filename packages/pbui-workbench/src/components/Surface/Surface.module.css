@@ -13,6 +13,39 @@
   background: var(--pbui-wash);
 }
 
+/* ---- link mode (PBUI-WIRING-1 P4) ---------------------------------------
+ * The whole page washes out under a fixed scrim; the tiles in the mode paint
+ * above it (their applications hidden under the rail), the wires above the
+ * tiles. One stacking context, three layers: scrim 0, tiles 1, wires 3. */
+.surface[data-link-mode] {
+  isolation: isolate;
+}
+
+.surface[data-link-mode]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: color-mix(in srgb, var(--pbui-wash) 82%, transparent);
+  pointer-events: none;
+}
+
+.surface[data-link-mode] :global([data-part="workbench-tile"]) {
+  position: relative;
+  z-index: 1;
+}
+
+.surface[data-link-mode] :global([data-part="workbench-tile"] > [data-part="tile"]) {
+  background: var(--pbui-pane);
+}
+
+/* Wider gutters while the mode is on: the jacks take 7px of each gutter and
+ * the wires need a run of their own between two frames. */
+.surface[data-link-mode] :global([data-part="split-divider"]) {
+  min-width: var(--pbui-space-6);
+  min-height: var(--pbui-space-6);
+}
+
 .empty {
   padding: var(--pbui-space-4);
 }

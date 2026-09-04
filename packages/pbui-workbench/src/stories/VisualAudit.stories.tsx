@@ -337,8 +337,8 @@ export const WireLayerStyles: StoryObj = {
   render: function WireLayerStory() {
     const wb = useMemo(() => {
       const workbench = createWorkbench({
-        apps: demoApps,
-        initial: layout(split("row", 0.34, tile("counter", { title: "Counter A" }), split("row", 0.5, tile("notes"), tile("counter", { title: "Counter B" })))),
+        apps: [...demoApps, manyPortsApp],
+        initial: layout(split("row", 0.34, tile("counter", { title: "Counter A" }), split("row", 0.5, tile("notes"), tile("many-ports", { title: "Many ports" })))),
       });
       const ids = leaves(workspaceTree(workbench.core.getState().document, workbench.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
       const [i1, i2, i3] = ids;
@@ -347,7 +347,8 @@ export const WireLayerStyles: StoryObj = {
           linksMutation({
             bindings: new Map([
               [`${i2}/subject`, terms.hold({ type: "number", value: 3 }, terms.follow(`${i1}/count`, "L1"))],
-              [`${i3}/count`, terms.derived(terms.follow(`${i1}/count`, "L2"), "double", "L2")],
+              // alpha is an INPUT of the many-ports app: a derived wire needs an input jack to land on.
+              [`${i3}/alpha`, terms.derived(terms.follow(`${i1}/count`, "L2"), "double", "L2")],
             ]),
             identity: [],
             classes: [],

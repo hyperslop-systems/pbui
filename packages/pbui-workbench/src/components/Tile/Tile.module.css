@@ -47,6 +47,12 @@
   grid-template-rows: minmax(0, 1fr);
 }
 
+/* Under the rail the application is inert AND invisible: the rail is the
+ * tile's body while the mode is on, not a veil over it (PBUI-WIRING-1 P4). */
+.body[data-link-mode] > .app {
+  visibility: hidden;
+}
+
 .empty {
   padding: var(--pbui-space-4);
 }
