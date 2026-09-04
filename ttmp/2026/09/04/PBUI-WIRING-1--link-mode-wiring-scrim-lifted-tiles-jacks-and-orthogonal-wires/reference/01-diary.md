@@ -95,3 +95,40 @@ Screenshot: `various/screenshots/p2/004-completed-link-wires-and-badges.png` (ja
 
 ### Code review instructions
 - `git show f88bc43`; the ecommerce seeded scene with Mod+Shift+L on :6012.
+
+## Step 3: Phase 3, orthogonal wires (and the offset bug)
+
+Wires are Manhattan routes now, and the scenario-004 mystery from Step 2 is solved: the wire layer's absolutely positioned box was measured against the page while the anchors were measured against the surface, so every wire was drawn 22px left and 71px up. The surface needed `position: relative`.
+
+Screenshots: `various/screenshots/p3/004-completed-link-wires-and-badges.png` (two wires in the gutter, jack to jack), `p3/002-connect-mode-acceptable-highlighted.png` (the carry band on the same route), `p3-stories/001-visual-audit--wire-layer-styles.png`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1) and, mid-phase: "take screenshots for the diary and for the report later on"
+
+**Assistant interpretation:** Phase 3 of the design; keep shooting every phase into the ticket.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** d1bde68 — "PBUI-WIRING-1 P3: orthogonal wires, and the surface is the wire layer's box"
+
+### What I did
+- `WireLayer`: `route(a, b, channel)` (H-V-H when the destination is ahead by more than 4px, with the vertical run clamped inside the gap; a stub-out/detour/stub-in otherwise), `labelPoint` for the derived label, per-wire channel `(i - (n-1)/2) * 6`, no marker; the carry band uses the same route. Stylesheet rewritten on tokens (ink stroke, miter joins, dotted held `2 4`, cursor on the token scale).
+- `Surface.module.css`: `.surface { position: relative }`.
+- Probe on scene 7 before the fix: layer box at (0,0) while the root sat at (22,71); after: layer at (22,71) and paths `M 690 54 H 695 V 61 H 706` and `M 690 54 H 701 V 326 H 706`.
+
+### What worked
+- Workbench 23 green; the probe and the screenshots agree.
+
+### What didn't work
+- The first route treated a 16px jack-to-jack gap (two tiles across a 10px gutter) as "behind" because the forward threshold was two stubs (24px), producing a zigzag. The threshold is 4px now and the run is clamped inside the gap.
+- My CSS edit for the sheet failed on a comment mismatch and silently wrote nothing (the helper raises before writing); the sheet was rewritten whole.
+
+### What I learned
+- An `inset: 0` layer is only as good as its containing block; the story symptom (wires ending at the source tile's frame) was the page offset in disguise.
+
+### What warrants a second pair of eyes
+- The derived wire in the Visual Audit story is hidden behind the middle tile; Phase 4 sets the stacking order (scrim, tiles, wires) explicitly.
+
+### Code review instructions
+- `git show d1bde68`; `shop-scenes--scene-7-connect-mode` on :6012.

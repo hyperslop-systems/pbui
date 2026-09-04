@@ -22,3 +22,12 @@ P2 jacks on the frame (commit f88bc43)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/PortRail/PortRail.tsx — port-jack
 
+
+## 2026-09-04
+
+P3 orthogonal wires; surface positioned (commit d1bde68)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx — route()
+
