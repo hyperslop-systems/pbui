@@ -1,0 +1,34 @@
+[
+  {
+    "n": 1,
+    "id": "plotscript-tiles--plot-alone",
+    "title": "Plotscript/Tiles",
+    "name": "a plot tile with no editor open still draws",
+    "file": "001-plotscript-tiles--plot-alone.png",
+    "size": "320x120"
+  },
+  {
+    "n": 2,
+    "id": "plotscript-tiles--invalid-result",
+    "title": "Plotscript/Tiles",
+    "name": "a script that returns the wrong shape: the guard's message in the pane, no plot yet",
+    "file": "002-plotscript-tiles--invalid-result.png",
+    "size": "320x120"
+  },
+  {
+    "n": 3,
+    "id": "plotscript-tiles--throwing-script",
+    "title": "Plotscript/Tiles",
+    "name": "a script that throws: the engine's error in the pane",
+    "file": "003-plotscript-tiles--throwing-script.png",
+    "size": "320x120"
+  },
+  {
+    "n": 4,
+    "id": "plotscript-tiles--editor-beside-plot",
+    "title": "Plotscript/Tiles",
+    "name": "script tile beside plot tile, one document",
+    "file": "004-plotscript-tiles--editor-beside-plot.png",
+    "size": "320x120"
+  }
+]
