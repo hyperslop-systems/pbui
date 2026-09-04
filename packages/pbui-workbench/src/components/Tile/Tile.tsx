@@ -9,6 +9,7 @@ import type { PlaceZone } from "../../placement";
 import { PortBadge } from "../PortBadge";
 import { PortRail } from "../PortRail";
 import type { SurfaceProps, TilePlacementInfo } from "../../types";
+import { FrameJacks } from "../../wiring/FrameJacks";
 import { useFrameRegistration } from "../../wiring/geometryContext";
 import styles from "./Tile.module.css";
 
@@ -104,6 +105,7 @@ export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, 
     >
       <TileFrame
         placementId={node.id}
+        overlay={linkMode ? <FrameJacks placementId={node.id} /> : null}
         tone={app?.tone ?? "var(--pbui-pane-alt)"}
         title={title}
         canClose={canClose}
@@ -131,7 +133,7 @@ export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, 
               <EmptyState message={view ? `no application called “${view.appId}”` : `no view called “${viewId}”`} hint="close this tile, or open another application from the launcher (⌘K)" />
             </div>
           )}
-          {linkMode && view ? <PortRail view={view} {...(renderPort ? { renderPort } : {})} /> : null}
+          {linkMode && view ? <PortRail placementId={node.id} view={view} {...(renderPort ? { renderPort } : {})} /> : null}
         </div>
       </TileFrame>
     </div>

@@ -19,11 +19,14 @@
  * tiles. One stacking context, three layers: scrim 0, tiles 1, wires 3. */
 .surface[data-link-mode] {
   isolation: isolate;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: clip;
 }
 
 .surface[data-link-mode]::before {
   content: "";
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 0;
   background: color-mix(in srgb, var(--pbui-wash) 82%, transparent);

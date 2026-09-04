@@ -124,3 +124,8 @@ Validated and uploaded the 29-page standalone refactoring guide to /ai/2026/09/0
 
 Refactor P0: Truthful fixtures and regression inputs (commit 1cfa1e1). Both Lab variants now contain six real relationships; semantic fixture tests and typecheck pass. Overall, start, and completion slips printed successfully.
 
+
+## 2026-09-04
+
+Refactor P1: Surface-owned geometry and exact registration lifetimes (commit c6fd94d). Introduced per-surface geometry, clipping, immutable revisions, exact disposal, and layout invalidation. Six focused tests and typecheck pass.
+

@@ -611,3 +611,62 @@ Read createWiringLab in WiringLab.stories.tsx, then src/wiring/fixtures.test.ts.
 ### Technical details
 
 No compatibility code was introduced. Code commit contains fixtures, story corrections, and regression geometry. Slips are archived under various/slips; the thermal service reported successful physical printing.
+
+## Step 14: Refactor P1 — Surface-owned geometry and exact registration lifetimes
+
+Built the geometry owner as an ordinary subscribable store with no global DOM registry. Frames and port anchors are keyed independently, and each registration has an exact cleanup token so an older ref cannot erase a replacement or another placement.
+
+Surface owns the store lifetime; SplitPane invalidates after live ratio commits. Geometry measurements derive anchor points directly from card centers and frame edges, avoiding a dependency on already-rendered jacks. Port rendering is connected in P2 and scene rendering in P4.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** c6fd94d
+
+### What I did
+
+- Added model.ts, geometryStore.ts, geometryContext.tsx, and lifecycle tests.
+- Integrated Surface root setup/teardown, Tile frame registration, and SplitPane ratio invalidation.
+- Implemented frame/card measurement, ancestor clipping, root-border origin, pending state, stable snapshots, and scroll/resize subscriptions.
+
+### Why
+
+The old global registry and jack-commit event could not reliably describe current per-surface geometry during interaction.
+
+### What worked
+
+- pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/geometryStore.test.ts src/wiring/fixtures.test.ts: 6 tests passed.
+- pnpm --filter @hyperslop-systems/pbui-workbench typecheck: passed.
+
+### What didn't work
+
+No implementation or test failures in this phase.
+
+### What I learned
+
+Exact disposer ownership prevents stale ref cleanup from deleting a current anchor; root containment also prevents accidental foreign-surface measurements.
+
+### What was tricky to build
+
+Measurements must occur after a React layout commit. SplitPane invalidates from a layout effect, and one scheduled read batches the current DOM. Root removal cancels scheduled work and advances the lifetime epoch.
+
+### What warrants a second pair of eyes
+
+Check client-border coordinate conversion, ancestor clipping, and teardown of ResizeObserver and capture-phase scroll listeners. Browser acceptance in P7 will validate real layout timing.
+
+### What should be done in the future
+
+P2 registers port controls and renders frame jacks from this store. P4 replaces the old wire measurement path.
+
+### Code review instructions
+
+Read geometryStore.ts and its four tests, then Surface/Tile/SplitPane integration. Inspect tests for duplicate placements and two roots with identical logical port IDs.
+
+### Technical details
+
+The SVG-versus-Canvas renderer remains independent of the geometry model. Phase code commit also carries the preceding P0 diary and archived slips. P1 completion/start slips are recorded separately.

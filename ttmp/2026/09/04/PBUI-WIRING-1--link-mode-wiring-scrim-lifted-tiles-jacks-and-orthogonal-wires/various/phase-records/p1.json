@@ -1,0 +1,25 @@
+{
+  "phase": 1,
+  "title": "Surface-owned geometry and exact registration lifetimes",
+  "commit": "c6fd94d",
+  "task": "i7oa",
+  "summary": "Introduced per-surface geometry, clipping, immutable revisions, exact disposal, and layout invalidation. Six focused tests and typecheck pass.",
+  "narrative": "Built the geometry owner as an ordinary subscribable store with no global DOM registry. Frames and port anchors are keyed independently, and each registration has an exact cleanup token so an older ref cannot erase a replacement or another placement.\n\nSurface owns the store lifetime; SplitPane invalidates after live ratio commits. Geometry measurements derive anchor points directly from card centers and frame edges, avoiding a dependency on already-rendered jacks. Port rendering is connected in P2 and scene rendering in P4.",
+  "did": [
+    "Added model.ts, geometryStore.ts, geometryContext.tsx, and lifecycle tests.",
+    "Integrated Surface root setup/teardown, Tile frame registration, and SplitPane ratio invalidation.",
+    "Implemented frame/card measurement, ancestor clipping, root-border origin, pending state, stable snapshots, and scroll/resize subscriptions."
+  ],
+  "why": "The old global registry and jack-commit event could not reliably describe current per-surface geometry during interaction.",
+  "worked": [
+    "pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/geometryStore.test.ts src/wiring/fixtures.test.ts: 6 tests passed.",
+    "pnpm --filter @hyperslop-systems/pbui-workbench typecheck: passed."
+  ],
+  "failed": "No implementation or test failures in this phase.",
+  "learned": "Exact disposer ownership prevents stale ref cleanup from deleting a current anchor; root containment also prevents accidental foreign-surface measurements.",
+  "tricky": "Measurements must occur after a React layout commit. SplitPane invalidates from a layout effect, and one scheduled read batches the current DOM. Root removal cancels scheduled work and advances the lifetime epoch.",
+  "review": "Check client-border coordinate conversion, ancestor clipping, and teardown of ResizeObserver and capture-phase scroll listeners. Browser acceptance in P7 will validate real layout timing.",
+  "future": "P2 registers port controls and renders frame jacks from this store. P4 replaces the old wire measurement path.",
+  "instructions": "Read geometryStore.ts and its four tests, then Surface/Tile/SplitPane integration. Inspect tests for duplicate placements and two roots with identical logical port IDs.",
+  "details": "The SVG-versus-Canvas renderer remains independent of the geometry model. Phase code commit also carries the preceding P0 diary and archived slips. P1 completion/start slips are recorded separately."
+}

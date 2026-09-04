@@ -11,12 +11,13 @@ export interface AnchorGeometry {
   readonly clip: Rect;
   readonly visible: boolean;
 }
+export interface FrameGeometry extends Rect { readonly innerLeft: number; readonly innerRight: number; readonly innerTop: number }
 export interface WiringGeometry {
   readonly epoch: number;
   readonly revision: number;
   readonly pending: boolean;
   readonly bounds: Rect;
-  readonly frames: ReadonlyMap<string, Rect>;
+  readonly frames: ReadonlyMap<string, FrameGeometry>;
   readonly anchors: readonly AnchorGeometry[];
 }
 export const emptyBounds: Rect = { left: 0, top: 0, right: 0, bottom: 0 };

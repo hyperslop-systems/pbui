@@ -1,4 +1,4 @@
-import { anchorId, emptyBounds, hasArea, intersection, type AnchorGeometry, type AnchorKey, type Rect, type WiringGeometry } from "./model";
+import { anchorId, emptyBounds, hasArea, intersection, type AnchorGeometry, type AnchorKey, type FrameGeometry, type Rect, type WiringGeometry } from "./model";
 
 interface Registration { element: HTMLElement; token: object }
 interface AnchorRegistration extends Registration { key: AnchorKey }
@@ -37,8 +37,13 @@ export function createGeometryStore() {
     // Absolute children use the padding box: account for the root border.
     const origin = { x: box.left + root.clientLeft, y: box.top + root.clientTop };
     const bounds: Rect = { left: 0, top: 0, right: root.clientWidth || box.width, bottom: root.clientHeight || box.height };
-    const measuredFrames = new Map<string, Rect>();
-    for (const [id, entry] of frames) if (root.contains(entry.element)) measuredFrames.set(id, relative(entry.element, origin));
+    const measuredFrames = new Map<string, FrameGeometry>();
+    for (const [id, entry] of frames) if (root.contains(entry.element)) {
+      const element = entry.element.querySelector<HTMLElement>(':scope > [data-part="tile"]') ?? entry.element;
+      const rect = relative(element, origin);
+      const style = getComputedStyle(element);
+      measuredFrames.set(id, { ...rect, innerLeft: rect.left+element.clientLeft, innerTop: rect.top+element.clientTop, innerRight: rect.right-(Number.parseFloat(style.borderRightWidth)||0) });
+    }
     const measured: AnchorGeometry[] = [];
     for (const [id, entry] of anchors) {
       if (!root.contains(entry.element)) continue;
@@ -57,7 +62,7 @@ export function createGeometryStore() {
       const y = (card.top + card.bottom) / 2;
       visible = visible && hasArea(intersection(card, clip)) && y >= clip.top && y <= clip.bottom;
       // The outside edge of the painted 12px jack is the wire endpoint.
-      const x = entry.key.side === "out" ? tile.right + 6 : tile.left - 6;
+      const x = entry.key.side === "out" ? tile.innerRight + 6 : tile.innerLeft - 6;
       measured.push({ id, key: entry.key, point: { x, y }, card, clip, visible });
     }
     measured.sort((a,b) => a.id.localeCompare(b.id));

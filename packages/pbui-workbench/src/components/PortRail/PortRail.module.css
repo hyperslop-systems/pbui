@@ -8,8 +8,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--pbui-space-3);
   padding: var(--pbui-space-3);
-  /* Visible: the jacks sit outside the rail, on the tile frame. */
-  overflow: visible;
+  overflow: clip;
   background: var(--pbui-pane);
   font-size: var(--pbui-fs-small);
   z-index: 2;
@@ -91,42 +90,6 @@
 
 .port[data-over][data-acceptable="true"] {
   border-style: solid;
-}
-
-/* The jack layer: over the rail, clipped top and bottom with it, never
- * sideways (the jacks stick out onto the frame). */
-.jacks {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  clip-path: inset(0 -20px);
-}
-
-/* The jack: a 12px square astride the tile frame at its card's centre line;
- * the rail sits inside the 2px frame, so -7px puts the square across the
- * line. Inputs on the left edge, outputs on the right; filled with ink once
- * the port is bound (PBUI-WIRING-1 P2, P9). */
-.jack {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  margin-top: -6px;
-  box-sizing: border-box;
-  background: var(--pbui-pane);
-  border: var(--pbui-border-hair);
-  border-radius: var(--pbui-radius);
-}
-
-.jack[data-side="in"] {
-  left: -7px;
-}
-
-.jack[data-side="out"] {
-  right: -7px;
-}
-
-.jack[data-bound] {
-  background: var(--pbui-ink);
 }
 
 .name {
