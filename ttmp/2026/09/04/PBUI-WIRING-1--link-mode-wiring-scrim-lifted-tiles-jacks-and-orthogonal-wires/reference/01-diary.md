@@ -796,3 +796,61 @@ Highlighting changes attributes and paint only, avoiding geometry invalidation a
 ### Technical details
 
 Given seed ports S, select edges whose source or destination belongs to S, then highlight both endpoints of those edges. For a wire seed, select its link ID only. This is one-hop adjacency, not graph reachability. The controller does not mutate link semantics or route coordinates.
+
+## Step 16: Refactor P3 — Validate orthogonal visibility routes
+
+The router now constructs continuous coordinate lines from endpoints and expanded obstacles. A heading-aware A* search accounts for length, turns and occupied collinear segments.
+
+Every accepted polyline is simplified and independently checked for exact endpoints, horizontal attachment normals, finite bounded points and obstacle clearance. Failure returns an explicit unresolved result instead of a diagonal fallback.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 00e027c
+
+### What I did
+
+- Added route.ts and independent validate.ts.
+- Added captured 768px regression, budget, blocked endpoint and reversed attachment tests.
+
+### Why
+
+Repair the captured diagonal failure by construction and validation.
+
+### What worked
+
+- All three routing tests passed in a 9ms combined test body.
+- All four captured wires yield valid orthogonal routes.
+
+### What didn't work
+
+No implementation test failed.
+
+### What I learned
+
+The coordinate arrangement for the captured six-tile scene is small enough to test synchronously; browser profiling remains necessary.
+
+### What was tricky to build
+
+Direction is part of search state because a vertex alone cannot represent turn costs or final attachment direction.
+
+### What warrants a second pair of eyes
+
+Check strict obstacle interiors, allowable boundary contact and bounded graph allocation.
+
+### What should be done in the future
+
+Project the router into the scene and profile live resize; compare alternate routing strategies if live budgets demand it.
+
+### Code review instructions
+
+Run pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/routing/route.test.ts.
+
+### Technical details
+
+Default clearance 3.5px, bend cost 24px, maximum 60000 vertices and 160000 expanded states. Collinear occupied length costs 0.6 per pixel; retained routes require validation and a 24px quality tolerance.

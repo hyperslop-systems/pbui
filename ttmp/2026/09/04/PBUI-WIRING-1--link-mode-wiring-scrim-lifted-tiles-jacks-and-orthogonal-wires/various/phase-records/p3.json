@@ -1,0 +1,24 @@
+{
+  "phase": 3,
+  "title": "Validate orthogonal visibility routes",
+  "commit": "00e027c",
+  "task": "7ijn",
+  "summary": "Implement heading-aware visibility routing with exact final validation.",
+  "narrative": "The router now constructs continuous coordinate lines from endpoints and expanded obstacles. A heading-aware A* search accounts for length, turns and occupied collinear segments.\n\nEvery accepted polyline is simplified and independently checked for exact endpoints, horizontal attachment normals, finite bounded points and obstacle clearance. Failure returns an explicit unresolved result instead of a diagonal fallback.",
+  "did": [
+    "Added route.ts and independent validate.ts.",
+    "Added captured 768px regression, budget, blocked endpoint and reversed attachment tests."
+  ],
+  "why": "Repair the captured diagonal failure by construction and validation.",
+  "worked": [
+    "All three routing tests passed in a 9ms combined test body.",
+    "All four captured wires yield valid orthogonal routes."
+  ],
+  "failed": "No implementation test failed.",
+  "learned": "The coordinate arrangement for the captured six-tile scene is small enough to test synchronously; browser profiling remains necessary.",
+  "tricky": "Direction is part of search state because a vertex alone cannot represent turn costs or final attachment direction.",
+  "review": "Check strict obstacle interiors, allowable boundary contact and bounded graph allocation.",
+  "future": "Project the router into the scene and profile live resize; compare alternate routing strategies if live budgets demand it.",
+  "instructions": "Run pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/routing/route.test.ts.",
+  "details": "Default clearance 3.5px, bend cost 24px, maximum 60000 vertices and 160000 expanded states. Collinear occupied length costs 0.6 per pixel; retained routes require validation and a 24px quality tolerance."
+}

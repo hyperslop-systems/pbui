@@ -139,3 +139,8 @@ Refactor P2: Frame overlays and bounded scrolling (commit ef607d4). Jacks now re
 
 Step 15a: implement and browser-verify connected hover/focus highlighting (1703f45); store two screenshots with review.
 
+
+## 2026-09-04
+
+Refactor P3: Validate orthogonal visibility routes (commit 00e027c). Implement heading-aware visibility routing with exact final validation.
+

@@ -8,7 +8,8 @@ import { Tile } from "../Tile";
 import { LinkAnnouncer } from "../LinkAnnouncer";
 import { RelationPalette } from "../RelationPalette";
 import { ShowChooser } from "../ShowChooser";
-import { WireLayer } from "../WireLayer";
+import { ConnectionInspector } from "../../wiring/ConnectionInspector";
+import { WiringCanvas } from "../../wiring/WiringCanvas";
 import { createGeometryStore } from "../../wiring/geometryStore";
 import { GeometryContext } from "../../wiring/geometryContext";
 import { useConnectedHighlight } from "../../wiring/connectedHighlight";
@@ -105,7 +106,8 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
           <EmptyState message="this workbench has no workspace" hint="create it with layout() or singleTile() and pass it as `initial`" />
         </div>
       )}
-      {linkMode ? <WireLayer {...(renderWire ? { renderWire } : {})} /> : null}
+      {linkMode ? <WiringCanvas {...(renderWire ? { renderWire } : {})} /> : null}
+      {linkMode ? <ConnectionInspector /> : null}
       <ShowChooser />
       <RelationPalette />
       <LinkAnnouncer />

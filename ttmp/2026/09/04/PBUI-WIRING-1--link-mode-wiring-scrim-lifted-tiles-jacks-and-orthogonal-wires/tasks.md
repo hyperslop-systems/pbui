@@ -20,7 +20,7 @@
 - [x] Refactor P0 truthful fixtures and captured geometry regressions <!-- t:99su -->
 - [x] Refactor P1 surface geometry ownership and lifecycle <!-- t:i7oa -->
 - [x] Refactor P2 frame overlays and scrolling boundaries <!-- t:3pxd -->
-- [ ] Refactor P3 pure routing and independent validation <!-- t:7ijn -->
+- [x] Refactor P3 pure routing and independent validation <!-- t:7ijn -->
 - [ ] Refactor P4 coherent scene rendering and hidden endpoints <!-- t:crwt -->
 - [ ] Refactor P5 unified connection controller and product API <!-- t:gr9m -->
 - [ ] Refactor P6 focused mode and visual quality <!-- t:4fxn -->
