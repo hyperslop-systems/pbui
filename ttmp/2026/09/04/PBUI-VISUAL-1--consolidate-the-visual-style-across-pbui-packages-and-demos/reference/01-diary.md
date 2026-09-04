@@ -554,3 +554,50 @@ Screenshots: `various/screenshots-phases/p7/raw-buttons-in-toolbar-after.png` (c
 
 ### Code review instructions
 - `git show 2fdc172 -- src/styles.css`; the `Design System/Layout/Toolbar` "variants" story on :6006 renders three raw buttons.
+
+## Step 11: Phase 6, labels, TileHeader, KeyValueList
+
+The structural duplications the inventory counted (seven uppercase-label idioms, fifteen hand-written tile header rows, seven facts grids, the ecommerce sheet full of literals) collapse onto two new core components and one token. A subagent did the package migrations against the built core; datalab's ModuleCard I did by hand since the chip agent had just left that package.
+
+No new screenshots for this step: the header row and the facts grid look as before by design; the after-corpus in Step 12 is the evidence.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Phase 6 of doc 02.
+
+**Inferred user intent:** Same as Step 5.
+
+**Commit (code):** 5d72e5f — "PBUI-VISUAL-1 P6: one label idiom, TileHeader, KeyValueList"
+
+### What I did
+- Core: `organisms/TileHeader` (Toolbar as header, tight, bordered; title strong tiny; children; spacer; faint status; actions) and `molecules/KeyValueList` (dl grid, keys faint uppercase tracked, `dense`), each with a story; exported. Dead `.raised`/`.floating` removed from Surface's module.
+- Tracking literals in SkuApp, InventoryApp (chat demo), UINodeRenderer (sandbox), CoordinationInspector (workbench), ecommerce tiles → `var(--pbui-track-label)`. Ecommerce `tiles.module.css`: fs/space/border/colour tokens replace 12px/11px/px paddings/color-mix/opacity; `.facts` and `.spacer` deleted.
+- Subagent migrations: ecommerce 7 TileHeaders + 2 KeyValueLists; sandbox 5 TileHeaders + 1 KeyValueList (ReplTile and TimelineTile keep their control toolbars, which are not headers); plotscript 2 TileHeaders (run/auto as actions, status chip as children); workbench CoordinationInspector 1; chat ContextTile 1 + 1 dense list. Tests updated to the new `data-part`s rather than weakened.
+- datalab `ModuleCard` → KeyValueList; its rows CSS deleted. `CheatCard` keeps its flex layout on purpose (its comment explains why a grid reads worse for that card).
+
+### Why
+- Decision 9 and the inventory's §4.2/4.4/4.6: the same three-part header and the same two-column grid should not be re-authored per package.
+
+### What worked
+- Build of every library package, typecheck of eight targets, and tests: ecommerce 35, sandbox 224, plotscript 32, workbench 116, chat 241, chat demo 13, datalab 602.
+
+### What didn't work
+- Giving plotscript's ScriptTile a real title (TileHeader requires one) put the script's name on screen twice (script tile and plot tile), which broke an unscoped `getByText` in `tiles.test.tsx`; the assertion is now scoped to the plot view. Both titles are correct.
+- `ShopPlot`'s title lost a `truncate` prop that TileHeader does not have; the toolbar wraps, so it is inert. Flagged.
+
+### What I learned
+- A required `title` on a shared header is a useful lint: two tiles had been rendering without one.
+
+### What was tricky to build
+- Deciding which toolbars are headers: a row that is title + status + actions is; a row of controls (REPL, timeline filters) is not, and forcing it through TileHeader would have faked a title.
+
+### What warrants a second pair of eyes
+- The ecommerce table header's colour moved from `opacity: 0.7` on ink to `--pbui-faint`; the faint token is the same idea, but the exact grey differs.
+
+### What should be done in the future
+- `TilesPanel.head` in chat (title + close button) could take TileHeader's `actions`; left as is since it is not a status row.
+
+### Code review instructions
+- `git show 5d72e5f --stat`; `src/components/organisms/TileHeader`, `src/components/molecules/KeyValueList`; the ecommerce `Shop Scenes` stories on :6012.

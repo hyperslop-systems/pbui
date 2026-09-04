@@ -94,3 +94,12 @@ P7 native-control skin in src/styles.css (commit 2fdc172)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/styles.css — The floor for raw controls
 
+
+## 2026-09-04
+
+P6 labels/TileHeader/KeyValueList: 16 headers and 5 facts grids on shared components, tracking on the token (commit 5d72e5f)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/organisms/TileHeader/TileHeader.tsx — Shared tile header
+

@@ -16,6 +16,6 @@
 - [x] P3 tile chrome + AppShell + tones <!-- t:z4c4 -->
 - [x] P4 chip family <!-- t:g6yo -->
 - [x] P5 notices + mode banner <!-- t:cz8x -->
-- [ ] P6 labels, TileHeader, KeyValueList, AppBody <!-- t:vlnu -->
+- [x] P6 labels, TileHeader, KeyValueList, AppBody <!-- t:vlnu -->
 - [x] P7 native control skin <!-- t:1g2c -->
 - [ ] P8 story hygiene + after corpus <!-- t:d44o -->
