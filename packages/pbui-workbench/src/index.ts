@@ -63,8 +63,6 @@ export { CoordinationInspector, coordinationInspectorApp, createCoordinationInsp
 export type { CoordinationInspectorAppOptions } from "./components/CoordinationInspector";
 export { PortRail } from "./components/PortRail";
 export type { PortRailProps } from "./components/PortRail";
-export { WireLayer } from "./components/WireLayer";
-export type { WireLayerProps } from "./components/WireLayer";
 export { Tile } from "./components/Tile";
 export type { TileProps } from "./components/Tile";
 export { SplitPane } from "./components/SplitPane";

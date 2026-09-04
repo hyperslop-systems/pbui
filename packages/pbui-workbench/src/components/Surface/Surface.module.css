@@ -80,11 +80,11 @@
 
 /* Connection inspection does not change box geometry or wire dash semantics. */
 .surface[data-link-mode] :global([data-port-id][data-connected-highlight]) {
-  background: color-mix(in srgb, var(--pbui-accent, #b54b00) 16%, var(--pbui-pane));
+  background: color-mix(in srgb, var(--pbui-cat-3) 16%, var(--pbui-pane));
 }
 .surface[data-link-mode] :global([data-part="port-jack"][data-connected-highlight]) {
   pointer-events: auto;
-  background: var(--pbui-accent, #b54b00);
+  background: var(--pbui-cat-3);
 }
 
 .tree { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); min-width:0; min-height:0; }

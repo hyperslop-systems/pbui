@@ -17,9 +17,9 @@ RelatedFiles:
       Note: Carry workflow jack measurement and commit notification
     - Path: repo://packages/pbui-workbench/src/components/SplitPane/SplitPane.tsx
       Note: Live ratio changes without wire geometry invalidation
-    - Path: repo://packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx
+    - Path: repo://packages/pbui-workbench/src/wiring/WiringCanvas/WiringCanvas.tsx
       Note: Endpoint measurement invalidation route labels and clipping review
-    - Path: repo://packages/pbui-workbench/src/components/WireLayer/route.ts
+    - Path: repo://packages/pbui-workbench/src/wiring/routing/route.ts
       Note: Reproduced diagonal path reconstruction and proposed final geometry validation
     - Path: repo://packages/pbui-workbench/src/stories/WiringLab.stories.tsx
       Note: Refused initial held and identity commands invalidate advertised coverage
@@ -1023,10 +1023,10 @@ Reproduce source collection with [05-collect-foundations.py](../scripts/05-colle
 [F12]: https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html
 [F13]: https://www.adaptagrams.org/documentation/classAvoid_1_1Router.html
 
-[R01]: ../../../../../../src/chrome/usePortCarry.ts
+[R01]: https://github.com/wesen/pbui/blob/142b458a/src/chrome/usePortCarry.ts
 [R02]: ../../../../../../packages/pbui-workbench/src/components/PortRail/PortRail.tsx
-[R03]: ../../../../../../packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx
-[R04]: ../../../../../../packages/pbui-workbench/src/components/WireLayer/route.ts
+[R03]: https://github.com/wesen/pbui/blob/142b458a/packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx
+[R04]: https://github.com/wesen/pbui/blob/142b458a/packages/pbui-workbench/src/components/WireLayer/route.ts
 [R05]: ../../../../../../packages/pbui-workbench/src/components/PortRail/PortRail.module.css
 [R06]: ../../../../../../packages/pbui-workbench/src/stories/WiringLab.stories.tsx
 [R07]: ../../../../../../packages/pbui-workbench/src/components/Surface/Surface.tsx

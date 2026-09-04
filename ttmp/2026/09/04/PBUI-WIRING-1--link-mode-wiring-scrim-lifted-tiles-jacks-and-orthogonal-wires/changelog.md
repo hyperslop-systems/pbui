@@ -154,3 +154,8 @@ Refactor P4: Project and render complete measured scenes (commit 3317272). Repla
 
 Refactor P5: Unify connection controls and atomic previews (commit 879b342). Implement surface-owned click/keyboard/drag workflows, explicit operations and inspector actions; fix speculative snapshot identity.
 
+
+## 2026-09-04
+
+Refactor P6: Provide readable focused wiring without remounts (commit 2146413). Implement recursive size feasibility, focused controls, hysteresis and preserved app ancestry.
+

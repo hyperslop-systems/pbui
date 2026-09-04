@@ -23,5 +23,5 @@
 - [x] Refactor P3 pure routing and independent validation <!-- t:7ijn -->
 - [x] Refactor P4 coherent scene rendering and hidden endpoints <!-- t:crwt -->
 - [x] Refactor P5 unified connection controller and product API <!-- t:gr9m -->
-- [ ] Refactor P6 focused mode and visual quality <!-- t:4fxn -->
+- [x] Refactor P6 focused mode and visual quality <!-- t:4fxn -->
 - [ ] Refactor P7 deletion and browser acceptance <!-- t:8atm -->

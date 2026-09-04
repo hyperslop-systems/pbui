@@ -1,12 +1,12 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useWorkbench } from '../context';
-import { useLinkSnapshot } from '../links/hooks';
-import { linkRefsOf, type LinkRef } from '../links/linkRef';
-import { useGeometryStore, useWiringGeometry } from './geometryContext';
-import { buildScene, type WiringScene } from './scene';
-import { pathData } from './routing/validate';
-import { useConnectionController } from './connectionController';
-import styles from '../components/WireLayer/WireLayer.module.css';
+import { useWorkbench } from '../../context';
+import { useLinkSnapshot } from '../../links/hooks';
+import { linkRefsOf, type LinkRef } from '../../links/linkRef';
+import { useGeometryStore, useWiringGeometry } from '.././geometryContext';
+import { buildScene, type WiringScene } from '.././scene';
+import { pathData } from '.././routing/validate';
+import { useConnectionController } from '.././connectionController';
+import styles from './WiringCanvas.module.css';
 
 export function WiringCanvas() {
   const controller=useConnectionController();
@@ -17,16 +17,21 @@ export function WiringCanvas() {
   useLayoutEffect(()=>{
     const root=store.root(); if(!root) return;
     const measure=document.createElement('span');
-    measure.style.cssText='position:absolute;visibility:hidden;pointer-events:none;white-space:nowrap;font-size:10px;font-weight:700;';
+    measure.style.cssText='position:absolute;visibility:hidden;pointer-events:none;white-space:nowrap;font-size:var(--pbui-fs-tiny);font-weight:700;';
     root.append(measure);
     const next=new Map<string,{text:string;width:number;height:number}>();
     for(const r of wb.links.deps.relations??[]) { measure.textContent=r.label??r.id; const box=measure.getBoundingClientRect(); next.set(r.id,{text:measure.textContent,width:box.width,height:box.height}); }
     measure.remove(); setMetrics(next);
-  },[store,wb]);
+  },[store,wb,geometry.revision]);
   const semantic=JSON.stringify(linkRefsOf(snapshot));
-  const scene=useMemo(()=>buildScene(geometry,JSON.parse(semantic) as LinkRef[],metrics,previous.current),[geometry,semantic,metrics]);
+  const projected=useMemo(()=>{
+    const started=performance.now();
+    const scene=buildScene(geometry,JSON.parse(semantic) as LinkRef[],metrics,previous.current);
+    return {scene,milliseconds:performance.now()-started};
+  },[geometry,semantic,metrics]);
+  const scene=projected.scene;
   useLayoutEffect(()=>{if(!scene.pending) previous.current=scene;},[scene]);
-  return <div data-part="workbench-wires" className={styles.layer} data-revision={scene.revision} data-pending={scene.pending||undefined}>
+  return <div data-part="workbench-wires" className={styles.layer} data-revision={scene.revision} data-projection-ms={projected.milliseconds.toFixed(2)} data-pending={scene.pending||undefined}>
     <svg className={styles.svg} aria-label="Connections" onClick={event=>{
       const root=store.root(); if(!root) return;
       const rect=root.getBoundingClientRect(),x=event.clientX-rect.left-root.clientLeft,y=event.clientY-rect.top-root.clientTop;

@@ -11,6 +11,42 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://docs/playbooks/building-a-new-hyperslop-systems-app-on-pbui.md
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-ecommerce/src/ShopShell/ShopShell.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/types.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/ConnectionInspector/ConnectionInspector.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/FrameJacks/FrameJacks.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/WiringCanvas/WiringCanvas.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/connectedHighlight.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/connectionCommands.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/connectionController.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/geometryStore.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/layoutPolicy.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/model.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/routing/route.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/routing/validate.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/scene.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/workbench-core/src/createWorkbenchCore.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/workbench-core/src/links/collaborator.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://src/chrome/TileFrame.tsx
+      Note: Implemented wiring architecture and validation reference
     - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md
       Note: Step 10 review and measured findings
     - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/scripts/02-replay-route-and-seed.mjs
@@ -25,6 +61,7 @@ LastUpdated: 2026-09-04T14:12:28.374469849-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 # Diary
@@ -976,3 +1013,64 @@ Run the workbench connect, identity and wiring tests; build workbench and typech
 ### Technical details
 
 Additional user prompt (verbatim): "on the port hover feature: no need for highlight underline or borders. color is enough". Commit ec64d1a removes hover outlines and stroke-width changes. Browser computed outline-style was none; screenshot refactor-hover-color-only.png is saved beside the review. Existing keyboard focus indicators remain native.
+
+## Step 19: Refactor P6 — Provide readable focused wiring without remounts
+
+Spatial mode now reserves room for the inspector. A recursive minimum-size calculation includes declared split ratios, so an unusually narrow branch can make the entire layout infeasible. Automatic mode presents focused controls when necessary and requires 32 additional pixels before returning to spatial mode.
+
+The application tree remains mounted in one stable container; focused mode makes it inert, hidden and clipped. Source selection survives presentation changes, while an in-progress drag is cancelled without committing.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 2146413
+
+### What I did
+
+- Added layoutPolicy.ts with ratio-aware minima and hysteresis.
+- Added mode selection, focused inspector, reveal actions and stable tree container.
+- Extended the mount test to switch focused/spatial repeatedly.
+- Captured focused controls at 390px.
+
+### Why
+
+Connections should remain usable when readable port cards cannot fit into the current split tree.
+
+### What worked
+
+- 33 focused and Surface tests passed plus a dedicated layout policy test.
+- Browser transitions at 1440,768,390,1440 preserved all eight current wires semantically.
+- Page scroll width equalled viewport width at each tested size.
+
+### What didn't work
+
+Initial typecheck used Split.first/second; the generated protocol names are a/b. Corrected once and checks passed.
+
+### What I learned
+
+280px per two-column port tile provides a more readable initial policy than the proposed 220px prototype minimum.
+
+### What was tricky to build
+
+Keeping applications mounted requires a stable tree wrapper even when spatial wiring is active; a conditional replacement would lose local application state.
+
+### What warrants a second pair of eyes
+
+Review focus restoration and size thresholds with longer translated labels and unusual split ratios.
+
+### What should be done in the future
+
+Finish repository-wide cleanup and capture final browser evidence after style convention checks.
+
+### Code review instructions
+
+Run layoutPolicy.test.ts and mounts.test.tsx; resize WiringLab between 390 and 1440px.
+
+### Technical details
+
+Leaf minimum 280x180px; split gutter 24px; outer width allowance 40px and height allowance 156px; return hysteresis 32px. Forced spatial/focused modes remain available.

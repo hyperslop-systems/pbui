@@ -27,9 +27,6 @@
   cursor: context-menu;
 }
 
-.layer[data-carrying] .hit {
-  pointer-events: none;
-}
 
 .stroke {
   fill: none;
@@ -61,6 +58,9 @@
   font-size: var(--pbui-fs-tiny);
   font-weight: 700;
   fill: var(--pbui-ink);
+  stroke: var(--pbui-pane);
+  stroke-width: 4px;
+  paint-order: stroke;
   font-family: inherit;
 }
 
@@ -72,40 +72,10 @@
   stroke-dasharray: 2 2;
 }
 
-/* The wire being carried to the pointer. */
-.band {
-  fill: none;
-  stroke: var(--pbui-ink);
-  stroke-width: 2px;
-  stroke-dasharray: 6 4;
-  stroke-linejoin: miter;
-}
-
-.band[data-acceptable="true"] {
-  stroke-dasharray: none;
-}
-
-.cursor {
-  position: absolute;
-  padding: var(--pbui-space-1) var(--pbui-space-3);
-  border: var(--pbui-border-hair);
-  background: var(--pbui-pane);
-  color: var(--pbui-ink);
-  font-size: var(--pbui-fs-tiny);
-  font-weight: 700;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.cursor[data-acceptable="false"] {
-  border-style: dashed;
-  color: var(--pbui-faint);
-}
-
 .wire[data-connected-highlight] .stroke,
 .wire[data-connected-highlight] .portal {
-  stroke: var(--pbui-accent, #b54b00);
+  stroke: var(--pbui-cat-3);
 }
 .wire[data-connected-highlight] .label {
-  fill: var(--pbui-accent, #b54b00);
+  fill: var(--pbui-cat-3);
 }

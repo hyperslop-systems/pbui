@@ -97,3 +97,21 @@ A sync client treats `core.getState().revision` (`LocalRevision`), the server's 
 ```ts
 import "@hyperslop-systems/pbui-workbench/styles.css";
 ```
+
+
+## Wiring
+
+`<workbench.Surface wiring={{mode: "auto"}} />` provides spatial connections
+when its split tree can fit readable port cards, and focused controls otherwise.
+Choose Follow, Hold, Share or Derive, then use output/input buttons, drag, or the
+source/destination controls. Hold executes Follow and Pin as one atomic batch.
+Escape cancels source selection first, then closes wiring. Hover or focus colors
+directly connected ports and wires without changing their geometry.
+
+Product extensions use `wiring.renderPortDetails(port)` and
+`wiring.renderRelationDetails(link)`. The shell owns connection buttons, geometry,
+and standard relationship actions. The old port/wire wrapper API and global port
+carry registry have been removed.
+
+Implementation and browser evidence:
+[PBUI-WIRING-1 handoff](../../ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/design-doc/05-implemented-wiring-architecture-and-validation-handoff.md).

@@ -329,12 +329,12 @@ export const SplitPaneNested: StoryObj = {
 };
 
 // ---------------------------------------------------------------------------
-// WireLayer: follow, held (suspended), derived, identity (double wire)
+// WiringScene: follow, held (suspended), derived, identity (double wire)
 // ---------------------------------------------------------------------------
 
-export const WireLayerStyles: StoryObj = {
-  name: "WireLayer — follow, held (dotted), derived (dashed + label), identity (double)",
-  render: function WireLayerStory() {
+export const WiringSceneStyles: StoryObj = {
+  name: "WiringScene — follow, held (dotted), derived (dashed + label), identity (double)",
+  render: function WiringSceneStory() {
     const wb = useMemo(() => {
       const workbench = createWorkbench({
         apps: [...demoApps, manyPortsApp],
@@ -364,7 +364,7 @@ export const WireLayerStyles: StoryObj = {
       wb.perform(linkVerbs.openMode());
     }, [wb]);
     return (
-      <Page title="WireLayer — wire styles">
+      <Page title="WiringScene — wire styles">
         <Panel label="held (dotted) + derived (dashed, labelled)" width={720} height={460}>
           <wb.Surface />
         </Panel>

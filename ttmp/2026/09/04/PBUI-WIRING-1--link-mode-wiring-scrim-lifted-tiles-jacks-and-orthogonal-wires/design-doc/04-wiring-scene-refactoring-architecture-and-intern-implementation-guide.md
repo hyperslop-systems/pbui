@@ -15,7 +15,7 @@ RelatedFiles:
       Note: Replace global carry and independent jack measurement with provider registration and atomic intent
     - Path: repo://packages/pbui-workbench/src/components/SplitPane/SplitPane.tsx
       Note: Connect live committed geometry to scene invalidation while retaining one durable resize
-    - Path: repo://packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx
+    - Path: repo://packages/pbui-workbench/src/wiring/WiringCanvas/WiringCanvas.tsx
       Note: Replace render-time geometry routing and detached label calculation with a pure validated scene
     - Path: repo://packages/pbui-workbench/src/types.ts
       Note: Replace renderPort and renderWire with explicit controlled wiring customization
@@ -23,7 +23,7 @@ RelatedFiles:
       Note: Existing atomic preview and execute API verified for Follow plus Pin
     - Path: repo://src/chrome/TileFrame.tsx
       Note: Refactor structural content and overlay ownership without coupling the frame to link semantics
-    - Path: repo://src/chrome/usePortCarry.ts
+    - Path: repo://packages/pbui-workbench/src/wiring/connectionController.tsx
       Note: Remove global wiring registration and carry API after direct caller replacement
 ExternalSources:
     - https://users.monash.edu/~mwybrow/papers/wybrow-gd-2009.pdf
@@ -44,6 +44,8 @@ WhenToUse: Before changing wiring components, geometry ownership, routing, or co
 
 # Wiring scene refactoring architecture and intern implementation guide
 
+Implementation follow-up: see the [implemented architecture and validation handoff](05-implemented-wiring-architecture-and-validation-handoff.md), with current APIs, source paths, screenshots, measured results and limitations.
+
 ## 1. Design position and how to read this guide
 
 Replace the wiring presentation with a surface-owned system that computes one coherent scene from semantic relationships, live geometry, and interaction state. A scene is an immutable description of what should be drawn and selected: visible jacks, accepted wire paths, labels, hit regions, endpoint markers, and unresolved relationships. React components render that description. They do not independently reconstruct different versions of its geometry.
@@ -52,7 +54,7 @@ This is a new design document, separate from the [architecture and browser revie
 
 The scope is the wiring subsystem and the layout boundaries it needs. Preserve the semantic link kernel, transactional core, and application value flow where they already satisfy their contracts. Introduce new semantic behavior only when a concrete requirement cannot be expressed through those APIs. In particular, the core already supports atomic command batches; the connection UI should use them.
 
-**Status:** proposed implementation design. No product code has been changed by this document. Source inspection was refreshed at commit `e9fcbeb` on 2026-09-04. The earlier browser evidence was captured against the implementation at `142b458a`; the intervening commits added review documentation. This session also ran a small probe against the existing local built core to verify atomic Follow-plus-Pin behavior. Its scope and output are documented below.
+**Original design status (before implementation):** proposed implementation design. No product code has been changed by this document. Source inspection was refreshed at commit `e9fcbeb` on 2026-09-04. The earlier browser evidence was captured against the implementation at `142b458a`; the intervening commits added review documentation. This session also ran a small probe against the existing local built core to verify atomic Follow-plus-Pin behavior. Its scope and output are documented below.
 
 For an intern, read sections 2–4 before opening the routing code. Sections 5–10 define the replacement contracts and behavior. Section 11 lists the decisions and alternatives; section 12 turns them into file-level implementation phases. Sections 13–15 provide acceptance tests, an API/source map, and research references. All new types and module paths in the proposal are explicitly marked as proposed; the source map identifies what exists now.
 
@@ -843,11 +845,11 @@ The completion standard is a validated, usable wiring workflow across the captur
 [S01]: ../../../../../../packages/pbui-workbench/src/components/Surface/Surface.tsx
 [S02]: ../../../../../../packages/pbui-workbench/src/components/Tile/Tile.tsx
 [S03]: ../../../../../../packages/pbui-workbench/src/components/PortRail/PortRail.tsx
-[S04]: ../../../../../../packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx
-[S05]: ../../../../../../packages/pbui-workbench/src/components/WireLayer/route.ts
+[S04]: https://github.com/wesen/pbui/blob/142b458a/packages/pbui-workbench/src/components/WireLayer/WireLayer.tsx
+[S05]: https://github.com/wesen/pbui/blob/142b458a/packages/pbui-workbench/src/components/WireLayer/route.ts
 [S06]: ../../../../../../packages/pbui-workbench/src/components/SplitPane/SplitPane.tsx
 [S07]: ../../../../../../packages/pbui-workbench/src/createWorkbenchShell.tsx
-[S08]: ../../../../../../src/chrome/usePortCarry.ts
+[S08]: https://github.com/wesen/pbui/blob/142b458a/src/chrome/usePortCarry.ts
 [S09]: ../../../../../../src/chrome/TileFrame.tsx
 [S10]: ../../../../../../packages/pbui-workbench/src/geometry.ts
 [S11]: ../../../../../../packages/workbench-core/src/createWorkbenchCore.ts

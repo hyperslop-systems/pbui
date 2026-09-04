@@ -1,3 +1,4 @@
+import { Button } from "@hyperslop-systems/pbui";
 import { badgeOf, type PortDefinition } from "@hyperslop-systems/pbui";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { type ReactNode } from "react";
@@ -14,14 +15,8 @@ export interface PortRailProps {
 
 }
 
-/**
- * The BACK SIDE of a tile in connect-management mode (design §6.8.3): an
- * overlay above the inert application listing the view's inputs on the left
- * edge and outputs on the right, each with its name, type, current state and
- * one-line doc. A pointerdown on an output starts the port carry; while one
- * is in flight, every input answers "may this land here?" through the same
- * planner the drop will use, so what lights up is what will work.
- */
+/** Measured port buttons share the surface connection controller. Product details
+ * occupy a separate slot and cannot replace the required connection control. */
 export function PortRail({ view, placementId }: PortRailProps) {
   const workbench = useWorkbench();
   const snapshot = useLinkSnapshot(workbench);
@@ -37,7 +32,7 @@ export function PortRail({ view, placementId }: PortRailProps) {
     const result = controller.source && side === "in" ? controller.preview(port.id) : null;
     const acceptable = result?.ok ?? false;
     const node = (
-      <button
+      <Button
         type="button"
         key={`${side}:${port.id}`}
         data-part="port-rail-port"
@@ -61,7 +56,7 @@ export function PortRail({ view, placementId }: PortRailProps) {
           </span>
         ) : null}
         <span className={styles.doc}>{port.declaration.doc}</span>
-      </button>
+      </Button>
     );
     return <RegisteredCard key={`${side}:${port.id}`} placementId={placementId} portId={port.id} side={side}>{node}{ref ? controller.options.renderPortDetails?.(ref) : null}</RegisteredCard>;
   };

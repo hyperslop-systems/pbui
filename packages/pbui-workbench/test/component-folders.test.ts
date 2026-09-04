@@ -10,7 +10,7 @@ import { describe, expect, test } from "vitest";
 const SRC = resolve(import.meta.dirname, "../src");
 
 /** Files that are not components: factories, contexts, fixtures. */
-const NOT_COMPONENTS = new Set(["createWorkbenchShell.tsx", "context.tsx", "stories/demoApps.tsx"]);
+const NOT_COMPONENTS = new Set(["createWorkbenchShell.tsx", "context.tsx", "stories/demoApps.tsx", "wiring/geometryContext.tsx", "wiring/connectionController.tsx"]);
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {

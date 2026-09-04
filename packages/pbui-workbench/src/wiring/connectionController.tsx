@@ -55,6 +55,7 @@ function useController(enabled:boolean,options:WiringOptions,focused:boolean) {
       if(d.root.hasPointerCapture?.(d.pointer)) d.root.releasePointerCapture(d.pointer);
       if(!d.moved) return;
       suppressClick.current=true;
+      window.setTimeout(()=>{suppressClick.current=false;},0);
       const target=document.elementFromPoint?.(e.clientX,e.clientY)?.closest<HTMLElement>('[data-port-id][data-side="in"]');
       if(target?.closest('[data-workbench-shell]')===root) connect(target.dataset.portId!,d.source);
       else setMessage('No input here. Source remains selected.');
