@@ -49,3 +49,12 @@ Step 4 / Phase 2: headless controller, runtime, verb thunks; 36 reducer-parity t
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/src/store/controller.ts — Product policy in front of core commands
 
+
+## 2026-09-03
+
+Step 5 / Phases 3–7: Surface cutover, launcher/strip/stage bar over the core, bundles, v6 persistence + v5 migrator + pinned merge, remote projection, layout slice deleted; 602 tests, storybook, browser smoke (commits 0b980f3, beb8887)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/src/appkit/workbench.ts — One workbench per instance
+

@@ -19,12 +19,20 @@ RelatedFiles:
       Note: Registry to manifest mapping (commit 49d27e8)
     - Path: repo://packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx
       Note: Product-specific launcher behavior inspected
+    - Path: repo://packages/datalab-ui/src/components/pages/Workbench/WorkbenchShell.tsx
+      Note: Surface mounted with Datalab's two slots (commit 0b980f3)
     - Path: repo://packages/datalab-ui/src/remote/codec.ts
       Note: Current local-to-protocol conversion inspected
+    - Path: repo://packages/datalab-ui/src/remote/projection.ts
+      Note: Work-stage projection and adoption (commit 0b980f3)
     - Path: repo://packages/datalab-ui/src/store/controller.ts
       Note: 'Controller: policy, metadata sequencing, close-view batch (commit 93cbf64)'
+    - Path: repo://packages/datalab-ui/src/store/effects.ts
+      Note: Import as one validated batch in dependency order (commit 0b980f3)
     - Path: repo://packages/datalab-ui/src/store/layout.ts
       Note: Primary duplicate spatial implementation inspected
+    - Path: repo://packages/datalab-ui/src/store/merge.ts
+      Note: Pinned merge with singleton dedupe (commit 0b980f3)
     - Path: repo://packages/datalab-ui/src/store/navigation.ts
       Note: Navigation slice; derived current stage; reconcile (commit 49d27e8)
     - Path: repo://packages/datalab-ui/src/store/runtime.ts
@@ -47,6 +55,7 @@ LastUpdated: 2026-09-03T17:45:00-04:00
 WhatFor: Preserve how the Datalab Workbench migration design was derived and make implementation continuation reproducible.
 WhenToUse: Read before implementing or reviewing PBUI-DATALAB-WORKBENCH-1.
 ---
+
 
 
 
@@ -368,4 +377,89 @@ The exit gate holds: every behaviour the old reducer tests pinned replays throug
 refusal codes: pinned_workspace, last_workspace_in_stage, pinned_stage, last_stage, unknown_stage, empty_stage, empty_name (+ core codes)
 policy: duplicate { app: "launcher" } ⇒ bare split = launcher tile, centre-aim on a launcher fills it
 tests: 55 files / 628 passed
+```
+
+## Step 5: Phases 3–7 — the spatial cutover and the deletion
+
+One continuous block, committed once green, as Decision 4 requires. Workbench core became the only owner of workspaces, views, placements and trees; the pbui-workbench Surface renders the current workspace with two Datalab slots (the `<tile>` presentation with inline rename and the derived `chart · α` title; the door to Datalab's launcher in the action group). Every component that read the layout slice reads the core or the navigation slice instead, every write is a controller call, and the Redux layout slice, the tree algebra, `SplitView`/`NodeView` and the node/view codec are gone. Persistence moved to a version-6 envelope with a version-5 migrator and a pinned merge; the remote layer became a pure work-stage projection plus an adoption in dependency order; portable bundles export from the document and import as one validated protocol batch.
+
+The tests and stories were ported by three parallel agents over a shared API brief while I finished the source; the whole package is green (55 files / 602 tests, typecheck, biome, build, storybook build) and the demo was smoke-tested in a browser: six embedded instances, split/close/launcher/navigate/add-workspace in the product, and a reload that restored the version-6 envelope.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Execute the coordinated cutover (design Phases 3–7) and prove it with the ported suites and a browser smoke.
+
+**Inferred user intent:** No duplicate spatial model left in Datalab, with the product's own semantics intact.
+
+**Commit (code):** 0b980f3 — "PBUI-DATALAB-WORKBENCH-1 P3-P7: cut Datalab over to workbench-core"; beb8887 — "memoise the stage-scoped workspace list"
+
+### What I did
+
+- **Workbench wiring:** `appkit/workbench.ts` (`createDatalabWorkbench` = runtime + `createWorkbenchShell`; the controller runs through `shell.execute` so geometry is measured), `appkit/DatalabWorkbenchContext.tsx` (provider, `useDatalabWorkbench`, `useCurrentWorkspaceId`, `useCurrentStageId`, `useCurrentStage`, `useWorkspacesOfStage`), `runtime.ts` gained an `executor` option, `registry.ts`'s `AppProps.view` is the protocol `AppView`.
+- **Rendering:** `WorkbenchShell` mounts `workbench.shell.Surface` with `renderDatalabTitle`/`renderDatalabTileAction`, `linkModeShortcut={false}`; `Tile.tsx` is now `TileTitle` + `TileAction`; `SplitView/` deleted; the active-tile outline is keyed on Datalab's own `data-launcher-open`.
+- **Chrome and launcher:** `WorkspaceStrip`, `StageBar`, `LauncherDialog` (+ `launcherIndex.logic.ts` over protocol nodes and a `LauncherWorkspace` join), `ViewSwitcher`, `DocBar` (through a `rebindView` thunk — a molecule may not import `appkit`), `AppScope.useAvailableApps`, `LauncherApp`, `ModulesApp`, `SignUpApp`, `TemplatesApp`.
+- **Session and instances:** `Workbench.tsx` (gate → `controller.selectStage`), `WorkbenchInstance` (one workbench per instance; `preloaded: { world, seed }`), `DatalabApp.Product` (load → merge → construct from the accepted state), `WorkbenchProviders` (`actionsForVerb(verb, { world })`), `applyVerb.ts` over `workbenchVerbs.ts` (which now owns the export/import/template verbs too; `applyLayoutVerb.ts` deleted).
+- **Lessons:** `Lesson.done(state, workbench)` and `Goal.done(state, workbench)` take the core's state; `LessonContext.workbench` is the controller; `tour/fixtures.ts` seeds through `datalabSingleStageSeed`; `tour/lessons/layout.tsx` and `brief.tsx` read `leavesOfWorkspace`.
+- **Persistence:** `persist.ts` (v6 envelope, `migrate`, `validate(input, apps)`, `save(key, world, {document, workspaceId}, navigation)`, `load(key, apps)`), `migrateV5.ts`, `merge.ts` (`mergePinned`), `usePersistence` over store + core.
+- **Remote:** `remote/codec.ts` (JSON + graphic envelope only), `remote/projection.ts` (`projectWorkStage`, `preservedLocalState`, `assertRemoteDocumentNamespace`, `mergeRemoteWorkStage`), `remote/types.ts`, `store/remote.ts` (world-only action), `useRemoteWorkbench` (validate candidate → world → navigation → `core.replaceDocument`).
+- **Bundles:** `bundles.ts` over `{ world, document, navigation }`, protocol nodes on import; `effects.ts` `commitImport` validates the batch on a snapshot, then world → navigation → `core.apply`, with rollback of minted documents.
+- **Deleted:** `store/layout.ts`, `store/layoutTree.ts`, `store/applyLayoutVerb.ts`, `components/organisms/SplitView/`, the builder half of `stages.ts`, the remote node/view codec and its local types.
+- **Docs:** README "Workbench ownership" section; the editing playbook's boundary list.
+- Tests/stories ported by agents: launcher-index, view-switcher, lessons, portable, effects; helpers/layoutShape, migration-goldens, stages, store, instances, shortcut-routing; remote-codec, remote-load and seven stories. I fixed `no-raw-controls` (stale allowlist entry) and `render-boundary` (the per-tile boundary is the shell's).
+
+### Why
+
+- Design §9 (two slots, everything else the shell's), §10 (adapt the launcher, feed it the core), §11 (stage-scoped strip, derived current stage), §12 (bundles as prepared operations in dependency order), §13 (version 6, construct from the accepted state), §14 (keep the projection product-local), §15 (what leaves Redux), §20 (the deletion list).
+
+### What worked
+
+- `createWorkbenchShell`'s `execute` measures geometry, so the launcher no longer reads the DOM to pick a split axis: `controller.splitTile(id, undefined, show)` splits along the longer rendered axis.
+- The browser smoke found nothing broken: the shell's split button makes a `new tile` launcher pane (the `duplicate: { app: "launcher" }` policy), the Datalab launcher opens in replace mode from the action-group door and in navigate mode from Mod+K, a placed row switches workspace and shows the linked counts (`sources ×4`), `+ workspace` selects the new workspace, and a reload restores it from a 15 kB version-6 envelope.
+
+### What didn't work
+
+- `test/layers.test.ts`: `DocBar` (a molecule) imported the workbench context (appkit). Fixed with a store thunk `rebindView(viewId, docId)` in `workbenchVerbs.ts`.
+- `mergePinned` fell back to `workspaces[0]` — the sign-in page — when the stored `workspaceId` was gone (found by the store-side agent, which had weakened the test). Fixed: the fallback is the work stage's remembered workspace; test tightened. A first patch left `landingWorkspaceOf` unimported because biome had reflowed the import block under my regex; `ReferenceError: landingWorkspaceOf is not defined` in three tests.
+- react-redux warned that `useWorkspacesOfStage` returned a fresh array per call; memoised (beb8887). The remaining warnings (`useSelector(s => s)` in `LessonRail`/`BriefChecklist`, the `DocBar` document map) predate this ticket.
+- `Bash` refused two heredocs as containing control characters (the `′` and `⌕` glyphs); those files went through the Write tool.
+- The only console error in the smoke is the `/v1/me` proxy 502 — no API was running.
+
+### What I learned
+
+- Deviations from the reducers, all toward the core's rule and recorded here for the review: (1) `workspace.clone` clones a clone-able application's view where `cloneSpace` linked every view; (2) the planner sweeps a view a batch leaves unplaced, so replacing a tile's only view deletes the old view rather than leaving it "not shown"; (3) a tile import that re-points the target's only view deletes that view explicitly (`core.apply` has no sweep); (4) a raw `view.show` `{ replace }` on a view placed once retargets the same view id.
+- Story-level deviations (from the story agent): the per-tile application dropdown is gone, so the TwoInstances play now proves separation by tile counts; "Replace …" opens the launcher dialog and Escape returns focus to the tile cell; a story about an unregistered application must add a ghost manifest, because the core refuses a document naming an application its catalog lacks; a story may only bind `primary` on a doc-bound app.
+- `test/stories.test.ts` takes the first quoted `title:` in a file as the meta title, so a `tile("chart", { title })` above the meta breaks it.
+
+### What was tricky to build
+
+- Ordering in `commitImport` and remote adoption: metadata must be in the navigation slice BEFORE the core installs a new workspace (or the runtime's reconcile files it under `work` for one notification), and world documents must exist BEFORE a view binding them is installed. Both paths validate the candidate on a snapshot first so a refusal touches nothing.
+- The launcher's navigate row: `[selectWorkspace, activate]` as ONE batch, because `session.activatePlacement` refuses a placement outside the current workspace and the draft session inside a batch already reflects the switch.
+- Two `data-workbench-shell` markers would have doubled the "lone workbench" count for Mod+K; Datalab's root dropped its marker and keeps only `data-launcher-open` for its own outline rule.
+
+### What warrants a second pair of eyes
+
+- `mergePinned`'s singleton deduplication (a kept leaf is repointed at the canonical view) and its choice of canonical view (the seed's, else the first the user reaches).
+- `mergeRemoteWorkStage` drops local stubs that no preserved view binds; the source re-adds any the world still holds, so nothing is lost, but the two are coupled.
+- The four reducer deviations above.
+
+### What should be done in the future
+
+- `useSelector(s => s)` in the lesson rail and the brief checklist predates this ticket and now also re-renders on every core install through `useCoreState(s => s)`; a narrower subscription would help on the tour page.
+- Open question 1 (a preferred placement on `view.show(existing, navigate)`) stays open: the launcher achieves it with a batch.
+
+### Code review instructions
+
+- Start at `src/appkit/workbench.ts` and `src/components/pages/Workbench/WorkbenchShell.tsx`, then `LauncherDialog.tsx` (`choose`), `store/effects.ts` (`commitImport`), `store/merge.ts`, `remote/projection.ts`, `appkit/useRemoteWorkbench.ts`.
+- `pnpm --filter @hyperslop-systems/datalab-ui typecheck && pnpm --filter @hyperslop-systems/datalab-ui test && pnpm --filter @hyperslop-systems/datalab-ui build-storybook`; the demo: `pnpm --filter @hyperslop-systems/datalab-ui dev` and open `/` (tour) and `/ui/` (product).
+
+### Technical details
+
+```text
+commit 0b980f3: 89 files, +4348 / −6026
+deleted: store/layout.ts (1,162 lines), layoutTree.ts, applyLayoutVerb.ts, organisms/SplitView/, remote node/view codec
+new: appkit/workbench.ts, appkit/DatalabWorkbenchContext.tsx, store/merge.ts, store/migrateV5.ts, remote/projection.ts
+package: 55 test files / 602 tests; storybook builds; demo smoke: 6 instances, 0 console errors (api 502 aside)
+persistence: version 6 = { world, workbench (protobuf JSON), navigation, workspaceId }; v5 migrates; v1–4 refused
 ```
