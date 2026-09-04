@@ -49,3 +49,12 @@ P1 tokens: one definition site, fallbacks stripped, datalab tokens.css deleted (
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/tokens.css — All family tokens
 
+
+## 2026-09-04
+
+P2 parts files: single parts definition, Dialog/JsonBlock/InspectorPanel on the menu recipe, datalab dialogs.css deleted (commit 10e1bc1)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/public/components.css — Rewritten in tokens
+

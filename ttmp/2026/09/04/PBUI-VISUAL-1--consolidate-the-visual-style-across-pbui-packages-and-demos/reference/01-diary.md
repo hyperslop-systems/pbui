@@ -310,3 +310,51 @@ create a proper design doc and then work on it, commit at appropriate intervals 
 
 ### Technical details
 - The rewrite: find `var(--pbui-x,`, walk forward counting parentheses to the matching close, replace the whole call with `var(--pbui-x)`.
+
+## Step 6: Phase 2, parts files
+
+The presentation parts had two definitions (a zero-specificity block in `src/styles.css` and the real sheet in `public/presentation-parts.css`), and the three attribute-styled components lived in a rem-and-slate sheet of their own. After this step there is one sheet per concern and every floating surface (menu, chooser, context help, dialog) is the same recipe.
+
+The Dialog is the visible win: the launcher (`C-002`/`I-C-008`) went from a rounded, shadowed, sans-titled card on a blurred dim to a firm-bordered square panel with the ink header bar, exactly the object menu at dialog size.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Phase 2 of doc 02.
+
+**Inferred user intent:** Same as Step 5.
+
+**Commit (code):** 10e1bc1 — "PBUI-VISUAL-1 P2: one definition of the parts, Dialog on the menu recipe"
+
+### What I did
+- `src/styles.css` → typography baseline only.
+- `public/presentation-parts.css`: base presentation box (hair border, pane, ink-on-pane, context-menu cursor, space-1/space-3 padding), menu-item reset (border 0, font/color inherit, pointer), shared focus ring, `[data-danger]` colour, placeholder `div[data-part="menu-item"]` faint; accept chooser rewritten on the menu recipe (firm border, inverted tracked header, dotted separators, selected hover, font inherited); help title on the label idiom; help notice edge on `--pbui-tone-edge`.
+- `public/components.css` rewritten: Dialog (flat dim, firm border, radius token, inverted header, tiny framed close, px paddings, hair footer rule), JsonBlock (pane-alt, grid border, font inherit, fs-small/lh-prose), InspectorPanel (space tokens, tracked faint title).
+- Deleted `packages/datalab-ui/src/styles/dialogs.css`; `styles.ts` and the datalab storybook preview drop `components.css`/`presentation-parts.css`/`chrome.css` imports.
+- Rebuilt dist; core 51 files and datalab 55 files green; shot launcher, JsonBlock, InspectorPanel, protocol menu, accept chooser.
+
+### Why
+- Two definitions of a part is how the "sometimes plain header, sometimes inverted" class of inconsistency appears; the second definition only shows up when the first is missing, which is when nobody is looking.
+
+### What worked
+- `instanceChrome.test.tsx` still finds `position: fixed` and `z-index: 100` after the `[data-part="menu"]` split, and the hover/acceptable selectors.
+
+### What didn't work
+- First cut lost the presentation's base border: the hair box lived only in the deleted `:where` block, and the parts sheet had only cursor/display for `[data-part="presentation"]`. Caught on the chooser screenshot (bare text where chips should be). Same for the menu-item button reset. Both moved into the parts sheet.
+- My first regex replacement of the presentation rule silently matched nothing because the real block contains a comment line; the second used a DOTALL block match and printed the replacement count. Print the count.
+
+### What I learned
+- A zero-specificity "fallback" block that always loses is still load-bearing when the winner never defined the property. Deleting the loser reveals every property the winner forgot.
+
+### What was tricky to build
+- The dialog close button sits on the ink header, so it is framed in paper, not ink; hover inverts it. The tile bar's close button is on a tinted bar and stays ink-framed. Same control, two grounds, two colours, one shape.
+
+### What warrants a second pair of eyes
+- Products that relied on the Dialog's old 680px fixed width: the panel is now `width: auto; min-width: min(380px, 100%); max-width: min(52rem, 100%)` (datalab's override value), so a dialog with narrow content is narrower than before.
+
+### What should be done in the future
+- N/A
+
+### Code review instructions
+- `git show 10e1bc1 -- src/styles.css public/presentation-parts.css public/components.css`; root vitest; open `chrome-kit--launcher` and `presentation-interaction-kernel-4--accept-chooser-and-banner` in the root storybook.
