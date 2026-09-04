@@ -170,3 +170,35 @@ Screenshots: `various/screenshots/p4/004-completed-link-wires-and-badges.png` (t
 
 ### Code review instructions
 - `git show 5b35065`; scene 7 on :6012 and `Visual Audit/WireLayer` on :6008.
+
+## Step 5: Phase 5, one hairline port card
+
+The card's typography was already right after Phase 2 (name bold, type faint, binding line, doc faint); what remained was the second box a product's presentation drew around it. Ecommerce's port presentation is a block region now, and the rail gives the wrapper a div slot so a block presentation is valid markup.
+
+Screenshot: `various/screenshots/p5/004-completed-link-wires-and-badges.png`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 5 of the design.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** e76278e — "PBUI-WIRING-1 P5: one hairline port card"
+
+### What I did
+- `ShopShell.renderPort`: `<Presentation … inComposite block>`.
+- `PortRail`: the product wrapper is a `div.slot` (grid, min-width 0) whose child is block; cards fill the column width.
+
+### What worked
+- Workbench 23 and ecommerce 7 green.
+
+### What I learned
+- The PBUI-VISUAL-1 rule "a block presentation draws nothing" pays off here without a new selector: the port presentation only needed to say it is a region.
+
+### What warrants a second pair of eyes
+- Cards now stretch to the column width (before they sized to content). It matches the mock's proportions; a product with very short port names gets wide cards.
+
+### Code review instructions
+- `git show e76278e`.

@@ -40,3 +40,12 @@ P4 scrim + lifted tiles, wide gutters, story fixture (commit 5b35065)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/Surface/Surface.module.css — link-mode scrim
 
+
+## 2026-09-04
+
+P5 one hairline port card (commit e76278e)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/src/ShopShell/ShopShell.tsx — renderPort block
+
