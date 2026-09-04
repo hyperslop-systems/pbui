@@ -10,18 +10,30 @@ DocType: design-doc
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/datalab-ui/scripts/consumer-smoke.mjs
+      Note: Credential-free coordinated private-package consumer smoke
     - Path: repo://packages/datalab-ui/src/appkit/useRemoteWorkbench.ts
       Note: Existing pending UUID retained by content fingerprint
     - Path: repo://packages/pbui-chat/src/tools/approvalLedger.ts
       Note: Established SHA-256 Web Crypto pattern
     - Path: repo://packages/pbui-chat/src/tools/workbenchTools.ts
       Note: Uses content revision and local core revision for distinct checks
+    - Path: repo://packages/pbui-workbench/MIGRATION.md
+      Note: React-shell migration guidance
+    - Path: repo://packages/workbench-core/README.md
+      Note: Public identity and SyncClient guidance
     - Path: repo://packages/workbench-core/src/createWorkbenchCore.ts
       Note: Owns the process-local installed-state revision
+    - Path: repo://packages/workbench-core/src/identity.ts
+      Note: Implemented branded identity constructors and UUID minting
     - Path: repo://packages/workbench-core/src/sync/index.ts
-      Note: Owns server revision and current 32-bit idempotency identity
+      Note: |-
+        Owns server revision and current 32-bit idempotency identity
+        Implemented batch UUIDs and framed SHA-256 send identity
     - Path: repo://packages/workbench-core/src/sync/sync.test.ts
-      Note: Existing retry conflict isolation and request identity scenarios
+      Note: |-
+        Existing retry conflict isolation and request identity scenarios
+        Complete retry, rebase, isolation, ordering, and content identity laws
 ExternalSources:
     - /tmp/pbui-improvements.md
 Summary: Evidence-backed hard-cutover design for distinguishing Workbench local and server revisions from idempotent operation identity and replacing the sync loop's 32-bit request hash.
@@ -29,6 +41,7 @@ LastUpdated: 2026-09-03T22:25:00-04:00
 WhatFor: Teach a new engineer PBUI's identity and concurrency vocabulary and provide the exact APIs, hashing contract, phases, and tests for PBUI-IDENTITY-REVISION-1.
 WhenToUse: Read before changing Workbench revisions, synchronization retries, idempotency keys, or transport adapters.
 ---
+
 
 
 # Intern guide to revision and operation identity semantics
@@ -826,29 +839,29 @@ Rejected. It is transport/idempotency metadata, not persistent Workbench documen
 
 ## 17. Review checklist
 
-- [ ] `Revision` alias deleted from Workbench sync.
-- [ ] Sync API says `ServerRevision` and `OperationId`.
-- [ ] Core state/receipt/description use `LocalRevision`.
-- [ ] New outbox batches receive UUID operation IDs exactly once.
-- [ ] FNV constants and 32-bit hash loop are gone.
-- [ ] Request identity includes base revision, ordered batch IDs, and all mutations.
-- [ ] Retry identity is stable.
-- [ ] Different logical identical batches remain distinct.
-- [ ] 409/422/batching tests remain green.
-- [ ] No React/DOM enters Workbench core.
-- [ ] Full validation and packed boundary pass.
+- [x] `Revision` alias deleted from Workbench sync.
+- [x] Sync API says `ServerRevision` and `OperationId`.
+- [x] Core state/receipt/description use `LocalRevision`.
+- [x] New outbox batches receive UUID operation IDs exactly once.
+- [x] FNV constants and 32-bit hash loop are gone.
+- [x] Request identity includes base revision, ordered batch IDs, and all mutations.
+- [x] Retry identity is stable.
+- [x] Different logical identical batches remain distinct.
+- [x] 409/422/batching tests remain green.
+- [x] No React/DOM enters Workbench core.
+- [x] Full validation and packed boundary pass.
 - [ ] Ticket doctor and reMarkable upload pass.
 
 ---
 
 ## 18. File references
 
-- `packages/workbench-core/src/createWorkbenchCore.ts:25-39,217,252-266` — local revision lifecycle and commit receipt.
-- `packages/workbench-core/src/sync/index.ts:41-77` — current broad revision/request API.
-- `packages/workbench-core/src/sync/index.ts:222-230` — current 32-bit FNV request key.
-- `packages/workbench-core/src/sync/index.ts:294-388` — pump, retry, conflict, and isolation semantics to preserve.
-- `packages/workbench-core/src/sync/sync.test.ts:18-62` — fake server and observed request identity.
-- `packages/workbench-core/src/sync/sync.test.ts:315-334` — current distinction/retry test.
+- `packages/workbench-core/src/identity.ts` — branded constructors and UUID minting.
+- `packages/workbench-core/src/identity.test.ts` — compile-time separation, ingress checks, overflow, and wire round-trip.
+- `packages/workbench-core/src/createWorkbenchCore.ts` — local revision lifecycle and commit receipt.
+- `packages/workbench-core/src/sync/index.ts` — branded sync API, UUID outbox entries, framed SHA-256 send identity, pump, retry, conflict, and isolation.
+- `packages/workbench-core/src/sync/sync.test.ts` — fake server and the complete identity-law matrix.
+- `packages/workbench-core/README.md` — public API and transport-adapter guidance.
 - `packages/datalab-ui/src/appkit/useRemoteWorkbench.ts:65-75,233-253` — existing UUID retained by content fingerprint.
 - `packages/datalab-ui/src/api/workbenchProtocol.ts:10-30` — uint64 revision converted to decimal string for Redux.
 - `packages/pbui-chat/src/tools/approvalLedger.ts:56-68` — established SHA-256 Web Crypto pattern.
@@ -873,3 +886,40 @@ epoch answers “which computation wins?”
 ```
 
 Those concepts should share terminology, not a universal implementation.
+
+---
+
+## 20. Implementation outcome
+
+The hard cutover landed in five reviewable implementation commits:
+
+| Commit | Outcome |
+|---|---|
+| `6d14f0f` | Brand local revision, server revision, and operation ID; migrate core and sync APIs |
+| `4f98d7c` | Replace `tx-N` and the 32-bit FNV-style key with UUID batches and framed SHA-256 |
+| `82a994a` | Teach the new boundary in Workbench core and React-shell documentation |
+| `1f47d3e` | Complete retry, rebase, isolation, ordering, serialization, and malformed-ingress laws |
+| `320c758` | Make the Datalab packed-consumer release check independent of private publication order and credentials |
+
+The implemented framing order is:
+
+```text
+frame("pbui-workbench-sync-v1")
+frame(serverRevision)
+frame(batchCount)
+for batch in order:
+  frame(batch.operationId)
+  frame(mutationCount)
+  for mutation in order:
+    frame(canonicalProtobufJSON(mutation))
+```
+
+`frame(text)` is `<utf8-byte-length>:<text>`. SHA-256 is computed over the UTF-8 encoding of the concatenated frames, and the transport identity is `wb-sha256-<lowercase hex>`. The version frame permits a future coordinated algorithm change without silently sharing an idempotency namespace.
+
+The final focused core result is 32 files and 250 tests. Repository validation additionally passed 860 root tests, 1,565 recursive child tests, all typechecks/builds, static Storybooks, the headless packed boundary, root and Datalab clean-consumer builds, and Go CI parity. See:
+
+- `reference/03-full-validation-output.txt` for raw command output;
+- `reference/04-hard-cutover-audit.txt` for source and built-declaration searches;
+- `reference/05-validation-summary.md` for the command matrix and failure triage.
+
+No protobuf/Go migration was needed. The Go validator and workbench API tests pass unchanged. Datalab’s whole-document replacement UUID is still a separate request identity, while Workbench core sync now owns its explicitly typed operation identity.

@@ -325,3 +325,288 @@ Digest input: version + server revision + ordered batch IDs + canonical mutation
 Core result: 32 files / 249 tests
 Printer blocker: AtomS3R HTTP endpoint times out while ICMP responds
 ```
+
+## Step 4: Phase 3 — migrate consumers and public guidance
+
+The AtomS3R HTTP endpoint recovered. I printed the previously unacknowledged `P2 START` and `P2 DONE` markers as an explicit recovered sequence, then printed `P3 START` before resuming implementation.
+
+Repository search confirmed that no production adapter imports Workbench core sync today. I updated the core and React-shell documentation to make the three identity domains, transport decoding boundary, UUID batch semantics, SHA-256 send identity, and lack of compatibility aliases explicit.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+```text
+<pi_goal_continuation goal_id="a443d2cc-9bc1-437c-9594-2cc4fe923cc3">
+Continue working toward the active thread goal.
+
+Inspect the current objective and status with get_goal (or the exposed namespaced equivalent, such as pi__get_goal) if needed.
+
+Budget:
+- Time spent pursuing goal: 8s
+- Tokens used: 255K (255,032)
+- Token budget: 1M (1,000,000)
+- Tokens remaining: 745K (744,968)
+
+Avoid repeating work that is already done. Choose the next concrete action toward the objective.
+
+Before marking the goal complete, audit progress against the objective and call update_goal (or the exposed namespaced equivalent, such as pi__update_goal) with status "complete" only when every requirement is verified.
+Call each goal tool by the name exposed in your available tool list. In pi that is usually get_goal, create_goal, and update_goal; in bridged MCP runs it may be a namespaced variant such as pi__get_goal, pi__create_goal, or pi__update_goal. Do not assume display, history, or transcript tool names are callable unless they appear in your tool list.
+</pi_goal_continuation>
+```
+
+**Assistant interpretation:** Resume the active whole-ticket completion contract at Phase 3 and continue until every implementation, evidence, documentation, printing, validation, and delivery requirement is verified.
+
+**Inferred user intent:** Finish the ticket rather than stopping after the type/hash implementation or reporting a partial result.
+
+**Commit (code):** `82a994a47fa6cd5649f20d797583f961117b9e04` — "Document Workbench identity hard cutover"
+
+### What I did
+
+- Read the active durable goal and remaining ticket tasks.
+- Searched every non-generated consumer for `createWorkbenchSync`, `SyncClient`, `Revision`, FNV constants, and `requestId`.
+- Added a complete transport-adapter and identity explanation to `packages/workbench-core/README.md`.
+- Updated the React shell README and migration guide.
+- Reworded the last generic “request id” comment in sync.
+- Ran core and React-shell typechecks, tests, and builds.
+- Printed `P3 DONE` and `P4 START` after commit.
+
+### Why
+
+- A hard cutover is incomplete if its exported types are correct but examples teach the old mental model.
+- The separate Datalab replacement controller and repository correlation IDs must be named as deliberate no-change boundaries rather than accidentally renamed.
+
+### What worked
+
+- No production implementation of `SyncClient` exists outside the core package.
+- Core passed 249 tests; the React shell passed 116 tests.
+- Both packages typechecked and built.
+- The recovered phase slips returned HTTP 200 and `printed: true`.
+
+### What didn't work
+
+- N/A for code and documentation.
+- The recovered `P2 START` marker is necessarily retrospective because the printer HTTP service was unavailable at the original phase boundary; the diary preserves that fact rather than pretending otherwise.
+
+### What I learned
+
+- Datalab’s `requestId` is a separate whole-document replacement UUID and is explicitly listed as an expected no-change boundary in the design.
+- Root PBUI acceptance `requestId` is an in-memory correlation number, not a distributed idempotency key.
+
+### What was tricky to build
+
+- A broad repository grep produces legitimate `requestId` matches. The review had to follow ownership and call paths rather than performing a blind global rename.
+
+### What warrants a second pair of eyes
+
+- Review the `SyncClient` README example for whether the abbreviated `decodeDocument`/`encodeMutations` placeholders are sufficiently obvious as transport-specific functions.
+
+### What should be done in the future
+
+- Add a real production `SyncClient` only at an application transport boundary and brand the server token at decode time.
+
+### Code review instructions
+
+- Start with the new “Revision and operation identity” section in the core README.
+- Compare the no-change statement against Datalab `useRemoteWorkbench.ts` and root presentation acceptance.
+- Run the two package gates recorded above.
+
+### Technical details
+
+```text
+Production SyncClient consumers outside core: 0
+Core tests: 249
+React-shell tests: 116
+Compatibility aliases: 0
+```
+
+## Step 5: Phase 4 — prove the complete identity-law matrix
+
+I extended the existing scenarios so 409 rebase and 422 isolation now assert operation identity, not only document correctness. I also added a fixed UTF-8 framing/SHA-256 golden, primitive JSON round-trip coverage, and malformed runtime-ingress checks.
+
+This phase found a small ingress weakness: the string constructors’ TypeScript signatures were safe for typed callers, but a casted malformed runtime value could pass the old length-only check. The constructors now reject non-string values before branding.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 4)
+
+**Assistant interpretation:** Prove every law in the ticket rather than relying on indirect existing scenarios.
+
+**Inferred user intent:** Make operation identity behavior reviewable and resistant to regressions across retry and conflict paths.
+
+**Commit (code):** `1f47d3ef735501c353ed0c9cba45b5f17d1a0326` — "Prove Workbench operation identity laws"
+
+### What I did
+
+- Added a stable hash golden containing a non-ASCII batch ID to verify UTF-8 byte framing.
+- Asserted that a 409 attempt and its revision-two replay have distinct send IDs.
+- Asserted that a combined 422 and its two isolated sends have three distinct IDs.
+- Added JSON primitive round-trip coverage for all three brands.
+- Added malformed runtime values for server revision and operation ID constructors.
+- Ran core typecheck and all tests.
+
+### Why
+
+- Relative “not equal” checks alone do not freeze framing/encoding behavior.
+- Existing rebase and isolation tests proved final documents but not the new idempotency contract.
+
+### What worked
+
+- All seven requested identity laws now have direct executable assertions.
+- Core passed 32 files and 250 tests.
+- The fixed digest is `wb-sha256-d2ce51d8d36a730e10bad3e1cba21763edf2b169446d15dfe9333a30d15a24a2`.
+
+### What didn't work
+
+The first ad-hoc digest probe failed because `tsx -e` emitted CommonJS and rejected top-level await:
+
+```text
+ERROR: Top-level await is currently not supported with the "cjs" output format
+```
+
+Wrapping it in an async IIFE exposed a second environment mismatch:
+
+```text
+Error [ERR_PACKAGE_PATH_NOT_EXPORTED]: No "exports" main defined in .../@hyperslop-systems/workbench-protocol/package.json
+```
+
+I did not weaken package exports. I reproduced the exact pure framing input with Node Web Crypto, captured the digest, and asserted it through the normal Vitest package environment.
+
+### What I learned
+
+- Runtime branding constructors need value-kind checks even when their compile-time parameter type is narrow.
+- A Unicode golden protects the distinction between UTF-8 byte length and JavaScript code-unit length.
+
+### What was tricky to build
+
+- Rebase keeps batch identity and mutation content but changes the server revision; the test must observe both transport attempts before the fake server applies the second.
+- Isolation keeps each constituent batch ID but changes request grouping; the combined and isolated sends must all differ.
+
+### What warrants a second pair of eyes
+
+- Review the fixed golden as a wire-identity compatibility commitment.
+- Review whether an empty batch should be rejected by the exported digest helper; the sync enqueue path already refuses empty mutation arrays and never sends one.
+
+### What should be done in the future
+
+- If the framing algorithm changes, increment `pbui-workbench-sync-v1`; do not silently reinterpret existing idempotency keys.
+
+### Code review instructions
+
+- Read the first sync test, then the 409, 422, and retry scenarios.
+- Run `pnpm --filter @hyperslop-systems/workbench-core typecheck && pnpm --filter @hyperslop-systems/workbench-core test`.
+
+### Technical details
+
+```text
+Identity laws: 7/7
+Core test files: 32
+Core tests: 250
+```
+
+## Step 6: Phase 5 — full validation and release-evidence repair
+
+I ran the full JavaScript/TypeScript package, repository, Storybook, packed-consumer, and Go gates while preserving raw output. All implementation gates passed. The recursive consumer run exposed a pre-existing release-check defect: Datalab’s clean consumer depended on private workspace versions being published and on registry credentials, so it could not validate the current checkout.
+
+I repaired that smoke test to pack every private dependency needed by Datalab and install those tarballs explicitly. The final clean project deliberately ran without `NODE_AUTH_TOKEN`, typechecked, built, and preserved all package-range assertions.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 4)
+
+**Assistant interpretation:** Validate the entire repository, fix causes of failures, and produce auditable release evidence.
+
+**Inferred user intent:** Do not declare completion based only on focused tests or dismiss a failing consumer check as environmental.
+
+**Commit (code):** `320c75878862a3435d4d7c96aedbb0a391014d9b` — "Make Datalab consumer smoke self-contained"
+
+### What I did
+
+- Ran frozen install, Workbench protocol build, focused core gate and boundary.
+- Ran root typecheck, tests, build, Storybook, and packed consumer.
+- Ran recursive child typechecks, tests, builds, and consumer smoke scripts.
+- Ran Datalab lint, Storybook, and a final credential-free packed consumer.
+- Ran Go logcopter generation check, tests, and Glazed lint.
+- Captured the complete transcript in `reference/03-full-validation-output.txt`.
+- Captured source/declaration cutover searches in `reference/04-hard-cutover-audit.txt`.
+- Wrote the concise command and law matrix in `reference/05-validation-summary.md`.
+
+### Why
+
+- The durable goal requires fresh repository-wide evidence and cause-fixing, not a partial package report.
+- A packed consumer must test the checkout’s coordinated package set, not whichever private versions happen to exist remotely.
+
+### What worked
+
+- Frozen install passed.
+- Core: 32 files / 250 tests; boundary, typecheck, and build passed.
+- Root: 51 files / 860 tests; typecheck, build, Storybook, and consumer passed.
+- Child packages: 12 typechecks, 12 builds, 10 suites / 1,565 tests passed.
+- Datalab credential-free packed consumer passed with React 19.2.8.
+- Go checks and tests, including `pkg/workbench` and `pkg/workbenchapi`, passed unchanged.
+
+### What didn't work
+
+The first recursive consumer attempt failed without a token:
+
+```text
+npm error 401 Unauthorized - GET https://npm.pkg.github.com/@hyperslop-systems%2fpbui-workbench
+```
+
+An authenticated retry proved publication order was the real hidden assumption:
+
+```text
+npm error ETARGET No matching version found for @hyperslop-systems/pbui-workbench@^0.6.0
+```
+
+After packing the missing workspace packages, Plot remained a private remote dependency and failed under the environment’s package-date cutoff:
+
+```text
+npm error ETARGET No matching version found for @hyperslop-systems/plot@0.3.1
+```
+
+The final repair packs PBUI, protocol, core, shell, Plot, and Datalab, removes the generated private-registry `.npmrc`, and validates entirely from local tarballs plus public npm dependencies.
+
+My first package-script inventory command also used an unsupported pnpm option placement:
+
+```text
+ERROR Unknown options: '1', 'depth'
+```
+
+I inspected package scripts through the manifests and CI workflows instead.
+
+### What I learned
+
+- Datalab’s old smoke validated only PBUI and protocol from the checkout; core and shell additions had made it publication-order-dependent.
+- The repository Makefile deliberately uses `GOWORK=off`, so the historical parent `go.work` patch-version mismatch does not affect the actual Go CI commands.
+
+### What was tricky to build
+
+- The validation harness initially continued after one recursive failure because it recorded all expensive gates in one pass. I preserved that raw failure, then reran the failed command independently with explicit exit capture until it passed.
+- Tarball dependency rewriting must be checked against each workspace package’s own version, not one shared version.
+
+### What warrants a second pair of eyes
+
+- Review the Datalab smoke’s explicit private package list whenever a new private runtime dependency is added.
+- Review the raw transcript’s expected build warnings separately from command failures; the concise summary distinguishes them.
+
+### What should be done in the future
+
+- Keep Datalab’s packed-consumer dependency set aligned with its private runtime dependencies, or extract a shared recursive pack helper if a second package needs the same behavior.
+
+### Code review instructions
+
+- Start with `reference/05-validation-summary.md`.
+- Inspect `packages/datalab-ui/scripts/consumer-smoke.mjs`, especially tarball creation and rewritten-range assertions.
+- Use `reference/03` only for raw output and `reference/04` for no-legacy evidence.
+
+### Technical details
+
+```text
+Root tests: 860
+Child tests: 1,565
+Core tests: 250
+Datalab lint: 474 files, one pre-existing warning
+Final Datalab consumer: credential-free PASS
+Go: logcopter-check + test + glazed-lint PASS
+```

@@ -14,6 +14,12 @@ RelatedFiles:
       Note: Primary intern implementation guide
     - Path: repo://ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/reference/01-investigation-diary.md
       Note: Chronological investigation and implementation diary
+    - Path: repo://ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/reference/03-full-validation-output.txt
+      Note: Raw full-repository validation transcript
+    - Path: repo://ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/reference/04-hard-cutover-audit.txt
+      Note: No-legacy source and built-declaration audit
+    - Path: repo://ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/reference/05-validation-summary.md
+      Note: Validation command matrix and failure triage
 ExternalSources:
     - /tmp/pbui-improvements.md
 Summary: Ticket hub for separating Workbench local and server revisions from idempotent operation identity and replacing the sync loop's 32-bit request hash.
@@ -42,6 +48,9 @@ Other repository identities—presentation semantic revisions, Chat event/effect
 - [Intern implementation guide](design-doc/01-intern-guide-to-revision-and-operation-identity-semantics.md)
 - [Investigation diary](reference/01-investigation-diary.md)
 - [Identity inventory](reference/02-identity-semantics-inventory.json)
+- [Full validation output](reference/03-full-validation-output.txt)
+- [Hard-cutover audit](reference/04-hard-cutover-audit.txt)
+- [Validation summary](reference/05-validation-summary.md)
 - [Tasks](tasks.md)
 - [Changelog](changelog.md)
 
@@ -58,4 +67,4 @@ P0 inventory meanings
 
 ## Status
 
-**Active.** Inventory and implementation design are in progress.
+**Implementation and repository validation complete.** The hard cutover passes 250 focused core tests, 860 root tests, 1,565 child-package tests, all typechecks/builds, packed boundaries/consumers, Storybook builds, and Go CI parity. Final docmgr audit, reMarkable delivery, and closure remain.
