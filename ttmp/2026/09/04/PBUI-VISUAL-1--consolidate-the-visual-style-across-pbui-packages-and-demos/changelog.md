@@ -139,3 +139,12 @@ Feedback round four: data-chip marker so a renamed chip is still its presentatio
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/atoms/Chip/Chip.tsx — data-chip marker
 
+
+## 2026-09-04
+
+Feedback round five: kernel ObjectChip; ecommerce text presentations migrated; nested presentation unboxed (commit e5103e2)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/createPbui.tsx — ObjectChip
+

@@ -779,3 +779,39 @@ Screenshot: `various/screenshots-phases/feedback-3/ecommerce-seeded-port-badge-a
 
 ### Code review instructions
 - `git show b117d22`.
+
+## Step 16: Feedback round five: ObjectChip
+
+Two more reports from the ecommerce detail tile: the line item drew a box around its product's chip, and the order id in the detail header was a different chip from the one in the table. The user asked why this keeps happening and whether a reusable object chip would make dispatch harder. It would not: the Presentation element (`data-ptype`, the menu, accept) stays the outer element; only its body changes. The kernel now ships that body as `ObjectChip`.
+
+Screenshots: `various/screenshots-phases/feedback-4/`.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Line items still have nested boxes: [Image #10] http://localhost:6012/iframe.html?id=shop-scenes--scene-3-show&viewMode=story" and "Also order in this detail view has a different chip. Why does this happen so often? Can't we define a ProductChip or so to be reused? does it make the action dispatch / parsing presentations too difficult? [Image #11]"
+
+**Assistant interpretation:** Unbox a presentation that wraps a presentation; add a reusable object chip to the kernel and use it in ecommerce.
+
+**Inferred user intent:** One rendering per object kind, defined once.
+
+**Commit (code):** e5103e2 — "PBUI-VISUAL-1 feedback 4: ObjectChip, and a nested presentation is not a second box"
+
+### What I did
+- `presentation-parts.css`: the unboxing rule matches `:has(> [data-chip], > [data-part="presentation"])`.
+- `createPbui.tsx`: `ObjectChip` (props = Presentation's minus children/svg/block, plus optional label children, `size`, `glyph`, `state`, `strong`, `badge`); label = children joined via `Children.toArray` (so `#{id}` fragments work) or the descriptor's label. Exported `ObjectChipProps`.
+- ecommerce: eleven text-bodied `Presentation`s → `ObjectChip` (OrdersTable, OrderDetail ×3, CustomersTable, CustomerDetail ×2, ProductCatalog ×3, Inspector). The line-item wrapper stays a Presentation around the product ObjectChip.
+
+### Why
+- The answer to "why so often": `Presentation` is a behaviour wrapper with no opinion about its body, so every call site invented one. A body with an opinion, defined once, is the only fix that scales.
+
+### What worked
+- Core 51 and ecommerce 7 green; the e2e selectors (`[data-ptype="order"]`, `[data-part="port-badge"]`) are unchanged because the outer element is unchanged.
+
+### What didn't work
+- First cut typed `children` as `string | number` and stringified; `#{order.id}` is a two-node fragment and would have rendered "#,88150". Caught before running; `Children.toArray(...).join("")`.
+
+### What should be done in the future
+- chat's `RefPresentation` is the same idea with a product label function; it could delegate to `ObjectChip`. datalab's chips already wrap Chip explicitly.
+
+### Code review instructions
+- `git show e5103e2 -- src/presentation/createPbui.tsx`; `shop-scenes--scene-3-show` on :6012.
