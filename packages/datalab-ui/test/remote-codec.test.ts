@@ -19,6 +19,7 @@ import {
   projectWorkStage,
 } from "../src/remote/projection";
 import { graphicStub } from "../src/store/graphicSource";
+import { createGraphicDocument } from "../src/model/graphicAuthoring";
 import type { PersistedNavigation } from "../src/store/navigation";
 import { WORK_STAGE_ID } from "../src/store/stageIds";
 
@@ -75,6 +76,39 @@ function localOf(remote: WorkbenchDocument): LocalWorkbench {
 }
 
 describe("remote workbench codec", () => {
+  test("retains unbound remote and newly created graphics across edits, layout saves, and reload", () => {
+    const remote = parseRemoteWorkbenchJSON(fixture("valid", "linked-view.json"));
+    // A document-aware tile may follow activeDocId without a primary binding.
+    remote.views["view-chart"]!.documents = {};
+    const local = localOf(remote);
+    const identity = { id: remote.id, name: remote.name };
+    const before = JSON.stringify(workbenchDocumentJSON(projectWorkStage(local, identity)));
+    expect(workbenchDocumentJSON(projectWorkStage(local, identity))).toEqual(workbenchDocumentJSON(remote));
+
+    const original = local.world.docs["document-chart"]!;
+    const fresh = createGraphicDocument("new-unbound", "New chart", { kind: "stream", drop: "production" }, 100);
+    local.world = {
+      docs: { ...local.world.docs, [original.id]: { ...original, name: "Edited without binding" }, [fresh.id]: fresh },
+      docOrder: [...local.world.docOrder, fresh.id],
+    };
+    const edited = projectWorkStage(local, identity);
+    expect(JSON.stringify(workbenchDocumentJSON(edited))).not.toBe(before);
+    expect(Object.keys(edited.documents)).toEqual([original.id, fresh.id]);
+
+    local.document.workspaces[0]!.name = "Renamed workspace";
+    const saved = projectWorkStage(local, identity);
+    const reloaded = parseRemoteWorkbenchJSON(workbenchDocumentJSON(saved));
+    expect(decodeRemoteGraphics(reloaded)).toEqual(local.world.docs);
+    expect(workbenchDocumentJSON(projectWorkStage(localOf(reloaded), identity))).toEqual(workbenchDocumentJSON(saved));
+  });
+
+  test("still refuses a bound document missing from the world", () => {
+    const remote = parseRemoteWorkbenchJSON(fixture("valid", "linked-view.json"));
+    const local = localOf(remote);
+    local.world = { docs: {}, docOrder: [] };
+    expect(() => projectWorkStage(local, remote)).toThrow("the work stage binds document document-chart, which the world does not hold");
+  });
+
   test("round-trips one linked view across two workspace placements", () => {
     const source = fixture("valid", "linked-view.json");
     const remote = parseRemoteWorkbenchJSON(source);

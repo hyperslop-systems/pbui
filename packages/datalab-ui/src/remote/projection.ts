@@ -28,9 +28,9 @@ import { WORKBENCH_FORMAT, WORKBENCH_SCHEMA_VERSION } from "./types";
  * documents live in the world, not in the workbench. So the projection is
  * product policy, named as such:
  *
- *   outbound  work-stage workspaces → the views they reach → the documents
- *             those views bind → full `GraphicDocument`s from the world →
- *             one wire document
+ *   outbound  work-stage workspaces → the views they reach; world documents
+ *             outside the preserved local-only namespace (including unbound
+ *             documents), plus explicitly bound documents → one wire document
  *   inbound   preserve every local workspace outside the work stage and the
  *             views and stubs it reaches; refuse a remote document id that
  *             collides with a preserved one; replace the work stage with the
@@ -93,10 +93,11 @@ export function assertRemoteDocumentNamespace(
 }
 
 /**
- * The wire document for the work stage (§14.2). `managedViewIds` are views
- * the server already knows about (its last document's order); a view the
- * user linked into a work workspace since is reachable and therefore sent,
- * a managed view that fell out of every work workspace is not.
+ * The wire document for the work stage (§14.2). Views are selected by
+ * placement reachability; graphics have an independent lifetime. Unbound
+ * tiles follow activeDocId, and closing a tile does not delete its graphic.
+ * Every world document outside the local-only stages' preserved namespace
+ * therefore belongs in the snapshot, whether remotely loaded or newly made.
  */
 export function projectWorkStage(
   local: LocalWorkbench,
@@ -119,9 +120,11 @@ export function projectWorkStage(
   }
 
   const documents: Record<string, DocumentPayload> = {};
+  const preservedDocumentIds = new Set(preservedLocalState(local).documentIds);
   for (const id of local.world.docOrder) {
     const graphic = local.world.docs[id];
-    if (documentIds.has(id) && graphic) documents[id] = encodeGraphicDocument(graphic);
+    if (graphic && (documentIds.has(id) || !preservedDocumentIds.has(id)))
+      documents[id] = encodeGraphicDocument(graphic);
   }
   for (const id of documentIds) {
     if (!documents[id])
