@@ -159,3 +159,8 @@ Refactor P5: Unify connection controls and atomic previews (commit 879b342). Imp
 
 Refactor P6: Provide readable focused wiring without remounts (commit 2146413). Implement recursive size feasibility, focused controls, hysteresis and preserved app ancestry.
 
+
+## 2026-09-04
+
+Refactor P7: Remove legacy paths and complete validation handoff (commit 5d30b1f). Delete the global carry/old router, apply PBUI style conventions, validate full suites and browser corpus, and upload the implementation review.
+
