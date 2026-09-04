@@ -714,3 +714,40 @@ Unclear status bar and not a normal tile it seems like (doesn't need t). Also [t
 
 ### Code review instructions
 - `git show 20ec2d2 -- src/presentation/createPbui.tsx public/presentation-parts.css`; `shop-scenes--seeded` on :6012, `pbui-chat-pbuimarkdown--resolved` on :6007.
+
+## Step 14: Feedback round three: the edge belongs to tokens, not regions
+
+After Step 13 every presentation had the edge, including the widget's stat, meter and sparkline children, which are block presentations. The user's rule: the left bar is for actual presentations (inline tokens) and a few chips; regions are plain text; a segmented bar's legend is colour squares.
+
+Screenshot: `various/screenshots-phases/feedback-2/chat-widget-health-after.png` (compare `CH-011` and the Step 13 shot).
+
+### Prompt Context
+
+**User prompt (verbatim):** "we should only have that left bar on the blocks for actual presentation (and maybe some rare chips): [Image #7]
+
+There's way too many here. The web 62 / shop 28 / phone 10 should be legend olor squares. The Reorder lead time from the mind is 9 days , the price, the stock vs reorderd, the prie/stock, should just be normal text, there's not even need for a border."
+
+**Assistant interpretation:** Distinguish inline presentations (chips: box + edge) from block presentations (regions: no chrome); make the widget's stat/meter/note children plain and its legend swatches.
+
+**Inferred user intent:** Density and hierarchy: the frame is the widget's, the tokens are the objects, everything else is text.
+
+**Commit (code):** 3101444 — "PBUI-VISUAL-1 feedback 2: block presentations are regions, not chips"
+
+### What I did
+- Kernel: `data-layout="block"` on block presentations; parts sheet: `[data-layout="block"]` → no border, padding or background (hover outline stays).
+- chat `StatChild`: plain text (no bar, no wash). `WidgetChild`: a `callout` child is prose (`widget-note`: strong title + markdown) unless its tone is danger; the segmented legend is `Swatch` + tiny text per part.
+
+### What worked
+- Core 51, chat 25, ecommerce 7, workbench 23, datalab 55 green.
+
+### What didn't work
+- First cut kept the box for warning-toned notes; the fixture's "reorder lead time" note is warning-toned and the user wanted it as text. Only danger keeps the box now.
+
+### What I learned
+- The inline/block split the kernel already had for layout is also the visual split: inline = token, block = region.
+
+### What warrants a second pair of eyes
+- Any product that relied on a block presentation drawing its own frame (none found in the corpus; datalab's block presentations sit inside their own tiles).
+
+### Code review instructions
+- `git show 3101444`; `pbui-chat-pbuiwidget--health` on :6007.

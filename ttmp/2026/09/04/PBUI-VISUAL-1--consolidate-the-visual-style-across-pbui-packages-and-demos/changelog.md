@@ -121,3 +121,12 @@ Feedback round two: presentations carry the type edge from the kernel; chip-in-p
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/createPbui.tsx — presentationToneVar
 
+
+## 2026-09-04
+
+Feedback round three: block presentations chromeless; widget stats/notes plain, legend swatches (commit 3101444)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/widget/children/WidgetChild/WidgetChild.tsx — Widget children
+
