@@ -510,3 +510,47 @@ Screenshots: `various/screenshots-phases/p4/`: `chip-states.png` and `chip-sizes
 
 ### Code review instructions
 - `git show d4021ce -- src/components/atoms/Chip packages/pbui-workbench/src/components/PortBadge`; the `Design System/Atoms/Chip` stories on :6006 and `Visual Audit/port badge gallery` on :6008.
+
+## Step 10: Phase 7, the native-control skin
+
+The last raw elements in the family (a story's plain buttons, a sandboxed program's − and +, the kernel's radios, a demo's checkbox) now take the family's shape without anyone wrapping them. It is one block in `src/styles.css`, zero-specificity, opted out by any class or `data-part`.
+
+Screenshots: `various/screenshots-phases/p7/raw-buttons-in-toolbar-after.png` (compare `C-155`), `raw-radios-after.png` (compare `I-C-005`); the sandbox program's buttons were checked on the `Visual Audit/Sandbox Devtools` story (compare `I-SB-001`).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Phase 7 of doc 02, decision 10 (global skin first, atoms second).
+
+**Inferred user intent:** Same as Step 5.
+
+**Commit (code):** 2fdc172 — "PBUI-VISUAL-1 P7: a zero-specificity skin for native controls"
+
+### What I did
+- `src/styles.css`: `:where(input[type=checkbox|radio])` square/circle, ink when checked (inset paper ring); `:where(select)` hairline box with an inline-SVG ink chevron; `:where(button)` framed tiny look with hover and disabled; bare text inputs; one focus ring. All guarded by `:not([class]):not([data-part])`.
+- Verified on the Toolbar variants story, the explain-the-menu radios, the sandbox devtools story and datalab's workbench story.
+
+### Why
+- Decision 10: the floor first, so every product improves at once; atoms remain the recommendation.
+
+### What worked
+- Core 51 test files green; no product test depends on native control geometry.
+
+### What didn't work
+- N/A
+
+### What I learned
+- The guard matters more than the rules: without `:not([class])` the skin would have fought the atoms' modules on every button; with it, the skin only ever touches an element nobody styled.
+
+### What was tricky to build
+- A `<select>` cannot carry a pseudo-element, so the chevron is a data-URI SVG background with the ink colour literal inside the SVG (a token cannot be read inside a URL). If `--pbui-ink` changes, this one literal has to follow; it is commented.
+
+### What warrants a second pair of eyes
+- A product that renders an unclassed `<button>` on purpose as a text link now gets a framed box. None found in the repo; a consumer outside it might.
+
+### What should be done in the future
+- Give `SelectInput` the same chevron so the atom and the floor are identical.
+
+### Code review instructions
+- `git show 2fdc172 -- src/styles.css`; the `Design System/Layout/Toolbar` "variants" story on :6006 renders three raw buttons.

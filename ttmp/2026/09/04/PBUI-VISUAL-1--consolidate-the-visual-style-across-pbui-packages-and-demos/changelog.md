@@ -85,3 +85,12 @@ P4 one Chip: sizes/fills/edge/glyph/states; PortBadge, PortRail and datalab badg
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/atoms/Chip/Chip.tsx — The one chip
 
+
+## 2026-09-04
+
+P7 native-control skin in src/styles.css (commit 2fdc172)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/styles.css — The floor for raw controls
+
