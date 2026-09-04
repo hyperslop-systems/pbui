@@ -38,6 +38,8 @@ export function validateWorkbenchDocument(doc: WorkbenchDocument, options: Valid
 
   if (doc.format !== WORKBENCH_FORMAT) report("unsupported_format", "format", `got "${doc.format}", want "${WORKBENCH_FORMAT}"`);
   if (doc.schemaVersion !== WORKBENCH_SCHEMA_VERSION) report("unsupported_version", "schemaVersion", `got ${doc.schemaVersion}, want ${WORKBENCH_SCHEMA_VERSION}`);
+  if (!doc.id.trim()) report("required", "id", "value is required");
+  if (!doc.name.trim()) report("required", "name", "value is required");
   if (doc.workspaces.length === 0) report("workspace_required", "workspaces", "at least one workspace is required");
   if (doc.workspaces.length > limits.workspaces) report("limit_exceeded", "workspaces", `found ${doc.workspaces.length}; limit is ${limits.workspaces}`);
   const viewCount = Object.keys(doc.views).length;

@@ -35,6 +35,19 @@ describe("essential validation", () => {
     expect(codes(doc)).toEqual(["unsupported_format@format", "unsupported_version@schemaVersion", "workspace_required@workspaces"]);
   });
 
+  it.each(["", " \t\n"])("rejects blank workbench identities (%j) at validation and parsing", (value) => {
+    for (const field of ["id", "name"] as const) {
+      const doc = base();
+      doc[field] = value;
+      expect(codes(doc)).toEqual([`required@${field}`]);
+      expect(codes(doc, false)).toEqual([`required@${field}`]);
+      expect(parseWorkbenchDocument(serializeDocument(doc))).toEqual({
+        ok: false,
+        diagnostics: [{ code: "required", path: field, detail: "value is required" }],
+      });
+    }
+  });
+
   it("reports tree shape: bad ratio, bad direction, missing child, unknown view, duplicate node id", () => {
     const doc = base();
     const tree = doc.workspaces[0]!.tree!;

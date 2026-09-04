@@ -25,6 +25,23 @@ describe("createWorkbenchCore", () => {
     expect(() => createWorkbenchCore({ initial: layout(split("row", 0.5, tile("notes"), tile("notes")), { ids: sequentialIds() }), apps })).toThrow(/duplicate_singleton/);
   });
 
+  it.each(["id", "name"] as const)("refuses a blank workbench %s before construction or replacement", (field) => {
+    const invalid = threeTiles();
+    invalid[field] = " \t\n";
+    expect(() => createWorkbenchCore({ initial: invalid, apps })).toThrow(/required/);
+
+    const core = createWorkbenchCore({ initial: threeTiles(), apps });
+    const before = core.getState();
+    const listener = vi.fn();
+    core.subscribe(listener);
+    expect(core.replaceDocument(invalid)).toMatchObject({
+      ok: false,
+      diagnostics: [{ code: "required", path: field }],
+    });
+    expect(core.getState()).toBe(before);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   it("apply: a batch lands atomically, rebuilds the index, bumps the revision, notifies once, and reports once", () => {
     const onCommit = vi.fn();
     const core = createWorkbenchCore({ initial: threeTiles(), apps, onCommit });
