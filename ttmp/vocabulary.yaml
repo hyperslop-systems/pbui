@@ -29,6 +29,8 @@ topics:
       description: pbui action-selection kernel work (rules, families, type graph, availability, revalidation, vocabulary)
     - slug: datalab
       description: Datalab UI architecture, analytical workspaces, and product integration
+    - slug: workbench
+      description: PBUI workbench document, core, shell, synchronization, and persistence architecture
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes
