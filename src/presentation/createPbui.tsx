@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
 } from "react";
 import { HelpContent } from "../components/ContextHelp";
 import type { HelpRendererRegistry } from "../components/ContextHelp";
@@ -339,6 +340,28 @@ export interface PbuiContextValue<
    * Refusals never reach `onPerform`.
    */
   performAction(action: ResolvedAction<Values, Verb>): Promise<PerformResult>;
+}
+
+/**
+ * The CSS value of a presentation's tone edge. A type that the family names
+ * (`order`, `product`, `step`) gets its `--pbui-tone-<type>` token, falling
+ * back to the descriptor's semantic tone; a descriptor tone that is already a
+ * `var(...)` reference is used as is.
+ */
+function presentationToneVar(tone: string, type: string): string {
+  const semantic =
+    tone === "accent"
+      ? "var(--pbui-cat-2)"
+      : tone === "positive"
+        ? "var(--pbui-ok)"
+        : tone === "warning"
+          ? "var(--pbui-cat-3)"
+          : tone === "danger"
+            ? "var(--pbui-danger)"
+            : tone.startsWith("var(")
+              ? tone
+              : "var(--pbui-tone-neutral)";
+  return /^[A-Za-z][A-Za-z0-9_-]*$/.test(type) ? `var(--pbui-tone-${type}, ${semantic})` : semantic;
 }
 
 export function createPbui<
@@ -688,6 +711,7 @@ export function createPbui<
 
     const helpOpenHere = pbui.help !== null && pbui.help.anchor === elementRef.current;
     const tone = registry.toneFor(reference);
+    const toneVar = presentationToneVar(tone, reference.type);
     const label = registry.labelFor(reference, pbui.environment);
     const labelText =
       typeof label === "string" || typeof label === "number" ? String(label) : reference.type;
@@ -871,6 +895,13 @@ export function createPbui<
         data-part={svg ? "presentation-svg" : "presentation"}
         data-ptype={reference.type}
         data-tone={tone}
+        /*
+         * The 4px edge that names the type (PBUI-VISUAL-1): the sheet reads
+         * `--pbui-presentation-tone`, which is the type's own tone token when
+         * the family defines one (`--pbui-tone-order`) and the descriptor's
+         * semantic tone otherwise. A Chip inside inherits it as its default.
+         */
+        style={{ "--pbui-presentation-tone": toneVar } as CSSProperties}
         data-state={acceptable ? "acceptable" : undefined}
         data-testid={testId}
         /* Present only while THIS element's help card is open (§13). */

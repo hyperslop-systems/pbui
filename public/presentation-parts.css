@@ -35,6 +35,32 @@
   cursor: context-menu;
   font: inherit;
   padding: var(--pbui-space-1) var(--pbui-space-3);
+  /* The 4px edge that names the type — the same edge as the Chip's. */
+  border-left: var(--pbui-tone-edge) solid var(--pbui-presentation-tone, var(--pbui-tone-neutral));
+}
+
+/* Inside a composite (a tile title, a port badge slot) the container owns
+ * the look: a plain hairline box, no edge. */
+[data-part="presentation"][role="none"] {
+  border-left: var(--pbui-border-hair);
+}
+
+/* A presentation whose body is a Chip: the chip IS the box. Drawing the
+ * presentation's own border around it made every badge a box in a box. */
+[data-part="presentation"]:has(> [data-part="chip"]) {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+[data-part="presentation"]:has(> [data-part="chip"]):hover {
+  outline: 0;
+  background: transparent;
+}
+
+[data-part="presentation"]:has(> [data-part="chip"]):hover > [data-part="chip"] {
+  outline: 1px dotted var(--pbui-ink);
+  background: var(--pbui-selected);
 }
 
 [data-part="presentation"]:hover {

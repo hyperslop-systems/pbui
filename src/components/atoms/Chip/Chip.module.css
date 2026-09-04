@@ -11,7 +11,7 @@
  * greyscale; colour reinforces it and never replaces it.
  */
 .chip {
-  --chip-tone: var(--pbui-tone-neutral);
+  --chip-tone: var(--pbui-presentation-tone, var(--pbui-tone-neutral));
   display: inline-flex;
   align-items: baseline;
   gap: var(--pbui-space-2);

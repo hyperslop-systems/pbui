@@ -13,36 +13,6 @@ body {
 }
 
 /* A mention in prose keeps the type's tone on its edge. */
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="product"] {
-  border-left-color: var(--pbui-tone-product);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="category"] {
-  border-left-color: var(--pbui-tone-category);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="metal"] {
-  border-left-color: var(--pbui-tone-metal);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="order"] {
-  border-left-color: var(--pbui-tone-order);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="field"] {
-  border-left-color: var(--pbui-tone-field);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="row"] {
-  border-left-color: var(--pbui-tone-row);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="source"] {
-  border-left-color: var(--pbui-tone-source);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="widget"] {
-  border-left-color: var(--pbui-tone-widget);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="tool"] {
-  border-left-color: var(--pbui-tone-tool);
-}
-[data-part="markdown"] [data-pbui="presentation"][data-ptype="proposal"] {
-  border-left-color: var(--pbui-tone-proposal);
-}
 [data-part="markdown"] [data-pbui="presentation"][data-ptype="unresolved"] {
   border-left-style: dashed;
 }

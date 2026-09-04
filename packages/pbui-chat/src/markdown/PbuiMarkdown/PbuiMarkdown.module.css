@@ -37,10 +37,10 @@
   white-space: pre-wrap;
 }
 
+/* A mention in prose: the presentation's own hairline box and tone edge (the
+ * kernel draws both from the type); this only tightens it to the line. */
 .mention {
   display: inline;
   padding: 0 var(--pbui-space-1);
-  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-neutral);
-  background: var(--pbui-pane-alt);
   cursor: pointer;
 }
