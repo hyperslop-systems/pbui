@@ -21,8 +21,11 @@ function cubic(a: Point, b: Point): string {
   return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
 }
 
+/* The wire meets the jack on the frame when the card has one, else the
+ * card's edge (a product's own port markup). */
 function anchorOf(element: HTMLElement, side: "in" | "out", root: HTMLElement): Point {
-  const box = element.getBoundingClientRect();
+  const jack = element.querySelector<HTMLElement>(`[data-part="port-jack"][data-side="${side}"]`);
+  const box = (jack ?? element).getBoundingClientRect();
   const origin = root.getBoundingClientRect();
   return { x: (side === "out" ? box.right : box.left) - origin.left, y: box.top + box.height / 2 - origin.top };
 }

@@ -79,9 +79,7 @@ export function PortRail({ view, renderPort }: PortRailProps) {
         title={`${port.declaration.doc}${badge.explanation ? ` — ${badge.explanation}` : ""}`}
         onPointerDown={side === "out" ? (event) => begin(port, event) : undefined}
       >
-        <span className={styles.jack} aria-hidden="true">
-          {side === "in" ? "◂" : "▸"}
-        </span>
+        <span data-part="port-jack" data-side={side} data-bound={badge.state !== "none" && badge.state !== "empty" && badge.state !== "ambient" ? "" : undefined} className={styles.jack} aria-hidden="true" />
         <span className={styles.name}>{port.declaration.name}</span>
         <span className={styles.type}>&lt;{port.declaration.contract.valueType}&gt;</span>
         {badge.state !== "none" ? (
