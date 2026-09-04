@@ -202,3 +202,37 @@ Screenshot: `various/screenshots/p5/004-completed-link-wires-and-badges.png`.
 
 ### Code review instructions
 - `git show e76278e`.
+
+## Step 6: Phase 6, the bar binding
+
+The last piece of the mock: in link mode a tile's title and its port badge read as one label, `ORDER DETAIL → ORDERS`, in one hairline box. Outside the mode the badge stays its own dotted chip.
+
+Screenshots: `various/screenshots/p6/004-completed-link-wires-and-badges.png` (link mode), `p6-stories/001-shop-scenes--seeded.png` (normal mode, unchanged).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 6 of the design.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** a8ef47d — "PBUI-WIRING-1 P6: title and badges as one bar label in link mode"
+
+### What I did
+- `Tile.tsx`: badges wrapped in `<span data-part="tile-badges">` inside the title.
+- `chrome.css`: `tile-title` is inline-flex with a gap; in `[data-part="workbench"][data-link-mode]` it is a hair box on the pane, the presentation and chips inside are unboxed, `tile-badges::before` is the arrow, the chip glyph is hidden.
+
+### What worked
+- Core 51, workbench 23, ecommerce 7 green.
+
+### What I learned
+- The link-mode attribute on the workbench root is the one hook every mode-dependent rule needs; the chrome sheet can key on it without the tile knowing.
+
+### What should be done in the future
+- Wire routing around tiles that sit between source and destination (the Visual Audit story's derived wire crosses the middle tile's port card); the mock routes through gutters. A next ticket: obstacle-aware routing using the tiles' rectangles.
+- A rail with more ports than height overflows.
+- The scrim covers any product chrome outside the workbench.
+
+### Code review instructions
+- `git show a8ef47d`; scene 7 on :6012.

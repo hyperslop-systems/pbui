@@ -49,3 +49,12 @@ P5 one hairline port card (commit e76278e)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce/src/ShopShell/ShopShell.tsx — renderPort block
 
+
+## 2026-09-04
+
+P6 bar binding: one label in link mode (commit a8ef47d)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/public/chrome.css — tile-badges + link-mode label
+
