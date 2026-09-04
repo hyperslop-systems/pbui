@@ -665,3 +665,73 @@ Root tests: 51 files / 860 tests
 CI integration: existing root pnpm test command
 Validation transcript: reference/04-full-validation-output.txt
 ```
+
+## Step 8: Publish and close the ticket
+
+I ran the required dry run and uploaded the final five-document implementation bundle to reMarkable. The ticket index, tasks, changelog, guide, and diary now agree that every planned phase and validation gate is complete.
+
+The original design bundle remains separate, preserving the pre-implementation snapshot; the final bundle records what was actually built and the failures encountered.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 3)
+
+**Assistant interpretation:** Deliver the completed artifact, finish bookkeeping, and print the final phase boundary.
+
+**Inferred user intent:** Leave both a reviewable repository history and a readable offline implementation record.
+
+**Commit (code):** `d7e2299a027eeccae9c5fea58ce6e6a688029eec` — "Integrate PBUI architecture checks into release gates"
+
+**Commit (documentation):** `2cbc7c30f748be3cb1c50ca07d24cb1b4d68e311` — "Document PBUI dependency DAG implementation"
+
+### What I did
+
+- Dry-ran the five-document reMarkable bundle.
+- Uploaded `PBUI Dependency DAG Implementation.pdf` successfully.
+- Marked the upload task and ticket complete.
+- Ran final `docmgr doctor` validation.
+- Prepared the `P5 DONE` work slip with the final documentation commit QR.
+
+### Why
+
+- The completed bundle should reflect implementation reality, not only the initial design.
+- Separate names avoid overwriting or deleting annotations on the earlier design bundle.
+
+### What worked
+
+- Upload returned `OK: uploaded PBUI Dependency DAG Implementation.pdf -> /ai/2026/09/03/PBUI-DEPENDENCY-DAG-1`.
+- All ticket tasks are checked and doctor is clean.
+
+### What didn't work
+
+- N/A during delivery.
+
+### What I learned
+
+- Keeping design and implementation bundles separate provides a useful record of changed assumptions, especially TypeScript 7 parser availability and editor’s CSS-token edge.
+
+### What was tricky to build
+
+- The final upload deliberately used a new document name rather than `--force`; forced replacement would destroy any annotations on the initial design PDF.
+
+### What warrants a second pair of eyes
+
+- N/A for delivery; architecture review points remain in Steps 5–7.
+
+### What should be done in the future
+
+- Proceed to the separate identity/revision semantics ticket after reviewing this package policy.
+
+### Code review instructions
+
+- Read the final implementation bundle or commits `4c74b31` through `d7e2299`.
+- Confirm all checks in `tasks.md` are complete.
+
+### Technical details
+
+```text
+Remote directory: /ai/2026/09/03/PBUI-DEPENDENCY-DAG-1
+Initial bundle: PBUI Dependency DAG Design.pdf
+Final bundle: PBUI Dependency DAG Implementation.pdf
+Final code commit: d7e2299
+```

@@ -1,7 +1,7 @@
 ---
 Title: Enforce the PBUI repository dependency DAG
 Ticket: PBUI-DEPENDENCY-DAG-1
-Status: active
+Status: complete
 Topics:
     - pbui
     - architecture
@@ -18,10 +18,11 @@ RelatedFiles:
 ExternalSources:
     - /tmp/pbui-improvements.md
 Summary: Ticket hub for making PBUI's 13-package architecture and stable root source layers executable as tests, correcting manifest drift, and preventing undeclared, extraneous, forbidden, or cyclic internal edges.
-LastUpdated: 2026-09-03T21:50:00-04:00
+LastUpdated: 2026-09-03T21:59:30.972743925-04:00
 WhatFor: Track evidence, design, implementation, validation, and delivery of repository dependency-DAG enforcement.
 WhenToUse: Start here before implementing or reviewing PBUI-DEPENDENCY-DAG-1 or changing internal package boundaries.
 ---
+
 
 
 # Enforce the PBUI repository dependency DAG
@@ -58,4 +59,4 @@ P0 evidence
 
 ## Status
 
-**Active.** Design and baseline evidence are complete; implementation is proceeding as a coordinated hard cutover.
+**Complete.** The hard cutover is implemented in five code commits, 29 new architecture tests pass through existing CI, all root/recursive/build/pack gates pass, `docmgr doctor` is clean, and both design and final implementation bundles were uploaded to `/ai/2026/09/03/PBUI-DEPENDENCY-DAG-1`.
