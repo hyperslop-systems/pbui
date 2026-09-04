@@ -417,3 +417,49 @@ Screenshots for this step are in `various/screenshots-phases/p3/`: the four demo
 ### Code review instructions
 - `git show 80fadf4 --stat`; read `packages/pbui-workbench/src/components/AppShell/AppShell.tsx` and the four call sites; open the demos on :5173–:5176 and the `Workbench/AppShell` story on :6008.
 - Validate: `pnpm -r --filter '!@hyperslop-systems/datalab-ui' --filter '!./packages/*/demo' build`, then typecheck and vitest in the packages listed above.
+
+## Step 8: Phase 5, notices and the mode banner (landed before Phase 4's datalab half)
+
+Phase 4's datalab migration is running in a subagent, so Phase 5 was written in parallel on files the agent does not touch and committed first; the Phase 4 commit follows when the agent reports. The P5 start slip was printed late for the same reason.
+
+Screenshots: `various/screenshots-phases/p5/`: `callout-variants-after.png` (compare `C-006`), `accept-banner-mode-after.png` (compare `I-C-003`), `chat-widget-invalid-after.png` (compare `CH-013`), `chat-proposal-card-after.png` (compare `CH-017`).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Phase 5 of doc 02.
+
+**Inferred user intent:** Same as Step 5.
+
+**Commit (code):** 87caa13 — "PBUI-VISUAL-1 P5: one notice, one mode banner"
+
+### What I did
+- Core `Callout`: new module CSS (paper, hair border, 4px `--callout-tone` edge, radius token, space-2/space-3 padding), `variant` gains `danger`, new `hint` and `onDismiss`; `role="alert"` for danger, `status` otherwise; the story's "why there is no danger variant" note replaced by the role split.
+- `presentation-parts.css`: refusal notice on the Callout recipe; accept banner ink/paper with a gold `accept-banner-mode` span (added in `createPbui.tsx`) and a faint-inverted hint; workbench placing banner's bold word gold.
+- Severity: chat invalid document, widget error, failed run; sandbox program error; workbench tile "could not render" → danger. plotscript `RunPane` wraps the diagnostic in a danger Callout with a title that says whether the script threw or returned something undrawable.
+- ProposalCard: inner box gets paper + hair border + edge; the outer Surface loses its firm border (it drew a box around the box).
+
+### Why
+- One recipe for "something to know" and one for "the system is in a mode" is decision 7; the edge is already the family's tone idiom.
+
+### What worked
+- Core 51, workbench 23, chat 25, sandbox 18, plotscript 5 test files green.
+
+### What didn't work
+- First ProposalCard cut was a hair box inside a firm box: the card's Surface already had a border. Removed the outer one; screenshot re-taken.
+
+### What I learned
+- The refusal notice was already on the right recipe; only its paddings differed. Consistency problems are often one property away.
+
+### What was tricky to build
+- Nothing beyond keeping the commit paths separate from the running agent's.
+
+### What warrants a second pair of eyes
+- Announcing chat's failed run as `role="alert"` instead of status: correct for a failure, but noisier for screen readers in a busy transcript.
+
+### What should be done in the future
+- datalab's `ErrorNotice` (an inline glyph + red text, not a box) is left as the inline form-error idiom; if it should become a Callout, that is a one-line change per call site.
+
+### Code review instructions
+- `git show 87caa13 -- src/components/molecules/Callout public/presentation-parts.css`; the `Component Library/Molecules/Callout` stories on :6006.

@@ -67,3 +67,12 @@ P3 tile chrome, tones by kind, AppShell for all four shells, nested gutter, stri
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/AppShell/AppShell.tsx — The one page shell
 
+
+## 2026-09-04
+
+P5 notices + mode banner: Callout with danger/hint/dismiss, refusal notice and accept banner on the recipes (commit 87caa13)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/molecules/Callout/Callout.tsx — The one notice
+
