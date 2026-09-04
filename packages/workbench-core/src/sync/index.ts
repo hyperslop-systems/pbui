@@ -26,7 +26,7 @@ import { clone, toJsonString } from "@bufbuild/protobuf";
 import { MutationSchema, WorkbenchDocumentSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 import type { WorkbenchDiagnostic } from "../diagnostics";
-import { operationId, type OperationId, type ServerRevision } from "../identity";
+import { newOperationId, operationId, type OperationId, type ServerRevision } from "../identity";
 
 /**
  * Where the workbench stands with the server. `local`: not talking to one
@@ -101,6 +101,8 @@ export interface SyncOptions {
   onInvalid?: "drop" | "isolate";
   /** Backoff for transport failures, in ms; each retry doubles up to the last. Default [1000, 2000, 4000, 8000, 15000]. */
   backoffMs?: readonly number[];
+  /** Mint one identity per enqueued local batch. Injectable for deterministic tests/replay. */
+  operationIds?(): OperationId;
   onPhase?(phase: SyncPhase): void;
   /**
    * Every dropped batch, whole, with the reason: `invalid` (the server
@@ -148,11 +150,40 @@ export interface SyncTarget {
 
 const isDestructive = (mutations: readonly Mutation[]) => mutations.some((mutation) => mutation.body.case === "workspaceSetTree");
 
+const frame = (value: string): string => `${new TextEncoder().encode(value).byteLength}:${value}`;
+
+/**
+ * Collision-resistant identity for one concrete transport attempt.
+ *
+ * Batch UUIDs distinguish separately intended operations with identical
+ * contents. Canonical mutation JSON makes the identity faithful to the bytes
+ * being sent. Length framing prevents values from imitating boundaries.
+ */
+export async function syncRequestOperationId(
+  revision: ServerRevision,
+  batches: readonly OutboxEntry[],
+): Promise<OperationId> {
+  const framed = [frame("pbui-workbench-sync-v1"), frame(revision), frame(String(batches.length))];
+  for (const batch of batches) {
+    framed.push(frame(batch.id), frame(String(batch.mutations.length)));
+    for (const mutation of batch.mutations) {
+      framed.push(frame(toJsonString(MutationSchema, mutation)));
+    }
+  }
+  const bytes = new TextEncoder().encode(framed.join(""));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hex = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return operationId(`wb-sha256-${hex}`);
+}
+
 export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   const { client } = options;
   const flushDelayMs = options.flushDelayMs ?? 400;
   const onInvalid = options.onInvalid ?? "drop";
   const backoff = options.backoffMs ?? [1000, 2000, 4000, 8000, 15000];
+  const nextOperationId = options.operationIds ?? (() => newOperationId());
 
   let phase: SyncPhase = "local";
   let revision: ServerRevision | null = null;
@@ -165,7 +196,6 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   let streamDirty = false;
   let stopStream: (() => void) | null = null;
   let target: SyncTarget | null = null;
-  let entryCounter = 0;
   // A server that keeps moving under us is a livelock, not a conflict.
   let conflicts = 0;
   const MAX_CONFLICTS = 5;
@@ -214,17 +244,6 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     const extraSet = new Set(extra);
     outbox = kept.filter((entry) => !extraSet.has(entry));
     return { ok: true, keptExtra: kept.filter((entry) => extraSet.has(entry)) };
-  };
-
-  /** A stable id for a request's CONTENT (the payloads, not only the kinds), so a retry is idempotent and a correction is not a replay. */
-  const requestOperationIdOf = (mutations: readonly Mutation[]): OperationId => {
-    const text = `${revision ?? ""}:${mutations.map((mutation) => toJsonString(MutationSchema, mutation)).join("|")}:${mutations.length}`;
-    let hash = 2166136261;
-    for (let index = 0; index < text.length; index += 1) {
-      hash ^= text.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-    return operationId(`wb-${(hash >>> 0).toString(36)}-${mutations.length}`);
   };
 
   /**
@@ -353,7 +372,8 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   async function send(batches: readonly OutboxEntry[], remaining: OutboxEntry[] = []): Promise<OutboxEntry[]> {
     const mutations = batches.flatMap((entry) => [...entry.mutations]);
     try {
-      return adopt(await client.mutate(revision!, mutations, requestOperationIdOf(mutations)), remaining).keptExtra;
+      const requestOperationId = await syncRequestOperationId(revision!, batches);
+      return adopt(await client.mutate(revision!, mutations, requestOperationId), remaining).keptExtra;
     } catch (error) {
       if (!(error instanceof SyncHttpError)) throw error;
       if (error.status === 404) {
@@ -418,8 +438,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   return {
     enqueue(mutations) {
       if (disposed || mutations.length === 0) return;
-      entryCounter += 1;
-      outbox = [...outbox, { id: operationId(`tx-${entryCounter}`), mutations: [...mutations], destructive: isDestructive(mutations) }];
+      outbox = [...outbox, { id: nextOperationId(), mutations: [...mutations], destructive: isDestructive(mutations) }];
       if (!detached()) setPhase("pending");
       schedule();
     },

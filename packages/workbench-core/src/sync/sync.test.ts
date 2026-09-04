@@ -6,10 +6,10 @@ import { defineAppManifest } from "../apps";
 import { commands, type WorkbenchCommand } from "../commands";
 import { createWorkbenchCore, type WorkbenchCore } from "../createWorkbenchCore";
 import { layout, split, tile } from "../document";
-import { serverRevision, type OperationId, type ServerRevision } from "../identity";
+import { operationId, serverRevision, type OperationId, type ServerRevision } from "../identity";
 import { createWorkbenchLinks } from "../links/collaborator";
 import { LINKS_DOC_ID } from "../links/document";
-import { createWorkbenchSync, SyncHttpError, type OutboxEntry, type SyncClient, type SyncResult } from "./index";
+import { createWorkbenchSync, syncRequestOperationId, SyncHttpError, type OutboxEntry, type SyncClient, type SyncResult } from "./index";
 
 /**
  * A server in thirty lines: a document, a revision that counts up, and a
@@ -97,7 +97,7 @@ const mutationsOf = (core: WorkbenchCore, command: WorkbenchCommand): Mutation[]
   return [...previewed.mutations];
 };
 
-function scenario(options: { onInvalid?: "drop" | "isolate"; onDropped?(entries: readonly OutboxEntry[], reason: string): void; initial?: WorkbenchDocument; links?: boolean } = {}) {
+function scenario(options: { onInvalid?: "drop" | "isolate"; onDropped?(entries: readonly OutboxEntry[], reason: string): void; operationIds?(): OperationId; initial?: WorkbenchDocument; links?: boolean } = {}) {
   const initial = options.initial ?? layout(split("row", 0.5, tile("counter"), tile("notes")));
   const server = fakeServer(initial);
   const sync = createWorkbenchSync({
@@ -105,6 +105,7 @@ function scenario(options: { onInvalid?: "drop" | "isolate"; onDropped?(entries:
     flushDelayMs: 0,
     ...(options.onInvalid ? { onInvalid: options.onInvalid } : {}),
     ...(options.onDropped ? { onDropped: options.onDropped } : {}),
+    ...(options.operationIds ? { operationIds: options.operationIds } : {}),
     onError: () => {},
   });
   const links = createWorkbenchLinks({ deps: { graph: createPresentationTypeGraph([{ id: "order" }]) } });
@@ -115,6 +116,30 @@ function scenario(options: { onInvalid?: "drop" | "isolate"; onDropped?(entries:
 }
 
 describe("the sync module (guide §15, batch-preserving)", () => {
+  test("request operation identity binds revision, ordered logical batches, and exact payload", async () => {
+    const { core, sync, ids } = scenario();
+    const [first, second] = ids();
+    const firstView = viewOf(core.getState().document.workspaces[0]?.tree, first!);
+    const secondView = viewOf(core.getState().document.workspaces[0]?.tree, second!);
+    const mutationA = mutationsOf(core, commands.setTitle(firstView, "one"));
+    const mutationB = mutationsOf(core, commands.setTitle(secondView, "two"));
+    const batchA: OutboxEntry = { id: operationId("batch-a"), mutations: mutationA, destructive: false };
+    const batchAAgain: OutboxEntry = { id: operationId("batch-a-again"), mutations: mutationA, destructive: false };
+    const batchB: OutboxEntry = { id: operationId("batch-b"), mutations: mutationB, destructive: false };
+    const revisionOne = serverRevision("1");
+
+    const stableA = await syncRequestOperationId(revisionOne, [batchA]);
+    expect(stableA).toMatch(/^wb-sha256-[0-9a-f]{64}$/);
+    expect(await syncRequestOperationId(revisionOne, [batchA])).toBe(stableA);
+    expect(await syncRequestOperationId(revisionOne, [batchAAgain])).not.toBe(stableA);
+    expect(await syncRequestOperationId(serverRevision("2"), [batchA])).not.toBe(stableA);
+    expect(await syncRequestOperationId(revisionOne, [batchB])).not.toBe(stableA);
+    expect(await syncRequestOperationId(revisionOne, [batchA, batchB])).not.toBe(
+      await syncRequestOperationId(revisionOne, [batchB, batchA]),
+    );
+    sync.dispose();
+  });
+
   test("committed batches reach the server in order, whole, each request against the revision it was built on", async () => {
     const { core, sync, server, ids } = scenario();
     await sync.flush();
@@ -237,6 +262,7 @@ describe("the sync module (guide §15, batch-preserving)", () => {
     await sync.flush();
     expect(sync.status()).toMatchObject({ phase: "offline", queued: 1 });
     await vi.advanceTimersByTimeAsync(1000);
+    await sync.flush(); // SHA-256 adds an asynchronous step after the retry timer fires.
     expect(sync.status().phase).toBe("synced");
     expect(leafCount(server.document)).toBe(3);
     sync.dispose();
@@ -310,8 +336,10 @@ describe("the sync module (guide §15, batch-preserving)", () => {
     sync.dispose();
   });
 
-  test("request ids distinguish batches of the same SHAPE at one revision, and a retry keeps its id", async () => {
-    const { core, sync, server, ids } = scenario();
+  test("operation IDs distinguish batches of the same SHAPE at one revision, and a retry keeps its ID", async () => {
+    const generated = ["batch-one", "batch-two", "batch-retry"].map(operationId);
+    const operationIds = vi.fn(() => generated.shift()!);
+    const { core, sync, server, ids } = scenario({ operationIds });
     await sync.flush();
     const [first, second] = ids();
     const tree = () => core.getState().document.workspaces[0]?.tree;
@@ -331,6 +359,7 @@ describe("the sync module (guide §15, batch-preserving)", () => {
     await sync.flush();
     const [a, b] = server.seen.slice(-2);
     expect(a!.operationId).toBe(b!.operationId);
+    expect(operationIds).toHaveBeenCalledTimes(3); // once per enqueue, never again for retry
     sync.dispose();
   });
 });

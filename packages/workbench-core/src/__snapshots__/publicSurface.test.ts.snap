@@ -130,6 +130,7 @@ exports[`public surface > index, sync, persistence and rebalance entries 1`] = `
   "sync": [
     "SyncHttpError",
     "createWorkbenchSync",
+    "syncRequestOperationId",
   ],
 }
 `;
