@@ -67,3 +67,12 @@ P7 WiringLab story (commit 1bfce25)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/stories/WiringLab.stories.tsx — The lab
 
+
+## 2026-09-04
+
+P8 obstacle-aware routing (commit 58b3b51)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/WireLayer/route.ts — Grid router
+

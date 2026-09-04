@@ -267,3 +267,40 @@ Screenshot: `various/screenshots/p7/001-workbench-wiringlab--lab.png`. It is als
 
 ### Code review instructions
 - Open `Workbench/WiringLab` on :6008; press tick in Source A; drag `gamma` from Wide onto Sink A's `anything`.
+
+## Step 8: Phase 8, routes through the gutters
+
+The lab made the routing gap obvious: three seeded wires cut straight across a tile. Wires now go around: a small grid router treats every tile frame as an obstacle, prefers long straight runs, and spreads parallel wires into neighbouring lanes.
+
+Screenshots: `various/screenshots/p8/002-workbench-wiringlab--lab.png` (all wires in gutters), `p8/001-visual-audit--wire-layer-styles.png` (the derived wire passes over the top of the middle tile), `p8-scenes/004-completed-link-wires-and-badges.png` (scene 7 unchanged).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 7)
+
+**Assistant interpretation:** The routing follow-up from the report.
+
+**Inferred user intent:** Wires that read like the mock in any layout.
+
+**Commit (code):** 58b3b51 — "PBUI-WIRING-1 P8: wires route around tiles through the gutters"
+
+### What I did
+- `route.ts`: `routeAround(from, to, obstacles, lanes, { bounds, cell=6, margin=3, turn=10, occupied=8 })` → corner points or null; `Lanes` remembers used cells across wires; `toPath`. Dijkstra over (cell, heading) with a binary heap; a freed corridor out of the source jack and into the destination jack; the goal must be entered heading +x; corners squared to the jacks' y.
+- `WireLayer`: tile rects from `[data-part="workbench-tile"] > [data-part="tile"]`; bounds = surface ± 18px; `pathFor` tries the router and falls back to `route()`.
+- `route.test.ts`: clear field is orthogonal; a wall is passed below; a second wire takes another lane.
+
+### What worked
+- Workbench 24 test files green. The lab shows every wire in a gutter or along the outside.
+
+### What didn't work
+- The audit story's derived wire still went straight through the middle tile after the first cut: its surface is exactly the tiles' height, so there was no gutter row and no path; the router returned null and the fallback drew. Extending the field 18px beyond the surface gives the router the outside strip (the SVG overflows), and the wire now passes above the tile.
+
+### What I learned
+- "No path" is a legitimate answer in an edge-to-edge layout; the field has to include the outside, or the fallback silently reintroduces the crossing.
+
+### What warrants a second pair of eyes
+- Cost per frame: one Dijkstra per wire over ~20k cells on every tick (resize, ResizeObserver, snapshot). Fine for a handful of wires; a workbench with dozens should memoise on the tile rects.
+- The outside strip draws wires up to 18px beyond the surface; a product whose surface sits flush against page chrome will see wires over that chrome.
+
+### Code review instructions
+- `git show 58b3b51 -- packages/pbui-workbench/src/components/WireLayer/route.ts`; `pnpm vitest run src/components/WireLayer` in pbui-workbench; `Workbench/WiringLab` on :6008.
