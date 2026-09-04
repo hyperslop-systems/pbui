@@ -26,6 +26,7 @@ import { clone, toJsonString } from "@bufbuild/protobuf";
 import { MutationSchema, WorkbenchDocumentSchema, type Mutation, type WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
 import type { WorkbenchDiagnostic } from "../diagnostics";
+import { operationId, type OperationId, type ServerRevision } from "../identity";
 
 /**
  * Where the workbench stands with the server. `local`: not talking to one
@@ -38,18 +39,15 @@ import type { WorkbenchDiagnostic } from "../diagnostics";
  */
 export type SyncPhase = "local" | "probing" | "synced" | "pending" | "offline" | "incompatible" | "detached";
 
-/** A revision as the server states it; opaque to this module, compared by equality. */
-export type Revision = string;
-
 export interface SyncResult {
   document: WorkbenchDocument;
-  revision: Revision;
+  revision: ServerRevision;
 }
 
 /** One committed local transition, kept whole until the server has it (guide §15.2, reduced). */
 export interface OutboxEntry {
   /** Stable for the life of the entry; NOT the request id (several entries may ride one request). */
-  readonly id: string;
+  readonly id: OperationId;
   readonly mutations: readonly Mutation[];
   /**
    * The batch replaces a workspace tree wholesale (a rebalance). Such a
@@ -68,13 +66,13 @@ export interface SyncClient {
   create(document: WorkbenchDocument): Promise<SyncResult>;
   /**
    * Send the mutations of one or more whole batches against `revision`.
-   * `requestId` is stable for the request's CONTENT, so a retry after a
+   * `operationId` is stable for the logical request, so a retry after a
    * timeout is idempotent on the server side. Reject with a `SyncHttpError`
    * to let this module tell 409 and 422 apart from a network failure.
    */
-  mutate(revision: Revision, mutations: Mutation[], requestId: string): Promise<SyncResult>;
+  mutate(revision: ServerRevision, mutations: Mutation[], operationId: OperationId): Promise<SyncResult>;
   /** Subscribe to change notifications; return an unsubscribe. Optional. */
-  stream?(onChange: (revision?: Revision) => void): () => void;
+  stream?(onChange: (revision?: ServerRevision) => void): () => void;
 }
 
 /** 409: "your revision is stale"; 422: "this batch is invalid"; 404: "the row is gone"; anything else is transport. */
@@ -127,7 +125,7 @@ export interface WorkbenchSync {
   /** Give the loop the core to read and to replace, and start it. */
   attach(target: SyncTarget): void;
   /** `queued`/`inFlight` count BATCHES. */
-  status(): { phase: SyncPhase; revision: Revision | null; queued: number; inFlight: number };
+  status(): { phase: SyncPhase; revision: ServerRevision | null; queued: number; inFlight: number };
   /** Send whatever is queued now, and resolve when that attempt settles. */
   flush(): Promise<void>;
   /** Stop the timers and the stream. Anything queued stays queued and unsent. */
@@ -157,7 +155,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   const backoff = options.backoffMs ?? [1000, 2000, 4000, 8000, 15000];
 
   let phase: SyncPhase = "local";
-  let revision: Revision | null = null;
+  let revision: ServerRevision | null = null;
   let outbox: OutboxEntry[] = [];
   let inFlight: OutboxEntry[] = [];
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -219,14 +217,14 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   };
 
   /** A stable id for a request's CONTENT (the payloads, not only the kinds), so a retry is idempotent and a correction is not a replay. */
-  const requestIdOf = (mutations: readonly Mutation[]): string => {
+  const requestOperationIdOf = (mutations: readonly Mutation[]): OperationId => {
     const text = `${revision ?? ""}:${mutations.map((mutation) => toJsonString(MutationSchema, mutation)).join("|")}:${mutations.length}`;
     let hash = 2166136261;
     for (let index = 0; index < text.length; index += 1) {
       hash ^= text.charCodeAt(index);
       hash = Math.imul(hash, 16777619);
     }
-    return `wb-${(hash >>> 0).toString(36)}-${mutations.length}`;
+    return operationId(`wb-${(hash >>> 0).toString(36)}-${mutations.length}`);
   };
 
   /**
@@ -355,7 +353,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
   async function send(batches: readonly OutboxEntry[], remaining: OutboxEntry[] = []): Promise<OutboxEntry[]> {
     const mutations = batches.flatMap((entry) => [...entry.mutations]);
     try {
-      return adopt(await client.mutate(revision!, mutations, requestIdOf(mutations)), remaining).keptExtra;
+      return adopt(await client.mutate(revision!, mutations, requestOperationIdOf(mutations)), remaining).keptExtra;
     } catch (error) {
       if (!(error instanceof SyncHttpError)) throw error;
       if (error.status === 404) {
@@ -421,7 +419,7 @@ export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
     enqueue(mutations) {
       if (disposed || mutations.length === 0) return;
       entryCounter += 1;
-      outbox = [...outbox, { id: `tx-${entryCounter}`, mutations: [...mutations], destructive: isDestructive(mutations) }];
+      outbox = [...outbox, { id: operationId(`tx-${entryCounter}`), mutations: [...mutations], destructive: isDestructive(mutations) }];
       if (!detached()) setPhase("pending");
       schedule();
     },

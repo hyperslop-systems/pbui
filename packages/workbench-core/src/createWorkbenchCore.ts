@@ -8,6 +8,7 @@ import { parseWorkbenchDocument, serializeDocument } from "./document";
 import { linkLifecycleEffects, type LocalEffect } from "./effects";
 import type { GeometrySnapshot } from "./geometry";
 import { buildWorkbenchIndex, type WorkbenchIndex } from "./graph";
+import { localRevision, nextLocalRevision, type LocalRevision } from "./identity";
 import type { WorkbenchLinks } from "./links/collaborator";
 import type { LinkRuntimeState } from "./links/runtime";
 import { plan, type PlanResult, type PreparedTransition } from "./planner/plan";
@@ -29,14 +30,14 @@ export interface WorkbenchCoreState {
   readonly document: WorkbenchDocument;
   readonly session: WorkbenchSession;
   readonly index: WorkbenchIndex;
-  readonly revision: number;
+  readonly revision: LocalRevision;
 }
 
 /** What a post-commit observer (persistence, a sync outbox) learns about one durable transition. */
 export interface CommitReceipt {
   readonly mutations: readonly Mutation[];
   readonly document: WorkbenchDocument;
-  readonly revision: number;
+  readonly revision: LocalRevision;
 }
 
 export interface CreateWorkbenchCoreOptions {
@@ -214,7 +215,7 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
       initial,
       index,
     );
-    return owned({ document: initial, session, index, revision: 0 });
+    return owned({ document: initial, session, index, revision: localRevision(0) });
   })();
 
   const report = (mutations: readonly Mutation[], diagnostics: readonly WorkbenchDiagnostic[]) => {
@@ -249,7 +250,7 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
   const install: WorkbenchCoreInternals["install"] = ({ document: next, session, mutations, effects, linkState }) => {
     const index = next === state.document ? state.index : buildWorkbenchIndex(next);
     const repaired = repairSession(session ?? state.session, next, index);
-    const revision = state.revision + 1;
+    const revision = nextLocalRevision(state.revision);
     // Stage the link runtime's next value BEFORE the point of no return
     // (design doc 04 §6.6): a reducer that throws leaves nothing installed.
     const stagedLinks = linkState ?? (effects && effects.length > 0 && links ? links.stage(effects) : null);

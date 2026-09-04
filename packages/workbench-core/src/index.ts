@@ -9,6 +9,8 @@
 export { defineAppManifest, createManifestCatalog, isManifestCatalog, isDocBound, bindingNames } from "./apps";
 export type { DuplicatePlacement, LaunchPolicy, ManifestCatalog, ViewCardinality, WorkbenchAdditionalBindings, WorkbenchAppManifest, WorkbenchAppManifestInput, WorkbenchBindingRule } from "./apps";
 export { diagnostic, WorkbenchDiagnosticError } from "./diagnostics";
+export { localRevision, newOperationId, nextLocalRevision, operationId, serverRevision } from "./identity";
+export type { LocalRevision, OperationId, ServerRevision } from "./identity";
 export { attemptAll, reportFailures } from "./publication";
 export type { OwnershipMode } from "./ownership";
 export type { ObserverErrorSink, ObserverStage, WorkbenchObserverError } from "./publication";

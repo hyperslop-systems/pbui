@@ -6,6 +6,7 @@ import { defineAppManifest } from "../apps";
 import { commands, type WorkbenchCommand } from "../commands";
 import { createWorkbenchCore, type WorkbenchCore } from "../createWorkbenchCore";
 import { layout, split, tile } from "../document";
+import { serverRevision, type OperationId, type ServerRevision } from "../identity";
 import { createWorkbenchLinks } from "../links/collaborator";
 import { LINKS_DOC_ID } from "../links/document";
 import { createWorkbenchSync, SyncHttpError, type OutboxEntry, type SyncClient, type SyncResult } from "./index";
@@ -19,19 +20,19 @@ import { createWorkbenchSync, SyncHttpError, type OutboxEntry, type SyncClient, 
 function fakeServer(initial: WorkbenchDocument) {
   let document = initial;
   let revision = 1;
-  const seen: { revision: string; count: number; requestId: string }[] = [];
-  let listener: ((revision?: string) => void) | null = null;
+  const seen: { revision: ServerRevision; count: number; operationId: OperationId }[] = [];
+  let listener: ((revision?: ServerRevision) => void) | null = null;
   const failures: (SyncHttpError | Error)[] = [];
   let gate: { promise: Promise<void>; open: () => void } | null = null;
-  const result = (): SyncResult => ({ document, revision: String(revision) });
+  const result = (): SyncResult => ({ document, revision: serverRevision(String(revision)) });
   const client: SyncClient = {
     get: async () => result(),
     create: async (doc) => {
       document = doc;
       return result();
     },
-    mutate: async (sentRevision, mutations, requestId) => {
-      seen.push({ revision: sentRevision, count: mutations.length, requestId });
+    mutate: async (sentRevision, mutations, operationId) => {
+      seen.push({ revision: sentRevision, count: mutations.length, operationId });
       if (gate) {
         const held = gate;
         gate = null;
@@ -322,14 +323,14 @@ describe("the sync module (guide §15, batch-preserving)", () => {
     await sync.flush();
     const corrected = server.seen[server.seen.length - 1]!;
     expect(corrected.revision).toBe(refused.revision);
-    expect(corrected.requestId).not.toBe(refused.requestId);
+    expect(corrected.operationId).not.toBe(refused.operationId);
 
     core.execute(commands.duplicate(ids()[0]!, "row"));
     server.failures.push(new Error("timeout"));
     await sync.flush();
     await sync.flush();
     const [a, b] = server.seen.slice(-2);
-    expect(a!.requestId).toBe(b!.requestId);
+    expect(a!.operationId).toBe(b!.operationId);
     sync.dispose();
   });
 });
@@ -342,16 +343,16 @@ describe("stabilization (design doc 04 §7, §12.4)", () => {
     const seen: number[] = [];
     const dropped = vi.fn();
     const client: SyncClient = {
-      get: async () => (document ? { document, revision: "r" } : null),
+      get: async () => (document ? { document, revision: serverRevision("r") } : null),
       create: async (doc) => {
         created.push(doc);
         document = doc;
-        return { document: doc, revision: "created" };
+        return { document: doc, revision: serverRevision("created") };
       },
       mutate: async (_revision, mutations) => {
         seen.push(mutations.length);
         document = applyMutations(document!, mutations);
-        return { document, revision: "next" };
+        return { document, revision: serverRevision("next") };
       },
     };
     const sync = createWorkbenchSync({ client, flushDelayMs: 0, onDropped: dropped, onError: () => {} });
@@ -377,17 +378,17 @@ describe("stabilization (design doc 04 §7, §12.4)", () => {
     const createStarted = new Promise<void>((resolve) => (started = resolve));
     const seen: number[] = [];
     const client: SyncClient = {
-      get: async () => (document ? { document, revision: "r" } : null),
+      get: async () => (document ? { document, revision: serverRevision("r") } : null),
       create: async (doc) => {
         started();
         await gate;
         document = doc;
-        return { document: doc, revision: "created" };
+        return { document: doc, revision: serverRevision("created") };
       },
       mutate: async (_revision, mutations) => {
         seen.push(mutations.length);
         document = applyMutations(document!, mutations);
-        return { document, revision: "next" };
+        return { document, revision: serverRevision("next") };
       },
     };
     const sync = createWorkbenchSync({ client, flushDelayMs: 0, onError: () => {} });
@@ -410,7 +411,7 @@ describe("stabilization (design doc 04 §7, §12.4)", () => {
     const initial = layout(split("row", 0.5, tile("counter"), tile("notes")));
     const foreign = layout(tile("ledger")); // no such application here
     const incompatible = vi.fn();
-    const client: SyncClient = { get: async () => ({ document: foreign, revision: "srv" }), create: async () => { throw new Error("unreachable"); }, mutate: async () => { throw new Error("unreachable"); } };
+    const client: SyncClient = { get: async () => ({ document: foreign, revision: serverRevision("srv") }), create: async () => { throw new Error("unreachable"); }, mutate: async () => { throw new Error("unreachable"); } };
     const sync = createWorkbenchSync({ client, flushDelayMs: 0, onError: () => {}, onIncompatible: incompatible });
     const core = createWorkbenchCore({ apps, initial, onCommit: (receipt) => sync.enqueue(receipt.mutations) });
     sync.attach(core);

@@ -6,6 +6,7 @@ import type { WorkbenchCore } from "./createWorkbenchCore";
 import { MISSING_APP_ID, specOf, type LayoutSpec } from "./document";
 import type { GeometrySnapshot } from "./geometry";
 import type { WorkbenchIndex } from "./graph";
+import type { LocalRevision } from "./identity";
 import { placementCount } from "./queries";
 
 /**
@@ -112,7 +113,7 @@ export interface DescribedWorkspace {
 export interface WorkbenchDescription {
   activeWorkspaceId: string;
   activePlacementId: string | null;
-  revision: number;
+  revision: LocalRevision;
   apps: DescribedApp[];
   workspaces: DescribedWorkspace[];
   links?: { bindings: DescribedBinding[]; links: DescribedLink[]; contexts: DescribedContext[] };

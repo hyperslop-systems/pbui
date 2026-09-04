@@ -3,6 +3,7 @@ import { defineAppManifest } from "./apps";
 import { commands } from "./commands";
 import { createWorkbenchCore } from "./createWorkbenchCore";
 import { layout, split, tile } from "./document";
+import { serverRevision } from "./identity";
 import { createWorkbenchLinks } from "./links/collaborator";
 import { connectDocumentSource, type DocumentSource } from "./sources";
 import { createWorkbenchSync } from "./sync/index";
@@ -127,7 +128,7 @@ describe("stabilization probes (design doc 04 §4, §12)", () => {
     expect(core.execute(commands.duplicate(firstPlacement(core), "row")).ok).toBe(true);
     const dropped = vi.fn();
     const mutate = vi.fn();
-    const sync = createWorkbenchSync({ flushDelayMs: 0, onDropped: dropped, client: { get: async () => null, create: async (document) => ({ document, revision: "created" }), mutate } });
+    const sync = createWorkbenchSync({ flushDelayMs: 0, onDropped: dropped, client: { get: async () => null, create: async (document) => ({ document, revision: serverRevision("created") }), mutate } });
     sync.enqueue(committed);
     sync.attach(core);
     await sync.flush();
