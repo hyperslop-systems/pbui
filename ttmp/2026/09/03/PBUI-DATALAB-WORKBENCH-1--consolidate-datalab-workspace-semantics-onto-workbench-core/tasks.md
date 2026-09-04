@@ -10,4 +10,4 @@
 - [x] Replace the tree/view half of the remote codec with a Datalab sync projection over WorkbenchDocument <!-- t:mx1s -->
 - [x] Migrate local persistence and embedded WorkbenchInstance isolation <!-- t:f6cy -->
 - [x] Delete the duplicate Node, AppView, Workspace, layout reducers, and obsolete codec paths <!-- t:h6z3 -->
-- [ ] Run full unit, property, browser, protocol, and Go validation gates and publish the migration guide <!-- t:hm2l -->
+- [x] Run full unit, property, browser, protocol, and Go validation gates and publish the migration guide <!-- t:hm2l -->

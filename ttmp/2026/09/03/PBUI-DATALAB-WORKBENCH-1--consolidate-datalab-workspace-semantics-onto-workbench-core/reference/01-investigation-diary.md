@@ -13,6 +13,8 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/datalab-ui/MIGRATION.md
+      Note: Migration guide (commit 17c9b83)
     - Path: repo://packages/datalab-ui/src/appkit/useRemoteWorkbench.ts
       Note: Current remote projection policy inspected
     - Path: repo://packages/datalab-ui/src/appkit/workbenchApps.ts
@@ -55,6 +57,7 @@ LastUpdated: 2026-09-03T17:45:00-04:00
 WhatFor: Preserve how the Datalab Workbench migration design was derived and make implementation continuation reproducible.
 WhenToUse: Read before implementing or reviewing PBUI-DATALAB-WORKBENCH-1.
 ---
+
 
 
 
@@ -462,4 +465,73 @@ deleted: store/layout.ts (1,162 lines), layoutTree.ts, applyLayoutVerb.ts, organ
 new: appkit/workbench.ts, appkit/DatalabWorkbenchContext.tsx, store/merge.ts, store/migrateV5.ts, remote/projection.ts
 package: 55 test files / 602 tests; storybook builds; demo smoke: 6 instances, 0 console errors (api 502 aside)
 persistence: version 6 = { world, workbench (protobuf JSON), navigation, workspaceId }; v5 migrates; v1–4 refused
+```
+
+## Step 6: Phase 8 — verification, guide, numbers
+
+The last phase ran the gates over the whole workspace, checked the shared contract and the Go side were untouched, recorded the performance figures the design asked for instead of assuming them, and published the migration guide for embedders and contributors. The package version is bumped to 0.2.0 because `InstanceConfig.preloaded`, the lesson contract and the persistence envelope are all different shapes.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Design §18 Phase 8 and the completion gates of §23.
+
+**Inferred user intent:** A finished, verified migration with the evidence in the ticket.
+
+**Commit (code):** 17c9b83 — "PBUI-DATALAB-WORKBENCH-1 P8: migration guide, version 0.2.0, performance recording"
+
+### What I did
+
+- Whole-workspace audit: `pnpm -r typecheck` (no errors), `pnpm -r test` (every package green: protocol 40, core 243, workbench 116, editor 12, ecommerce 35, datalab 602, sandbox 224, plotscript 32, chat 241, chat demo 13), `pnpm -r build` (every package and demo builds); `build-storybook` for datalab-ui; generated protocol code unchanged; `go test ./pkg/workbench/...` ok.
+- Browser smoke (Step 5): six embedded instances, split/close, launcher in replace and navigate mode, cross-workspace navigate, add workspace, reload from a version-6 envelope.
+- `scripts/02-record-performance.ts` (a vitest file run from a temporary copy under `test/`, because the application modules import CSS): numbers below.
+- `packages/datalab-ui/MIGRATION.md`; README section; playbook boundary list; version 0.2.0.
+
+### Why
+
+- §19.8: "measure rather than assume"; §23's gates want typecheck, tests, builds, storybook, protocol fixtures and Go validation to pass.
+
+### What worked
+
+- Every gate in §23 is met: workbench-core and pbui-workbench are explicit dependencies; one core per instance; the core is the only spatial owner; Stage is explicit metadata; the current workspace is the core's session with no Redux mirror; every spatial verb compiles to commands or the documented close-view batch; the Surface renders Datalab tiles with the presentation behaviour; the launcher keeps its grammar over the core index; pinned/audience/stage constraints pass; graphics stay in the world with identity stubs; version 5 migrates; the remote projection round-trips and preserves local-only stages; bundles preserve linked views and shared documents; `layoutTree.ts` and the spatial reducers/components are deleted; the layer graph is acyclic with model/analysis workbench-free; the 554 baseline tests are ported or intentionally replaced (602 now).
+
+### What didn't work
+
+- The performance script could not run under `tsx` from the ticket directory (bare package imports do not resolve there; then `ERR_UNKNOWN_FILE_EXTENSION` on a CSS import once the paths were fixed) and vitest swallows console output in this package. It is a vitest file that appends to a log file.
+
+### What I learned
+
+- The default seed is 15 workspaces / 42 views / 50 tiles; the core's index over it takes 0.05 ms, the launcher index 0.13 ms and a cross-stage search 0.12 ms, the work-stage projection 0.02 ms; a version-5 migration with the pinned merge and catalog validation is 8 ms; a split through the controller 0.4 ms and a close 0.3 ms on a 15-tile workspace. None of the design's performance risks materialised.
+
+### What was tricky to build
+
+- N/A.
+
+### What warrants a second pair of eyes
+
+- The publish of datalab-ui 0.2.0 (it depends on workbench-core 0.2.0 and pbui-workbench 0.6.0, which are unpublished on this branch) — the user's call, as with the earlier tickets.
+
+### What should be done in the future
+
+- Open questions 3, 4, 6 and 8 of the design remain future work: Stage as a product system document; whether whole-document replacement stays the remote endpoint; a generic close-view command once another consumer needs one; removing import-side-effect app registration.
+- The lesson rail's whole-state subscriptions.
+
+### Code review instructions
+
+- `packages/datalab-ui/MIGRATION.md` for the external shape changes; the workspace audit: `pnpm -r typecheck && pnpm -r test && pnpm -r build`.
+
+### Technical details
+
+```text
+default seed: 15 workspaces, 42 views, 50 tiles
+core index over the default seed             0.046 ms/op
+launcher index over every stage              0.126 ms/op
+launcher search 'chart' across stages        0.124 ms/op
+work-stage projection                        0.018 ms/op
+version-5 migration + pinned merge + validate 8.025 ms/op
+split to 15 tiles through the controller     0.423 ms/split
+core index over 15 tiles                     0.005 ms/op
+close back to 1 tile                         0.291 ms/close
+workspace: 10 package suites green; builds green; storybook green; protocol generated code unchanged; go test ok
 ```

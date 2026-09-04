@@ -58,3 +58,12 @@ Step 5 / Phases 3–7: Surface cutover, launcher/strip/stage bar over the core, 
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/src/appkit/workbench.ts — One workbench per instance
 
+
+## 2026-09-03
+
+Step 6 / Phase 8: workspace audit green, browser smoke, performance recording, MIGRATION.md, version 0.2.0 (commit 17c9b83)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui/MIGRATION.md — External shape changes for embedders
+
