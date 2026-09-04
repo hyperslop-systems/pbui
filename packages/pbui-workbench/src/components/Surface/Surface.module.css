@@ -1,6 +1,10 @@
 /* The surface is a one-cell grid: whatever the host gives it, the tree
  * fills, and every tile below gets a committed height. */
 .surface {
+  /* The wire layer and the placing banner are positioned against THIS box;
+   * without it they sat against the page and every wire was shifted by the
+   * surface's own offset (PBUI-WIRING-1 P3). */
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);

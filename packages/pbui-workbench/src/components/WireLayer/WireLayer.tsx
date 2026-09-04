@@ -15,10 +15,32 @@ interface Point {
   y: number;
 }
 
-/** The toy's cubic (core.js:256): horizontal tangents, so a wire leaves a jack sideways. */
-function cubic(a: Point, b: Point): string {
-  const dx = Math.max(40, Math.abs(b.x - a.x) * 0.45);
-  return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+/*
+ * An orthogonal route (PBUI-WIRING-1 P3): out of the source jack
+ * horizontally, one vertical run, into the destination jack horizontally.
+ * When the destination is to the left, the run detours: a short stub out,
+ * a vertical run to the mid line between the two rows, back across, a stub
+ * in. `channel` shifts the vertical run so parallel wires do not overlap.
+ */
+function route(a: Point, b: Point, channel = 0): string {
+  const stub = 12;
+  const gap = b.x - a.x;
+  if (gap > 4) {
+    // Forward: the vertical run sits in the gap (a 10px gutter between two
+    // tiles is enough), the channel shifted within it.
+    const half = gap / 2 - 2;
+    const mx = Math.round((a.x + b.x) / 2 + Math.max(-half, Math.min(half, channel)));
+    return `M ${a.x} ${a.y} H ${mx} V ${b.y} H ${b.x}`;
+  }
+  const my = Math.round((a.y + b.y) / 2 + channel);
+  return `M ${a.x} ${a.y} H ${a.x + stub + Math.abs(channel)} V ${my} H ${b.x - stub - Math.abs(channel)} V ${b.y} H ${b.x}`;
+}
+
+/** Where a derived wire's label sits: on the vertical run. */
+function labelPoint(a: Point, b: Point, channel = 0): Point {
+  const stub = 12;
+  if (b.x - a.x > 4) return { x: Math.round((a.x + b.x) / 2), y: Math.round((a.y + b.y) / 2) };
+  return { x: a.x + stub + Math.abs(channel), y: Math.round((a.y + b.y) / 2 + channel) };
 }
 
 /* The wire meets the jack on the frame when the card has one, else the
@@ -105,6 +127,8 @@ export function WireLayer({ renderWire }: WireLayerProps) {
   const links = linkRefsOf(snapshot);
   const rootBox = root?.getBoundingClientRect();
   const wires = root ? links.flatMap((link) => wireEnds(link, root).map((ends) => ({ link, ...ends }))) : [];
+  // One channel per wire, centred on zero, six pixels apart.
+  const channelOf = (index: number) => (index - (wires.length - 1) / 2) * 6;
   const band = carry && root ? { from: anchor(carry.from, "out", root), to: rootBox ? { x: carry.x - rootBox.left, y: carry.y - rootBox.top } : null } : null;
   const sourceOfCarry = carry ? snapshot.ports.get(carry.from) : undefined;
   const overDefinition = carry?.over ? snapshot.ports.get(carry.over) : undefined;
@@ -122,22 +146,19 @@ export function WireLayer({ renderWire }: WireLayerProps) {
   return (
     <div data-part="workbench-wires" className={styles.layer} data-tick={tick} data-carrying={carry ? "" : undefined}>
       <svg className={styles.svg} aria-hidden="true">
-        <defs>
-          <marker id="pbui-wire-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
-          </marker>
-        </defs>
-        {wires.map(({ link, key, from, to }) => {
-          const path = from && to ? cubic(from, to) : null;
+        {wires.map(({ link, key, from, to }, index) => {
+          const channel = channelOf(index);
+          const path = from && to ? route(from, to, channel) : null;
+          const at = from && to ? labelPoint(from, to, channel) : null;
           const node = (
             <g data-part="wire" data-link-id={link.linkId} data-term={link.kind} data-source={link.source} data-destination={link.destination} className={styles.wire}>
               {path ? (
                 <>
                   <path d={path} className={styles.hit} data-part="wire-hit" />
-                  <path d={path} className={styles.stroke} {...(link.kind === "identity" ? {} : { markerEnd: "url(#pbui-wire-arrow)" })} />
+                  <path d={path} className={styles.stroke} />
                   {link.kind === "identity" ? <path d={path} className={styles.inner} /> : null}
-                  {link.kind === "derived" && from && to ? (
-                    <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 6} className={styles.label} textAnchor="middle">
+                  {link.kind === "derived" && at ? (
+                    <text x={at.x + 6} y={at.y} className={styles.label} textAnchor="start">
                       {workbench.links.deps.relations?.find((r) => r.id === link.relationId)?.label ?? link.relationId}
                     </text>
                   ) : null}
@@ -151,7 +172,7 @@ export function WireLayer({ renderWire }: WireLayerProps) {
           );
           return <g key={key}>{renderWire ? renderWire(link, node) : node}</g>;
         })}
-        {band?.from && band.to ? <path d={cubic(band.from, band.to)} className={styles.band} data-part="wire-band" data-acceptable={String(carry?.acceptable ?? false)} /> : null}
+        {band?.from && band.to ? <path d={route(band.from, band.to)} className={styles.band} data-part="wire-band" data-acceptable={String(carry?.acceptable ?? false)} /> : null}
       </svg>
       {carry && band?.to && cursorLabel ? (
         <div className={styles.cursor} data-part="wire-cursor" data-acceptable={String(carry.acceptable)} style={{ left: band.to.x + 14, top: band.to.y + 14 }}>

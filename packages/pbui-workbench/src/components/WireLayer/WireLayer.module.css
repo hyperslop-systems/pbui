@@ -1,4 +1,7 @@
-/* One layer over the whole surface; only wire hit paths take the pointer. */
+/* The wire layer: an SVG over the whole workbench, drawn in ink on the token
+ * scale. Wires are orthogonal (PBUI-WIRING-1 P3): square joins, no arrowheads;
+ * the term is the dash pattern — solid follow, dotted held, dashed derived,
+ * double identity. */
 .layer {
   position: absolute;
   inset: 0;
@@ -10,7 +13,6 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  color: currentColor;
 }
 
 .wire {
@@ -25,56 +27,58 @@
   cursor: context-menu;
 }
 
-/* A drag in flight must not be intercepted by a wire's wide hit area (audit §10.3). */
 .layer[data-carrying] .hit {
   pointer-events: none;
 }
 
 .stroke {
   fill: none;
-  stroke: currentColor;
+  stroke: var(--pbui-ink);
   stroke-width: 2px;
+  stroke-linejoin: miter;
+  stroke-linecap: butt;
 }
 
 .wire[data-term="held"] .stroke {
-  stroke-dasharray: 3 4;
-  opacity: 0.6;
+  stroke-dasharray: 2 4;
 }
 
 .wire[data-term="derived"] .stroke {
   stroke-dasharray: 8 3;
 }
 
-/* Identity: a double line, no arrowhead — symmetric, one cell. */
 .wire[data-term="identity"] .stroke {
   stroke-width: 5px;
 }
 
 .inner {
   fill: none;
-  stroke: var(--pbui-pane, currentColor);
+  stroke: var(--pbui-pane);
   stroke-width: 1.5px;
 }
 
 .label {
-  font-size: 11px;
-  fill: currentColor;
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  fill: var(--pbui-ink);
   font-family: inherit;
 }
 
+/* A link whose other end is not on screen: a dotted portal at the end that is. */
 .portal {
   fill: none;
-  stroke: currentColor;
+  stroke: var(--pbui-ink);
   stroke-width: 2px;
   stroke-dasharray: 2 2;
 }
 
+/* The wire being carried to the pointer. */
 .band {
   fill: none;
-  stroke: currentColor;
+  stroke: var(--pbui-ink);
   stroke-width: 2px;
   stroke-dasharray: 6 4;
-  opacity: 0.8;
+  stroke-linejoin: miter;
 }
 
 .band[data-acceptable="true"] {
@@ -83,16 +87,17 @@
 
 .cursor {
   position: absolute;
-  padding: 2px 6px;
-  border: 1px solid currentColor;
-  background: var(--pbui-pane, inherit);
-  font-size: 11px;
-  font-weight: 600;
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane);
+  color: var(--pbui-ink);
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
   white-space: nowrap;
   pointer-events: none;
 }
 
 .cursor[data-acceptable="false"] {
   border-style: dashed;
-  opacity: 0.8;
+  color: var(--pbui-faint);
 }
