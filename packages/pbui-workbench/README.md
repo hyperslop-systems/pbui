@@ -86,6 +86,8 @@ const workbench = createWorkbench({ apps, initial: stored?.document ?? defaultLa
 createLocalPersistence(workbench.core, { key: KEY });
 ```
 
+A sync client treats `core.getState().revision` (`LocalRevision`), the server's opaque `ServerRevision`, and idempotent `OperationId` as different domains. Decode server tokens with `serverRevision(...)`; the sync outbox assigns a UUID to each local batch and derives a framed SHA-256 operation identity for each concrete send. See the core README for the complete `SyncClient` boundary. The former broad `Revision` and sync `requestId` names have no aliases.
+
 ## Object menus
 
 `createWorkbenchPresentationFragment()` contributes the `tile`, `port` and `link` types, their descriptors, and the shared rows (split, duplicate, rename, close, link to…, show details…) to a product's compiled presentation. `tileRefOf(workbench, placementId)` and `portRefOf(badge, snapshot)` build the values those presentations carry.

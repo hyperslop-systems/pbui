@@ -91,7 +91,13 @@ createLocalPersistence(workbench.core, { key: KEY });
 
 Sync moved to `@hyperslop-systems/workbench-core/sync`; the outbox holds whole
 batches (`{ id, mutations, destructive }`) and `onDropped(entries, reason)`
-reports batches.
+reports batches. In the identity hard cutover, local installed generations are
+`LocalRevision`, opaque transport tokens are `ServerRevision`, and idempotency
+keys are `OperationId`. A `SyncClient` decodes server tokens with
+`serverRevision(...)` and names its third `mutate` parameter `operationId`.
+Each queued batch receives a UUID and each concrete send uses framed SHA-256;
+the old broad `Revision` type, sync `requestId` vocabulary, and FNV key have no
+compatibility aliases.
 
 ## Bindings are validated
 

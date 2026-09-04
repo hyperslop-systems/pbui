@@ -75,6 +75,49 @@ A transaction has three stages (design doc 04 §6.1): **prepare** (plan or apply
 
 Every document that enters the core — `initial`, a replacement, a restore, a server adoption — is cloned, so a caller's later edits to what it passed in reach nothing. What the core exposes through `getState()` is deep-frozen (the document, the session, and the index's maps) unless `ownership: "trust"` is set or `NODE_ENV` is `production`; a caller that mutates it fails at the assignment. `core.snapshot()` returns a clone to write on. Preview never consumes ids: plans read them through a lookahead pool and only a committed execution consumes what its plan drew, so `execute` after `preview` mints the ids the preview reported. A transition that reproduces the current document with an unchanged session is `changed: false` and installs nothing.
 
+## Revision and operation identity
+
+The core deliberately has three non-interchangeable identity types:
+
+- `LocalRevision` is the installed generation in `core.getState().revision`. It is a non-negative safe integer and advances once per successful local installation.
+- `ServerRevision` is the server's opaque conditional-write token. Construct it only while decoding a transport response with `serverRevision(value)`; never parse or increment it.
+- `OperationId` identifies idempotent transport work. `newOperationId()` mints one UUID per enqueued local batch.
+
+The sync adapter carries those types end to end:
+
+```ts
+import { serverRevision, type OperationId, type ServerRevision } from "@hyperslop-systems/workbench-core";
+import { createWorkbenchSync, type SyncClient } from "@hyperslop-systems/workbench-core/sync";
+
+const client: SyncClient = {
+  async get() {
+    const response = await fetch("/workbench");
+    if (response.status === 404) return null;
+    const payload = await response.json();
+    return { document: decodeDocument(payload.document), revision: serverRevision(payload.revision) };
+  },
+  async create(document) {
+    const payload = await postDocument(document);
+    return { document: decodeDocument(payload.document), revision: serverRevision(payload.revision) };
+  },
+  async mutate(revision: ServerRevision, mutations, operationId: OperationId) {
+    const response = await fetch("/workbench/mutate", {
+      method: "POST",
+      headers: { "If-Match": revision, "Idempotency-Key": operationId },
+      body: encodeMutations(mutations),
+    });
+    const payload = await response.json();
+    return { document: decodeDocument(payload.document), revision: serverRevision(payload.revision) };
+  },
+};
+
+const sync = createWorkbenchSync({ client });
+```
+
+The outbox preserves whole mutation batches. Each batch UUID survives transport retry. A concrete send receives a collision-resistant `OperationId` derived with framed SHA-256 from the base server revision, ordered batch UUIDs, and canonical mutation JSON. Therefore retrying exactly the same send is idempotent, while rebasing, isolating an invalid batch, reordering batches, changing content, or enqueueing the same content as a new operation produces a different identity. `operationIds` is injectable only for deterministic tests and replay harnesses.
+
+There is no broad `Revision` alias and no legacy request-ID sync API. Datalab's separate remote whole-document replacement controller and other correlation IDs belong to different domains and are intentionally unchanged.
+
 ## Package boundary
 
 The core's only PBUI import is `@hyperslop-systems/pbui/link-kernel`, the pure semantic entry (ports, terms, link planning and evaluation, identity, badges, the type graph), and PBUI declares React as an OPTIONAL peer, so a consumer that installs workbench-core alone gets no React. Three checks keep that true: the source fence (`fence.test.ts`: no `react`, no DOM, no PBUI root entry), the declaration test (`packageGraph.test.ts`: runtime, peer and dev dependencies by kind), and `pnpm boundary`, which packs pbui, workbench-protocol and workbench-core, installs the core alone into an empty project with scripts disabled, asserts React is absent, imports the core and plans a command, and scans the built output's imports.

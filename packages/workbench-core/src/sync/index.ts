@@ -46,7 +46,7 @@ export interface SyncResult {
 
 /** One committed local transition, kept whole until the server has it (guide §15.2, reduced). */
 export interface OutboxEntry {
-  /** Stable for the life of the entry; NOT the request id (several entries may ride one request). */
+  /** Stable for the entry's life; several batch IDs may contribute to one send operation ID. */
   readonly id: OperationId;
   readonly mutations: readonly Mutation[];
   /**
