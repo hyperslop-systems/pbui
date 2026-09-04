@@ -1,7 +1,6 @@
-import type { Goal } from "../../appkit/lessons";
+import { leavesOfWorkspace } from "@hyperslop-systems/workbench-core";
+import type { Goal, LessonWorkbench } from "../../appkit/lessons";
 import { orderedTransformIds, rootSource, rootView } from "../../model/graphicAuthoring";
-import type { Node } from "../../store/layout";
-import type { RootState } from "../../store";
 import { CENSUS_COLUMNS } from "../fixtures";
 
 /**
@@ -18,20 +17,13 @@ import { CENSUS_COLUMNS } from "../fixtures";
  * answered by looking.
  */
 
-function leaves(state: RootState) {
-  const space = state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId);
-  if (!space) return [];
+function leaves(workbench: LessonWorkbench) {
   const out: Array<{ app: string; docId: string | null }> = [];
-  const walk = (node: Node): void => {
-    if (node.type === "leaf") {
-      const view = state.layout.views[node.viewId];
-      if (view) out.push({ app: view.appId, docId: view.documents.primary ?? null });
-    } else {
-      walk(node.a);
-      walk(node.b);
-    }
-  };
-  walk(space.tree);
+  for (const node of leavesOfWorkspace(workbench.index, workbench.session.workspaceId)) {
+    if (node.body.case !== "leaf") continue;
+    const view = workbench.document.views[node.body.value.viewId];
+    if (view) out.push({ app: view.appId, docId: view.documents.primary ?? null });
+  }
   return out;
 }
 
@@ -85,8 +77,8 @@ export const briefGoals: Goal[] = [
   {
     id: "e5",
     label: <>the evidence beside the picture — a table and a chart, on one document, at once</>,
-    done: (state) => {
-      const all = leaves(state);
+    done: (_state, workbench) => {
+      const all = leaves(workbench);
       // `docId != null` is load-bearing. A doc-bound tile whose docId is null
       // follows the ACTIVE document, so two unbound tiles compare `null ===
       // null` and the goal would tick before the reader had done anything —

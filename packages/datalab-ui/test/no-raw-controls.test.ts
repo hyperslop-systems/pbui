@@ -46,12 +46,6 @@ const ALLOWED: Array<{ prefix: string; because: string }> = [
     because: "the atoms ARE the wrappers — this is where the raw elements live",
   },
   {
-    prefix: "components/organisms/SplitView/",
-    because:
-      "a <button role=separator> resize handle carrying aria-orientation and " +
-      "aria-valuenow — giving it Button's appearance would be actively wrong",
-  },
-  {
     prefix: "components/pages/MarketingPage/",
     because:
       "the marketing page is a DOCUMENT, not an interface. `Button` is tuned for " +

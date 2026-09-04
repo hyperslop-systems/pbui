@@ -1,12 +1,13 @@
 import { StrictMode, useRef } from "react";
-import { Provider } from "react-redux";
 
 import { AnalysisProvider } from "./appkit/AnalysisProvider";
+import { DatalabWorkbenchProvider } from "./appkit/DatalabWorkbenchContext";
+import { createDatalabWorkbench, type DatalabWorkbench } from "./appkit/workbench";
+import { datalabManifests } from "./appkit/workbenchApps";
 import { DeviceApprovalPage } from "./components/pages/DeviceApprovalPage";
 import { MarketingPage } from "./components/pages/MarketingPage";
 import { Workbench } from "./components/pages/Workbench";
 import { routeFor } from "./routes";
-import { makeStore, type AppStore } from "./store";
 import { load, WORKBENCH_KEY } from "./store/persist";
 
 export interface DatalabAppProps {
@@ -55,27 +56,30 @@ export function DatalabApp({ pathname, strict = true, workbenchId }: DatalabAppP
 }
 
 /**
- * The standalone workbench store is constructed inside the selected product
- * route. Visiting a marketing, tour, or device route cannot restore or mutate
- * workbench persistence as a package-import side effect.
+ * The standalone workbench is constructed inside the selected product route,
+ * from the FINAL accepted state (design §13.2): the stored layout is read,
+ * merged with this build's pinned stages and validated before anything is
+ * built, so there is no default rendered and then replaced. Visiting a
+ * marketing, tour, or device route cannot restore or mutate workbench
+ * persistence as a package-import side effect.
  */
 function Product({ workbenchId }: { workbenchId: string | null }) {
-  const storeRef = useRef<AppStore | null>(null);
-  if (!storeRef.current) {
-    const restored = workbenchId ? null : load(WORKBENCH_KEY);
-    storeRef.current = makeStore({
-      preloaded: restored ? { world: restored.world, layout: restored.layout } : undefined,
-    });
+  const ref = useRef<DatalabWorkbench | null>(null);
+  if (!ref.current) {
+    const restored = workbenchId ? null : load(WORKBENCH_KEY, datalabManifests());
+    ref.current = createDatalabWorkbench(
+      restored ? { world: restored.world, seed: restored.seed } : {},
+    );
   }
 
   return (
-    <Provider store={storeRef.current}>
+    <DatalabWorkbenchProvider workbench={ref.current}>
       <Workbench
         persistence={
           workbenchId ? { kind: "remote", workbenchId } : { kind: "local", key: WORKBENCH_KEY }
         }
       />
-    </Provider>
+    </DatalabWorkbenchProvider>
   );
 }
 

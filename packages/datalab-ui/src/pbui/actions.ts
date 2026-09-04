@@ -801,7 +801,11 @@ function inheritedContributions(): ActionContribution<PresentationValues, Datala
 }
 
 /** Every rule; compiled into the one presentation in ./presentation.ts. */
-export function datalabContributions(): ActionContribution<PresentationValues, DatalabFacts, Verb>[] {
+export function datalabContributions(): ActionContribution<
+  PresentationValues,
+  DatalabFacts,
+  Verb
+>[] {
   return [
     // PBUI-ACTIONS-2 P7: every type is kernel-native; the legacy descriptor
     // family is gone from this product entirely.

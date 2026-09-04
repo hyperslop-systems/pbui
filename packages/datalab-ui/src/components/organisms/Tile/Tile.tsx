@@ -1,271 +1,136 @@
-import { useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import type { AppView } from "@hyperslop-systems/workbench-protocol";
+import type { SurfaceProps, TilePlacementInfo } from "@hyperslop-systems/pbui-workbench";
+import { IconButton, InlineRename, Text } from "@hyperslop-systems/pbui";
 import { appFor } from "../../../appkit/registry";
-import { RenderBoundary } from "../../../appkit/RenderBoundary";
 import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
-import { countLeaves, layoutActions, primaryDocId, type Node } from "../../../store/layout";
-import { Button, Callout, IconButton, InlineRename, Text } from "@hyperslop-systems/pbui";
-import { DropZoneOverlay, useTileDrag } from "@hyperslop-systems/pbui";
+import { navigationActions } from "../../../store/navigation";
 import styles from "./Tile.module.css";
 
 /**
- * One tile: a title bar and an application.
+ * What Datalab puts in a tile's title bar (design §9.1).
  *
- * The tile is geometry plus a reference to one logical AppView. The view owns
- * application, document binding and title, so linked placements stay in sync.
+ * The tile itself — the frame, the grip, the drop overlay, the split and
+ * close buttons, the error boundary, the active-placement tracking — is the
+ * workbench shell's `Tile` over `TileFrame`. What was Datalab's own in the
+ * old `Tile.tsx` and is still Datalab's own here: the `<tile>` PRESENTATION
+ * that carries the object menu, the derived `chart · α` title that names the
+ * bound document, the inline rename, and the door to the product's launcher
+ * in the action group. Two slots on `Surface`, nothing else.
  */
-export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
+export function TileTitle({ view, placement }: { view: AppView; placement: TilePlacementInfo }) {
   const dispatch = useDispatch();
   const pbui = usePbui();
-  const tileElement = useRef<HTMLElement | null>(null);
-  const view = useSelector((state: RootState) => state.layout.views[node.viewId]);
-  const app = appFor(view?.appId ?? "");
-  const docId = primaryDocId(view);
-  // The rename flag lives in the store rather than here, because the *menu* has
-  // to be able to start one and a menu entry is serialisable data — it cannot
-  // reach into a `useState` three components away (DATADROP-8).
-  const renaming = useSelector((state: RootState) => state.layout.renamingId === node.id);
-  const setRenaming = (on: boolean) =>
-    dispatch(layoutActions.beginRename(on && view ? node.id : null));
-
-  /**
-   * Whether this is the tile a workbench shortcut would act on.
-   *
-   * A boolean selector rather than the id, so a tile re-renders only when its
-   * own active state flips — not every time any other tile becomes active.
-   */
-  const active = useSelector((state: RootState) => state.layout.activePlacementId === node.id);
-  const markActive = () => {
-    if (!active) dispatch(layoutActions.setActivePlacement(node.id));
-  };
+  const app = appFor(view.appId);
+  const docId = view.documents.primary ?? null;
   const docName = useSelector((state: RootState) =>
     docId ? (state.world.docs[docId]?.name ?? null) : null,
   );
-  const tree = useSelector(
-    (state: RootState) =>
-      state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId)?.tree ?? null,
+  // The rename flag lives in the store rather than here, because the *menu*
+  // has to be able to start one and a menu entry is serialisable data.
+  const renaming = useSelector(
+    (state: RootState) => state.navigation.renamingId === placement.placementId,
   );
-  const canClose = tree !== null && countLeaves(tree) > 1;
 
-  // The shared drag machinery (PBUI-UNIFY-001, DR-U3/U4): the hook owns the
-  // registry, the hit test, and the banded zone; releasing dispatches the
-  // same layout verbs the old local hook dispatched itself.
-  const { dragging, zone, onGripPointerDown, register } = useTileDrag({
-    id: node.id,
-    onSwap: (a, b) => dispatch(layoutActions.swapTiles({ a, b })),
-    onDock: (from, to, dockZone) => dispatch(layoutActions.dockTile({ from, to, zone: dockZone })),
-  });
-  const placementCount = useSelector((state: RootState) => {
-    const count = (n: Node): number =>
-      n.type === "leaf" ? Number(n.viewId === node.viewId) : count(n.a) + count(n.b);
-    return state.layout.spaces.reduce((total, space) => total + count(space.tree), 0);
-  });
-
-  const title = app ? app.title : (view?.appId ?? "missing view");
+  const title = app ? app.title : view.appId;
   const derived = docName ? `${title} · ${docName}` : title;
-  // `??` and not `||`: an empty label is normalised to undefined by the
-  // reducer, so `??` is what makes "clear the field and press Enter" mean *go
-  // back to the derived title* rather than *render an empty title bar*.
-  const label = view?.title ?? derived;
+  // A cleared title is absent in the document (the core trims and drops
+  // it), so "no label" has exactly one representation and the derived title
+  // is what a blank rename returns to.
+  const label = view.title ? view.title : derived;
 
-  const Component = app?.Component;
+  if (renaming) {
+    return (
+      // The same control the workspace strip uses, for the same gesture at
+      // the level below it. An empty commit means *back to the derived
+      // title*, which the core spells as clearing the title.
+      <InlineRename
+        initial={view.title ?? ""}
+        accessibleName="view name"
+        fallback=""
+        // Through `perform`, not `dispatch`, so the rename appears in the
+        // trace as a verb like every other user decision.
+        onCommit={(name) => pbui.perform({ kind: "renameView", viewId: view.id, title: name })}
+        onCancel={() => dispatch(navigationActions.beginRename(null))}
+      />
+    );
+  }
 
   return (
-    <section
-      ref={(element) => {
-        tileElement.current = element;
-        register(element);
+    <Presentation
+      className={styles.viewTitle}
+      /*
+       * A TileRef, not a placement id (DATADROP-8 DR-68): the tile descriptor
+       * has to know which application this leaf holds, whether it is
+       * duplicable and whether it is the last tile in its workspace, and the
+       * value carries it, resolved by the component that already knows it.
+       */
+      reference={{
+        type: "tile",
+        value: {
+          placementId: placement.placementId,
+          viewId: view.id,
+          app: view.appId,
+          title: label,
+          ...(view.title ? { customTitle: view.title } : {}),
+          docId,
+          duplicable: app?.duplicable ?? false,
+          canClose: placement.canClose,
+          placementCount: placement.placementCount,
+        },
       }}
-      // A landmark per tile, named by its application and document, so the
-      // workspace is navigable by region rather than by tabbing through it.
-      aria-label={label}
-      // The launcher restores focus to a placement by id rather than by holding
-      // an HTMLElement across its own lifetime — the element may have been
-      // unmounted and remounted while the modal was open, and a detached node
-      // swallows `.focus()` silently.
-      data-placement-id={node.id}
-      data-active={active || undefined}
-      // Capture, so the tile learns it is the interaction context before a
-      // button or drag grip handles the event. Neither handler moves DOM focus:
-      // marking context must never steal focus from an input mid-word.
-      onFocusCapture={markActive}
-      onPointerDownCapture={markActive}
-      className={[styles.tile, dragging ? styles.dragging : ""].filter(Boolean).join(" ")}
-      style={{ background: app ? undefined : "var(--pbui-pane-alt)" }}
+      doc={`<tile> ${label}`}
     >
-      {zone && (
-        <DropZoneOverlay
-          zone={zone}
-          swapLabel="⇄ swap applications"
-          dockLabel="split-dock here · the source tile closes"
-        />
-      )}
-
-      <div className={styles.title} style={{ background: app?.tone ?? "var(--pbui-pane-alt)" }}>
-        <span
-          className={styles.grip}
-          onPointerDown={onGripPointerDown}
-          onMouseEnter={() =>
-            pbui.setMouseDoc(
-              "drag ⠿ — drop on a tile's CENTRE to swap applications, or near an EDGE to split-dock",
-            )
-          }
-          onMouseLeave={() => pbui.setMouseDoc(null)}
-          aria-hidden="true"
-        >
-          ⠿
-        </span>
-
-        {renaming ? (
-          // The same control the workspace strip uses, for the same gesture at
-          // the level below it. Two interactions that look the same should be
-          // the same component — and this one already handles the
-          // read-on-Enter / Escape-means-never-happened semantics.
-          <InlineRename
-            initial={view?.title ?? ""}
-            accessibleName="view name"
-            // Empty commits as empty, which the reducer normalises back to
-            // "no label". `InlineRename`'s fallback exists for a workspace,
-            // where a blank name leaves nothing to click; a tile always has a
-            // derived title to fall back to, so clearing is a real outcome.
-            fallback=""
-            // Through `perform`, not `dispatch`, so the rename appears in the
-            // trace as a verb like every other user decision.
-            onCommit={(name) =>
-              view && pbui.perform({ kind: "renameView", viewId: view.id, title: name })
-            }
-            onCancel={() => setRenaming(false)}
-          />
-        ) : (
-          <Presentation
-            className={styles.viewTitle}
-            /*
-             * A TileRef, not a node id (DATADROP-8 DR-68).
-             *
-             * The tile descriptor has to know which application this leaf
-             * holds, whether it is duplicable and whether it is the last tile
-             * in its workspace. None of that is in `PbuiEnvironment` and none
-             * of it should be — `field.ts` has no business seeing the tile tree
-             * — so the value carries it, resolved by the component that already
-             * computed every field for its own rendering.
-             */
-            reference={{
-              type: "tile",
-              value: {
-                placementId: node.id,
-                viewId: node.viewId,
-                app: view?.appId ?? "",
-                title: label,
-                ...(view?.title ? { customTitle: view.title } : {}),
-                docId,
-                duplicable: app?.duplicable ?? false,
-                canClose,
-                placementCount,
-              },
-            }}
-            doc={`<tile> ${label}`}
+      <span
+        className={styles.viewTitleText}
+        style={{ textTransform: "uppercase", letterSpacing: "var(--pbui-track-label)" }}
+        title={view.title ? `renamed — the derived title is “${derived}”` : undefined}
+      >
+        <Text size="tiny" strong>
+          {label}
+        </Text>
+        {placement.placementCount > 1 ? (
+          // The linked marker is chrome the shell would have drawn; drawn here
+          // so the presentation and the marker sit in one span.
+          <span
+            data-part="tile-linked"
+            title={`the same view is shown in ${placement.placementCount} tiles`}
           >
-            <span
-              className={styles.viewTitleText}
-              style={{ textTransform: "uppercase", letterSpacing: "var(--pbui-track-label)" }}
-              title={view?.title ? `renamed — the derived title is “${derived}”` : undefined}
-            >
-              <Text size="tiny" strong>
-                {label}
-              </Text>
-            </span>
-          </Presentation>
-        )}
-
-        <span style={{ flex: 1 }} />
-
-        <TileButton
-          label="split right"
-          onClick={() => dispatch(layoutActions.splitLeaf({ nodeId: node.id, dir: "row" }))}
-        >
-          ⬌
-        </TileButton>
-        <TileButton
-          label="split below"
-          onClick={() => dispatch(layoutActions.splitLeaf({ nodeId: node.id, dir: "col" }))}
-        >
-          ⬍
-        </TileButton>
-        <TileButton
-          label="close tile"
-          disabled={!canClose}
-          onClick={() => dispatch(layoutActions.closeLeaf(node.id))}
-        >
-          ✕
-        </TileButton>
-      </div>
-
-      <div className={styles.body}>
-        {/*
-         * Replace no longer takes over the body (DATALAB-VIEW-001). It opens the
-         * launcher modal against this placement, so the tile keeps rendering its
-         * application behind the dialog — which is what makes "replace *this*"
-         * legible while choosing.
-         */}
-        {Component && view ? (
-          <RenderBoundary
-            resetKey={`${view.id}:${view.appId}:${docId ?? ""}`}
-            fallback={(error, reset) => (
-              <div style={{ padding: "var(--pbui-space-4)" }}>
-                <Callout variant="warning" title={`${title} could not render`}>
-                  <Text size="small" prose>
-                    {error.message}
-                  </Text>
-                  <div style={{ marginTop: "var(--pbui-space-3)" }}>
-                    <Button onClick={reset}>Try this tile again</Button>
-                  </div>
-                </Callout>
-              </div>
-            )}
-          >
-            <Component placementId={node.id} view={view} />
-          </RenderBoundary>
-        ) : (
-          <div style={{ padding: "var(--pbui-space-4)" }}>
-            <Text size="small" tone="faint">
-              {view
-                ? `no application called “${view.appId}” — choose Replace from the title`
-                : `no view called “${node.viewId}”`}
-            </Text>
-          </div>
-        )}
-      </div>
-    </section>
+            {` ×${placement.placementCount}`}
+          </span>
+        ) : null}
+      </span>
+    </Presentation>
   );
 }
 
 /**
- * The tile's own chrome buttons: split, swap, close.
- *
- * Now a thin wrapper over IconButton rather than its own `<button>`. It stays a
- * local component only because every one of them is framed, tiny and takes a
- * glyph — three defaults repeated six times in the title bar.
+ * The action-group door to the product's launcher, in replace mode: the
+ * shell's default would open the generic launcher, which Datalab does not
+ * mount.
  */
-function TileButton({
-  children,
-  label,
-  onClick,
-  disabled,
-}: {
-  children: string;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
+export function TileAction({ placement }: { placement: TilePlacementInfo }) {
+  const dispatch = useDispatch();
   return (
     <IconButton
       variant="framed"
       size="tiny"
-      glyph={children}
-      accessibleName={label}
-      disabled={disabled}
-      onClick={onClick}
+      glyph="⌕"
+      accessibleName="show something else in this tile"
+      onClick={() =>
+        dispatch(
+          navigationActions.openLauncher({ kind: "replace", placementId: placement.placementId }),
+        )
+      }
     />
   );
 }
+
+export const renderDatalabTitle: NonNullable<SurfaceProps["renderTitle"]> = (view, placement) => (
+  <TileTitle view={view} placement={placement} />
+);
+
+export const renderDatalabTileAction: NonNullable<SurfaceProps["tileAction"]> = (placement) => (
+  <TileAction placement={placement} />
+);

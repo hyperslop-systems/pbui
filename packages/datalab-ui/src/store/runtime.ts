@@ -51,6 +51,12 @@ export interface DatalabRuntimeOptions extends Pick<MakeStoreOptions, "fixtures"
   onCommit?: CreateWorkbenchCoreOptions["onCommit"];
   /** Deep-freeze the exposed core state (the core's default outside production). */
   ownership?: CreateWorkbenchCoreOptions["ownership"];
+  /**
+   * Build the executor the controller runs commands through, given the
+   * core — the React layer returns the shell's, which measures geometry
+   * before a command that needs it. Default: `core.execute`.
+   */
+  executor?(core: WorkbenchCore): DatalabController["execute"];
 }
 
 export interface DatalabRuntime {
@@ -91,7 +97,11 @@ export function createDatalabRuntime(options: DatalabRuntimeOptions): DatalabRun
     ...(options.onRejected ? { onRejected: options.onRejected } : {}),
     ...(options.onCommit ? { onCommit: options.onCommit } : {}),
   });
-  controller = createDatalabController({ store, core });
+  controller = createDatalabController({
+    store,
+    core,
+    ...(options.executor ? { execute: options.executor(core) } : {}),
+  });
 
   // Keep navigation true for the document: a workspace the core gained or
   // lost (a command, a restore, a remote adoption) is filed or forgotten.

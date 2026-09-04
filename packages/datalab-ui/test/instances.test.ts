@@ -1,11 +1,14 @@
 import { describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import "../src/apps/all";
+import { datalabManifests } from "../src/appkit/workbenchApps";
 import * as storeModule from "../src/store";
 import { makeStore } from "../src/store";
 import { save, load, clear, WORKBENCH_KEY } from "../src/store/persist";
+import { createDatalabRuntime, type DatalabRuntime } from "../src/store/runtime";
+import { defaultSeed } from "../src/store/seed";
 import { worldActions } from "../src/store/world";
-import { layoutActions } from "../src/store/layout";
 
 /**
  * Instance isolation (DATADROP-7).
@@ -23,6 +26,15 @@ import { layoutActions } from "../src/store/layout";
  */
 
 const SRC = resolve(import.meta.dirname, "../src");
+const apps = datalabManifests();
+
+/**
+ * A whole workbench over the product's default seed. Ids are minted, not
+ * sequential: the property under test is that two INDEPENDENT instances never
+ * agree on an id, which a deterministic generator would falsify by design.
+ */
+const runtime = (): DatalabRuntime =>
+  createDatalabRuntime({ seed: defaultSeed({ apps }), apps, ownership: "trust" });
 
 /* -------------------------------------------- one analytics page runtime -- */
 
@@ -138,32 +150,34 @@ describe("two stores share nothing", () => {
     expect(a.getState().world.docOrder[0]).not.toBe(b.getState().world.docOrder[0]);
   });
 
-  test("a layout change in one leaves the other's tree alone", () => {
-    const a = makeStore();
-    const b = makeStore();
+  test("a workspace created in one leaves the other's document alone", () => {
+    const a = runtime();
+    const b = runtime();
 
-    const before = JSON.stringify(b.getState().layout);
-    const count = a.getState().layout.spaces.length;
-    a.dispatch(layoutActions.addSpace("extra"));
+    const before = JSON.stringify(b.core.getState().document);
+    const count = a.core.getState().document.workspaces.length;
+    expect(a.controller.createWorkspace({ name: "extra" }).ok).toBe(true);
 
-    expect(a.getState().layout.spaces).toHaveLength(count + 1);
-    expect(a.getState().layout.spaces.map((s) => s.name)).toContain("extra");
-    expect(JSON.stringify(b.getState().layout)).toBe(before);
+    expect(a.core.getState().document.workspaces).toHaveLength(count + 1);
+    expect(a.core.getState().document.workspaces.map((s) => s.name)).toContain("extra");
+    expect(JSON.stringify(b.core.getState().document)).toBe(before);
+    expect(b.store.getState().navigation.workspace).not.toHaveProperty(
+      a.core.getState().session.workspaceId,
+    );
   });
 
-  test("workspace ids do not collide across stores", () => {
-    // `layoutSlice`'s initialState is evaluated once at module load, so before
-    // this ticket every store built without a preload started with the same
-    // workspace id. Supplying preloadedState unconditionally is what fixes it,
-    // and this is the test that says so.
-    const a = makeStore();
-    const b = makeStore();
-    const aIds = new Set(a.getState().layout.spaces.map((s) => s.id));
-    const shared = b.getState().layout.spaces.filter((s) => aIds.has(s.id));
+  test("workspace ids do not collide across runtimes", () => {
+    // Every runtime compiles its own seed, so nothing is shared through a
+    // module-level initial state evaluated once at load.
+    const a = runtime();
+    const b = runtime();
+    const aIds = new Set(a.core.getState().document.workspaces.map((s) => s.id));
+    const shared = b.core.getState().document.workspaces.filter((s) => aIds.has(s.id));
 
-    // The two hardwired spaces have fixed ids by design (DR-29) and are
+    // The hardwired workspaces have fixed ids by design (DR-29) and are
     // expected to match. Everything else must be freshly generated.
-    expect(shared.every((s) => s.pinned)).toBe(true);
+    expect(shared.length).toBeGreaterThan(0);
+    expect(shared.every((s) => b.store.getState().navigation.workspace[s.id]?.pinned)).toBe(true);
   });
 
   test("a store built without seeding has no documents", () => {
@@ -178,7 +192,7 @@ describe("two stores share nothing", () => {
 /* --------------------------------------------------- scoped persistence -- */
 
 /**
- * A localStorage, because bun's test runner has no DOM.
+ * A localStorage, because the test runner has no DOM.
  *
  * Deliberately a real Map rather than a mock with assertions on it. The
  * property under test is that two keys hold two different payloads, and a spy
@@ -198,19 +212,30 @@ const memory = new Map<string, string>();
   },
 };
 
+/** `save` for a whole runtime: its world, the core's document and session, its navigation. */
+const persist = (key: string, rt: DatalabRuntime) => {
+  const core = rt.core.getState();
+  save(
+    key,
+    rt.store.getState().world,
+    { document: core.document, workspaceId: core.session.workspaceId },
+    rt.store.getState().navigation,
+  );
+};
+
 describe("persistence is scoped to a key", () => {
   test("two keys do not overwrite each other", () => {
     // DR-47's whole point in one test. Before this ticket `save` wrote to a
     // module constant, so the second call would have destroyed the first.
-    const a = makeStore();
-    const b = makeStore();
-    a.dispatch(worldActions.newDoc(null));
+    const a = runtime();
+    const b = runtime();
+    a.store.dispatch(worldActions.newDoc(null));
 
-    save("key-a", a.getState().world, a.getState().layout);
-    save("key-b", b.getState().world, b.getState().layout);
+    persist("key-a", a);
+    persist("key-b", b);
 
-    expect(load("key-a")?.world.docOrder).toHaveLength(2);
-    expect(load("key-b")?.world.docOrder).toHaveLength(1);
+    expect(load("key-a", apps)?.world.docOrder).toHaveLength(2);
+    expect(load("key-b", apps)?.world.docOrder).toHaveLength(1);
 
     clear("key-a");
     clear("key-b");
@@ -223,14 +248,14 @@ describe("persistence is scoped to a key", () => {
   });
 
   test("clearing one key leaves the other", () => {
-    const store = makeStore();
-    save("key-a", store.getState().world, store.getState().layout);
-    save("key-b", store.getState().world, store.getState().layout);
+    const rt = runtime();
+    persist("key-a", rt);
+    persist("key-b", rt);
 
     clear("key-a");
 
-    expect(load("key-a")).toBeNull();
-    expect(load("key-b")).not.toBeNull();
+    expect(load("key-a", apps)).toBeNull();
+    expect(load("key-b", apps)).not.toBeNull();
     clear("key-b");
   });
 });

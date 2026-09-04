@@ -1,6 +1,15 @@
 import { definePresentation } from "@hyperslop-systems/pbui/presentation";
-import type { ActionQuery, PresentationReference, SelectionSnapshot } from "@hyperslop-systems/pbui/presentation";
-import { datalabContributions, datalabContextFor, datalabRevision, datalabTypeDefinitions } from "./actions";
+import type {
+  ActionQuery,
+  PresentationReference,
+  SelectionSnapshot,
+} from "@hyperslop-systems/pbui/presentation";
+import {
+  datalabContributions,
+  datalabContextFor,
+  datalabRevision,
+  datalabTypeDefinitions,
+} from "./actions";
 import type { DatalabFacts } from "./actions";
 import { createDatalabHelpContributions } from "./help";
 import { datadropDescriptors } from "./registry";
@@ -53,13 +62,17 @@ export const datalabPresentation = p.create({
   // The actions item of the field help card shows the REAL action
   // resolution; the rule reads it through the compiled presentation, which
   // exists by the time any help resolves.
-  help: createDatalabHelpContributions((query, snapshot) => datalabPresentation.actions.resolve(query, snapshot)),
+  help: createDatalabHelpContributions((query, snapshot) =>
+    datalabPresentation.actions.resolve(query, snapshot),
+  ),
   version: "datalab-1",
 });
 
 /** The action registry and help registry, for tests that resolve directly. */
 export const datadropActionRegistry = datalabPresentation.actions;
-export const datalabHelpRegistry = datalabPresentation.help as NonNullable<typeof datalabPresentation.help>;
+export const datalabHelpRegistry = datalabPresentation.help as NonNullable<
+  typeof datalabPresentation.help
+>;
 export const datadropRegistry = datalabPresentation.descriptors;
 
 /** One snapshot for one query: the product's context projection through the model. */

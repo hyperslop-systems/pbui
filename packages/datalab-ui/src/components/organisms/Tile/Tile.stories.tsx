@@ -1,71 +1,106 @@
 import { useMemo, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Provider, useSelector } from "react-redux";
-import { Tile } from "./Tile";
-import { makeStore, type AppStore, type RootState } from "../../../store";
-import { singleStageLayout } from "../../../store/stages";
-import type { Node } from "../../../store/layout";
+import { defineWorkbenchApp, type WorkbenchApp } from "@hyperslop-systems/pbui-workbench";
+import { renderDatalabTileAction, renderDatalabTitle } from "./Tile";
 import { ObjectMenu } from "../../../pbui";
 import { AnalysisProvider } from "../../../appkit/AnalysisProvider";
+import {
+  DatalabWorkbenchProvider,
+  useDatalabWorkbench,
+} from "../../../appkit/DatalabWorkbenchContext";
+import {
+  createDatalabWorkbench,
+  datalabSingleStageSeed,
+  type DatalabWorkbench,
+} from "../../../appkit/workbench";
+import { datalabWorkbenchApps } from "../../../appkit/workbenchApps";
+import { tile } from "../../../store/seed";
 import { WorkbenchProviders } from "../../pages/Workbench/WorkbenchProviders";
-import { NodeView } from "../SplitView";
+import { LauncherDialog } from "../LauncherDialog";
 import "../../../apps/all";
 
+/**
+ * Datalab's title slot, in the shell's tile.
+ *
+ * The component under test is `TileTitle` (and `TileAction`): the `<tile>`
+ * presentation, the derived `chart · α` label, the inline rename and the door
+ * to the launcher. The frame around it — grip, split and close buttons, the
+ * drop overlay — is the workbench shell's, so the story renders a whole
+ * `Surface` over one seeded tile and passes the two slots the way
+ * `WorkbenchShell` does. Anything less would be a title with no tile.
+ */
 interface TileStoryProps {
   appId: string;
   title?: string;
 }
 
-function TileStory({ appId, title }: TileStoryProps) {
-  const fixture = useMemo(() => {
-    let node: Extract<Node, { type: "leaf" }> | null = null;
-    const layout = singleStageLayout("story", (builder) => {
-      node = builder.leaf(appId, null, title) as Extract<Node, { type: "leaf" }>;
-      return node;
-    });
-    return { store: makeStore({ preloaded: { layout } }), node: node! };
-  }, [appId, title]);
-
-  return <StoryProviders store={fixture.store}>{<Tile node={fixture.node} />}</StoryProviders>;
+/**
+ * A ghost application, for the "this build no longer has it" state.
+ *
+ * The core refuses a document naming an application its catalog lacks, so
+ * the view's app has to exist for the WORKBENCH. The point of the story is
+ * that it does not exist for the REGISTRY — `appFor` finds nothing, the title
+ * falls back to the raw id and the menu offers no duplicate.
+ */
+function ghostApp(appId: string): WorkbenchApp {
+  return defineWorkbenchApp({
+    manifest: { id: appId, launch: "unbound" },
+    presentation: { title: appId, tone: "faint", Component: () => null },
+  });
 }
 
-function StoryProviders({ store, children }: { store: AppStore; children: ReactNode }) {
+function buildWorkbench(appId: string, title: string | undefined): DatalabWorkbench {
+  const apps = datalabWorkbenchApps();
+  const known = apps.some((app) => app.manifest.id === appId);
+  return createDatalabWorkbench({
+    seed: datalabSingleStageSeed("story", tile(appId, title ? { title } : {})),
+    ...(known ? {} : { apps: [...apps, ghostApp(appId)] }),
+  });
+}
+
+function TileStory({ appId, title }: TileStoryProps) {
+  // Built ONCE per args, never per render: a workbench owns subscriptions.
+  const workbench = useMemo(() => buildWorkbench(appId, title), [appId, title]);
   return (
-    <Provider store={store}>
+    <StoryProviders workbench={workbench}>
+      <Canvas />
+    </StoryProviders>
+  );
+}
+
+/** The shell's Surface with Datalab's two slots, exactly as `WorkbenchShell` mounts it. */
+function Canvas() {
+  const workbench = useDatalabWorkbench();
+  return (
+    <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      <workbench.shell.Surface
+        renderTitle={renderDatalabTitle}
+        tileAction={renderDatalabTileAction}
+        linkModeShortcut={false}
+      />
+    </div>
+  );
+}
+
+function StoryProviders({
+  workbench,
+  children,
+}: {
+  workbench: DatalabWorkbench;
+  children: ReactNode;
+}) {
+  return (
+    <DatalabWorkbenchProvider workbench={workbench}>
       <AnalysisProvider principalKey="storybook-tile">
         <WorkbenchProviders>
           {children}
+          {/* Replace … opens the product's launcher, which the shell mounts;
+              here the story mounts it, so the door leads somewhere. */}
+          <LauncherDialog />
           <ObjectMenu />
         </WorkbenchProviders>
       </AnalysisProvider>
-    </Provider>
-  );
-}
-
-function CurrentTree() {
-  const tree = useSelector(
-    (state: RootState) =>
-      state.layout.spaces.find((space) => space.id === state.layout.currentSpaceId)?.tree,
-  );
-  return tree ? <NodeView node={tree} /> : null;
-}
-
-function ViewLifecycleStory() {
-  const store = useMemo(
-    () =>
-      makeStore({
-        preloaded: {
-          layout: singleStageLayout("story", (builder) =>
-            builder.leaf("chart", null, "Yield by station"),
-          ),
-        },
-      }),
-    [],
-  );
-  return (
-    <StoryProviders store={store}>
-      <CurrentTree />
-    </StoryProviders>
+    </DatalabWorkbenchProvider>
   );
 }
 
@@ -122,6 +157,9 @@ function menuItem(canvasElement: HTMLElement, label: string): HTMLButtonElement 
   return item;
 }
 
+/** The launcher is a modal; it may be portaled, so it is looked for on the document. */
+const launcherOpen = () => document.querySelector('[aria-label="close the launcher"]') !== null;
+
 export const MenuOpenedByLeftClick: Story = {
   play: async ({ canvasElement }) => {
     title(canvasElement).click();
@@ -158,27 +196,26 @@ export const RenameFromMenu: Story = {
 export const ReplaceFromMenu: Story = {
   args: { appId: "about" },
   play: async ({ canvasElement }) => {
-    const titleControl = title(canvasElement);
-    titleControl.click();
+    title(canvasElement).click();
     await settle();
     menuItem(canvasElement, "Replace …").click();
     await settle();
-    if (!canvasElement.querySelector('[aria-label="replace view"]')) {
-      throw new Error("Replace did not open the shared switcher");
-    }
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    if (!launcherOpen()) throw new Error("Replace did not open the launcher");
+    // Escape closes the launcher, which hands focus back to the tile it targeted.
+    (document.activeElement ?? window).dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
     await settle();
-    if (canvasElement.querySelector('[aria-label="replace view"]')) {
-      throw new Error("Escape did not close Replace");
-    }
-    if (document.activeElement !== titleControl) {
-      throw new Error("Escape did not restore focus to the view title");
+    if (launcherOpen()) throw new Error("Escape did not close Replace");
+    const cell = canvasElement.querySelector<HTMLElement>('[data-part="workbench-tile"]');
+    if (!cell?.contains(document.activeElement)) {
+      throw new Error("Escape did not restore focus to the tile");
     }
   },
 };
 
 export const LinkedDuplicateFlow: Story = {
-  render: () => <ViewLifecycleStory />,
+  args: { appId: "chart", title: "Yield by station" },
   play: async ({ canvasElement }) => {
     title(canvasElement).click();
     await settle();
@@ -194,7 +231,7 @@ export const LinkedDuplicateFlow: Story = {
 };
 
 export const IndependentDuplicateFlow: Story = {
-  render: () => <ViewLifecycleStory />,
+  args: { appId: "chart", title: "Yield by station" },
   play: async ({ canvasElement }) => {
     title(canvasElement).click();
     await settle();

@@ -51,7 +51,7 @@ describe("workbench verbs", () => {
     expect(rt.core.getState().document.views[viewId]).toBeUndefined();
   });
 
-  test("a replace verb opens the launcher against the tile; export verbs are not owned here", () => {
+  test("a replace verb opens the launcher against the tile; bundle verbs are thunks; world verbs are not owned", () => {
     const ids = sequentialIds();
     const rt = createDatalabRuntime({
       seed: singleStageSeed("build", tile("chart"), { apps, ids }),
@@ -61,8 +61,11 @@ describe("workbench verbs", () => {
     });
     perform(rt, { kind: "openReplaceView", placementId: "n1" });
     expect(rt.store.getState().navigation.launcher).toEqual({ kind: "replace", placementId: "n1" });
-    expect(actionsForWorkbenchVerb({ kind: "exportTile", nodeId: "n1" })).toBeNull();
-    expect(actionsForWorkbenchVerb({ kind: "importStage" })).toBeNull();
+    // Export, import and template verbs are owned here too, as thunks that
+    // end in a promise; a world verb is not.
+    expect(actionsForWorkbenchVerb({ kind: "exportTile", nodeId: "n1" })).toHaveLength(1);
+    expect(actionsForWorkbenchVerb({ kind: "importStage" })).toHaveLength(1);
+    expect(actionsForWorkbenchVerb({ kind: "newDoc", source: null })).toBeNull();
   });
 
   test("a store without a workbench refuses a spatial verb loudly", () => {

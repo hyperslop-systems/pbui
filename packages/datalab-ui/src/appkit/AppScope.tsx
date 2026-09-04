@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store";
+import { useCurrentStageId, useCurrentWorkspaceId } from "./DatalabWorkbenchContext";
 import { allApps, type AppDescriptor } from "./registry";
 
 /**
@@ -124,13 +125,13 @@ export function useScopedApps(): AppDescriptor[] {
  */
 export function useAvailableApps(): AppDescriptor[] {
   const apps = useScopedApps();
+  const stageId = useCurrentStageId();
+  const workspaceId = useCurrentWorkspaceId();
   const stageApps = useSelector(
-    (state: RootState) =>
-      state.layout.stages.find((s) => s.id === state.layout.currentStageId)?.apps ?? null,
+    (state: RootState) => state.navigation.stages.find((s) => s.id === stageId)?.apps ?? null,
   );
   const spaceApps = useSelector(
-    (state: RootState) =>
-      state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId)?.apps ?? null,
+    (state: RootState) => state.navigation.workspace[workspaceId]?.apps ?? null,
   );
 
   return useMemo(() => {

@@ -1,1 +1,1 @@
-export { Tile } from "./Tile";
+export { TileTitle, TileAction, renderDatalabTitle, renderDatalabTileAction } from "./Tile";

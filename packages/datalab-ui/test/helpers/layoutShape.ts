@@ -1,11 +1,13 @@
-import type { LayoutState, Node, Stage, Workspace } from "../../src/store/layout";
+import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
+import type { StageChrome, StageDefinition } from "../../src/store/navigation";
+import type { DatalabSeed } from "../../src/store/seed";
 
 /**
  * An id-free description of a layout, for migration goldens
  * (PBUI-DATALAB-WORKBENCH-1 Phase 0).
  *
  * Runtime ids are minted per store, so a golden that carried them would fail
- * on every run. What must survive the cutover to workbench-core is the
+ * on every run. What had to survive the cutover to workbench-core is the
  * SHAPE: which stages exist and in what order, which workspaces belong to
  * each, every tree's arrangement, and — the part a naive port loses — which
  * leaves share one logical view. Views are therefore named by first
@@ -15,6 +17,10 @@ import type { LayoutState, Node, Stage, Workspace } from "../../src/store/layout
  *
  * Pinned workspaces keep their ids because those are code-defined and MUST
  * match across builds; user-owned workspaces are described by name only.
+ *
+ * The golden in `test/fixtures/layout-shape.golden.json` was frozen from the
+ * Redux layout slice before the cutover; `shapeOfDocument` reads the same
+ * shape off the seed compiler's output, which is how the two are compared.
  */
 export type TreeShape =
   | { view: string; app: string; title?: string; doc?: string }
@@ -32,8 +38,8 @@ export interface StageShape {
   id: string;
   name: string;
   apps: string[] | null;
-  chrome: Stage["chrome"];
-  audience?: Stage["audience"];
+  chrome: StageChrome;
+  audience?: StageDefinition["audience"];
   pinned: boolean;
   /** Which workspace the stage remembers, by name (pinned) or ordinal. */
   current: string;
@@ -46,68 +52,7 @@ export interface LayoutShape {
   stages: StageShape[];
 }
 
-/** A stable, id-free name for a workspace: its id when pinned, else its name. */
-const workspaceLabel = (space: Workspace | undefined): string =>
-  space ? (space.pinned ? space.id : space.name) : "";
-
-export function shapeOfLayout(layout: LayoutState): LayoutShape {
-  const aliases = new Map<string, string>();
-  const alias = (viewId: string): string => {
-    let name = aliases.get(viewId);
-    if (!name) {
-      name = `v${aliases.size + 1}`;
-      aliases.set(viewId, name);
-    }
-    return name;
-  };
-  const tree = (node: Node): TreeShape => {
-    if (node.type === "leaf") {
-      const view = layout.views[node.viewId];
-      return {
-        view: alias(node.viewId),
-        app: view?.appId ?? "?",
-        ...(view?.title ? { title: view.title } : {}),
-        ...(view?.documents.primary ? { doc: view.documents.primary } : {}),
-      };
-    }
-    return { dir: node.dir, ratio: node.ratio, a: tree(node.a), b: tree(node.b) };
-  };
-  const byId = new Map(layout.spaces.map((space) => [space.id, space]));
-  return {
-    currentStage: layout.currentStageId,
-    currentWorkspace: workspaceLabel(byId.get(layout.currentSpaceId)),
-    stages: layout.stages.map((stage) => ({
-      id: stage.id,
-      name: stage.name,
-      apps: stage.apps,
-      chrome: stage.chrome,
-      ...(stage.audience ? { audience: stage.audience } : {}),
-      pinned: stage.pinned === true,
-      current: workspaceLabel(byId.get(stage.currentSpaceId)),
-      workspaces: layout.spaces
-        .filter((space) => space.stageId === stage.id)
-        .map((space) => ({
-          ...(space.pinned ? { id: space.id } : {}),
-          name: space.name,
-          pinned: space.pinned === true,
-          ...(space.apps !== undefined ? { apps: space.apps } : {}),
-          tree: tree(space.tree),
-        })),
-    })),
-  };
-}
-
-/* ------------------------------------------------ the workbench side -- */
-
-import type { Node as ProtocolNode } from "@hyperslop-systems/workbench-protocol";
-import { Direction } from "@hyperslop-systems/workbench-protocol";
-import type { DatalabSeed } from "../../src/store/seed";
-
-/**
- * The same shape, read off a workbench document plus navigation metadata —
- * what the seed compiler produces. Equality with `shapeOfLayout(defaultLayout())`
- * is the Phase 1 exit gate.
- */
+/** The shape, read off a workbench document plus navigation metadata — what the seed compiler produces. */
 export function shapeOfDocument(seed: DatalabSeed): LayoutShape {
   const { document, navigation, workspaceId } = seed;
   const aliases = new Map<string, string>();
@@ -119,7 +64,7 @@ export function shapeOfDocument(seed: DatalabSeed): LayoutShape {
     }
     return name;
   };
-  const tree = (node: ProtocolNode | undefined): TreeShape => {
+  const tree = (node: Node | undefined): TreeShape => {
     if (!node) throw new Error("a workspace has no tree");
     if (node.body.case === "leaf") {
       const view = document.views[node.body.value.viewId];

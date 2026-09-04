@@ -35,3 +35,24 @@ transport, routes, applications, pages, fixtures, and brand.
   explains document ownership, Redux edits, application registration, remote
   persistence, backend validation, agent mutations, and two-browser conflict
   testing.
+
+## Workbench ownership
+
+Since PBUI-DATALAB-WORKBENCH-1 the spatial model — workspaces, logical views,
+placements and split trees — is `@hyperslop-systems/workbench-core`'s
+`WorkbenchDocument`, rendered by `@hyperslop-systems/pbui-workbench`'s Surface.
+Datalab keeps what is genuinely Datalab's above and beside it:
+
+| Fact | Owner |
+|---|---|
+| workspace, view, placement, tree, active placement | workbench core (`src/store/runtime.ts`) |
+| stages, workspace → stage, pinned, allow-lists, remembered workspace | the `navigation` slice (`src/store/navigation.ts`) |
+| product policy in front of core commands (pinned, last-in-stage, close-view) | `src/store/controller.ts` |
+| full `GraphicDocument`s, snapshots, pins, watch, trace | the `world` slice; the workbench holds identity stubs (`src/store/graphicSource.ts`) |
+| the rich launcher, stage bar, stage-scoped strip, portable bundles | Datalab components and `src/store/bundles.ts` |
+| what the server sees: the work stage with full documents | `src/remote/projection.ts` |
+
+One `createDatalabWorkbench()` per workbench instance (`src/appkit/workbench.ts`);
+components reach it through `DatalabWorkbenchProvider`. Local persistence is
+version 6 (`src/store/persist.ts`): the workbench document as protobuf JSON
+beside the world and the navigation metadata; version-5 payloads migrate.

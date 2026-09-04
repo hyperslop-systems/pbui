@@ -102,7 +102,7 @@ export interface DatalabController {
   /** Split a tile; with an application named, the new pane shows a fresh view of it, else an empty launcher. */
   splitTile(
     placementId: string,
-    axis: Axis,
+    axis?: Axis,
     show?: Extract<ShowRequest, { kind: "application" }>,
   ): ControllerResult;
   /** A second, independent view: same application, same documents, a copied label. */
@@ -370,7 +370,7 @@ export function createDatalabController(
       return execute({
         kind: "view.show",
         view: applicationView(show),
-        placement: { kind: "split", target: placementId, axis },
+        placement: { kind: "split", target: placementId, ...(axis ? { axis } : {}) },
       });
     },
 

@@ -1,10 +1,10 @@
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { useMeQuery } from "../../api/client";
+import { useDatalabWorkbench } from "../../appkit/DatalabWorkbenchContext";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { SignUpPanel } from "../../components/organisms";
 import type { RootState } from "../../store";
-import { layoutActions } from "../../store/layout";
-import { ACCOUNT_STAGE_ID } from "../../store/stages";
+import { ACCOUNT_STAGE_ID } from "../../store/stageIds";
 
 /**
  * The way in for someone new — the container half.
@@ -23,9 +23,9 @@ import { ACCOUNT_STAGE_ID } from "../../store/stages";
  * documents at length for the multi-instance case.
  */
 function SignUpApp(_props: AppProps) {
-  const dispatch = useDispatch();
+  const workbench = useDatalabWorkbench();
   const { data: me } = useMeQuery();
-  const justSignedUp = useSelector((state: RootState) => state.layout.justSignedUp === true);
+  const justSignedUp = useSelector((state: RootState) => state.navigation.justSignedUp === true);
 
   return (
     <SignUpPanel
@@ -34,7 +34,7 @@ function SignUpApp(_props: AppProps) {
       returnPath={returnPath()}
       justSignedUp={justSignedUp}
       name={me?.user?.name ?? null}
-      onOpenAccount={() => dispatch(layoutActions.setCurrentStage(ACCOUNT_STAGE_ID))}
+      onOpenAccount={() => void workbench.controller.selectStage(ACCOUNT_STAGE_ID)}
     />
   );
 }

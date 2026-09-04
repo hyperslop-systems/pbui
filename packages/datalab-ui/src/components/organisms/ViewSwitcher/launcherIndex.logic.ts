@@ -1,16 +1,28 @@
+import type { AppView, Node } from "@hyperslop-systems/workbench-protocol";
+import { leaves as leavesOf } from "@hyperslop-systems/workbench-protocol/client";
 import type { AppDescriptor } from "../../../appkit/registry";
 import type { DocId } from "../../../pbui/types";
-import type {
-  AppId,
-  AppView,
-  Node,
-  NodeId,
-  Stage,
-  StageId,
-  ViewId,
-  Workspace,
-} from "../../../store/layout";
+import type { StageDefinition as Stage } from "../../../store/navigation";
 import { type ParsedLauncherQuery, workspaceAlias } from "./launcherQuery.logic";
+
+type AppId = string;
+type NodeId = string;
+type StageId = string;
+type ViewId = string;
+
+/**
+ * One workspace as the index sees it: the core's workspace joined with
+ * Datalab's navigation metadata (which stage it belongs to, its allow-list).
+ * The dialog builds these from the document and the navigation slice.
+ */
+export interface LauncherWorkspace {
+  id: string;
+  name: string;
+  stageId: StageId;
+  /** Narrows the stage's allow-list, or null/absent to inherit it. */
+  apps?: readonly AppId[] | null;
+  tree: Node | undefined;
+}
 
 /**
  * The launcher's search index: every logical view, grouped by the workspaces
@@ -130,7 +142,7 @@ export interface LauncherIndexInput {
   apps: readonly AppDescriptor[];
   views: Readonly<Record<ViewId, AppView>>;
   viewOrder: readonly ViewId[];
-  workspaces: readonly Workspace[];
+  workspaces: readonly LauncherWorkspace[];
   stages: readonly Stage[];
   currentStageId: StageId;
   currentWorkspaceId: string;
@@ -251,24 +263,22 @@ const normalize = (value: string): string => value.toLowerCase().replace(/\s+/g,
  * impossible for a stage to undo.
  */
 function scopeFor(
-  workspace: Workspace,
+  workspace: LauncherWorkspace,
   stages: readonly Stage[],
   instanceApps: ReadonlySet<AppId>,
 ): ReadonlySet<AppId> {
   const stage = stages.find((candidate) => candidate.id === workspace.stageId);
-  const narrow = (allowed: ReadonlySet<AppId>, list: AppId[] | null | undefined) =>
+  const narrow = (allowed: ReadonlySet<AppId>, list: readonly AppId[] | null | undefined) =>
     list == null ? allowed : new Set([...allowed].filter((id) => list.includes(id)));
   return narrow(narrow(instanceApps, stage?.apps), workspace.apps);
 }
 
-/** Every leaf in tree order. */
-function leaves(node: Node, into: Extract<Node, { type: "leaf" }>[] = []) {
-  if (node.type === "leaf") into.push(node);
-  else {
-    leaves(node.a, into);
-    leaves(node.b, into);
-  }
-  return into;
+/** Every leaf in tree order, as `{ id, viewId }`. */
+function leaves(tree: Node | undefined): Array<{ id: NodeId; viewId: ViewId }> {
+  return leavesOf(tree).map((node) => ({
+    id: node.id,
+    viewId: node.body.case === "leaf" ? node.body.value.viewId : "",
+  }));
 }
 
 /**
@@ -342,7 +352,7 @@ export function buildLauncherIndex(input: LauncherIndexInput): LauncherIndex {
     workspaceByOrdinal.set(index + 1, workspace.id);
   });
 
-  const groupFor = (workspace: Workspace, ordinal: number): LauncherWorkspaceGroup => {
+  const groupFor = (workspace: LauncherWorkspace, ordinal: number): LauncherWorkspaceGroup => {
     const scope = scopeFor(workspace, stages, instanceApps);
     const perView = occurrences.get(workspace.id) ?? new Map<ViewId, NodeId[]>();
     const rows: LauncherPlacedRow[] = [];

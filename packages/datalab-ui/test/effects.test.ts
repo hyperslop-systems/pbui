@@ -1,18 +1,24 @@
+import { sequentialIds } from "@hyperslop-systems/workbench-core";
+import { leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { describe, expect, test } from "vitest";
+import "../src/apps/all";
+import { datalabManifests } from "../src/appkit/workbenchApps";
 import { parseBundle } from "../src/model/portable";
+import type { PbuiEnvironment } from "../src/pbui/types";
+import type { AppThunk } from "../src/store";
 import { actionsForVerb } from "../src/store/applyVerb";
 import type { ClipboardPort } from "../src/store/clipboard";
-import { makeStore, type AppThunk } from "../src/store";
-import { layoutActions, split, type LayoutState, type Node } from "../src/store/layout";
+import { commitImport } from "../src/store/effects";
+import { navigationActions } from "../src/store/navigation";
 import { save } from "../src/store/persist";
-import { singleStageLayout } from "../src/store/stages";
-import type { PbuiEnvironment } from "../src/pbui/types";
+import { createDatalabRuntime, type DatalabRuntime } from "../src/store/runtime";
+import { singleStageSeed, split, tile } from "../src/store/seed";
 
 /**
  * The widened verb seam, end to end, with no DOM and no browser.
  *
  * This is what DR-66 buys. The clipboard is a parameter on the store's thunk
- * extra argument, so a test hands `makeStore` a fake that records what it was
+ * extra argument, so a test hands the runtime a fake that records what it was
  * given, dispatches the thunk `actionsForVerb` returned, and asserts on the
  * JSON. Nothing mocks `navigator`; there is no `navigator` here at all.
  *
@@ -20,6 +26,8 @@ import type { PbuiEnvironment } from "../src/pbui/types";
  * purity claim: `actionsForVerb` is called for its return value, and nothing
  * happens until the test dispatches it.
  */
+
+const apps = datalabManifests();
 
 const env = {
   fieldsFor: () => [],
@@ -42,34 +50,52 @@ function fakeClipboard(readValue: string | null = null): ClipboardPort & { writt
   };
 }
 
-/** A workspace with one chart tile on one document. */
-function oneChartTile(): { layout: LayoutState; nodeId: string } {
-  let nodeId = "";
-  const layout = singleStageLayout("build", (builder) => {
-    const tile = builder.leaf("chart");
-    nodeId = tile.id;
-    return split("row", tile, builder.leaf("table"), 0.5);
+/**
+ * A runtime whose one workspace is a chart tile beside a table tile.
+ *
+ * ONE id generator for the seed and the runtime, so the ids the core mints
+ * later never collide with the seeded ones.
+ */
+function oneChartTile(options: { clipboard?: ClipboardPort; seedDocuments?: boolean } = {}): {
+  rt: DatalabRuntime;
+  nodeId: string;
+  workspaceId: string;
+} {
+  const ids = sequentialIds();
+  const seed = singleStageSeed("build", split("row", 0.5, tile("chart"), tile("table")), {
+    apps,
+    ids,
   });
-  return { layout, nodeId };
+  const rt = createDatalabRuntime({
+    seed,
+    apps,
+    ids,
+    ownership: "trust",
+    seedDocuments: options.seedDocuments ?? false,
+    ...(options.clipboard ? { clipboard: options.clipboard } : {}),
+  });
+  const tree = rt.core.getState().index.workspaceById.get(seed.workspaceId)?.tree;
+  return { rt, nodeId: leaves(tree)[0]?.id as string, workspaceId: seed.workspaceId };
 }
 
-function perform(store: ReturnType<typeof makeStore>, verb: Parameters<typeof actionsForVerb>[0]) {
-  const { world, layout } = store.getState();
-  return actionsForVerb(verb, { world, layout }, env);
+const viewIdAt = (rt: DatalabRuntime, nodeId: string): string =>
+  rt.core.getState().index.viewByPlacementId.get(nodeId) as string;
+
+function perform(rt: DatalabRuntime, verb: Parameters<typeof actionsForVerb>[0]) {
+  return actionsForVerb(verb, { world: rt.store.getState().world }, env);
 }
 
 describe("exporting is testable with no DOM", () => {
   test("exporting a tile writes a bundle to the clipboard and nothing else", async () => {
-    const { layout, nodeId } = oneChartTile();
     const clipboard = fakeClipboard();
-    const store = makeStore({ preloaded: { layout }, clipboard, seed: false });
+    const { rt, nodeId } = oneChartTile({ clipboard });
 
-    const [effect] = perform(store, { kind: "exportTile", nodeId });
+    const [effect] = perform(rt, { kind: "exportTile", nodeId });
     // Nothing has happened yet: actionsForVerb RETURNED a thunk, it did not run
     // one. That is the whole of the purity claim in one assertion.
     expect(clipboard.written).toEqual([]);
 
-    const outcome = await store.dispatch(effect as AppThunk<Promise<{ ok: boolean }>>);
+    const outcome = await rt.store.dispatch(effect as AppThunk<Promise<{ ok: boolean }>>);
     expect(outcome.ok).toBe(true);
 
     const text = clipboard.written[0] as string;
@@ -81,15 +107,11 @@ describe("exporting is testable with no DOM", () => {
   });
 
   test("exporting a workspace names it and carries its tiles", async () => {
-    const { layout } = oneChartTile();
     const clipboard = fakeClipboard();
-    const store = makeStore({ preloaded: { layout }, clipboard, seed: false });
+    const { rt, workspaceId } = oneChartTile({ clipboard });
 
-    const [effect] = perform(store, {
-      kind: "exportWorkspace",
-      spaceId: layout.currentSpaceId,
-    });
-    await store.dispatch(effect as AppThunk<Promise<unknown>>);
+    const [effect] = perform(rt, { kind: "exportWorkspace", spaceId: workspaceId });
+    await rt.store.dispatch(effect as AppThunk<Promise<unknown>>);
 
     const bundle = JSON.parse(clipboard.written[0] as string);
     expect(bundle.kind).toBe("workspace");
@@ -100,10 +122,7 @@ describe("exporting is testable with no DOM", () => {
     // The failure the design cares about: `navigator.clipboard?.writeText(x)`
     // with an optional chain reports nothing at all, so a user is told the copy
     // worked and pastes an empty clipboard into a chat message.
-    const { layout, nodeId } = oneChartTile();
-    const store = makeStore({
-      preloaded: { layout },
-      seed: false,
+    const { rt, nodeId } = oneChartTile({
       clipboard: {
         async write() {
           throw new Error("denied by the platform");
@@ -114,8 +133,8 @@ describe("exporting is testable with no DOM", () => {
       },
     });
 
-    const [effect] = perform(store, { kind: "exportTile", nodeId });
-    const outcome = (await store.dispatch(
+    const [effect] = perform(rt, { kind: "exportTile", nodeId });
+    const outcome = (await rt.store.dispatch(
       effect as AppThunk<Promise<{ ok: boolean; reason?: string }>>,
     )) as { ok: boolean; reason?: string };
     expect(outcome.ok).toBe(false);
@@ -126,15 +145,13 @@ describe("exporting is testable with no DOM", () => {
     // A bundle names the sources these tiles read and the filters the user set.
     // The trace is a teaching surface people screenshot, so it says what was
     // shared and not what was in it.
-    const { layout, nodeId } = oneChartTile();
-    const clipboard = fakeClipboard();
-    const store = makeStore({ preloaded: { layout }, clipboard, seed: false });
-    const [effect] = perform(store, { kind: "exportTile", nodeId });
-    return store.dispatch(effect as AppThunk<Promise<unknown>>).then(() => {
-      const entry = store.getState().world.trace.at(-1);
+    const { rt, nodeId } = oneChartTile({ clipboard: fakeClipboard() });
+    const [effect] = perform(rt, { kind: "exportTile", nodeId });
+    return rt.store.dispatch(effect as AppThunk<Promise<unknown>>).then(() => {
+      const entry = rt.store.getState().world.trace.at(-1);
       expect(entry?.type).toBe("exported");
       expect(entry?.detail).toContain("tile");
-      expect(JSON.stringify(store.getState().world.trace)).not.toContain("datadrop.layout");
+      expect(JSON.stringify(rt.store.getState().world.trace)).not.toContain("datadrop.layout");
     });
   });
 });
@@ -143,140 +160,111 @@ describe("importing never depends on reading the clipboard", () => {
   test("a clipboard that cannot be read opens the dialog empty", async () => {
     // Firefox does not implement readText for web content at all. This is the
     // path, not a degraded version of one.
-    const { layout, nodeId } = oneChartTile();
-    const store = makeStore({ preloaded: { layout }, clipboard: fakeClipboard(null), seed: false });
+    const { rt, nodeId } = oneChartTile({ clipboard: fakeClipboard(null) });
 
-    const [effect] = perform(store, { kind: "importIntoTile", nodeId });
-    await store.dispatch(effect as AppThunk<Promise<void>>);
+    const [effect] = perform(rt, { kind: "importIntoTile", nodeId });
+    await rt.store.dispatch(effect as AppThunk<Promise<void>>);
 
-    const pending = store.getState().layout.pendingImport;
+    const pending = rt.store.getState().navigation.pendingImport;
     expect(pending?.target).toEqual({ kind: "tile", nodeId });
     expect(pending?.prefill).toBe("");
     expect(pending?.from).toBeNull();
   });
 
   test("a clipboard holding prose opens the dialog empty, not prefilled with prose", () => {
-    const { layout, nodeId } = oneChartTile();
-    const store = makeStore({
-      preloaded: { layout },
+    const { rt, nodeId } = oneChartTile({
       clipboard: fakeClipboard("Hi — could you take a look at the sensor numbers?"),
-      seed: false,
     });
-    const [effect] = perform(store, { kind: "importIntoTile", nodeId });
-    return store.dispatch(effect as AppThunk<Promise<void>>).then(() => {
-      expect(store.getState().layout.pendingImport?.prefill).toBe("");
+    const [effect] = perform(rt, { kind: "importIntoTile", nodeId });
+    return rt.store.dispatch(effect as AppThunk<Promise<void>>).then(() => {
+      expect(rt.store.getState().navigation.pendingImport?.prefill).toBe("");
     });
   });
 
   test("a clipboard holding a bundle of the WRONG kind does not prefill either", async () => {
     // A relevance check, not only a validity one.
-    const { layout, nodeId } = oneChartTile();
     const written = fakeClipboard();
-    const store0 = makeStore({ preloaded: { layout }, clipboard: written, seed: false });
-    const [exportEffect] = perform(store0, {
+    const source = oneChartTile({ clipboard: written });
+    const [exportEffect] = perform(source.rt, {
       kind: "exportWorkspace",
-      spaceId: layout.currentSpaceId,
+      spaceId: source.workspaceId,
     });
-    await store0.dispatch(exportEffect as AppThunk<Promise<unknown>>);
+    await source.rt.store.dispatch(exportEffect as AppThunk<Promise<unknown>>);
     const workspaceBundle = written.written[0] as string;
 
-    const store = makeStore({
-      preloaded: { layout },
-      clipboard: fakeClipboard(workspaceBundle),
-      seed: false,
-    });
-    const [effect] = perform(store, { kind: "importIntoTile", nodeId });
-    await store.dispatch(effect as AppThunk<Promise<void>>);
-    expect(store.getState().layout.pendingImport?.prefill).toBe("");
+    const { rt, nodeId } = oneChartTile({ clipboard: fakeClipboard(workspaceBundle) });
+    const [effect] = perform(rt, { kind: "importIntoTile", nodeId });
+    await rt.store.dispatch(effect as AppThunk<Promise<void>>);
+    expect(rt.store.getState().navigation.pendingImport?.prefill).toBe("");
   });
 
   test("a clipboard holding a tile bundle prefills, and says where it came from", async () => {
-    const { layout, nodeId } = oneChartTile();
     const clipboard = fakeClipboard();
-    const store0 = makeStore({ preloaded: { layout }, clipboard, seed: false });
-    const [exportEffect] = perform(store0, { kind: "exportTile", nodeId });
-    await store0.dispatch(exportEffect as AppThunk<Promise<unknown>>);
+    const source = oneChartTile({ clipboard });
+    const [exportEffect] = perform(source.rt, { kind: "exportTile", nodeId: source.nodeId });
+    await source.rt.store.dispatch(exportEffect as AppThunk<Promise<unknown>>);
     const tileBundle = clipboard.written[0] as string;
 
-    const store = makeStore({
-      preloaded: { layout },
-      clipboard: fakeClipboard(tileBundle),
-      seed: false,
-    });
-    const [effect] = perform(store, { kind: "importIntoTile", nodeId });
-    await store.dispatch(effect as AppThunk<Promise<void>>);
+    const { rt, nodeId } = oneChartTile({ clipboard: fakeClipboard(tileBundle) });
+    const [effect] = perform(rt, { kind: "importIntoTile", nodeId });
+    await rt.store.dispatch(effect as AppThunk<Promise<void>>);
 
-    expect(store.getState().layout.pendingImport?.prefill).toBe(tileBundle);
-    expect(store.getState().layout.pendingImport?.from).toBe("clipboard");
+    expect(rt.store.getState().navigation.pendingImport?.prefill).toBe(tileBundle);
+    expect(rt.store.getState().navigation.pendingImport?.from).toBe("clipboard");
   });
 
   test("committing an import replaces the tile and mints its document", async () => {
-    const { layout, nodeId } = oneChartTile();
     const clipboard = fakeClipboard();
-    // Export a tile out of a store that HAS a document, so the bundle carries
+    // Export a tile out of a runtime that HAS a document, so the bundle carries
     // one and the import has something to mint.
-    const source = makeStore({ preloaded: { layout }, clipboard });
-    const doc = source.getState().world.docOrder[0] as string;
-    const sourceLeaf = source
-      .getState()
-      .layout.spaces.flatMap((space) => {
-        const out: Array<Extract<Node, { type: "leaf" }>> = [];
-        const walk = (node: Node): void => {
-          if (node.type === "leaf") out.push(node);
-          else {
-            walk(node.a);
-            walk(node.b);
-          }
-        };
-        walk(space.tree);
-        return out;
-      })
-      .find((node) => node.id === nodeId)!;
-    source.dispatch(layoutActions.setViewDocument({ viewId: sourceLeaf.viewId, docId: doc }));
-    const [exportEffect] = perform(source, { kind: "exportTile", nodeId });
-    await source.dispatch(exportEffect as AppThunk<Promise<unknown>>);
+    const source = oneChartTile({ clipboard, seedDocuments: true });
+    const doc = source.rt.store.getState().world.docOrder[0] as string;
+    expect(source.rt.controller.rebindView(viewIdAt(source.rt, source.nodeId), doc).ok).toBe(true);
+    const [exportEffect] = perform(source.rt, { kind: "exportTile", nodeId: source.nodeId });
+    await source.rt.store.dispatch(exportEffect as AppThunk<Promise<unknown>>);
     const text = clipboard.written[0] as string;
 
-    const target = makeStore({ preloaded: { layout: oneChartTile().layout }, seed: false });
-    const targetTree = (target.getState().layout.spaces[0] as { tree: Node }).tree;
-    const targetNode = (targetTree as Extract<Node, { type: "split" }>).a.id;
-    target.dispatch(
-      layoutActions.openImport({
+    const target = oneChartTile();
+    const targetNode = target.nodeId;
+    const shownBefore = viewIdAt(target.rt, targetNode);
+    target.rt.store.dispatch(
+      navigationActions.openImport({
         target: { kind: "tile", nodeId: targetNode },
-        prefill: text,
-        from: "clipboard",
+        prefill: "",
+        from: null,
       }),
     );
 
-    const [commit] = perform(target, { kind: "importIntoTile", nodeId: targetNode });
-    void commit; // the verb opens the dialog; the dialog commits, below.
-    const result = target.dispatch(
-      (await import("../src/store/effects")).commitImport(text) as AppThunk<{ ok: boolean }>,
-    );
+    const result = target.rt.store.dispatch(commitImport(text) as AppThunk<{ ok: boolean }>);
     expect(result.ok).toBe(true);
 
-    const tree = target.getState().layout.spaces[0]?.tree as Extract<Node, { type: "split" }>;
-    const replaced = tree.a as Extract<Node, { type: "leaf" }>;
-    // The TARGET's node id is kept: the tile is being re-pointed, not replaced.
-    expect(replaced.id).toBe(targetNode);
-    const importedView = target.getState().layout.views[replaced.viewId]!;
+    // The TARGET's placement id is kept: the tile is re-pointed, not replaced —
+    // and it now shows a NEW logical view.
+    const shownAfter = viewIdAt(target.rt, targetNode);
+    expect(shownAfter).toBeDefined();
+    expect(shownAfter).not.toBe(shownBefore);
+    const importedView = target.rt.core.getState().document.views[shownAfter]!;
     expect(importedView.appId).toBe("chart");
     expect(importedView.documents.primary).toBeDefined();
-    // A fresh document, not the exporting store's id.
+    // A fresh document, not the exporting runtime's id.
     expect(importedView.documents.primary).not.toBe(doc);
-    expect(Object.keys(target.getState().world.docs)).toContain(importedView.documents.primary);
+    expect(Object.keys(target.rt.store.getState().world.docs)).toContain(
+      importedView.documents.primary,
+    );
+    // The view the tile used to show was placed nowhere else, so it is gone
+    // rather than left as an unplaced orphan.
+    expect(target.rt.core.getState().document.views[shownBefore]).toBeUndefined();
     // And the dialog is closed.
-    expect(target.getState().layout.pendingImport).toBeNull();
+    expect(target.rt.store.getState().navigation.pendingImport).toBeNull();
   });
 
-  test("committing text that does not parse reports the reason and changes nothing", async () => {
-    const { layout, nodeId } = oneChartTile();
-    const store = makeStore({ preloaded: { layout }, seed: false });
-    store.dispatch(
-      layoutActions.openImport({ target: { kind: "tile", nodeId }, prefill: "", from: null }),
+  test("committing text that does not parse reports the reason and changes nothing", () => {
+    const { rt, nodeId } = oneChartTile();
+    rt.store.dispatch(
+      navigationActions.openImport({ target: { kind: "tile", nodeId }, prefill: "", from: null }),
     );
-    const { commitImport } = await import("../src/store/effects");
-    const result = store.dispatch(
+    const revision = rt.core.getState().revision;
+    const result = rt.store.dispatch(
       commitImport("site,mean_temp\nnorth,21.4") as AppThunk<{
         ok: boolean;
         reason?: string;
@@ -284,13 +272,14 @@ describe("importing never depends on reading the clipboard", () => {
     );
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("that is not a DATALAB layout");
+    expect(rt.core.getState().revision).toBe(revision);
     // The dialog stays open, because the user has to be able to fix the text.
-    expect(store.getState().layout.pendingImport).not.toBeNull();
+    expect(rt.store.getState().navigation.pendingImport).not.toBeNull();
   });
 });
 
 describe("a dialog is never persisted (DR-69)", () => {
-  /** A localStorage stand-in, because bun has no DOM. */
+  /** A localStorage stand-in, because the test runner has no DOM. */
   function fakeStorage() {
     const map = new Map<string, string>();
     return {
@@ -305,36 +294,42 @@ describe("a dialog is never persisted (DR-69)", () => {
     };
   }
 
-  test("save() writes no pendingImport and no renamingId, however open they are", () => {
+  test("save() writes no pendingImport, renamingId or launcher, however open they are", () => {
     const storage = fakeStorage();
     storage.install();
 
-    const { layout, nodeId } = oneChartTile();
-    const store = makeStore({ preloaded: { layout }, seed: false });
-    store.dispatch(
-      layoutActions.openImport({
+    const { rt, nodeId } = oneChartTile();
+    rt.store.dispatch(
+      navigationActions.openImport({
         target: { kind: "tile", nodeId },
         prefill: '{"format":"datadrop.layout"}',
         from: "clipboard",
       }),
     );
-    store.dispatch(layoutActions.beginRename(nodeId));
+    rt.store.dispatch(navigationActions.beginRename(nodeId));
+    rt.store.dispatch(navigationActions.openLauncher({ kind: "replace", placementId: nodeId }));
 
-    const { world, layout: after } = store.getState();
-    expect(after.pendingImport).not.toBeNull();
-    expect(after.renamingId).toBe(nodeId);
+    const { world, navigation } = rt.store.getState();
+    expect(navigation.pendingImport).not.toBeNull();
+    expect(navigation.renamingId).toBe(nodeId);
+    expect(navigation.launcher).not.toBeNull();
 
-    save("k", world, after);
+    const { document, session } = rt.core.getState();
+    save("k", world, { document, workspaceId: session.workspaceId }, navigation);
     const written = storage.map.get("k") as string;
     // Enumerated rather than spread, so the next transient field added to the
     // slice has to make a decision here rather than relying on someone
     // remembering. Without it the 500 ms debounce persists an open dialog and a
     // reload reopens it over a tile that may be gone.
-    expect(written).not.toContain("pendingImport");
-    expect(written).not.toContain("renamingId");
+    const stored = JSON.parse(written);
+    expect(Object.keys(stored.navigation)).not.toContain("pendingImport");
+    expect(Object.keys(stored.navigation)).not.toContain("renamingId");
+    expect(Object.keys(stored.navigation)).not.toContain("launcher");
     expect(written).not.toContain("datadrop.layout");
     // And the durable fields ARE there.
-    expect(JSON.parse(written).layout.spaces).toHaveLength(1);
-    expect(JSON.parse(written).layout.stages).toHaveLength(1);
+    expect(stored.navigation.stages).toHaveLength(1);
+    expect(Object.keys(stored.navigation.workspace)).toHaveLength(1);
+    expect(stored.workbench.workspaces).toHaveLength(1);
+    expect(stored.workspaceId).toBe(session.workspaceId);
   });
 });

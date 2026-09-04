@@ -53,12 +53,12 @@ export function WorkbenchProviders({ children }: { children: ReactNode }) {
    */
   const perform = useCallback(
     (verb: Verb) => {
-      const { world, layout } = store.getState();
-      // Unchanged in shape by DATADROP-8: `actionsForVerb` now takes the whole
-      // state and may return a thunk, and RTK's dispatch takes thunks — so the
-      // loop is the same loop. The cast is because `useDispatch` is untyped
-      // here; the store's own `AppDispatch` knows about thunks.
-      for (const action of actionsForVerb(verb, { world, layout }, environment)) {
+      const { world } = store.getState();
+      // `actionsForVerb` may return a thunk, and RTK's dispatch takes thunks —
+      // so the loop is the same loop. A spatial verb's thunk reaches the
+      // workbench controller through the store's extra argument. The cast is
+      // because `useDispatch` is untyped here; `AppDispatch` knows about thunks.
+      for (const action of actionsForVerb(verb, { world }, environment)) {
         (dispatch as (action: unknown) => unknown)(action);
       }
     },
@@ -71,7 +71,9 @@ export function WorkbenchProviders({ children }: { children: ReactNode }) {
    * observable in the console rather than silent.
    */
   const refuse = useCallback((refusal: { code: string; because?: string; action?: string }) => {
-    console.warn(`datalab: refused ${refusal.action ?? "action"} (${refusal.code})${refusal.because ? ` — ${refusal.because}` : ""}`);
+    console.warn(
+      `datalab: refused ${refusal.action ?? "action"} (${refusal.code})${refusal.because ? ` — ${refusal.because}` : ""}`,
+    );
   }, []);
 
   return (

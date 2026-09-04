@@ -1,7 +1,11 @@
+import { sequentialIds } from "@hyperslop-systems/workbench-core";
 import { describe, expect, test } from "vitest";
+import "../src/apps/all";
 import type { Lesson } from "../src/appkit/lessons";
+import { datalabManifests } from "../src/appkit/workbenchApps";
 import type { AcceptResult } from "../src/pbui";
-import { makeStore, type AppStore } from "../src/store";
+import { createDatalabRuntime, type DatalabRuntime } from "../src/store/runtime";
+import { singleStageSeed, tile } from "../src/store/seed";
 import {
   TOUR_FIXTURES,
   objectsSeed,
@@ -18,25 +22,37 @@ import { briefGoals, briefHints } from "../src/tour/lessons/brief";
 /**
  * **The anti-rot test.** This is the whole reason the tutorial is executable.
  *
- * For every lesson with a ▶ runner: run it against a real store, then ask its
- * own `done` predicate. If the two disagree, the lesson is broken — the ▶
+ * For every lesson with a ▶ runner: run it against a real runtime, then ask
+ * its own `done` predicate. If the two disagree, the lesson is broken — the ▶
  * button does something the step does not describe, or describes something it
  * does not do. Either way a reader presses ▶, watches the panel change, and
  * gets no tick.
  *
  * A screenshot walkthrough is wrong within a month and tells nobody. This
  * fails in CI the moment an action creator is renamed, a reducer's payload
- * shape changes, or a predicate is written to a column that no longer exists.
- * That property is why `Tutorial.tsx`'s docstring calls the tutorials "the
- * cheapest regression test in the project", and this generalises it.
+ * shape changes, a controller method changes its contract, or a predicate is
+ * written to a column that no longer exists. That property is why
+ * `Tutorial.tsx`'s docstring calls the tutorials "the cheapest regression test
+ * in the project", and this generalises it.
  *
- * Predicates are pure functions of `RootState` (DR-49), so none of this needs a
- * DOM, a Provider, or a rendered component.
+ * Predicates are pure functions of `RootState` and the core's state (DR-49,
+ * PBUI-DATALAB-WORKBENCH-1), so none of this needs a DOM, a Provider, or a
+ * rendered component.
  */
 
-/** A store seeded exactly as its tour section seeds it. */
-function storeFor(seed: Seed) {
-  return makeStore({ preloaded: seed, fixtures: TOUR_FIXTURES, seed: false });
+const apps = datalabManifests();
+
+/** A runtime seeded exactly as its tour section seeds it. */
+function runtimeFor(seed: Seed): DatalabRuntime {
+  return createDatalabRuntime({
+    seed: seed.seed,
+    world: seed.world,
+    apps,
+    ids: sequentialIds(),
+    fixtures: TOUR_FIXTURES,
+    seedDocuments: false,
+    ownership: "trust",
+  });
 }
 
 /**
@@ -46,35 +62,50 @@ function storeFor(seed: Seed) {
  * In the application it waits for a click; here the runner needs *an* answer,
  * and what it does with it is what is under test.
  */
-async function runAndCheck(lesson: Lesson, store: AppStore, acceptWith: unknown) {
+async function runAndCheck(lesson: Lesson, rt: DatalabRuntime, acceptWith: unknown) {
   await lesson.run?.({
-    dispatch: store.dispatch,
-    getState: () => store.getState(),
+    dispatch: rt.store.dispatch,
+    getState: () => rt.store.getState(),
     accept: async (request) =>
       ({
         type: typeof request.types === "string" ? request.types : request.types[0],
         value: acceptWith,
       }) as AcceptResult,
+    workbench: rt.controller,
   });
-  return lesson.done?.(store.getState()) ?? null;
+  return lesson.done?.(rt.store.getState(), rt.core.getState()) ?? null;
 }
 
-const TRACKS: Array<[string, Lesson[], () => AppStore, unknown]> = [
-  ["objects", objectsLessons, () => storeFor(objectsSeed()), { docId: null, name: "data.temp_c" }],
-  ["layout", layoutLessons, () => storeFor(layoutSeed()), null],
-  ["grammar", grammarLessons, () => storeFor(grammarSeed()), { docId: null, name: "data.station" }],
+const TRACKS: Array<[string, Lesson[], () => DatalabRuntime, unknown]> = [
+  [
+    "objects",
+    objectsLessons,
+    () => runtimeFor(objectsSeed()),
+    { docId: null, name: "data.temp_c" },
+  ],
+  ["layout", layoutLessons, () => runtimeFor(layoutSeed()), null],
+  [
+    "grammar",
+    grammarLessons,
+    () => runtimeFor(grammarSeed()),
+    { docId: null, name: "data.station" },
+  ],
 ];
 
 describe("every ▶ satisfies its own predicate", () => {
   for (const [track, lessons, build, acceptWith] of TRACKS) {
     for (const lesson of lessons.filter((l) => l.run && l.done)) {
       test(`${track}/${lesson.id} — ${lesson.title}`, async () => {
-        // A fresh store per lesson: a step must work from the section's
+        // A fresh runtime per lesson: a step must work from the section's
         // starting state, not from whatever the previous step happened to
         // leave. A reader arriving at step 4 by their own route has not
         // necessarily performed steps 1 to 3 the way ▶ would.
-        const store = build();
-        expect(await runAndCheck(lesson, store, acceptWith)).toBe(true);
+        const rt = build();
+        try {
+          expect(await runAndCheck(lesson, rt, acceptWith)).toBe(true);
+        } finally {
+          rt.dispose();
+        }
       });
     }
   }
@@ -138,18 +169,31 @@ describe("the brief", () => {
     // The failure this catches is specific and has happened: a goal comparing
     // two tile docIds was true when both were null, so the brief opened at 1/5
     // before the reader had touched anything.
-    const store = storeFor(briefSeed());
-    const met = briefGoals.filter((goal) => goal.done(store.getState()));
+    const rt = runtimeFor(briefSeed());
+    const met = briefGoals.filter((goal) => goal.done(rt.store.getState(), rt.core.getState()));
     expect(met.map((goal) => goal.id)).toEqual([]);
+    rt.dispose();
   });
 
   test("a predicate that throws is not the reader's problem", () => {
     // Every goal runs against a world with no documents at all, which is a
     // state the reader can reach by deleting things. None may throw.
-    const empty = makeStore({ seed: false, fixtures: TOUR_FIXTURES });
+    const ids = sequentialIds();
+    const empty = createDatalabRuntime({
+      seed: singleStageSeed("empty", tile("brief"), { apps, ids }),
+      apps,
+      ids,
+      fixtures: TOUR_FIXTURES,
+      seedDocuments: false,
+      ownership: "trust",
+    });
     for (const goal of briefGoals) {
-      expect(() => goal.done(empty.getState()), `${goal.id} threw`).not.toThrow();
+      expect(
+        () => goal.done(empty.store.getState(), empty.core.getState()),
+        `${goal.id} threw`,
+      ).not.toThrow();
     }
+    empty.dispose();
   });
 
   test("there are hints, and the last one is not the answer", () => {

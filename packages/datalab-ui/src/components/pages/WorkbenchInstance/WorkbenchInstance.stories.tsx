@@ -3,10 +3,12 @@ import { WorkbenchInstance } from "./WorkbenchInstance";
 import { fixturesFrom } from "../../../api/fixtures";
 import { readings, census } from "../../../fixtures";
 import { createDefaultGraphic, fieldRef } from "../../../model/graphicAuthoring";
-import { split } from "../../../store/layout";
-import { singleStageLayout } from "../../../store/stages";
+import { split, tile } from "../../../store/seed";
 import { newId } from "../../../store/world";
 import { AnalysisProvider } from "../../../appkit/AnalysisProvider";
+import { datalabSingleStageSeed } from "../../../appkit/workbench";
+// The seeds below are built at module load, over the registered applications.
+import "../../../apps/all";
 
 /**
  * A sandboxed workbench, and — the story that matters — two of them.
@@ -52,13 +54,9 @@ type Story = StoryObj<typeof meta>;
 
 /** The layout a tour section teaching the grammar would seed. */
 function grammarSpaces() {
-  return singleStageLayout("build", (builder) =>
-    split(
-      "row",
-      split("col", builder.leaf("pipeline"), builder.leaf("encode"), 0.55),
-      builder.leaf("chart"),
-      0.46,
-    ),
+  return datalabSingleStageSeed(
+    "build",
+    split("row", 0.46, split("col", 0.55, tile("pipeline"), tile("encode")), tile("chart")),
   );
 }
 
@@ -95,15 +93,11 @@ function seededAuthoringWorld() {
 
 /** Chart beside table, both on one document — the pair §B teaches. */
 function chartAndTable() {
-  return singleStageLayout("look", (builder) =>
-    split("row", builder.leaf("chart"), builder.leaf("table"), 0.55),
-  );
+  return datalabSingleStageSeed("look", split("row", 0.55, tile("chart"), tile("table")));
 }
 
 function authorAndChart() {
-  return singleStageLayout("author", (builder) =>
-    split("row", builder.leaf("encode"), builder.leaf("chart"), 0.42),
-  );
+  return datalabSingleStageSeed("author", split("row", 0.42, tile("encode"), tile("chart")));
 }
 
 /**
@@ -123,7 +117,7 @@ export const WithFixtures: Story = {
   args: {
     config: {
       fixtures: fixturesFrom(readings, census),
-      preloaded: { world: seededWorld(), layout: chartAndTable() },
+      preloaded: { world: seededWorld(), seed: chartAndTable() },
       apps: ["chart", "table", "pipeline", "encode", "sources", "launcher"],
       workspaces: false,
     },
@@ -146,7 +140,7 @@ export const AuthoringWithFixtures: Story = {
   args: {
     config: {
       fixtures: fixturesFrom(readings),
-      preloaded: { world: seededAuthoringWorld(), layout: authorAndChart() },
+      preloaded: { world: seededAuthoringWorld(), seed: authorAndChart() },
       apps: ["chart", "encode"],
       workspaces: false,
     },
@@ -215,15 +209,15 @@ export const Default: Story = {
 /**
  * A narrowed vocabulary (DR-53).
  *
- * The tile dropdown offers six applications rather than all twenty-five, because a
+ * The launcher offers six applications rather than all twenty-five, because a
  * section teaching the grammar of graphics has no business offering the token
- * manager. Open a tile's application picker to see it.
+ * manager. Open a tile's ⌕ (or Mod+K) to see it.
  */
 export const ScopedApplications: Story = {
   args: {
     config: {
       apps: ["chart", "table", "pipeline", "encode", "sources", "launcher"],
-      preloaded: { layout: grammarSpaces() },
+      preloaded: { seed: grammarSpaces() },
       workspaces: false,
     },
   },
@@ -247,13 +241,13 @@ export const TwoInstances: Story = {
   render: () => (
     <div style={{ display: "flex", gap: 16, height: 460, padding: 8 }}>
       <div data-testid="left" style={{ display: "flex", flex: 1, minWidth: 0 }}>
-        <WorkbenchInstance config={{ preloaded: { layout: grammarSpaces() }, workspaces: false }} />
+        <WorkbenchInstance config={{ preloaded: { seed: grammarSpaces() }, workspaces: false }} />
       </div>
       <div data-testid="right" style={{ display: "flex", flex: 1, minWidth: 0 }}>
         <WorkbenchInstance
           config={{
             apps: ["chart", "table", "launcher"],
-            preloaded: { layout: grammarSpaces() },
+            preloaded: { seed: grammarSpaces() },
             workspaces: false,
           }}
         />
@@ -306,13 +300,15 @@ export const TwoInstances: Story = {
       }
     });
 
-    await step("the scoped instance offers fewer applications", async () => {
-      const options = (root: HTMLElement) =>
-        root.querySelectorAll('[aria-label="application"] option').length;
-      // Left is unscoped (every registered application); right names three.
-      if (options(side("right")) >= options(side("left"))) {
-        throw new Error("the app scope had no effect on the right instance's picker");
-      }
+    await step("each instance lays out its own seed's three tiles", async () => {
+      // `[data-placement-id]` is the shell's own marker, one per tile. Both
+      // seeds have three leaves; a shared core would show one document's
+      // tiles twice, or six once. (The old per-tile application dropdown is
+      // gone — scoping now lives in the launcher modal, which a play cannot
+      // open in two instances at once.)
+      const tiles = (root: HTMLElement) => root.querySelectorAll("[data-placement-id]").length;
+      if (tiles(side("left")) !== 3) throw new Error("left did not render its three tiles");
+      if (tiles(side("right")) !== 3) throw new Error("right did not render its three tiles");
     });
   },
 };

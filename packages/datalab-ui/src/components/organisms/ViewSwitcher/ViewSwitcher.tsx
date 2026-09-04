@@ -1,20 +1,15 @@
-import { useMemo, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useRef } from "react";
+import { useSelector } from "react-redux";
 import { Button, SectionLabel, Stack, Text } from "@hyperslop-systems/pbui";
 import { useAvailableApps } from "../../../appkit/AppScope";
+import { useDatalabWorkbench } from "../../../appkit/DatalabWorkbenchContext";
 import { appFor } from "../../../appkit/registry";
 import type { RootState } from "../../../store";
-import { layoutActions, type Node, type NodeId, type ViewId } from "../../../store/layout";
 import { buildViewSwitcherModel } from "./model";
 import styles from "./ViewSwitcher.module.css";
 
-function countView(node: Node, viewId: ViewId): number {
-  if (node.type === "leaf") return node.viewId === viewId ? 1 : 0;
-  return countView(node.a, viewId) + countView(node.b, viewId);
-}
-
 export interface ViewSwitcherProps {
-  placementId: NodeId;
+  placementId: string;
   onComplete?: () => void;
 }
 
@@ -22,67 +17,49 @@ export interface ViewSwitcherProps {
  * The compact, embedded view picker.
  *
  * Once the whole of Launcher and Replace; now neither of them — DATALAB-VIEW-001
- * moved both into `LauncherDialog`, because a list whose geometry depends on
- * the tile it happens to be inside cannot be searched comfortably and cannot
- * carry workspace grouping.
- *
- * It survives as the flat, no-search fallback: it needs no modal, no keyboard
- * routing and no surface stack, which keeps it renderable in isolation in a
- * story and usable as a picker anywhere a dialog would be too much. The
- * `mode="replace"` variant and its `window` Escape listener are gone with the
- * body takeover they served.
+ * moved both into `LauncherDialog`. It survives as the flat, no-search
+ * fallback: it needs no modal, no keyboard routing and no surface stack, which
+ * keeps it renderable in isolation in a story. The views and their placements
+ * are read off the core's document and index; a choice is a controller call.
  */
 export function ViewSwitcher({ placementId, onComplete }: ViewSwitcherProps) {
-  const dispatch = useDispatch();
   const root = useRef<HTMLElement>(null);
+  const workbench = useDatalabWorkbench();
   const apps = useAvailableApps();
-  const layout = useSelector((state: RootState) => state.layout);
+  const document = workbench.shell.useDocument();
+  const index = workbench.shell.useCoreState((state) => state.index);
+  const workspaceId = workbench.shell.useCoreState((state) => state.session.workspaceId);
   const activeDocId = useSelector((state: RootState) => state.world.activeDocId);
   const docs = useSelector((state: RootState) => state.world.docs);
 
-  const currentViewId = useMemo(() => {
-    const visit = (node: Node): ViewId | null => {
-      if (node.type === "leaf") return node.id === placementId ? node.viewId : null;
-      return visit(node.a) ?? visit(node.b);
-    };
-    for (const space of layout.spaces) {
-      const found = visit(space.tree);
-      if (found) return found;
-    }
-    return null;
-  }, [layout.spaces, placementId]);
-
-  const currentSpace = layout.spaces.find((space) => space.id === layout.currentSpaceId);
+  const currentViewId = index.viewByPlacementId.get(placementId) ?? null;
   const model = buildViewSwitcherModel({
     apps,
-    views: layout.views,
-    viewOrder: layout.viewOrder,
+    views: document.views,
+    viewOrder: document.viewOrder,
     currentViewId,
     appFor,
-    placementCount: (viewId) =>
-      layout.spaces.reduce((count, space) => count + countView(space.tree, viewId), 0),
+    placementCount: (viewId) => index.placementsByViewId.get(viewId)?.length ?? 0,
     shownInCurrentWorkspace: (viewId) =>
-      currentSpace ? countView(currentSpace.tree, viewId) > 0 : false,
+      (index.placementsByViewId.get(viewId) ?? []).some((ref) => ref.workspaceId === workspaceId),
   });
 
   const finish = () => {
     onComplete?.();
   };
 
-  const chooseView = (viewId: ViewId) => {
-    dispatch(layoutActions.replacePlacementWithView({ nodeId: placementId, viewId }));
+  const chooseView = (viewId: string) => {
+    workbench.controller.replacePlacement(placementId, { kind: "existing", viewId });
     finish();
   };
 
   const chooseApp = (appId: string) => {
     const descriptor = appFor(appId);
-    dispatch(
-      layoutActions.createViewInPlacement({
-        nodeId: placementId,
-        appId,
-        docId: descriptor?.docBound ? activeDocId : null,
-      }),
-    );
+    workbench.controller.replacePlacement(placementId, {
+      kind: "application",
+      appId,
+      docId: descriptor?.docBound ? activeDocId : null,
+    });
     finish();
   };
 
@@ -110,7 +87,7 @@ export function ViewSwitcher({ placementId, onComplete }: ViewSwitcherProps) {
                     onClick={() => chooseView(view.id)}
                   >
                     <span className={styles.option}>
-                      <strong>{view.title ?? derived ?? view.appId}</strong>
+                      <strong>{view.title || derived || view.appId}</strong>
                       <small>
                         {app?.title ?? view.appId}
                         {doc ? ` · ${doc.name}` : ""}

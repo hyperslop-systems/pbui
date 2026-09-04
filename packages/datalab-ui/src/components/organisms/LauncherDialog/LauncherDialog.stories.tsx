@@ -1,9 +1,10 @@
 import { useEffect, useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Provider, useDispatch } from "react-redux";
-import { makeStore } from "../../../store";
-import { layoutActions, split, type Node, type NodeId } from "../../../store/layout";
-import { singleStageLayout } from "../../../store/stages";
+import { leaves } from "@hyperslop-systems/workbench-protocol/client";
+import { DatalabWorkbenchProvider } from "../../../appkit/DatalabWorkbenchContext";
+import { createDatalabWorkbench, datalabSingleStageSeed } from "../../../appkit/workbench";
+import { navigationActions } from "../../../store/navigation";
+import { split, tile } from "../../../store/seed";
 import { LauncherDialog } from "./LauncherDialog";
 import "../../../apps/all";
 
@@ -40,7 +41,7 @@ function Typed({ text }: { text: string }) {
   return null;
 }
 
-function invocationFor(scenario: Scenario, placementId: NodeId) {
+function invocationFor(scenario: Scenario, placementId: string) {
   if (scenario === "replace" || scenario === "out-of-scope") {
     return { kind: "replace" as const, placementId };
   }
@@ -53,14 +54,6 @@ function invocationFor(scenario: Scenario, placementId: NodeId) {
   return { kind: "fill-launcher" as const, placementId };
 }
 
-function Opener({ scenario, placementId }: { scenario: Scenario; placementId: NodeId }) {
-  const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(layoutActions.openLauncher(invocationFor(scenario, placementId)));
-  }, [dispatch, scenario, placementId]);
-  return null;
-}
-
 const QUERY: Partial<Record<Scenario, string>> = {
   "query-workspace": "ws2 yield",
   "query-new": "+chart",
@@ -69,54 +62,58 @@ const QUERY: Partial<Record<Scenario, string>> = {
   "navigate-new": "+chart",
 };
 
+/** Named rather than inline: `test/stories.test.ts` takes the first quoted `title` key in the file as the meta title. */
+const CHART_TITLE = "Yield by production line";
+
+const viewIdOf = (leaf: { body: { case?: string; value?: unknown } }): string =>
+  leaf.body.case === "leaf" ? (leaf.body.value as { viewId: string }).viewId : "";
+
 function LauncherStory({ scenario }: { scenario: Scenario }) {
   const fixture = useMemo(() => {
-    let placementId: NodeId = "";
-    const layout = singleStageLayout("story", (builder) => {
-      const launcher = builder.leaf("launcher");
-      placementId = launcher.id;
-      const chart = builder.leaf("chart", null, "Yield by production line");
-      return split("row", launcher, split("col", chart, builder.leaf("table"), 0.5), 0.42);
-    });
+    const seed = datalabSingleStageSeed(
+      "story",
+      split(
+        "row",
+        0.42,
+        tile("launcher"),
+        split("col", 0.5, tile("chart", { title: CHART_TITLE }), tile("table")),
+      ),
+    );
+    const workbench = createDatalabWorkbench({ seed });
+    const first = seed.document.workspaces[0]!;
+    const tiles = leaves(first.tree);
+    const placementId = tiles[0]!.id;
+    const chartViewId =
+      tiles.map(viewIdOf).find((id) => seed.document.views[id]?.appId === "chart") ?? "";
 
     // A second workspace holding a linked copy of the first chart, so `ws2`
-    // has something to find and the linked/total counts are exercised.
-    const first = layout.spaces[0];
-    const chartLeaf = first
-      ? (function find(node: Node): Extract<Node, { type: "leaf" }> | null {
-          if (node.type === "leaf") {
-            return layout.views[node.viewId]?.appId === "chart" ? node : null;
-          }
-          return find(node.a) ?? find(node.b);
-        })(first.tree)
-      : null;
-
-    if (first && chartLeaf) {
-      layout.spaces = [
-        first,
-        {
-          id: "story-b",
-          name: "explore",
-          stageId: first.stageId,
-          tree: { id: "story-b-leaf", type: "leaf", viewId: chartLeaf.viewId },
-          // The out-of-scope scenario gives the *other* workspace an allow-list
-          // the target does not share, which is the §8.4 case: the row is still
-          // listed under its own workspace and cannot be placed here.
-          ...(scenario === "out-of-scope" ? { apps: ["chart", "encoding"] } : {}),
-        },
-      ];
-      if (scenario === "out-of-scope") first.apps = ["table", "launcher"];
+    // has something to find and the linked/total counts are exercised. Made
+    // through the controller — the same door the strip's "+" uses.
+    const created = workbench.controller.createWorkspace({ name: "explore", select: false });
+    if (created.ok && created.workspaceId) {
+      const tree = workbench.core.getState().index.workspaceById.get(created.workspaceId)?.tree;
+      const leaf = leaves(tree)[0];
+      if (leaf) {
+        workbench.controller.replacePlacement(leaf.id, { kind: "existing", viewId: chartViewId });
+      }
+      // The out-of-scope scenario gives the *other* workspace an allow-list
+      // the target does not share, which is the §8.4 case: the row is still
+      // listed under its own workspace and cannot be placed here.
+      if (scenario === "out-of-scope") {
+        workbench.controller.setWorkspaceApps(created.workspaceId, ["chart", "encoding"]);
+        workbench.controller.setWorkspaceApps(first.id, ["table", "launcher"]);
+      }
     }
 
-    return { store: makeStore({ preloaded: { layout } }), placementId };
+    workbench.store.dispatch(navigationActions.openLauncher(invocationFor(scenario, placementId)));
+    return { workbench, placementId };
   }, [scenario]);
 
   return (
-    <Provider store={fixture.store}>
-      <Opener scenario={scenario} placementId={fixture.placementId} />
+    <DatalabWorkbenchProvider workbench={fixture.workbench}>
       <Typed text={QUERY[scenario] ?? ""} />
       <LauncherDialog />
-    </Provider>
+    </DatalabWorkbenchProvider>
   );
 }
 

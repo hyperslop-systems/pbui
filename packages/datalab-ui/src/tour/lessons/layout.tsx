@@ -1,27 +1,21 @@
-import type { Lesson } from "../../appkit/lessons";
-import { layoutActions, type Node } from "../../store/layout";
+import { leavesOfWorkspace } from "@hyperslop-systems/workbench-core";
+import type { Lesson, LessonWorkbench } from "../../appkit/lessons";
 
-/** Every leaf of the current workspace, flattened. */
-function leaves(state: Parameters<NonNullable<Lesson["done"]>>[0]) {
-  const space = state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId);
-  if (!space) return [];
-  const out: Array<{ id: string; app: string; docId: string | null }> = [];
-  const walk = (node: Node): void => {
-    if (node.type === "leaf") {
-      const view = state.layout.views[node.viewId];
-      if (view) {
-        out.push({
-          id: node.id,
-          app: view.appId,
-          docId: view.documents.primary ?? null,
-        });
-      }
-    } else {
-      walk(node.a);
-      walk(node.b);
+/** Every leaf of the current workspace, flattened, from the core's state. */
+function leaves(workbench: LessonWorkbench) {
+  const out: Array<{ id: string; viewId: string; app: string; docId: string | null }> = [];
+  for (const node of leavesOfWorkspace(workbench.index, workbench.session.workspaceId)) {
+    if (node.body.case !== "leaf") continue;
+    const view = workbench.document.views[node.body.value.viewId];
+    if (view) {
+      out.push({
+        id: node.id,
+        viewId: view.id,
+        app: view.appId,
+        docId: view.documents.primary ?? null,
+      });
     }
-  };
-  walk(space.tree);
+  }
   return out;
 }
 
@@ -33,11 +27,9 @@ function leaves(state: Parameters<NonNullable<Lesson["done"]>>[0]) {
  * because they are not copies; re-point one and the link is gone, because
  * nothing was ever wired between them.
  *
- * Every predicate here reads `state.layout` rather than `state.world`, which is
- * the concrete payoff of DR-49. The prototype cannot do this — its tile tree
- * lives in the shell's `useState`, so it publishes a summary through a ref
- * written during render (`pbui-landing.jsx:1667-1674`) and every layout
- * predicate reads that instead. Ours is a plain selector.
+ * Every predicate here reads the WORKBENCH argument rather than `state.world`
+ * (PBUI-DATALAB-WORKBENCH-1): the tree lives in the core, and a predicate
+ * gets its state as a value, exactly as it gets the world.
  */
 export const layoutLessons: Lesson[] = [
   {
@@ -65,11 +57,11 @@ export const layoutLessons: Lesson[] = [
         tile.
       </>
     ),
-    run: ({ dispatch, getState }) => {
-      const first = leaves(getState())[0];
-      if (first) dispatch(layoutActions.splitLeaf({ nodeId: first.id, dir: "col" }));
+    run: ({ workbench }) => {
+      const first = leaves(workbench.core.getState())[0];
+      if (first) workbench.splitTile(first.id, "col");
     },
-    done: (state) => leaves(state).length > 2,
+    done: (_state, workbench) => leaves(workbench).length > 2,
   },
   {
     id: "b3",
@@ -82,37 +74,20 @@ export const layoutLessons: Lesson[] = [
         spawns a brand-new document into that tile.
       </>
     ),
-    run: ({ dispatch, getState }) => {
-      const state = getState();
-      const bound = leaves(state).filter((leaf) => leaf.app === "chart" || leaf.app === "table");
-      const second = state.world.docOrder[1];
+    run: ({ getState, workbench }) => {
+      const bound = leaves(workbench.core.getState()).filter(
+        (leaf) => leaf.app === "chart" || leaf.app === "table",
+      );
+      const second = getState().world.docOrder[1];
       const target = bound[1] ?? bound[0];
-      if (target && second) {
-        const placement = state.layout.spaces
-          .flatMap((space) => {
-            const found: Array<{ id: string; viewId: string }> = [];
-            const walk = (node: Node): void => {
-              if (node.type === "leaf") found.push(node);
-              else {
-                walk(node.a);
-                walk(node.b);
-              }
-            };
-            walk(space.tree);
-            return found;
-          })
-          .find((node) => node.id === target.id);
-        if (placement) {
-          dispatch(layoutActions.setViewDocument({ viewId: placement.viewId, docId: second }));
-        }
-      }
+      if (target && second) workbench.rebindView(target.viewId, second);
     },
     // Two DIFFERENT documents visible at once — which is the state the lesson
     // is about, and which a check for "the dropdown changed" would miss when
     // the reader used ＋ instead.
-    done: (state) => {
+    done: (_state, workbench) => {
       const shown = new Set(
-        leaves(state)
+        leaves(workbench)
           .filter((leaf) => leaf.docId != null)
           .map((leaf) => leaf.docId),
       );
@@ -136,10 +111,10 @@ export const layoutLessons: Lesson[] = [
         different, then switch back: exactly as you left it.
       </>
     ),
-    run: ({ dispatch }) => {
-      dispatch(layoutActions.addSpace("scratch"));
+    run: ({ workbench }) => {
+      workbench.createWorkspace({ name: "scratch" });
     },
-    done: (state) => state.layout.spaces.length > 1,
+    done: (_state, workbench) => workbench.document.workspaces.length > 1,
   },
   {
     id: "b5",

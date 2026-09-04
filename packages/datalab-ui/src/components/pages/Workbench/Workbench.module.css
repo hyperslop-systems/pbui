@@ -78,3 +78,22 @@
   align-items: center;
   padding: var(--pbui-space-1) var(--pbui-space-3);
 }
+
+/* The workbench Surface fills the canvas; the shell's own grid does the rest. */
+.surface {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/*
+ * The active tile, marked only while Datalab's launcher is open (DATALAB-VIEW-001
+ * §10.3). The workbench shell keys its own outline on ITS launcher, which
+ * Datalab does not mount; `data-launcher-open` on `.shell` is Datalab's, so
+ * the same ring is drawn from here. An outline rather than a border, so
+ * nothing reflows when it appears.
+ */
+.shell[data-launcher-open] :global([data-part="workbench-tile"][data-active] > [data-part="tile"]) {
+  outline: 2px solid var(--pbui-selected);
+  outline-offset: -2px;
+}

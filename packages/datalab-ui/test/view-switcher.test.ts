@@ -1,7 +1,8 @@
+import { create } from "@bufbuild/protobuf";
+import { AppViewSchema, type AppView } from "@hyperslop-systems/workbench-protocol";
 import { describe, expect, test } from "vitest";
 import type { AppDescriptor } from "../src/appkit/registry";
 import { buildViewSwitcherModel } from "../src/components/organisms/ViewSwitcher";
-import type { AppView } from "../src/store/layout";
 
 const descriptor = (
   id: string,
@@ -16,11 +17,8 @@ const descriptor = (
   Component: () => null,
 });
 
-const view = (id: string, appId: string): AppView => ({
-  id,
-  appId,
-  documents: {},
-});
+const view = (id: string, appId: string): AppView =>
+  create(AppViewSchema, { id, appId, documents: {} });
 
 function model(options: { apps?: AppDescriptor[]; views?: AppView[]; current?: string | null }) {
   const apps = options.apps ?? [descriptor("chart"), descriptor("trace", { singleton: true })];
