@@ -751,3 +751,31 @@ There's way too many here. The web 62 / shop 28 / phone 10 should be legend olor
 
 ### Code review instructions
 - `git show 3101444`; `pbui-chat-pbuiwidget--health` on :6007.
+
+## Step 15: Feedback round four: the port badge's second box
+
+The header port badge still sat in a box: PortBadge renames the chip's `data-part` to `port-badge`, so the Step 13 rule keyed on `[data-part="chip"]` never matched. The Chip now carries a stable `data-chip` attribute and the rule keys on it.
+
+Screenshot: `various/screenshots-phases/feedback-3/ecommerce-seeded-port-badge-after.png`.
+
+### Prompt Context
+
+**User prompt (verbatim):** "This has a border nesting the actual port with dash brder. I think the port should be styled like the badget itself, and not have nested boxes. On (http://localhost:6012/iframe.html?id=shop-scenes--seeded&viewMode=story) [Image #9] <span data-pbui=\"presentation\" … data-ptype=\"port\" …><span data-part=\"port-badge\" … class=\"_chip_…\">…</span></span>"
+
+**Assistant interpretation:** The presentation around a port badge must draw nothing; the badge is the box.
+
+**Inferred user intent:** No nested boxes, anywhere.
+
+**Commit (code):** b117d22 — "PBUI-VISUAL-1 feedback 3: a renamed chip is still the box"
+
+### What I did
+- `Chip` renders `data-chip=""` (not overridable by the `data-part` passthrough); the three `:has(> [data-part="chip"])` rules key on `[data-chip]`.
+
+### What worked
+- Core 51 and ecommerce 7 green; the header reads `ORDER DETAIL  ○ ORDER · NONE` as one dotted chip.
+
+### What I learned
+- Attribute passthrough that lets a wrapper rename `data-part` is convenient for tests and fatal for selectors; a marker the wrapper cannot rename is the right hook.
+
+### Code review instructions
+- `git show b117d22`.

@@ -130,3 +130,12 @@ Feedback round three: block presentations chromeless; widget stats/notes plain, 
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/widget/children/WidgetChild/WidgetChild.tsx — Widget children
 
+
+## 2026-09-04
+
+Feedback round four: data-chip marker so a renamed chip is still its presentation's box (commit b117d22)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/atoms/Chip/Chip.tsx — data-chip marker
+
