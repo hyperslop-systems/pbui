@@ -1,3 +1,20 @@
+/*
+ * The three components that are not CSS modules — Dialog, JsonBlock,
+ * InspectorPanel — styled through `data-pbui-component` so a consumer can
+ * opt out with `data-unstyled="true"` and bring its own sheet.
+ *
+ * They used to be the only rem-based, slate-blue, rounded surfaces in the
+ * family (a 0.5rem panel radius, a 1.125rem title, `#0f172a` on `#e2e8f0`).
+ * PBUI-VISUAL-1 P2 put them on the object menu's recipe: paper or pane,
+ * hairline or firm ink border, zero radius, no blurred shadow, an inverted
+ * header in the tracked-uppercase label voice, the px space scale, monospace
+ * inherited from body. The `--pbui-dialog-*` and `--pbui-code-*` tokens stay
+ * as the override surface; their defaults in tokens.css already point at the
+ * family tokens.
+ */
+
+/* ---- Dialog -------------------------------------------------------------- */
+
 :where([data-pbui-component="dialog"]):not([data-unstyled="true"]) {
   position: fixed;
   inset: 0;
@@ -6,69 +23,103 @@
   align-items: center;
   justify-content: center;
   padding: var(--pbui-dialog-space);
+  /* A flat dim, never a blur: the tiles behind stay legible, merely inactive. */
   background: var(--pbui-dialog-backdrop);
+  font: inherit;
 }
 
-:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
-  [data-part="dialog-panel"] {
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) [data-part="dialog-panel"] {
   display: flex;
   flex-direction: column;
-  width: min(680px, 100%);
+  width: auto;
+  min-width: min(380px, 100%);
+  max-width: min(52rem, 100%);
   max-height: 100%;
   min-height: 0;
   overflow: auto;
-  border: 1px solid var(--pbui-dialog-border);
+  border: var(--pbui-dialog-border);
   border-radius: var(--pbui-dialog-radius);
   background: var(--pbui-dialog-surface);
   color: var(--pbui-dialog-text);
+  box-shadow: var(--pbui-shadow-hard);
 }
 
-:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
-  [data-part="dialog-header"],
-:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
-  [data-part="dialog-footer"] {
+/* The header is the menu header: ink bar, paper text, the label voice. */
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) [data-part="dialog-header"] {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: var(--pbui-dialog-space);
+  gap: var(--pbui-space-3);
+  flex-shrink: 0;
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
 }
 
-:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
-  [data-part="dialog-title"] {
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) [data-part="dialog-title"] {
   flex: 1;
+  min-width: 0;
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-label);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
-  [data-part="dialog-close"] {
-  border: 1px solid var(--pbui-dialog-border);
-  border-radius: 0.25rem;
+/* The tile bar's tiny framed control, on the dark bar. */
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) [data-part="dialog-close"] {
+  flex-shrink: 0;
+  border: 1px solid var(--pbui-paper);
+  border-radius: var(--pbui-dialog-radius);
+  padding: 0 var(--pbui-space-2);
   background: transparent;
   color: inherit;
+  font: inherit;
+  font-size: var(--pbui-fs-micro);
+  line-height: 1.6;
+  cursor: pointer;
 }
 
-:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
-  [data-part="dialog-body"] {
-  padding: 0 var(--pbui-dialog-space) var(--pbui-dialog-space);
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) [data-part="dialog-close"]:hover,
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) [data-part="dialog-close"]:focus-visible {
+  background: var(--pbui-paper);
+  color: var(--pbui-ink);
+  outline: none;
 }
 
-:where([data-pbui-component="dialog"]):not([data-unstyled="true"])
-  [data-part="dialog-footer"] {
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) [data-part="dialog-body"] {
+  padding: var(--pbui-dialog-space);
+  min-height: 0;
+  overflow: auto;
+}
+
+:where([data-pbui-component="dialog"]):not([data-unstyled="true"]) [data-part="dialog-footer"] {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
-  border-top: 1px solid var(--pbui-dialog-border);
+  gap: var(--pbui-space-3);
+  flex-shrink: 0;
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  border-top: var(--pbui-border-hair);
 }
+
+/* ---- JsonBlock ----------------------------------------------------------- */
 
 :where([data-pbui-component="json-block"]):not([data-unstyled="true"]) {
   box-sizing: border-box;
   width: 100%;
   margin: 0;
   overflow: auto;
-  border-radius: 0.25rem;
+  border: var(--pbui-border-grid);
+  border-radius: var(--pbui-radius);
   background: var(--pbui-code-surface);
   color: var(--pbui-code-text);
-  font: 0.8125rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
-  padding: 0.75rem;
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  line-height: var(--pbui-lh-prose);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -77,25 +128,27 @@
   color: var(--pbui-code-danger);
 }
 
+/* ---- InspectorPanel ------------------------------------------------------ */
+
 :where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"]) {
   display: grid;
   align-content: start;
-  gap: 0.75rem;
+  gap: var(--pbui-space-3);
   height: 100%;
   min-height: 0;
   overflow: auto;
-  padding: 1rem;
+  padding: var(--pbui-space-3) var(--pbui-space-4);
 }
 
-:where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"])
-  [data-part="inspector-title"] {
+:where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"]) [data-part="inspector-title"] {
   margin: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  letter-spacing: var(--pbui-track-label);
   text-transform: uppercase;
+  color: var(--pbui-faint);
 }
 
-:where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"])
-  [data-part="inspector-empty"] {
-  color: #64748b;
+:where([data-pbui-component="inspector-panel"]):not([data-unstyled="true"]) [data-part="inspector-empty"] {
+  color: var(--pbui-faint);
 }

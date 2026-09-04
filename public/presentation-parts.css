@@ -23,10 +23,18 @@
  * identically on every presentation type. */
 
 [data-part="presentation"] {
-  cursor: pointer;
-  /* A presentation is a span by default and must not stretch its parent. */
+  /* The object itself: a hairline box in the pane, inline with its text.
+   * A presentation is a span by default and must not stretch its parent. */
+  appearance: none;
   display: inline-flex;
   align-items: center;
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
+  color: var(--pbui-ink-on-pane);
+  cursor: context-menu;
+  font: inherit;
+  padding: var(--pbui-space-1) var(--pbui-space-3);
 }
 
 [data-part="presentation"]:hover {
@@ -108,6 +116,10 @@
 [data-part="menu-item"] {
   display: block;
   width: 100%;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
   text-align: left;
   padding: var(--pbui-space-2) var(--pbui-space-4);
   font-size: var(--pbui-fs-small);
@@ -129,6 +141,24 @@
 [data-part="menu-item"]:disabled {
   color: var(--pbui-faint);
   cursor: default;
+}
+
+/* The keyboard's cursor, on the object and on the entry. One ring. */
+[data-part="presentation"]:focus-visible,
+[data-part="menu-item"]:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}
+
+/* A verb that destroys or discards: the one colour a menu entry may carry. */
+[data-part="menu-item"][data-danger]:not(:disabled) {
+  color: var(--pbui-danger);
+}
+
+/* The "No actions available" placeholder is the only menu-item that is not a
+ * button (createPbui.tsx); it reads as an annotation, not an entry. */
+div[data-part="menu-item"] {
+  color: var(--pbui-faint);
 }
 
 [data-part="menu-reason"] {
@@ -158,29 +188,44 @@
   display: flex;
   flex-direction: column;
   min-width: 240px;
+  overflow: hidden;
+  font: inherit;
   background: var(--pbui-pane);
-  border: 1px solid var(--pbui-line);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  color: var(--pbui-ink-on-pane);
+  border: var(--pbui-border-firm);
+  border-radius: var(--pbui-radius);
+  box-shadow: var(--pbui-shadow-menu);
 }
 
 [data-part="accept-chooser-header"] {
-  padding: var(--pbui-space-2) var(--pbui-space-3);
+  padding: var(--pbui-space-1) var(--pbui-space-4);
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
   font-size: var(--pbui-fs-tiny);
-  color: var(--pbui-faint);
-  border-bottom: 1px solid var(--pbui-line);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-label);
 }
 
 [data-part="accept-chooser-option"] {
-  padding: var(--pbui-space-2) var(--pbui-space-3);
+  padding: var(--pbui-space-2) var(--pbui-space-4);
   text-align: left;
-  background: none;
-  border: none;
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-top: 1px dotted var(--pbui-line);
   cursor: pointer;
+}
+
+[data-part="accept-chooser-option"]:first-of-type {
+  border-top: 0;
 }
 
 [data-part="accept-chooser-option"]:hover,
 [data-part="accept-chooser-option"]:focus-visible {
-  background: var(--pbui-pane-alt);
+  background: var(--pbui-selected);
 }
 
 [data-part="accept-chooser-via"] {
@@ -307,8 +352,10 @@
 }
 
 [data-part="help-title"] {
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--pbui-track-label);
 }
 
 [data-part="help-text"],
@@ -350,7 +397,7 @@
 
 [data-part="help-notice"] {
   padding: var(--pbui-space-1) var(--pbui-space-2);
-  border-left: 3px solid var(--pbui-faint);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-faint);
 }
 
 [data-part="help-notice"][data-tone="warning"] {

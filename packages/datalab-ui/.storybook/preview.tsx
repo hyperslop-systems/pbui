@@ -4,7 +4,6 @@ import type { Preview } from "@storybook/react-vite";
 // import ahead of them (DR-13).
 import "../src/styles/reset.css";
 import "@hyperslop-systems/pbui/styles.css";
-import "@hyperslop-systems/pbui/components.css";
 import "@hyperslop-systems/plot/styles.css";
 import "../src/styles/plot.css";
 import "../src/styles/scrollbars.css";
