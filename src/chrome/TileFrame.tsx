@@ -11,7 +11,7 @@
  * doors to the same verbs. Styled by `chrome.css` through data-part hooks.
  */
 import type { ReactNode } from "react";
-import { IconButton } from "../components";
+import { IconButton } from "../components/atoms/IconButton";
 import type { DragZone } from "./useTileDrag";
 
 export interface TileFrameProps {
