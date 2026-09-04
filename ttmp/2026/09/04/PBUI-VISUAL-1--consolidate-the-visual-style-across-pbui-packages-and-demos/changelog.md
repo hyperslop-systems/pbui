@@ -76,3 +76,12 @@ P5 notices + mode banner: Callout with danger/hint/dismiss, refusal notice and a
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/molecules/Callout/Callout.tsx — The one notice
 
+
+## 2026-09-04
+
+P4 one Chip: sizes/fills/edge/glyph/states; PortBadge, PortRail and datalab badges folded (commit d4021ce)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/atoms/Chip/Chip.tsx — The one chip
+

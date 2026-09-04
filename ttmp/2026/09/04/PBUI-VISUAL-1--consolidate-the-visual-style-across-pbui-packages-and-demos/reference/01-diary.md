@@ -463,3 +463,50 @@ Screenshots: `various/screenshots-phases/p5/`: `callout-variants-after.png` (com
 
 ### Code review instructions
 - `git show 87caa13 -- src/components/molecules/Callout public/presentation-parts.css`; the `Component Library/Molecules/Callout` stories on :6006.
+
+## Step 9: Phase 4, one Chip
+
+The fifteen chip implementations become one component with five knobs. The core `Chip` grew the variants the family actually uses; the workbench's port badge became a tiny edgeless chip; a subagent folded datalab's badges onto it. Interactive small boxes stay buttons, which is now written into the Chip's doc comment.
+
+Screenshots: `various/screenshots-phases/p4/`: `chip-states.png` and `chip-sizes-fills-edges.png` (the new core stories), `port-badge-gallery-after.png` (compare `WA-003`), `port-rail-after.png` (compare `WA-004`).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Phase 4 of doc 02.
+
+**Inferred user intent:** Same as Step 5.
+
+**Commit (code):** d4021ce — "PBUI-VISUAL-1 P4: one Chip"
+
+### What I did
+- `Chip`: `size`, `fill`, `edge`, `glyph`, states `empty | unresolved | held | revoked` beside `active | stale | disabled`, `...rest` passthrough; `--chip-tone` custom property carries the tone to the edge or the fill. Stories: States (eight), "sizes, fills, edges" (with the port-badge row). `index.ts` exports the new types.
+- `PortBadge` → Chip (`size="tiny" edge={false}`, glyph from the kernel, state mapped: ambient/empty → empty, unresolved, held); `data-part/data-state/data-port` kept for the ecommerce e2e. `PortRail.module.css` rewritten on tokens (one hairline per card, acceptable = firm dashed + selected fill, refused = faint on line; `font: inherit` on the cards).
+- datalab (subagent): RoleBadge, ScopeChip, TypeBadge, StepRow.kind, TracePanel.kind, TemplateTable.kind/app, WorkspaceStrip tab → Chip; four modules deleted; TokenChip revoked state; TruncationNotice → Callout warning (a sentence, not a tag); an unused part id removed. FieldChip/SourceChip/UserChip/DocChip already wrapped Chip correctly. StateGlyph and Tick stay.
+- ecommerce's status pills were already core Chips (default / hold → stale / cancelled → disabled); nothing to migrate.
+
+### Why
+- Decision 2. Border style as the one state language is what keeps a badge, a pill and a tag legible in greyscale and identical across products.
+
+### What worked
+- Core 51, workbench 23, datalab 55 (602 tests) green; the ecommerce e2e selectors still resolve.
+
+### What didn't work
+- `ChipState` was not exported because the Chip folder's `index.ts` listed only `Chip` and `ChipProps`; workbench typecheck caught it.
+- The port rail's text renders in Storybook's own sans font in the package storybooks: Storybook's preview stylesheet sets a body font at higher specificity than the zero-specificity baseline, and only the root storybook has a `base.css` that sets the family font on `body`. Not a product defect; fixed in Phase 8 by giving every package preview the same base.
+
+### What I learned
+- The chip's state vocabulary (dashed = not really there, dotted = cannot be found, double = pinned) covers ports, tokens, fields and status pills without a colour per state.
+
+### What was tricky to build
+- Keeping `data-state` meaningful twice: the Chip sets it to the chip state, the PortBadge overrides it with the kernel's badge state (what the e2e waits on) while the chip's classes still come from the mapped state. Attribute passthrough spreads last, so the override is a one-liner rather than a fork.
+
+### What warrants a second pair of eyes
+- `ScopeChip` and `TracePanel`'s kind tag got `edge={false}` by the agent's judgement (neither names a presentation type). Reasonable; flagging it.
+
+### What should be done in the future
+- datalab's `ModuleCard`/`CheatCard` key/value grids are Phase 6 material and were left alone here to avoid two agents in one package.
+
+### Code review instructions
+- `git show d4021ce -- src/components/atoms/Chip packages/pbui-workbench/src/components/PortBadge`; the `Design System/Atoms/Chip` stories on :6006 and `Visual Audit/port badge gallery` on :6008.

@@ -14,7 +14,7 @@
 - [x] P1 tokens: one definition site <!-- t:4s0w -->
 - [x] P2 parts files: menu recipe, flat dialog <!-- t:7k9d -->
 - [x] P3 tile chrome + AppShell + tones <!-- t:z4c4 -->
-- [ ] P4 chip family <!-- t:g6yo -->
+- [x] P4 chip family <!-- t:g6yo -->
 - [x] P5 notices + mode banner <!-- t:cz8x -->
 - [ ] P6 labels, TileHeader, KeyValueList, AppBody <!-- t:vlnu -->
 - [ ] P7 native control skin <!-- t:1g2c -->
