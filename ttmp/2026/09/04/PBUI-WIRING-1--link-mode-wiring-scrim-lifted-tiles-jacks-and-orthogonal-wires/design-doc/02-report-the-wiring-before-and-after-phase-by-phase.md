@@ -31,7 +31,7 @@ Six phases, six commits, every one screenshot-verified on the ecommerce `Shop Sc
 | P3 routes | d1bde68 | orthogonal wires, channels; the surface is the layer's box |
 | P4 scrim | 5b35065 | fixed wash, lifted tiles, apps hidden, 24px gutters |
 | P5 cards | e76278e | block presentation around a card; one box |
-| P6 label | (see diary step 6) | title + badges as one bar label |
+| P6 label | a8ef47d | title + badges as one bar label |
 
 ## The mock
 
