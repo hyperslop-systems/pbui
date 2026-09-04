@@ -17,7 +17,7 @@ const repoRoot = path.resolve(here, "../../../../../.."); // ttmp/2026/09/04/TIC
 const require = createRequire(path.join(repoRoot, "packages/pbui-ecommerce/package.json"));
 const { chromium } = require("playwright");
 
-const OUT_ROOT = path.resolve(here, "../various/screenshots/demos");
+const OUT_ROOT = process.env.OUT_ROOT ?? path.resolve(here, "../various/screenshots/demos");
 const VIEWPORT = { width: 1440, height: 900 };
 
 const args = process.argv.slice(2);

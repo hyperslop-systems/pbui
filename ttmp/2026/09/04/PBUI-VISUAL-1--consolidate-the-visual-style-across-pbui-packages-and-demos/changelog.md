@@ -58,3 +58,12 @@ P2 parts files: single parts definition, Dialog/JsonBlock/InspectorPanel on the 
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/public/components.css — Rewritten in tokens
 
+
+## 2026-09-04
+
+P3 tile chrome, tones by kind, AppShell for all four shells, nested gutter, strip tabs (commit 80fadf4)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/AppShell/AppShell.tsx — The one page shell
+

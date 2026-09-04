@@ -280,7 +280,7 @@ create a proper design doc and then work on it, commit at appropriate intervals 
 - Deleted `packages/datalab-ui/src/styles/tokens.css`; removed its import from `styles.ts` and datalab's storybook preview; root storybook preview imports `src/tokens.css` instead.
 - datalab tests `tokens.test.ts`, `brand-tokens.test.ts`, `descriptor-coverage.test.ts`, `tokens-used.test.ts` and `scripts/make-tokens.ts` now read core's sheet (the two walkers prepend it to the `src/styles` walk; the value test strips comments first).
 - Chat demo `tokens.css` reduced to its one real override (`--pbui-tone-source` red); `UploadApp.tsx` dead `--pbui-tone-datum` → `--pbui-tone-source`.
-- Rebuilt `dist` and re-shot the chat widget story.
+- Rebuilt `dist` and re-shot the chat widget story: `various/screenshots-phases/p1/chat-widget-streaming-table-after.png` (compare `CH-016`).
 
 ### Why
 - A fallback literal is a second palette that only shows when the first is missing, which is exactly when nobody is looking.
@@ -332,7 +332,7 @@ The Dialog is the visible win: the launcher (`C-002`/`I-C-008`) went from a roun
 - `public/presentation-parts.css`: base presentation box (hair border, pane, ink-on-pane, context-menu cursor, space-1/space-3 padding), menu-item reset (border 0, font/color inherit, pointer), shared focus ring, `[data-danger]` colour, placeholder `div[data-part="menu-item"]` faint; accept chooser rewritten on the menu recipe (firm border, inverted tracked header, dotted separators, selected hover, font inherited); help title on the label idiom; help notice edge on `--pbui-tone-edge`.
 - `public/components.css` rewritten: Dialog (flat dim, firm border, radius token, inverted header, tiny framed close, px paddings, hair footer rule), JsonBlock (pane-alt, grid border, font inherit, fs-small/lh-prose), InspectorPanel (space tokens, tracked faint title).
 - Deleted `packages/datalab-ui/src/styles/dialogs.css`; `styles.ts` and the datalab storybook preview drop `components.css`/`presentation-parts.css`/`chrome.css` imports.
-- Rebuilt dist; core 51 files and datalab 55 files green; shot launcher, JsonBlock, InspectorPanel, protocol menu, accept chooser.
+- Rebuilt dist; core 51 files and datalab 55 files green; shot launcher, JsonBlock, InspectorPanel, protocol menu, accept chooser. Screenshots in `various/screenshots-phases/p2/`: `launcher-after.png` (compare `C-002`), `json-block-after.png`, `inspector-panel-after.png`, `object-menu-after.png`, `accept-chooser-open-after.png` (compare `I-C-004`), and `chooser-closed-first-cut-lost-chip-border.png` (the regression described below, kept as evidence).
 
 ### Why
 - Two definitions of a part is how the "sometimes plain header, sometimes inverted" class of inconsistency appears; the second definition only shows up when the first is missing, which is when nobody is looking.
@@ -358,3 +358,62 @@ The Dialog is the visible win: the launcher (`C-002`/`I-C-008`) went from a roun
 
 ### Code review instructions
 - `git show 10e1bc1 -- src/styles.css public/presentation-parts.css public/components.css`; root vitest; open `chrome-kit--launcher` and `presentation-interaction-kernel-4--accept-chooser-and-banner` in the root storybook.
+
+## Step 7: Phase 3, tile chrome, tones by kind, one AppShell
+
+The biggest phase: the four page shells become one component, every tile bar is tinted by the kind of thing it shows, and the two nesting defects (frames flush against frames, invisible split gutters) are fixed in the chrome. The demos now open on the same masthead, strip, canvas and status row, with the tile tints doing the work the reference does with them.
+
+Screenshots for this step are in `various/screenshots-phases/p3/`: the four demos after (`demo-*-initial-after.png`, compare `D-CH-001`, `D-PS-001`, `D-EC-001`, `D-DL-004`), the datalab workbench after (`demo-datalab-ui-workbench-after.png`) and the first cut that broke it (`…-first-cut-fragment-apps-centred.png`), the ecommerce workbench with a linked order and the inspector's JsonBlock (`demo-ecommerce-linked-after.png`), the workbench tile-header gallery with the nested gutter (`workbench-tile-header-variants-after.png`, compare `WA-011`), and the new AppShell story.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5) and, mid-phase: "btw save the screnshots for the diary, as well."
+
+**Assistant interpretation:** Phase 3 of doc 02; keep the verification screenshots in the ticket and cite them from the diary from now on (Steps 5 and 6 were back-filled).
+
+**Inferred user intent:** The diary should show the visual result of each phase, not only describe it.
+
+**Commit (code):** 80fadf4 — "PBUI-VISUAL-1 P3: tile chrome, tones by kind, one AppShell"
+
+### What I did
+- `public/chrome.css`: `tile-title` is `flex: 0 1 auto; min-width: 3ch` so a port badge after it survives narrowing; `[data-part="tile-body"] [data-part="workbench"]` gets `space-2` padding on the wash (the nested gutter).
+- `pbui-workbench`: new `components/AppShell` (masthead with uppercase banner-tracked wordmark, optional tagline and actions; `banner` slot; strip row on paper under a grid rule; canvas on the wash as a one-cell grid; status row) with a story; exported. `WorkspaceStrip` frames every tab and marks the active one `selected`; the add button is framed and labelled. `SplitPane` divider is a wash gutter with faint grip dots and a selected-wash hover. `Tile.module.css` `.app` is a flex column, and a one-cell grid only when the app has a single root (`:not(:has(> * + *))`). `Surface.module.css` reads `--pbui-wash` without fallback.
+- Tones: ecommerce (orders/order detail → order, customers/customer detail → row, catalog → product, inspector → tool, plot → chart), plotscript (script → step, plot → chart), chat app defaults (conversation → message, inspector → tool, watchlist → row), workbench stories (counter → step, notes → cat, audit apps → source/field/cat, identity lab → chart). `--pbui-tone-tool` lightened to #b9bec7 because a tile bar must carry ink text.
+- Core `AppBody` spreads HTML attributes; the workbench story apps render through it.
+- Shell migrations: chat demo `App.tsx` (strip moved into a `Strip` component, accept banner in the banner slot, `App.module.css` deleted), plotscript demo, ecommerce `ShopShell` (new `mastheadActions` prop; the demo's top bar folds into it; `ShopShell.module.css` deleted; launcher and menu mount beside the shell), datalab `WorkbenchShell` (masthead, StageBar, AcceptBanner, strip, full-frame toggle and MouseDocLine mapped onto the slots; `Workbench.module.css` reduced to the launcher-open active ring). datalab's inline strip tab: hair border, pane/selected.
+- datalab `styles.ts` and its storybook preview import `@hyperslop-systems/pbui-workbench/styles.css`.
+- Demo script accepts `OUT_ROOT` so re-shoots go to scratch instead of overwriting the before-corpus.
+
+### Why
+- One shell component is the only way four products stop drifting; the slots are the product's, the geometry is the shell's.
+- Tints by kind are the reference's device for telling tiles apart at a glance; chart-palette colours on bars read as decoration.
+
+### What worked
+- Typecheck clean in workbench, ecommerce (+demo), chat demo, plotscript demo, datalab after rebuilding the package dists; workbench 23, datalab 55, chat demo 3, ecommerce 7 test files green.
+- The `:has()` split between single-root and fragment apps kept ecommerce/chat (single root, committed cell) and datalab (fragments) both correct without touching any app.
+
+### What didn't work
+- First typecheck: `Surface as="header"` is not in Surface's element union; used `section`.
+- The other packages typechecked against pbui-workbench's stale `dist` ("no exported member AppShell"); every cross-package change needs `pnpm -r build` before typecheck and screenshots. The plotscript and chat demos also showed old tones until their own packages were rebuilt.
+- datalab's first re-shoot came out with the doc bar centred in the middle of each tile: importing the workbench stylesheet for the first time applied `.app`'s one-cell grid to apps that render fragments, so the first child took the 1fr row. Fixed with the `:has()` rule above. The screenshot is kept in `screenshots-phases/p3/`.
+- `packages/pbui-plotscript` `tiles.test.tsx` failed once ("expected null not to be null" on the plot svg after an error) and passed on the next two runs and on the pre-change tree: a timing flake, not this change.
+- pbui-workbench's `component-folders.test.ts` requires a story per component folder; added `AppShell.stories.tsx`.
+
+### What I learned
+- datalab had never loaded pbui-workbench's module CSS; its layout worked by accident of block flow. Importing the sheet exposed the fragment-app assumption immediately.
+- The dark grey that works as a chip edge (`tone-tool`) does not work as a bar tint; the tone family needs to be light enough for ink text everywhere it can land.
+
+### What was tricky to build
+- Where fixed-position parts go: the ecommerce shell rendered the launcher, object menu and accept banner inside its grid; in a one-cell canvas they would have become implicit rows. The banner goes in the `banner` slot, the launcher and menu mount as siblings of the shell inside the provider.
+- The chat demo's strip was rendered inside its `Workbench` component together with the surface; splitting it out into a `Strip` component was a regex over the JSX block bounded by two markers, with the block reinserted as a new function.
+
+### What warrants a second pair of eyes
+- The `:has()` selector in `Tile.module.css`: supported by every current browser, but it is the first `:has()` in the repo.
+- `WorkspaceStrip`'s add button now reads "+ workspace" instead of "+"; the ecommerce e2e and chat demo tests did not depend on it, but a product test elsewhere might.
+
+### What should be done in the future
+- Phase 4 replaces the port badge and datalab's strip tab (still an inline-styled span) with `Chip`.
+
+### Code review instructions
+- `git show 80fadf4 --stat`; read `packages/pbui-workbench/src/components/AppShell/AppShell.tsx` and the four call sites; open the demos on :5173–:5176 and the `Workbench/AppShell` story on :6008.
+- Validate: `pnpm -r --filter '!@hyperslop-systems/datalab-ui' --filter '!./packages/*/demo' build`, then typecheck and vitest in the packages listed above.
