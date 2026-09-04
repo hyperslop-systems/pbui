@@ -651,3 +651,66 @@ Screenshots: `various/screenshots-after/` (the full after-corpus: core 167, chat
 ### Code review instructions
 - Read doc 03 top to bottom (the exhibits are images; the prose is 60 lines); then `git log --oneline b1e351f^..HEAD` for the eight phase commits.
 - Regenerate: `bash scripts/07-after-corpus.sh && python3 scripts/08-build-after-doc.py > various/before-after.md`.
+
+## Step 13: Feedback round two: the presentation is a chip
+
+Reviewing the storybooks, the user pointed at four things: a nested box around the header port badge, order presentations without a coloured edge, the chat PanelApp story's misplaced status bar and doubled product boxes, and prose mentions that were not proper presentations. All four are one defect: the presentation element drew a plain box while the Chip drew the family's edged box, and products patched the gap per type.
+
+Screenshots: `various/screenshots-phases/feedback-1/`: `ecommerce-seeded-after.png`, `chat-panelapp-after.png`, `chat-widget-health-after.png`, `chat-markdown-mentions-after.png`.
+
+### Prompt Context
+
+**User prompt (verbatim):** "more things to adjust: [Image #2] in http://localhost:6012/?path=/story/shop-scenes--seeded (shouldn't have nested border box around the port, keep the dotted border
+. [Image #3]
+
+order presentations don't seem to have a colored line on the left?
+
+---
+
+On http://localhost:6007/?path=/story/apps-panelapp--the-panels-as-tiles
+
+[Image #4]
+
+status bar is badly placed.
+double border on the products. 
+product on the left (1oz america gone gold) different from on the right
+Unclear status bar and not a normal tile it seems like (doesn't need t). Also [the Eagle] and [pricing policy $3] on the left are not proper presentations.
+
+[Image #6]"
+
+**Assistant interpretation:** Make the kernel's presentation element render as the family's chip (hair box + type edge), stop wrapping chips in a second box, and fix the story layout.
+
+**Inferred user intent:** Objects should look the same wherever they appear, without per-product CSS.
+
+**Commit (code):** 20ec2d2 — "PBUI-VISUAL-1 feedback 1: every presentation carries its type's edge; a chip is the box"
+
+### What I did
+- `createPbui.tsx`: `presentationToneVar(tone, type)` → `var(--pbui-tone-<type>, <semantic>)` (accent → cat-2, positive → ok, warning → cat-3, danger → danger, a `var(...)` tone as is, else neutral), set as `--pbui-presentation-tone` inline on the element.
+- `presentation-parts.css`: base presentation gets `border-left: var(--pbui-tone-edge) solid var(--pbui-presentation-tone, …)`; `[role="none"]` (inComposite) keeps a plain hairline; `:has(> [data-part="chip"])` removes the presentation's box/padding/background and moves hover onto the chip.
+- `Chip.module.css`: `--chip-tone` defaults to the inherited presentation tone.
+- chat: `.mention` loses its forced neutral edge; the demo's eleven `[data-ptype]` edge rules are deleted; PanelApp story cells are `minmax(0,1fr)` with `overflow: auto`.
+- Verified by DOM probe: order cells resolve to `4px solid rgb(124,174,155)` (the order tone); mentions to product gold and source red.
+
+### What worked
+- Core 51, chat 25, ecommerce 7, workbench 23 test files green.
+
+### What didn't work
+- My react-import rewrite in `createPbui.tsx` produced `, type CSSProperties }` on its own line (the regex assumed a single-line import); TS1003 at line 14, fixed by hand.
+- The failed build left the package storybooks with a half-built dist in their Vite cache: chips rendered with no box at all in the next shots. Restarting the two storybooks with `node_modules/.cache` removed fixed it. Rule: after a failed core build, restart the package storybooks before trusting a screenshot.
+- The first DOM probe on the mentions returned widget children instead (same `data-part`); filtering by text found the mentions and showed the chat markdown module overriding the edge at (0,1,0).
+
+### What I learned
+- The chat demo's per-type edge rules were the product-side workaround for exactly this kernel gap; deleting them without the kernel change would have removed the only edges the demo had.
+
+### What was tricky to build
+- Deciding what a composite-owned presentation looks like: a tile title wrapped in a presentation would have grown an edge too; `role="none"` is the attribute the kernel already sets for `inComposite`, so it doubles as the style hook.
+
+### What warrants a second pair of eyes
+- `:has()` is now load-bearing in the parts sheet (and in Tile.module.css since P3).
+- Semantic tone mapping (accent → cat-2) is a guess at intent; the ecommerce descriptors use `accent` for orders and customers, which the type token now overrides anyway.
+
+### What should be done in the future
+- The chat inspector's subject box (RefPresentation of a long label) wraps to two lines inside a wide box; a `Chip` with ellipsis would match the watchlist row.
+
+### Code review instructions
+- `git show 20ec2d2 -- src/presentation/createPbui.tsx public/presentation-parts.css`; `shop-scenes--seeded` on :6012, `pbui-chat-pbuimarkdown--resolved` on :6007.

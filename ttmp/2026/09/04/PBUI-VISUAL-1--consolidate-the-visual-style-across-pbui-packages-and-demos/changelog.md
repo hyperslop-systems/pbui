@@ -112,3 +112,12 @@ P8 story hygiene, after-corpus (scripts 07/08), doc 03 before/after exhibits (co
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/scripts/07-after-corpus.sh — Re-shoots the corpus
 
+
+## 2026-09-04
+
+Feedback round two: presentations carry the type edge from the kernel; chip-in-presentation unboxed; chat mention and PanelApp story fixed (commit 20ec2d2)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/createPbui.tsx — presentationToneVar
+
