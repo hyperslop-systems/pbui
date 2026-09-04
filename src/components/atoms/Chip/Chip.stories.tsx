@@ -70,12 +70,45 @@ export const States: Story = {
         <Chip label="active" tone="var(--pbui-tone-field)" state="active" />
         <Chip label="stale ⚠" tone="var(--pbui-tone-field)" state="stale" />
         <Chip label="disabled" tone="var(--pbui-tone-field)" state="disabled" />
+        <Chip label="empty" tone="var(--pbui-tone-field)" state="empty" />
+        <Chip label="unresolved" tone="var(--pbui-tone-field)" state="unresolved" />
+        <Chip label="held" tone="var(--pbui-tone-field)" state="held" />
+        <Chip label="revoked" tone="var(--pbui-tone-field)" state="revoked" />
         <Chip label="strong" tone="var(--pbui-tone-field)" strong />
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        Dashed for stale, filled for active, faded onto the alt surface for disabled. Print this
-        page in greyscale and all four are still distinct.
+        Border style is the state: dashed for stale/empty/revoked, dotted for unresolved, double for
+        held, filled for active, faded onto the alt surface for disabled. Print this page in
+        greyscale and every one is still distinct.
       </Text>
+    </Stack>
+  ),
+};
+
+export const SizesFillsEdges: Story = {
+  name: "sizes, fills, edges",
+  render: () => (
+    <Stack gap={3}>
+      <SectionLabel>size</SectionLabel>
+      <Stack direction="row" gap={3} wrap align="center">
+        <Chip label="small" tone="var(--pbui-tone-step)" />
+        <Chip label="tiny" tone="var(--pbui-tone-step)" size="tiny" />
+        <Chip label="micro" tone="var(--pbui-tone-step)" size="micro" />
+      </Stack>
+      <SectionLabel>fill</SectionLabel>
+      <Stack direction="row" gap={3} wrap align="center">
+        <Chip label="none" tone="var(--pbui-tone-chart)" />
+        <Chip label="wash" tone="var(--pbui-tone-chart)" fill="wash" />
+        <Chip label="tone" tone="var(--pbui-tone-chart)" fill="tone" />
+        <Chip label="Q" tone="var(--pbui-type-q)" fill="tone" size="micro" edge={false} strong />
+      </Stack>
+      <SectionLabel>no edge, with a glyph: the port badge</SectionLabel>
+      <Stack direction="row" gap={3} wrap align="center">
+        <Chip label="orders east" glyph="→" size="tiny" edge={false} />
+        <Chip label="order · none" glyph="○" size="tiny" edge={false} state="empty" />
+        <Chip label="order 1042" glyph="■" size="tiny" edge={false} state="held" />
+        <Chip label="order" glyph="△" size="tiny" edge={false} state="unresolved" />
+      </Stack>
     </Stack>
   ),
 };

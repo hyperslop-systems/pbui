@@ -20,7 +20,7 @@ export function TokenChip({ token }: { token: TokenRef }) {
         label={token.name}
         tone="var(--pbui-tone-step)"
         badge={<code style={{ opacity: 0.7, fontSize: "var(--pbui-fs-tiny)" }}>{token.id}</code>}
-        state={revoked ? "stale" : undefined}
+        state={revoked ? "revoked" : undefined}
         title={revoked ? `revoked ${token.revokedAt}` : token.scopes.join(" ")}
       />
     </Presentation>

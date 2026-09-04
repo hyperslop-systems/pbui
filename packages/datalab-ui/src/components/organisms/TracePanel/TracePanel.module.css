@@ -14,16 +14,6 @@
   text-align: right;
 }
 
-.kind {
-  border: var(--pbui-border-hair);
-  padding: 0 var(--pbui-space-2);
-  font-size: var(--pbui-fs-micro);
-  font-weight: 700;
-  /* The type names are short and must never wrap: a wrapped badge breaks the
-     baseline alignment of every entry after it. */
-  white-space: nowrap;
-}
-
 /*
  * The entry under the transport's cursor, while the reader is reviewing.
  *

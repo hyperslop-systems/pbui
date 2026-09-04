@@ -50,21 +50,3 @@
   padding: var(--pbui-space-2) var(--pbui-space-3) var(--pbui-space-4) var(--pbui-space-5);
   border-top: var(--pbui-border-hair);
 }
-
-/*
- * The kind badge, and the application chips in the detail pane.
- *
- * Same geometry as `TracePanel`'s `.kind`, deliberately: a short uppercase word
- * in a hairline box means the same thing in both places, and `white-space:
- * nowrap` because a wrapped badge breaks the baseline of the row it is in.
- */
-.kind,
-.app {
-  border: var(--pbui-border-hair);
-  padding: 0 var(--pbui-space-2);
-  white-space: nowrap;
-}
-
-.app {
-  background: var(--pbui-pane);
-}

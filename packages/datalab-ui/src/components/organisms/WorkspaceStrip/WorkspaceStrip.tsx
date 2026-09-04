@@ -8,7 +8,15 @@ import {
 import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { navigationActions } from "../../../store/navigation";
-import { Button, InlineRename, SectionLabel, Stack, Text, Toolbar } from "@hyperslop-systems/pbui";
+import {
+  Button,
+  Chip,
+  InlineRename,
+  SectionLabel,
+  Stack,
+  Text,
+  Toolbar,
+} from "@hyperslop-systems/pbui";
 
 /**
  * The workspace strip.
@@ -79,20 +87,19 @@ export function WorkspaceStrip() {
                 doc: "switch to it",
               }}
             >
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: the interactive element is the Presentation around this span — it carries tabIndex, role and the key handlers. What this span adds is double-click-to-rename; the keyboard route is "Rename this workspace …" in the object menu, which DATADROP-8 added. */}
-              <span
-                style={{
-                  border: "var(--pbui-border-hair)",
-                  background: current === space.id ? "var(--pbui-selected)" : "var(--pbui-pane)",
-                  padding: "0 var(--pbui-space-3)",
-                  fontSize: "var(--pbui-fs-tiny)",
-                  fontWeight: current === space.id ? 700 : 400,
-                }}
+              {/* The interactive element is the Presentation around this Chip — it
+                  carries tabIndex, role and the key handlers. What the Chip adds
+                  is double-click-to-rename; the keyboard route is "Rename this
+                  workspace …" in the object menu, which DATADROP-8 added. */}
+              <Chip
+                label={pinned ? `⌾ ${space.name}` : space.name}
+                size="tiny"
+                edge={false}
+                strong={current === space.id}
+                state={current === space.id ? "active" : undefined}
                 onDoubleClick={() => !pinned && dispatch(navigationActions.beginRename(space.id))}
                 title={pinned ? "defined in code — cannot be renamed or deleted" : undefined}
-              >
-                {pinned ? `⌾ ${space.name}` : space.name}
-              </span>
+              />
             </Presentation>
           );
         })}

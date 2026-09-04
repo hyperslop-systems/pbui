@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { TraceEntry } from "../../../store/world";
-import { AppBody, Sparkline, Stack, Text, TransportBar } from "@hyperslop-systems/pbui";
+import { AppBody, Chip, Sparkline, Stack, Text, TransportBar } from "@hyperslop-systems/pbui";
 import { Presentation } from "../../../pbui";
 import styles from "./TracePanel.module.css";
 
@@ -123,12 +123,13 @@ export function TracePanel({ entries }: { entries: readonly TraceEntry[] }) {
             <Text size="tiny" tone="faint">
               <span className={styles.seq}>{entry.seq}</span>
             </Text>
-            <span
-              className={styles.kind}
+            <Chip
+              label={entry.type}
+              size="micro"
+              fill="wash"
+              edge={false}
               style={{ background: TONE[entry.type] ?? "var(--pbui-pane-alt)" }}
-            >
-              {entry.type}
-            </span>
+            />
             <Text size="tiny">{entry.detail}</Text>
             {entry.note && (
               <Text size="tiny" tone="faint">

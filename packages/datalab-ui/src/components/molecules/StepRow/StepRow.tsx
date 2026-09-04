@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Stack, Text, CheckboxRow, IconButton } from "@hyperslop-systems/pbui";
+import { Chip, Stack, Text, CheckboxRow, IconButton } from "@hyperslop-systems/pbui";
 import styles from "./StepRow.module.css";
 
 /**
@@ -39,9 +39,13 @@ export function StepRow({
   renderKind?: (badge: ReactNode) => ReactNode;
 }) {
   const badge = (
-    <span className={[styles.kind, enabled ? "" : styles.off].filter(Boolean).join(" ")}>
-      {kind}
-    </span>
+    <Chip
+      label={kind}
+      size="tiny"
+      fill="wash"
+      tone="var(--pbui-tone-step)"
+      className={enabled ? undefined : styles.off}
+    />
   );
 
   return (
