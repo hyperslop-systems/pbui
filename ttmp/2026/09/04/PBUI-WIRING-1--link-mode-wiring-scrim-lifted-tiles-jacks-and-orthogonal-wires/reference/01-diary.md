@@ -437,3 +437,35 @@ Reviewed source commit: `142b458a410ad8302cdf4afbc8c240d47b161c57`. Probe coordi
 - Final PDF: 29 pages, stored beside the review as `design-doc/review-assets/PBUI-WIRING-1 Intern Review and Browser Evidence.pdf`.
 - Dry-run completed for the prepared bundle. Upload returned: `OK: uploaded PBUI-WIRING-1 Intern Review and Browser Evidence.pdf -> /ai/2026/09/04/PBUI-WIRING-1`.
 - Upload used the user's existing authorization; no remote overwrite was requested. Product repair recommendations remain unimplemented.
+
+## Step 11: Add a principled foundations chapter and primary-source archive
+
+The user requested an additional section approaching wiring through constraints, algorithms, and computer-science foundations, with linked and downloaded resources. Added section 14 to the existing intern review rather than creating a disconnected report. Its approximately 5,400 words connect theory to the observed diagonal, divider, overflow, clipping, and interaction failures.
+
+### What changed and why
+
+- Separated semantic relationships, mounted anchors, and routing search graphs; distinguished feasibility, soundness, completeness, optimality, and temporal freshness.
+- Derived split-width and corridor-capacity constraints, axis-aligned collision predicates, heading-aware search costs, and a proposed multi-route quality objective.
+- Added proposed pseudocode for endpoint reconstruction, geometry invalidation, generation-checked publication, and input-independent connection states.
+- Connected incremental computation, safety/liveness, browser observer contracts, and pointer-target guidance to concrete PBUI source references and independent test properties.
+- Archived 13 primary sources: six PDFs with text extractions and seven HTML snapshots. Added original URLs, retrieval timestamps, byte counts, and SHA-256 hashes in the manifest, plus an annotated reading sequence in section 14.12.
+- Added two Graphviz diagrams and a reproducible rendering script. Recommendations remain proposals; no product code changed.
+
+### Investigation and tooling
+
+Primary sources came from author pages, MIT OpenCourseWare, Microsoft Research, W3C, React, and Adaptagrams. Browser retrieval of the 2009 orthogonal-routing PDF timed out; direct retrieval through the collection script succeeded and its PDF text was inspected. Source collection ran with the user's authorization to download resources.
+
+The first diagram render failed with `syntax error in line 15 near 'graph'` because a node used a reserved DOT identifier. Renaming that node to `routing` resolved the error on the first correction. This was report tooling, not a change to the product router.
+
+### Validation and review guidance
+
+- `docmgr doctor --ticket PBUI-WIRING-1 --stale-after 30`: all checks passed.
+- Checked 103 local report links and verified all 13 archived files against their recorded lengths and SHA-256 digests; saved `review-assets/foundations-validation.json`.
+- The expanded PDF has 42 pages. Visually inspected both new diagram pages, the equations and algorithm discussion, and the final reference page. External sources are linked; downloaded source files are retained in the ticket rather than concatenating entire books into the review PDF.
+- The upload dry-run selected the new name `PBUI-WIRING-1 Review with Foundations` under `/ai/2026/09/04/PBUI-WIRING-1`. The earlier uploaded review remains a separate document.
+
+Start review with sections 14.2, 14.5–14.9, and the reading guide. Check that each mathematical guarantee names its model and assumptions, and that browser observations are not promoted into general proofs. No product tests were rerun for this documentation-only addition.
+
+### Delivery completed
+
+Upload returned `OK: uploaded PBUI-WIRING-1 Review with Foundations.pdf -> /ai/2026/09/04/PBUI-WIRING-1`. The final 42-page PDF is stored beside the review. The ticket index links both editions and the source archive. Upload used the user's existing authorization and a new document name.

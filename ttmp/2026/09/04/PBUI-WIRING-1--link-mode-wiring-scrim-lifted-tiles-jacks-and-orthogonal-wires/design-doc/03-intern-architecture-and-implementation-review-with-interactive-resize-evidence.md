@@ -25,9 +25,22 @@ RelatedFiles:
       Note: Refused initial held and identity commands invalidate advertised coverage
     - Path: repo://public/chrome.css
       Note: Tile body auto overflow and header readability
-ExternalSources: []
-Summary: Intern architecture guide and evidence-based user, geometry, and implementation review; includes browser resizing, scrolling, drag interactions, reproducible measurements, and a phased repair design.
-LastUpdated: 2026-09-04T15:37:11.77215013-04:00
+ExternalSources:
+    - https://users.monash.edu/~mwybrow/papers/wybrow-gd-2009.pdf
+    - https://users.monash.edu/~mwybrow/papers/wybrow-gd-2005.pdf
+    - https://badros.com/greg/papers/cassowary-tochi.pdf
+    - https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-fall-2011/6277a1f06100c26a7ff21031af6757b5_MIT6_006F11_lec16.pdf
+    - https://www.microsoft.com/en-us/research/wp-content/uploads/2018/03/build-systems.pdf
+    - https://lamport.azurewebsites.net/tla/book-02-08-08.pdf
+    - https://www.cs.cmu.edu/~quake/robust.html
+    - https://www.w3.org/TR/css-overflow-3/
+    - https://www.w3.org/TR/resize-observer/
+    - https://react.dev/reference/react/useSyncExternalStore
+    - https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html
+    - https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html
+    - https://www.adaptagrams.org/documentation/classAvoid_1_1Router.html
+Summary: Intern architecture guide and evidence-based user, geometry, and implementation review; includes browser resizing, scrolling, drag interactions, reproducible measurements, a phased repair design, and principled foundations with archived primary resources.
+LastUpdated: 2026-09-04T20:12:31.854072+00:00
 WhatFor: "Onboard an intern and guide repairs with source-backed browser evidence."
 WhenToUse: "Before changing wiring geometry, scrolling, rendering, or connection interactions."
 ---
@@ -41,7 +54,7 @@ PBUI-WIRING-1 introduced a useful visual vocabulary: tiles expose typed ports, s
 
 This review evaluates the result from a user's seat. The central question is whether a person can reliably answer **what is connected, what will happen if I connect these ports, and what changed when I moved something**. The most serious failures are wires crossing a tile after resizing, wires detaching from their jacks while a divider is being dragged, and horizontal scrollbars whose only purpose is to scroll a protruding jack. These failures undermine the picture's explanatory role even when the underlying binding remains correct.
 
-The report also serves as an onboarding guide. Sections 2–5 introduce the system and its execution paths. Sections 6–8 connect browser evidence to source code and explain why the existing validation missed the defects. Sections 9–11 propose a repair design, an implementation sequence, and meaningful acceptance tests. Section 12 is a navigable source/API map; section 13 catalogs every screenshot.
+The report also serves as an onboarding guide. Sections 2–5 introduce the system and its execution paths. Sections 6–8 connect browser evidence to source code and explain why the existing validation missed the defects. Sections 9–11 propose a repair design, an implementation sequence, and meaningful acceptance tests. Section 12 is a navigable source/API map; section 13 catalogs every screenshot. Section 14 develops the underlying constraints, graph algorithms, geometry invariants, incremental computation, and interaction principles, with an annotated archive of 13 primary references.
 
 **Scope and provenance.** Source inspection is against PBUI commit `142b458a`, on 2026-09-04. Existing Storybook instances on ports 6008 and 6012 supplied the live UI. No product source was changed for this review. The source router was separately invoked on captured browser geometry to confirm that the diagonal paths are reproducible in the checked-out implementation, rather than merely an old screenshot or a stale browser frame. Local built core packages were used for a minimal reproduction of the fixture's command refusals. The original design, nine-step diary, phase report, and the Obsidian project report informed the investigation; their conclusions were checked against current behavior.
 
@@ -683,6 +696,332 @@ All image links below are adjacent to this review under `review-assets/`. Key ex
 Raw records: [resize](review-assets/resize-metrics.json), [divider/connection interactions](review-assets/interaction-metrics.json), [Crowded](review-assets/crowded-metrics.json), [style label](review-assets/styles-metrics.json), [ecommerce](review-assets/shop-metrics.json), [scrollbar interventions](review-assets/scrollbar-metrics.json), [usability probes](review-assets/usability-metrics.json), [source replay](review-assets/source-replay.json), and [browser console](review-assets/browser-console.txt).
 
 Prior context: [original design](01-wiring-design-scrim-jacks-orthogonal-routes-bar-binding.md), [phase report](02-report-the-wiring-before-and-after-phase-by-phase.md), and [implementation diary](../reference/01-diary.md). The additional vault source read was `~/code/wesen/go-go-golems/go-go-parc/Projects/2026/09/04/PROJECT REPORT - PBUI Visual Consolidation and Link-Mode Wiring - One Chip, One Shell, and Wires That Route Around Tiles.md`. It was used as historical context and not overwritten.
+
+## 14. Foundations: deriving a wiring system from its requirements
+
+The defects above are easier to reason about when we start with what must be true, then choose representations and algorithms that preserve it. A line that looks plausible is not necessarily a valid route. A valid route computed earlier is not necessarily a correct picture now. A mathematically optimal collection of routes can still be hard to select or understand. These are separate engineering questions with different evidence requirements.
+
+This section is an additional design analysis, not a claim that the proposed architecture has been implemented or formally verified. The measured examples still come from sections 6–7. The formulas, contracts, and pseudocode below are proposed PBUI models; external sources support the underlying concepts. Section 14.12 provides reading guidance, original URLs, and downloaded copies. The archive includes six PDFs and seven HTML snapshots, with retrieval times and SHA-256 hashes in its [manifest](../sources/foundations/manifest.json).
+
+### 14.1 Start by separating three graphs
+
+An intern will encounter several things called a graph. Keeping them distinct prevents architectural mistakes.
+
+- **The semantic graph** describes logical ports and their relationships. A follow is a directed dependency; a derived input depends on an expression's referenced sources. Identity instead places compatible ports in an equivalence class sharing a value cell. Its drawn connections do not turn it into a sequence of directed follows. See [binding terms][R13], [expressions][R14], [planning][R19], and [snapshot construction][R27].
+- **The mounted presentation graph** associates logical views and ports with the placements and DOM elements currently displaying them. The association is not one-to-one. One logical port can have several anchors, and a mounted anchor can be outside a scrollport's visible area. A connection between logical ports therefore does not uniquely specify a connection between visible points. See [the registry][R01] and [PortRail][R02].
+- **The routing graph** is an algorithmic search space built from free space, obstacles, endpoints, and allowable directions. Its vertices are candidate geometric states, not application ports. Most of those states have no semantic identity at all. See [routeAround][R04].
+
+For example, resizing Source A changes its mounted coordinates and the routing graph. It does not create a new port or change the meaning of a follow. Opening a second placement may add another candidate anchor without adding a semantic dependency. Scrolling theta out of view changes how its existing relationship should be presented, not whether that relationship exists.
+
+A useful proposed pipeline is therefore a projection with explicit inputs:
+
+```text
+visible relations = project(semantic snapshot, mounted instances)
+route problem     = geometry(visible relations, obstacles, policy)
+rendered scene    = validateAndRender(solve(route problem))
+```
+
+The projection must make decisions that a shortest-path algorithm cannot make: which placement represents a duplicated port, what to do with a clipped endpoint, and how to describe an identity relation. Those decisions should be stable and inspectable. A nearest-anchor rule can be a policy, but moving two candidates past an equal-distance boundary should not silently change the user's interpretation of which tile is connected.
+
+![Separate semantic relationships, mounted geometry, and the routing search space. Final validation sits after reconstruction and lane arrangement.](review-assets/foundations-models.png)
+
+### 14.2 Layout is a feasibility problem before it is an optimization problem
+
+Suppose a horizontal split gives two tiles widths $w_1$ and $w_2$, with a gutter $g$ inside a surface width $W$. Suppose readable content requires minimum widths $m_1$ and $m_2$. The basic constraints are:
+
+$$
+w_1 + w_2 + g = W, \qquad w_1 \ge m_1, \qquad w_2 \ge m_2.
+$$
+
+They are simultaneously satisfiable only when $W \ge m_1 + m_2 + g$. Preserving the preferred split ratio is a secondary objective. No amount of adjusting that ratio can solve an infeasible set of minimum widths. The same reasoning applies recursively to the split tree: a horizontal split adds child minimum widths and a gutter; a vertical split requires at least the larger child minimum width. Heights follow the corresponding dual rules.
+
+As an illustrative design calculation, three columns with 220px minimum widths, two 24px gutters, and 16px total outer padding need 724px. These are hypothetical policy values, not minimums measured from the current implementation. At a 390px viewport, satisfying all those constraints requires changing the policy: stack or focus tiles, collapse optional details, or provide an intentional canvas that scrolls. Squeezing text until it becomes unreadable is an implicit relaxation of the readability constraint. It should be a deliberate product decision if used at all.
+
+[Cassowary][F03] is relevant because it treats interface layout as incremental linear equalities and inequalities with required constraints and ranked preferences. Its opening discussion of constraint hierarchies is the useful starting point here. It does not by itself choose discrete alternatives such as stacked versus horizontal layout, nor solve obstacle routing. A PBUI implementation could begin with direct recursive minimum-size calculations; adopting a general solver would need additional justification.
+
+This suggests a constraint vocabulary for [SplitPane][R08] and [Surface][R07]:
+
+- **Required:** child bounds are valid; the chosen layout mode has enough room for its declared minima; interactive controls remain reachable.
+- **Preferred:** retain the user's split ratio; minimize movement when wiring opens; keep associated tiles near each other.
+- **Mode transition:** when required constraints become infeasible, select a documented alternative instead of pretending the current mode still fits.
+
+Wire lanes have their own feasibility limits. Let a straight corridor have width $G$, wire ink width $s$, minimum gap between wire edges $q$, and clearance $c$ at each corridor wall. Accommodating $n$ parallel wires requires:
+
+$$
+2c + ns + (n-1)q \le G.
+$$
+
+When at least one wire fits, the maximum is $\lfloor(G-2c+q)/(s+q)\rfloor$. With $G=24$, $c=3$, $s=2$, and $q=4$, only three wires fit under those assumptions. Dividing gutter width by grid-cell size alone does not establish lane capacity. The comment that a 6px grid keeps a 24px gutter four lanes wide in [route.ts][R04] omits these visual constraints. Port entry stubs, labels, and selection targets can consume additional space.
+
+### 14.3 Geometry needs a declared coordinate system and visibility model
+
+Every point and rectangle should state its coordinate space. A DOM viewport point, a surface-local point, a scroll-content point, and a grid index are different quantities even if all are represented as two numbers. Mixing them is a dimensional error analogous to adding meters to seconds.
+
+For a translation-only surface, a viewport point maps to surface coordinates by subtracting the surface origin. More generally, a point maps through the inverse of the transform from local space to viewport space. A product that supports only translation should document and test that assumption. Supporting arbitrary CSS transforms requires more than subtracting `getBoundingClientRect().left` and `.top`; rotated bounding rectangles also lose the original edge directions. This review does not propose adding arbitrary-transform support.
+
+The proposed geometry snapshot should contain enough information to answer four different questions:
+
+1. What logical port does this anchor represent?
+2. Which placement and side own this particular anchor instance?
+3. Where is it in the shared routing coordinate system?
+4. Is it visible and usable within all relevant clipping ancestors?
+
+An anchor can remain in the registry while its card is clipped. In the Crowded evidence, this is exactly why DOM existence was insufficient. The rendering policy needs a result such as `visible`, `clipped`, or `unmounted`, and possibly a reveal action. A boundary marker for an offscreen relationship should be visually distinguishable from a real jack; otherwise the picture implies a destination at a place where none exists.
+
+The horizontal scrollbar also follows from geometry ownership. CSS distinguishes scrollable overflow from other kinds of visual overflow; descendant boxes can contribute to the scrollable area even when the content a person considers meaningful fits. See the [CSS Overflow specification's overflow concepts][F08]. The review's intervention established the concrete PBUI cause: the output jack's negative right offset added seven scrollable pixels inside the tile body. This is not evidence that every negative offset always causes a scrollbar.
+
+The corresponding structural repair is to give application content the scrollport and give frame decoration a sibling overlay. Then scrolling application content cannot scroll the jack merely because its paint extends outside a card. Clipping can still be appropriate at an outer workspace boundary, but hiding all overflow is not a substitute for defining which layer owns it. [Tile][R22], [PortRail styles][R05], and [chrome.css][R20] are the relevant ownership boundaries.
+
+### 14.4 Obstacle avoidance is a computational-geometry contract
+
+Start with a wire as a centerline polyline $P=(p_0,\ldots,p_k)$. A valid orthogonal segment changes exactly one coordinate, or is a removable zero-length segment. Obstacles are rectangles representing tile areas that the route must avoid. Before discussing shortest paths, decide whether avoidance concerns the centerline, the painted stroke, or the interactive hit region.
+
+For axis-aligned obstacles, expanding each rectangle by a chosen radius is a conservative way to reduce stroke-clearance checking to centerline checking. This is the configuration-space idea: move the wire's thickness into the obstacle model. With desired visual clearance $c$ and stroke width $s$, a useful expansion is $\delta=c+s/2$. Expanding by a square gives a conservative corner model for a round stroke. The geometric boundary convention—whether touching is allowed—must be explicit and consistent.
+
+This is a proposed interpretation for PBUI. The existing `margin: 3` parameter does not itself document an ink-clearance guarantee, and grid rounding further affects it. The invisible hit path has a different width and purpose. Expanding every obstacle by the full hit width might make useful corridors impossible; allowing hit regions to overlap can instead make selection ambiguous. Those are separate interaction constraints, not a reason to misstate the visible route's clearance.
+
+Port attachment needs a carefully scoped exception. A jack lies at a tile boundary, so a route must leave the source frame and enter the destination frame along an allowed stub. The current router clears short runs of blocked cells near endpoints. A stronger model would distinguish an allowed attachment corridor from arbitrary obstacle erasure, and would not clear a neighboring tile accidentally. The stub itself must be validated against unrelated obstacles.
+
+For a horizontal segment from $x=a$ to $x=b$ at height $y$, it intersects the interior of a forbidden rectangle when:
+
+$$
+\text{top}<y<\text{bottom}
+\quad\text{and}\quad
+\max(\min(a,b),\text{left}) < \min(\max(a,b),\text{right}).
+$$
+
+The vertical case exchanges the axes. This exact interval test under the selected boundary convention is stronger than sampling points every few pixels. In this review, the 2px sampling diagnostic located observable failures; it was not a proof that unsampled segments were clear.
+
+Floating-point comparisons need a policy, but numeric tolerance is not a repair for wrong topology. [Shewchuk's robust-predicate resources][F07] explain why geometric decisions near degeneracy can fail with ordinary floating-point arithmetic. PBUI's current diagonal is much simpler: reconstruction changes corners so that both coordinates differ between consecutive vertices. An epsilon cannot make that segment orthogonal. Begin with canonical coordinate units, explicit quantization, axis-aligned predicates, and separate tolerances for measurement and assertion. Introduce more elaborate exact predicates only if the supported geometry actually needs them.
+
+### 14.5 A shortest path is only as meaningful as its state and cost model
+
+The current [router][R04] searches a raster of free and blocked cells. Its state is `(cell, heading)`, with four headings. This extra dimension is essential because a turn penalty makes future cost depend on the direction of arrival.
+
+Consider two paths arriving at the same cell: one from the west with accumulated cost 18, another from the north with cost 15. If the next required move is east and a turn costs 10, the totals after that move are 19 and 26. Keeping only the cheaper arrival at the cell would discard the better continuation. Recording heading makes the relevant history explicit in the state, restoring the condition that a state's outgoing transition costs can be evaluated locally.
+
+With the current defaults, an allowed move has cost:
+
+$$
+1 + 10\,[\text{heading changes}] + 8\,[\text{destination cell occupied}].
+$$
+
+Brackets mean 1 when the condition is true and 0 otherwise. Costs are in grid-step units, not pixels. Thus a turn costs the same as ten extra unoccupied straight steps under this model. Changing cell size while retaining the constants changes the physical interpretation of that tradeoff. The occupied-cell penalty discourages reuse; it does not prohibit shared lanes, guarantee minimum separation, or identify the number of crossings.
+
+[MIT's Dijkstra lecture][F04] provides the basis for relaxation and the correctness invariant under nonnegative edge weights. For a graph with $V$ states and $E$ transitions, a suitable binary-heap implementation has an $O((V+E)\log V)$ bound. In this bounded-degree grid, both scale with the number of cells, multiplied by the heading states. The concrete implementation also allocates predecessor and distance arrays and imposes separate grid-size and search budgets.
+
+For PBUI, the search contract should name all of these restrictions:
+
+- The graph is finite and bounded by the selected surface extent.
+- Only unblocked transitions and permitted heading changes are available.
+- Arrival direction is constrained; current search requires positive-x arrival.
+- The result is optimal only for the represented graph and chosen costs when the algorithm completes normally.
+- Budget exhaustion, a missing route in the graph, and invalid endpoint adaptation are different outcomes.
+
+An A* variant could use Manhattan distance in grid steps to the target cell as a lower bound when moves cost at least one and all additional penalties are nonnegative. It ignores turn and occupancy penalties, so it does not overestimate the remaining cost in that graph. Appropriate graph-search bookkeeping is still required. This is an optimization proposal, not a reason to change algorithms before fixing the final-path invariant.
+
+The principal alternative is an **orthogonal visibility graph**, whose edges represent unobstructed horizontal or vertical travel among geometrically useful points. Wybrow, Marriott, and Stuckey's [Orthogonal Connector Routing][F01] separates graph construction, direction-aware route search, and ordering/nudging shared segments. Its optimal-route result concerns length and bends within its stated model; it does not establish a global optimum for PBUI's complete visual scene. The paper is useful because it treats route topology and subsequent segment placement as distinct stages.
+
+For this codebase, the choice should follow measurement. A uniform grid is straightforward but spends work on empty space and can omit a narrow continuous corridor through quantization. A visibility graph depends more on obstacle structure but has a more involved implementation and potentially quadratic graph size. Neither representation excuses invalid output. Keep the existing grid initially, define its limits, and profile realistic surface sizes and wire counts before replacing it.
+
+### 14.6 Reconstruction is a separate algorithm with separate proof obligations
+
+The most consequential PBUI bug occurs after search. A grid path can be orthogonal while conversion to exact jack coordinates introduces a diagonal. The 768px replay demonstrates that correct endpoints and successful search do not imply a valid final polyline.
+
+There are three useful correctness terms:
+
+- **Soundness:** every path reported as valid satisfies the declared geometric contract.
+- **Completeness:** if an allowed path exists in the specified problem space, the procedure finds one. Completeness for a finite grid is weaker than completeness for continuous free space; a budget cutoff also changes the guarantee.
+- **Optimality:** the returned path minimizes a stated objective among the allowed candidates. It says nothing about an unstated aesthetic or a different representation.
+
+PBUI first needs sound final geometry. The current `Point[] | null` interface also loses useful distinctions among failure reasons. The following is a proposed replacement shape, not an existing API:
+
+```text
+RouteResult =
+    Valid(points, cost, generation)
+  | Unresolved(reason, endpointDescriptions, generation)
+
+reason = noGraphPath | budgetExceeded | endpointBlocked
+       | hiddenEndpoint | invalidReconstruction
+
+route(problem):
+    gridPath = search(problem)
+    if search failed:
+        return Unresolved(search.reason, ...)
+
+    # Keep grid corners in their original coordinate system.
+    candidates = attachExactPortsWithOrthogonalStubs(gridPath)
+    for candidate in candidates ordered by preference:
+        candidate = removeDuplicatesAndCollinearVertices(candidate)
+        if validateFinalPolyline(candidate, problem):
+            return Valid(candidate, cost(candidate), problem.generation)
+    return Unresolved(invalidReconstruction, ...)
+```
+
+`attachExactPortsWithOrthogonalStubs` is deliberately not specified as “overwrite the first corner's y.” It must construct one or more legal orthogonal joins, preserve required departure and arrival directions, and check their clearance. Simplification may remove a vertex only if doing so preserves the geometric contract and attachment semantics. Lane nudging, if added, must be followed by validation again.
+
+Validation should check finite coordinates, endpoint identity and position, permitted segment directions, obstacle clearance, bounds, and the selected clipping policy. Labels and hit paths should be derived from the same accepted polyline. For example, a label position can be chosen on a sufficiently long visible segment using arc length and a label-clearance rule. An obsolete midpoint from an earlier candidate route cannot satisfy that relationship by accident.
+
+If no valid route can be produced, the UI can show a relationship list or a clearly distinguished unresolved marker. Drawing an obstacle-crossing fallback with ordinary successful-wire styling violates the user's expectation that the visible path explains the connection. A failure result can still preserve and expose the correct semantic relation.
+
+### 14.7 Multiple wires turn local routing into a coupled optimization problem
+
+Routing one wire changes the desirability of routes for other wires. The current layer orders wires by span and accumulates occupied cells. Consequently, changing order can change the picture even when the semantic graph and obstacles are unchanged. This is a greedy heuristic with a mutable cost environment, not independent shortest paths under one fixed objective.
+
+A possible scene objective for discussion is:
+
+$$
+J = \alpha\sum_i L_i + \beta\sum_i B_i
+    + \gamma X + \eta O + \tau D.
+$$
+
+Here $L_i$ is wire length, $B_i$ is bends, $X$ counts crossings under a defined intersection rule, $O$ measures unwanted overlap, and $D$ measures change from the previous visible scene. Each coefficient converts its term into comparable cost units. This is a proposed design model, not the cost function implemented today. A shared source stub may be intentional and should not automatically count like an unrelated ambiguous overlap.
+
+The stability term matters during resizing. Two routes with nearly equal lengths can run on opposite sides of a tile. Switching between them as a divider moves by one pixel can make the UI difficult to track. A practical policy is to retain a still-valid corridor choice unless a new route improves the selected cost by a meaningful threshold. This introduces hysteresis. Invalid old routes must still be replaced immediately; stability cannot override obstacle avoidance or endpoint freshness.
+
+There is also a distinction between route topology and lane placement. First decide which corridors a connection uses; then order and position parallel segments within those corridors. A final pass must check clearance and labels after these adjustments. This is an application of the staged structure described in [the orthogonal-routing paper][F01], rather than a claim that copying its algorithm automatically solves PBUI's clipping, duplicated-anchor, or interaction policies.
+
+Useful initial improvements are deterministic tie-breaking by stable relationship IDs, explicit corridor-capacity checks, and avoiding unnecessary reroutes of still-valid geometry. Do not claim global optimality for them. If performance or readability remains inadequate, compare alternatives on the same measured scenes with recorded crossings, overlap, route changes, and selection success.
+
+### 14.8 Geometry updates are incremental computation with dependencies
+
+A wire is a derived value. Its dependencies include semantic endpoints, chosen mounted instances, their positions, other obstacles, clipping, routing policy, and possibly other routes' lane usage. Watching only the root surface's size is equivalent to caching a derived value while subscribing to only one of its inputs.
+
+[Build Systems à la Carte][F05] distinguishes scheduling work from deciding whether a result needs rebuilding. The analogy here is useful: coalescing updates into animation frames answers when to compute, while tracking geometry dependencies answers what is stale. A frame scheduler cannot repair an incomplete invalidation model. This is an application of the paper's conceptual separation; the paper is not a browser-layout implementation guide.
+
+The source evidence identifies an exact missing dependency. [SplitPane][R08] changes its local ratio during dragging, but publishes the document change on release. [WireLayer][R03] can therefore retain old positions while the visible tiles move. [PortRail][R02] compares selected local measurements, which need not change when an anchor translates horizontally with its tile. A geometry revision must advance for live layout changes, independently of durable document commits.
+
+The [Resize Observer specification][F09] concerns observed element sizes and explicitly excludes notifications caused by CSS transforms. It is not a general position-change subscription. Observing a container whose size stays constant cannot be relied upon to report every descendant translation. A geometry owner therefore needs explicit signals for split movement, scroll, mounting, and supported transform changes, plus size observation where appropriate.
+
+A minimal proposed update loop is:
+
+```text
+onRelevantGeometryChange(cause):
+    pendingCauses.add(cause)
+    if no frame already requested:
+        requestAnimationFrame(flushGeometry)
+
+flushGeometry():
+    # Read together to avoid alternating layout reads and writes.
+    measured = readAnchorsObstaclesAndClips()
+    if measured differs from published snapshot:
+        publishImmutableGeometry(measured, nextRevision())
+    pendingCauses.clear()
+    routeAndRenderCurrentSnapshot()
+```
+
+“Relevant” cannot mean only endpoints belonging to the moved tile. An unrelated tile can move into another wire's corridor. Conversely, removing an obstacle can make a better route available even if the old path remains valid. Validity invalidation and optional quality improvement have different urgency. [Incremental Connector Routing][F02] studies maintaining routing information as diagram objects change, including visibility relationships. Its algorithm concerns polyline routing; it supplies background for dependency-aware updates, not a drop-in proof for PBUI's orthogonal implementation.
+
+For a small workbench, remeasuring and rerouting all visible relationships once per affected frame may be the simplest correct baseline. Optimize dependency subsets only after collecting timings. A spatial index can later answer which paths or corridor regions intersect a changed obstacle, but an incomplete index can create exactly the stale-picture problem it was intended to speed up.
+
+The existing React-facing semantic APIs use `useSyncExternalStore`. Its [official contract][F10] requires appropriate subscription behavior and a cached snapshot identity when the underlying data has not changed. React does not discover missing geometry dependencies for the store. A separate immutable geometry snapshot can follow the same pattern while retaining its own revision and lifetime. Avoid making every pointer movement a durable semantic document mutation just to obtain a render notification.
+
+### 14.9 Temporal correctness: the right answer for the right generation
+
+Even a valid, freshly measured route can arrive too late if route computation becomes asynchronous. The safe design needs an explicit relationship between the inputs and the result. A useful key is a tuple of monotonically increasing revisions:
+
+```text
+generation = (semanticRevision, geometryRevision, policyRevision)
+
+computeRoutes():
+    input = captureCoherentSnapshot()
+    captured = input.generation
+    result = solveAndValidate(input)
+    if captured != currentGeneration():
+        discard(result)
+        ensureCurrentWorkScheduled()
+        return
+    installPathsLabelsAndHitTargetsTogether(result)
+```
+
+This is proposed pseudocode, not evidence that the current router uses a worker. It is useful before introducing workers because it specifies the publication contract. A coherent snapshot must itself contain mutually compatible inputs; attaching a revision label to a mixture of measurements from different layouts would not make it coherent. In the synchronous browser path, perform the related reads together and avoid intervening application writes.
+
+![A proposed update and publication protocol. Live geometry invalidates before document commit; obsolete computed results cannot replace the current generation.](review-assets/foundations-freshness.png)
+
+[Lamport's Specifying Systems][F06] provides the distinction between safety, liveness, and real-time requirements. Applied here, a **safety** property says that a result from an older generation is never installed as the current route. A **liveness** property says that, after inputs stop changing and computation can run, the display eventually reaches a valid or explicitly unresolved representation of the current relationships. A latency requirement adds a bound during ongoing interaction. Eventual correctness after mouse release does not satisfy a live-drag responsiveness requirement.
+
+These statements expose two separate states that the product must handle. If the old route remains visible while new work is pending, the interface must decide whether to hide it, mark it as pending, or show a cheap validated preview. Simply rejecting an obsolete result does not prevent already-painted stale geometry from misleading the user. The current measured 130px detachment is evidence that this policy cannot remain implicit.
+
+The practical first step is a small state machine and tests for sequences such as `drag → measure → drag → old result → new result → release`. Full TLA+ adoption is not a prerequisite. If future asynchronous routing becomes complex, the same state variables and invariants can become a compact formal model rather than being invented after a race appears.
+
+### 14.10 Interaction correctness is more than geometric correctness
+
+A wiring interface serves a person trying to identify, create, inspect, and remove relationships. Its state machine must make those operations discoverable and recoverable. A mathematically clear path that shares an indistinguishable hit area with another path does not let the user reliably choose the desired command target.
+
+The proposed interaction can be expressed in input-independent states:
+
+```text
+Idle
+  -> SourceChosen(source)
+  -> Candidate(source, destination, proposedOperation)
+  -> Committing(command)
+  -> Completed(result) or Refused(reason)
+
+SourceChosen or Candidate --cancel--> Idle
+```
+
+Drag, click-to-connect, and keyboard activation can produce the same transitions and execute the same command planner. Modifier keys can be shortcuts for operation selection, but the selected operation should also be visible and available without remembering a chord. Refusal should preserve enough context to explain the incompatible target and allow another choice. The truthful-fixture issue matters here: instructions for Hold and Share are misleading when the seeded state cannot execute those operations.
+
+W3C's [Dragging Movements guidance][F11] calls for a single-pointer alternative that does not require dragging, subject to its stated exceptions. Keyboard support alone does not supply that pointer alternative. For PBUI, selecting a source and then a destination with separate clicks is a concrete design candidate; keyboard navigation should reach the same operation independently. The existing live-region announcer is feedback, not a replacement for usable input controls.
+
+W3C's [Target Size guidance][F12] gives a 24-by-24 CSS-pixel minimum with specified exceptions, including spacing and equivalent controls. This is not a finding that every 12px PBUI jack violates the criterion: those jacks are currently decorative, while the cards initiate dragging. The correct review target is the actual interactive region and its alternatives. A small painted square can have a larger accessible control, but overlapping enlarged hit areas still need an unambiguous selection policy.
+
+For wire inspection, a relationship list or a selected wire's explicit menu can resolve ambiguity where several paths share a stub. For narrow layouts, preserving readable names and an accessible connection workflow is more valuable than maintaining every desktop column at any cost. Evaluate task completion—can the user connect Source A's number to the intended sink, verify the effect, and undo it—alongside route length and screenshot aesthetics.
+
+### 14.11 Turn the principles into independent tests
+
+Tests should challenge the output contract rather than repeat the implementation's internal steps. A test that expects the same snapped corners as `routeAround` can preserve the very reconstruction mistake under review. An independent geometric validator should inspect the final points or SVG path actually used by the renderer.
+
+The following proposed properties address distinct failure classes:
+
+- **Final geometry:** every nonzero segment is horizontal or vertical; endpoints equal the chosen anchors within the declared measurement tolerance; permitted stubs are directional; segments avoid forbidden rectangles analytically.
+- **Small-graph optimality:** compare returned search cost with an independent exhaustive or reference shortest-path oracle on tiny generated graphs. This tests the search model, not continuous-space optimality or rendering validity.
+- **Translation:** translating anchors, obstacles, bounds, and the grid origin together should translate a valid result without changing its cost. Translating only the scene relative to a fixed lattice is a different experiment and need not produce the same route.
+- **Scaling:** scaling all physical dimensions, clearance, grid size, and relevant policy thresholds together can support a scale-equivariance property. Changing viewport width alone is a relayout, not a uniform scaling transformation.
+- **Obstacle edits:** inserting an obstacle must never leave a reported-valid path intersecting it; removing an obstacle must not make an existing valid path geometrically invalid. Whether removal immediately improves the route is a separate quality policy.
+- **Temporal publication:** permuting completion order cannot allow an older generation to replace a newer one. Test the pending presentation state as well as the installed-result key.
+- **Live browser behavior:** hold a divider mid-drag and measure endpoint alignment before release; combine resize with scroll; verify clipped anchors and unintended horizontal scroll extent. A post-release screenshot cannot substitute for these assertions.
+- **Semantic truth:** assert every fixture command result and expected relation kind before taking a screenshot. Separately test click, drag, keyboard, cancellation, refusal, inspection, and removal against the same command contract.
+
+Randomly generated rectangles and fractional endpoints are useful because short paths, immediate turns, narrow channels, and nearly coincident coordinates are easy to omit from hand-written examples. Preserve failing seeds as small fixtures. Screenshots remain valuable for text readability, contrast, traceability, and density; geometric assertions remain valuable for defects too subtle or transient to see reliably. Neither is a replacement for the other.
+
+A principled repair sequence follows from these dependencies: make fixture assertions truthful; establish sound final geometry; make geometry publication current during interaction; correct scrolling and visibility ownership; provide usable input alternatives; then optimize route quality and performance. Replacing Dijkstra, introducing a constraint solver, or adding a worker before those contracts exist would increase the amount of machinery without establishing the missing guarantees.
+
+### 14.12 Annotated primary-source reading guide and local archive
+
+For a new intern, begin with the shortest-path lecture and the orthogonal-routing paper, while keeping [route.ts][R04] open. Next read the browser specifications alongside the measured scrollbar and divider findings. Read the opening constraint-hierarchy discussion in Cassowary before designing narrow-layout behavior. The incremental-computation and specification references become useful once the basic route and geometry contracts are clear. There is no need to read the entire Lamport book before fixing a corner reconstruction bug.
+
+The downloads are source material, not files modified to match this report. PDF text extractions are stored alongside the originals for local search. HTML files are snapshots of the retrieved document, not complete offline mirrors of linked scripts, styling, images, or child pages. The manifest records the exact downloaded bytes; specifications and API pages may change upstream after retrieval.
+
+- **F01 — Wybrow, Marriott, Stuckey, Orthogonal Connector Routing (2009).** Read sections 2–5: problem definition, orthogonal visibility graph, search, and shared-segment arrangement. Use it to distinguish path selection from lane placement. [Author-hosted PDF][F01] · [local PDF](../sources/foundations/01-orthogonal-connector-routing.pdf) · [searchable text](../sources/foundations/01-orthogonal-connector-routing.txt).
+- **F02 — Wybrow, Marriott, Stuckey, Incremental Connector Routing (GD 2005; proceedings 2006).** Read the problem and incremental graph-maintenance discussion. Use it to ask which object changes invalidate routes or reveal better ones; remember its polyline setting. [Author-hosted PDF][F02] · [local PDF](../sources/foundations/02-incremental-connector-routing.pdf) · [text](../sources/foundations/02-incremental-connector-routing.txt).
+- **F03 — Badros, Borning, Stuckey, The Cassowary Linear Arithmetic Constraint Solving Algorithm.** Start with section 1.1 on constraint hierarchies; continue into the algorithm if a solver is actually being considered. Use it to separate required layout constraints from preferences. [Author-hosted manuscript][F03] · [local PDF](../sources/foundations/03-cassowary.pdf) · [text](../sources/foundations/03-cassowary.txt).
+- **F04 — MIT 6.006, Lecture 16, Shortest Paths II: Dijkstra (2011).** Work through relaxation, the nonnegative-weight assumption, and the running-time discussion. Then explain why PBUI's vertex includes heading. [MIT lecture PDF][F04] · [local PDF](../sources/foundations/04-mit-dijkstra.pdf) · [text](../sources/foundations/04-mit-dijkstra.txt).
+- **F05 — Mokhov, Mitchell, Peyton Jones, Build Systems à la Carte (2018).** Read the introduction and scheduler/rebuilder decomposition. Apply the dependency vocabulary to geometry cache invalidation; this is an analogy across domains. [Microsoft Research PDF][F05] · [local PDF](../sources/foundations/05-build-systems.pdf) · [text](../sources/foundations/05-build-systems.txt).
+- **F06 — Leslie Lamport, Specifying Systems (2002).** The opening chapters introduce behavior and state; chapter 8 addresses liveness and chapter 9 real time. Use these distinctions to specify generation freshness and drag responsiveness. [Author-hosted book][F06] · [local PDF](../sources/foundations/06-specifying-systems.pdf) · [text](../sources/foundations/06-specifying-systems.txt).
+- **F07 — Jonathan Richard Shewchuk, robust computational-geometry predicates.** Read the resource page's explanation of floating-point geometric failures. It sets the context for robust comparisons, not a prescription to deploy exact arithmetic throughout this axis-aligned router. [Author resource page][F07] · [local HTML](../sources/foundations/07-robust-predicates.html).
+- **F08 — W3C, CSS Overflow Module Level 3.** Read the overflow-concepts and scrollable-overflow sections. Relate box ownership to the seven-pixel jack experiment before proposing CSS changes. [Specification][F08] · [local HTML](../sources/foundations/08-css-overflow.html).
+- **F09 — W3C, Resize Observer.** Read the introduction's notification behavior and observation-box definitions. Use the API for size changes, with explicit invalidation for position and scroll dependencies. [Specification][F09] · [local HTML](../sources/foundations/09-resize-observer.html).
+- **F10 — React, useSyncExternalStore.** Read `subscribe`, `getSnapshot`, and the cached-snapshot caveat. Apply the contract to an immutable geometry store if that proposed design is adopted. [Official API reference][F10] · [local HTML](../sources/foundations/10-react-external-store.html).
+- **F11 — W3C WAI, Understanding SC 2.5.7: Dragging Movements.** Read the intent and examples to design a pointer alternative without dragging, alongside keyboard access. [Official guidance][F11] · [local HTML](../sources/foundations/11-dragging-movements.html).
+- **F12 — W3C WAI, Understanding SC 2.5.8: Target Size (Minimum).** Read the criterion and exceptions before evaluating the actual card and wire controls. [Official guidance][F12] · [local HTML](../sources/foundations/12-target-size.html).
+- **F13 — Adaptagrams, libavoid Router API.** Inspect `setTransactionUse` and `processTransaction`: they provide a concrete API precedent for accumulating shape/connector changes and routing them together. This archived generated documentation is a design reference, not a recommendation to add a C++ integration or a claim about the newest release. [Project API reference][F13] · [local HTML](../sources/foundations/13-libavoid-router.html).
+
+Reproduce source collection with [05-collect-foundations.py](../scripts/05-collect-foundations.py); reproduce the two new diagrams with [06-render-foundations-diagrams.py](../scripts/06-render-foundations-diagrams.py). Downloading the references does not run their example code. The product implementation remains unchanged by this documentation addition.
+
+[F01]: https://users.monash.edu/~mwybrow/papers/wybrow-gd-2009.pdf
+[F02]: https://users.monash.edu/~mwybrow/papers/wybrow-gd-2005.pdf
+[F03]: https://badros.com/greg/papers/cassowary-tochi.pdf
+[F04]: https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-fall-2011/6277a1f06100c26a7ff21031af6757b5_MIT6_006F11_lec16.pdf
+[F05]: https://www.microsoft.com/en-us/research/wp-content/uploads/2018/03/build-systems.pdf
+[F06]: https://lamport.azurewebsites.net/tla/book-02-08-08.pdf
+[F07]: https://www.cs.cmu.edu/~quake/robust.html
+[F08]: https://www.w3.org/TR/css-overflow-3/
+[F09]: https://www.w3.org/TR/resize-observer/
+[F10]: https://react.dev/reference/react/useSyncExternalStore
+[F11]: https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html
+[F12]: https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html
+[F13]: https://www.adaptagrams.org/documentation/classAvoid_1_1Router.html
 
 [R01]: ../../../../../../src/chrome/usePortCarry.ts
 [R02]: ../../../../../../packages/pbui-workbench/src/components/PortRail/PortRail.tsx

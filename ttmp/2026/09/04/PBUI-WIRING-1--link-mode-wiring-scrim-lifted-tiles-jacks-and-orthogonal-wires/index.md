@@ -24,9 +24,11 @@ WhenToUse: ""
 
 Nine implementation phases introduced link-mode rails, frame jacks, orthogonal routing, and scrolling. A subsequent browser-based review found outstanding routing, live-resize, overflow, visibility, and usability defects; the checked implementation tasks are historical phase completion, not final UX acceptance.
 
-Read the [intern architecture and implementation review](design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md) for the current assessment, measured evidence, and proposed repair sequence. Its adjacent `review-assets/` directory contains 22 fresh browser screenshots, three diagrams, and raw geometry records. Product source was not modified by the review.
+Read the [intern architecture and implementation review](design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md) for the current assessment, measured evidence, and proposed repair sequence. Its adjacent `review-assets/` directory contains 22 browser screenshots, five diagrams, and raw geometry records. Product source was not modified by the review.
 
 The [illustrated PDF](<design-doc/review-assets/PBUI-WIRING-1 Intern Review and Browser Evidence.pdf>) is 29 pages. It was uploaded to reMarkable as **PBUI-WIRING-1 Intern Review and Browser Evidence** under `/ai/2026/09/04/PBUI-WIRING-1`.
+
+The expanded [review with foundations PDF](<design-doc/review-assets/PBUI-WIRING-1 Review with Foundations.pdf>) is 42 pages and was uploaded as **PBUI-WIRING-1 Review with Foundations** to the same reMarkable folder. Section 14 adds constraints, algorithms, geometry contracts, incremental computation, temporal correctness, interaction principles, and an annotated reading guide. Its [source archive](sources/foundations/README.txt) contains 13 downloaded primary references with provenance and integrity hashes in the [manifest](sources/foundations/manifest.json).
 
 ## Key Links
 
