@@ -21,6 +21,8 @@ export interface PackagePolicy {
   readonly path: string;
   /** Internal packages this package's production code may import. */
   readonly allow: readonly InternalPackageName[];
+  /** Rare non-code runtime contracts, keyed by package with a reviewable reason. */
+  readonly allowUnusedRuntime?: Readonly<Partial<Record<InternalPackageName, string>>>;
 }
 
 /**
@@ -54,6 +56,10 @@ export const PACKAGE_POLICY: Record<InternalPackageName, PackagePolicy> = {
   "@hyperslop-systems/pbui-editor": {
     path: "packages/pbui-editor",
     allow: ["@hyperslop-systems/pbui"],
+    allowUnusedRuntime: {
+      "@hyperslop-systems/pbui":
+        "Editor theme reads PBUI CSS tokens at runtime; consumer smoke imports PBUI styles even though editor JavaScript has no PBUI import.",
+    },
   },
   "@hyperslop-systems/pbui-ecommerce": {
     path: "packages/pbui-ecommerce",

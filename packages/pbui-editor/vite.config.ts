@@ -10,13 +10,7 @@ import { pbuiVite } from "@hyperslop-systems/pbui/vite";
  * consumer not being able to share its own CodeMirror instance — which no
  * PBUI product has.
  */
-const external = [
-  "react",
-  "react-dom",
-  "react/jsx-runtime",
-  "@hyperslop-systems/pbui",
-  "@hyperslop-systems/pbui-workbench",
-];
+const external = ["react", "react-dom", "react/jsx-runtime", "@hyperslop-systems/pbui"];
 
 export default defineConfig({
   ...pbuiVite(),
@@ -28,10 +22,7 @@ export default defineConfig({
       cssFileName: "pbui-editor",
     },
     rollupOptions: {
-      external: (id) =>
-        external.includes(id) ||
-        id.startsWith("@hyperslop-systems/pbui/") ||
-        id.startsWith("@hyperslop-systems/pbui-workbench/"),
+      external: (id) => external.includes(id) || id.startsWith("@hyperslop-systems/pbui/"),
     },
     sourcemap: true,
   },
