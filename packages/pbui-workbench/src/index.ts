@@ -20,6 +20,7 @@ export type {
   RebalanceProps,
   ShellDescribeOptions,
   SurfaceProps,
+  WiringOptions,
   TilePlacementInfo,
   WorkbenchShell,
   WorkbenchVerb,

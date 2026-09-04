@@ -242,7 +242,7 @@ function WiringLab({ crowded = false }: { crowded?: boolean }) {
           reset links
         </Button>
         <Text size="tiny" tone="faint">
-          Mod+Shift+L toggles · drag an output card onto an input · Shift while dropping pins it · Ctrl shares one cell · Esc leaves the mode
+          Mod+Shift+L toggles · choose an operation · click or drag output to input · keyboard controls below · Esc leaves the mode
         </Text>
       </div>
       <div style={{ minHeight: 0, display: "grid", gridTemplateRows: "minmax(0, 1fr)" }}>

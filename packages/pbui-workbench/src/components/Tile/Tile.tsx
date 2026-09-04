@@ -14,7 +14,7 @@ import { useFrameRegistration } from "../../wiring/geometryContext";
 import styles from "./Tile.module.css";
 
 export interface TileProps
-  extends Pick<SurfaceProps, "renderTitle" | "renderBadges" | "renderPort" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
+  extends Pick<SurfaceProps, "renderTitle" | "renderBadges" | "tileAction" | "swapLabel" | "dockLabel" | "replaceLabel"> {
   node: Node;
   /** The active placement request's per-tile wording, from the Surface. */
   placementLabelFor?(placementId: string, zone: PlaceZone): string | undefined;
@@ -28,7 +28,7 @@ export interface TileProps
  * application a one-cell grid with a committed height. It holds no
  * application state and no layout logic of its own.
  */
-export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
+export function Tile({ node, renderTitle, renderBadges, tileAction, swapLabel, dockLabel, replaceLabel, placementLabelFor }: TileProps) {
   const workbench = useWorkbench();
   const registerFrame = useFrameRegistration(node.id);
   const document = workbench.useDocument();
@@ -133,7 +133,7 @@ export function Tile({ node, renderTitle, renderBadges, renderPort, tileAction, 
               <EmptyState message={view ? `no application called “${view.appId}”` : `no view called “${viewId}”`} hint="close this tile, or open another application from the launcher (⌘K)" />
             </div>
           )}
-          {linkMode && view ? <PortRail placementId={node.id} view={view} {...(renderPort ? { renderPort } : {})} /> : null}
+          {linkMode && view ? <PortRail placementId={node.id} view={view} /> : null}
         </div>
       </TileFrame>
     </div>

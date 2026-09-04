@@ -305,12 +305,12 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
   const isNoOp = (next: WorkbenchDocument, session: WorkbenchSession | undefined) =>
     (session === undefined || (session.workspaceId === state.session.workspaceId && session.activePlacementId === state.session.activePlacementId)) && equals(WorkbenchDocumentSchema, next, state.document);
 
-  const refusal = (result: Exclude<PlanResult, { kind: "prepared" }>): { ok: false; code: string; because: string; choices?: readonly Choice[]; index: number; command: WorkbenchCommand } => {
+  const refusal = (result: Exclude<PlanResult, { kind: "prepared" }>, notify = true): { ok: false; code: string; because: string; choices?: readonly Choice[]; index: number; command: WorkbenchCommand } => {
     if (result.kind === "ambiguous") {
-      options.onRefused?.(result.command, "ambiguous", result.because);
+      if (notify) options.onRefused?.(result.command, "ambiguous", result.because);
       return { ok: false, code: "ambiguous", because: result.because, choices: result.choices, index: result.index, command: result.command };
     }
-    options.onRefused?.(result.command, result.code, result.because);
+    if (notify) options.onRefused?.(result.command, result.code, result.because);
     return { ok: false, code: result.code, because: result.because, index: result.index, command: result.command };
   };
 
@@ -357,7 +357,7 @@ export function createWorkbenchCoreWithInternals(options: CreateWorkbenchCoreOpt
     },
     preview(input, previewOptions = {}) {
       const { commands, result } = planned(input, previewOptions.geometry);
-      if (result.kind !== "prepared") return refusal(result);
+      if (result.kind !== "prepared") return refusal(result, false);
       const { transition } = result;
       return { ok: true, changed: transition.changed, mutations: transition.mutations, session: transition.session, explanation: commands.map(describeWorkbenchCommand).join("; "), ...ids_of(transition) };
     },

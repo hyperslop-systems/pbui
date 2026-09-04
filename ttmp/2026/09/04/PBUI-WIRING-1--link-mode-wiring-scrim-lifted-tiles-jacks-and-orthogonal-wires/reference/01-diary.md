@@ -854,3 +854,62 @@ Run pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/routing/rout
 ### Technical details
 
 Default clearance 3.5px, bend cost 24px, maximum 60000 vertices and 160000 expanded states. Collinear occupied length costs 0.6 per pixel; retained routes require validation and a 24px quality tolerance.
+
+## Step 17: Refactor P4 — Project and render complete measured scenes
+
+The surface now projects logical relations into measured anchor occurrences, routes each occurrence, and renders the resulting SVG. The renderer no longer queries port cards or tile rectangles.
+
+Missing or clipped endpoints produce explicit markers and remain listed in the connection inventory. Derived labels are measured outside routing and only placed on a sufficiently long accepted horizontal segment clear of tile rectangles.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 3317272
+
+### What I did
+
+- Added scene.ts, WiringCanvas.tsx and ConnectionInspector.tsx.
+- Added occurrence retention and hidden endpoint regression tests.
+- Removed the old WireLayer from Surface production rendering.
+
+### Why
+
+Ensure one geometry snapshot determines paths and labels.
+
+### What worked
+
+- 15 wiring tests passed.
+- Browser showed all six fixture relations with valid paths.
+
+### What didn't work
+
+No phase-four test failed.
+
+### What I learned
+
+Source occurrence identity can be retained through layout changes independently of route shape.
+
+### What was tricky to build
+
+Duplicate identity endpoints need coverage without creating a Cartesian product of every mounted occurrence.
+
+### What warrants a second pair of eyes
+
+Inspect missing-endpoint markers and measured label rectangles. Labels currently reject frame collisions; more sophisticated label-to-label packing remains a possible extension.
+
+### What should be done in the future
+
+Add inspector actions and explicit ambiguous wire selection in P5.
+
+### Code review instructions
+
+Run pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring.
+
+### Technical details
+
+buildScene is pure; accepted previous routes are passed to the router only for stable occurrence IDs. Pending measurement never paints stale definitive paths.

@@ -8,6 +8,7 @@ import { Tile } from "../Tile";
 import { LinkAnnouncer } from "../LinkAnnouncer";
 import { RelationPalette } from "../RelationPalette";
 import { ShowChooser } from "../ShowChooser";
+import { ConnectionProvider } from "../../wiring/connectionController";
 import { ConnectionInspector } from "../../wiring/ConnectionInspector";
 import { WiringCanvas } from "../../wiring/WiringCanvas";
 import { createGeometryStore } from "../../wiring/geometryStore";
@@ -22,7 +23,7 @@ import styles from "./Surface.module.css";
  * `data-launcher-open` so the active tile is outlined only while a keyboard
  * operation needs a target.
  */
-export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, renderWire, linkModeShortcut = true, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
+export function WorkbenchSurface({ renderTitle, renderBadges, wiring = {}, linkModeShortcut = true, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
   const workbench = useWorkbench();
   const geometry = useMemo(() => createGeometryStore(), []);
   const setRoot = useCallback((element: HTMLDivElement | null) => { workbench.setRoot(element); geometry.setRoot(element); }, [workbench, geometry]);
@@ -77,7 +78,6 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
           node={node}
           renderTitle={renderTitle}
           renderBadges={renderBadges}
-          renderPort={renderPort}
           tileAction={tileAction}
           swapLabel={swapLabel}
           dockLabel={dockLabel}
@@ -86,12 +86,14 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
         />
       );
     },
-    [renderTitle, renderBadges, renderPort, tileAction, swapLabel, dockLabel, replaceLabel, placing],
+    [renderTitle, renderBadges, tileAction, swapLabel, dockLabel, replaceLabel, placing],
   );
 
   return (
     <GeometryContext.Provider value={geometry}>
+    <ConnectionProvider enabled={linkMode} options={wiring}>
     <div
+      tabIndex={-1}
       ref={setRoot}
       data-part="workbench"
       data-workbench-shell=""
@@ -106,7 +108,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
           <EmptyState message="this workbench has no workspace" hint="create it with layout() or singleTile() and pass it as `initial`" />
         </div>
       )}
-      {linkMode ? <WiringCanvas {...(renderWire ? { renderWire } : {})} /> : null}
+      {linkMode ? <WiringCanvas /> : null}
       {linkMode ? <ConnectionInspector /> : null}
       <ShowChooser />
       <RelationPalette />
@@ -120,6 +122,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
         </div>
       ) : null}
     </div>
+    </ConnectionProvider>
     </GeometryContext.Provider>
   );
 }

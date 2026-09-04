@@ -1,13 +1,15 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useWorkbench } from '../context';
 import { useLinkSnapshot } from '../links/hooks';
 import { linkRefsOf, type LinkRef } from '../links/linkRef';
 import { useGeometryStore, useWiringGeometry } from './geometryContext';
 import { buildScene, type WiringScene } from './scene';
 import { pathData } from './routing/validate';
+import { useConnectionController } from './connectionController';
 import styles from '../components/WireLayer/WireLayer.module.css';
 
-export function WiringCanvas({renderWire}:{renderWire?:(link:LinkRef,node:ReactNode)=>ReactNode}) {
+export function WiringCanvas() {
+  const controller=useConnectionController();
   const store=useGeometryStore()!;
   const geometry=useWiringGeometry(store),wb=useWorkbench(),snapshot=useLinkSnapshot(wb);
   const previous=useRef<WiringScene|undefined>(undefined);
@@ -25,7 +27,22 @@ export function WiringCanvas({renderWire}:{renderWire?:(link:LinkRef,node:ReactN
   const scene=useMemo(()=>buildScene(geometry,JSON.parse(semantic) as LinkRef[],metrics,previous.current),[geometry,semantic,metrics]);
   useLayoutEffect(()=>{if(!scene.pending) previous.current=scene;},[scene]);
   return <div data-part="workbench-wires" className={styles.layer} data-revision={scene.revision} data-pending={scene.pending||undefined}>
-    <svg className={styles.svg} aria-label="Connections">
+    <svg className={styles.svg} aria-label="Connections" onClick={event=>{
+      const root=store.root(); if(!root) return;
+      const rect=root.getBoundingClientRect(),x=event.clientX-rect.left-root.clientLeft,y=event.clientY-rect.top-root.clientTop;
+      const candidates=scene.wires.flatMap(w=>{
+        if(w.route.kind!=="valid") return [];
+        let distance=Infinity;
+        for(let i=1;i<w.route.points.length;i++) {
+          const a=w.route.points[i-1]!,b=w.route.points[i]!;
+          const px=Math.max(Math.min(a.x,b.x),Math.min(Math.max(a.x,b.x),x));
+          const py=Math.max(Math.min(a.y,b.y),Math.min(Math.max(a.y,b.y),y));
+          distance=Math.min(distance,Math.hypot(px-x,py-y));
+        }
+        return distance<=6?[{id:w.link.linkId,distance}]:[];
+      }).sort((a,b)=>a.distance-b.distance||a.id.localeCompare(b.id));
+      controller.setSelected([...new Set(candidates.map(c=>c.id))]);
+    }}>
       {scene.wires.map(w=>{
         const path=w.route.kind==='valid'?pathData(w.route.points):null;
         const node=<g data-part="wire" data-link-id={w.link.linkId} data-term={w.link.kind} data-source={w.link.source} data-destination={w.link.destination} data-route={w.route.kind} className={styles.wire}>
@@ -33,7 +50,7 @@ export function WiringCanvas({renderWire}:{renderWire?:(link:LinkRef,node:ReactN
           {w.label?<text x={w.label.point.x} y={w.label.point.y} textAnchor="middle" dominantBaseline="central" className={styles.label}>{w.label.text}</text>:null}
           <title>{`${w.link.sourceTitle} → ${w.link.destinationTitle} (${w.link.kind})${w.route.kind==='unresolved'?' — endpoint hidden or no safe route':''}`}</title>
         </g>;
-        return <g key={w.id}>{renderWire?renderWire(w.link,node):node}</g>;
+        return <g key={w.id}>{node}</g>;
       })}
     </svg>
   </div>;

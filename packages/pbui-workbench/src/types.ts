@@ -35,6 +35,12 @@ export interface TilePlacementInfo {
   placementCount: number;
 }
 
+export interface WiringOptions {
+  mode?: "auto" | "spatial" | "focused";
+  renderPortDetails?(port: PortRef): ReactNode;
+  renderRelationDetails?(link: LinkRef): ReactNode;
+}
+
 export interface SurfaceProps {
   /**
    * The title slot of every tile. A PBUI product wraps its `<tile>`
@@ -46,9 +52,7 @@ export interface SurfaceProps {
   renderTitle?(view: AppView, placement: TilePlacementInfo, defaultTitle: ReactNode): ReactNode;
   /** The binding badges of a tile (PBUI-LINK-1): one per bound port, after the title and the ×N marker. */
   renderBadges?(view: AppView, placement: TilePlacementInfo, badges: readonly Badge[]): ReactNode;
-  /** Connect-management mode: wrap a rail's port node, and a wire's `<g>` (rendered with `svg`), in the product's presentations. */
-  renderPort?(port: PortRef, node: ReactNode): ReactNode;
-  renderWire?(link: LinkRef, node: ReactNode): ReactNode;
+  wiring?: WiringOptions;
   /** Listen for Mod+Shift+L on the window to toggle connect mode; default true. */
   linkModeShortcut?: boolean;
   /**

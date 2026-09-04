@@ -94,14 +94,17 @@ export function createWorkbenchLinks(options: CreateWorkbenchLinksOptions = {}):
     return apps;
   };
 
-  let cached: { doc: WorkbenchDocument; runtimeRevision: number; snapshot: LinkSnapshot } | null = null;
+  // Preview batches create speculative documents. Their snapshots must not evict
+  // the published document's stable identity used by useSyncExternalStore.
+  let snapshots = new WeakMap<WorkbenchDocument, { runtimeRevision: number; documentRevision: number; snapshot: LinkSnapshot }>();
   let documentRevision = 0;
   const snapshot = (doc: WorkbenchDocument): LinkSnapshot => {
     const state = runtime.getState();
-    if (cached && cached.doc === doc && cached.runtimeRevision === state.revision) return cached.snapshot;
-    if (!cached || cached.doc !== doc) documentRevision += 1;
-    const built = buildLinkSnapshot(doc, catalog(), state, documentRevision, labels);
-    cached = { doc, runtimeRevision: state.revision, snapshot: built };
+    const cached = snapshots.get(doc);
+    if (cached?.runtimeRevision === state.revision) return cached.snapshot;
+    const revision = cached?.documentRevision ?? ++documentRevision;
+    const built = buildLinkSnapshot(doc, catalog(), state, revision, labels);
+    snapshots.set(doc, { runtimeRevision: state.revision, documentRevision: revision, snapshot: built });
     return built;
   };
 
@@ -110,6 +113,7 @@ export function createWorkbenchLinks(options: CreateWorkbenchLinksOptions = {}):
     labels,
     bind(next) {
       apps = next;
+      snapshots = new WeakMap();
       if (!deps) deps = { graph: declaredPortGraph(next) };
     },
     get deps() {

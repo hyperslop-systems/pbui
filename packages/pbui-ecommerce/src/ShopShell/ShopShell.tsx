@@ -59,16 +59,10 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
                 </Presentation>
               );
             }}
-            renderPort={(port, node) => (
-              <Presentation reference={{ type: "port", value: port }} doc={port.doc} inComposite block>
-                {node}
-              </Presentation>
-            )}
-            renderWire={(link, node) => (
-              <Presentation reference={{ type: "link", value: link }} doc={`${link.destinationTitle} ← ${link.sourceTitle}`} svg>
-                {node}
-              </Presentation>
-            )}
+            wiring={{
+              renderPortDetails: port => <Presentation reference={{ type: "port", value: port }} doc={port.doc} inComposite block><span>Port actions</span></Presentation>,
+              renderRelationDetails: link => <Presentation reference={{ type: "link", value: link }} doc={`${link.destinationTitle} ← ${link.sourceTitle}`} inComposite><span>Relation actions</span></Presentation>,
+            }}
             renderBadges={(_view, _placement, badges) => {
               const snapshot = workbench.linkSnapshot();
               return badges.map((badge) => {

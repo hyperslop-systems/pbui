@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { create } from "@bufbuild/protobuf";
-import { createPresentationTypeGraph, documentSlotPort, linkVerbs, resetEscapeSurfaces, resetPortCarry } from "@hyperslop-systems/pbui";
+import { createPresentationTypeGraph, documentSlotPort, linkVerbs, resetEscapeSurfaces } from "@hyperslop-systems/pbui";
 import { commands, layout, split, stateOf, tile } from "@hyperslop-systems/workbench-core";
 import { DocumentPayloadSchema, MutationSchema } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
@@ -41,7 +41,6 @@ function scene() {
 
 afterEach(() => {
   cleanup();
-  resetPortCarry();
   resetEscapeSurfaces();
   document.body.innerHTML = "";
 });
@@ -84,16 +83,14 @@ describe("identity classes through the workbench", () => {
     expect(badges()).toEqual([]);
   });
 
-  it("Ctrl-drag in connect mode declares an identity, drawn as a double wire", () => {
+  it("Explicit Share in connect mode declares an identity, drawn as a double wire", () => {
     const { wb, table, plot } = scene();
     act(() => void wb.perform(linkVerbs.openMode()));
     const from = document.querySelector(`[data-part="port-rail-port"][data-side="out"][data-port-id="${table}/selection"]`) as HTMLElement;
     const to = document.querySelector(`[data-part="port-rail-port"][data-side="in"][data-port-id="${plot}/selection"]`) as HTMLElement;
-    act(() => void fireEvent.pointerDown(from, { button: 0 }));
-    act(() => void fireEvent.keyDown(window, { key: "Control" }));
-    act(() => void fireEvent.pointerMove(to));
-    expect(document.querySelector('[data-part="wire-cursor"]')?.textContent).toContain("Share(");
-    act(() => void fireEvent.pointerUp(to));
+    fireEvent.change(document.querySelector('[aria-label="Connection operation"]')!,{target:{value:"share"}});
+    fireEvent.click(from);
+    fireEvent.click(to);
     expect(stateOf(wb.core.getState().document).identity).toHaveLength(1);
     expect(document.querySelector('[data-part="wire"][data-term="identity"]')).not.toBeNull();
   });
