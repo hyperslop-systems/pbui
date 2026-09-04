@@ -308,6 +308,41 @@ GOWORK=off go run ./cmd/pbui-chat serve --real-runtime --profile <pinocchio-prof
 The design and diary live in
 `ttmp/2026/08/20/PBUI-AGENT-1--pbui-native-chat-agent-with-custom-pbui-widgets/`.
 
+## Dependency boundaries
+
+PBUI's internal package graph is an executable architecture policy, not a
+workspace-installation accident. `src/architecture/packagePolicy.ts` records
+all 13 package nodes and every allowed production edge. Root `pnpm test`
+discovers manifests and direct imports and fails on:
+
+- a workspace package absent from policy;
+- an undeclared direct internal import;
+- a forbidden or cyclic runtime/peer edge;
+- an unused internal runtime declaration;
+- an import through a package subpath not present in `exports`.
+
+Every new package or production dependency must update its own `package.json`
+and the policy in the same change. Do not rely on pnpm hoisting or another
+workspace package's dependency. Dev-only test/tool imports may use a direct
+`devDependency`; production `src` imports require a production-visible
+declaration.
+
+`src/architecture/rootLayers.test.ts` separately protects the stable root
+component direction and prevents chrome from reaching into organisms. Datalab
+keeps its more detailed product-internal graph in
+`packages/datalab-ui/test/layers.test.ts`. Run the normal gates; no separate
+architecture command is needed:
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm -r typecheck
+pnpm -r test
+```
+
+The implementation guide and rationale live under
+`ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/`.
+
 ## Go and protocol development
 
 The repository is also the canonical Go module for PBUI workbench validation,

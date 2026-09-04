@@ -59,6 +59,27 @@ describe("the root PBUI source layers", () => {
     }
   });
 
+  test("rejects chrome importing an organism", () => {
+    const root = mkdtempSync(join(tmpdir(), "pbui-root-layers-"));
+    try {
+      mkdirSync(join(root, "chrome"), { recursive: true });
+      mkdirSync(join(root, "components/organisms"), { recursive: true });
+      writeFileSync(
+        join(root, "chrome/TileFrame.ts"),
+        'import { FileBrowser } from "../components/organisms/FileBrowser";\nvoid FileBrowser;\n',
+      );
+      writeFileSync(join(root, "components/organisms/FileBrowser.ts"), "export const FileBrowser = {};\n");
+
+      const violations = analyzeRootLayers(root);
+      expect(violations).toHaveLength(1);
+      expect(violations[0]?.message).toContain(
+        "chrome/TileFrame.ts (chrome) imports ../components/organisms/FileBrowser (components/organisms)",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("allows the intentional organism-to-chrome utility direction", () => {
     const root = mkdtempSync(join(tmpdir(), "pbui-root-layers-"));
     try {
