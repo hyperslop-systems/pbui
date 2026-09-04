@@ -670,3 +670,129 @@ Read geometryStore.ts and its four tests, then Surface/Tile/SplitPane integratio
 ### Technical details
 
 The SVG-versus-Canvas renderer remains independent of the geometry model. Phase code commit also carries the preceding P0 diary and archived slips. P1 completion/start slips are recorded separately.
+
+## Step 15: Refactor P2 — Frame overlays and bounded scrolling
+
+Refactored TileFrame into a clipped content region with its own scrollport and a sibling frame overlay. Port cards register with the surface geometry owner; FrameJacks consumes those measurements instead of measuring its own rendered squares.
+
+The application subtree remains mounted and inert under wiring, and the scrim is bounded to the surface. An explicit 20px inset reserves real routing space around the layout.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** ef607d4
+
+### What I did
+
+- Added TileFrame overlay slot and explicit tile-scrollport styles; changed workbench Tile to populate frame decoration.
+- Removed PortRail jack state, ResizeObserver loop, and pbui:jacks-placed emission.
+- Measured frame padding origins so frame overlay paint and surface anchors share coordinates despite borders.
+- Added a mount-continuity test covering repeated wiring toggles and overlay ancestry.
+
+### Why
+
+Decorative jacks must not create scrollable content or require another commit/measurement cycle before wires can locate them.
+
+### What worked
+
+- pnpm build: root package built successfully, refreshing the TileFrame declaration for consumers.
+- Workbench typecheck passed; wiring and Surface suites passed 20 tests.
+- Mount continuity passed 1 test; root chrome suite passed 26 tests.
+
+### What didn't work
+
+No implementation or test failures in this phase.
+
+### What I learned
+
+The border/padding origin of an absolute overlay differs from the measured outer frame. Recording the inner origin makes jack paint and routing endpoints agree without CSS border-width guesses.
+
+### What was tricky to build
+
+Changing TileFrame structure requires rebuilding the root package because the workbench consumes its dist declarations. Application ancestry is stable across mode changes despite the new structural scrollport.
+
+### What warrants a second pair of eyes
+
+Check frame padding offsets and the root inset in actual browser geometry. The old WireLayer remains until P4 and does not yet consume the replacement snapshot.
+
+### What should be done in the future
+
+P3 implements independently validated routing. P4 replaces the old wire renderer; P7 verifies horizontal scroll extents in a browser.
+
+### Code review instructions
+
+Review TileFrame.tsx, public/chrome.css, FrameJacks.tsx, RegisteredCard in PortRail, and mounts.test.tsx. The application input element is asserted identical after three mode cycles.
+
+### Technical details
+
+The code commit includes P1 diary/slips. P2 start and completion slips are archived with its phase record. These structural changes introduce no migration or legacy adapter.
+
+## Step 15a: Inspect connections by hover and keyboard focus
+
+The user added connection inspection while routing phase P3 was in progress. A surface-owned presentation controller now highlights direct incident wires and their endpoint cards and jacks. Hovering a tile background selects all its ports; hovering a particular port takes precedence and selects only that port's connections. Keyboard focus provides the same inspection behavior.
+
+Highlighting changes attributes and paint only, avoiding geometry invalidation and routing work during pointer movement. It preserves held, derived, and identity wire patterns, and clears when the pointer leaves or the mode closes.
+
+### Prompt Context
+
+**User prompt (verbatim):** "highlight connected ports (and wire) on hover of a card / port / wire"
+
+**Assistant interpretation:** Make connections traceable from either endpoint or the wire itself.
+
+**Inferred user intent:** Visually understand which cards communicate without having to manually follow every crossing.
+
+**Commit (code):** 1703f45 — "feat(wiring): highlight connected ports and wires on hover and focus"
+
+### What I did
+
+- Added `wiring/connectedHighlight.ts` and three behavior tests.
+- Applied accent outlines to connected port cards/jacks and thicker accented wire strokes.
+- Used Playwright to hover a source card and a wire at 1440 × 1000.
+- Stored [source hover](../design-doc/review-assets/refactor-hover-source.png) and [wire hover](../design-doc/review-assets/refactor-hover-wire.png) alongside the review.
+
+### Why
+
+- Direct incident-edge highlighting makes fan-out and shared endpoints legible without implying transitive data flow.
+
+### What worked
+
+- Three tests passed for incident edges, surface isolation, tile aggregation, cleanup, and keyboard focus restoration.
+- Workbench TypeScript check passed.
+- Browser source hover highlighted three incident wires and their endpoints; wire hover highlighted one identity wire and both sides of its two inout endpoints.
+- Document scroll width equalled the 1440px viewport.
+
+### What didn't work
+
+- Initial browser navigation used `workbench-wiring-lab--lab`; Storybook reported "Couldn't find story matching 'workbench-wiring-lab--lab'." Reading the story title established the correct ID, `workbench-wiringlab--lab`.
+
+### What I learned
+
+- Inout identity endpoints have input and output cards; highlighting both accurately identifies the shared semantic port.
+
+### What was tricky to build
+
+- Nested port content and wire paths must resolve to their semantic ancestor, while a hovered port must take precedence over its enclosing tile. Delegated events use closest matching ancestors within the owning surface.
+- Pointer inspection temporarily overrides keyboard focus; leaving restores the focused connection.
+
+### What warrants a second pair of eyes
+
+- Check custom port wrappers and nested surfaces against the ownership rules.
+- The screenshots still show the old production router; P3/P4 replace that routing and its detached label placement.
+
+### What should be done in the future
+
+- Retain these semantic data attributes in the scene renderer and repeat hover verification after replacing it.
+
+### Code review instructions
+
+- Start at `attachConnectedHighlight`, then inspect Surface and WireLayer highlight CSS.
+- Run `pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/connectedHighlight.test.ts` and the package typecheck.
+
+### Technical details
+
+Given seed ports S, select edges whose source or destination belongs to S, then highlight both endpoints of those edges. For a wire seed, select its link ID only. This is one-hop adjacency, not graph reachability. The controller does not mutate link semantics or route coordinates.

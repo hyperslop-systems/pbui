@@ -1,0 +1,27 @@
+{
+  "phase": 2,
+  "title": "Frame overlays and bounded scrolling",
+  "commit": "ef607d4",
+  "task": "3pxd",
+  "summary": "Jacks now render outside content scrollports from shared geometry. Removed independent jack measurements/events; root build, typecheck, and 47 focused tests pass.",
+  "narrative": "Refactored TileFrame into a clipped content region with its own scrollport and a sibling frame overlay. Port cards register with the surface geometry owner; FrameJacks consumes those measurements instead of measuring its own rendered squares.\n\nThe application subtree remains mounted and inert under wiring, and the scrim is bounded to the surface. An explicit 20px inset reserves real routing space around the layout.",
+  "did": [
+    "Added TileFrame overlay slot and explicit tile-scrollport styles; changed workbench Tile to populate frame decoration.",
+    "Removed PortRail jack state, ResizeObserver loop, and pbui:jacks-placed emission.",
+    "Measured frame padding origins so frame overlay paint and surface anchors share coordinates despite borders.",
+    "Added a mount-continuity test covering repeated wiring toggles and overlay ancestry."
+  ],
+  "why": "Decorative jacks must not create scrollable content or require another commit/measurement cycle before wires can locate them.",
+  "worked": [
+    "pnpm build: root package built successfully, refreshing the TileFrame declaration for consumers.",
+    "Workbench typecheck passed; wiring and Surface suites passed 20 tests.",
+    "Mount continuity passed 1 test; root chrome suite passed 26 tests."
+  ],
+  "failed": "No implementation or test failures in this phase.",
+  "learned": "The border/padding origin of an absolute overlay differs from the measured outer frame. Recording the inner origin makes jack paint and routing endpoints agree without CSS border-width guesses.",
+  "tricky": "Changing TileFrame structure requires rebuilding the root package because the workbench consumes its dist declarations. Application ancestry is stable across mode changes despite the new structural scrollport.",
+  "review": "Check frame padding offsets and the root inset in actual browser geometry. The old WireLayer remains until P4 and does not yet consume the replacement snapshot.",
+  "future": "P3 implements independently validated routing. P4 replaces the old wire renderer; P7 verifies horizontal scroll extents in a browser.",
+  "instructions": "Review TileFrame.tsx, public/chrome.css, FrameJacks.tsx, RegisteredCard in PortRail, and mounts.test.tsx. The application input element is asserted identical after three mode cycles.",
+  "details": "The code commit includes P1 diary/slips. P2 start and completion slips are archived with its phase record. These structural changes introduce no migration or legacy adapter."
+}

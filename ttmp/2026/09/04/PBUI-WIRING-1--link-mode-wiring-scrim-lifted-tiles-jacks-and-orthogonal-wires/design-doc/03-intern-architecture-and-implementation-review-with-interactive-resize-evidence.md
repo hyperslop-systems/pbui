@@ -1051,3 +1051,12 @@ Reproduce source collection with [05-collect-foundations.py](../scripts/05-colle
 [R26]: ../../../../../../packages/pbui-workbench/src/stories/VisualAudit.stories.tsx
 [R27]: ../../../../../../src/presentation/links/snapshot.ts
 [R28]: ../../../../../../packages/pbui-workbench/src/components/LinkAnnouncer/LinkAnnouncer.tsx
+
+
+## Implementation follow-up: connection inspection
+
+Commit `1703f45` adds direct connection highlighting for port cards, tile backgrounds, jacks, wires, and keyboard focus. Hovering a source highlights its immediate fan-out; hovering a wire highlights that relation's endpoints, including both cards of an inout port. This changes paint without rerouting. These implementation screenshots precede the new routing engine:
+
+![Source port and its direct connections](review-assets/refactor-hover-source.png)
+
+![Wire and its endpoint cards](review-assets/refactor-hover-wire.png)

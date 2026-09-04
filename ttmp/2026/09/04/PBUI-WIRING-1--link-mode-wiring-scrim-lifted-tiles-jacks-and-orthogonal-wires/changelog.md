@@ -129,3 +129,13 @@ Refactor P0: Truthful fixtures and regression inputs (commit 1cfa1e1). Both Lab 
 
 Refactor P1: Surface-owned geometry and exact registration lifetimes (commit c6fd94d). Introduced per-surface geometry, clipping, immutable revisions, exact disposal, and layout invalidation. Six focused tests and typecheck pass.
 
+
+## 2026-09-04
+
+Refactor P2: Frame overlays and bounded scrolling (commit ef607d4). Jacks now render outside content scrollports from shared geometry. Removed independent jack measurements/events; root build, typecheck, and 47 focused tests pass.
+
+
+## 2026-09-04
+
+Step 15a: implement and browser-verify connected hover/focus highlighting (1703f45); store two screenshots with review.
+
