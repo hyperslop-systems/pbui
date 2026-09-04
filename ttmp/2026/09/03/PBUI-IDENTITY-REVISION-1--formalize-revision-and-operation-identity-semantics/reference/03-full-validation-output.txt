@@ -93,7 +93,8 @@ boundary: OK
 > vite build && tsc -p tsconfig.build.json
 
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 192 modules transformed.
+[2K
+transforming...✓ 192 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/pbui.css                  32.08 kB │ gzip:  6.43 kB
@@ -122,7 +123,8 @@ dist/index.js                 133.79 kB │ gzip: 37.24 kB │ map: 523.04 kB
 │
 ●  Building preview..
 │  Vite vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 348 modules transformed.
+[2K
+transforming...✓ 348 modules transformed.
 rendering chunks...
 computing gzip size...
 │  Vite storybook-static/iframe.html
@@ -394,7 +396,8 @@ computing gzip size...
 > vite build && tsc -p tsconfig.build.json
 
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 192 modules transformed.
+[2K
+transforming...✓ 192 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/pbui.css                  32.08 kB │ gzip:  6.43 kB
@@ -645,7 +648,7 @@ packages/pbui-ecommerce/demo build: dist/index.html                   0.44 kB �
 packages/pbui-ecommerce/demo build: dist/assets/index-DGZa8HTE.css   49.54 kB │ gzip:   9.76 kB
 packages/pbui-ecommerce/demo build: dist/assets/index-D5aySA3_.js   717.01 kB │ gzip: 214.11 kB
 packages/pbui-ecommerce/demo build: ✓ built in 765ms
-packages/pbui-ecommerce/demo build: [plugin builtin:vite-reporter] 
+packages/pbui-ecommerce/demo build: [plugin builtin:vite-reporter]
 packages/pbui-ecommerce/demo build: (!) Some chunks are larger than 500 kB after minification. Consider:
 packages/pbui-ecommerce/demo build: - Using dynamic import() to code-split the application
 packages/pbui-ecommerce/demo build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
@@ -685,7 +688,7 @@ packages/pbui-plotscript/demo build: dist/index.html                     0.44 kB
 packages/pbui-plotscript/demo build: dist/assets/index-BF78vBaU.css     55.41 kB │ gzip:  10.57 kB
 packages/pbui-plotscript/demo build: dist/assets/index-BeBivv6X.js   1,084.75 kB │ gzip: 342.31 kB
 packages/pbui-plotscript/demo build: ✓ built in 1.26s
-packages/pbui-plotscript/demo build: [plugin builtin:vite-reporter] 
+packages/pbui-plotscript/demo build: [plugin builtin:vite-reporter]
 packages/pbui-plotscript/demo build: (!) Some chunks are larger than 500 kB after minification. Consider:
 packages/pbui-plotscript/demo build: - Using dynamic import() to code-split the application
 packages/pbui-plotscript/demo build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
@@ -710,7 +713,7 @@ packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/emscripten-modul
 packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/index-okxrbdWR.css                                      70.48 kB │ gzip:  12.70 kB
 packages/pbui-chat/demo build: ../../../pkg/chatui/embed/assets/index-5MhbkEON.js                                    1,411.06 kB │ gzip: 438.47 kB
 packages/pbui-chat/demo build: ✓ built in 1.36s
-packages/pbui-chat/demo build: [plugin builtin:vite-reporter] 
+packages/pbui-chat/demo build: [plugin builtin:vite-reporter]
 packages/pbui-chat/demo build: (!) Some chunks are larger than 500 kB after minification. Consider:
 packages/pbui-chat/demo build: - Using dynamic import() to code-split the application
 packages/pbui-chat/demo build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
@@ -1133,7 +1136,7 @@ packages/pbui-editor consumer:smoke: dist/index.html                   0.16 kB �
 packages/pbui-editor consumer:smoke: dist/assets/index-B6LbPxMl.css   32.37 kB │ gzip:   6.49 kB
 packages/pbui-editor consumer:smoke: dist/assets/index-D7QTRBKr.js   603.76 kB │ gzip: 200.56 kB
 packages/pbui-editor consumer:smoke: ✓ built in 294ms
-packages/pbui-editor consumer:smoke: [plugin builtin:vite-reporter] 
+packages/pbui-editor consumer:smoke: [plugin builtin:vite-reporter]
 packages/pbui-editor consumer:smoke: (!) Some chunks are larger than 500 kB after minification. Consider:
 packages/pbui-editor consumer:smoke: - Using dynamic import() to code-split the application
 packages/pbui-editor consumer:smoke: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
@@ -2173,23 +2176,23 @@ Exit status 1
 src/components/organisms/LauncherDialog/LauncherDialog.tsx:184:9 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━
 
   ! Change to an optional chain.
-  
+
     182 │     // The active tile when there is one; otherwise the first in tree order.
     183 │     const leaf = own.find((node) => node.id === invocation.activePlacementId) ?? own[0];
   > 184 │     if (!leaf || leaf.body.case !== "leaf") return null;
         │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     185 │     const view = document.views[leaf.body.value.viewId];
     186 │     return {
-  
+
   i Unsafe fix: Change to an optional chain.
-  
+
     182 182 │       // The active tile when there is one; otherwise the first in tree order.
     183 183 │       const leaf = own.find((node) => node.id === invocation.activePlacementId) ?? own[0];
     184     │ - ····if·(!leaf·||·leaf.body.case·!==·"leaf")·return·null;
         184 │ + ····if·(leaf?.body.case·!==·"leaf")·return·null;
     185 185 │       const view = document.views[leaf.body.value.viewId];
     186 186 │       return {
-  
+
 
 Checked 474 files in 445ms. No fixes applied.
 Found 1 warning.
@@ -2212,7 +2215,8 @@ Found 1 warning.
 │
 ●  Building preview..
 │  Vite vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 778 modules transformed.
+[2K
+transforming...✓ 778 modules transformed.
 rendering chunks...
 computing gzip size...
 │  Vite storybook-static/iframe.html
@@ -2674,7 +2678,8 @@ UTC end: 2026-09-04T03:07:28+00:00
 > vite build && vite build --config vite.node.config.ts && tsc -p tsconfig.build.json
 
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 393 modules transformed.
+[2K
+transforming...✓ 393 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/datalab.css           63.33 kB │ gzip:  12.45 kB
@@ -2687,7 +2692,8 @@ dist/index.js             710.31 kB │ gzip: 160.56 kB │ map: 2,138.41 kB
 
 ✓ built in 346ms
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 2 modules transformed.
+[2K
+transforming...✓ 2 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/vite.js  0.22 kB │ gzip: 0.19 kB │ map: 0.55 kB
@@ -3934,7 +3940,8 @@ retry exit: 1
 > vite build && vite build --config vite.node.config.ts && tsc -p tsconfig.build.json
 
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 393 modules transformed.
+[2K
+transforming...✓ 393 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/datalab.css           63.33 kB │ gzip:  12.45 kB
@@ -3947,7 +3954,8 @@ dist/index.js             710.31 kB │ gzip: 160.56 kB │ map: 2,138.41 kB
 
 ✓ built in 475ms
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 2 modules transformed.
+[2K
+transforming...✓ 2 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/vite.js  0.22 kB │ gzip: 0.19 kB │ map: 0.55 kB
@@ -4970,7 +4978,8 @@ authenticated retry exit: 1
 > vite build && vite build --config vite.node.config.ts && tsc -p tsconfig.build.json
 
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 393 modules transformed.
+[2K
+transforming...✓ 393 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/datalab.css           63.33 kB │ gzip:  12.45 kB
@@ -4983,7 +4992,8 @@ dist/index.js             710.31 kB │ gzip: 160.56 kB │ map: 2,138.41 kB
 
 ✓ built in 337ms
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 2 modules transformed.
+[2K
+transforming...✓ 2 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/vite.js  0.22 kB │ gzip: 0.19 kB │ map: 0.55 kB
@@ -6231,7 +6241,8 @@ self-contained workspace retry exit: 1
 > vite build && vite build --config vite.node.config.ts && tsc -p tsconfig.build.json
 
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 393 modules transformed.
+[2K
+transforming...✓ 393 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/datalab.css           63.33 kB │ gzip:  12.45 kB
@@ -6244,7 +6255,8 @@ dist/index.js             710.31 kB │ gzip: 160.56 kB │ map: 2,138.41 kB
 
 ✓ built in 344ms
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 2 modules transformed.
+[2K
+transforming...✓ 2 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/vite.js  0.22 kB │ gzip: 0.19 kB │ map: 0.55 kB
@@ -7614,7 +7626,7 @@ dist/assets/runtime-DC2aiu8H-BDWOqJK7.js               12.07 kB │ gzip:     4.
 dist/assets/index-Cu2hN7aK.js                       1,473.42 kB │ gzip:   412.19 kB
 
 ✓ built in 1.79s
-[plugin builtin:vite-reporter] 
+[plugin builtin:vite-reporter]
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting

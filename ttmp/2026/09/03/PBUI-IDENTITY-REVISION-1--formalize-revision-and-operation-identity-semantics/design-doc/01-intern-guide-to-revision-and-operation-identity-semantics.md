@@ -850,7 +850,7 @@ Rejected. It is transport/idempotency metadata, not persistent Workbench documen
 - [x] 409/422/batching tests remain green.
 - [x] No React/DOM enters Workbench core.
 - [x] Full validation and packed boundary pass.
-- [ ] Ticket doctor and reMarkable upload pass.
+- [x] Ticket doctor and reMarkable upload pass.
 
 ---
 

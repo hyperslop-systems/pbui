@@ -1,0 +1,15 @@
+===== DRY RUN =====
+DRY: layout=default
+DRY: bundle name=PBUI Identity Revision Implementation
+DRY: remote-dir=/ai/2026/09/03/PBUI-IDENTITY-REVISION-1
+DRY: include /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/index.md (title="index")
+DRY: include /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/design-doc/01-intern-guide-to-revision-and-operation-identity-semantics.md (title="01-intern-guide-to-revision-and-operation-identity-semantics")
+DRY: include /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/reference/05-validation-summary.md (title="05-validation-summary")
+DRY: include /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/reference/01-investigation-diary.md (title="01-investigation-diary")
+DRY: include /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/tasks.md (title="tasks")
+DRY: include /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/changelog.md (title="changelog")
+DRY: pandoc <bundle> -> <tmp>/PBUI Identity Revision Implementation.pdf
+DRY: upload PBUI Identity Revision Implementation.pdf -> /ai/2026/09/03/PBUI-IDENTITY-REVISION-1
+
+===== UPLOAD =====
+OK: uploaded PBUI Identity Revision Implementation.pdf -> /ai/2026/09/03/PBUI-IDENTITY-REVISION-1

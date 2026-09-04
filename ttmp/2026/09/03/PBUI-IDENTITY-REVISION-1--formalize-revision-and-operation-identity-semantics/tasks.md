@@ -8,4 +8,4 @@
 - [x] Migrate affected Workbench and consumer APIs without compatibility aliases <!-- t:9101 -->
 - [x] Add identity, retry, replay, and serialization tests <!-- t:gx9l -->
 - [x] Run full validation and document the implementation <!-- t:hz26 -->
-- [ ] Upload the completed bundle to reMarkable <!-- t:73l1 -->
+- [x] Upload the completed bundle to reMarkable <!-- t:73l1 -->

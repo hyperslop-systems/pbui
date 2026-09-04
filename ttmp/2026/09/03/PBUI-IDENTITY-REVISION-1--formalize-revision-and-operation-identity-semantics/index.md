@@ -67,4 +67,4 @@ P0 inventory meanings
 
 ## Status
 
-**Implementation and repository validation complete.** The hard cutover passes 250 focused core tests, 860 root tests, 1,565 child-package tests, all typechecks/builds, packed boundaries/consumers, Storybook builds, and Go CI parity. Final docmgr audit, reMarkable delivery, and closure remain.
+**Complete, pending closure commit.** The hard cutover passes 250 focused core tests, 860 root tests, 1,565 child-package tests, all typechecks/builds, packed boundaries/consumers, Storybook builds, and Go CI parity. Docmgr validation is clean and the final implementation bundle is uploaded to reMarkable.
