@@ -1,0 +1,86 @@
+[
+  {
+    "n": 1,
+    "story": "presentation-pbui-protocol--default",
+    "slug": "object-menu-open",
+    "description": "Right-click on the 'Ada Lovelace' presentation opens the descriptor-provided object menu (role=menu) anchored at the pointer.",
+    "file": "001-object-menu-open.png"
+  },
+  {
+    "n": 2,
+    "story": "presentation-pbui-protocol--with-contextual-help",
+    "slug": "menu-disabled-entry-reason",
+    "description": "Right-click on 'You': the Send email menu item is disabled and shows its refusal reason inline via data-part=menu-reason.",
+    "file": "002-menu-disabled-entry-reason.png"
+  },
+  {
+    "n": 3,
+    "story": "presentation-interaction-kernel-4--accept-chooser-and-banner",
+    "slug": "accept-mode-banner",
+    "description": "After clicking 'pick a person…': the accept banner is shown and eligible presentations (Ada, and the note that can resolve to a person) carry data-state=acceptable styling.",
+    "file": "003-accept-mode-banner.png"
+  },
+  {
+    "n": 4,
+    "story": "presentation-interaction-kernel-4--accept-chooser-and-banner",
+    "slug": "accept-chooser-open",
+    "description": "Clicking the note (which fits the pending accept request two ways via relations) opens the accept chooser listing both candidate people under the still-pending banner.",
+    "file": "004-accept-chooser-open.png"
+  },
+  {
+    "n": 5,
+    "story": "presentation-interaction-kernel-4--explain-the-menu",
+    "slug": "explain-developer-disclosure",
+    "description": "Switching the explain panel from public to developer disclosure: every candidate action's trace and fate appear, not just the rows the real menu would show.",
+    "file": "005-explain-developer-disclosure.png"
+  },
+  {
+    "n": 6,
+    "story": "presentation-interaction-kernel-4--stale-row-refusal",
+    "slug": "refusal-notice",
+    "description": "The row was resolved before the directory locked; clicking Email re-checks at click time and refuses, surfacing the RefusalNotice banner with its reason.",
+    "file": "006-refusal-notice.png"
+  },
+  {
+    "n": 7,
+    "story": "chrome-kit--two-tiles-with-drag",
+    "slug": "tile-drag-dock-preview",
+    "description": "Mid-drag: grip pressed on tile A, pointer moved over tile B's centre — the centre drop-zone overlay (swap) is shown.",
+    "file": "007-tile-drag-dock-preview.png"
+  },
+  {
+    "n": 8,
+    "story": "chrome-kit--launcher",
+    "slug": "launcher-filtered-query",
+    "description": "Typing 'goals' into the launcher's search combobox filters the OPEN VIEWS / NEW VIEW groups live.",
+    "file": "008-launcher-filtered-query.png"
+  },
+  {
+    "n": 9,
+    "story": "component-library-organisms-filebrowser--with-presentation",
+    "slug": "filebrowser-row-selected",
+    "description": "Left-clicking a file row selects it (aria-selected / selection styling) via the presentation-protocol seam.",
+    "file": "009-filebrowser-row-selected.png"
+  },
+  {
+    "n": 10,
+    "story": "component-library-organisms-filebrowser--with-presentation",
+    "slug": "filebrowser-row-menu-open",
+    "description": "Right-clicking a file row opens its object menu: Rename…, Delete (family-derived rows).",
+    "file": "010-filebrowser-row-menu-open.png"
+  },
+  {
+    "n": 11,
+    "story": "component-library-molecules-inlinerename--live",
+    "slug": "inlinerename-editing",
+    "description": "Clicking the workspace name button swaps it for the InlineRename input, focused and pre-filled — the editing state.",
+    "file": "011-inlinerename-editing.png"
+  },
+  {
+    "n": 12,
+    "story": "component-library-molecules-filedropzone--dragging",
+    "slug": "filedropzone-drag-over",
+    "description": "A dragover event over the drop zone sets data-state=acceptable — firmer border plus the selection fill.",
+    "file": "012-filedropzone-drag-over.png"
+  }
+]

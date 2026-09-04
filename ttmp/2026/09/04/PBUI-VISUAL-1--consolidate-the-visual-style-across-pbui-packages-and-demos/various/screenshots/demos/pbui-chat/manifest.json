@@ -1,0 +1,65 @@
+[
+  {
+    "n": 1,
+    "demo": "pbui-chat",
+    "slug": "shop-initial",
+    "description": "Gold Coin Shop initial workbench layout",
+    "file": "001-shop-initial.png"
+  },
+  {
+    "n": 2,
+    "demo": "pbui-chat",
+    "slug": "approver-role-on",
+    "description": "Approver role checkbox toggled on",
+    "file": "002-approver-role-on.png"
+  },
+  {
+    "n": 3,
+    "demo": "pbui-chat",
+    "slug": "tile-object-menu",
+    "description": "Object menu open on a tile title",
+    "file": "003-tile-object-menu.png"
+  },
+  {
+    "n": 4,
+    "demo": "pbui-chat",
+    "slug": "second-tile-object-menu",
+    "description": "Object menu on a second tile (no Link to… family here either)",
+    "file": "004-second-tile-object-menu.png"
+  },
+  {
+    "n": 5,
+    "demo": "pbui-chat",
+    "slug": "launcher-open",
+    "description": "Launcher dialog (⌘K/Ctrl+K)",
+    "file": "005-launcher-open.png"
+  },
+  {
+    "n": 6,
+    "demo": "pbui-chat",
+    "slug": "launcher-via-button",
+    "description": "Launcher opened via the toolbar button",
+    "file": "006-launcher-via-button.png"
+  },
+  {
+    "n": 7,
+    "demo": "pbui-chat",
+    "slug": "new-conversation",
+    "description": "A second conversation tile opened via + conversation",
+    "file": "007-new-conversation.png"
+  },
+  {
+    "n": 8,
+    "demo": "pbui-chat",
+    "slug": "rebalance-dialog",
+    "description": "Rebalance layout-repair dialog (Mod+Shift+K)",
+    "file": "008-rebalance-dialog.png"
+  },
+  {
+    "n": 9,
+    "demo": "pbui-chat",
+    "slug": "workspace-strip-hover",
+    "description": "Hover state on a workspace strip item",
+    "file": "009-workspace-strip-hover.png"
+  }
+]

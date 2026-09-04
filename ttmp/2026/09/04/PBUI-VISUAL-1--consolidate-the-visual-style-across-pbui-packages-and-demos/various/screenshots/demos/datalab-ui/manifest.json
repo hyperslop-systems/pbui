@@ -1,0 +1,65 @@
+[
+  {
+    "n": 1,
+    "demo": "datalab-ui",
+    "slug": "marketing-hero",
+    "description": "Marketing landing page, hero section with live WorkbenchInstance",
+    "file": "001-marketing-hero.png"
+  },
+  {
+    "n": 2,
+    "demo": "datalab-ui",
+    "slug": "marketing-nav-hover",
+    "description": "Hover state on a marketing nav button",
+    "file": "002-marketing-nav-hover.png"
+  },
+  {
+    "n": 3,
+    "demo": "datalab-ui",
+    "slug": "marketing-tutorial-band",
+    "description": "Marketing page scrolled to the tutorial band",
+    "file": "003-marketing-tutorial-band.png"
+  },
+  {
+    "n": 4,
+    "demo": "datalab-ui",
+    "slug": "workbench-initial",
+    "description": "Datalab workbench, initial stage/workspace",
+    "file": "004-workbench-initial.png"
+  },
+  {
+    "n": 5,
+    "demo": "datalab-ui",
+    "slug": "tile-object-menu",
+    "description": "Object menu open on a tile title presentation",
+    "file": "005-tile-object-menu.png"
+  },
+  {
+    "n": 6,
+    "demo": "datalab-ui",
+    "slug": "doc-chip-object-menu",
+    "description": "Object menu open on a <doc> chip (α/β/γ)",
+    "file": "006-doc-chip-object-menu.png"
+  },
+  {
+    "n": 7,
+    "demo": "datalab-ui",
+    "slug": "launcher-open",
+    "description": "Launcher dialog (Mod+K)",
+    "file": "007-launcher-open.png"
+  },
+  {
+    "n": 8,
+    "demo": "datalab-ui",
+    "slug": "launcher-filtered",
+    "description": "Launcher filtered by query",
+    "file": "008-launcher-filtered.png"
+  },
+  {
+    "n": 9,
+    "demo": "datalab-ui",
+    "slug": "stage-bar",
+    "description": "Stage switcher select in the masthead",
+    "file": "009-stage-bar.png"
+  }
+]
