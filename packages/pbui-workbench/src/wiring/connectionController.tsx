@@ -5,7 +5,7 @@ import { useWorkbench } from '../context';
 import { useGeometryStore } from './geometryContext';
 import { connectionCommands, type ConnectionOperation } from './connectionCommands';
 import type { WiringOptions } from '../types';
-function useController(enabled:boolean,options:WiringOptions) {
+function useController(enabled:boolean,options:WiringOptions,focused:boolean) {
   const wb=useWorkbench(),geometry=useGeometryStore()!;
   const [source,setSource]=useState(''),[operation,setOperation]=useState<ConnectionOperation>('follow'),[relation,setRelation]=useState(wb.links.deps.relations?.[0]?.id??'');
   const [message,setMessage]=useState('Choose an output, then an input.'),[selected,setSelected]=useState<readonly string[]>([]);
@@ -28,6 +28,11 @@ function useController(enabled:boolean,options:WiringOptions) {
     if(suppressClick.current) {suppressClick.current=false;return;}
     if(side==='out') {setSource(port);setMessage('Source selected. Choose an input.');} else connect(port);
   };
+  const cancelDrag=()=>{
+    const active=drag.current; drag.current=null;
+    if(active?.root.hasPointerCapture?.(active.pointer)) active.root.releasePointerCapture(active.pointer);
+  };
+  useEffect(()=>{cancelDrag();},[focused]);
   const cancel=()=>{
     const active=drag.current; drag.current=null;
     if(active?.root.hasPointerCapture?.(active.pointer)) active.root.releasePointerCapture(active.pointer);
@@ -78,7 +83,7 @@ function useController(enabled:boolean,options:WiringOptions) {
 type Controller=ReturnType<typeof useController>;
 const ConnectionContext=createContext<Controller|null>(null);
 export const useConnectionController=()=>useContext(ConnectionContext)!;
-export function ConnectionProvider({enabled,options,children}:{enabled:boolean;options:WiringOptions;children:ReactNode}) {
-  const controller=useController(enabled,options);
+export function ConnectionProvider({enabled,options,focused,children}:{enabled:boolean;options:WiringOptions;focused:boolean;children:ReactNode}) {
+  const controller=useController(enabled,options,focused);
   return <ConnectionContext.Provider value={controller}>{children}</ConnectionContext.Provider>;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { EmptyState, isEditableTarget, routeWorkbenchKey, useAnyEscapeSurface } from "@hyperslop-systems/pbui";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { usePlacement, useWorkbench } from "../../context";
@@ -12,7 +12,8 @@ import { ConnectionProvider } from "../../wiring/connectionController";
 import { ConnectionInspector } from "../../wiring/ConnectionInspector";
 import { WiringCanvas } from "../../wiring/WiringCanvas";
 import { createGeometryStore } from "../../wiring/geometryStore";
-import { GeometryContext } from "../../wiring/geometryContext";
+import { wiringMinimum, shouldFocus } from "../../wiring/layoutPolicy";
+import { GeometryContext, useWiringGeometry } from "../../wiring/geometryContext";
 import { useConnectedHighlight } from "../../wiring/connectedHighlight";
 import styles from "./Surface.module.css";
 
@@ -32,6 +33,17 @@ export function WorkbenchSurface({ renderTitle, renderBadges, wiring = {}, linkM
   const linkMode = workbench.useShellState((state) => state.linkModeOpen);
   useLayoutEffect(() => { geometry.invalidate(); geometry.flush(); }, [geometry, tree, linkMode]);
   useConnectedHighlight(geometry, linkMode);
+  const measured = useWiringGeometry(geometry);
+  const [automaticFocus, setAutomaticFocus] = useState(false);
+  const [presentation, setPresentation] = useState<"auto"|"spatial"|"focused">("auto");
+  const requested = wiring.mode ?? presentation;
+  const focused = linkMode && (requested === "focused" || requested === "auto" && automaticFocus);
+  useLayoutEffect(() => {
+    if (!linkMode || measured.bounds.right === 0) return;
+    const minimum = wiringMinimum(tree);
+    setAutomaticFocus(previous => shouldFocus({width: measured.bounds.right,height: measured.bounds.bottom}, minimum, previous));
+  }, [linkMode, measured.bounds, tree]);
+  useLayoutEffect(() => { geometry.invalidate(); }, [geometry, focused]);
   const anySurfaceOpen = useAnyEscapeSurface();
 
   // Mod+Shift+L toggles connect mode (PBUI-LINK-1 Phase 3), under the same
@@ -91,7 +103,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, wiring = {}, linkM
 
   return (
     <GeometryContext.Provider value={geometry}>
-    <ConnectionProvider enabled={linkMode} options={wiring}>
+    <ConnectionProvider enabled={linkMode} options={wiring} focused={focused}>
     <div
       tabIndex={-1}
       ref={setRoot}
@@ -99,8 +111,10 @@ export function WorkbenchSurface({ renderTitle, renderBadges, wiring = {}, linkM
       data-workbench-shell=""
       data-launcher-open={launcherOpen || undefined}
       data-link-mode={linkMode || undefined}
+      data-wiring-focused={focused || undefined}
       className={[styles.surface, className ?? ""].filter(Boolean).join(" ")}
     >
+      <div className={styles.tree} inert={focused || undefined} data-part="workbench-tree">
       {tree ? (
         renderNode(tree)
       ) : (
@@ -108,8 +122,9 @@ export function WorkbenchSurface({ renderTitle, renderBadges, wiring = {}, linkM
           <EmptyState message="this workbench has no workspace" hint="create it with layout() or singleTile() and pass it as `initial`" />
         </div>
       )}
-      {linkMode ? <WiringCanvas /> : null}
-      {linkMode ? <ConnectionInspector /> : null}
+      </div>
+      {linkMode && !focused ? <WiringCanvas /> : null}
+      {linkMode ? <ConnectionInspector focused={focused} mode={requested} onMode={setPresentation} /> : null}
       <ShowChooser />
       <RelationPalette />
       <LinkAnnouncer />

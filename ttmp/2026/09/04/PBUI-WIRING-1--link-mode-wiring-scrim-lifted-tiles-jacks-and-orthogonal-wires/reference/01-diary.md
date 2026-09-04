@@ -913,3 +913,66 @@ Run pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring.
 ### Technical details
 
 buildScene is pure; accepted previous routes are passed to the router only for stable occurrence IDs. Pending measurement never paints stale definitive paths.
+
+## Step 18: Refactor P5 — Unify connection controls and atomic previews
+
+A provider now owns logical source choice, operation, relation, pointer capture, refusal recovery, cancellation and focus restoration. Port controls are real buttons; the inspector offers equivalent select controls and actions for every relationship.
+
+Hold sends Follow and Pin as one core batch. Rendering a Hold preview exposed a single-entry link snapshot cache: speculative documents evicted the published snapshot, causing React to see an endlessly changing external-store identity. A WeakMap now preserves snapshots by document and runtime revision, and preview refusals no longer invoke command-refusal observers.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 879b342
+
+### What I did
+
+- Added connectionCommands.ts and connectionController.tsx.
+- Changed ecommerce to renderPortDetails and renderRelationDetails slots, preserving its action presentations.
+- Added explicit operation controls and ambiguous wire candidate selection.
+- Replaced modifier/carry tests with explicit operation, atomic Hold and cancellation tests.
+- Implemented color-only highlights in ec64d1a as requested.
+
+### Why
+
+One semantic operation should behave identically across input methods, and previews must not disturb published state.
+
+### What worked
+
+- 23 focused tests passed after the cache correction.
+- Workbench build and ecommerce typecheck passed.
+- Playwright click added a seventh wire and drag added an eighth; status reported Connection updated.
+- Fresh browser navigation had zero console errors.
+
+### What didn't work
+
+Typecheck first reported Type current | empty | history is not assignable to type SplitPolicy; corrected to the declared copy | history | reset policy. An intermediate HMR render saw an absent provider while files were being edited. The atomic Hold test then reported Maximum update depth exceeded; the per-document snapshot cache fixed it on the first correction attempt.
+
+### What I learned
+
+Even a logically read-only preview can break React if its memoization changes the identity of the live external-store snapshot.
+
+### What was tricky to build
+
+Atomic previews visit speculative documents. Their cache entries must not replace the live document entry. Pointer capture starts only after the drag threshold so ordinary button clicks retain their native target.
+
+### What warrants a second pair of eyes
+
+Review WeakMap snapshot lifetimes, preview refusal observer semantics, and pointer capture cleanup.
+
+### What should be done in the future
+
+Finish automatic focused sizing and then remove all superseded carry APIs.
+
+### Code review instructions
+
+Run the workbench connect, identity and wiring tests; build workbench and typecheck ecommerce.
+
+### Technical details
+
+Additional user prompt (verbatim): "on the port hover feature: no need for highlight underline or borders. color is enough". Commit ec64d1a removes hover outlines and stroke-width changes. Browser computed outline-style was none; screenshot refactor-hover-color-only.png is saved beside the review. Existing keyboard focus indicators remain native.

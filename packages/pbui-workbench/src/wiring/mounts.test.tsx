@@ -13,7 +13,7 @@ it("keeps application ancestry and state across wiring toggles, with decoration 
     return <input aria-label="app state" defaultValue="retained" />;
   }}});
   const wb=createWorkbench({apps:[app],initial:layout(tile("probe"))});
-  const {container}=render(<wb.Surface />);
+  const {container,rerender}=render(<wb.Surface />);
   const input=container.querySelector("input")!;
   for(let i=0;i<3;i++) {
     act(()=>wb.dispatch({kind:"link.mode.open"}));
@@ -21,6 +21,10 @@ it("keeps application ancestry and state across wiring toggles, with decoration 
     expect(overlay.parentElement?.getAttribute("data-part")).toBe("tile");
     expect(overlay.closest('[data-part="tile-scrollport"]')).toBeNull();
     expect(input.closest("[inert]")).not.toBeNull();
+    rerender(<wb.Surface wiring={{mode:"focused"}} />);
+    expect(container.querySelector('[data-wiring-focused]')).not.toBeNull();
+    expect(container.querySelector("input")).toBe(input);
+    rerender(<wb.Surface wiring={{mode:"spatial"}} />);
     act(()=>wb.dispatch({kind:"link.mode.close"}));
   }
   expect(container.querySelector("input")).toBe(input);

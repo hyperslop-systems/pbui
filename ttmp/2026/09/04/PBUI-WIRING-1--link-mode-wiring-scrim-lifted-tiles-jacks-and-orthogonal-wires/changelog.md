@@ -149,3 +149,8 @@ Refactor P3: Validate orthogonal visibility routes (commit 00e027c). Implement h
 
 Refactor P4: Project and render complete measured scenes (commit 3317272). Replace production DOM-measuring wire rendering with pure measured scene projection.
 
+
+## 2026-09-04
+
+Refactor P5: Unify connection controls and atomic previews (commit 879b342). Implement surface-owned click/keyboard/drag workflows, explicit operations and inspector actions; fix speculative snapshot identity.
+

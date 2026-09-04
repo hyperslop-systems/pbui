@@ -86,3 +86,8 @@
   pointer-events: auto;
   background: var(--pbui-accent, #b54b00);
 }
+
+.tree { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); min-width:0; min-height:0; }
+.surface[data-link-mode] { padding-bottom:156px; }
+.surface[data-wiring-focused] { padding:8px; }
+.surface[data-wiring-focused] > .tree { position:absolute; inset:0; visibility:hidden; overflow:clip; pointer-events:none; }
