@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { Provider } from "react-redux";
 import { useSelector } from "react-redux";
 import type { Workspace } from "@hyperslop-systems/workbench-protocol";
@@ -9,6 +9,7 @@ import {
   type StageDefinition,
   type WorkspaceMeta,
 } from "../store/navigation";
+import { WORK_STAGE_ID } from "../store/stageIds";
 import type { DatalabWorkbench } from "./workbench";
 
 /**
@@ -72,9 +73,13 @@ export function useWorkspacesOfStage(stageId: string): Workspace[] {
   const workbench = useDatalabWorkbench();
   const document = workbench.shell.useDocument();
   const meta = useSelector((state: RootState) => state.navigation.workspace);
-  return document.workspaces.filter(
-    (workspace) =>
-      metaOf({ stages: [], workspace: meta, rememberedWorkspaceByStage: {} }, workspace.id)
-        .stageId === stageId,
+  // Memoised on the document and the metadata map: a selector returning a
+  // fresh array on every call re-renders on every store change.
+  return useMemo(
+    () =>
+      document.workspaces.filter(
+        (workspace) => (meta[workspace.id]?.stageId ?? WORK_STAGE_ID) === stageId,
+      ),
+    [document, meta, stageId],
   );
 }
