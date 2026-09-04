@@ -19,12 +19,20 @@ RelatedFiles:
       Note: Declares its direct protocol import
     - Path: repo://pnpm-lock.yaml
       Note: Records corrected direct importer edges
+    - Path: repo://src/architecture/packageGraph.test.ts
+      Note: Real repository laws and failure fixtures
+    - Path: repo://src/architecture/packagePolicy.ts
+      Note: Explicit 13-node production adjacency from commit 94e28b8
+    - Path: repo://src/architecture/rootLayers.test.ts
+      Note: Focused root source-layer boundaries
     - Path: repo://ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/design-doc/01-intern-guide-to-enforcing-pbui-dependency-boundaries.md
       Note: Phase 0 design and implementation contract
     - Path: repo://ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/reference/02-package-graph-inventory.json
       Note: Measured 13-package 48-edge baseline
     - Path: repo://ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/reference/03-root-layer-inventory.json
       Note: Measured root cross-layer baseline
+    - Path: repo://ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/reference/04-full-validation-output.txt
+      Note: Exact full validation output including the declaration-build failure and retry
     - Path: repo://ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/scripts/01-inventory-package-graph.mjs
       Note: Reproducible manifest and source-import inventory
     - Path: repo://ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/scripts/02-inventory-root-layers.mjs
@@ -36,6 +44,7 @@ LastUpdated: 2026-09-03T21:50:00-04:00
 WhatFor: Make the architecture-guard implementation reproducible and reviewable by an engineer unfamiliar with the repository.
 WhenToUse: Read before implementing, reviewing, or continuing PBUI-DEPENDENCY-DAG-1.
 ---
+
 
 
 
@@ -294,4 +303,365 @@ Root cause: `consumer-smoke.mjs` still explicitly packed and installed Workbench
 Editor direct internal runtime dependency: pbui only
 PlotScript demo direct protocol subpath: workbench-protocol/client
 Lockfile importer edges match both manifests
+```
+
+## Step 4: Phase 2 — build the package policy and scanner
+
+I encoded all 13 package nodes and their intended production adjacency in `src/architecture/packagePolicy.ts`. The scanner discovers manifests recursively, gives nested demo files to the deepest package root, classifies production/test/story/script/config imports, normalizes package subpaths, collects declarations by kind, checks export maps, and provides deterministic cycle detection.
+
+The first parser implementation deliberately attempted the installed TypeScript compiler API. TypeScript 7.0.2’s native package does not expose `ScriptKind`, `createSourceFile`, or `preProcessFile`, so the targeted test failed immediately. I replaced compiler coupling with a small tested lexical scanner covering the import forms used by this ESM repository.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 3)
+
+**Assistant interpretation:** Implement the scanner as a reviewable phase with tests and a focused commit.
+
+**Inferred user intent:** Make graph discovery trustworthy before turning it into repository policy.
+
+**Commit (code):** `208751694a6d86bc8522881aa583f72a7856d575` — "Add PBUI workspace dependency scanner"
+
+### What I did
+
+- Added the explicit 13-node package policy.
+- Added package discovery, ownership, import extraction, use classification, declaration collection, export matching, and cycle helpers.
+- Added 14 table-driven helper tests.
+- Ran targeted tests and root typecheck.
+- Printed `P1 DONE`, `P2 START`, `P2 DONE`, and `P3 START` slips at the phase boundaries.
+
+### Why
+
+- Discovery mechanics and architectural policy should be separable and independently reviewable.
+- Nested demos are first-class workspace packages; parent attribution would corrupt direct-dependency results.
+
+### What worked
+
+- The lexical scanner produced 720 import occurrences, 47 unique internal source edges, and 48 runtime/peer declarations after Phase 1.
+- All 14 helper tests and root typecheck passed.
+
+### What didn't work
+
+Initial command:
+
+```bash
+pnpm exec vitest run src/architecture/workspacePackages.test.ts
+```
+
+Failure:
+
+```text
+TypeError: Cannot read properties of undefined (reading 'TS')
+ ❯ extractModuleSpecifiers src/architecture/workspacePackages.ts:117:81
+ const scriptKind = fileName.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+```
+
+A direct probe also showed:
+
+```text
+TypeScript version: 7.0.2
+preProcessFile: undefined
+module exports: default, module.exports, version, versionMajorMinor
+```
+
+### What I learned
+
+- TypeScript 7’s native package cannot be assumed to provide the historical JavaScript compiler API.
+- The repository already has a successful regex-based import-boundary precedent in Datalab; a tested lexical scanner is the leaner fit here.
+
+### What was tricky to build
+
+- Static imports, re-exports, side-effect imports, dynamic literal imports, and literal `require()` use different syntax. The final scanner uses three constrained patterns, records match positions, and sorts results back into source order. Computed dynamic imports remain a build concern because no static package can be derived from them.
+
+### What warrants a second pair of eyes
+
+- Review `extractModuleSpecifiers` for unusual import syntax before adding new JavaScript dialects. Its supported grammar is explicit and unit tested.
+
+### What should be done in the future
+
+- If the repository adopts a direct parser dependency for another reason, compare its import extraction against these fixtures before replacing the lexical scanner.
+
+### Code review instructions
+
+- Start with `packagePolicy.ts`, then inspect pure helpers in `workspacePackages.ts` and their table tests.
+- Run `pnpm exec vitest run src/architecture/workspacePackages.test.ts && pnpm typecheck`.
+
+### Technical details
+
+```text
+13 policy nodes
+47 unique internal source edges after manifest cleanup
+48 internal runtime/peer declarations
+14 helper tests
+```
+
+## Step 5: Phase 3 — enforce package graph laws
+
+I added one repository test that compares discovered packages, actual declarations, and direct source imports to the explicit policy. It fails on missing/stale package entries, incorrect package paths, undeclared imports, forbidden edges, unused runtime declarations, private subpaths, and runtime/peer cycles. Six fixture tests prove the important diagnostics rather than relying only on the currently valid graph.
+
+The first real-repository run found that editor’s PBUI edge has no production JavaScript import. Investigation showed this is an intentional non-code runtime contract: editor theme values read PBUI CSS variables and the packed consumer imports PBUI styles. I represented that single edge as a reasoned policy exception and removed the remaining stale Workbench strings from editor’s Vite externals.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 3)
+
+**Assistant interpretation:** Turn the scanner into blocking architecture laws and test both green and failing graphs.
+
+**Inferred user intent:** Prevent the exact drift found in Phase 0 without excessive framework machinery.
+
+**Commit (code):** `94e28b8c4a14da274e0b03d74d137e4973026681` — "Enforce the PBUI package dependency DAG"
+
+### What I did
+
+- Added `analyzeWorkspaceGraph(...)` with deterministic structured violations.
+- Added the real 13-package repository assertion.
+- Added fixtures for undeclared, unused, forbidden, cyclic, private-subpath, and missing-policy failures.
+- Added one documented CSS-token runtime exception for editor → PBUI.
+- Removed stale `pbui-workbench` externalization from editor Vite config.
+- Ran 23 architecture tests and root typecheck.
+
+### Why
+
+- The test must prove failure behavior, not merely snapshot today’s green graph.
+- Non-code contracts should be explicit and reasoned rather than hidden by weakening unused-edge detection globally.
+
+### What worked
+
+- The corrected repository passes all package laws.
+- The fixtures reproduce both original defect classes and a complete cycle path.
+- Subpath checks accept protocol/client and pbui/link-kernel only through published export maps.
+
+### What didn't work
+
+The first real graph assertion failed with:
+
+```text
+unused-runtime-dependency:
+@hyperslop-systems/pbui-editor declares @hyperslop-systems/pbui in dependencies,
+but production source does not import it
+```
+
+This was not another removable edge. `src/theme.ts` reads PBUI-defined `--pbui-*` CSS tokens, README documents that contract, and packed smoke imports `@hyperslop-systems/pbui/styles.css`.
+
+### What I learned
+
+- “Used” cannot mean only JavaScript import when package contracts include CSS token providers.
+- A narrow reasoned exception preserves strict defaults while documenting the one non-code edge.
+
+### What was tricky to build
+
+- Peer and runtime declarations both participate in architecture and cycle checks, while dev declarations only satisfy tests/tools. Production imports declared only in dev dependencies must still fail.
+- Duplicate declaration kinds and repeated file imports had to collapse into deterministic diagnostics, otherwise CI output would be noisy and order-sensitive.
+
+### What warrants a second pair of eyes
+
+- Confirm the editor → PBUI CSS-token contract should remain a dependency rather than become a peer. Either kind is architectural; current packed behavior is green.
+- Review package allowlist additions as architecture changes, not test maintenance.
+
+### What should be done in the future
+
+- Remove the editor exception if editor gains a direct public PBUI import or owns independent token defaults.
+
+### Code review instructions
+
+- Read `analyzeWorkspaceGraph` in violation order, then the six failure fixtures.
+- Temporarily remove PlotScript demo’s protocol declaration and confirm the real repository test names `src/workbench.ts`.
+
+### Technical details
+
+```text
+Graph laws: completeness + path + declaration + allowlist + usage + exports + cycle
+One non-code runtime exception: editor → PBUI CSS tokens
+23 package architecture/helper tests
+```
+
+## Step 6: Phase 4 — enforce focused root PBUI layers
+
+I replaced chrome’s two all-components barrel imports with concrete Dialog, Text, TextInput, and IconButton entries. The new root test governs the stable component stack, chrome, and visualization while explicitly listing cross-cutting component directories. It allows the intentional FileBrowser-to-shortcut-routing direction and rejects lower components reaching upward.
+
+This is intentionally smaller than Datalab’s source graph. Root presentation assembly has legitimate ContextHelp/type collaboration that should not be forced into a speculative total order by this ticket.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 3)
+
+**Assistant interpretation:** Add the useful stable root boundaries, prove them with fixtures, and avoid over-regulating integration modules.
+
+**Inferred user intent:** Gain immediate architectural feedback without a broad cleanup project disguised as a test.
+
+**Commit (code):** `747eb24fa80d1d7b75477ec3644ddc5fe0f17b53` — "Enforce root PBUI source layer boundaries"
+
+### What I did
+
+- Narrowed `LauncherShell.tsx` and `TileFrame.tsx` imports.
+- Added root-layer classification and production-source walking.
+- Added the focused dependency policy.
+- Added five real/fixture/completeness tests.
+- Ran all 51 root test files and 859 tests.
+- Printed `P3 DONE`, `P4 START`, `P4 DONE`, and `P5 START` slips.
+
+### Why
+
+- Package tests cannot detect an atom importing an organism inside the same package.
+- Direct imports reveal chrome’s actual dependencies and avoid loading/reviewing the broad component barrel.
+
+### What worked
+
+- The initial focused policy passed after the two narrow import changes.
+- A fixture proves foundation → atoms fails.
+- A fixture proves organisms → chrome shortcut utility remains allowed.
+- Root baseline increased from 48 files / 831 tests to 51 files / 859 tests, all green.
+
+### What didn't work
+
+- N/A in Phase 4.
+
+### What I learned
+
+- The current root stack is already clean once chrome’s barrel imports are made precise.
+- `ContextHelp`, `Dialog`, `InspectorPanel`, and `JsonBlock` are cross-cutting component assemblies rather than numeric component layers.
+
+### What was tricky to build
+
+- Imports resolve to both files (`components/format`) and directories (`components/foundation`). Layer classification strips extensions but preserves the first component group.
+- Stories and tests compose across layers by design, so the production walker excludes them just as Datalab’s policy does.
+
+### What warrants a second pair of eyes
+
+- Review the intentional organism → chrome direction. Today it targets only the model-free `shortcutRouting` utility; if chrome later imports organisms, the reverse edge remains blocked by chrome’s allowlist.
+
+### What should be done in the future
+
+- Add presentation sublayers only in response to a concrete undesirable edge, not as speculative completeness.
+
+### Code review instructions
+
+- Review the two narrowed chrome imports first, then `ROOT_LAYER_POLICY` and the forbidden/allowed fixtures.
+- Run `pnpm exec vitest run src/architecture/rootLayers.test.ts && pnpm test`.
+
+### Technical details
+
+```text
+Governed: foundation → layout → atoms → molecules → organisms
+Additional: chrome, visualization
+Cross-cutting inventory: ContextHelp, Dialog, InspectorPanel, JsonBlock
+Root result: 51 files / 859 tests passed
+```
+
+## Step 7: Phase 5 — integrate, validate, and prepare delivery
+
+The architecture tests need no bespoke CI step: root `pnpm test`, already run by `.github/workflows/ci.yml`, discovers all three architecture test files. I documented the package-authoring contract in the root README and excluded test-only scanner support from declaration emission so architecture tooling does not become part of the published PBUI surface.
+
+The complete validation sweep passed after that packaging correction: frozen install, root typecheck/test/build/consumer smoke, all recursive package typechecks/tests/builds, editor pack check, and Workbench’s packed headless boundary. The committed validation transcript records both the initial failure and successful retry.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 3)
+
+**Assistant interpretation:** Complete release-path integration, run all relevant gates, retain exact evidence, and prepare final documentation delivery.
+
+**Inferred user intent:** Finish the ticket with proof that architecture enforcement is blocking, package-safe, and non-regressive.
+
+**Commit (code):** `d7e2299a027eeccae9c5fea58ce6e6a688029eec` — "Integrate PBUI architecture checks into release gates"
+
+### What I did
+
+- Added the explicit chrome → organism rejection fixture, bringing architecture tests to 29.
+- Excluded `src/architecture/**` from `tsconfig.build.json` declaration emission.
+- Added dependency-boundary authoring guidance to root README.
+- Ran the frozen-install and full root/recursive/pack/boundary validation sequence.
+- Stored all output in `reference/04-full-validation-output.txt`.
+- Confirmed no CI workflow modification is needed because root `pnpm test` is already blocking.
+
+### Why
+
+- Test support uses Node filesystem APIs and is not a public PBUI runtime module.
+- A policy hidden only in test source is easy for package authors to miss; README makes the same-change expectation explicit.
+
+### What worked
+
+- Root: 51 files / 860 tests passed.
+- Protocol: 3 files / 40 tests passed.
+- Workbench core: 31 files / 243 tests passed.
+- Workbench shell: 23 files / 116 tests passed.
+- Datalab: 55 files / 602 tests passed.
+- Editor: 2 files / 12 tests passed.
+- Ecommerce: 7 files / 35 tests passed.
+- Sandbox: 18 files / 224 tests passed.
+- PlotScript: 5 files / 32 tests passed.
+- Chat: 25 files / 241 tests passed.
+- Chat demo: 3 files / 13 tests passed.
+- All 12 child package typechecks and builds passed.
+- Root packed consumer, editor pack check, and Workbench no-React boundary passed.
+
+### What didn't work
+
+The first full sweep reached root declaration build and failed:
+
+```text
+src/architecture/packageGraph.ts(1,31): error TS2591: Cannot find name 'node:path'.
+src/architecture/rootLayers.ts(1,53): error TS2591: Cannot find name 'node:fs'.
+src/architecture/workspacePackages.ts(1,53): error TS2591: Cannot find name 'node:fs'.
+ELIFECYCLE Command failed with exit code 2.
+```
+
+Command:
+
+```bash
+pnpm build
+```
+
+Root cause: `tsconfig.build.json` included every non-test file under `src`, so test-support modules were being declaration-emitted with `types: []`. The fix was not to add Node types to the public library; it was to exclude `src/architecture/**`, which is unexported test infrastructure.
+
+Expected warnings remained:
+
+- npm reports unknown pnpm environment keys during throwaway consumer installs;
+- Vite reports large demo chunks;
+- Chat demo reports QuickJS Node built-ins externalized for browser compatibility;
+- Datalab reports one ineffective dynamic import.
+
+None failed a command and all predate this ticket.
+
+### What I learned
+
+- A file under `src` can be outside the runtime bundle yet still enter declaration emission. Test-support directories need an explicit build exclusion.
+- The normal CI command is sufficient integration; adding a second architecture command would create redundant paths.
+
+### What was tricky to build
+
+- Validation order matters: root PBUI must build before downstream package typechecks consume its `dist` declarations.
+- Packed consumer smoke is slow but essential because it validates the installed surface that workspace linking hides.
+- The full validation transcript includes ANSI control bytes from parallel Vite output; it remains readable and preserves exact command evidence.
+
+### What warrants a second pair of eyes
+
+- Verify that excluding all `src/architecture/**` is intentional. None of those modules is exported or used by runtime entries; they exist solely for Vitest.
+- Review the one editor CSS-token exception and the initial package adjacency list as the highest-leverage architecture policy choices.
+
+### What should be done in the future
+
+- Continue to use root `pnpm test` as the package-DAG gate.
+- Add package policy entries in the same commit as future workspace manifests.
+
+### Code review instructions
+
+- Review commits in order: `4c74b31`, `2087516`, `94e28b8`, `747eb24`, `d7e2299`.
+- Inspect `reference/04-full-validation-output.txt` for the exact full sweep.
+- Re-run:
+
+  ```bash
+  pnpm install --frozen-lockfile
+  pnpm typecheck && pnpm test && pnpm build
+  pnpm -r typecheck && pnpm -r test && pnpm -r build
+  pnpm --filter @hyperslop-systems/pbui-editor consumer:smoke
+  pnpm --filter @hyperslop-systems/workbench-core boundary
+  ```
+
+### Technical details
+
+```text
+Measured graph: 13 nodes, 48 runtime/peer declarations, 47 source edges
+Architecture tests: 29
+Root tests: 51 files / 860 tests
+CI integration: existing root pnpm test command
+Validation transcript: reference/04-full-validation-output.txt
 ```

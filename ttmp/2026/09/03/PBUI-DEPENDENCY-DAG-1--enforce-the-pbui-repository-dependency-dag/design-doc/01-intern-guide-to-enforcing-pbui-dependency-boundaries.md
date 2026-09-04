@@ -1,7 +1,7 @@
 ---
 Title: Intern guide to enforcing PBUI dependency boundaries
 Ticket: PBUI-DEPENDENCY-DAG-1
-Status: review
+Status: complete
 Topics:
     - pbui
     - architecture
@@ -16,15 +16,21 @@ RelatedFiles:
     - Path: repo://packages/datalab-ui/test/layers.test.ts
       Note: Successful local layer-policy precedent
     - Path: repo://packages/pbui-editor/package.json
-      Note: Contains the measured extraneous Workbench dependency
+      Note: |-
+        Contains the measured extraneous Workbench dependency
+        Phase 1 removed the extraneous Workbench edge and retained the documented PBUI CSS-token contract
     - Path: repo://packages/pbui-plotscript/demo/package.json
-      Note: Missing the measured direct protocol dependency
+      Note: |-
+        Missing the measured direct protocol dependency
+        Phase 1 added direct protocol ownership
     - Path: repo://packages/workbench-core/src/packageGraph.test.ts
       Note: Existing narrow headless package assertion
     - Path: repo://pnpm-workspace.yaml
       Note: Defines the 13 workspace package locations
     - Path: repo://src/chrome/LauncherShell.tsx
-      Note: Broad component-barrel edge targeted by root-layer enforcement
+      Note: |-
+        Broad component-barrel edge targeted by root-layer enforcement
+        Phase 4 replaced the broad barrel with direct lower-layer imports
 ExternalSources:
     - /tmp/pbui-improvements.md
 Summary: Evidence-backed hard-cutover design for making PBUI's package and important source-layer dependency graph executable as tests, correcting current manifest drift, and keeping future package edges explicit.
@@ -32,6 +38,7 @@ LastUpdated: 2026-09-03T21:45:00-04:00
 WhatFor: Give a new engineer the repository model, policy representation, scanner algorithms, implementation phases, and validation gates needed to enforce the PBUI dependency DAG without introducing a large lint framework.
 WhenToUse: Read before adding or removing a PBUI package dependency, moving code across package boundaries, editing package exports, or implementing PBUI-DEPENDENCY-DAG-1.
 ---
+
 
 
 # Intern guide to enforcing PBUI dependency boundaries
@@ -421,18 +428,22 @@ Hard-cutover action: import those concrete lower-layer entries directly before e
 Use one explicit package policy and two small scanners:
 
 ```text
-test/architecture/policy.ts
-  ├── package nodes and allowed production edges
-  └── root source-layer permissions
+src/architecture/packagePolicy.ts
+  └── package nodes and allowed production edges
 
-test/architecture/workspacePackages.ts
+src/architecture/workspacePackages.ts
   ├── discover manifests
   ├── scan imports
   └── graph algorithms
 
-test/architecture/packageGraph.test.ts
+src/architecture/packageGraph.ts
+  └── deterministic architecture diagnostics
 
-test/architecture/rootLayers.test.ts
+src/architecture/packageGraph.test.ts
+src/architecture/workspacePackages.test.ts
+
+src/architecture/rootLayers.ts
+src/architecture/rootLayers.test.ts
 ```
 
 The policy is reviewed data. The scanners are boring mechanics.
@@ -520,19 +531,19 @@ Demo allowlists are the direct imports their application uses. They sit at the t
 
 ## 8. Import scanning
 
-### 8.1 Use TypeScript’s parser, not a growing regular expression
+### 8.1 Use a small tested lexical scanner
 
-The investigation scripts use regular expressions because they are disposable inventory tools. Production enforcement should use the already-installed `typescript` package.
+The installed TypeScript 7.0.2 native package does not expose the historical JavaScript compiler API: `preProcessFile`, `createSourceFile`, and `ScriptKind` are unavailable. The first implementation attempted that API and the unit test failed immediately.
 
-Two reasonable APIs are:
+Version one therefore uses three constrained lexical patterns for the module forms present in this ESM repository:
 
-```ts
-ts.preProcessFile(sourceText).importedFiles
+```text
+static import/export, including side-effect imports
+literal dynamic import("...")
+literal require("...")
 ```
 
-or an AST walk over `ImportDeclaration`, `ExportDeclaration`, and dynamic `import()`.
-
-Use `preProcessFile` first. It is enough for package specifiers and much smaller than a custom AST visitor.
+The scanner records source positions and restores source order. Its tests cover type imports, re-exports, star exports, side-effect imports, dynamic imports, require, and ignored computed imports. This is intentionally narrower than a language parser and mirrors the proven Datalab boundary-test approach without adding a parser dependency.
 
 ### 8.2 Source ownership
 
@@ -660,7 +671,7 @@ interface AllowedUnusedEdge {
 }
 ```
 
-Start with an empty list. Do not add the editor edge to it.
+The implemented policy has exactly one reasoned non-code exception: `pbui-editor → pbui`. Editor JavaScript does not import PBUI, but `src/theme.ts` reads PBUI-defined CSS variables and the packed consumer imports `@hyperslop-systems/pbui/styles.css`. The removed `pbui-editor → pbui-workbench` edge is not exempted.
 
 ### 9.5 Cycle detection
 
@@ -849,26 +860,26 @@ Exit gate: inventory reports neither undeclared nor extraneous internal producti
 Create:
 
 ```text
-test/architecture/policy.ts
-test/architecture/workspacePackages.ts
-test/architecture/packageGraph.test.ts
+src/architecture/packagePolicy.ts
+src/architecture/workspacePackages.ts
+src/architecture/workspacePackages.test.ts
 ```
 
 Implement:
 
 - workspace manifest discovery;
 - deepest-root source ownership;
-- TypeScript import extraction;
+- tested lexical import extraction;
 - package/subpath normalization;
 - file-use classification;
 - manifest edge extraction;
 - deterministic diagnostics.
 
-Exit gate: tests fail when either Phase 1 defect is reintroduced.
+Exit gate: 14 helper tests cover import forms, nested ownership, use classification, declaration kinds, cycles, and exports.
 
 ### Phase 3: Add graph laws
 
-Add tests for:
+Create `src/architecture/packageGraph.ts` and `packageGraph.test.ts`, then add tests for:
 
 - policy completeness;
 - direct declarations;
@@ -1016,7 +1027,7 @@ Removing the editor dependency must be tested from its tarball. Workspace tests 
 
 - **Context:** Datalab already proves a small Vitest graph check is effective; the repository has no ESLint architecture stack.
 - **Options considered:** ESLint import plugins; Nx dependency constraints; custom CLI; Vitest tests.
-- **Decision:** Use data-driven Vitest tests and the existing TypeScript parser.
+- **Decision:** Use data-driven Vitest tests and a small tested lexical import scanner.
 - **Rationale:** Tests run in existing CI, report domain-specific failures, and add no dependency/toolchain layer.
 - **Consequences:** The scanner remains repository code and must have its own unit tests.
 - **Status:** accepted.
@@ -1043,9 +1054,9 @@ Removing the editor dependency must be tested from its tarball. Workspace tests 
 
 - **Context:** Extraneous edges enlarge the architectural graph and installation surface.
 - **Options considered:** Ignore unused declarations; report warnings; fail with narrow documented exemptions.
-- **Decision:** Fail on unused internal `dependencies`/`peerDependencies`; support an initially empty reasoned exemption list.
-- **Rationale:** Internal edges are few and intentional. The editor edge has no source justification.
-- **Consequences:** Future optional integrations must add actual source or live in an adapter package.
+- **Decision:** Fail on unused internal `dependencies`/`peerDependencies`; support narrow reasoned non-code contracts.
+- **Rationale:** Internal edges are few and intentional. The removed editor → Workbench edge had no source justification; editor → PBUI has a concrete CSS-token contract exercised by packed smoke.
+- **Consequences:** Future optional integrations must add actual source or live in an adapter package. Non-code runtime contracts must be visible in policy with a reason.
 - **Status:** accepted.
 
 ### Decision D6: Keep product-internal policies local
@@ -1061,7 +1072,7 @@ Removing the editor dependency must be tested from its tarball. Workspace tests 
 
 - **Context:** It is possible to turn dependency analysis into a compiler project.
 - **Options considered:** Full Node resolution, emitted-type analysis, bundle graph parsing, lexical package checks.
-- **Decision:** Parse TypeScript imports, normalize package names/subpaths, inspect manifests/exports, and stop there.
+- **Decision:** Lexically scan the repository's supported module forms, normalize package names/subpaths, inspect manifests/exports, and stop there.
 - **Rationale:** The known defects and intended invariant do not require more machinery; tests provide more value than speculative protection.
 - **Consequences:** Exotic computed dynamic imports are outside version one and should be caught by build/consumer smoke.
 - **Status:** accepted.
@@ -1154,11 +1165,11 @@ If you are implementing this ticket, follow this sequence exactly.
 Review order:
 
 ```text
-policy.ts
+packagePolicy.ts
   ↓
 workspacePackages.ts pure helpers
   ↓
-packageGraph.test.ts real repository assertions
+packageGraph.ts diagnostics + packageGraph.test.ts assertions
   ↓
 rootLayers.test.ts
   ↓
@@ -1171,33 +1182,33 @@ manifest and direct-import changes
 
 ### Package graph
 
-- [ ] 13 discovered packages exactly match policy.
-- [ ] Every internal production import has a direct production-visible declaration.
-- [ ] Every internal test/story/tool import has a direct declaration.
-- [ ] Every production edge is explicitly allowed.
-- [ ] No unused internal runtime declaration remains.
-- [ ] Runtime plus peer graph is acyclic.
-- [ ] Internal subpath imports use exported entries.
+- [x] 13 discovered packages exactly match policy.
+- [x] Every internal production import has a direct production-visible declaration.
+- [x] Every internal test/story/tool import has a direct declaration.
+- [x] Every production edge is explicitly allowed.
+- [x] No unexplained unused internal runtime declaration remains.
+- [x] Runtime plus peer graph is acyclic.
+- [x] Internal subpath imports use exported entries.
 
 ### Root layers
 
-- [ ] Chrome imports concrete lower-level components, not the all-components barrel.
-- [ ] Foundation does not import higher component layers.
-- [ ] Atoms do not import molecules or organisms.
-- [ ] Molecules do not import organisms.
-- [ ] Link-kernel/headless tests remain green.
-- [ ] Datalab’s independent layer test remains green.
+- [x] Chrome imports concrete lower-level components, not the all-components barrel.
+- [x] Foundation does not import higher component layers.
+- [x] Atoms do not import molecules or organisms.
+- [x] Molecules do not import organisms.
+- [x] Link-kernel/headless tests remain green.
+- [x] Datalab’s independent layer test remains green.
 
 ### Validation
 
-- [ ] Root 831-test baseline remains green, plus new architecture tests.
-- [ ] Recursive package tests remain green.
-- [ ] Recursive typecheck remains green.
-- [ ] Root and package builds pass.
-- [ ] Editor packed consumer smoke passes without Workbench.
-- [ ] Workbench packed boundary passes.
-- [ ] Clean lockfile installation passes.
-- [ ] `docmgr doctor` passes.
+- [x] Root baseline remains green: 51 files / 860 tests, including 29 new architecture tests.
+- [x] Recursive package tests remain green.
+- [x] Recursive typecheck remains green.
+- [x] Root and package builds pass.
+- [x] Editor packed consumer smoke passes without Workbench.
+- [x] Workbench packed boundary passes.
+- [x] Clean lockfile installation passes.
+- [x] `docmgr doctor` passes.
 
 ---
 
@@ -1215,11 +1226,12 @@ manifest and direct-import changes
 - `packages/workbench-core/src/packageGraph.test.ts:13-38` — headless package dependency assertions.
 - `packages/workbench-core/scripts/consumer-boundary.mjs` — packed no-React boundary validation.
 
-### Current defects
+### Corrected baseline defects
 
-- `packages/pbui-editor/package.json:49` — unused `pbui-workbench` dependency.
+- `packages/pbui-editor/package.json` — removed unused `pbui-workbench` dependency.
+- `packages/pbui-editor/scripts/consumer-smoke.mjs` — removed stale Workbench/protocol fixture coupling.
 - `packages/pbui-plotscript/demo/src/workbench.ts:3` — direct protocol/client import.
-- `packages/pbui-plotscript/demo/package.json` — missing direct protocol declaration.
+- `packages/pbui-plotscript/demo/package.json` — now owns that direct protocol declaration.
 
 ### Root-layer evidence
 

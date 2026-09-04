@@ -22,3 +22,12 @@ Phase 1: corrected editor and PlotScript demo manifests, removed stale Workbench
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-editor/package.json — Removed extraneous internal runtime edge
 
+
+## 2026-09-03
+
+Phases 2-5: added the package scanner and 13-node policy, enforced package and root source laws with 29 tests, integrated through existing CI, documented authoring, and passed full root/recursive/build/pack validation (commits 2087516, 94e28b8, 747eb24, d7e2299).
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/architecture/packageGraph.test.ts — Repository package-DAG enforcement
+
