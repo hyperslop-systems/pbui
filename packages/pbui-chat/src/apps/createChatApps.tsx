@@ -52,7 +52,7 @@ export function createChatApps(
       },
       presentation: {
         title: title("chat", "chat"),
-        tone: tone("chat", "message", "var(--pbui-pane-alt)"),
+        tone: tone("chat", "message", "var(--pbui-tone-message)"),
         titleFor: (view) => {
           const id = view.documents[CONVERSATION_BINDING];
           if (!id) return view.title || "chat";
@@ -68,7 +68,7 @@ export function createChatApps(
       },
       presentation: {
         title: title("inspector", "inspector"),
-        tone: options.tones?.inspector ?? "var(--pbui-selected)",
+        tone: options.tones?.inspector ?? "var(--pbui-tone-tool)",
         Component: () => (
           <PanelApp part="inspector-app">
             <ChatInspectorPanel />
@@ -83,7 +83,7 @@ export function createChatApps(
       },
       presentation: {
         title: title("watchlist", "watchlist"),
-        tone: options.tones?.watchlist ?? "var(--pbui-pane-alt)",
+        tone: options.tones?.watchlist ?? "var(--pbui-tone-row)",
         Component: () => (
           <PanelApp part="watchlist-app">
             <WatchlistPanel />

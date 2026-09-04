@@ -6,7 +6,7 @@
   grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
-  background: var(--pbui-wash, var(--pbui-paper));
+  background: var(--pbui-wash);
 }
 
 .empty {

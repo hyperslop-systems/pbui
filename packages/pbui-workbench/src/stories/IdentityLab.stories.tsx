@@ -45,7 +45,7 @@ function Picker({ view, authority }: AppProps & { authority: string }) {
 const picker = (id: string, title: string, authority: string) =>
   defineWorkbenchApp({
     manifest: { id, ports: [{ name: "selection", direction: "inout", contract: { valueType: "number", semanticRole: "selection", authorityDomain: authority }, doc: `the picked number (${authority})` }] },
-    presentation: { title, tone: "var(--pbui-cat-3)", Component: (props: AppProps) => <Picker {...props} authority={authority} /> },
+    presentation: { title, tone: "var(--pbui-tone-chart)", Component: (props: AppProps) => <Picker {...props} authority={authority} /> },
   });
 
 const apps = [picker("picker", "picker", "orders"), picker("sales-picker", "sales picker", "daily_sales")];

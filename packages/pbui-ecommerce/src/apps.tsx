@@ -68,7 +68,7 @@ export function createShopApps(shop: Shop): WorkbenchApp[] {
       },
       presentation: {
         title: "orders",
-        tone: "var(--pbui-cat-1)",
+        tone: "var(--pbui-tone-order)",
         group: SHOP_GROUP,
         blurb: "the order book; click a row to emit it, hover to attend it",
         Component: (props: AppProps) => <OrdersTable {...props} shop={shop} />,
@@ -84,7 +84,7 @@ export function createShopApps(shop: Shop): WorkbenchApp[] {
       },
       presentation: {
         title: "customers",
-        tone: "var(--pbui-cat-2)",
+        tone: "var(--pbui-tone-row)",
         group: SHOP_GROUP,
         blurb: "who buys; click a row to emit the customer",
         Component: (props: AppProps) => <CustomersTable {...props} shop={shop} />,
@@ -101,7 +101,7 @@ export function createShopApps(shop: Shop): WorkbenchApp[] {
       },
       presentation: {
         title: "catalog",
-        tone: "var(--pbui-cat-3)",
+        tone: "var(--pbui-tone-product)",
         group: SHOP_GROUP,
         blurb: "the eight SKUs, with stock against the reorder floor",
         Component: (props: AppProps) => <ProductCatalog {...props} shop={shop} />,
@@ -114,7 +114,7 @@ export function createShopApps(shop: Shop): WorkbenchApp[] {
       },
       presentation: {
         title: "order detail",
-        tone: "var(--pbui-cat-1)",
+        tone: "var(--pbui-tone-order)",
         group: SHOP_GROUP,
         blurb: "one order: its facts and line items; follows the workspace's order until linked",
         Component: (props: AppProps) => <OrderDetail {...props} shop={shop} />,
@@ -127,7 +127,7 @@ export function createShopApps(shop: Shop): WorkbenchApp[] {
       },
       presentation: {
         title: "customer detail",
-        tone: "var(--pbui-cat-2)",
+        tone: "var(--pbui-tone-row)",
         group: SHOP_GROUP,
         blurb: "one customer and their orders; typically derived from an order through order.customer",
         Component: (props: AppProps) => <CustomerDetail {...props} shop={shop} />,
@@ -140,7 +140,7 @@ export function createShopApps(shop: Shop): WorkbenchApp[] {
       },
       presentation: {
         title: "inspector",
-        tone: "var(--pbui-selected)",
+        tone: "var(--pbui-tone-tool)",
         group: SHOP_GROUP,
         blurb: "whatever was last inspected or linked in, as data",
         Component: (props: AppProps) => <Inspector {...props} shop={shop} />,
@@ -168,7 +168,7 @@ export function createShopApps(shop: Shop): WorkbenchApp[] {
       },
       presentation: {
         title: "plot",
-        tone: "var(--pbui-cat-4)",
+        tone: "var(--pbui-tone-chart)",
         group: SHOP_GROUP,
         blurb: "a plot document over one of the shop's tables",
         titleFor: (view) => {

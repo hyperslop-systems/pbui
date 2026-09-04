@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Dialog, Button, IconButton, Surface, Toolbar, Text } from "@hyperslop-systems/pbui";
+import { Dialog, Button, IconButton, Text } from "@hyperslop-systems/pbui";
+import { AppShell } from "@hyperslop-systems/pbui-workbench";
 import { useDispatch, useSelector } from "react-redux";
 import { leavesOfWorkspace } from "@hyperslop-systems/workbench-core";
 import { AcceptBanner, ContextHelp, MouseDocLine, ObjectMenu, usePbui } from "../../../pbui";
@@ -268,70 +269,45 @@ export function WorkbenchShell({
 
   return (
     <>
-      <div
+      <AppShell
         ref={shellRef}
         className={styles.shell}
         // Scopes the active-tile outline (§10.3): shown only while a keyboard
         // operation needs a target. Datalab's launcher, not the shell's, is
         // what opens here, so the marker is Datalab's too.
         data-launcher-open={launcherOpen || undefined}
+        masthead={chrome.masthead}
+        wordmark="Datalab"
+        tagline="data · explore · inspect · understand"
+        // Top right, as the request asked. Inside the masthead rather than
+        // beside the workspace strip, because a stage outranks a workspace and
+        // the sign-in stage hides the strip entirely.
+        mastheadActions={chrome.stageBar ? <StageBar /> : undefined}
+        banner={<AcceptBanner />}
+        strip={chrome.workspaces ? <WorkspaceStrip /> : undefined}
+        stripActions={
+          onToggleFullFrame ? (
+            <IconButton
+              variant="framed"
+              size="tiny"
+              glyph={fullFrame ? "⤡" : "⤢"}
+              accessibleName={fullFrame ? "leave full frame (Esc)" : "fill the window"}
+              title={fullFrame ? "shrink back into the page — Esc does the same" : "fill the window, for room to work"}
+              onClick={onToggleFullFrame}
+            />
+          ) : undefined
+        }
+        status={<MouseDocLine ambient={ambient ? `${counts} · ${ambient}` : counts} />}
       >
-        {chrome.masthead && (
-          <Surface tone="inverted" border="none">
-            <Toolbar tight>
-              <Text size="title" strong>
-                <span className={styles.wordmark}>DATALAB</span>
-              </Text>
-              <Text size="tiny" tone="faint">
-                <span className={styles.tagline}>DATA · EXPLORE · INSPECT · UNDERSTAND</span>
-              </Text>
-              {/* Top right, as the request asked. Inside the masthead rather
-                  than beside the workspace strip, because a stage outranks a
-                  workspace and the sign-in stage hides the strip entirely. */}
-              {chrome.stageBar && <StageBar />}
-            </Toolbar>
-          </Surface>
-        )}
-
-        <AcceptBanner />
-
-        {(chrome.workspaces || onToggleFullFrame) && (
-          <div className={styles.chrome}>
-            {chrome.workspaces && <WorkspaceStrip />}
-            <span className={styles.chromeSpacer} />
-            {onToggleFullFrame && (
-              <span className={styles.chromeAction}>
-                <IconButton
-                  variant="framed"
-                  size="tiny"
-                  glyph={fullFrame ? "⤡" : "⤢"}
-                  accessibleName={fullFrame ? "leave full frame (Esc)" : "fill the window"}
-                  title={
-                    fullFrame
-                      ? "shrink back into the page — Esc does the same"
-                      : "fill the window, for room to work"
-                  }
-                  onClick={onToggleFullFrame}
-                />
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className={styles.canvas}>
-          <workbench.shell.Surface
-            renderTitle={renderDatalabTitle}
-            tileAction={renderDatalabTileAction}
-            // Datalab has no ports to connect; the chord would open an empty mode.
-            linkModeShortcut={false}
-            swapLabel="⇄ swap applications"
-            dockLabel="split-dock here · the source tile closes"
-            className={styles.surface}
-          />
-        </div>
-
-        <MouseDocLine ambient={ambient ? `${counts} · ${ambient}` : counts} />
-      </div>
+        <workbench.shell.Surface
+          renderTitle={renderDatalabTitle}
+          tileAction={renderDatalabTileAction}
+          // Datalab has no ports to connect; the chord would open an empty mode.
+          linkModeShortcut={false}
+          swapLabel="⇄ swap applications"
+          dockLabel="split-dock here · the source tile closes"
+        />
+      </AppShell>
       <ImportDialog />
       {/*
        * Mounted unconditionally and rendering nothing until the navigation

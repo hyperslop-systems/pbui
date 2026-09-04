@@ -1,0 +1,66 @@
+/* Masthead, strip, canvas, status: a column that fills whatever the product
+ * gives it (the products set html/body/#root to 100%). The canvas is a
+ * one-cell grid so the workbench surface gets a committed height. */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--pbui-wash);
+}
+
+.masthead {
+  flex-shrink: 0;
+  padding: var(--pbui-space-1) var(--pbui-space-4);
+}
+
+.wordmark {
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-banner);
+  white-space: nowrap;
+}
+
+.tagline {
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-label);
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+  min-width: var(--pbui-space-3);
+}
+
+/* Where you are: the strip sits on paper under a grid rule, so the tabs read
+ * as tabs and the canvas below reads as the ground. */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+  flex-shrink: 0;
+  min-width: 0;
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+  background: var(--pbui-paper);
+  border-bottom: var(--pbui-border-grid);
+}
+
+.canvas {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  padding: var(--pbui-space-3);
+}
+
+.status {
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.status [data-part="mouse-doc-ambient"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -5,19 +5,8 @@ body,
   margin: 0;
 }
 
-.shell {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  height: 100%;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 8px;
-}
-
-.spacer {
-  flex: 1;
+body {
+  overflow: hidden;
+  color: var(--pbui-ink);
+  background: var(--pbui-wash);
 }

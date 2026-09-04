@@ -14,17 +14,19 @@ export function App() {
     workbench.reset(seedShopDocument);
   };
   return (
-    <div className="shell">
-      <div className="topbar">
-        <Text size="tiny" tone="faint">
-          {restored ? "restored from this browser" : "seeded"}
-        </Text>
-        <span className="spacer" />
-        <Button size="tiny" variant="bare" onClick={reset}>
-          reset to the seed
-        </Button>
-      </div>
-      <ShopShell shop={shop} workbench={workbench} />
-    </div>
+    <ShopShell
+      shop={shop}
+      workbench={workbench}
+      mastheadActions={
+        <>
+          <Text size="tiny" tone="faint">
+            {restored ? "restored from this browser" : "seeded"}
+          </Text>
+          <Button size="tiny" variant="framed" onClick={reset}>
+            reset to the seed
+          </Button>
+        </>
+      }
+    />
   );
 }

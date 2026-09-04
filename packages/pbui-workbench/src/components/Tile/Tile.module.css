@@ -27,13 +27,24 @@
   grid-template-rows: minmax(0, 1fr);
 }
 
-/* The application's own cell; `inert` while the rail is over it. */
+/* The application's own cell; `inert` while the rail is over it.
+ *
+ * An application with ONE root gets a committed cell (a one-cell grid), so a
+ * scrolling body or an editor can size itself to the tile. An application
+ * that renders a fragment (a doc bar, a toolbar, then a body: datalab's
+ * apps) gets normal flow instead; a one-cell grid would hand the first child
+ * the whole height and centre its contents (PBUI-VISUAL-1 P3). */
 .app {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app:not(:has(> * + *)) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  min-width: 0;
-  min-height: 0;
 }
 
 .empty {

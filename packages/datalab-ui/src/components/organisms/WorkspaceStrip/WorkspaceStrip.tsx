@@ -82,11 +82,10 @@ export function WorkspaceStrip() {
               {/* biome-ignore lint/a11y/noStaticElementInteractions: the interactive element is the Presentation around this span — it carries tabIndex, role and the key handlers. What this span adds is double-click-to-rename; the keyboard route is "Rename this workspace …" in the object menu, which DATADROP-8 added. */}
               <span
                 style={{
-                  border: "var(--pbui-border-firm)",
-                  background:
-                    current === space.id ? "var(--pbui-selected)" : "var(--pbui-pane-alt)",
-                  padding: "0 var(--pbui-space-4)",
-                  fontSize: "var(--pbui-fs-small)",
+                  border: "var(--pbui-border-hair)",
+                  background: current === space.id ? "var(--pbui-selected)" : "var(--pbui-pane)",
+                  padding: "0 var(--pbui-space-3)",
+                  fontSize: "var(--pbui-fs-tiny)",
                   fontWeight: current === space.id ? 700 : 400,
                 }}
                 onDoubleClick={() => !pinned && dispatch(navigationActions.beginRename(space.id))}

@@ -71,6 +71,8 @@ export type { SplitPaneProps } from "./components/SplitPane";
 export { WorkbenchSurface } from "./components/Surface";
 export { WorkbenchLauncher } from "./components/Launcher";
 export { WorkspaceStrip } from "./components/WorkspaceStrip";
+export { AppShell } from "./components/AppShell";
+export type { AppShellProps } from "./components/AppShell";
 export { WorkbenchRebalance, rebalanceGeometry } from "./components/RebalanceDialog";
 export { RebalanceStatusBadge } from "./components/RebalanceBadge";
 export type { RebalanceBadgeProps } from "./components/RebalanceBadge";

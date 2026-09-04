@@ -1,5 +1,6 @@
 import "./styles/reset.css";
 import "@hyperslop-systems/pbui/styles.css";
+import "@hyperslop-systems/pbui-workbench/styles.css";
 // The shared presentation-part and chrome styles (PBUI-UNIFY-001): previously
 // this package's own pbui.module.css carried the presentation/menu rules.
 import "./styles/pbui-extras.css";

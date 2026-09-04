@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  background: var(--pbui-wash);
   touch-action: none;
   outline-offset: -2px;
 }
@@ -42,7 +42,7 @@
 
 .divider:hover,
 .divider:focus-visible {
-  background: var(--pbui-pane-alt);
+  background: var(--pbui-selected-wash);
 }
 
 .divider[data-state="dragging"] {
@@ -59,13 +59,13 @@
 }
 
 .row > .divider > .grip {
-  border-left: 2px dotted var(--pbui-line);
+  border-left: 2px dotted var(--pbui-faint);
   width: 2px;
   height: 26px;
 }
 
 .col > .divider > .grip {
-  border-top: 2px dotted var(--pbui-line);
+  border-top: 2px dotted var(--pbui-faint);
   height: 2px;
   width: 26px;
 }

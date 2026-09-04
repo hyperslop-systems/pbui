@@ -113,7 +113,7 @@ const noPortApp = defineWorkbenchApp({
   manifest: { id: "no-ports", ports: [] },
   presentation: {
     title: "no ports",
-    tone: "var(--pbui-cat-1)",
+    tone: "var(--pbui-tone-source)",
     Component: () => (
       <div data-part="no-ports-app">
         <Text size="small">this application declares no ports</Text>
@@ -147,7 +147,7 @@ const manyPortsApp = defineWorkbenchApp({
       { name: "delta", direction: "out", contract: "any", doc: "second output" },
     ],
   },
-  presentation: { title: "many ports", tone: "var(--pbui-cat-2)", Component: ManyPortsApp },
+  presentation: { title: "many ports", tone: "var(--pbui-tone-field)", Component: ManyPortsApp },
 });
 
 function ConnectModeRail({ appId, linked }: { appId: string; linked?: boolean }) {
@@ -206,7 +206,7 @@ function NestedTileApp() {
 
 const nestedTileApp = defineWorkbenchApp({
   manifest: { id: "nested-tile", ports: [] },
-  presentation: { title: "nested workbench", tone: "var(--pbui-cat-4)", Component: NestedTileApp },
+  presentation: { title: "nested workbench", tone: "var(--pbui-tone-cat)", Component: NestedTileApp },
 });
 
 function PlainTile() {

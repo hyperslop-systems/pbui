@@ -19,11 +19,11 @@ export function createPlotScriptApps(host: PlotScriptHost): WorkbenchApp[] {
   return [
     defineWorkbenchApp({
       manifest: { id: SCRIPT_APP_ID, ports: [documentSlotPort(PLOT_BINDING, "the plot script this tile is a view of")] },
-      presentation: { title: "script", blurb: "a JavaScript plot script, run as you type", tone: "var(--pbui-tone-field)", titleFor: titleFor("script"), Component: (props: AppProps) => <ScriptTile {...props} host={host} /> },
+      presentation: { title: "script", blurb: "a JavaScript plot script, run as you type", tone: "var(--pbui-tone-step)", titleFor: titleFor("script"), Component: (props: AppProps) => <ScriptTile {...props} host={host} /> },
     }),
     defineWorkbenchApp({
       manifest: { id: PLOT_APP_ID, ports: [documentSlotPort(PLOT_BINDING, "the plot script this tile is a view of")] },
-      presentation: { title: "plot", blurb: "the plot a script returns", tone: "var(--pbui-cat-3)", titleFor: titleFor("plot"), Component: (props: AppProps) => <PlotTile {...props} host={host} /> },
+      presentation: { title: "plot", blurb: "the plot a script returns", tone: "var(--pbui-tone-chart)", titleFor: titleFor("plot"), Component: (props: AppProps) => <PlotTile {...props} host={host} /> },
     }),
   ];
 }

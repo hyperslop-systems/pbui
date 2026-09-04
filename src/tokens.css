@@ -212,7 +212,7 @@
   --pbui-tone-geom: #8fc7b0;
   --pbui-tone-traceEntry: var(--pbui-neutral);
   --pbui-tone-trace: var(--pbui-neutral);
-  --pbui-tone-tool: #696e75;
+  --pbui-tone-tool: #b9bec7; /* light slate: a tile bar must carry ink text */
   --pbui-tone-proposal: #f2ad00;
   --pbui-tone-widget: #805bd7;
   --pbui-tone-row: #8fc7b0;

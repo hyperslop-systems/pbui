@@ -40,7 +40,8 @@ export function WorkspaceStrip({ renderWorkspace, className, addLabel }: Workspa
           <Button
             key={workspace.id}
             size="tiny"
-            variant={placement.active ? "framed" : "bare"}
+            variant="framed"
+            selected={placement.active}
             aria-current={placement.active ? "true" : undefined}
             title={`${placement.tileCount} tile${placement.tileCount === 1 ? "" : "s"}`}
             onClick={placement.select}
@@ -50,8 +51,8 @@ export function WorkspaceStrip({ renderWorkspace, className, addLabel }: Workspa
         );
       })}
       {addLabel ? (
-        <Button size="tiny" onClick={() => workbench.execute(commands.createWorkspace(addLabel))} title="add a workspace">
-          +
+        <Button size="tiny" variant="framed" onClick={() => workbench.execute(commands.createWorkspace(addLabel))} title="add a workspace">
+          + {addLabel}
         </Button>
       ) : null}
     </div>
