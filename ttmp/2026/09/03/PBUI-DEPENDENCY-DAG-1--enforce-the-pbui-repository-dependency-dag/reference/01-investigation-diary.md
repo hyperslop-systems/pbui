@@ -11,6 +11,14 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://packages/pbui-editor/package.json
+      Note: Removed stale shell dependency in Phase 1 commit 4c74b31
+    - Path: repo://packages/pbui-editor/scripts/consumer-smoke.mjs
+      Note: Packed editor validation now proves Workbench independence
+    - Path: repo://packages/pbui-plotscript/demo/package.json
+      Note: Declares its direct protocol import
+    - Path: repo://pnpm-lock.yaml
+      Note: Records corrected direct importer edges
     - Path: repo://ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/design-doc/01-intern-guide-to-enforcing-pbui-dependency-boundaries.md
       Note: Phase 0 design and implementation contract
     - Path: repo://ttmp/2026/09/03/PBUI-DEPENDENCY-DAG-1--enforce-the-pbui-repository-dependency-dag/reference/02-package-graph-inventory.json
@@ -28,6 +36,7 @@ LastUpdated: 2026-09-03T21:50:00-04:00
 WhatFor: Make the architecture-guard implementation reproducible and reviewable by an engineer unfamiliar with the repository.
 WhenToUse: Read before implementing, reviewing, or continuing PBUI-DEPENDENCY-DAG-1.
 ---
+
 
 
 # Diary
@@ -186,4 +195,103 @@ Extraneous: pbui-editor → pbui-workbench
 Undeclared: pbui-plotscript-demo → workbench-protocol/client
 Baseline: root 831 tests; Datalab 602; all recursive suites green
 Printing: overall PLAN + P0 START succeeded
+```
+
+## Step 3: Phase 1 — correct manifest drift
+
+I made the hard-cutover declaration fixes: editor no longer claims an optional Workbench application or runtime dependency, and the PlotScript demo now directly declares the protocol package it imports. `pnpm install` updated the two importer sections in the lockfile.
+
+The editor’s first packed consumer test exposed a deeper stale assumption: its smoke script still packed and installed Workbench and protocol even though the consumer source only mounts `CodeEditor`. That caused npm to chase unpacked Workbench’s unpublished `workbench-core` dependency. I deleted the stale pack/install paths, then proved the editor tarball works with only PBUI and ordinary React peers.
+
+### Prompt Context
+
+**User prompt (verbatim):** "then implement, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill)Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done.
+
+[REMINDER] Output a <summary>...</summary> block at the VERY END of your response. This is mandatory."
+
+**Assistant interpretation:** Implement the full ticket in reviewable phase commits, keep the strict diary current, and physically print an overall plan plus start/done slips around every phase.
+
+**Inferred user intent:** Make the long-running architecture change observable, auditable, and easy to review both in Git history and on physical work slips.
+
+**Commit (code):** `4c74b317281796511472c779b3f87599bd5493a6` — "Correct PBUI workspace dependency declarations"
+
+### What I did
+
+- Removed `pbui-workbench` from editor dependencies.
+- Removed the stale optional-Workbench wording from editor’s package description.
+- Added `workbench-protocol` to the PlotScript demo dependencies.
+- Updated `pnpm-lock.yaml` with `pnpm install`.
+- Removed Workbench and protocol packing/installing from editor consumer smoke.
+- Ran editor typecheck, 12 tests, build, and packed consumer smoke.
+- Ran PlotScript demo typecheck and production build.
+- Printed `P0 DONE` and `P1 START` slips.
+
+### Why
+
+- Internal declarations should equal actual direct package ownership.
+- A packed editor test should prove editor independence rather than install unrelated product layers.
+
+### What worked
+
+- Editor typecheck and 12 tests passed immediately.
+- Editor consumer smoke passed after removing stale Workbench setup.
+- PlotScript demo typecheck and build passed with the explicit protocol declaration.
+
+### What didn't work
+
+The first editor consumer-smoke run failed exactly at:
+
+```text
+npm error code E404
+npm error 404 Not Found - GET https://registry.npmjs.org/@hyperslop-systems%2fworkbench-core - Not found
+npm error 404  The requested resource '@hyperslop-systems/workbench-core@^0.2.0' could not be found or you do not have permission to access it.
+...
+Error: Command failed: npm install --no-audit --no-fund
+...
+ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL @hyperslop-systems/pbui-editor@0.1.0 consumer:smoke
+```
+
+Command:
+
+```bash
+pnpm --filter @hyperslop-systems/pbui-editor consumer:smoke
+```
+
+Root cause: `consumer-smoke.mjs` still explicitly packed and installed Workbench and protocol. It was not evidence that editor required them; it was stale test scaffolding.
+
+### What I learned
+
+- The unused manifest edge had a matching stale smoke-test assumption, confirming the old optional app had been incompletely removed.
+- Packed tests can reveal architectural test coupling even when source ownership is already clean.
+
+### What was tricky to build
+
+- Removing only the manifest edge was insufficient because the smoke fixture authored its own independent consumer manifest. The exact fix was to remove both tarball creation and consumer dependency entries for Workbench and protocol.
+
+### What warrants a second pair of eyes
+
+- Confirm no intended editor Workbench adapter was accidentally omitted from source. Repository search found none, and the package export map exposes only editor APIs and CSS.
+
+### What should be done in the future
+
+- Let the package graph test make the source/declaration mismatch impossible to reintroduce.
+
+### Code review instructions
+
+- Review `packages/pbui-editor/package.json` beside `scripts/consumer-smoke.mjs`.
+- Review `packages/pbui-plotscript/demo/src/workbench.ts:3` beside its package manifest.
+- Validate with:
+
+  ```bash
+  pnpm --filter @hyperslop-systems/pbui-editor consumer:smoke
+  pnpm --filter @hyperslop-systems/pbui-plotscript-demo typecheck
+  pnpm --filter @hyperslop-systems/pbui-plotscript-demo build
+  ```
+
+### Technical details
+
+```text
+Editor direct internal runtime dependency: pbui only
+PlotScript demo direct protocol subpath: workbench-protocol/client
+Lockfile importer edges match both manifests
 ```
