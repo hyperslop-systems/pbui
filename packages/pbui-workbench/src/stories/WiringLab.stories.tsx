@@ -160,9 +160,20 @@ const wideApp = defineWorkbenchApp({
   presentation: { title: "wide", tone: "var(--pbui-tone-field)", Component: WideApp },
 });
 
-const apps = [sourceApp, sinkApp, transformApp, wideApp];
+const crowdedApp = defineWorkbenchApp({
+  manifest: {
+    id: "lab-crowded",
+    ports: [
+      ...["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"].map((name) => ({ name, direction: "in" as const, contract: "any", doc: `input ${name}` })),
+      ...["one", "two", "three", "four", "five", "six"].map((name) => ({ name, direction: "out" as const, contract: "text", doc: `output ${name}` })),
+    ],
+  },
+  presentation: { title: "crowded", tone: "var(--pbui-tone-cat)", Component: WideApp },
+});
 
-function WiringLab() {
+const apps = [sourceApp, sinkApp, transformApp, wideApp, crowdedApp];
+
+function WiringLab({ crowded = false }: { crowded?: boolean }) {
   const [generation, setGeneration] = useState(0);
   const wb = useMemo(() => {
     const workbench = createWorkbench({
@@ -172,7 +183,7 @@ function WiringLab() {
           "col",
           0.5,
           split("row", 0.33, tile("lab-source", { title: "Source A" }), split("row", 0.5, tile("lab-transform", { title: "Transform" }), tile("lab-sink", { title: "Sink A" }))),
-          split("row", 0.33, tile("lab-source", { title: "Source B" }), split("row", 0.5, tile("lab-wide", { title: "Wide" }), tile("lab-sink", { title: "Sink B" }))),
+          split("row", 0.33, tile("lab-source", { title: "Source B" }), split("row", 0.5, tile(crowded ? "lab-crowded" : "lab-wide", { title: crowded ? "Crowded" : "Wide" }), tile("lab-sink", { title: "Sink B" }))),
         ),
       ),
     });
@@ -186,12 +197,12 @@ function WiringLab() {
       workbench.execute({ kind: "port.follow", source: `${sourceA}/count`, destination: `${transform}/in` });
       workbench.execute({ kind: "port.follow", source: `${sourceB}/label`, destination: `${sinkB}/anything` });
       workbench.execute({ kind: "port.pin", port: `${sinkB}/anything` });
-      workbench.execute({ kind: "port.follow", source: `${transform}/out`, destination: `${wide}/beta` });
+      workbench.execute({ kind: "port.follow", source: `${transform}/out`, destination: `${wide}/${crowded ? "theta" : "beta"}` });
       workbench.execute({ kind: "identity.add", left: `${sinkA}/value`, right: `${sinkB}/value`, mergePolicy: "prefer-left" });
     }
     return workbench;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generation]);
+  }, [generation, crowded]);
   useEffect(() => {
     wb.dispatch({ kind: "link.mode.open" });
   }, [wb]);
@@ -231,3 +242,5 @@ export default meta;
 
 type Story = StoryObj<typeof WiringLab>;
 export const Lab: Story = {};
+/** A tile with fourteen ports in a short viewport: the rail's columns scroll, the jacks stay on the frame. */
+export const Crowded: Story = { args: { crowded: true } };

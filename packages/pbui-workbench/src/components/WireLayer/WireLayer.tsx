@@ -37,6 +37,16 @@ function route(a: Point, b: Point, channel = 0): string {
   return `M ${a.x} ${a.y} H ${a.x + stub + Math.abs(channel)} V ${my} H ${b.x - stub - Math.abs(channel)} V ${b.y} H ${b.x}`;
 }
 
+/** The Manhattan length of a wire's ends, for draw order. */
+function span(wire: { from: Point | null; to: Point | null }): number {
+  return wire.from && wire.to ? Math.abs(wire.to.x - wire.from.x) + Math.abs(wire.to.y - wire.from.y) : 0;
+}
+
+/** A port id inside an attribute selector; `CSS.escape` is absent in jsdom. */
+function escapeAttribute(value: string): string {
+  return typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(value) : value.replace(/["\\]/g, "\\$&");
+}
+
 /** Every tile's frame, relative to the surface: what a wire must not cross. */
 function tileRects(root: HTMLElement): Rect[] {
   const origin = root.getBoundingClientRect();
@@ -56,7 +66,9 @@ function labelPoint(a: Point, b: Point, channel = 0): Point {
 /* The wire meets the jack on the frame when the card has one, else the
  * card's edge (a product's own port markup). */
 function anchorOf(element: HTMLElement, side: "in" | "out", root: HTMLElement): Point {
-  const jack = element.querySelector<HTMLElement>(`[data-part="port-jack"][data-side="${side}"]`);
+  const id = element.dataset["portId"];
+  const rail = element.closest<HTMLElement>('[data-part="port-rail"]');
+  const jack = id && rail ? rail.querySelector<HTMLElement>(`[data-part="port-jack"][data-side="${side}"][data-port-id="${escapeAttribute(id)}"]`) : null;
   const box = (jack ?? element).getBoundingClientRect();
   const origin = root.getBoundingClientRect();
   return { x: (side === "out" ? box.right : box.left) - origin.left, y: box.top + box.height / 2 - origin.top };
@@ -124,11 +136,22 @@ export function WireLayer({ renderWire }: WireLayerProps) {
     const bump = () => setTick((n) => n + 1);
     const frame = requestAnimationFrame(bump);
     window.addEventListener("resize", bump);
+    // A rail column scrolling moves its jacks; scroll does not bubble, so
+    // listen in the capture phase on the surface, and measure on the NEXT
+    // frame: the rail re-places its jacks in the same batch, and a measure
+    // in this one would read where they were (PBUI-WIRING-1 P9).
+    const onScroll = () => requestAnimationFrame(bump);
+    root?.addEventListener("scroll", onScroll, true);
+    // The rail says when its jacks have been placed (after ITS commit): that
+    // is the moment a measurement is right.
+    root?.addEventListener("pbui:jacks-placed", bump);
     const observer = root && typeof ResizeObserver !== "undefined" ? new ResizeObserver(bump) : null;
     if (root && observer) observer.observe(root);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", bump);
+      root?.removeEventListener("scroll", onScroll, true);
+      root?.removeEventListener("pbui:jacks-placed", bump);
       observer?.disconnect();
     };
   }, [workbench, snapshot]);
@@ -136,7 +159,9 @@ export function WireLayer({ renderWire }: WireLayerProps) {
   const root = workbench.root();
   const links = linkRefsOf(snapshot);
   const rootBox = root?.getBoundingClientRect();
-  const wires = root ? links.flatMap((link) => wireEnds(link, root).map((ends) => ({ link, ...ends }))) : [];
+  // Longer wires first, so a short wire that shares a stub with a long one is
+  // drawn — and hit — on top: the right-click lands on the wire you see.
+  const wires = (root ? links.flatMap((link) => wireEnds(link, root).map((ends) => ({ link, ...ends }))) : []).sort((a, b) => span(b) - span(a));
   // One channel per wire, centred on zero, six pixels apart (the fallback route).
   const channelOf = (index: number) => (index - (wires.length - 1) / 2) * 6;
   // The tiles are the obstacles; wires go around them through the gutters.

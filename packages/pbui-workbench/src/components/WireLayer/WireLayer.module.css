@@ -22,7 +22,7 @@
 .hit {
   fill: none;
   stroke: transparent;
-  stroke-width: 14px;
+  stroke-width: 10px;
   pointer-events: stroke;
   cursor: context-menu;
 }
