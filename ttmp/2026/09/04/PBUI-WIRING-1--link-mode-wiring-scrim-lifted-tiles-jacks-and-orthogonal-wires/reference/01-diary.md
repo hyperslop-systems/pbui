@@ -304,3 +304,41 @@ Screenshots: `various/screenshots/p8/002-workbench-wiringlab--lab.png` (all wire
 
 ### Code review instructions
 - `git show 58b3b51 -- packages/pbui-workbench/src/components/WireLayer/route.ts`; `pnpm vitest run src/components/WireLayer` in pbui-workbench; `Workbench/WiringLab` on :6008.
+
+## Step 9: Phase 9, the rail scrolls and the jacks stay
+
+A tile with more ports than height now scrolls its rail columns while the jacks stay on the frame and the wires follow the scrolled cards. Getting the wire to follow took three attempts, all about ordering between the rail's commit and the wire layer's measurement.
+
+Screenshots: `various/screenshots/p9/001-workbench-wiringlab--crowded.png` (fourteen ports, 560px tall), `p9/002-workbench-wiringlab--crowded-scrolled.png` (after scrolling the input column: the top jacks clipped away, the wire into `theta` re-routed to its new place).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 7)
+
+**Assistant interpretation:** The rail-overflow follow-up from the report.
+
+**Inferred user intent:** Link mode must hold up for real tiles, not only demo-sized ones.
+
+**Commit (code):** 7d9b9a9 — "PBUI-WIRING-1 P9: the rail scrolls, the jacks stay on the frame"
+
+### What I did
+- `PortRail`: jacks rendered in a `.jacks` layer (`inset: 0; pointer-events: none; clip-path: inset(0 -20px)`), placed at each card's centre from `getBoundingClientRect` in a layout effect that re-runs on column scroll, ResizeObserver and window resize; `data-port-id` on each jack; columns `overflow-y: auto`; `pbui:jacks-placed` dispatched after the jacks commit.
+- `WireLayer`: `anchorOf` finds the jack in the rail by port id and side (with an `escapeAttribute` guard, since jsdom has no `CSS.escape`); listens for scroll in the capture phase (next-frame bump) and for `pbui:jacks-placed`; wires sorted longest-first so short ones are on top; hit stroke 10px.
+- `WiringLab`: `Crowded` story with a fourteen-port app; the cross-row follow lands on its `theta`.
+
+### What worked
+- Workbench 24 test files green; ecommerce e2e 9/9; the probe shows the wire's end at the jack's centre after scrolling (488.56 = 482.56 + 6).
+
+### What didn't work
+- `CSS.escape` is undefined in jsdom: three connect tests failed with "Cannot read properties of undefined (reading 'escape')". Guarded.
+- The e2e "Unlink · keep the last value" right-clicked the *inspector* wire instead of the detail wire: with orthogonal routes both share the stub out of the same jack and the later, longer wire's 14px hit stroke covered the short wire's bounding-box centre (playwright's click point). Sorting wires longest-first (so short ones are hit on top) and a 10px hit stroke fixed the scenario and the real ambiguity behind it.
+- The wire lagged the scrolled jack by one step twice: first because the wire layer measured during the same React batch as the jack move (fixed by measuring on the next frame), then because a passive scroll listener's setState is not flushed before the next frame either. The rail now dispatches `pbui:jacks-placed` from a layout effect keyed on its jacks, i.e. after its own commit, and the wire layer measures on that.
+
+### What I learned
+- Two components measuring the same DOM in one event need an explicit "I have committed" signal; frames and microtasks are not a contract.
+
+### What warrants a second pair of eyes
+- The custom DOM event is a private protocol between PortRail and WireLayer; it is namespaced (`pbui:`) and documented in both places.
+
+### Code review instructions
+- `git show 7d9b9a9`; `Workbench/WiringLab › Crowded` on :6008 in a short window; scroll the crowded tile's left column.

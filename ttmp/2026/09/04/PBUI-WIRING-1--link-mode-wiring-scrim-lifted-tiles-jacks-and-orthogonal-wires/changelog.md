@@ -76,3 +76,12 @@ P8 obstacle-aware routing (commit 58b3b51)
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/WireLayer/route.ts — Grid router
 
+
+## 2026-09-04
+
+P9 scrolling rail with a jack layer; wire hit order (commit 7d9b9a9)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/PortRail/PortRail.tsx — jack layer
+

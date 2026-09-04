@@ -10,4 +10,4 @@
 - [x] P6 title + badge as one bar label <!-- t:ai92 -->
 - [x] P7 WiringLab story <!-- t:sze5 -->
 - [x] P8 obstacle-aware routing via gutters <!-- t:lr2k -->
-- [ ] P9 rail scrolls, jacks stay on the frame <!-- t:3gfv -->
+- [x] P9 rail scrolls, jacks stay on the frame <!-- t:3gfv -->
