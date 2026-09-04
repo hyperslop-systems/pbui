@@ -15,3 +15,5 @@
 - [x] Validate and upload the illustrated intern review to reMarkable <!-- t:vl37 -->
 - [x] Add principled foundations section with algorithms constraints invariants and archived primary sources <!-- t:pdao -->
 - [x] Validate and upload the expanded review with foundations to reMarkable <!-- t:zsvi -->
+- [x] Write standalone wiring refactoring design and intern implementation guide with explicit replacement boundaries <!-- t:p3y6 -->
+- [x] Validate illustrate and upload the wiring refactoring guide to reMarkable <!-- t:c4xg -->

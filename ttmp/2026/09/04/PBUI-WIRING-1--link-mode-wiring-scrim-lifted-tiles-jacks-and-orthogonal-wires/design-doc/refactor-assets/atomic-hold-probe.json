@@ -1,0 +1,122 @@
+{
+  "scope": "Local built core; source planner independently inspected",
+  "cases": [
+    {
+      "withValue": false,
+      "preview": {
+        "ok": false,
+        "code": "empty",
+        "because": "sink · value shows nothing to hold",
+        "index": 1,
+        "command": {
+          "kind": "port.pin",
+          "port": "v-0703b0cf-1595/value"
+        }
+      },
+      "execution": {
+        "ok": false,
+        "code": "empty",
+        "because": "sink · value shows nothing to hold",
+        "index": 1,
+        "command": {
+          "kind": "port.pin",
+          "port": "v-0703b0cf-1595/value"
+        }
+      },
+      "binding": null,
+      "publications": 0
+    },
+    {
+      "withValue": true,
+      "preview": {
+        "ok": true,
+        "changed": true,
+        "mutations": [
+          {
+            "$typeName": "hyperslop.pbui.workbench.v1.Mutation",
+            "body": {
+              "case": "documentPut",
+              "value": {
+                "$typeName": "hyperslop.pbui.workbench.v1.DocumentPut",
+                "document": {
+                  "$typeName": "hyperslop.pbui.workbench.v1.DocumentPayload",
+                  "id": "pbui.links",
+                  "format": "pbui.links",
+                  "schemaVersion": 1,
+                  "body": {
+                    "bindings": {
+                      "v-1f82730c-9284/value": {
+                        "kind": "follow",
+                        "source": "v-bdae5dd3-0e0e/value",
+                        "linkId": "link-5a5e9a20-9570"
+                      }
+                    },
+                    "identity": [],
+                    "classes": [],
+                    "history": {}
+                  }
+                }
+              }
+            }
+          },
+          {
+            "$typeName": "hyperslop.pbui.workbench.v1.Mutation",
+            "body": {
+              "case": "documentPut",
+              "value": {
+                "$typeName": "hyperslop.pbui.workbench.v1.DocumentPut",
+                "document": {
+                  "$typeName": "hyperslop.pbui.workbench.v1.DocumentPayload",
+                  "id": "pbui.links",
+                  "format": "pbui.links",
+                  "schemaVersion": 1,
+                  "body": {
+                    "bindings": {
+                      "v-1f82730c-9284/value": {
+                        "kind": "hold",
+                        "reference": {
+                          "type": "number",
+                          "value": 42
+                        },
+                        "suspended": {
+                          "kind": "follow",
+                          "source": "v-bdae5dd3-0e0e/value",
+                          "linkId": "link-5a5e9a20-9570"
+                        }
+                      }
+                    },
+                    "identity": [],
+                    "classes": [],
+                    "history": {}
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "session": {
+          "workspaceId": "main",
+          "activePlacementId": null
+        },
+        "explanation": "make v-1f82730c-9284/value follow v-bdae5dd3-0e0e/value; pin v-1f82730c-9284/value on its current value"
+      },
+      "execution": {
+        "ok": true,
+        "changed": true
+      },
+      "binding": {
+        "kind": "hold",
+        "reference": {
+          "type": "number",
+          "value": 42
+        },
+        "suspended": {
+          "kind": "follow",
+          "source": "v-bdae5dd3-0e0e/value",
+          "linkId": "link-5a5e9a20-9570"
+        }
+      },
+      "publications": 1
+    }
+  ]
+}

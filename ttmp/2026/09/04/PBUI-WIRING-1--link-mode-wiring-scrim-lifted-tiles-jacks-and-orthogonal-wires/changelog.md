@@ -109,3 +109,13 @@ Added section 14 to the intern review: principled constraints, graph search, fin
 
 Uploaded the expanded 42-page review as PBUI-WIRING-1 Review with Foundations to /ai/2026/09/04/PBUI-WIRING-1; recorded successful delivery and linked both PDF editions plus the source archive from the ticket index.
 
+
+## 2026-09-04
+
+Created standalone wiring refactoring design 04: surface-owned geometry, pure validated scenes, atomic connection intents, focused mode, direct API replacement, and eight implementation phases. Added four diagrams and a verified atomic Hold probe; rendered a 29-page guide and checked 50 local references. Product refactoring remains unimplemented.
+
+
+## 2026-09-04
+
+Validated and uploaded the 29-page standalone refactoring guide to /ai/2026/09/04/PBUI-WIRING-1 as PBUI-WIRING-1 Refactoring Design and Implementation Guide. Updated index and diary; confirmed 22 browser screenshots remain in the ticket and four new design diagrams are stored beside the guide.
+

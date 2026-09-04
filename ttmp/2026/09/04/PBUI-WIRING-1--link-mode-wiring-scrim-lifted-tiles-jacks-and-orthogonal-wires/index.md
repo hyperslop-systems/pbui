@@ -32,6 +32,10 @@ The expanded [review with foundations PDF](<design-doc/review-assets/PBUI-WIRING
 
 ## Key Links
 
+- **Refactoring design:** [Wiring scene architecture and intern implementation guide](design-doc/04-wiring-scene-refactoring-architecture-and-intern-implementation-guide.md). A separate proposal with 15 sections, four new diagrams, 30 current source/API references, and eight implementation phases. It assumes direct replacement with no migrations, shims, or compatibility adapters. The phases remain future implementation work.
+- **Refactoring PDF:** [Design and implementation guide](<design-doc/refactor-assets/PBUI-WIRING-1 Refactoring Design and Implementation Guide.pdf>), 29 pages. Uploaded to reMarkable as **PBUI-WIRING-1 Refactoring Design and Implementation Guide** under `/ai/2026/09/04/PBUI-WIRING-1`.
+- **Verified existing capability:** [Atomic Follow-plus-Pin probe](design-doc/refactor-assets/atomic-hold-probe.json), covering empty-source refusal without partial binding and successful held capture with one core publication.
+
 - **Related Files**: See frontmatter RelatedFiles field
 - **External Sources**: See frontmatter ExternalSources field
 

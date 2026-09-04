@@ -1,0 +1,32 @@
+digraph design {
+graph [rankdir=TB, bgcolor="white", pad="0.25", nodesep="0.3", ranksep="0.4"];
+node [shape=box, style="rounded,filled", fillcolor="#edf3f8", color="#384b60", fontname="DejaVu Sans", fontsize=12, margin="0.15,0.12"];
+edge [color="#42566b", fontname="DejaVu Sans", fontsize=10];
+
+core [label="Existing semantic core
+commands, document, runtime, evaluation"];
+projection [label="Relationship projection
+logical IDs, kinds, descriptions"];
+dom [label="Mounted surface
+tile frames, cards, clipping, live splits"];
+measure [label="Surface geometry owner
+registration + batched measurement"];
+interaction [label="Connection controller
+source / candidate / operation / selection"];
+scene [label="Pure scene builder
+choose anchors, route, arrange, validate"];
+render [label="Declarative rendering
+frame jacks + SVG paths + labels + hit regions", fillcolor="#e4efe5"];
+panel [label="Connection panel
+readable lists, preview, inspect, reveal", fillcolor="#e4efe5"];
+core -> projection;
+dom -> measure;
+projection -> scene;
+measure -> scene;
+interaction -> scene [label="selected relationship; preview"];
+scene -> render;
+projection -> panel;
+interaction -> panel;
+interaction -> core [label="preview / atomic execute"];
+
+}

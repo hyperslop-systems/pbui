@@ -469,3 +469,84 @@ Start review with sections 14.2, 14.5–14.9, and the reading guide. Check that 
 ### Delivery completed
 
 Upload returned `OK: uploaded PBUI-WIRING-1 Review with Foundations.pdf -> /ai/2026/09/04/PBUI-WIRING-1`. The final 42-page PDF is stored beside the review. The ticket index links both editions and the source archive. Upload used the user's existing authorization and a new document name.
+
+## Step 12: Design the wiring replacement as a coherent scene subsystem
+
+Created a separate intern-oriented refactoring guide in the same ticket, using the user's explicit freedom to change APIs and remove obsolete implementations. The guide connects the existing semantic core to proposed geometry ownership, pure routing/scene stages, atomic connection interaction, and a focused workflow for narrow layouts.
+
+Source inspection refreshed the design against `e9fcbeb`. A targeted probe confirmed an existing capability worth preserving: the core can preview and execute Follow-plus-Pin as one atomic batch. The documentation does not implement the product refactoring or claim that its future browser acceptance criteria already pass.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+```text
+› Create a new design document for the refactoring (in the same ticket, I think that's fine). Create
+  a detailed analysis / design / implementation guide that is for a new intern, explaining all the
+  parts of the system needed to understand what it is, with prose paragraphs and bullet point sand
+  pseudocode and diagrams and api references and file references. It should be very clear and
+  technical. Store in the ticket and the nupload to remarkable.
+```
+
+**Assistant interpretation:** Write a standalone, concrete refactoring design and implementation guide, store it in PBUI-WIRING-1, and upload an illustrated PDF.
+
+**Inferred user intent:** Give a new engineer enough context and precise contracts to replace the current wiring implementation cleanly, with direct caller updates and no compatibility machinery.
+
+### What I did
+
+- Created design document 04 through `docmgr doc add` and related seven implementation files using `docmgr doc relate`.
+- Inspected Surface, Tile, TileFrame, PortRail, WireLayer, SplitPane, the carry registry, shell APIs, command geometry, core planning, link projection, relation selection, and ecommerce callbacks.
+- Wrote a guide of approximately 10,400 words with 15 main sections, four new diagrams, two historical browser exhibits, six decision records, 30 current API/source references, and eight implementation phases with exit criteria.
+- Added `scripts/07-probe-atomic-hold.mjs`, `08-render-refactor-diagrams.py`, and `09-prepare-refactor-upload.py`; saved probe output and document validation beside the new guide.
+- Checked React layout-effect timing and Pointer Events capture behavior against official references, and reused the ticket's archived foundational papers and specifications.
+
+### Why
+
+The permission to replace fresh code changes the appropriate design: remove distributed measurement and implicit event dependencies instead of adding another layer of notifications. A pure scene contract also makes geometry, selection, and label correctness independently testable.
+
+### What worked
+
+- The empty-source Hold batch refused at index 1 with code `empty`, left no binding, preserved the serialized document, and produced zero core publications.
+- The emitted-value batch captured `42` as a hold and produced one core publication. Preview produced no observable document change in either case.
+- Repository-wide symbol search identified the concrete carry/registry exports and product callback callers to remove or update.
+- Four diagrams rendered successfully on the first run. The standalone PDF rendered to 29 pages, and all 50 local references resolved.
+
+### What didn't work
+
+- Two initial guessed paths were absent: `packages/workbench-core/src/links/commands.ts` and `packages/pbui-workbench/src/links/refs.ts`. File discovery found `commands.ts`, `planner/links.ts`, and `links/linkRef.ts` before conclusions were written.
+- Shell glob guesses produced `zsh:2: no matches found: src/components/TileFrame*` and `zsh:4: no matches found: vitest*`. Subsequent discovery used `rg --files`; TileFrame lives under `src/chrome/`.
+- No product software fix was attempted during this documentation task.
+
+### What I learned
+
+The semantic gateway already provides the atomicity that the current Hold gesture bypasses. The shell also already has a separate command-geometry contract; the proposed wiring store must not replace fresh placement measurements with an unproven cache.
+
+### What was tricky to build
+
+The design must distinguish logical port IDs, rendered anchor instances, connection declaration IDs, and derived transformation IDs. It also must preserve app ancestry across wiring modes, model pointer capture correctly, and validate exact endpoint attachment after search. These requirements are spelled out as contracts rather than left to component-local conventions.
+
+### What warrants a second pair of eyes
+
+- Visibility-graph construction and lane arrangement need the benchmark and validation checkpoint before the algorithm choice becomes final.
+- Responsive minimum sizes, hidden application behavior, identity occurrence pairing, and label placement need real implementation/browser evidence.
+- The atomic probe used local built core artifacts; the source planner was inspected separately. Repeat the probe with fresh dependency builds during implementation.
+
+### What should be done in the future
+
+Implement phases 0–7 in the new guide, including the final deletion sweep and fresh browser evidence. Those phases are intentionally unimplemented in this documentation delivery.
+
+### Code review instructions
+
+Read sections 4–9 for contracts, section 11 for decisions, and section 12 for the implementation sequence. Run the atomic probe and export-preparation scripts from any directory; they resolve their paths relative to the ticket. Inspect the generated PDF's diagrams, types, pseudocode, acceptance criteria, and source map before distribution.
+
+### Technical details
+
+The guide is `design-doc/04-wiring-scene-refactoring-architecture-and-intern-implementation-guide.md`; its new images, JSON outputs, and PDF are in `design-doc/refactor-assets/`. The previous review and its screenshots remain intact. Upload uses a new document name under `/ai/2026/09/04/PBUI-WIRING-1`; no overwrite is requested.
+
+### Validation and delivery completed
+
+- `docmgr doctor --ticket PBUI-WIRING-1 --stale-after 30`: all checks passed.
+- Validated 50 local links and inspected the 29-page PDF's table of contents, diagrams, type declarations, pseudocode, implementation phases, and API reference pages.
+- Confirmed all 22 historical browser screenshots remain in `design-doc/review-assets/`; the new guide embeds two of them and stores its four new diagrams in `design-doc/refactor-assets/`.
+- Dry-run completed before upload. Actual upload returned `OK: uploaded PBUI-WIRING-1 Refactoring Design and Implementation Guide.pdf -> /ai/2026/09/04/PBUI-WIRING-1`.
+- Product source remains unchanged. The ticket index now links the standalone design, local PDF, and atomic probe evidence.
