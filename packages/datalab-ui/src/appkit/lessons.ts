@@ -1,6 +1,17 @@
 import type { ReactNode } from "react";
+import type { WorkbenchCoreState } from "@hyperslop-systems/workbench-core";
 import type { AcceptRequest, AcceptResult } from "../pbui";
 import type { AppDispatch, RootState } from "../store";
+import type { DatalabController } from "../store/controller";
+
+/**
+ * What a predicate sees of the layout (PBUI-DATALAB-WORKBENCH-1): the core's
+ * document, session and index — a value, snapshotted at evaluation time. The
+ * world stays in `RootState`; the tree moved out of Redux and comes along as
+ * a second argument so a predicate about "two tiles on one document" is
+ * still a pure function of plain data.
+ */
+export type LessonWorkbench = WorkbenchCoreState;
 
 /**
  * The contract between lesson content and the components that render it.
@@ -49,7 +60,7 @@ export interface Lesson {
    * reader is free to delete the document a predicate names, and that is a
    * legal move rather than an error.
    */
-  done?: (state: RootState) => boolean;
+  done?: (state: RootState, workbench: LessonWorkbench) => boolean;
   /**
    * "▶ do it for me". Dispatches exactly what the interface dispatches.
    *
@@ -93,13 +104,15 @@ export interface LessonContext {
   dispatch: AppDispatch;
   getState: () => RootState;
   accept: (request: AcceptRequest) => Promise<AcceptResult | null>;
+  /** The instance's workbench controller: exactly what the interface's own buttons call. */
+  workbench: DatalabController;
 }
 
 /** A capstone goal: the same predicate shape, with no ordering and no ▶. */
 export interface Goal {
   id: string;
   label: ReactNode;
-  done: (state: RootState) => boolean;
+  done: (state: RootState, workbench: LessonWorkbench) => boolean;
 }
 
 /**

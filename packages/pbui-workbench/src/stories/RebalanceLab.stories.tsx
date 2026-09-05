@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo, useState } from "react";
 import { Button, Text } from "@hyperslop-systems/pbui";
-import { createWorkbench } from "../createWorkbench";
-import { layout, split, tile, type LayoutSpec } from "../document";
+import { createWorkbench } from "../createWorkbenchShell";
+import { layout, split, tile, type LayoutSpec } from "@hyperslop-systems/workbench-core";
 import { rebalanceSettingsApp } from "../components/RebalanceSettings";
 import { demoApps } from "./demoApps";
 
@@ -166,7 +166,7 @@ function RebalanceLab() {
           RANDOM
         </Button>
         <span style={{ flex: 1 }} />
-        <Button size="tiny" variant="framed" onClick={() => wb.verbs.openRebalance()}>
+        <Button size="tiny" variant="framed" onClick={() => wb.dispatch({ kind: "rebalance.open" })}>
           REBALANCE · Ctrl+Shift+K
         </Button>
       </div>

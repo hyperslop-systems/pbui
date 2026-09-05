@@ -3,6 +3,7 @@ export * from "./DiffHunk";
 export * from "./EmptyState";
 export * from "./FileDropZone";
 export * from "./InlineRename";
+export * from "./KeyValueList";
 export * from "./KindLegend";
 export * from "./Legend";
 export * from "./MoreBar";

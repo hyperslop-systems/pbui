@@ -3,16 +3,17 @@ import { setupListeners } from "@reduxjs/toolkit/query";
 import { api } from "../api/client";
 import type { FixtureData } from "../api/fixtures";
 import { browserClipboard, noClipboard, type ClipboardPort } from "./clipboard";
-import { layoutSlice, type LayoutState } from "./layout";
+import type { DatalabController } from "./controller";
+import { emptyNavigation, navigationSlice, type NavigationState } from "./navigation";
 import { worldSlice, initialWorld, type WorldState } from "./world";
-import { defaultLayout } from "./stages";
 
 /**
  * The store, as a factory and only as a factory.
  *
  * Phase 0 wired only the RTK Query cache. Phase 2 added the `world` slice
- * (documents, snapshots, pins, watchlist, trace) and the `layout` slice
- * (workspaces and split trees) beside it — see the DATADROP-4 guide §7.
+ * (documents, snapshots, pins, watchlist, trace). PBUI-DATALAB-WORKBENCH-1
+ * replaced the `layout` slice with the workbench core and the `navigation`
+ * slice (stages, workspace metadata, memory) beside the world.
  *
  * The division of labour between the two is deliberate and is the reason they
  * are separate slices: RTK Query owns anything the server said, keyed by the
@@ -29,7 +30,7 @@ import { defaultLayout } from "./stages";
  * module load, and exactly one file imported it. That was harmless right up
  * until the landing page needed five workbenches on one page, at which point a
  * single ambient store is not a convenience but a defect — five instances
- * sharing one world, one layout and one persistence key. Removing the export
+ * sharing one world, one workbench and one persistence key. Removing the export
  * makes the wrong import *unavailable* rather than merely discouraged, which is
  * the only kind of discouragement that survives contact with a hurry.
  *
@@ -47,7 +48,8 @@ import { defaultLayout } from "./stages";
  */
 export interface PreloadedState {
   world?: Partial<WorldState>;
-  layout?: LayoutState;
+  /** Stage definitions, workspace metadata and memory over the workbench document (PBUI-DATALAB-WORKBENCH-1). */
+  navigation?: NavigationState;
 }
 
 export interface MakeStoreOptions {
@@ -95,53 +97,60 @@ export interface MakeStoreOptions {
    * happen rather than silently succeeding into nowhere.
    */
   clipboard?: ClipboardPort;
+  /**
+   * The Datalab workbench controller this store belongs to
+   * (PBUI-DATALAB-WORKBENCH-1). A GETTER, because the controller is built
+   * over the store and the core after the store exists; a layout verb thunk
+   * calls it at dispatch time. A store with no workbench attached — a world
+   * test, a story of one panel — throws on the first spatial verb, which is
+   * the honest outcome: there is no layout for the verb to act on.
+   */
+  controller?: () => DatalabController;
 }
 
 /** The shape every thunk in this store receives as its third argument. */
 export interface ThunkExtra {
   fixtures?: FixtureData;
   clipboard: ClipboardPort;
+  controller: () => DatalabController;
 }
 
 export function makeStore(options: MakeStoreOptions = {}) {
   const { preloaded, seed = true, fixtures } = options;
+  const controller =
+    options.controller ??
+    (() => {
+      throw new Error(
+        "datalab: this store has no workbench attached; spatial verbs need createDatalabRuntime",
+      );
+    });
   const clipboard =
     options.clipboard ??
     (typeof navigator === "undefined" || !navigator.clipboard ? noClipboard : browserClipboard);
 
   // Both slices are always supplied, never conditionally spread. A preloaded
-  // object whose `layout` key is sometimes absent makes configureStore infer
-  // that the layout reducer must accept `undefined`, and the resulting store
-  // type stops matching its own reducer. Same trap as phase 0's, one level in.
-  //
-  // **Always supplied, even with no `preloaded` at all**, which used to leave
-  // `preloadedState` undefined and fall through to the slices' own initial
-  // state. Two problems, both of which only show up with more than one store:
-  //
-  //  - `layoutSlice`'s `initialState: initialLayout()` is evaluated ONCE, at
-  //    module load, so every store built without a preload started with the
-  //    same workspace *id*. Harmless while there is one store and confusing the
-  //    moment there are five.
-  //  - The fallback layout was one launcher tile rather than `defaultLayout()`,
-  //    so the shell's own Storybook story rendered an empty workbench. The
-  //    story was showing the fallback, not the product.
+  // object whose key is sometimes absent makes configureStore infer that the
+  // reducer must accept `undefined`, and the resulting store type stops
+  // matching its own reducer. Always supplied, even with no `preloaded` at
+  // all, so a slice's module-level initial state is never shared between two
+  // stores built without a preload.
   const preloadedState = {
     world: { ...initialWorld, ...preloaded?.world },
-    layout: preloaded?.layout ?? defaultLayout(),
+    navigation: preloaded?.navigation ?? emptyNavigation(),
   };
 
   const store = configureStore({
     reducer: {
       [api.reducerPath]: api.reducer,
       world: worldSlice.reducer,
-      layout: layoutSlice.reducer,
+      navigation: navigationSlice.reducer,
     },
     middleware: (getDefault) =>
       // The fixture map rides the thunk extra argument, which is the only
       // per-store channel RTK Query's base query can read (DR-48).
-      getDefault({ thunk: { extraArgument: { fixtures, clipboard } satisfies ThunkExtra } }).concat(
-        api.middleware,
-      ),
+      getDefault({
+        thunk: { extraArgument: { fixtures, clipboard, controller } satisfies ThunkExtra },
+      }).concat(api.middleware),
     preloadedState,
   });
 

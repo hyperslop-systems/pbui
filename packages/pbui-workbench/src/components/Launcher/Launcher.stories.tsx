@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useMemo } from "react";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { demoApps } from "../../stories/demoApps";
 
 const meta: Meta = {
@@ -14,7 +14,7 @@ export const Open: StoryObj = {
   render: function OpenStory() {
     const wb = useMemo(() => createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) }), []);
     useEffect(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     }, [wb]);
     return (
       <div style={{ display: "grid", gridTemplateRows: "minmax(0, 1fr)", height: 360 }}>
@@ -43,9 +43,9 @@ export const PerPane: StoryObj = {
       [],
     );
     useEffect(() => {
-      const first = wb.store.getState().document.workspaces[0]?.tree;
+      const first = wb.core.getState().document.workspaces[0]?.tree;
       const leaf = first?.body.case === "split" ? first.body.value.a : first;
-      if (leaf) wb.verbs.openLauncher(leaf.id);
+      if (leaf) wb.dispatch({ kind: "launcher.open", from: leaf.id });
     }, [wb]);
     return (
       <div style={{ display: "grid", gridTemplateRows: "minmax(0, 1fr)", height: 360 }}>
@@ -62,7 +62,7 @@ export const ProductRows: StoryObj = {
   render: function ProductRowsStory() {
     const wb = useMemo(() => createWorkbench({ apps: demoApps, initial: layout(tile("counter")) }), []);
     useEffect(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     }, [wb]);
     return (
       <div style={{ display: "grid", gridTemplateRows: "minmax(0, 1fr)", height: 360 }}>

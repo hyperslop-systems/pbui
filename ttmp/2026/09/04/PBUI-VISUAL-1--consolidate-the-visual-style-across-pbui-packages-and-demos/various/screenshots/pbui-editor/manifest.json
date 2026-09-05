@@ -1,0 +1,42 @@
+[
+  {
+    "n": 1,
+    "id": "editor-codeeditor--with-diagnostics",
+    "title": "Editor/CodeEditor",
+    "name": "diagnostics: an error on a token, a warning on a line, one clamped",
+    "file": "001-editor-codeeditor--with-diagnostics.png",
+    "size": "320x120"
+  },
+  {
+    "n": 2,
+    "id": "editor-codeeditor--fills-container",
+    "title": "Editor/CodeEditor",
+    "name": "fills a bounded container (the tile case)",
+    "file": "002-editor-codeeditor--fills-container.png",
+    "size": "320x120"
+  },
+  {
+    "n": 3,
+    "id": "editor-codeeditor--java-script",
+    "title": "Editor/CodeEditor",
+    "name": "JavaScript, sized by rows",
+    "file": "003-editor-codeeditor--java-script.png",
+    "size": "1280x324"
+  },
+  {
+    "n": 4,
+    "id": "editor-codeeditor--json",
+    "title": "Editor/CodeEditor",
+    "name": "JSON",
+    "file": "004-editor-codeeditor--json.png",
+    "size": "320x120"
+  },
+  {
+    "n": 5,
+    "id": "editor-codeeditor--read-only",
+    "title": "Editor/CodeEditor",
+    "name": "read-only listing",
+    "file": "005-editor-codeeditor--read-only.png",
+    "size": "1280x315"
+  }
+]

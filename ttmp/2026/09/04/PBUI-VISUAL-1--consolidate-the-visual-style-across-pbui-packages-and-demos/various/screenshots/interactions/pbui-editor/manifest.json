@@ -1,0 +1,9 @@
+[
+  {
+    "n": 1,
+    "story": "editor-codeeditor--java-script",
+    "slug": "codeeditor-focused",
+    "description": "Clicking into the JavaScript CodeEditor shows the focus ring alongside its syntax-highlighted content.",
+    "file": "001-codeeditor-focused.png"
+  }
+]

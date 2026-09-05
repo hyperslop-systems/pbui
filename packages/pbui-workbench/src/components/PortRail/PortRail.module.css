@@ -1,41 +1,66 @@
-/* The back side of a tile: two columns of jacks over the inert application. */
+/* The rail: a translucent pane over the tile while connect mode is on, two
+ * columns of port cards (in / out). One hairline per card; the card's border
+ * STYLE says whether it can take the carried port (PBUI-VISUAL-1 P4). */
 .rail {
   position: absolute;
   inset: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-  padding: 8px;
-  overflow: auto;
-  background: color-mix(in srgb, var(--pbui-pane, currentColor) 92%, transparent);
-  backdrop-filter: blur(1px);
-  font-size: 12px;
+  gap: var(--pbui-space-3);
+  padding: var(--pbui-space-3);
+  overflow: clip;
+  background: var(--pbui-pane);
+  font-size: var(--pbui-fs-small);
   z-index: 2;
 }
 
 .column {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: 6px;
+  gap: var(--pbui-space-2);
   min-width: 0;
+  min-height: 0;
+  /* More ports than height: the column scrolls; the jacks are in their own
+   * layer, so they are not clipped sideways with it. */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .column[data-side="out"] {
   justify-items: end;
 }
 
+/* A product's presentation around a card: a block region that draws nothing
+ * (PBUI-WIRING-1 P5); the card stays the only box. */
+.slot {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.slot > * {
+  display: block;
+  min-width: 0;
+}
+
 .port {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto 1fr;
   grid-template-areas:
-    "jack name type"
-    "jack state state"
-    "jack doc doc";
-  column-gap: 6px;
+    "name type"
+    "state state"
+    "doc doc";
+  column-gap: var(--pbui-space-3);
   align-items: baseline;
-  padding: 4px 8px;
-  border: 1px solid currentColor;
-  border-radius: 3px;
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  color: inherit;
+  text-align: left;
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
   min-width: 0;
   max-width: 100%;
   cursor: default;
@@ -51,24 +76,20 @@
   border-style: dashed;
 }
 
+/* Would take what is being carried: dashed and firm, the accept language. */
 .port[data-acceptable="true"] {
-  border-width: 2px;
+  border: var(--pbui-border-firm);
   border-style: dashed;
+  background: var(--pbui-selected);
 }
 
 .port[data-acceptable="false"] {
-  opacity: 0.4;
+  color: var(--pbui-faint);
+  border-color: var(--pbui-line);
 }
 
 .port[data-over][data-acceptable="true"] {
   border-style: solid;
-  border-width: 3px;
-}
-
-.jack {
-  grid-area: jack;
-  font-weight: 700;
-  font-size: 14px;
 }
 
 .name {
@@ -78,28 +99,27 @@
 
 .type {
   grid-area: type;
-  opacity: 0.6;
+  color: var(--pbui-faint);
   white-space: nowrap;
 }
 
 .state {
   grid-area: state;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
 }
 
 .doc {
   grid-area: doc;
-  font-size: 11px;
-  opacity: 0.7;
+  font-size: var(--pbui-fs-tiny);
+  color: var(--pbui-faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .none {
-  font-size: 11px;
-  opacity: 0.5;
-  padding: 4px 8px;
+  font-size: var(--pbui-fs-tiny);
+  color: var(--pbui-faint);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
 }

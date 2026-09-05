@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
+import { useDatalabWorkbench } from "../../../appkit/DatalabWorkbenchContext";
 import type { Lesson } from "../../../appkit/lessons";
 import { usePbui } from "../../../pbui";
 import type { AppDispatch, RootState } from "../../../store";
@@ -53,6 +54,9 @@ export function LessonRail({ lessons, onReset }: { lessons: Lesson[]; onReset?: 
    * acceptable in a tile, and no tile does it.
    */
   const state = useSelector((s: RootState) => s);
+  const workbench = useDatalabWorkbench();
+  // The layout half of a predicate's input: the core's state, snapshotted.
+  const coreState = workbench.shell.useCoreState((s) => s);
 
   /**
    * `| undefined` in the value type is load-bearing, not decoration.
@@ -73,7 +77,7 @@ export function LessonRail({ lessons, onReset }: { lessons: Lesson[]; onReset?: 
         if (next[lesson.id] || !lesson.done) continue;
         let ok = false;
         try {
-          ok = lesson.done(state);
+          ok = lesson.done(state, coreState);
         } catch {
           ok = false;
         }
@@ -84,7 +88,7 @@ export function LessonRail({ lessons, onReset }: { lessons: Lesson[]; onReset?: 
       // An identity return ends the update rather than scheduling another.
       return next;
     });
-  }, [state, lessons]);
+  }, [state, coreState, lessons]);
 
   /**
    * When the open step completes, open the next incomplete one.
@@ -122,9 +126,10 @@ export function LessonRail({ lessons, onReset }: { lessons: Lesson[]; onReset?: 
         dispatch,
         getState: () => store.getState(),
         accept: pbui.accept,
+        workbench: workbench.controller,
       });
     },
-    [dispatch, store, pbui],
+    [dispatch, store, pbui, workbench],
   );
 
   const completed = lessons.filter((lesson) => done[lesson.id]).length;

@@ -1,14 +1,17 @@
+import type { ReactNode } from "react";
 import { Text } from "@hyperslop-systems/pbui";
-import { PortBadge, isWorkbenchVerb, portRefOf, tileRefOf, type Workbench } from "@hyperslop-systems/pbui-workbench";
+import { AppShell, PortBadge, isWorkbenchVerb, portRefOf, tileRefOf, type WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../createShop";
-import styles from "./ShopShell.module.css";
 
 export interface ShopShellProps {
   shop: Shop;
-  workbench: Workbench;
+  workbench: WorkbenchShell;
   /** Show the workspace strip above the surface. Default true. */
+  /** False for an embedded shop (the stories): no masthead, no strip, just the tiles. */
   strip?: boolean;
   title?: string;
+  /** Right-aligned controls in the masthead (a demo's reset button). */
+  mastheadActions?: ReactNode;
 }
 
 /**
@@ -18,11 +21,11 @@ export interface ShopShellProps {
  * launcher, and the object menu and accept banner the presentations need.
  * Stories and the demo both mount exactly this.
  */
-export function ShopShell({ shop, workbench, strip = true, title = "gold coin shop" }: ShopShellProps) {
-  const { Provider, Presentation, ObjectMenu, AcceptBanner } = shop.pbui;
+export function ShopShell({ shop, workbench, strip = true, title = "gold coin shop", mastheadActions }: ShopShellProps) {
+  const { Provider, Presentation, ObjectMenu, AcceptBanner, MouseDocLine } = shop.pbui;
   return (
     <Provider
-      environment={{ host: shop.host, links: workbench.links }}
+      environment={{ host: shop.host, links: workbench }}
       onPerform={(verb) => {
         if (isWorkbenchVerb(verb)) workbench.perform(verb);
       }}
@@ -30,20 +33,22 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
       // demo has no status line, so refusals are telemetry only.
       onRefuse={(refusal) => console.warn(`shop: refused ${refusal.action ?? "action"} (${refusal.code})${refusal.because ? ` — ${refusal.because}` : ""}`)}
     >
-      <div data-part="shop-shell" className={styles.shell} data-strip={strip || undefined}>
-        {strip ? (
-          <div className={styles.strip}>
-            <Text size="small" strong>
-              {title}
-            </Text>
-            <workbench.WorkspaceStrip addLabel="new workspace" />
-            <span className={styles.spacer} />
+      <AppShell
+        data-part="shop-shell"
+        masthead={strip}
+        wordmark={title}
+        mastheadActions={mastheadActions}
+        strip={strip ? <workbench.WorkspaceStrip addLabel="workspace" /> : undefined}
+        stripActions={
+          strip ? (
             <Text size="tiny" tone="faint">
               Mod+K opens the launcher · right-click anything to link it · Mod+Shift+L shows the wiring
             </Text>
-          </div>
-        ) : null}
-        <div className={styles.surface}>
+          ) : undefined
+        }
+        status={strip ? <MouseDocLine /> : undefined}
+        banner={<AcceptBanner />}
+      >
           <workbench.Surface
             renderTitle={(_view, placement, defaultTitle) => {
               const tile = tileRefOf(workbench, placement.placementId);
@@ -54,18 +59,12 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
                 </Presentation>
               );
             }}
-            renderPort={(port, node) => (
-              <Presentation reference={{ type: "port", value: port }} doc={port.doc} inComposite>
-                {node}
-              </Presentation>
-            )}
-            renderWire={(link, node) => (
-              <Presentation reference={{ type: "link", value: link }} doc={`${link.destinationTitle} ← ${link.sourceTitle}`} svg>
-                {node}
-              </Presentation>
-            )}
+            wiring={{
+              renderPortDetails: port => <Presentation reference={{ type: "port", value: port }} doc={port.doc} inComposite block><span>Port actions</span></Presentation>,
+              renderRelationDetails: link => <Presentation reference={{ type: "link", value: link }} doc={`${link.destinationTitle} ← ${link.sourceTitle}`} inComposite><span>Relation actions</span></Presentation>,
+            }}
             renderBadges={(_view, _placement, badges) => {
-              const snapshot = workbench.links.snapshot();
+              const snapshot = workbench.linkSnapshot();
               return badges.map((badge) => {
                 const port = portRefOf(badge, snapshot);
                 if (!port) return <PortBadge key={badge.port} badge={badge} />;
@@ -77,11 +76,9 @@ export function ShopShell({ shop, workbench, strip = true, title = "gold coin sh
               });
             }}
           />
-        </div>
-        <workbench.Launcher />
-        <ObjectMenu />
-        <AcceptBanner />
-      </div>
+      </AppShell>
+      <workbench.Launcher />
+      <ObjectMenu />
     </Provider>
   );
 }

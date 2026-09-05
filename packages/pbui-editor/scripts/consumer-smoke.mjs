@@ -34,8 +34,6 @@ async function pack(root, prefix) {
 
 try {
   const pbuiTarball = await pack(workspaceRoot, "hyperslop-systems-pbui-0");
-  const protocolTarball = await pack(join(workspaceRoot, "packages", "workbench-protocol"), "hyperslop-systems-workbench-protocol-");
-  const workbenchTarball = await pack(join(workspaceRoot, "packages", "pbui-workbench"), "hyperslop-systems-pbui-workbench-");
   const editorTarball = await pack(packageRoot, "hyperslop-systems-pbui-editor-");
 
   await writeFile(
@@ -48,8 +46,6 @@ try {
         dependencies: {
           "@hyperslop-systems/pbui": `file:${pbuiTarball}`,
           "@hyperslop-systems/pbui-editor": `file:${editorTarball}`,
-          "@hyperslop-systems/pbui-workbench": `file:${workbenchTarball}`,
-          "@hyperslop-systems/workbench-protocol": `file:${protocolTarball}`,
           react: "^19.2.8",
           "react-dom": "^19.2.8",
         },

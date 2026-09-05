@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { AppView, NodeId } from "../store/layout";
+import type { AppView } from "@hyperslop-systems/workbench-protocol";
 
 /**
  * The application registry.
@@ -24,8 +24,13 @@ import type { AppView, NodeId } from "../store/layout";
 
 export interface AppProps {
   /** The rectangle rendering this view; geometry and drag operations use it. */
-  placementId: NodeId;
-  /** The logical application view shared by every linked placement. */
+  placementId: string;
+  /**
+   * The logical application view shared by every linked placement — the
+   * workbench protocol's own `AppView` since PBUI-DATALAB-WORKBENCH-1, read
+   * straight out of the core's document: `documents.primary` is the bound
+   * graphic document, `title` the user's label.
+   */
   view: AppView;
 }
 

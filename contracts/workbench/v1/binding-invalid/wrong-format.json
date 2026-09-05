@@ -1,0 +1,47 @@
+{
+  "name": "wrong format",
+  "catalog": "basic",
+  "document": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "w1",
+    "name": "fixture",
+    "workspaces": [
+      {
+        "id": "main",
+        "name": "main",
+        "tree": {
+          "id": "n-00000002-0000",
+          "leaf": {
+            "viewId": "v-00000001-0000"
+          }
+        }
+      }
+    ],
+    "views": {
+      "v-00000001-0000": {
+        "id": "v-00000001-0000",
+        "appId": "chat",
+        "documents": {
+          "conversation": "2049"
+        }
+      }
+    },
+    "viewOrder": [
+      "v-00000001-0000"
+    ],
+    "documents": {
+      "2049": {
+        "id": "2049",
+        "format": "shop.product",
+        "schemaVersion": 1,
+        "body": {}
+      }
+    }
+  },
+  "expected": {
+    "ok": false,
+    "code": "invalid_binding_format",
+    "path": "views[\"v-00000001-0000\"].documents[\"conversation\"]"
+  }
+}

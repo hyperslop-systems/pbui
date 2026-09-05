@@ -10,8 +10,7 @@ pre-commit:
 
 pre-push:
   commands:
-    go:
-      run: make ci-check
-    protocol:
-      run: make protocol-check
-  parallel: true
+    checks:
+      # Generate/check protocol before Go and TS read it; frontend-check is
+      # the same lint/typecheck/test/build gate used by GitHub CI.
+      run: make protocol-check && make ci-check && make frontend-check

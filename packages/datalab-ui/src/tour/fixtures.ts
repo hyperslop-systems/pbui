@@ -1,9 +1,9 @@
 import { fixturesFrom, type FixtureData } from "../api/fixtures";
 import { readings, census } from "../fixtures";
 import { appendTransform, createDefaultGraphic, fieldRef } from "../model/graphicAuthoring";
+import { datalabSingleStageSeed } from "../appkit/workbench";
 import type { PreloadedState } from "../store";
-import { split, type LayoutBuilder, type LayoutState, type Node } from "../store/layout";
-import { singleStageLayout } from "../store/stages";
+import { split, tile, type DatalabSeed, type LayoutSpec } from "../store/seed";
 import { newId } from "../store/world";
 
 /**
@@ -83,8 +83,11 @@ export function seedTwo(): NonNullable<PreloadedState["world"]> {
  * and giving six embedded instances the *same* stage id would be harmless today
  * and confusing the moment a stage verb names one.
  */
-const space = (name: string, build: (builder: LayoutBuilder) => Node): LayoutState =>
-  singleStageLayout(name, build);
+const space = (name: string, spec: LayoutSpec): DatalabSeed => datalabSingleStageSeed(name, spec);
+
+/** A tile, bound to a document when one is given. */
+const leaf = (app: string, docId: string | null = null): LayoutSpec =>
+  tile(app, docId ? { documents: { primary: docId } } : {});
 
 /**
  * Each section seeds its world and its layout TOGETHER.
@@ -103,7 +106,7 @@ const space = (name: string, build: (builder: LayoutBuilder) => Node): LayoutSta
  */
 export interface Seed {
   world: NonNullable<PreloadedState["world"]>;
-  layout: LayoutState;
+  seed: DatalabSeed;
 }
 
 /**
@@ -156,9 +159,7 @@ export function heroSeed(): Seed {
   }
   return {
     world,
-    layout: space("start", (builder) =>
-      split("row", builder.leaf("pipeline", doc), builder.leaf("chart", doc), 0.44),
-    ),
+    seed: space("start", split("row", 0.44, leaf("pipeline", doc), leaf("chart", doc))),
   };
 }
 
@@ -174,20 +175,16 @@ export function heroSeed(): Seed {
 export function objectsSeed(): Seed {
   return {
     world: seedStream(),
-    layout: space("objects", (builder) =>
+    seed: space(
+      "objects",
       split(
         "row",
+        0.34,
         // The cheat sheet sits UNDER the rail, in the same column: the
         // vocabulary of a section belongs beneath the lessons that teach it,
         // and a reader who wants the room can close either.
-        split("col", builder.leaf("lessons"), builder.leaf("cheat"), 0.72),
-        split(
-          "col",
-          builder.leaf("sources"),
-          split("col", builder.leaf("inspector"), builder.leaf("watch"), 0.55),
-          0.42,
-        ),
-        0.34,
+        split("col", 0.72, leaf("lessons"), leaf("cheat")),
+        split("col", 0.42, leaf("sources"), split("col", 0.55, leaf("inspector"), leaf("watch"))),
       ),
     ),
   };
@@ -199,12 +196,13 @@ export function layoutSeed(): Seed {
   const first = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space("two views", (builder) =>
+    seed: space(
+      "two views",
       split(
         "row",
-        split("col", builder.leaf("lessons"), builder.leaf("cheat"), 0.72),
-        split("col", builder.leaf("chart", first), builder.leaf("table", first), 0.55),
         0.34,
+        split("col", 0.72, leaf("lessons"), leaf("cheat")),
+        split("col", 0.55, leaf("chart", first), leaf("table", first)),
       ),
     ),
   };
@@ -222,17 +220,18 @@ export function grammarSeed(): Seed {
   const doc = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space("build", (builder) =>
+    seed: space(
+      "build",
       split(
         "row",
-        split("col", builder.leaf("lessons"), builder.leaf("cheat"), 0.74),
+        0.3,
+        split("col", 0.74, leaf("lessons"), leaf("cheat")),
         split(
           "row",
-          split("col", builder.leaf("pipeline", doc), builder.leaf("encode", doc), 0.54),
-          split("col", builder.leaf("chart", doc), builder.leaf("table", doc), 0.62),
           0.44,
+          split("col", 0.54, leaf("pipeline", doc), leaf("encode", doc)),
+          split("col", 0.62, leaf("chart", doc), leaf("table", doc)),
         ),
-        0.3,
       ),
     ),
   };
@@ -244,13 +243,9 @@ export function rackSeed(): Seed {
   const doc = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space("rack", (builder) =>
-      split(
-        "row",
-        builder.leaf("modules"),
-        split("col", builder.leaf("chart", doc), builder.leaf("cheat"), 0.62),
-        0.36,
-      ),
+    seed: space(
+      "rack",
+      split("row", 0.36, leaf("modules"), split("col", 0.62, leaf("chart", doc), leaf("cheat"))),
     ),
   };
 }
@@ -267,12 +262,13 @@ export function briefSeed(): Seed {
   const doc = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space("build", (builder) =>
+    seed: space(
+      "build",
       split(
         "row",
-        builder.leaf("brief"),
-        split("col", builder.leaf("pipeline", doc), builder.leaf("chart", doc), 0.45),
         0.32,
+        leaf("brief"),
+        split("col", 0.45, leaf("pipeline", doc), leaf("chart", doc)),
       ),
     ),
   };

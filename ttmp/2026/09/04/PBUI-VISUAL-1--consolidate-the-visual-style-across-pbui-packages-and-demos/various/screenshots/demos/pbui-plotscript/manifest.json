@@ -1,0 +1,65 @@
+[
+  {
+    "n": 1,
+    "demo": "pbui-plotscript",
+    "slug": "workspace-initial",
+    "description": "Scripted plots demo, first example workspace (script + plot split)",
+    "file": "001-workspace-initial.png"
+  },
+  {
+    "n": 2,
+    "demo": "pbui-plotscript",
+    "slug": "workspace-strip-hover",
+    "description": "Hover state on a workspace-strip button",
+    "file": "002-workspace-strip-hover.png"
+  },
+  {
+    "n": 3,
+    "demo": "pbui-plotscript",
+    "slug": "workspace-2",
+    "description": "Second example workspace (dodged bars)",
+    "file": "003-workspace-2.png"
+  },
+  {
+    "n": 4,
+    "demo": "pbui-plotscript",
+    "slug": "workspace-3",
+    "description": "Third example workspace (trend over a window)",
+    "file": "004-workspace-3.png"
+  },
+  {
+    "n": 5,
+    "demo": "pbui-plotscript",
+    "slug": "launcher-open",
+    "description": "Launcher dialog (Mod+K)",
+    "file": "005-launcher-open.png"
+  },
+  {
+    "n": 6,
+    "demo": "pbui-plotscript",
+    "slug": "rebalance-dialog",
+    "description": "Rebalance layout-repair dialog (Mod+Shift+K)",
+    "file": "006-rebalance-dialog.png"
+  },
+  {
+    "n": 7,
+    "demo": "pbui-plotscript",
+    "slug": "script-run",
+    "description": "After running the focused script (Mod+Enter)",
+    "file": "007-script-run.png"
+  },
+  {
+    "n": 8,
+    "demo": "pbui-plotscript",
+    "slug": "tile-action-hover",
+    "description": "Hover state on a tile-bar action button",
+    "file": "008-tile-action-hover.png"
+  },
+  {
+    "n": 9,
+    "demo": "pbui-plotscript",
+    "slug": "split-divider-hover",
+    "description": "Hover state on the split divider between tiles",
+    "file": "009-split-divider-hover.png"
+  }
+]

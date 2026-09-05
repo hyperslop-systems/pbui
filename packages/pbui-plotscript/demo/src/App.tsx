@@ -1,4 +1,5 @@
 import { Button, Text } from "@hyperslop-systems/pbui";
+import { AppShell } from "@hyperslop-systems/pbui-workbench";
 import { useMemo } from "react";
 import { STORAGE_KEY, createDemoWorkbench } from "./workbench";
 
@@ -18,23 +19,24 @@ export function App() {
     void host.runner.disposeAll();
   };
   return (
-    <div className="shell">
-      <div className="strip">
-        <Text size="small" strong>
-          scripted plots
-        </Text>
-        <workbench.WorkspaceStrip addLabel="new workspace" />
-        <span className="spacer" />
-        <Text size="tiny" tone="faint">
-          {restored ? "restored from this browser" : "seeded"} · Mod+K opens the launcher · Mod+Enter runs a script
-        </Text>
-        <Button size="tiny" variant="bare" onClick={reset}>
+    <AppShell
+      wordmark="Scripted plots"
+      tagline={restored ? "restored from this browser" : "seeded"}
+      mastheadActions={
+        <Button size="tiny" variant="framed" onClick={reset}>
           reset to the examples
         </Button>
-      </div>
+      }
+      strip={<workbench.WorkspaceStrip addLabel="workspace" />}
+      stripActions={
+        <Text size="tiny" tone="faint">
+          Mod+K opens the launcher · Mod+Enter runs a script
+        </Text>
+      }
+    >
       <workbench.Surface />
       <workbench.Launcher />
       <workbench.Rebalance />
-    </div>
+    </AppShell>
   );
 }

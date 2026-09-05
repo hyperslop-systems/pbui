@@ -1,0 +1,439 @@
+{
+  "provenance": "ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/design-doc/review-assets/resize-metrics.json",
+  "capture": {
+    "viewport": {
+      "width": 768,
+      "height": 900
+    },
+    "surface": {
+      "x": 8,
+      "y": 62.4375,
+      "width": 752,
+      "height": 829.5625
+    },
+    "document": {
+      "width": 768,
+      "height": 900
+    },
+    "tiles": [
+      {
+        "title": "Source A",
+        "x": 0,
+        "y": 0,
+        "width": 240.234375,
+        "height": 402.78125
+      },
+      {
+        "title": "Transform\u2192Source A \u00b7 none",
+        "x": 264.234375,
+        "y": 0,
+        "width": 231.875,
+        "height": 402.78125
+      },
+      {
+        "title": "Sink A\u2192Source A \u00b7 none",
+        "x": 520.109375,
+        "y": 0,
+        "width": 231.890625,
+        "height": 402.78125
+      },
+      {
+        "title": "Source B",
+        "x": 0,
+        "y": 426.78125,
+        "width": 240.234375,
+        "height": 402.78125
+      },
+      {
+        "title": "Wide\u2192Transform \u00b7 none",
+        "x": 264.234375,
+        "y": 426.78125,
+        "width": 231.875,
+        "height": 402.78125
+      },
+      {
+        "title": "Sink B\u2192Source B \u00b7 none",
+        "x": 520.109375,
+        "y": 426.78125,
+        "width": 231.890625,
+        "height": 402.78125
+      }
+    ],
+    "jacks": [
+      {
+        "id": "v-1e62d79b-82dd/count",
+        "side": "out",
+        "x": 233.234375,
+        "y": 42,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-1e62d79b-82dd/label",
+        "side": "out",
+        "x": 233.234375,
+        "y": 82.984375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/in",
+        "side": "in",
+        "x": 259.234375,
+        "y": 56.484375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-75404f89-a754/out",
+        "side": "out",
+        "x": 489.109375,
+        "y": 43.671875,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/value",
+        "side": "in",
+        "x": 515.109375,
+        "y": 56.484375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-d079e8d1-055f/anything",
+        "side": "in",
+        "x": 515.109375,
+        "y": 110.28125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/count",
+        "side": "out",
+        "x": 233.234375,
+        "y": 468.78125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-ac20aa5c-15bd/label",
+        "side": "out",
+        "x": 233.234375,
+        "y": 509.765625,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/alpha",
+        "side": "in",
+        "x": 259.234375,
+        "y": 470.453125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/beta",
+        "side": "in",
+        "x": 259.234375,
+        "y": 524.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/gamma",
+        "side": "out",
+        "x": 489.109375,
+        "y": 470.453125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-9692b4c6-c1cf/delta",
+        "side": "out",
+        "x": 489.109375,
+        "y": 511.4375,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/value",
+        "side": "in",
+        "x": 515.109375,
+        "y": 470.453125,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      },
+      {
+        "id": "v-eac31a59-5824/anything",
+        "side": "in",
+        "x": 515.109375,
+        "y": 524.25,
+        "width": 12,
+        "height": 12,
+        "clipped": false
+      }
+    ],
+    "wires": [
+      {
+        "term": "follow",
+        "source": "v-75404f89-a754/out",
+        "destination": "v-9692b4c6-c1cf/beta",
+        "d": "M 501.109375 49.671875 L 504 49.671875 L 252 420 L 252 530.25 L 259.234375 530.25",
+        "points": [
+          {
+            "x": 501.109375,
+            "y": 49.671875
+          },
+          {
+            "x": 504,
+            "y": 49.671875
+          },
+          {
+            "x": 252,
+            "y": 420
+          },
+          {
+            "x": 252,
+            "y": 530.25
+          },
+          {
+            "x": 259.234375,
+            "y": 530.25
+          }
+        ],
+        "diagonals": [
+          {
+            "a": {
+              "x": 504,
+              "y": 49.671875
+            },
+            "b": {
+              "x": 252,
+              "y": 420
+            }
+          }
+        ],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [
+          {
+            "tile": "Transform\u2192Source A \u00b7 none",
+            "samples": 202
+          }
+        ],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-d079e8d1-055f/value",
+        "d": "M 245.234375 48 L 258 48 L 258 -6 L 510 -6 L 510 62.484375 L 515.109375 62.484375",
+        "points": [
+          {
+            "x": 245.234375,
+            "y": 48
+          },
+          {
+            "x": 258,
+            "y": 48
+          },
+          {
+            "x": 258,
+            "y": -6
+          },
+          {
+            "x": 510,
+            "y": -6
+          },
+          {
+            "x": 510,
+            "y": 62.484375
+          },
+          {
+            "x": 515.109375,
+            "y": 62.484375
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-ac20aa5c-15bd/label",
+        "destination": "v-eac31a59-5824/anything",
+        "d": "M 245.234375 515.765625 L 258 515.765625 L 258 414 L 510 414 L 510 530.25 L 515.109375 530.25",
+        "points": [
+          {
+            "x": 245.234375,
+            "y": 515.765625
+          },
+          {
+            "x": 258,
+            "y": 515.765625
+          },
+          {
+            "x": 258,
+            "y": 414
+          },
+          {
+            "x": 510,
+            "y": 414
+          },
+          {
+            "x": 510,
+            "y": 530.25
+          },
+          {
+            "x": 515.109375,
+            "y": 530.25
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      },
+      {
+        "term": "follow",
+        "source": "v-1e62d79b-82dd/count",
+        "destination": "v-75404f89-a754/in",
+        "d": "M 245.234375 48 L 252 48 L 252 62.484375 L 259.234375 62.484375",
+        "points": [
+          {
+            "x": 245.234375,
+            "y": 48
+          },
+          {
+            "x": 252,
+            "y": 48
+          },
+          {
+            "x": 252,
+            "y": 62.484375
+          },
+          {
+            "x": 259.234375,
+            "y": 62.484375
+          }
+        ],
+        "diagonals": [],
+        "fromError": 0,
+        "toError": 0,
+        "sourceClipped": false,
+        "destinationClipped": false,
+        "intersections": [],
+        "labelDistance": null
+      }
+    ],
+    "columns": [
+      {
+        "side": "in",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 350,
+        "scrollHeight": 350
+      },
+      {
+        "side": "out",
+        "view": "v-1e62d79b-82dd",
+        "scrollTop": 0,
+        "clientHeight": 350,
+        "scrollHeight": 350
+      },
+      {
+        "side": "in",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 349,
+        "scrollHeight": 349
+      },
+      {
+        "side": "out",
+        "view": "v-75404f89-a754",
+        "scrollTop": 0,
+        "clientHeight": 349,
+        "scrollHeight": 349
+      },
+      {
+        "side": "in",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 364,
+        "scrollHeight": 364
+      },
+      {
+        "side": "out",
+        "view": "v-d079e8d1-055f",
+        "scrollTop": 0,
+        "clientHeight": 364,
+        "scrollHeight": 364
+      },
+      {
+        "side": "in",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 350,
+        "scrollHeight": 350
+      },
+      {
+        "side": "out",
+        "view": "v-ac20aa5c-15bd",
+        "scrollTop": 0,
+        "clientHeight": 350,
+        "scrollHeight": 350
+      },
+      {
+        "side": "in",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 349,
+        "scrollHeight": 349
+      },
+      {
+        "side": "out",
+        "view": "v-9692b4c6-c1cf",
+        "scrollTop": 0,
+        "clientHeight": 349,
+        "scrollHeight": 349
+      },
+      {
+        "side": "in",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 364,
+        "scrollHeight": 364
+      },
+      {
+        "side": "out",
+        "view": "v-eac31a59-5824",
+        "scrollTop": 0,
+        "clientHeight": 364,
+        "scrollHeight": 364
+      }
+    ]
+  }
+}

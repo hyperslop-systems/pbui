@@ -2,39 +2,46 @@ import { useEffect } from "react";
 import { useSelector, useStore } from "react-redux";
 import type { RootState } from "../store";
 import { save } from "../store/persist";
+import { useCurrentWorkspaceId, useDatalabWorkbench } from "./DatalabWorkbenchContext";
 
 /**
- * Write the world and the layout to localStorage, debounced — or don't.
+ * Write the world, the workbench document and the navigation metadata to
+ * localStorage, debounced — or don't.
  *
- * Lifted out of the workbench shell (DATADROP-7 DR-47/DR-52). It was an effect
- * inside `Workbench`, which was the right place while there was one workbench
- * per page and the wrong place the moment there was not. Persistence is a
- * property of the *application*, not of the shell: an embedded instance on a
- * landing page renders the identical shell and must write nothing at all.
+ * Persistence is a property of the *application*, not of the shell
+ * (DATADROP-7 DR-47/DR-52): an embedded instance renders the identical shell
+ * and must write nothing. `key === null` means memory-only, and the early
+ * return happens before the timer is created, so a memory-only instance
+ * never schedules anything.
  *
- * `key === null` means memory-only, and it is the default an embedded instance
- * gets. The early return happens before the timer is created, so a memory-only
- * instance does not merely skip the write — it never schedules anything, which
- * is what keeps five instances on a page from running five 500 ms timers each
- * time the reader touches one of them.
- *
- * 500 ms because a layout write per keystroke would be wasteful and a write per
- * session would lose work.
+ * Three subscriptions feed one timer: the world and navigation slices
+ * through Redux, the workbench document and the selected workspace through
+ * the core. 500 ms because a write per keystroke would be wasteful and a
+ * write per session would lose work.
  */
 export function usePersistence(key: string | null): void {
   const store = useStore<RootState>();
+  const workbench = useDatalabWorkbench();
   const world = useSelector((state: RootState) => state.world);
-  const layout = useSelector((state: RootState) => state.layout);
+  const navigation = useSelector((state: RootState) => state.navigation);
+  const document = workbench.shell.useDocument();
+  const workspaceId = useCurrentWorkspaceId();
 
   useEffect(() => {
     if (key === null) return;
     const timer = setTimeout(() => {
-      // Read through the store rather than closing over `world` and `layout`:
-      // the timer fires up to 500 ms late, and it should write what is true
-      // then rather than what was true when it was scheduled.
+      // Read through the store and the core rather than closing over the
+      // values: the timer fires up to 500 ms late, and it should write what
+      // is true then rather than what was true when it was scheduled.
       const state = store.getState();
-      save(key, state.world, state.layout);
+      const core = workbench.core.getState();
+      save(
+        key,
+        state.world,
+        { document: core.document, workspaceId: core.session.workspaceId },
+        state.navigation,
+      );
     }, 500);
     return () => clearTimeout(timer);
-  }, [key, world, layout, store]);
+  }, [key, world, navigation, document, workspaceId, store, workbench]);
 }

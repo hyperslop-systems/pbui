@@ -1,0 +1,19 @@
+digraph models {
+      graph [rankdir=TB, bgcolor="white", pad="0.3", nodesep="0.3", ranksep="0.4"];
+      node [shape=box, style="rounded,filled", fillcolor="#edf3f8", color="#3a4c60", fontname="DejaVu Sans", fontsize=12, margin="0.16,0.12"];
+      edge [color="#42546a", fontname="DejaVu Sans", fontsize=10];
+      semantic [label="Semantic model\nports, follows, identity classes\nChanges when commands or values change"];
+      layout [label="Layout constraints\nminimum sizes, gutters, active mode\nMay be infeasible at narrow widths"];
+      geometry [label="Mounted geometry snapshot\nplacement + side + anchor + clipping\nChanges during drag and scroll"];
+      project [label="Visible relationship projection\nchoose anchor instances; represent hidden ports"];
+      routing [label="Routing graph\nfree space + legal heading transitions\nCandidate paths with explicit costs"];
+      validate [label="Final geometry validation\nexact endpoints, axis-aligned segments, clearance\nReject invalid reconstruction"];
+      display [label="Rendered relationship\npath + label + hit target + accessible action", fillcolor="#e4efe5"];
+      layout -> geometry;
+      semantic -> project;
+      geometry -> project;
+      geometry -> routing;
+      project -> routing;
+      routing -> validate [label="search, reconstruct, arrange lanes"];
+      validate -> display [label="valid path or explicit unresolved state"];
+    }

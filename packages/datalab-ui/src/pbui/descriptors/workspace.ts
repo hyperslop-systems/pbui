@@ -9,9 +9,9 @@ import type { WorkspaceRef } from "../types";
  * declared presentation type with no descriptor, so right-clicking a chip
  * produced the empty menu. This file is what makes that sentence true.
  *
- * The strip's `biome-ignore` comment says the same thing from the other side —
- * double-click-to-rename "genuinely has NO keyboard route today … DATADROP-8
- * adds one". `Rename this workspace …` is that route.
+ * The strip's comment on the workspace Chip says the same thing from the other
+ * side — double-click-to-rename "genuinely has NO keyboard route today …
+ * DATADROP-8 adds one". `Rename this workspace …` is that route.
  */
 export const workspaceDescriptor: PresentationDescriptor<WorkspaceRef> = {
   ptype: "workspace",

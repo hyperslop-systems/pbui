@@ -1,10 +1,9 @@
+/* A number with its label: plain text. The presentation around it (a block)
+ * draws nothing; the widget's frame is the box. */
 .stat {
   display: flex;
   flex-direction: column;
   gap: var(--pbui-space-1);
-  padding: var(--pbui-space-2) var(--pbui-space-3);
-  border-left: var(--pbui-tone-edge) solid var(--pbui-chat-widget-tone, var(--pbui-tone-neutral));
-  background: var(--pbui-pane-alt);
   min-width: 10ch;
 }
 

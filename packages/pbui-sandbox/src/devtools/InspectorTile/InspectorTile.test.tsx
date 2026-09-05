@@ -96,8 +96,8 @@ describe("InspectorTile", () => {
     await waitFor(() => expect(container.querySelector('[data-part="inspector-binding"][data-key="product"]')).toBeTruthy());
     expect(within(container.querySelector('[data-part="program-inspector"]')!).getByTestId("ref").textContent).toBe("product:2049");
     fireEvent.click(screen.getByRole("button", { name: "meta" }));
-    await waitFor(() => expect(container.querySelector('[data-part="inspector-facts"]')?.textContent).toContain("v-1:prg-2:v1#"));
-    expect(container.querySelector('[data-part="inspector-facts"]')?.textContent).toContain("renders");
+    await waitFor(() => expect(container.querySelector('[data-part="key-value-list"]')?.textContent).toContain("v-1:prg-2:v1#"));
+    expect(container.querySelector('[data-part="key-value-list"]')?.textContent).toContain("renders");
   });
 
   test("without a running instance it says so", () => {

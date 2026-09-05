@@ -1,0 +1,2221 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`identity + placement goldens (the future view.show) > goTo activates here, or switches workspace 1`] = `
+{
+  "here": {
+    "batches": [],
+    "leaves": {
+      "one": [
+        "n-00000002-0000=v-00000001-0000",
+        "n-00000004-0000=v-00000003-0000",
+      ],
+      "two": [
+        "n-00000007-0000=v-00000006-0000",
+      ],
+    },
+    "returned": "n-00000004-0000",
+    "session": {
+      "activePlacementId": "n-00000004-0000",
+      "workspaceId": "one",
+    },
+    "views": [
+      "v-00000001-0000",
+      "v-00000003-0000",
+      "v-00000006-0000",
+    ],
+  },
+  "there": {
+    "batches": [],
+    "leaves": {
+      "one": [
+        "n-00000002-0000=v-00000001-0000",
+        "n-00000004-0000=v-00000003-0000",
+      ],
+      "two": [
+        "n-00000007-0000=v-00000006-0000",
+      ],
+    },
+    "returned": "n-00000007-0000",
+    "session": {
+      "activePlacementId": "n-00000007-0000",
+      "workspaceId": "two",
+    },
+    "views": [
+      "v-00000001-0000",
+      "v-00000003-0000",
+      "v-00000006-0000",
+    ],
+  },
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > link points a pane at an existing view and deletes the orphan 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementReplace": {
+          "placementId": "n-00000002-0000",
+          "viewId": "v-00000003-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "viewDelete": {
+          "viewId": "v-00000001-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000003-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > openView at an edge with a pre-minted viewId (the show spawn path) 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "sku",
+            "documents": {
+              "product": "p1",
+            },
+            "id": "v-preminted",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_COLUMN",
+          "newPlacement": {
+            "id": "n-00000011-0000",
+            "leaf": {
+              "viewId": "v-preminted",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000010-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000011-0000=v-preminted",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000011-0000",
+  "session": {
+    "activePlacementId": "n-00000011-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-preminted",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > openView at replace on a document already open LINKS the existing view in 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementReplace": {
+          "placementId": "n-00000006-0000",
+          "viewId": "v-00000010-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "viewDelete": {
+          "viewId": "v-00000005-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000010-0000",
+    ],
+  },
+  "returned": "n-00000006-0000",
+  "session": {
+    "activePlacementId": "n-00000006-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > openView with explicit bindings mints a bound view beside \`near\` 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "sku",
+            "documents": {
+              "product": "p1",
+            },
+            "id": "v-00000010-0000",
+            "title": "Widget",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000012-0000",
+            "leaf": {
+              "viewId": "v-00000010-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000011-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000012-0000",
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > openView with no bindings uses BindingConfig defaults (follow the crowd) 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "sku",
+            "documents": {
+              "product": "p2",
+            },
+            "id": "v-00000013-0000",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000015-0000",
+            "leaf": {
+              "viewId": "v-00000013-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000014-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000015-0000=v-00000013-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000015-0000",
+  "session": {
+    "activePlacementId": "n-00000015-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+    "v-00000013-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > openView with the same bindings goes to the existing doc-bound view 1`] = `
+{
+  "batches": [],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000012-0000",
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > openView with the same bindings in ANOTHER workspace switches there 1`] = `
+{
+  "batches": [],
+  "leaves": {
+    "one": [
+      "n-00000002-0000=v-00000001-0000",
+    ],
+    "two": [
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": "n-00000004-0000",
+  "session": {
+    "activePlacementId": "n-00000004-0000",
+    "workspaceId": "two",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > place of a placed singleton goes to it 1`] = `
+{
+  "batches": [],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000004-0000",
+  "session": {
+    "activePlacementId": "n-00000004-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > place of a singleton placed elsewhere with crossWorkspace link splits here with the same view 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000007-0000",
+            "leaf": {
+              "viewId": "v-00000003-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000006-0000",
+          "workspaceId": "one",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "one": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000007-0000=v-00000003-0000",
+    ],
+    "two": [
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": "n-00000007-0000",
+  "session": {
+    "activePlacementId": "n-00000007-0000",
+    "workspaceId": "one",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > place of a singleton placed in another workspace switches workspace 1`] = `
+{
+  "batches": [],
+  "leaves": {
+    "one": [
+      "n-00000002-0000=v-00000001-0000",
+    ],
+    "two": [
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": "n-00000004-0000",
+  "session": {
+    "activePlacementId": "n-00000004-0000",
+    "workspaceId": "two",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > place splits along the longer RENDERED axis when geometry is available 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "counter",
+            "id": "v-00000010-0000",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_COLUMN",
+          "newPlacement": {
+            "id": "n-00000012-0000",
+            "leaf": {
+              "viewId": "v-00000010-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000011-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000012-0000",
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > place: a fresh app splits the active tile (headless axis row) 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "counter",
+            "id": "v-00000010-0000",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000012-0000",
+            "leaf": {
+              "viewId": "v-00000010-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000006-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000011-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+      "n-00000012-0000=v-00000010-0000",
+    ],
+  },
+  "returned": "n-00000012-0000",
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > placeAt center on an empty (launcher) pane FILLS it 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewConfigure": {
+          "appId": "counter",
+          "replaceDocuments": {},
+          "viewId": "v-00000003-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": "n-00000004-0000",
+  "session": {
+    "activePlacementId": "n-00000004-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > placeAt center splits the target; replace swaps the app in place 1`] = `
+{
+  "center": {
+    "batches": [
+      [
+        {
+          "viewCreate": {
+            "view": {
+              "appId": "counter",
+              "id": "v-00000010-0000",
+            },
+          },
+        },
+        {
+          "placementSplit": {
+            "direction": "DIRECTION_ROW",
+            "newPlacement": {
+              "id": "n-00000012-0000",
+              "leaf": {
+                "viewId": "v-00000010-0000",
+              },
+            },
+            "place": "PLACEMENT_POSITION_AFTER",
+            "placementId": "n-00000002-0000",
+            "ratio": 0.5,
+            "splitId": "n-00000011-0000",
+            "workspaceId": "main",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "main": [
+        "n-00000002-0000=v-00000001-0000",
+        "n-00000012-0000=v-00000010-0000",
+        "n-00000004-0000=v-00000003-0000",
+        "n-00000006-0000=v-00000005-0000",
+      ],
+    },
+    "returned": "n-00000012-0000",
+    "session": {
+      "activePlacementId": "n-00000012-0000",
+      "workspaceId": "main",
+    },
+    "views": [
+      "v-00000001-0000",
+      "v-00000003-0000",
+      "v-00000005-0000",
+      "v-00000010-0000",
+    ],
+  },
+  "replace": {
+    "batches": [
+      [
+        {
+          "viewCreate": {
+            "view": {
+              "appId": "counter",
+              "id": "v-00000010-0000",
+            },
+          },
+        },
+        {
+          "placementSplit": {
+            "direction": "DIRECTION_ROW",
+            "newPlacement": {
+              "id": "n-00000012-0000",
+              "leaf": {
+                "viewId": "v-00000010-0000",
+              },
+            },
+            "place": "PLACEMENT_POSITION_AFTER",
+            "placementId": "n-00000002-0000",
+            "ratio": 0.5,
+            "splitId": "n-00000011-0000",
+            "workspaceId": "main",
+          },
+        },
+      ],
+      [
+        {
+          "placementReplace": {
+            "placementId": "n-00000006-0000",
+            "viewId": "v-00000003-0000",
+            "workspaceId": "main",
+          },
+        },
+        {
+          "viewDelete": {
+            "viewId": "v-00000005-0000",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "main": [
+        "n-00000002-0000=v-00000001-0000",
+        "n-00000012-0000=v-00000010-0000",
+        "n-00000004-0000=v-00000003-0000",
+        "n-00000006-0000=v-00000003-0000",
+      ],
+    },
+    "returned": "n-00000006-0000",
+    "session": {
+      "activePlacementId": "n-00000006-0000",
+      "workspaceId": "main",
+    },
+    "views": [
+      "v-00000001-0000",
+      "v-00000003-0000",
+      "v-00000010-0000",
+    ],
+  },
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > placeAt edge zone docks before the target on the zone's axis 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "counter",
+            "id": "v-00000010-0000",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_COLUMN",
+          "newPlacement": {
+            "id": "n-00000012-0000",
+            "leaf": {
+              "viewId": "v-00000010-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_BEFORE",
+          "placementId": "n-00000004-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000011-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000012-0000",
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > replace on a linked twin mints a view and moves only this placement 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "counter",
+            "id": "v-00000012-0000",
+          },
+        },
+      },
+      {
+        "placementReplace": {
+          "placementId": "n-00000011-0000",
+          "viewId": "v-00000012-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000011-0000=v-00000012-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": "n-00000011-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000012-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > replace retargets in place when the pane owns its view; clears bindings by default 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewConfigure": {
+          "appId": "counter",
+          "replaceDocuments": {},
+          "viewId": "v-00000010-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`identity + placement goldens (the future view.show) > replace with a placed singleton links it; replace with the same app is a no-op 1`] = `
+{
+  "links": {
+    "batches": [
+      [
+        {
+          "placementReplace": {
+            "placementId": "n-00000002-0000",
+            "viewId": "v-00000003-0000",
+            "workspaceId": "main",
+          },
+        },
+        {
+          "viewDelete": {
+            "viewId": "v-00000001-0000",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "main": [
+        "n-00000002-0000=v-00000003-0000",
+        "n-00000004-0000=v-00000003-0000",
+        "n-00000006-0000=v-00000005-0000",
+      ],
+    },
+    "returned": true,
+    "session": {
+      "activePlacementId": null,
+      "workspaceId": "main",
+    },
+    "views": [
+      "v-00000003-0000",
+      "v-00000005-0000",
+    ],
+  },
+  "noop": {
+    "batches": [
+      [
+        {
+          "placementReplace": {
+            "placementId": "n-00000002-0000",
+            "viewId": "v-00000003-0000",
+            "workspaceId": "main",
+          },
+        },
+        {
+          "viewDelete": {
+            "viewId": "v-00000001-0000",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "main": [
+        "n-00000002-0000=v-00000003-0000",
+        "n-00000004-0000=v-00000003-0000",
+        "n-00000006-0000=v-00000005-0000",
+      ],
+    },
+    "returned": true,
+    "session": {
+      "activePlacementId": null,
+      "workspaceId": "main",
+    },
+    "views": [
+      "v-00000003-0000",
+      "v-00000005-0000",
+    ],
+  },
+}
+`;
+
+exports[`link goldens > cloning a workspace re-keys the terms onto the copies 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewClone": {
+          "newViewId": "v-00000008-0000",
+          "sourceViewId": "v-00000001-0000",
+        },
+      },
+      {
+        "viewClone": {
+          "newViewId": "v-00000010-0000",
+          "sourceViewId": "v-00000003-0000",
+        },
+      },
+      {
+        "workspaceCreate": {
+          "name": "main copy",
+          "rootPlacement": {
+            "id": "n-00000012-0000",
+            "split": {
+              "a": {
+                "id": "n-00000009-0000",
+                "leaf": {
+                  "viewId": "v-00000008-0000",
+                },
+              },
+              "b": {
+                "id": "n-00000011-0000",
+                "leaf": {
+                  "viewId": "v-00000010-0000",
+                },
+              },
+              "direction": "DIRECTION_ROW",
+              "ratio": 0.5,
+            },
+          },
+          "workspaceId": "ws-00000013-0000",
+        },
+      },
+      {
+        "documentPut": {
+          "document": {
+            "body": {
+              "bindings": {
+                "v-00000003-0000/order": {
+                  "kind": "follow",
+                  "linkId": "link-00000007-0000",
+                  "source": "v-00000001-0000/order",
+                },
+                "v-00000010-0000/order": {
+                  "kind": "follow",
+                  "linkId": "link-00000007-0000-copy",
+                  "source": "v-00000008-0000/order",
+                },
+              },
+              "classes": [],
+              "history": {},
+              "identity": [],
+            },
+            "format": "pbui.links",
+            "id": "pbui.links",
+            "schemaVersion": 1,
+          },
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+    ],
+    "ws-00000013-0000": [
+      "n-00000009-0000=v-00000008-0000",
+      "n-00000011-0000=v-00000010-0000",
+    ],
+  },
+  "returned": "ws-00000013-0000",
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "ws-00000013-0000",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000008-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`link goldens > closing a followed source appends maintenance in the SAME batch 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementClose": {
+          "placementId": "n-00000002-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "viewDelete": {
+          "viewId": "v-00000001-0000",
+        },
+      },
+      {
+        "documentPut": {
+          "document": {
+            "body": {
+              "bindings": {
+                "v-00000003-0000/order": {
+                  "diagnostic": {
+                    "code": "source-closed",
+                    "message": "the source tile was closed before it showed anything",
+                  },
+                  "kind": "unresolved",
+                },
+              },
+              "classes": [],
+              "history": {},
+              "identity": [],
+            },
+            "format": "pbui.links",
+            "id": "pbui.links",
+            "schemaVersion": 1,
+          },
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`link goldens > identity.add persists the declaration and its class 1`] = `
+{
+  "batches": [
+    [
+      {
+        "documentPut": {
+          "document": {
+            "body": {
+              "bindings": {},
+              "classes": [
+                {
+                  "fingerprint": "valueType=datum|semanticRole=selection|cardinality=many|mode=read-write|authorityDomain=orders|updateAlgebra=replace|lifetime=workspace",
+                  "id": "σ1",
+                  "members": [
+                    "v-00000001-0000/selection",
+                    "v-00000003-0000/selection",
+                  ],
+                },
+              ],
+              "history": {
+                "v-00000001-0000/selection": {
+                  "type": "datum",
+                  "value": [
+                    {
+                      "identity": {
+                        "id": "A",
+                      },
+                      "relation": "orders",
+                    },
+                  ],
+                },
+                "v-00000003-0000/selection": null,
+              },
+              "identity": [
+                {
+                  "left": "v-00000001-0000/selection",
+                  "linkId": "link-00000007-0000",
+                  "mergePolicy": "prefer-left",
+                  "right": "v-00000003-0000/selection",
+                },
+              ],
+            },
+            "format": "pbui.links",
+            "id": "pbui.links",
+            "schemaVersion": 1,
+          },
+        },
+      },
+    ],
+  ],
+  "classes": [
+    "σ1",
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": true,
+  "runtimeRevisionDelta": 1,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`link goldens > port.follow writes one pbui.links documentPut 1`] = `
+{
+  "batches": [
+    [
+      {
+        "documentPut": {
+          "document": {
+            "body": {
+              "bindings": {
+                "v-00000003-0000/order": {
+                  "kind": "follow",
+                  "linkId": "link-00000007-0000",
+                  "source": "v-00000001-0000/order",
+                },
+              },
+              "classes": [],
+              "history": {},
+              "identity": [],
+            },
+            "format": "pbui.links",
+            "id": "pbui.links",
+            "schemaVersion": 1,
+          },
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`link goldens > replacing a follower's app drops its stale term in the same batch 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewConfigure": {
+          "appId": "counter",
+          "replaceDocuments": {},
+          "viewId": "v-00000003-0000",
+        },
+      },
+      {
+        "documentDelete": {
+          "documentId": "pbui.links",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`link goldens > show with nothing on screen spawns a detail beside the source and links it in ONE batch 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "detail",
+            "id": "v-00000004-0000",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000006-0000",
+            "leaf": {
+              "viewId": "v-00000004-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000005-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "documentPut": {
+          "document": {
+            "body": {
+              "bindings": {
+                "v-00000004-0000/order": {
+                  "kind": "follow",
+                  "linkId": "link-00000007-0000",
+                  "source": "v-00000001-0000/order",
+                },
+              },
+              "classes": [],
+              "history": {},
+              "identity": [],
+            },
+            "format": "pbui.links",
+            "id": "pbui.links",
+            "schemaVersion": 1,
+          },
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000006-0000=v-00000004-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": "n-00000006-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000004-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > close of a linked twin keeps the view 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementClose": {
+          "placementId": "n-00000011-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > close of the last tile is refused 1`] = `
+{
+  "batches": [],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+    ],
+  },
+  "returned": false,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > close removes the pane and its lone view, clearing activation 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementClose": {
+          "placementId": "n-00000006-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "viewDelete": {
+          "viewId": "v-00000005-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > dock splits the target BEFORE (left), closes the source, follows the view 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000011-0000",
+            "leaf": {
+              "viewId": "v-00000001-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_BEFORE",
+          "placementId": "n-00000006-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000010-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "placementClose": {
+          "placementId": "n-00000002-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000011-0000=v-00000001-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": "n-00000011-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > replaceWith: target shows the source's view, source closes, orphan deleted 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementReplace": {
+          "placementId": "n-00000006-0000",
+          "viewId": "v-00000001-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "placementClose": {
+          "placementId": "n-00000002-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "viewDelete": {
+          "viewId": "v-00000005-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000001-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": "n-00000006-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > resize clamps to headless [0.1, 0.9] and snaps 1`] = `
+{
+  "batches": [
+    [
+      {
+        "splitResize": {
+          "ratio": 0.3333333333333333,
+          "splitId": "n-00000008-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": 0.3333333333333333,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > split (bare) of a singleton links a second placement to the same view 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_COLUMN",
+          "newPlacement": {
+            "id": "n-00000011-0000",
+            "leaf": {
+              "viewId": "v-00000003-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000004-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000010-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000011-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000011-0000",
+  "session": {
+    "activePlacementId": "n-00000011-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > split (bare, default policy) duplicates a clonable view after the target 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "counter",
+            "id": "v-00000010-0000",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000012-0000",
+            "leaf": {
+              "viewId": "v-00000010-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000011-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000012-0000",
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > split with a placed singleton's appId links rather than minting 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000011-0000",
+            "leaf": {
+              "viewId": "v-00000003-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000010-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000011-0000=v-00000003-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000011-0000",
+  "session": {
+    "activePlacementId": "n-00000011-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > split with an appId mints a fresh view of that app 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "counter",
+            "id": "v-00000010-0000",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_COLUMN",
+          "newPlacement": {
+            "id": "n-00000012-0000",
+            "leaf": {
+              "viewId": "v-00000010-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000011-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000012-0000",
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > split with splitPolicy {app} opens an empty pane of that app; singleton launcher reused 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "launcher",
+            "id": "v-00000010-0000",
+          },
+        },
+      },
+      {
+        "placementSplit": {
+          "direction": "DIRECTION_ROW",
+          "newPlacement": {
+            "id": "n-00000012-0000",
+            "leaf": {
+              "viewId": "v-00000010-0000",
+            },
+          },
+          "place": "PLACEMENT_POSITION_AFTER",
+          "placementId": "n-00000002-0000",
+          "ratio": 0.5,
+          "splitId": "n-00000011-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000012-0000=v-00000010-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "n-00000012-0000",
+  "session": {
+    "activePlacementId": "n-00000012-0000",
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`placement goldens > swap exchanges two placements' views 1`] = `
+{
+  "batches": [
+    [
+      {
+        "placementReplace": {
+          "placementId": "n-00000002-0000",
+          "viewId": "v-00000005-0000",
+          "workspaceId": "main",
+        },
+      },
+      {
+        "placementReplace": {
+          "placementId": "n-00000006-0000",
+          "viewId": "v-00000001-0000",
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000005-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000001-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;
+
+exports[`view and workspace goldens > selectWorkspace clears the active placement 1`] = `
+{
+  "batches": [],
+  "leaves": {
+    "one": [
+      "n-00000002-0000=v-00000001-0000",
+    ],
+    "two": [
+      "n-00000004-0000=v-00000003-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "two",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+  ],
+}
+`;
+
+exports[`view and workspace goldens > setTitle sets and clears; rebind replaces the whole map 1`] = `
+{
+  "clear": {
+    "batches": [
+      [
+        {
+          "viewConfigure": {
+            "setTitle": "Notes",
+            "viewId": "v-00000003-0000",
+          },
+        },
+      ],
+      [
+        {
+          "viewConfigure": {
+            "clearTitle": {},
+            "viewId": "v-00000003-0000",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "main": [
+        "n-00000002-0000=v-00000001-0000",
+        "n-00000004-0000=v-00000003-0000",
+        "n-00000006-0000=v-00000005-0000",
+      ],
+    },
+    "returned": true,
+    "session": {
+      "activePlacementId": null,
+      "workspaceId": "main",
+    },
+    "views": [
+      "v-00000001-0000",
+      "v-00000003-0000",
+      "v-00000005-0000",
+    ],
+  },
+  "rebind": {
+    "batches": [
+      [
+        {
+          "viewConfigure": {
+            "setTitle": "Notes",
+            "viewId": "v-00000003-0000",
+          },
+        },
+      ],
+      [
+        {
+          "viewConfigure": {
+            "clearTitle": {},
+            "viewId": "v-00000003-0000",
+          },
+        },
+      ],
+      [
+        {
+          "viewConfigure": {
+            "replaceDocuments": {
+              "values": {
+                "product": "p1",
+              },
+            },
+            "viewId": "v-00000003-0000",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "main": [
+        "n-00000002-0000=v-00000001-0000",
+        "n-00000004-0000=v-00000003-0000",
+        "n-00000006-0000=v-00000005-0000",
+      ],
+    },
+    "returned": true,
+    "session": {
+      "activePlacementId": null,
+      "workspaceId": "main",
+    },
+    "views": [
+      "v-00000001-0000",
+      "v-00000003-0000",
+      "v-00000005-0000",
+    ],
+  },
+  "set": {
+    "batches": [
+      [
+        {
+          "viewConfigure": {
+            "setTitle": "Notes",
+            "viewId": "v-00000003-0000",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "main": [
+        "n-00000002-0000=v-00000001-0000",
+        "n-00000004-0000=v-00000003-0000",
+        "n-00000006-0000=v-00000005-0000",
+      ],
+    },
+    "returned": true,
+    "session": {
+      "activePlacementId": null,
+      "workspaceId": "main",
+    },
+    "views": [
+      "v-00000001-0000",
+      "v-00000003-0000",
+      "v-00000005-0000",
+    ],
+  },
+}
+`;
+
+exports[`view and workspace goldens > workspace.clone clones clonable views and references singletons and non-duplicables 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewClone": {
+          "newViewId": "v-00000010-0000",
+          "sourceViewId": "v-00000001-0000",
+        },
+      },
+      {
+        "workspaceCreate": {
+          "name": "main copy",
+          "rootPlacement": {
+            "id": "n-00000015-0000",
+            "split": {
+              "a": {
+                "id": "n-00000011-0000",
+                "leaf": {
+                  "viewId": "v-00000010-0000",
+                },
+              },
+              "b": {
+                "id": "n-00000014-0000",
+                "split": {
+                  "a": {
+                    "id": "n-00000012-0000",
+                    "leaf": {
+                      "viewId": "v-00000003-0000",
+                    },
+                  },
+                  "b": {
+                    "id": "n-00000013-0000",
+                    "leaf": {
+                      "viewId": "v-00000005-0000",
+                    },
+                  },
+                  "direction": "DIRECTION_COLUMN",
+                  "ratio": 0.5,
+                },
+              },
+              "direction": "DIRECTION_ROW",
+              "ratio": 0.5,
+            },
+          },
+          "workspaceId": "ws-00000016-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+    "ws-00000016-0000": [
+      "n-00000011-0000=v-00000010-0000",
+      "n-00000012-0000=v-00000003-0000",
+      "n-00000013-0000=v-00000005-0000",
+    ],
+  },
+  "returned": "ws-00000016-0000",
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "ws-00000016-0000",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`view and workspace goldens > workspace.create from a spec reuses singletons and selects it 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "counter",
+            "id": "v-00000011-0000",
+          },
+        },
+      },
+      {
+        "workspaceCreate": {
+          "name": "second",
+          "rootPlacement": {
+            "id": "n-00000013-0000",
+            "split": {
+              "a": {
+                "id": "n-00000010-0000",
+                "leaf": {
+                  "viewId": "v-00000003-0000",
+                },
+              },
+              "b": {
+                "id": "n-00000012-0000",
+                "leaf": {
+                  "viewId": "v-00000011-0000",
+                },
+              },
+              "direction": "DIRECTION_ROW",
+              "ratio": 0.5,
+            },
+          },
+          "workspaceId": "ws-00000014-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+    "ws-00000014-0000": [
+      "n-00000010-0000=v-00000003-0000",
+      "n-00000012-0000=v-00000011-0000",
+    ],
+  },
+  "returned": "ws-00000014-0000",
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "ws-00000014-0000",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000011-0000",
+  ],
+}
+`;
+
+exports[`view and workspace goldens > workspace.create with no spec holds the first registered app 1`] = `
+{
+  "batches": [
+    [
+      {
+        "viewCreate": {
+          "view": {
+            "appId": "counter",
+            "id": "v-00000010-0000",
+          },
+        },
+      },
+      {
+        "workspaceCreate": {
+          "name": "bare",
+          "rootPlacement": {
+            "id": "n-00000011-0000",
+            "leaf": {
+              "viewId": "v-00000010-0000",
+            },
+          },
+          "workspaceId": "ws-00000012-0000",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000002-0000=v-00000001-0000",
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+    ],
+    "ws-00000012-0000": [
+      "n-00000011-0000=v-00000010-0000",
+    ],
+  },
+  "returned": "ws-00000012-0000",
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+    "v-00000010-0000",
+  ],
+}
+`;
+
+exports[`view and workspace goldens > workspace.rename trims; workspace.delete drops orphans and falls back 1`] = `
+{
+  "del": {
+    "batches": [
+      [
+        {
+          "workspaceRename": {
+            "name": "Two",
+            "workspaceId": "two",
+          },
+        },
+      ],
+      [
+        {
+          "workspaceDelete": {
+            "workspaceId": "one",
+          },
+        },
+        {
+          "viewDelete": {
+            "viewId": "v-00000001-0000",
+          },
+        },
+        {
+          "viewDelete": {
+            "viewId": "v-00000003-0000",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "two": [
+        "n-00000007-0000=v-00000006-0000",
+      ],
+    },
+    "returned": true,
+    "session": {
+      "activePlacementId": null,
+      "workspaceId": "two",
+    },
+    "views": [
+      "v-00000006-0000",
+    ],
+  },
+  "rename": {
+    "batches": [
+      [
+        {
+          "workspaceRename": {
+            "name": "Two",
+            "workspaceId": "two",
+          },
+        },
+      ],
+    ],
+    "leaves": {
+      "one": [
+        "n-00000002-0000=v-00000001-0000",
+        "n-00000004-0000=v-00000003-0000",
+      ],
+      "two": [
+        "n-00000007-0000=v-00000006-0000",
+      ],
+    },
+    "returned": true,
+    "session": {
+      "activePlacementId": null,
+      "workspaceId": "one",
+    },
+    "views": [
+      "v-00000001-0000",
+      "v-00000003-0000",
+      "v-00000006-0000",
+    ],
+  },
+}
+`;
+
+exports[`view and workspace goldens > workspace.setTree replaces the tree wholesale 1`] = `
+{
+  "batches": [
+    [
+      {
+        "workspaceSetTree": {
+          "rootPlacement": {
+            "id": "n-00000008-0000",
+            "split": {
+              "a": {
+                "id": "n-00000007-0000",
+                "split": {
+                  "a": {
+                    "id": "n-00000004-0000",
+                    "leaf": {
+                      "viewId": "v-00000003-0000",
+                    },
+                  },
+                  "b": {
+                    "id": "n-00000006-0000",
+                    "leaf": {
+                      "viewId": "v-00000005-0000",
+                    },
+                  },
+                  "direction": "DIRECTION_COLUMN",
+                  "ratio": 0.5,
+                },
+              },
+              "b": {
+                "id": "n-00000002-0000",
+                "leaf": {
+                  "viewId": "v-00000001-0000",
+                },
+              },
+              "direction": "DIRECTION_ROW",
+              "ratio": 0.6,
+            },
+          },
+          "workspaceId": "main",
+        },
+      },
+    ],
+  ],
+  "leaves": {
+    "main": [
+      "n-00000004-0000=v-00000003-0000",
+      "n-00000006-0000=v-00000005-0000",
+      "n-00000002-0000=v-00000001-0000",
+    ],
+  },
+  "returned": true,
+  "session": {
+    "activePlacementId": null,
+    "workspaceId": "main",
+  },
+  "views": [
+    "v-00000001-0000",
+    "v-00000003-0000",
+    "v-00000005-0000",
+  ],
+}
+`;

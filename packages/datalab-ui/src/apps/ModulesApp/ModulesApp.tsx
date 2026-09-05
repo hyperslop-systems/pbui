@@ -1,8 +1,6 @@
-import { useDispatch, useSelector } from "react-redux";
+import { useDatalabWorkbench } from "../../appkit/DatalabWorkbenchContext";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { useTourContent } from "../../appkit/TourContent";
-import type { RootState } from "../../store";
-import { findLeaf, layoutActions, primaryDocId } from "../../store/layout";
 import { ModuleRack } from "../../components/organisms";
 import { EmptyState } from "@hyperslop-systems/pbui";
 
@@ -17,15 +15,13 @@ import { EmptyState } from "@hyperslop-systems/pbui";
  * reads; it teaches less.
  */
 function ModulesApp(_props: AppProps) {
-  const dispatch = useDispatch();
+  const workbench = useDatalabWorkbench();
   const { modules, rackTarget } = useTourContent();
-  const rackDocId = useSelector((state: RootState) => {
-    if (!rackTarget) return null;
-    const space = state.layout.spaces.find(
-      (candidate) => candidate.id === state.layout.currentSpaceId,
-    );
-    const placement = space ? findLeaf(space.tree, rackTarget) : null;
-    return placement?.type === "leaf" ? primaryDocId(state.layout.views[placement.viewId]) : null;
+  // The document the target tile shows now, so the module it swaps to keeps
+  // looking at the same data.
+  const rackDocId = workbench.shell.useCoreState((state) => {
+    const viewId = rackTarget ? state.index.viewByPlacementId.get(rackTarget) : undefined;
+    return viewId ? (state.document.views[viewId]?.documents.primary ?? null) : null;
   });
 
   if (!modules || modules.length === 0) {
@@ -43,13 +39,11 @@ function ModulesApp(_props: AppProps) {
       onSelect={
         rackTarget
           ? (appId) =>
-              dispatch(
-                layoutActions.createViewInPlacement({
-                  nodeId: rackTarget,
-                  appId,
-                  docId: rackDocId,
-                }),
-              )
+              void workbench.controller.replacePlacement(rackTarget, {
+                kind: "application",
+                appId,
+                docId: rackDocId,
+              })
           : undefined
       }
     />

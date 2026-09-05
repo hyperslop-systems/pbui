@@ -1,3 +1,4 @@
+import { leaves } from "@hyperslop-systems/workbench-protocol/client";
 import "../../../apps/all";
 import { Text } from "@hyperslop-systems/pbui";
 import { TourSection } from "../TourSection";
@@ -69,7 +70,7 @@ export function TutorialBand() {
   // The rack drives the chart tile. Reaching into the seeded tree for its id is
   // the price of the tree being data rather than a builder with named slots;
   // it is read once, here, rather than threaded through the section.
-  const rackTarget = firstLeafOfApp(rack.layout, "chart");
+  const rackTarget = firstLeafOfApp(rack.seed, "chart");
 
   return (
     <div className={styles.band}>
@@ -251,21 +252,15 @@ export function TutorialBand() {
 
 /** The id of the first leaf running `app`, for the rack to re-point. */
 function firstLeafOfApp(
-  layout: ReturnType<typeof rackSeed>["layout"],
+  seed: ReturnType<typeof rackSeed>["seed"],
   app: string,
 ): string | undefined {
-  const space = layout.spaces.find((s) => s.id === layout.currentSpaceId) ?? layout.spaces[0];
-  if (!space) return undefined;
-  let found: string | undefined;
-  const walk = (node: typeof space.tree): void => {
-    if (found) return;
-    if (node.type === "leaf") {
-      if (layout.views[node.viewId]?.appId === app) found = node.id;
-    } else {
-      walk(node.a);
-      walk(node.b);
+  const space =
+    seed.document.workspaces.find((s) => s.id === seed.workspaceId) ?? seed.document.workspaces[0];
+  for (const node of leaves(space?.tree)) {
+    if (node.body.case === "leaf" && seed.document.views[node.body.value.viewId]?.appId === app) {
+      return node.id;
     }
-  };
-  walk(space.tree);
-  return found;
+  }
+  return undefined;
 }

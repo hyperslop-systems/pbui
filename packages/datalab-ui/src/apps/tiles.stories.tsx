@@ -23,7 +23,7 @@
  *
  * ## No server, ever
  *
- * Every story runs against the committed fixture tables through `makeStore`'s
+ * Every story runs against the committed fixture tables through the workbench's
  * `fixtures` option (DR-48), so the base query answers from memory and the
  * chart, table, pipeline and encoding tiles render real data with the API
  * absent. The account tiles (`signin`, `profile`, `tokens`, `upload`) have no
@@ -45,18 +45,24 @@ import { EmptyState, Text } from "@hyperslop-systems/pbui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type React from "react";
 import { useRef } from "react";
-import { Provider, useSelector } from "react-redux";
+import { leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { fixturesFrom, type FixtureData } from "../api/fixtures";
 import { AnalysisProvider } from "../appkit/AnalysisProvider";
 import { AppScope } from "../appkit/AppScope";
+import { DatalabWorkbenchProvider, useDatalabWorkbench } from "../appkit/DatalabWorkbenchContext";
 import { allApps, appFor, type AppProps } from "../appkit/registry";
 import { TourContentProvider, type TourContent } from "../appkit/TourContent";
+import {
+  createDatalabWorkbench,
+  datalabSingleStageSeed,
+  type DatalabWorkbench,
+} from "../appkit/workbench";
 import { WorkbenchProviders } from "../components/pages/Workbench/WorkbenchProviders";
 import { census, readings } from "../fixtures";
 import { createDefaultGraphic } from "../model/graphicAuthoring";
 import { AcceptBanner, MouseDocLine, ObjectMenu } from "../pbui";
-import { makeStore, type AppStore, type PreloadedState, type RootState } from "../store";
-import { singleStageLayout } from "../store/stages";
+import type { PreloadedState } from "../store";
+import { tile as tileSpec } from "../store/seed";
 import { newId } from "../store/world";
 import {
   briefGoals,
@@ -103,26 +109,18 @@ interface StageOptions {
 }
 
 /**
- * One tile, in the product's providers, over its own store.
- *
- * The store is built in a ref rather than in `useState`'s lazy initialiser for
- * the reason `WorkbenchInstance` gives: StrictMode double-invokes the
- * initialiser and would construct two stores, discarding one after its
- * middleware had already started.
- */
-/**
- * The tile, reading its view from the STORE rather than from a snapshot.
+ * The tile, reading its view from the WORKBENCH rather than from a snapshot.
  *
  * `Stage` seeds a real placement and a real logical view precisely so that
- * `DocBar` can re-point the view in the layout slice — the comment below says
- * so, and says that a synthetic view "makes that control a no-op and the story
- * teaches it is broken". It then passed the view object captured at
+ * `DocBar` can re-point the view in the core's document — the comment below
+ * says so, and says that a synthetic view "makes that control a no-op and the
+ * story teaches it is broken". It then passed the view object captured at
  * initialisation, so the control dispatched correctly and the tile kept
  * rendering the old document anyway. The story taught the same wrong thing by
  * a different route.
  *
- * Selecting by id is what subscribes this subtree to the slice. Caught in
- * review on pbui PR #9.
+ * Reading the view by id off `useDocument()` is what subscribes this subtree
+ * to the core. Caught in review on pbui PR #9.
  */
 function LiveTile({
   Component,
@@ -133,8 +131,9 @@ function LiveTile({
   placementId: string;
   viewId: string;
 }): React.JSX.Element {
-  const view = useSelector((state: RootState) => state.layout.views[viewId]);
-  if (!view) throw new Error(`the story's view ${viewId} left the layout slice`);
+  const workbench = useDatalabWorkbench();
+  const view = workbench.shell.useDocument().views[viewId];
+  if (!view) throw new Error(`the story's view ${viewId} left the workbench document`);
   return <Component placementId={placementId} view={view} />;
 }
 
@@ -149,34 +148,50 @@ function Stage({
   id: string;
   Component: React.ComponentType<AppProps>;
 }): React.JSX.Element {
-  const storeRef = useRef<AppStore | null>(null);
-  const stageRef = useRef<{ placementId: string; viewId: string } | null>(null);
+  /**
+   * One workbench, built once.
+   *
+   * A ref with a null check rather than `useState`'s lazy initialiser, for the
+   * reason `WorkbenchInstance` gives: StrictMode double-invokes the
+   * initialiser and would construct two workbenches, discarding one after its
+   * subscriptions had already started.
+   */
+  const ref = useRef<{ workbench: DatalabWorkbench; placementId: string; viewId: string } | null>(
+    null,
+  );
 
-  if (!storeRef.current) {
+  if (!ref.current) {
     const world = empty ? { docs: {}, docOrder: [], activeDocId: null } : seededWorld();
-    const docId = world.activeDocId ?? null;
+    // Only a document-bound application may bind a document: the core checks
+    // `view.documents` against the manifest, and `about` has no `primary`.
+    const docId = appFor(id)?.docBound ? (world.activeDocId ?? null) : null;
 
-    // A REAL placement and a REAL logical view, seeded through the same builder
-    // the product's stages use. Synthesising an `AppView` literal instead would
-    // render identically and lie about one thing that matters: the document bar
-    // re-points a view *in the layout slice*, so a view the store has never
-    // heard of makes that control a no-op and the story teaches it is broken.
-    const layout = singleStageLayout("story", (builder) => builder.leaf(id, docId));
-    const tree = layout.spaces[0]!.tree;
-    if (tree.type !== "leaf") throw new Error("the story layout is a single leaf");
+    // A REAL placement and a REAL logical view, seeded through the same
+    // compiler the product's stages use. Synthesising an `AppView` literal
+    // instead would render identically and lie about one thing that matters:
+    // the document bar re-points a view *in the core's document*, so a view the
+    // workbench has never heard of makes that control a no-op and the story
+    // teaches it is broken.
+    const seed = datalabSingleStageSeed(
+      "story",
+      tileSpec(id, docId ? { documents: { primary: docId } } : {}),
+    );
+    const leaf = leaves(seed.document.workspaces[0]?.tree)[0];
+    if (leaf?.body.case !== "leaf") throw new Error("the story layout is a single leaf");
 
-    storeRef.current = makeStore({
-      preloaded: { world, layout },
-      // `seed: false`, so the empty world stays empty. `makeStore` defaults to
-      // giving a document-less world a document, which is right for the product
-      // and would silently delete the "no documents" story below.
-      seed: !empty,
+    const workbench = createDatalabWorkbench({
+      seed,
+      world,
+      // `seedDocuments: false`, so the empty world stays empty. The runtime
+      // defaults to giving a document-less world a document, which is right
+      // for the product and would silently delete the "no documents" story.
+      seedDocuments: !empty,
       fixtures: FIXTURES,
     });
-    stageRef.current = { placementId: tree.id, viewId: tree.viewId };
+    ref.current = { workbench, placementId: leaf.id, viewId: leaf.body.value.viewId };
   }
 
-  const stage = stageRef.current!;
+  const stage = ref.current;
 
   const tile = (
     <div
@@ -206,7 +221,7 @@ function Stage({
   );
 
   return (
-    <Provider store={storeRef.current}>
+    <DatalabWorkbenchProvider workbench={stage.workbench}>
       <AnalysisProvider principalKey={`storybook-tile-${id}`}>
         <AppScope apps={apps}>
           <WorkbenchProviders>
@@ -216,7 +231,7 @@ function Stage({
           </WorkbenchProviders>
         </AppScope>
       </AnalysisProvider>
-    </Provider>
+    </DatalabWorkbenchProvider>
   );
 }
 

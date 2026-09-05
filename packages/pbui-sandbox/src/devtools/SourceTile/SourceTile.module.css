@@ -8,11 +8,6 @@
   padding: var(--pbui-space-2);
 }
 
-.header {
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
 .spacer {
   flex: 1 1 auto;
 }
@@ -20,6 +15,7 @@
 /* A bounded box for the read-only editor to fill; the editor draws its own border and gutter. */
 .code {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;

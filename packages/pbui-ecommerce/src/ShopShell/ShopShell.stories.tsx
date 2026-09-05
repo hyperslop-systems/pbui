@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { linkVerbs, portId } from "@hyperslop-systems/pbui";
-import { split, tile } from "@hyperslop-systems/pbui-workbench";
+import { split, tile } from "@hyperslop-systems/workbench-core";
 import { APP_IDS } from "../apps";
 import { ORDERS_BY_STATUS, REVENUE_BY_CATEGORY } from "../plots/documents";
 import { plotTile } from "../seed";

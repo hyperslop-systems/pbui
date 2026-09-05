@@ -1,4 +1,4 @@
-import { AppBody, EmptyState, JsonBlock, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, EmptyState, JsonBlock, TileHeader } from "@hyperslop-systems/pbui";
 import type { PresentationReference } from "@hyperslop-systems/pbui";
 import { usePort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
@@ -16,7 +16,7 @@ export interface InspectorProps extends AppProps {
  * reachability alone.
  */
 export function Inspector({ shop, view }: InspectorProps) {
-  const { Presentation } = shop.pbui;
+  const { ObjectChip } = shop.pbui;
   const port = usePort(view, "subject");
   const subject = port.reference as PresentationReference<Values> | null;
   if (!subject) {
@@ -28,17 +28,14 @@ export function Inspector({ shop, view }: InspectorProps) {
   }
   return (
     <div data-part="inspector" className={styles.app}>
-      <Toolbar tight>
-        <Presentation reference={subject} doc={`the inspected <${subject.type}>`} inComposite>
-          <Text size="tiny" strong>
+      <TileHeader
+        title={
+          <ObjectChip reference={subject} doc={`the inspected <${subject.type}>`} inComposite>
             &lt;{subject.type}&gt;
-          </Text>
-        </Presentation>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {port.badge.explanation}
-        </Text>
-      </Toolbar>
+          </ObjectChip>
+        }
+        status={port.badge.explanation}
+      />
       <AppBody flush className={styles.body}>
         <div className={styles.detail}>
           <JsonBlock value={subject.value} />

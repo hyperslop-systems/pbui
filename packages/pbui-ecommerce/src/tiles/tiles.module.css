@@ -12,40 +12,36 @@
   overflow: auto;
 }
 
-.spacer {
-  flex: 1;
-}
-
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: var(--pbui-fs-small);
+  line-height: var(--pbui-lh-tight);
 }
 
 .table th {
   position: sticky;
   top: 0;
   text-align: left;
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  font-size: var(--pbui-fs-tiny);
+  letter-spacing: var(--pbui-track-label);
   text-transform: uppercase;
-  opacity: 0.7;
-  padding: 6px 8px;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  background: var(--pbui-pane, inherit);
+  color: var(--pbui-faint);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  border-bottom: var(--pbui-border-grid);
+  background: var(--pbui-pane);
 }
 
 .table td {
-  padding: 4px 8px;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  border-bottom: var(--pbui-border-grid);
   white-space: nowrap;
   vertical-align: baseline;
 }
 
 .table tr[data-attended="true"] td {
-  background: color-mix(in srgb, currentColor 6%, transparent);
+  background: var(--pbui-selected-wash);
 }
 
 .num {
@@ -54,33 +50,15 @@
 }
 
 .detail {
-  padding: 10px 12px;
+  padding: var(--pbui-space-4);
   display: grid;
-  gap: 10px;
+  gap: var(--pbui-space-4);
   align-content: start;
 }
 
-.facts {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: 12px;
-  row-gap: 3px;
-  font-size: 12px;
-}
-
-.facts dt {
-  opacity: 0.65;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.facts dd {
-  margin: 0;
-}
 
 .big {
-  font-size: 22px;
+  font-size: calc(var(--pbui-fs-title) * 1.7);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -94,7 +72,7 @@
   height: 100%;
   display: grid;
   place-items: center;
-  padding: 12px;
+  padding: var(--pbui-space-4);
 }
 
 .row {
@@ -102,10 +80,10 @@
 }
 
 .row:hover td {
-  background: color-mix(in srgb, currentColor 5%, transparent);
+  background: var(--pbui-pane-alt);
 }
 
 .table tr[data-selected] td {
-  background: color-mix(in srgb, currentColor 12%, transparent);
+  background: var(--pbui-selected);
   font-weight: 600;
 }

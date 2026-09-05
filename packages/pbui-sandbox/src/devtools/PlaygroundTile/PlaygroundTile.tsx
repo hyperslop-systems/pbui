@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, SelectInput, Text, TextInput, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, Chip, Dialog, SelectInput, Text, TextInput, TileHeader, Toolbar } from "@hyperslop-systems/pbui";
 import { CodeEditor } from "@hyperslop-systems/pbui-editor";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -146,36 +146,40 @@ export function PlaygroundTile({ placementId, host, store, reloadMs = 400 }: Pla
 
   return (
     <div data-part="sandbox-playground" className={styles.app}>
-      <Toolbar tight className={styles.header}>
-        <Chip label={from ? `editing ${from.id} · v${from.version}` : "new draft"} tone="var(--pbui-tone-widget)" />
+      <TileHeader
+        title={from ? `editing ${from.id} · v${from.version}` : "new draft"}
+        actions={
+          <>
+            <SelectInput
+              size="tiny"
+              variant="framed"
+              value=""
+              placeholder="load from…"
+              accessibleName="load a library program into the draft"
+              options={Object.values(programs).map((p) => ({ value: p.id, label: `${p.title} · v${p.version}` }))}
+              onValueChange={(id) => (untouched ? loadFrom(id) : setConfirmLoad(id))}
+            />
+            <Button size="tiny" variant="raised" disabled={!canSave} onClick={() => void saveAsNew()}>
+              save as new
+            </Button>
+            {from ? (
+              <Button size="tiny" variant="framed" disabled={!canSave} onClick={update}>
+                update {from.id}
+              </Button>
+            ) : null}
+            {host.askAgent ? (
+              <Button size="tiny" variant="framed" onClick={askAgent}>
+                ask the agent
+              </Button>
+            ) : null}
+            <Button size="tiny" variant="bare" onClick={() => store.reset()}>
+              clear
+            </Button>
+          </>
+        }
+      >
         <Chip label={pending ? "reloading…" : instance.status} state={instance.status === "error" ? "stale" : undefined} />
-        <span className={styles.spacer} />
-        <SelectInput
-          size="tiny"
-          variant="framed"
-          value=""
-          placeholder="load from…"
-          accessibleName="load a library program into the draft"
-          options={Object.values(programs).map((p) => ({ value: p.id, label: `${p.title} · v${p.version}` }))}
-          onValueChange={(id) => (untouched ? loadFrom(id) : setConfirmLoad(id))}
-        />
-        <Button size="tiny" variant="raised" disabled={!canSave} onClick={() => void saveAsNew()}>
-          save as new
-        </Button>
-        {from ? (
-          <Button size="tiny" variant="framed" disabled={!canSave} onClick={update}>
-            update {from.id}
-          </Button>
-        ) : null}
-        {host.askAgent ? (
-          <Button size="tiny" variant="framed" onClick={askAgent}>
-            ask the agent
-          </Button>
-        ) : null}
-        <Button size="tiny" variant="bare" onClick={() => store.reset()}>
-          clear
-        </Button>
-      </Toolbar>
+      </TileHeader>
 
       <div className={styles.split}>
         <div className={styles.editor}>

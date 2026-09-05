@@ -1,0 +1,1146 @@
+---
+Title: Diary
+Ticket: PBUI-WIRING-1
+Status: active
+Topics:
+    - pbui
+    - workbench
+    - frontend
+    - design
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles:
+    - Path: repo://docs/playbooks/building-a-new-hyperslop-systems-app-on-pbui.md
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-ecommerce/src/ShopShell/ShopShell.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/types.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/ConnectionInspector/ConnectionInspector.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/FrameJacks/FrameJacks.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/WiringCanvas/WiringCanvas.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/connectedHighlight.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/connectionCommands.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/connectionController.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/geometryStore.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/layoutPolicy.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/model.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/routing/route.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/routing/validate.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/pbui-workbench/src/wiring/scene.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/workbench-core/src/createWorkbenchCore.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://packages/workbench-core/src/links/collaborator.ts
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://src/chrome/TileFrame.tsx
+      Note: Implemented wiring architecture and validation reference
+    - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md
+      Note: Step 10 review and measured findings
+    - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/scripts/02-replay-route-and-seed.mjs
+      Note: Executed source-router and command refusal reproduction
+    - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/scripts/03-replay-browser.mjs
+      Note: Browser replay source validated syntactically
+    - Path: repo://ttmp/2026/09/04/PBUI-WIRING-1--link-mode-wiring-scrim-lifted-tiles-jacks-and-orthogonal-wires/scripts/04-prepare-remarkable.py
+      Note: PDF export preparation with readable title and source-reference layout
+ExternalSources: []
+Summary: ""
+LastUpdated: 2026-09-04T14:12:28.374469849-04:00
+WhatFor: ""
+WhenToUse: ""
+---
+
+
+
+# Diary
+
+## Goal
+
+Chronological record of PBUI-WIRING-1: making link mode look like the reference wiring mock (scrim, lifted tiles, jacks on the frame, orthogonal wires, one hairline port card, the binding in the bar). Each phase has a commit, screenshots under `various/screenshots/`, and a thermal slip at start and end.
+
+## Step 1: Ticket, design, and Phase 1 (anchors)
+
+The ticket opens with the analysis the user asked for (target mock versus current link mode) turned into a six-phase design, then the first phase: the wire that started off-screen in the user's screenshot was a registry defect, not a drawing one.
+
+Screenshot: `various/screenshots/p1/004-completed-link-wires-and-badges.png` (wires now leave the order card's right edge; compare PBUI-VISUAL-1 `WI-004`).
+
+### Prompt Context
+
+**User prompt (verbatim):** "Make the wiring look more like this [Image #12] First, analyze the image, and tell me what you would change from the current version [Image #13]" then "Ok, create a new ticket + design doc for that, then implement, take screenshots for the diary and report, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill). Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done."
+
+**Assistant interpretation:** Ticket PBUI-WIRING-1; design doc with the six changes from the analysis; implement phase by phase with commits, diary, screenshots and slips.
+
+**Inferred user intent:** Link mode should read like the reference wiring mock: scrim, lifted tiles, jacks, orthogonal wires, one port card, binding in the bar.
+
+**Commit (code):** e06e068 — "PBUI-WIRING-1 P1: wires anchor to mounted elements, one per destination"
+
+### What I did
+- Ticket, diary, design doc (`design-doc/01-…`), six tasks; plan slip and P1 start slip printed.
+- `src/chrome/usePortCarry.ts`: `PORTS` keeps a `Set` of elements per port and side; `registerPort(id, side, null)` prunes elements that left the document (and clears the side if none did, which keeps the unit test's detached elements working); new `portElements(id, side)`; `portElement` is the first.
+- `WireLayer`: `wireEnds(link)` draws one wire per mounted destination element from the nearest mounted source; keys are `linkId:index`; a link with no mounted destination keeps the dotted portal circle.
+
+### Why
+- A view shown in two tiles registered its ports twice and the last registration won, sometimes after unmounting: the off-screen wire. The mock shows one wire into each place a link lands.
+
+### What worked
+- Core 51, workbench 23 green; the ecommerce e2e (9 scenarios) passes against the rebuilt dist.
+
+### What didn't work
+- First cut pruned both sides on every null unregister and filtered `portElements` by `isConnected`, which broke the registry unit test (detached test elements). Pruning only the given side, with "clear the side if nothing was disconnected", satisfies both the test and React's unmount ref.
+
+### What I learned
+- React ref callbacks give no element on unmount, so a multi-element registry has to infer which one left from `isConnected`.
+
+### What warrants a second pair of eyes
+- Nearest-source choice when a view is duplicated: it is a heuristic; the mock's picture matches it, a product might want all pairs.
+
+### Code review instructions
+- `git show e06e068`; `packages/pbui-ecommerce`: `pnpm e2e` with the :6012 storybook up.
+
+## Step 2: Phase 2, jacks
+
+Each port card now has a jack on the tile frame: a 12px ink-bordered square astride the 2px border, inputs on the left edge, outputs on the right, filled once the port is bound. Wires meet the jacks.
+
+Screenshot: `various/screenshots/p2/004-completed-link-wires-and-badges.png` (jacks visible at both frames; the wire drawing itself is still Phase 3's).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 2 of the design.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** f88bc43 — "PBUI-WIRING-1 P2: jacks on the tile frame"
+
+### What I did
+- `PortRail`: `<span data-part="port-jack" data-side data-bound>` per card, absolutely positioned at `top: 50%` and `left/right: calc(-1 * space-3 - 7px)`; the card is `position: relative` and its grid drops the glyph column; the rail's overflow is visible.
+- `WireLayer.anchorOf` prefers the jack inside the registered card.
+- Probe (playwright evaluate) confirmed jack rectangles at x=3 (inputs, left frame) and x=789 (outputs, right frame) of the orders tile, and a jack-to-jack path `M 800.9 54.3 … 816.9 60.7` between the orders and order-detail tiles.
+
+### What worked
+- Workbench 23 green; ecommerce e2e unaffected (selectors unchanged).
+
+### What didn't work
+- Scenario 004 of the interaction script shows two wires ending at the source tile's right frame rather than at the destination jacks, while the seeded scene probes correctly. Not resolved in this step; Phase 3 replaces the path builder and the probe runs against that scenario next.
+
+### What warrants a second pair of eyes
+- A rail with more ports than height now overflows instead of scrolling (design doc calls it a follow-up).
+
+### Code review instructions
+- `git show f88bc43`; the ecommerce seeded scene with Mod+Shift+L on :6012.
+
+## Step 3: Phase 3, orthogonal wires (and the offset bug)
+
+Wires are Manhattan routes now, and the scenario-004 mystery from Step 2 is solved: the wire layer's absolutely positioned box was measured against the page while the anchors were measured against the surface, so every wire was drawn 22px left and 71px up. The surface needed `position: relative`.
+
+Screenshots: `various/screenshots/p3/004-completed-link-wires-and-badges.png` (two wires in the gutter, jack to jack), `p3/002-connect-mode-acceptable-highlighted.png` (the carry band on the same route), `p3-stories/001-visual-audit--wire-layer-styles.png`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1) and, mid-phase: "take screenshots for the diary and for the report later on"
+
+**Assistant interpretation:** Phase 3 of the design; keep shooting every phase into the ticket.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** d1bde68 — "PBUI-WIRING-1 P3: orthogonal wires, and the surface is the wire layer's box"
+
+### What I did
+- `WireLayer`: `route(a, b, channel)` (H-V-H when the destination is ahead by more than 4px, with the vertical run clamped inside the gap; a stub-out/detour/stub-in otherwise), `labelPoint` for the derived label, per-wire channel `(i - (n-1)/2) * 6`, no marker; the carry band uses the same route. Stylesheet rewritten on tokens (ink stroke, miter joins, dotted held `2 4`, cursor on the token scale).
+- `Surface.module.css`: `.surface { position: relative }`.
+- Probe on scene 7 before the fix: layer box at (0,0) while the root sat at (22,71); after: layer at (22,71) and paths `M 690 54 H 695 V 61 H 706` and `M 690 54 H 701 V 326 H 706`.
+
+### What worked
+- Workbench 23 green; the probe and the screenshots agree.
+
+### What didn't work
+- The first route treated a 16px jack-to-jack gap (two tiles across a 10px gutter) as "behind" because the forward threshold was two stubs (24px), producing a zigzag. The threshold is 4px now and the run is clamped inside the gap.
+- My CSS edit for the sheet failed on a comment mismatch and silently wrote nothing (the helper raises before writing); the sheet was rewritten whole.
+
+### What I learned
+- An `inset: 0` layer is only as good as its containing block; the story symptom (wires ending at the source tile's frame) was the page offset in disguise.
+
+### What warrants a second pair of eyes
+- The derived wire in the Visual Audit story is hidden behind the middle tile; Phase 4 sets the stacking order (scrim, tiles, wires) explicitly.
+
+### Code review instructions
+- `git show d1bde68`; `shop-scenes--scene-7-connect-mode` on :6012.
+
+## Step 4: Phase 4, scrim and lift
+
+Link mode now reads as a mode: the page washes out, the tiles in the mode stand on top with only their ports showing, and the wires run in wide gutters between them. This is the step where the ecommerce scene first looks like the mock.
+
+Screenshots: `various/screenshots/p4/004-completed-link-wires-and-badges.png` (the whole scene), `p4/002-connect-mode-acceptable-highlighted.png` (carry), `p4-stories/001-visual-audit--wire-layer-styles.png` (held dotted and derived dashed).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 4 of the design.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** 5b35065 — "PBUI-WIRING-1 P4: scrim the page, lift the tiles"
+
+### What I did
+- `Surface.module.css`: `.surface[data-link-mode]` isolates; `::before` is a fixed scrim (`color-mix(wash 82%, transparent)`); tiles get `position: relative; z-index: 1` and a pane background; split dividers get `min-width/min-height: space-6`.
+- `Tile.module.css`: `.body[data-link-mode] > .app { visibility: hidden }` (it was already inert).
+- `PortRail.module.css`: the rail is opaque pane (no translucency to blend with a hidden app).
+- `VisualAudit.stories.tsx` WireLayer story: third tile is the many-ports app and the derived term binds its `alpha` input.
+
+### What worked
+- Workbench 23 green; scene 7 shows both wires in the gutter, jack to jack.
+
+### What didn't work
+- With a 10px gutter and two 6px channels, one wire ran 2px from the destination tile's frame and read as part of it (the crop in scratch showed it). Wider gutters in the mode fixed it; changing layout on mode toggle is a deliberate trade.
+- The story's derived wire was never going to draw: it bound a counter's `count` (an output) as the destination, so there was no input jack; the dotted portal circle at the source was the tell.
+
+### What I learned
+- "Missing wire" had three different causes across three phases: a stale registry element (P1), the layer's containing block (P3), and a fixture binding an output as a destination (P4). The probe script (jack rectangles + path data) found each in one run.
+
+### What warrants a second pair of eyes
+- The fixed scrim covers the whole viewport, including any product chrome outside the workbench (masthead, status bar); that is the mock's look, but a product embedding a small workbench in a page will scrim the page too.
+
+### Code review instructions
+- `git show 5b35065`; scene 7 on :6012 and `Visual Audit/WireLayer` on :6008.
+
+## Step 5: Phase 5, one hairline port card
+
+The card's typography was already right after Phase 2 (name bold, type faint, binding line, doc faint); what remained was the second box a product's presentation drew around it. Ecommerce's port presentation is a block region now, and the rail gives the wrapper a div slot so a block presentation is valid markup.
+
+Screenshot: `various/screenshots/p5/004-completed-link-wires-and-badges.png`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 5 of the design.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** e76278e — "PBUI-WIRING-1 P5: one hairline port card"
+
+### What I did
+- `ShopShell.renderPort`: `<Presentation … inComposite block>`.
+- `PortRail`: the product wrapper is a `div.slot` (grid, min-width 0) whose child is block; cards fill the column width.
+
+### What worked
+- Workbench 23 and ecommerce 7 green.
+
+### What I learned
+- The PBUI-VISUAL-1 rule "a block presentation draws nothing" pays off here without a new selector: the port presentation only needed to say it is a region.
+
+### What warrants a second pair of eyes
+- Cards now stretch to the column width (before they sized to content). It matches the mock's proportions; a product with very short port names gets wide cards.
+
+### Code review instructions
+- `git show e76278e`.
+
+## Step 6: Phase 6, the bar binding
+
+The last piece of the mock: in link mode a tile's title and its port badge read as one label, `ORDER DETAIL → ORDERS`, in one hairline box. Outside the mode the badge stays its own dotted chip.
+
+Screenshots: `various/screenshots/p6/004-completed-link-wires-and-badges.png` (link mode), `p6-stories/001-shop-scenes--seeded.png` (normal mode, unchanged).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 6 of the design.
+
+**Inferred user intent:** Same as Step 1.
+
+**Commit (code):** a8ef47d — "PBUI-WIRING-1 P6: title and badges as one bar label in link mode"
+
+### What I did
+- `Tile.tsx`: badges wrapped in `<span data-part="tile-badges">` inside the title.
+- `chrome.css`: `tile-title` is inline-flex with a gap; in `[data-part="workbench"][data-link-mode]` it is a hair box on the pane, the presentation and chips inside are unboxed, `tile-badges::before` is the arrow, the chip glyph is hidden.
+
+### What worked
+- Core 51, workbench 23, ecommerce 7 green.
+
+### What I learned
+- The link-mode attribute on the workbench root is the one hook every mode-dependent rule needs; the chrome sheet can key on it without the tile knowing.
+
+### What should be done in the future
+- Wire routing around tiles that sit between source and destination (the Visual Audit story's derived wire crosses the middle tile's port card); the mock routes through gutters. A next ticket: obstacle-aware routing using the tiles' rectangles.
+- A rail with more ports than height overflows.
+- The scrim covers any product chrome outside the workbench.
+
+### Code review instructions
+- `git show a8ef47d`; scene 7 on :6012.
+
+## Step 7: Phase 7, the WiringLab story
+
+The user asked for a storybook to try the wiring by hand, with different port configurations and more than one row of tiles. `Workbench/WiringLab` on :6008 is that: two rows of three tiles, four apps with number/text/any ports in both directions, five seeded links, the mode open on mount, and buttons to close, reopen and reset.
+
+Screenshot: `various/screenshots/p7/001-workbench-wiringlab--lab.png`. It is also the Phase 8 brief: three of the seeded wires cross a tile that sits between their ends.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Ok, continue. Also, isthere a storybook where I can test it for myself? (connecting a variety of different ports in different configurations, including having multiple rows of tiles horizontally"
+
+**Assistant interpretation:** Keep going through the open items, and add a hand-driveable lab story with mixed ports and a two-row layout.
+
+**Inferred user intent:** Try the wiring interactively and see it hold up in a real grid.
+
+**Commit (code):** 1bfce25 — "PBUI-WIRING-1 P7: WiringLab story"
+
+### What I did
+- `packages/pbui-workbench/src/stories/WiringLab.stories.tsx`: four apps (`lab-source` count/label out; `lab-sink` value/anything in; `lab-transform` in→out doubling via `useEmitPort` in an effect; `lab-wide` two in, two out), a col split of two row splits, seeded `port.follow` ×4, `port.pin`, `identity.add`, `link.mode.open` on mount, a `generation` key to reset.
+
+### What worked
+- Typecheck clean; the story renders every wire style: two solid follows, a dotted held, the cross-row detour, and the bar labels read `TRANSFORM → SOURCE A · NONE`.
+
+### What didn't work
+- N/A for the story itself; what it exposes belongs to Phase 8: the H-V-H route ignores tiles between the ends.
+
+### What warrants a second pair of eyes
+- The identity between the two sinks' `value` inputs draws no wire (both ends are inputs, and the wire layer pairs out→in); the cell is shared, the badge says so.
+
+### Code review instructions
+- Open `Workbench/WiringLab` on :6008; press tick in Source A; drag `gamma` from Wide onto Sink A's `anything`.
+
+## Step 8: Phase 8, routes through the gutters
+
+The lab made the routing gap obvious: three seeded wires cut straight across a tile. Wires now go around: a small grid router treats every tile frame as an obstacle, prefers long straight runs, and spreads parallel wires into neighbouring lanes.
+
+Screenshots: `various/screenshots/p8/002-workbench-wiringlab--lab.png` (all wires in gutters), `p8/001-visual-audit--wire-layer-styles.png` (the derived wire passes over the top of the middle tile), `p8-scenes/004-completed-link-wires-and-badges.png` (scene 7 unchanged).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 7)
+
+**Assistant interpretation:** The routing follow-up from the report.
+
+**Inferred user intent:** Wires that read like the mock in any layout.
+
+**Commit (code):** 58b3b51 — "PBUI-WIRING-1 P8: wires route around tiles through the gutters"
+
+### What I did
+- `route.ts`: `routeAround(from, to, obstacles, lanes, { bounds, cell=6, margin=3, turn=10, occupied=8 })` → corner points or null; `Lanes` remembers used cells across wires; `toPath`. Dijkstra over (cell, heading) with a binary heap; a freed corridor out of the source jack and into the destination jack; the goal must be entered heading +x; corners squared to the jacks' y.
+- `WireLayer`: tile rects from `[data-part="workbench-tile"] > [data-part="tile"]`; bounds = surface ± 18px; `pathFor` tries the router and falls back to `route()`.
+- `route.test.ts`: clear field is orthogonal; a wall is passed below; a second wire takes another lane.
+
+### What worked
+- Workbench 24 test files green. The lab shows every wire in a gutter or along the outside.
+
+### What didn't work
+- The audit story's derived wire still went straight through the middle tile after the first cut: its surface is exactly the tiles' height, so there was no gutter row and no path; the router returned null and the fallback drew. Extending the field 18px beyond the surface gives the router the outside strip (the SVG overflows), and the wire now passes above the tile.
+
+### What I learned
+- "No path" is a legitimate answer in an edge-to-edge layout; the field has to include the outside, or the fallback silently reintroduces the crossing.
+
+### What warrants a second pair of eyes
+- Cost per frame: one Dijkstra per wire over ~20k cells on every tick (resize, ResizeObserver, snapshot). Fine for a handful of wires; a workbench with dozens should memoise on the tile rects.
+- The outside strip draws wires up to 18px beyond the surface; a product whose surface sits flush against page chrome will see wires over that chrome.
+
+### Code review instructions
+- `git show 58b3b51 -- packages/pbui-workbench/src/components/WireLayer/route.ts`; `pnpm vitest run src/components/WireLayer` in pbui-workbench; `Workbench/WiringLab` on :6008.
+
+## Step 9: Phase 9, the rail scrolls and the jacks stay
+
+A tile with more ports than height now scrolls its rail columns while the jacks stay on the frame and the wires follow the scrolled cards. Getting the wire to follow took three attempts, all about ordering between the rail's commit and the wire layer's measurement.
+
+Screenshots: `various/screenshots/p9/001-workbench-wiringlab--crowded.png` (fourteen ports, 560px tall), `p9/002-workbench-wiringlab--crowded-scrolled.png` (after scrolling the input column: the top jacks clipped away, the wire into `theta` re-routed to its new place).
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 7)
+
+**Assistant interpretation:** The rail-overflow follow-up from the report.
+
+**Inferred user intent:** Link mode must hold up for real tiles, not only demo-sized ones.
+
+**Commit (code):** 7d9b9a9 — "PBUI-WIRING-1 P9: the rail scrolls, the jacks stay on the frame"
+
+### What I did
+- `PortRail`: jacks rendered in a `.jacks` layer (`inset: 0; pointer-events: none; clip-path: inset(0 -20px)`), placed at each card's centre from `getBoundingClientRect` in a layout effect that re-runs on column scroll, ResizeObserver and window resize; `data-port-id` on each jack; columns `overflow-y: auto`; `pbui:jacks-placed` dispatched after the jacks commit.
+- `WireLayer`: `anchorOf` finds the jack in the rail by port id and side (with an `escapeAttribute` guard, since jsdom has no `CSS.escape`); listens for scroll in the capture phase (next-frame bump) and for `pbui:jacks-placed`; wires sorted longest-first so short ones are on top; hit stroke 10px.
+- `WiringLab`: `Crowded` story with a fourteen-port app; the cross-row follow lands on its `theta`.
+
+### What worked
+- Workbench 24 test files green; ecommerce e2e 9/9; the probe shows the wire's end at the jack's centre after scrolling (488.56 = 482.56 + 6).
+
+### What didn't work
+- `CSS.escape` is undefined in jsdom: three connect tests failed with "Cannot read properties of undefined (reading 'escape')". Guarded.
+- The e2e "Unlink · keep the last value" right-clicked the *inspector* wire instead of the detail wire: with orthogonal routes both share the stub out of the same jack and the later, longer wire's 14px hit stroke covered the short wire's bounding-box centre (playwright's click point). Sorting wires longest-first (so short ones are hit on top) and a 10px hit stroke fixed the scenario and the real ambiguity behind it.
+- The wire lagged the scrolled jack by one step twice: first because the wire layer measured during the same React batch as the jack move (fixed by measuring on the next frame), then because a passive scroll listener's setState is not flushed before the next frame either. The rail now dispatches `pbui:jacks-placed` from a layout effect keyed on its jacks, i.e. after its own commit, and the wire layer measures on that.
+
+### What I learned
+- Two components measuring the same DOM in one event need an explicit "I have committed" signal; frames and microtasks are not a contract.
+
+### What warrants a second pair of eyes
+- The custom DOM event is a private protocol between PortRail and WireLayer; it is namespaced (`pbui:`) and documented in both places.
+
+### Code review instructions
+- `git show 7d9b9a9`; `Workbench/WiringLab › Crowded` on :6008 in a short window; scroll the crowded tile's left column.
+
+
+## Step 10: Intern review with browser resizing, scrolling, and user assessment
+
+The user requested a detailed onboarding review of the completed wiring work and challenged its visual quality. I inspected the design, diary, phase report, vault project report, current source, and live Storybook pages, then wrote a new technical review rather than changing product code. The review distinguishes successful data propagation from incorrect visual geometry and proposes a file-level repair sequence.
+
+Playwright exposed settled diagonal routes, stale endpoints during a held divider drag, offscreen endpoints for clipped ports, a detached derived label, and misleading lab coverage. The user then called out horizontal scrollbars; a controlled DOM experiment isolated their cause to the output jacks protruding 7px into the auto-scrolling tile body. The final review gives this user-visible defect equal attention to the routing algorithm.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+> Look at the PBUI-WIRING ticket we just finished working on, and Create  a detailed analysis / design / implementation review that is for a new intern, explaining all the parts of the system needed to understand what it is, with prose paragraphs and bullet point sand pseudocode and diagrams and api references and file references. It should be very clear and technical. Store in the ticket and the nupload to remarkable.
+>
+> It's not really all that good. Use playwright to take screenshots and interact with it, also resize the window to see how resizing affects the wires. Store the screenshots next to the review and link them in there. You can also read the design doc + diary + project report in ~/code/wesen/go-go-golems/go-go-parc/Projects/2026/09/04/...
+
+**Additional user prompt (verbatim):** "also weird to have scrollbars horizontally when things seem to fit, btw. put yourself in the shoes of a user when assessing this, bth functionally and visually"
+
+**Assistant interpretation:** Produce an evidence-backed intern guide and implementation/design review, including real browser interactions, responsive geometry, user-visible quality, ticket storage, and reMarkable delivery.
+
+**Inferred user intent:** Understand the system well enough to improve it, and identify why the delivered wiring experience remains unsatisfactory.
+
+### What I did
+
+- Added `design-doc/03-intern-architecture-and-implementation-review-with-interactive-resize-evidence.md`, about 9,400 words, with 28 source/API references, nine findings, decision records, pseudocode, and five proposed implementation phases.
+- Captured 22 screenshots through Playwright at 1440×1000, 1280×800, 1024×768, 768×900, 390×844, and crowded/product variants; stored them beside the review in `design-doc/review-assets/`.
+- Interacted with divider dragging, tick emission, Follow/Hold preview and release, incompatible targets, Escape, wire menus, jack dragging, and native wheel scrolling.
+- Stored raw JSON geometry, console evidence, three Graphviz diagrams and their sources, and numbered probe/replay scripts in the ticket.
+- Invoked the current source `routeAround` on captured browser rectangles; reproduced the same size-dependent diagonal defects. A minimal built-core replay confirmed `empty` and `bound` seed refusals.
+- Ran `pnpm exec vitest run src/components/WireLayer/route.test.ts src/links/connect.test.tsx src/links/identity.test.tsx`: 3 files and 11 tests passed.
+- Reused existing servers on :6008 and :6012. No product source or server lifecycle was changed.
+
+### Why
+
+A fixed screenshot and a passing semantic test do not prove an interactive diagram remains meaningful while the user resizes or scrolls. The review needed a reproducible link between what the person sees and what the source does.
+
+### What worked
+
+- Measured endpoint error during paused pointer-down: approximately 130px drift, returning to zero on release.
+- Browser/source agreement on the 768px diagonal crossing Transform.
+- Controlled scrollbar test: hiding the inert app did nothing, hiding jacks removed exactly 7px of horizontal overflow.
+- Real emission before Shift-drop created a held relationship successfully, separating kernel capability from a broken story setup.
+- Existing semantic tests passed, making their geometry coverage limits explicit rather than implying unrelated regressions.
+
+### What didn't work
+
+- Initial `tmux ls` could not access the sandbox socket: `error connecting to /tmp/tmux-1000/default (Operation not permitted)`. `ss -ltnp` reported `Cannot open netlink socket: Operation not permitted`. Existing servers were reachable through Playwright, so no escalation or new server was needed.
+- A Playwright probe tried to read `process.cwd()` and returned `ReferenceError: process is not defined`; the browser-tool probe was revised to use browser data and explicit workspace paths.
+- The lab repeatedly logged `pbui-workbench: refused port.pin — Sink B · anything shows nothing to hold (empty)` and `pbui-workbench: refused identity.add — Sink A · value is following a source; unlink it first (bound)`.
+- Several exploratory source-path guesses did not exist; file discovery located `public/chrome.css` and `src/ShopShell/ShopShell.tsx` before analysis continued. No software fix was attempted for those lookup errors.
+
+### What I learned
+
+The original report overstates the lab's held/identity coverage. The current identity command is refused before any shared cell exists. Endpoint alignment alone also misses severe routing defects: the 768px crossing had zero endpoint error.
+
+### What was tricky to build
+
+The important distinction was geometry validity versus geometry freshness. The diagonal persists after layout settles and reproduces in the pure source router; the divider bug instead retains an old valid path until a document commit. Scrollbar diagnosis required separating decorative jack overflow from invisible app content using temporary, removed style interventions.
+
+### What warrants a second pair of eyes
+
+- Proposed frame-level overlay and coherent geometry owner should preserve mounted application state and effect-driven emissions.
+- Route endpoint adapters must validate the final exact-coordinate polyline, not only the grid path.
+- The native browser replay script passed syntax validation but was not independently run end to end; actual evidence comes from the Playwright MCP actions and saved measurements.
+
+### What should be done in the future
+
+Implement the review's phases: truthful fixtures; final-route geometry; live geometry and scroll ownership; user and keyboard workflow; measured route scaling. These are recommendations, not changes made in this review.
+
+### Code review instructions
+
+Start with the new review's sections 6–7 and screenshots 04, 07, 14, 16, and 20. Run `node scripts/02-replay-route-and-seed.mjs` from this ticket to reproduce the source findings. Inspect `route.ts` reconstruction, `PortRail` jack comparison, `SplitPane` live ratio, and `public/chrome.css` overflow ownership. Use the 28-entry source map for the complete system context.
+
+### Technical details
+
+Reviewed source commit: `142b458a410ad8302cdf4afbc8c240d47b161c57`. Probe coordinates are surface-relative CSS pixels. Intersection diagnostics sample every 2px against tile interiors inset by 2px; they are not an exact collision proof. Temporary scrollbar styles were removed before the final capture. Delivery and documentation validation results are recorded below after completion.
+
+
+### Validation and delivery
+
+- `docmgr doctor --ticket PBUI-WIRING-1 --stale-after 30`: all checks passed.
+- All local Markdown links and JSON records checked; 22 browser PNGs plus three diagram PNGs are present.
+- Generated and visually inspected the PDF title, finding/table pages, and source-reference pages. Export preparation removes the filename-slug heading and formats long API references as a readable list. The canonical Markdown retains its reference table.
+- Final PDF: 29 pages, stored beside the review as `design-doc/review-assets/PBUI-WIRING-1 Intern Review and Browser Evidence.pdf`.
+- Dry-run completed for the prepared bundle. Upload returned: `OK: uploaded PBUI-WIRING-1 Intern Review and Browser Evidence.pdf -> /ai/2026/09/04/PBUI-WIRING-1`.
+- Upload used the user's existing authorization; no remote overwrite was requested. Product repair recommendations remain unimplemented.
+
+## Step 11: Add a principled foundations chapter and primary-source archive
+
+The user requested an additional section approaching wiring through constraints, algorithms, and computer-science foundations, with linked and downloaded resources. Added section 14 to the existing intern review rather than creating a disconnected report. Its approximately 5,400 words connect theory to the observed diagonal, divider, overflow, clipping, and interaction failures.
+
+### What changed and why
+
+- Separated semantic relationships, mounted anchors, and routing search graphs; distinguished feasibility, soundness, completeness, optimality, and temporal freshness.
+- Derived split-width and corridor-capacity constraints, axis-aligned collision predicates, heading-aware search costs, and a proposed multi-route quality objective.
+- Added proposed pseudocode for endpoint reconstruction, geometry invalidation, generation-checked publication, and input-independent connection states.
+- Connected incremental computation, safety/liveness, browser observer contracts, and pointer-target guidance to concrete PBUI source references and independent test properties.
+- Archived 13 primary sources: six PDFs with text extractions and seven HTML snapshots. Added original URLs, retrieval timestamps, byte counts, and SHA-256 hashes in the manifest, plus an annotated reading sequence in section 14.12.
+- Added two Graphviz diagrams and a reproducible rendering script. Recommendations remain proposals; no product code changed.
+
+### Investigation and tooling
+
+Primary sources came from author pages, MIT OpenCourseWare, Microsoft Research, W3C, React, and Adaptagrams. Browser retrieval of the 2009 orthogonal-routing PDF timed out; direct retrieval through the collection script succeeded and its PDF text was inspected. Source collection ran with the user's authorization to download resources.
+
+The first diagram render failed with `syntax error in line 15 near 'graph'` because a node used a reserved DOT identifier. Renaming that node to `routing` resolved the error on the first correction. This was report tooling, not a change to the product router.
+
+### Validation and review guidance
+
+- `docmgr doctor --ticket PBUI-WIRING-1 --stale-after 30`: all checks passed.
+- Checked 103 local report links and verified all 13 archived files against their recorded lengths and SHA-256 digests; saved `review-assets/foundations-validation.json`.
+- The expanded PDF has 42 pages. Visually inspected both new diagram pages, the equations and algorithm discussion, and the final reference page. External sources are linked; downloaded source files are retained in the ticket rather than concatenating entire books into the review PDF.
+- The upload dry-run selected the new name `PBUI-WIRING-1 Review with Foundations` under `/ai/2026/09/04/PBUI-WIRING-1`. The earlier uploaded review remains a separate document.
+
+Start review with sections 14.2, 14.5–14.9, and the reading guide. Check that each mathematical guarantee names its model and assumptions, and that browser observations are not promoted into general proofs. No product tests were rerun for this documentation-only addition.
+
+### Delivery completed
+
+Upload returned `OK: uploaded PBUI-WIRING-1 Review with Foundations.pdf -> /ai/2026/09/04/PBUI-WIRING-1`. The final 42-page PDF is stored beside the review. The ticket index links both editions and the source archive. Upload used the user's existing authorization and a new document name.
+
+## Step 12: Design the wiring replacement as a coherent scene subsystem
+
+Created a separate intern-oriented refactoring guide in the same ticket, using the user's explicit freedom to change APIs and remove obsolete implementations. The guide connects the existing semantic core to proposed geometry ownership, pure routing/scene stages, atomic connection interaction, and a focused workflow for narrow layouts.
+
+Source inspection refreshed the design against `e9fcbeb`. A targeted probe confirmed an existing capability worth preserving: the core can preview and execute Follow-plus-Pin as one atomic batch. The documentation does not implement the product refactoring or claim that its future browser acceptance criteria already pass.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+```text
+› Create a new design document for the refactoring (in the same ticket, I think that's fine). Create
+  a detailed analysis / design / implementation guide that is for a new intern, explaining all the
+  parts of the system needed to understand what it is, with prose paragraphs and bullet point sand
+  pseudocode and diagrams and api references and file references. It should be very clear and
+  technical. Store in the ticket and the nupload to remarkable.
+```
+
+**Assistant interpretation:** Write a standalone, concrete refactoring design and implementation guide, store it in PBUI-WIRING-1, and upload an illustrated PDF.
+
+**Inferred user intent:** Give a new engineer enough context and precise contracts to replace the current wiring implementation cleanly, with direct caller updates and no compatibility machinery.
+
+### What I did
+
+- Created design document 04 through `docmgr doc add` and related seven implementation files using `docmgr doc relate`.
+- Inspected Surface, Tile, TileFrame, PortRail, WireLayer, SplitPane, the carry registry, shell APIs, command geometry, core planning, link projection, relation selection, and ecommerce callbacks.
+- Wrote a guide of approximately 10,400 words with 15 main sections, four new diagrams, two historical browser exhibits, six decision records, 30 current API/source references, and eight implementation phases with exit criteria.
+- Added `scripts/07-probe-atomic-hold.mjs`, `08-render-refactor-diagrams.py`, and `09-prepare-refactor-upload.py`; saved probe output and document validation beside the new guide.
+- Checked React layout-effect timing and Pointer Events capture behavior against official references, and reused the ticket's archived foundational papers and specifications.
+
+### Why
+
+The permission to replace fresh code changes the appropriate design: remove distributed measurement and implicit event dependencies instead of adding another layer of notifications. A pure scene contract also makes geometry, selection, and label correctness independently testable.
+
+### What worked
+
+- The empty-source Hold batch refused at index 1 with code `empty`, left no binding, preserved the serialized document, and produced zero core publications.
+- The emitted-value batch captured `42` as a hold and produced one core publication. Preview produced no observable document change in either case.
+- Repository-wide symbol search identified the concrete carry/registry exports and product callback callers to remove or update.
+- Four diagrams rendered successfully on the first run. The standalone PDF rendered to 29 pages, and all 50 local references resolved.
+
+### What didn't work
+
+- Two initial guessed paths were absent: `packages/workbench-core/src/links/commands.ts` and `packages/pbui-workbench/src/links/refs.ts`. File discovery found `commands.ts`, `planner/links.ts`, and `links/linkRef.ts` before conclusions were written.
+- Shell glob guesses produced `zsh:2: no matches found: src/components/TileFrame*` and `zsh:4: no matches found: vitest*`. Subsequent discovery used `rg --files`; TileFrame lives under `src/chrome/`.
+- No product software fix was attempted during this documentation task.
+
+### What I learned
+
+The semantic gateway already provides the atomicity that the current Hold gesture bypasses. The shell also already has a separate command-geometry contract; the proposed wiring store must not replace fresh placement measurements with an unproven cache.
+
+### What was tricky to build
+
+The design must distinguish logical port IDs, rendered anchor instances, connection declaration IDs, and derived transformation IDs. It also must preserve app ancestry across wiring modes, model pointer capture correctly, and validate exact endpoint attachment after search. These requirements are spelled out as contracts rather than left to component-local conventions.
+
+### What warrants a second pair of eyes
+
+- Visibility-graph construction and lane arrangement need the benchmark and validation checkpoint before the algorithm choice becomes final.
+- Responsive minimum sizes, hidden application behavior, identity occurrence pairing, and label placement need real implementation/browser evidence.
+- The atomic probe used local built core artifacts; the source planner was inspected separately. Repeat the probe with fresh dependency builds during implementation.
+
+### What should be done in the future
+
+Implement phases 0–7 in the new guide, including the final deletion sweep and fresh browser evidence. Those phases are intentionally unimplemented in this documentation delivery.
+
+### Code review instructions
+
+Read sections 4–9 for contracts, section 11 for decisions, and section 12 for the implementation sequence. Run the atomic probe and export-preparation scripts from any directory; they resolve their paths relative to the ticket. Inspect the generated PDF's diagrams, types, pseudocode, acceptance criteria, and source map before distribution.
+
+### Technical details
+
+The guide is `design-doc/04-wiring-scene-refactoring-architecture-and-intern-implementation-guide.md`; its new images, JSON outputs, and PDF are in `design-doc/refactor-assets/`. The previous review and its screenshots remain intact. Upload uses a new document name under `/ai/2026/09/04/PBUI-WIRING-1`; no overwrite is requested.
+
+### Validation and delivery completed
+
+- `docmgr doctor --ticket PBUI-WIRING-1 --stale-after 30`: all checks passed.
+- Validated 50 local links and inspected the 29-page PDF's table of contents, diagrams, type declarations, pseudocode, implementation phases, and API reference pages.
+- Confirmed all 22 historical browser screenshots remain in `design-doc/review-assets/`; the new guide embeds two of them and stores its four new diagrams in `design-doc/refactor-assets/`.
+- Dry-run completed before upload. Actual upload returned `OK: uploaded PBUI-WIRING-1 Refactoring Design and Implementation Guide.pdf -> /ai/2026/09/04/PBUI-WIRING-1`.
+- Product source remains unchanged. The ticket index now links the standalone design, local PDF, and atomic probe evidence.
+
+## Step 13: Refactor P0 — Truthful fixtures and regression inputs
+
+Replaced the lab's unchecked seeding sequence with one checked batch. It now creates three follows, one held source, one derived relationship, and a genuine identity between dedicated inout ports. The crowded app now emits only a port its manifest declares.
+
+Captured the 768px geometry from the previous review as a source-linked regression input, ready for the new router's independent validator.
+
+### Prompt Context
+
+**User prompt (verbatim):** Implement, commit at appropriate intervals and keep a detailed diary as you work (using the diary format from the skill). Print out a brutalist work slip with the plan / different phases for the ticket. then before stsarting a phase, plrint a split about the phase, and print one when the phase is done.
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 1cfa1e1
+
+### What I did
+
+- Extracted createWiringLab and added actual emitted initial values before Pin.
+- Added shared counters and a double relation, leaving existing number inputs available for Follow.
+- Added two fixture tests that verify evaluated derived, held, and shared values after emissions.
+- Saved the captured 768px geometry with its original review path.
+
+### Why
+
+The original lab advertised states that never existed because Pin and identity creation were refused. A visual refactoring requires fixtures whose semantic state is independently verified.
+
+### What worked
+
+- pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/fixtures.test.ts: 2 tests passed.
+- pnpm --filter @hyperslop-systems/pbui-workbench typecheck: passed.
+- Overall plan, P0 start, and P0 completion printing returned printed: true.
+
+### What didn't work
+
+No implementation or validation failures in this phase.
+
+### What I learned
+
+Dedicated inout shared ports allow identity coverage without conflicting with already-followed number inputs.
+
+### What was tricky to build
+
+Hold must capture a real emitted value before application effects run. The fixture emits before the single seed transaction; tests then mutate the sources and prove that held values remain captured.
+
+### What warrants a second pair of eyes
+
+Check the semantic relation counts and that CrowdedApp uses theta/one rather than the old undeclared gamma output.
+
+### What should be done in the future
+
+P1 builds isolated surface geometry and exact registration lifetimes; P3 consumes the captured regression input.
+
+### Code review instructions
+
+Read createWiringLab in WiringLab.stories.tsx, then src/wiring/fixtures.test.ts. Run the two commands recorded under What worked.
+
+### Technical details
+
+No compatibility code was introduced. Code commit contains fixtures, story corrections, and regression geometry. Slips are archived under various/slips; the thermal service reported successful physical printing.
+
+## Step 14: Refactor P1 — Surface-owned geometry and exact registration lifetimes
+
+Built the geometry owner as an ordinary subscribable store with no global DOM registry. Frames and port anchors are keyed independently, and each registration has an exact cleanup token so an older ref cannot erase a replacement or another placement.
+
+Surface owns the store lifetime; SplitPane invalidates after live ratio commits. Geometry measurements derive anchor points directly from card centers and frame edges, avoiding a dependency on already-rendered jacks. Port rendering is connected in P2 and scene rendering in P4.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** c6fd94d
+
+### What I did
+
+- Added model.ts, geometryStore.ts, geometryContext.tsx, and lifecycle tests.
+- Integrated Surface root setup/teardown, Tile frame registration, and SplitPane ratio invalidation.
+- Implemented frame/card measurement, ancestor clipping, root-border origin, pending state, stable snapshots, and scroll/resize subscriptions.
+
+### Why
+
+The old global registry and jack-commit event could not reliably describe current per-surface geometry during interaction.
+
+### What worked
+
+- pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/geometryStore.test.ts src/wiring/fixtures.test.ts: 6 tests passed.
+- pnpm --filter @hyperslop-systems/pbui-workbench typecheck: passed.
+
+### What didn't work
+
+No implementation or test failures in this phase.
+
+### What I learned
+
+Exact disposer ownership prevents stale ref cleanup from deleting a current anchor; root containment also prevents accidental foreign-surface measurements.
+
+### What was tricky to build
+
+Measurements must occur after a React layout commit. SplitPane invalidates from a layout effect, and one scheduled read batches the current DOM. Root removal cancels scheduled work and advances the lifetime epoch.
+
+### What warrants a second pair of eyes
+
+Check client-border coordinate conversion, ancestor clipping, and teardown of ResizeObserver and capture-phase scroll listeners. Browser acceptance in P7 will validate real layout timing.
+
+### What should be done in the future
+
+P2 registers port controls and renders frame jacks from this store. P4 replaces the old wire measurement path.
+
+### Code review instructions
+
+Read geometryStore.ts and its four tests, then Surface/Tile/SplitPane integration. Inspect tests for duplicate placements and two roots with identical logical port IDs.
+
+### Technical details
+
+The SVG-versus-Canvas renderer remains independent of the geometry model. Phase code commit also carries the preceding P0 diary and archived slips. P1 completion/start slips are recorded separately.
+
+## Step 15: Refactor P2 — Frame overlays and bounded scrolling
+
+Refactored TileFrame into a clipped content region with its own scrollport and a sibling frame overlay. Port cards register with the surface geometry owner; FrameJacks consumes those measurements instead of measuring its own rendered squares.
+
+The application subtree remains mounted and inert under wiring, and the scrim is bounded to the surface. An explicit 20px inset reserves real routing space around the layout.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** ef607d4
+
+### What I did
+
+- Added TileFrame overlay slot and explicit tile-scrollport styles; changed workbench Tile to populate frame decoration.
+- Removed PortRail jack state, ResizeObserver loop, and pbui:jacks-placed emission.
+- Measured frame padding origins so frame overlay paint and surface anchors share coordinates despite borders.
+- Added a mount-continuity test covering repeated wiring toggles and overlay ancestry.
+
+### Why
+
+Decorative jacks must not create scrollable content or require another commit/measurement cycle before wires can locate them.
+
+### What worked
+
+- pnpm build: root package built successfully, refreshing the TileFrame declaration for consumers.
+- Workbench typecheck passed; wiring and Surface suites passed 20 tests.
+- Mount continuity passed 1 test; root chrome suite passed 26 tests.
+
+### What didn't work
+
+No implementation or test failures in this phase.
+
+### What I learned
+
+The border/padding origin of an absolute overlay differs from the measured outer frame. Recording the inner origin makes jack paint and routing endpoints agree without CSS border-width guesses.
+
+### What was tricky to build
+
+Changing TileFrame structure requires rebuilding the root package because the workbench consumes its dist declarations. Application ancestry is stable across mode changes despite the new structural scrollport.
+
+### What warrants a second pair of eyes
+
+Check frame padding offsets and the root inset in actual browser geometry. The old WireLayer remains until P4 and does not yet consume the replacement snapshot.
+
+### What should be done in the future
+
+P3 implements independently validated routing. P4 replaces the old wire renderer; P7 verifies horizontal scroll extents in a browser.
+
+### Code review instructions
+
+Review TileFrame.tsx, public/chrome.css, FrameJacks.tsx, RegisteredCard in PortRail, and mounts.test.tsx. The application input element is asserted identical after three mode cycles.
+
+### Technical details
+
+The code commit includes P1 diary/slips. P2 start and completion slips are archived with its phase record. These structural changes introduce no migration or legacy adapter.
+
+## Step 15a: Inspect connections by hover and keyboard focus
+
+The user added connection inspection while routing phase P3 was in progress. A surface-owned presentation controller now highlights direct incident wires and their endpoint cards and jacks. Hovering a tile background selects all its ports; hovering a particular port takes precedence and selects only that port's connections. Keyboard focus provides the same inspection behavior.
+
+Highlighting changes attributes and paint only, avoiding geometry invalidation and routing work during pointer movement. It preserves held, derived, and identity wire patterns, and clears when the pointer leaves or the mode closes.
+
+### Prompt Context
+
+**User prompt (verbatim):** "highlight connected ports (and wire) on hover of a card / port / wire"
+
+**Assistant interpretation:** Make connections traceable from either endpoint or the wire itself.
+
+**Inferred user intent:** Visually understand which cards communicate without having to manually follow every crossing.
+
+**Commit (code):** 1703f45 — "feat(wiring): highlight connected ports and wires on hover and focus"
+
+### What I did
+
+- Added `wiring/connectedHighlight.ts` and three behavior tests.
+- Applied accent outlines to connected port cards/jacks and thicker accented wire strokes.
+- Used Playwright to hover a source card and a wire at 1440 × 1000.
+- Stored [source hover](../design-doc/review-assets/refactor-hover-source.png) and [wire hover](../design-doc/review-assets/refactor-hover-wire.png) alongside the review.
+
+### Why
+
+- Direct incident-edge highlighting makes fan-out and shared endpoints legible without implying transitive data flow.
+
+### What worked
+
+- Three tests passed for incident edges, surface isolation, tile aggregation, cleanup, and keyboard focus restoration.
+- Workbench TypeScript check passed.
+- Browser source hover highlighted three incident wires and their endpoints; wire hover highlighted one identity wire and both sides of its two inout endpoints.
+- Document scroll width equalled the 1440px viewport.
+
+### What didn't work
+
+- Initial browser navigation used `workbench-wiring-lab--lab`; Storybook reported "Couldn't find story matching 'workbench-wiring-lab--lab'." Reading the story title established the correct ID, `workbench-wiringlab--lab`.
+
+### What I learned
+
+- Inout identity endpoints have input and output cards; highlighting both accurately identifies the shared semantic port.
+
+### What was tricky to build
+
+- Nested port content and wire paths must resolve to their semantic ancestor, while a hovered port must take precedence over its enclosing tile. Delegated events use closest matching ancestors within the owning surface.
+- Pointer inspection temporarily overrides keyboard focus; leaving restores the focused connection.
+
+### What warrants a second pair of eyes
+
+- Check custom port wrappers and nested surfaces against the ownership rules.
+- The screenshots still show the old production router; P3/P4 replace that routing and its detached label placement.
+
+### What should be done in the future
+
+- Retain these semantic data attributes in the scene renderer and repeat hover verification after replacing it.
+
+### Code review instructions
+
+- Start at `attachConnectedHighlight`, then inspect Surface and WireLayer highlight CSS.
+- Run `pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/connectedHighlight.test.ts` and the package typecheck.
+
+### Technical details
+
+Given seed ports S, select edges whose source or destination belongs to S, then highlight both endpoints of those edges. For a wire seed, select its link ID only. This is one-hop adjacency, not graph reachability. The controller does not mutate link semantics or route coordinates.
+
+## Step 16: Refactor P3 — Validate orthogonal visibility routes
+
+The router now constructs continuous coordinate lines from endpoints and expanded obstacles. A heading-aware A* search accounts for length, turns and occupied collinear segments.
+
+Every accepted polyline is simplified and independently checked for exact endpoints, horizontal attachment normals, finite bounded points and obstacle clearance. Failure returns an explicit unresolved result instead of a diagonal fallback.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 00e027c
+
+### What I did
+
+- Added route.ts and independent validate.ts.
+- Added captured 768px regression, budget, blocked endpoint and reversed attachment tests.
+
+### Why
+
+Repair the captured diagonal failure by construction and validation.
+
+### What worked
+
+- All three routing tests passed in a 9ms combined test body.
+- All four captured wires yield valid orthogonal routes.
+
+### What didn't work
+
+No implementation test failed.
+
+### What I learned
+
+The coordinate arrangement for the captured six-tile scene is small enough to test synchronously; browser profiling remains necessary.
+
+### What was tricky to build
+
+Direction is part of search state because a vertex alone cannot represent turn costs or final attachment direction.
+
+### What warrants a second pair of eyes
+
+Check strict obstacle interiors, allowable boundary contact and bounded graph allocation.
+
+### What should be done in the future
+
+Project the router into the scene and profile live resize; compare alternate routing strategies if live budgets demand it.
+
+### Code review instructions
+
+Run pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring/routing/route.test.ts.
+
+### Technical details
+
+Default clearance 3.5px, bend cost 24px, maximum 60000 vertices and 160000 expanded states. Collinear occupied length costs 0.6 per pixel; retained routes require validation and a 24px quality tolerance.
+
+## Step 17: Refactor P4 — Project and render complete measured scenes
+
+The surface now projects logical relations into measured anchor occurrences, routes each occurrence, and renders the resulting SVG. The renderer no longer queries port cards or tile rectangles.
+
+Missing or clipped endpoints produce explicit markers and remain listed in the connection inventory. Derived labels are measured outside routing and only placed on a sufficiently long accepted horizontal segment clear of tile rectangles.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 3317272
+
+### What I did
+
+- Added scene.ts, WiringCanvas.tsx and ConnectionInspector.tsx.
+- Added occurrence retention and hidden endpoint regression tests.
+- Removed the old WireLayer from Surface production rendering.
+
+### Why
+
+Ensure one geometry snapshot determines paths and labels.
+
+### What worked
+
+- 15 wiring tests passed.
+- Browser showed all six fixture relations with valid paths.
+
+### What didn't work
+
+No phase-four test failed.
+
+### What I learned
+
+Source occurrence identity can be retained through layout changes independently of route shape.
+
+### What was tricky to build
+
+Duplicate identity endpoints need coverage without creating a Cartesian product of every mounted occurrence.
+
+### What warrants a second pair of eyes
+
+Inspect missing-endpoint markers and measured label rectangles. Labels currently reject frame collisions; more sophisticated label-to-label packing remains a possible extension.
+
+### What should be done in the future
+
+Add inspector actions and explicit ambiguous wire selection in P5.
+
+### Code review instructions
+
+Run pnpm --filter @hyperslop-systems/pbui-workbench test src/wiring.
+
+### Technical details
+
+buildScene is pure; accepted previous routes are passed to the router only for stable occurrence IDs. Pending measurement never paints stale definitive paths.
+
+## Step 18: Refactor P5 — Unify connection controls and atomic previews
+
+A provider now owns logical source choice, operation, relation, pointer capture, refusal recovery, cancellation and focus restoration. Port controls are real buttons; the inspector offers equivalent select controls and actions for every relationship.
+
+Hold sends Follow and Pin as one core batch. Rendering a Hold preview exposed a single-entry link snapshot cache: speculative documents evicted the published snapshot, causing React to see an endlessly changing external-store identity. A WeakMap now preserves snapshots by document and runtime revision, and preview refusals no longer invoke command-refusal observers.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 879b342
+
+### What I did
+
+- Added connectionCommands.ts and connectionController.tsx.
+- Changed ecommerce to renderPortDetails and renderRelationDetails slots, preserving its action presentations.
+- Added explicit operation controls and ambiguous wire candidate selection.
+- Replaced modifier/carry tests with explicit operation, atomic Hold and cancellation tests.
+- Implemented color-only highlights in ec64d1a as requested.
+
+### Why
+
+One semantic operation should behave identically across input methods, and previews must not disturb published state.
+
+### What worked
+
+- 23 focused tests passed after the cache correction.
+- Workbench build and ecommerce typecheck passed.
+- Playwright click added a seventh wire and drag added an eighth; status reported Connection updated.
+- Fresh browser navigation had zero console errors.
+
+### What didn't work
+
+Typecheck first reported Type current | empty | history is not assignable to type SplitPolicy; corrected to the declared copy | history | reset policy. An intermediate HMR render saw an absent provider while files were being edited. The atomic Hold test then reported Maximum update depth exceeded; the per-document snapshot cache fixed it on the first correction attempt.
+
+### What I learned
+
+Even a logically read-only preview can break React if its memoization changes the identity of the live external-store snapshot.
+
+### What was tricky to build
+
+Atomic previews visit speculative documents. Their cache entries must not replace the live document entry. Pointer capture starts only after the drag threshold so ordinary button clicks retain their native target.
+
+### What warrants a second pair of eyes
+
+Review WeakMap snapshot lifetimes, preview refusal observer semantics, and pointer capture cleanup.
+
+### What should be done in the future
+
+Finish automatic focused sizing and then remove all superseded carry APIs.
+
+### Code review instructions
+
+Run the workbench connect, identity and wiring tests; build workbench and typecheck ecommerce.
+
+### Technical details
+
+Additional user prompt (verbatim): "on the port hover feature: no need for highlight underline or borders. color is enough". Commit ec64d1a removes hover outlines and stroke-width changes. Browser computed outline-style was none; screenshot refactor-hover-color-only.png is saved beside the review. Existing keyboard focus indicators remain native.
+
+## Step 19: Refactor P6 — Provide readable focused wiring without remounts
+
+Spatial mode now reserves room for the inspector. A recursive minimum-size calculation includes declared split ratios, so an unusually narrow branch can make the entire layout infeasible. Automatic mode presents focused controls when necessary and requires 32 additional pixels before returning to spatial mode.
+
+The application tree remains mounted in one stable container; focused mode makes it inert, hidden and clipped. Source selection survives presentation changes, while an in-progress drag is cancelled without committing.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 2146413
+
+### What I did
+
+- Added layoutPolicy.ts with ratio-aware minima and hysteresis.
+- Added mode selection, focused inspector, reveal actions and stable tree container.
+- Extended the mount test to switch focused/spatial repeatedly.
+- Captured focused controls at 390px.
+
+### Why
+
+Connections should remain usable when readable port cards cannot fit into the current split tree.
+
+### What worked
+
+- 33 focused and Surface tests passed plus a dedicated layout policy test.
+- Browser transitions at 1440,768,390,1440 preserved all eight current wires semantically.
+- Page scroll width equalled viewport width at each tested size.
+
+### What didn't work
+
+Initial typecheck used Split.first/second; the generated protocol names are a/b. Corrected once and checks passed.
+
+### What I learned
+
+280px per two-column port tile provides a more readable initial policy than the proposed 220px prototype minimum.
+
+### What was tricky to build
+
+Keeping applications mounted requires a stable tree wrapper even when spatial wiring is active; a conditional replacement would lose local application state.
+
+### What warrants a second pair of eyes
+
+Review focus restoration and size thresholds with longer translated labels and unusual split ratios.
+
+### What should be done in the future
+
+Finish repository-wide cleanup and capture final browser evidence after style convention checks.
+
+### Code review instructions
+
+Run layoutPolicy.test.ts and mounts.test.tsx; resize WiringLab between 390 and 1440px.
+
+### Technical details
+
+Leaf minimum 280x180px; split gutter 24px; outer width allowance 40px and height allowance 156px; return hysteresis 32px. Forced spatial/focused modes remain available.
+
+## Step 20: Refactor P7 — Remove legacy paths and complete validation handoff
+
+The superseded global port registry, carry API, WireLayer component and raster fallback router have been deleted. New visual components follow the repository folder/story/CSS-module convention and use shared PBUI form controls. Historical source references now point at the archived implementation rather than missing local files.
+
+The final handoff documents actual APIs, routing constraints, snapshot-cache behavior, measured resize results, screenshots and remaining measurement boundaries. It complements the original design rather than rewriting the proposal as if every theoretical optimization had been implemented. The updated design and handoff were uploaded together to reMarkable.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 13)
+
+**Assistant interpretation:** Implement this phase of design 04, validate its behavior, commit the result, and print start/completion slips.
+
+**Inferred user intent:** Complete the refactoring with inspectable progress, detailed technical history, and a physical record of each phase.
+
+**Commit (code):** 5d30b1f
+
+### What I did
+
+- Removed src/chrome/usePortCarry.ts and old WireLayer/route production paths and exports.
+- Replaced raw controls with Button and SelectInput; used tiny sizing and token-based spacing and colors.
+- Added local stories and component folders; excluded test fixtures from the production raw-control scanner and classified provider/context infrastructure correctly.
+- Ran full suites, builds, focused checks, browser interactions and docmgr doctor.
+- Saved final screenshots, numeric endpoint/collision metrics and a reproducible capture script.
+- Uploaded PBUI-WIRING-1 Implemented Wiring and Validation.pdf to /ai/2026/09/04/PBUI-WIRING-1.
+
+### Why
+
+Finish a direct refactoring without legacy wrappers, and leave reviewable evidence for a new maintainer.
+
+### What worked
+
+- PBUI 859 tests, core 250, workbench UI 132 and ecommerce 35 passed: 1276 total.
+- All four affected packages built; the final focused run passed another 20 selected tests after the last small interaction/style edits.
+- Final spatial captures at 1920/1440/1024px showed six valid routes, no diagonals, no tile collisions, and 0.0078125px endpoint discrepancy.
+- 768px and 390px used focused controls; document width matched viewport width at every tested size.
+- Final measured six-wire scene projection samples: 1.3ms, 1.1ms, 1.3ms.
+- Crowded scroll changed five valid plus one unresolved relation into six valid routes without page overflow; divider drag retained orthogonality.
+- Browser keyboard Hold refused an empty source, accepted an emitted source, then supported cancellation and closing.
+- docmgr doctor passed; reMarkable reported OK: uploaded.
+
+### What didn't work
+
+The first full workbench suite reported component-folder, raw-control and literal-color violations; the convention correction passed on its first rerun. The first concurrent root suite hit Test timed out in 5000ms in the pre-existing help-machine fuzz test; an isolated full root rerun passed without timeout changes. Storybook retained stale imports after component moves (404 for wiring/ConnectionInspector.tsx and WiringCanvas.tsx); restarting port 6008 in tmux fixed the module graph. The first capture parser assumed a successful Result block and failed on an Error block; the guarded parser now records failures clearly. A browser Hold scenario initially selected Source B count, which has no emitted value, and timed out waiting for a held row; selecting Source A count correctly verified successful Hold after inspecting the refusal.
+
+### What I learned
+
+Structural repository checks and real-browser module loading need validation in addition to focused functional tests. Reusing PBUI controls also removes unnecessary size and border styling choices.
+
+### What was tricky to build
+
+Speculative geometry and runtime snapshots need independent stable identities; final browser captures distinguish unresolved endpoints from invalid definitive paths. Small controls follow the user's explicit density preference rather than a new ad hoc sizing rule.
+
+### What warrants a second pair of eyes
+
+Review the implementation handoff, routing validator, controller release hit test and WeakMap snapshot cache. The measured corpus is small and does not establish arbitrary dense-graph latency or complete multi-surface browser coverage.
+
+### What should be done in the future
+
+Profile substantially denser graphs or different fonts before changing budgets; no migration layers remain.
+
+### Code review instructions
+
+Start with design-doc/05-implemented-wiring-architecture-and-validation-handoff.md, then reference/01-diary.md. Reproduce screenshots with scripts/11-final-browser-capture.js. Package test/build scripts and docmgr doctor verify the implementation and ticket.
+
+### Technical details
+
+Additional user prompt (verbatim): "can we use the small buttons and follow the style guide?". Applied the PBUI app playbook section 6a, Button variant=framed size=tiny, SelectInput size=tiny, local CSS modules and spacing/color tokens. Removed the custom 28px button minimum. Color-only hover was verified with computed outline-style=none and text-decoration-line=none. Printer layouts for plan and phase start/completion slips are archived under various/slips.
+
+Delivery approval note: automatic review initially rejected the combined commit/push command because it could not establish trust in the wesen remote. No command in that rejected cell executed. Read-only checks verified that the configured upstream is wesen/task/consolidate-pbui-kernel at the earlier pushed design commit 1879653, the remote is git@github.com:wesen/pbui.git, and the authenticated GitHub user wesen owns that repository with admin and push permissions. The retry uses the same explicitly requested push action after establishing this evidence.

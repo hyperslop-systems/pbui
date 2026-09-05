@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useSelector } from "react-redux";
+import { useDatalabWorkbench } from "../../../appkit/DatalabWorkbenchContext";
 import type { Goal } from "../../../appkit/lessons";
 import type { RootState } from "../../../store";
 import { Button, Callout, Text } from "@hyperslop-systems/pbui";
@@ -37,6 +38,8 @@ export function BriefChecklist({
   onReset?: () => void;
 }) {
   const state = useSelector((s: RootState) => s);
+  const workbench = useDatalabWorkbench();
+  const coreState = workbench.shell.useCoreState((s) => s);
   // `| undefined` for the same reason as LessonRail's: a lookup can miss.
   const [done, setDone] = useState<Record<string, true | undefined>>({});
   const [shown, setShown] = useState(0);
@@ -48,7 +51,7 @@ export function BriefChecklist({
         if (next[goal.id]) continue;
         let ok = false;
         try {
-          ok = goal.done(state);
+          ok = goal.done(state, coreState);
         } catch {
           ok = false;
         }
@@ -56,7 +59,7 @@ export function BriefChecklist({
       }
       return next;
     });
-  }, [state, goals]);
+  }, [state, coreState, goals]);
 
   const met = goals.filter((goal) => done[goal.id]).length;
   const wedge = wedgeOf(state);

@@ -1,0 +1,62 @@
+{
+  "name": "@hyperslop-systems/workbench-core",
+  "version": "0.2.0",
+  "description": "The headless PBUI workbench engine: app manifests, the structural index, essential validation, pure command planning, and the transactional core that executes commands over a workbench-protocol document. No React, no DOM.",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./rebalance": {
+      "types": "./dist/rebalance/index.d.ts",
+      "import": "./dist/rebalance.js"
+    },
+    "./persistence": {
+      "types": "./dist/persistence/index.d.ts",
+      "import": "./dist/persistence.js"
+    },
+    "./sync": {
+      "types": "./dist/sync/index.d.ts",
+      "import": "./dist/sync.js"
+    }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/hyperslop-systems/pbui.git",
+    "directory": "packages/workbench-core"
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "boundary": "node scripts/check-boundary.mjs"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.11.0",
+    "@hyperslop-systems/pbui": "workspace:^",
+    "@hyperslop-systems/workbench-protocol": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.15.1"
+}

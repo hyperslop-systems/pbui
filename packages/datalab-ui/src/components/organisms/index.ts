@@ -1,5 +1,4 @@
-export { Tile } from "./Tile";
-export { NodeView } from "./SplitView";
+export { TileTitle, TileAction, renderDatalabTitle, renderDatalabTileAction } from "./Tile";
 export { WorkspaceStrip } from "./WorkspaceStrip";
 // DATADROP-8: the layer above workspaces (DR-58), and the import dialogs.
 export { StageBar } from "./StageBar";

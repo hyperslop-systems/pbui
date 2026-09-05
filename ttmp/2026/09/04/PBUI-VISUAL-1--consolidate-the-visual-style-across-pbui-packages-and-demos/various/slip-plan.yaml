@@ -1,0 +1,91 @@
+almanach_studio_version: 1
+theme: brutalist
+paperWidth: 384
+bodyScale: 1
+feedLines: 8
+blocks:
+- id: head
+  type: row
+  data:
+    cols:
+    - w: 1fr
+      text: PBUI-VISUAL-1
+      preset: micro
+    - w: 1fr
+      text: PLAN
+      preset: micro
+      align: right
+- id: r1
+  type: rule
+  data:
+    weight: heavy
+- id: gap1
+  type: space
+  data:
+    size: s
+- id: title
+  type: text
+  data:
+    text: Consolidate the pbui Visual Style
+    preset: h1
+    lines: 3
+- id: gap2
+  type: space
+  data:
+    size: s
+- id: summary
+  type: text
+  data:
+    text: Datalab chrome, dark masthead, one chip, never rounded. Hard cutover, screenshots verify each phase.
+    preset: body
+- id: gap3
+  type: space
+  data:
+    size: m
+- id: planhead
+  type: text
+  data:
+    text: PLAN
+    preset: h2
+- id: plan
+  type: checks
+  data:
+    items:
+    - 'P1 tokens: one definition site'
+    - 'P2 parts files: menu recipe, flat dialog'
+    - P3 tile chrome + AppShell + tones
+    - P4 chip family folds 15 into 1
+    - P5 notices + mode banner
+    - P6 labels, TileHeader, KeyValueList
+    - P7 native control skin
+    - P8 story hygiene + after corpus
+- id: r2
+  type: rule
+  data:
+    weight: hair
+- id: facts
+  type: kv
+  data:
+    items:
+    - - PHASES
+      - '8'
+    - - NEXT
+      - P1 tokens
+- id: r3
+  type: rule
+  data:
+    weight: hair
+- id: decide
+  type: row
+  data:
+    cols:
+    - w: 1fr
+      text: SCAN FOR REF
+      preset: caption
+    - w: 120
+      blocks:
+      - id: qr
+        type: qr
+        data:
+          value: https://github.com/hyperslop-systems/pbui
+          size: 110

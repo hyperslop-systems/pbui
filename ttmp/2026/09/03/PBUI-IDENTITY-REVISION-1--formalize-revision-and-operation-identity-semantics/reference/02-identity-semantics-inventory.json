@@ -1,0 +1,2057 @@
+{
+  "generatedBy": "ttmp/2026/09/03/PBUI-IDENTITY-REVISION-1--formalize-revision-and-operation-identity-semantics/scripts/01-inventory-identity-semantics.mjs",
+  "categories": {
+    "semanticRevision": {
+      "occurrences": 21,
+      "files": 15,
+      "evidence": [
+        {
+          "file": "packages/datalab-ui/src/pbui/actions.ts",
+          "line": 65,
+          "text": "/** The semantic revision (C4): names exactly the derived facts, so it moves iff they move. */"
+        },
+        {
+          "file": "packages/pbui-chat/demo/src/pbui/actions.ts",
+          "line": 71,
+          "text": "* query reads, the semantic revision over exactly those facts, and the"
+        },
+        {
+          "file": "packages/pbui-ecommerce/src/presentation/actions.ts",
+          "line": 42,
+          "text": "/** The semantic revision (C4): menus re-resolve when the host, the link document, or the runtime values change. */"
+        },
+        {
+          "file": "packages/workbench-core/src/links/snapshot.ts",
+          "line": 26,
+          "text": "export function buildLinkSnapshot(doc: WorkbenchDocument, apps: ManifestCatalog, runtime: LinkRuntimeState, revision: string | number, labels: LinkLabels = DEFAULT_LINK_LABELS): LinkSnapshot {"
+        },
+        {
+          "file": "src/presentation/Interaction.stories.tsx",
+          "line": 35,
+          "text": "revision: (facts) => (facts.locked ? \"locked\" : \"open\"),"
+        },
+        {
+          "file": "src/presentation/Pbui.stories.tsx",
+          "line": 40,
+          "text": "revision: (facts) => facts.currentUserId,"
+        },
+        {
+          "file": "src/presentation/actions/resolve.ts",
+          "line": 329,
+          "text": "snapshotRevision: snapshot.revision,"
+        },
+        {
+          "file": "src/presentation/actions/resolve.ts",
+          "line": 364,
+          "text": "snapshotRevision: snapshot.revision,"
+        },
+        {
+          "file": "src/presentation/actions/types.ts",
+          "line": 49,
+          "text": "revision: string | number;"
+        },
+        {
+          "file": "src/presentation/actions/types.ts",
+          "line": 220,
+          "text": "snapshotRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/actions/types.ts",
+          "line": 284,
+          "text": "snapshotRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/help/resolve.ts",
+          "line": 94,
+          "text": "snapshotRevision: snapshot.revision,"
+        },
+        {
+          "file": "src/presentation/help/types.ts",
+          "line": 112,
+          "text": "snapshotRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/interaction/explain.ts",
+          "line": 56,
+          "text": "readonly snapshotRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/interaction/explain.ts",
+          "line": 90,
+          "text": "snapshotRevision: resolution.snapshotRevision,"
+        },
+        {
+          "file": "src/presentation/links/resolveShow.ts",
+          "line": 84,
+          "text": "readonly snapshotRevision: string;"
+        },
+        {
+          "file": "src/presentation/links/resolveShow.ts",
+          "line": 213,
+          "text": "snapshotRevision: `${s.documentRevision}:${s.runtimeRevision}`,"
+        },
+        {
+          "file": "src/presentation/links/snapshot.ts",
+          "line": 55,
+          "text": "readonly documentRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/model/compile.ts",
+          "line": 159,
+          "text": "\"presentation context has no semantic revision — pass input.revision or declare \" +"
+        },
+        {
+          "file": "src/presentation/model/types.ts",
+          "line": 80,
+          "text": "* Product-defined semantic revision (C4): a token that changes exactly"
+        },
+        {
+          "file": "src/presentation/model/types.ts",
+          "line": 100,
+          "text": "readonly revision?: string | number;"
+        }
+      ]
+    },
+    "localRevision": {
+      "occurrences": 8,
+      "files": 4,
+      "evidence": [
+        {
+          "file": "packages/workbench-core/src/createWorkbenchCore.ts",
+          "line": 25,
+          "text": "* coarse local revision that bumps on every install. Immutable; a new object"
+        },
+        {
+          "file": "packages/workbench-core/src/createWorkbenchCore.ts",
+          "line": 32,
+          "text": "readonly revision: number;"
+        },
+        {
+          "file": "packages/workbench-core/src/createWorkbenchCore.ts",
+          "line": 39,
+          "text": "readonly revision: number;"
+        },
+        {
+          "file": "packages/workbench-core/src/createWorkbenchCore.ts",
+          "line": 252,
+          "text": "const revision = state.revision + 1;"
+        },
+        {
+          "file": "packages/workbench-core/src/links/collaborator.ts",
+          "line": 36,
+          "text": "/** The current facts for a document; cached per (document identity, runtime revision). */"
+        },
+        {
+          "file": "packages/workbench-core/src/links/runtime.ts",
+          "line": 17,
+          "text": "readonly revision: number;"
+        },
+        {
+          "file": "packages/workbench-core/src/publication.ts",
+          "line": 18,
+          "text": "/** The core revision that was being published (the link runtime's own revision for a runtime-only write). */"
+        },
+        {
+          "file": "packages/workbench-core/src/publication.ts",
+          "line": 19,
+          "text": "readonly revision: number;"
+        }
+      ]
+    },
+    "serverRevision": {
+      "occurrences": 72,
+      "files": 22,
+      "evidence": [
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 417,
+          "text": "revision: string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 426,
+          "text": "\"If-Match\": workbenchETag(id, revision),"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 438,
+          "text": "revision: string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 447,
+          "text": "\"If-Match\": workbenchETag(id, revision),"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 483,
+          "text": "export function workbenchETag(id: string, revision: string): string {"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/workbenchProtocol.ts",
+          "line": 21,
+          "text": "revision: string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/workbenchProtocol.ts",
+          "line": 29,
+          "text": "revision: string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/workbenchStream.ts",
+          "line": 7,
+          "text": "onRevision: (revision: bigint) => void;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 21,
+          "text": "expectedRevision: bigint;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 22,
+          "text": "currentRevision: bigint | null;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 30,
+          "text": "revision: bigint | null;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 132,
+          "text": "expectedRevision: revisionRef.current,"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 265,
+          "text": "expectedRevision: savedRevision,"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 315,
+          "text": "expectedRevision: revisionRef.current,"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 375,
+          "text": "expectedRevision?: unknown;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 385,
+          "text": "expectedRevision: decimalBigInt(candidate.data.expectedRevision) ?? expected,"
+        },
+        {
+          "file": "packages/datalab-ui/src/components/pages/Workbench/Workbench.tsx",
+          "line": 344,
+          "text": "<Text size=\"small\">Fetching the current server revision.</Text>"
+        },
+        {
+          "file": "packages/pbui-chat/src/conversations/registry.ts",
+          "line": 616,
+          "text": "const expectedRevision = record.titleRevision;"
+        },
+        {
+          "file": "packages/pbui-chat/src/conversations/registry.ts",
+          "line": 622,
+          "text": "body: JSON.stringify({ title: write.title, expectedRevision }),"
+        },
+        {
+          "file": "packages/pbui-chat/src/conversations/registry.ts",
+          "line": 626,
+          "text": "const revision = Number.isSafeInteger(reportedRevision) && reportedRevision >= 0 ? reportedRevision : expectedRevision;"
+        },
+        {
+          "file": "packages/pbui-chat/src/conversations/registry.ts",
+          "line": 644,
+          "text": "const acknowledgedRevision = revision > expectedRevision ? revision : expectedRevision + 1;"
+        },
+        {
+          "file": "packages/pbui-chat/src/generated/hyperslop/pbui/chat/v1/chat_pb.ts",
+          "line": 202,
+          "text": "beforeRevision: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/generated/hyperslop/pbui/chat/v1/chat_pb.ts",
+          "line": 207,
+          "text": "afterRevision: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 212,
+          "text": "let afterRevision: string | undefined;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 449,
+          "text": "return { outcome: \"performed\", value: program, afterRevision: String(program.version) };"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 534,
+          "text": "afterRevision: String(program.version),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 55,
+          "text": "const RevisionSchema = z.string().regex(/^[0-9a-f]{64}$/, \"expectedRevision must be the SHA-256 revision from workbench_describe\");"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 213,
+          "text": "expectedRevision: string,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 220,
+          "text": "if (expectedRevision !== beforeRevision) {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 453,
+          "text": "{ name: string; layout: LayoutSpec; expectedRevision: string; select?: boolean; confirmationId?: string },"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 465,
+          "text": "expectedRevision: RevisionSchema.describe(\"revision from the latest workbench_describe\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 483,
+          "text": "input.expectedRevision,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 505,
+          "text": "{ appId: string; expectedRevision: string; documents?: Record<string, string>; near?: string; title?: string; confirmationId?: string },"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 515,
+          "text": "expectedRevision: RevisionSchema.describe(\"revision from the latest workbench_describe\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 539,
+          "text": "input.expectedRevision,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 563,
+          "text": "const switchWorkspaceTool: FrontendTool<{ workspaceId: string; expectedRevision: string; confirmationId?: string }, Record<string, unknown>> = {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 569,
+          "text": "expectedRevision: RevisionSchema.describe(\"revision from the latest workbench_describe\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 581,
+          "text": "input.expectedRevision,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 596,
+          "text": "const performTool: FrontendTool<{ verbs: unknown[]; expectedRevision: string; confirmationId?: string }, Record<string, unknown>> = {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 605,
+          "text": "\"workspace.rename{workspaceId,name}, workspace.clone{workspaceId}. Ids and expectedRevision come from workbench_describe.\","
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 608,
+          "text": "expectedRevision: RevisionSchema.describe(\"revision from the latest workbench_describe\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 619,
+          "text": "if (input.expectedRevision !== beforeRevision) {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 682,
+          "text": "input: { verbs: input.verbs, expectedRevision: input.expectedRevision } as unknown as JsonValue,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 748,
+          "text": "const applyTool: FrontendTool<{ mutations: unknown[]; expectedRevision: string; confirmationId?: string }, Record<string, unknown>> = {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 757,
+          "text": "expectedRevision: RevisionSchema.describe(\"revision from the latest workbench_describe\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 789,
+          "text": "if (input.expectedRevision !== beforeRevision) {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 812,
+          "text": "input: { mutations: input.mutations, expectedRevision: input.expectedRevision } as unknown as JsonValue,"
+        },
+        {
+          "file": "packages/workbench-core/src/links/snapshot.ts",
+          "line": 26,
+          "text": "export function buildLinkSnapshot(doc: WorkbenchDocument, apps: ManifestCatalog, runtime: LinkRuntimeState, revision: string | number, labels: LinkLabels = DEFAULT_LINK_LABELS): LinkSnapshot {"
+        },
+        {
+          "file": "packages/workbench-core/src/sync/index.ts",
+          "line": 42,
+          "text": "export type Revision = string;"
+        },
+        {
+          "file": "packages/workbench-protocol/src/generated/hyperslop/pbui/workbench/v1/workbench_pb.ts",
+          "line": 255,
+          "text": "revision: bigint;"
+        },
+        {
+          "file": "packages/workbench-protocol/src/generated/hyperslop/pbui/workbench/v1/workbench_pb.ts",
+          "line": 292,
+          "text": "revision: bigint;"
+        },
+        {
+          "file": "packages/workbench-protocol/src/generated/hyperslop/pbui/workbench/v1/workbench_pb.ts",
+          "line": 921,
+          "text": "expectedRevision: bigint;"
+        },
+        {
+          "file": "packages/workbench-protocol/src/generated/hyperslop/pbui/workbench/v1/workbench_pb.ts",
+          "line": 926,
+          "text": "currentRevision: bigint;"
+        },
+        {
+          "file": "packages/workbench-protocol/src/generated/hyperslop/pbui/workbench/v1/workbench_pb.ts",
+          "line": 948,
+          "text": "revision: bigint;"
+        },
+        {
+          "file": "pkg/chatserver/handlers.go",
+          "line": 72,
+          "text": "ExpectedRevision uint64 `json:\"expectedRevision\"`"
+        },
+        {
+          "file": "pkg/chatserver/handlers.go",
+          "line": 178,
+          "text": "record, err := s.sessions.Retitle(r.Context(), string(sid), in.Title, in.ExpectedRevision)"
+        },
+        {
+          "file": "pkg/chatserver/scripted/scenarios.go",
+          "line": 496,
+          "text": "\"expectedRevision\": revision,"
+        },
+        {
+          "file": "pkg/chatserver/sessions.go",
+          "line": 55,
+          "text": "// Retitle atomically sets a title only at expectedRevision and returns the incremented row."
+        },
+        {
+          "file": "pkg/chatserver/sessions.go",
+          "line": 56,
+          "text": "Retitle(ctx context.Context, id string, title string, expectedRevision uint64) (SessionRecord, error)"
+        },
+        {
+          "file": "pkg/chatserver/sessions.go",
+          "line": 108,
+          "text": "func (m *memorySessionIndex) Retitle(_ context.Context, id string, title string, expectedRevision uint64) (SessionRecord, error) {"
+        },
+        {
+          "file": "pkg/chatserver/sessions.go",
+          "line": 118,
+          "text": "if record.TitleRevision != expectedRevision {"
+        },
+        {
+          "file": "pkg/chatserver/sessions.go",
+          "line": 234,
+          "text": "func (s *sqliteSessionIndex) Retitle(ctx context.Context, id string, title string, expectedRevision uint64) (SessionRecord, error) {"
+        },
+        {
+          "file": "pkg/chatserver/sessions.go",
+          "line": 240,
+          "text": "strings.TrimSpace(title), id, expectedRevision)"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 418,
+          "text": "BeforeRevision: strings.TrimSpace(body.BeforeRevision),"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 419,
+          "text": "AfterRevision:  strings.TrimSpace(body.AfterRevision),"
+        },
+        {
+          "file": "src/presentation/actions/types.ts",
+          "line": 49,
+          "text": "revision: string | number;"
+        },
+        {
+          "file": "src/presentation/actions/types.ts",
+          "line": 220,
+          "text": "snapshotRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/actions/types.ts",
+          "line": 284,
+          "text": "snapshotRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/help/types.ts",
+          "line": 112,
+          "text": "snapshotRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/interaction/explain.ts",
+          "line": 56,
+          "text": "readonly snapshotRevision: string | number;"
+        },
+        {
+          "file": "src/presentation/links/resolveShow.ts",
+          "line": 84,
+          "text": "readonly snapshotRevision: string;"
+        },
+        {
+          "file": "src/presentation/links/snapshot.ts",
+          "line": 55,
+          "text": "readonly documentRevision: string | number;"
+        }
+      ]
+    },
+    "contentDigest": {
+      "occurrences": 81,
+      "files": 17,
+      "evidence": [
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 43,
+          "text": "* metadata and the world is projected to one wire document, fingerprinted,"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 67,
+          "text": "const appliedFingerprint = useRef<string | null>(null);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 71,
+          "text": "const failedFingerprint = useRef<string | null>(null);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 72,
+          "text": "const pendingRequest = useRef<{ fingerprint: string; id: string } | null>(null);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 81,
+          "text": "appliedFingerprint.current = null;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 85,
+          "text": "failedFingerprint.current = null;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 177,
+          "text": "appliedFingerprint.current = fingerprint("
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 192,
+          "text": "failedFingerprint.current = null;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 217,
+          "text": "const currentFingerprint = useMemo(() => (current ? fingerprint(current) : null), [current]);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 219,
+          "text": "currentFingerprint !== null &&"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 220,
+          "text": "appliedFingerprint.current !== null &&"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 221,
+          "text": "currentFingerprint !== appliedFingerprint.current;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 227,
+          "text": "!currentFingerprint ||"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 232,
+          "text": "failedFingerprint.current === currentFingerprint"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 239,
+          "text": "pendingRequest.current?.fingerprint === currentFingerprint"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 241,
+          "text": ": { fingerprint: currentFingerprint, id: crypto.randomUUID() };"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 254,
+          "text": "appliedFingerprint.current = currentFingerprint;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 259,
+          "text": "failedFingerprint.current = null;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 276,
+          "text": "failedFingerprint.current = currentFingerprint;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 290,
+          "text": "currentFingerprint,"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 329,
+          "text": "failedFingerprint.current = null;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 338,
+          "text": "failedFingerprint.current = null;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 365,
+          "text": "function fingerprint(document: Parameters<typeof workbenchDocumentJSON>[0]): string {"
+        },
+        {
+          "file": "packages/datalab-ui/src/apps/UploadApp/upload.ts",
+          "line": 54,
+          "text": "const hash = await crypto.subtle.digest(\"SHA-256\", await file.arrayBuffer());"
+        },
+        {
+          "file": "packages/datalab-ui/src/apps/UploadApp/upload.ts",
+          "line": 134,
+          "text": "* keyed by content digest, retrying costs nothing for what already arrived."
+        },
+        {
+          "file": "packages/pbui-chat/src/adapters/traceAdapter.ts",
+          "line": 43,
+          "text": "inputDigest: typeof raw.inputDigest === \"string\" ? raw.inputDigest : \"\","
+        },
+        {
+          "file": "packages/pbui-chat/src/adapters/traceAdapter.ts",
+          "line": 106,
+          "text": "inputDigest: entry.effect.inputDigest,"
+        },
+        {
+          "file": "packages/pbui-chat/src/generated/hyperslop/pbui/chat/v1/chat_pb.ts",
+          "line": 182,
+          "text": "inputDigest: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 6,
+          "text": "digestCanonicalJson,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 22,
+          "text": "inputDigest: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 83,
+          "text": "fingerprint: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 89,
+          "text": "fingerprint: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 138,
+          "text": "const fingerprint = await digestCanonicalJson({"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 151,
+          "text": "if (terminal.fingerprint !== fingerprint) throw new EffectConflictError(normalized.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 156,
+          "text": "if (running.fingerprint !== fingerprint) throw new EffectConflictError(normalized.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 164,
+          "text": "fingerprint,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 174,
+          "text": "this.#running.set(normalized.effectId, { fingerprint, promise: promise as Promise<AgentEffectResult<unknown>> });"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 208,
+          "text": "const inputDigest = await digestCanonicalJson(request.input);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 220,
+          "text": "return this.#finish(request, inputDigest, outcome);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 225,
+          "text": "return this.#finish(request, inputDigest, outcome);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 242,
+          "text": "return this.#finish(request, inputDigest, outcome);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 270,
+          "text": "return this.#finish(request, inputDigest, outcome, value, afterRevision);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 275,
+          "text": "inputDigest: string,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 288,
+          "text": "inputDigest,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 396,
+          "text": "typeof envelope.inputDigest === \"string\" &&"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 60,
+          "text": "return digestCanonicalJson(subject as unknown as JsonValue);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 63,
+          "text": "export async function digestCanonicalJson(value: JsonValue): Promise<string> {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 65,
+          "text": "const digest = await crypto.subtle.digest(\"SHA-256\", bytes);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/index.ts",
+          "line": 8,
+          "text": "export { InMemoryApprovalLedger, canonicalJson, createApprovalSubject, digestApprovalSubject, digestCanonicalJson } from \"./approvalLedger\";"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 22,
+          "text": "import { digestCanonicalJson } from \"./approvalLedger\";"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 357,
+          "text": "return digestCanonicalJson(toJson(WorkbenchDocumentSchema, wb.core.getState().document) as JsonValue);"
+        },
+        {
+          "file": "packages/pbui-chat/src/types.ts",
+          "line": 211,
+          "text": "inputDigest: string;"
+        },
+        {
+          "file": "packages/workbench-core/src/links/document.ts",
+          "line": 38,
+          "text": "return isRecord(v) && typeof v.id === \"string\" && Array.isArray(v.members) && v.members.every((m) => typeof m === \"string\") && typeof v.fingerprint === \"string\";"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 356,
+          "text": "InputDigest    string   `json:\"inputDigest\"`"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 372,
+          "text": "body.InputDigest = strings.ToLower(strings.TrimSpace(body.InputDigest))"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 382,
+          "text": "digestBytes, err := hex.DecodeString(body.InputDigest)"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 384,
+          "text": "return nil, errors.New(\"inputDigest must be a SHA-256 hex digest\")"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 391,
+          "text": "if !strings.EqualFold(body.InputDigest, hex.EncodeToString(computed[:])) {"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 392,
+          "text": "return nil, errors.New(\"inputDigest does not match canonicalInput\")"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 414,
+          "text": "InputDigest:    body.InputDigest,"
+        },
+        {
+          "file": "pkg/workbench/links.go",
+          "line": 101,
+          "text": "if !isNonEmptyString(cls[\"id\"]) || !isNonEmptyString(cls[\"fingerprint\"]) {"
+        },
+        {
+          "file": "pkg/workbench/links.go",
+          "line": 102,
+          "text": "return fmt.Errorf(\"pbui.links: classes[%d] needs id and fingerprint\", i)"
+        },
+        {
+          "file": "src/presentation/links/compatibility.ts",
+          "line": 55,
+          "text": "/** The value-projection disagreements, in the fingerprint's field order. */"
+        },
+        {
+          "file": "src/presentation/links/compatibility.ts",
+          "line": 60,
+          "text": "/** The protocol-projection disagreements, in the fingerprint's field order. */"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 3,
+          "text": "import { contractFingerprint, type ContractMismatch, type PortId } from \"./types\";"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 12,
+          "text": "* - identity links are partitioned by contract FIBER (fingerprint) and"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 38,
+          "text": "readonly fingerprint: string;"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 57,
+          "text": "export type Compatibility = { readonly ok: true; readonly fingerprint: string } | { readonly ok: false; readonly mismatches: readonly ContractMismatch[]; readonly because: string };"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 67,
+          "text": "if (verdict.ok) return { ok: true, fingerprint: contractFingerprint(a.declaration.contract) };"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 179,
+          "text": "const fiber = fibers.get(compatibility.fingerprint) ?? new UnionFind();"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 181,
+          "text": "fibers.set(compatibility.fingerprint, fiber);"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 184,
+          "text": "// Components, canonically ordered: by fingerprint, then by smallest member."
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 185,
+          "text": "const components: Array<{ fingerprint: string; members: PortId[] }> = [];"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 186,
+          "text": "for (const [fingerprint, fiber] of [...fibers.entries()].sort(([a], [b]) => a.localeCompare(b))) {"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 189,
+          "text": "components.push({ fingerprint, members: [...members].sort() });"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 192,
+          "text": "components.sort((a, b) => a.fingerprint.localeCompare(b.fingerprint) || (a.members[0] ?? \"\").localeCompare(b.members[0] ?? \"\"));"
+        },
+        {
+          "file": "src/presentation/links/identity.ts",
+          "line": 223,
+          "text": "classes.push({ id, members: component.members, fingerprint: component.fingerprint });"
+        },
+        {
+          "file": "src/presentation/links/index.ts",
+          "line": 13,
+          "text": "contractFingerprint,"
+        },
+        {
+          "file": "src/presentation/links/invariants.ts",
+          "line": 5,
+          "text": "import { contractFingerprint } from \"./types\";"
+        },
+        {
+          "file": "src/presentation/links/invariants.ts",
+          "line": 55,
+          "text": "if (contractFingerprint(definition.declaration.contract) !== cls.fingerprint) {"
+        },
+        {
+          "file": "src/presentation/links/types.ts",
+          "line": 199,
+          "text": "export function contractFingerprint(contract: PortContract): string {"
+        }
+      ]
+    },
+    "operationIdentity": {
+      "occurrences": 160,
+      "files": 23,
+      "evidence": [
+        {
+          "file": "packages/datalab-ui/src/analysis/compile.ts",
+          "line": 121,
+          "text": "function aliasFor(fieldId: FieldId, state: CompileState, operationId: string): string | null {"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/compile.ts",
+          "line": 123,
+          "text": "if (!alias) error(state, \"duckdb.field\", `No physical alias for field ${fieldId}`, operationId);"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/compile.ts",
+          "line": 130,
+          "text": "operationId: string,"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/compile.ts",
+          "line": 132,
+          "text": "const aliases = fields.map((field) => aliasFor(field.id, state, operationId));"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/compile.ts",
+          "line": 286,
+          "text": "operationMetadata.push({ operationId: operation.id, cte });"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/runtime.ts",
+          "line": 242,
+          "text": "requestId: request.requestId,"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/types.ts",
+          "line": 26,
+          "text": "operations: Array<{ operationId: string; cte: string }>;"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/types.ts",
+          "line": 100,
+          "text": "requestId: string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/types.ts",
+          "line": 112,
+          "text": "requestId: string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 418,
+          "text": "requestId: string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 422,
+          "text": "query: ({ id, revision, requestId, document }) => ({"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 427,
+          "text": "\"Idempotency-Key\": requestId,"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 439,
+          "text": "requestId: string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 443,
+          "text": "query: ({ id, revision, requestId, batch }) => ({"
+        },
+        {
+          "file": "packages/datalab-ui/src/api/client.ts",
+          "line": 448,
+          "text": "\"Idempotency-Key\": requestId,"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/AnalysisProvider.tsx",
+          "line": 63,
+          "text": "current[documentId]?.requestId === execution.requestId"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 78,
+          "text": "request: Omit<AnalysisRequest, \"requestId\" | \"generation\" | \"sourceKey\"> & {"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 111,
+          "text": "requestId: crypto.randomUUID(),"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 250,
+          "text": "requestId: request.id,"
+        },
+        {
+          "file": "packages/datalab-ui/src/model/graphic.ts",
+          "line": 17,
+          "text": "export type OperationId = string;"
+        },
+        {
+          "file": "packages/datalab-ui/src/model/graphic.ts",
+          "line": 199,
+          "text": "| { kind: \"operation\"; operationId: OperationId; output: string };"
+        },
+        {
+          "file": "packages/datalab-ui/src/model/graphic.ts",
+          "line": 226,
+          "text": "id: OperationId;"
+        },
+        {
+          "file": "packages/datalab-ui/src/model/graphic.ts",
+          "line": 316,
+          "text": "function operationId(id: string): OperationId {"
+        },
+        {
+          "file": "packages/datalab-ui/src/model/graphic.ts",
+          "line": 385,
+          "text": "id: operationId(source.id),"
+        },
+        {
+          "file": "packages/datalab-ui/src/model/graphic.ts",
+          "line": 617,
+          "text": "const opId = operationId(id);"
+        },
+        {
+          "file": "packages/datalab-ui/src/model/graphic.ts",
+          "line": 695,
+          "text": "provenance: { kind: \"operation\", operationId: opId, output: transform.name },"
+        },
+        {
+          "file": "packages/datalab-ui/src/model/graphic.ts",
+          "line": 797,
+          "text": "provenance: { kind: \"operation\", operationId: opId, output: measure.name },"
+        },
+        {
+          "file": "packages/pbui-chat/demo/src/chat.ts",
+          "line": 139,
+          "text": "async reserve(capability, subject: ApprovalSubject, effectId) {"
+        },
+        {
+          "file": "packages/pbui-chat/demo/src/chat.ts",
+          "line": 142,
+          "text": "if (current) return current === effectId ? \"already-reserved\" : \"already-used\";"
+        },
+        {
+          "file": "packages/pbui-chat/demo/src/chat.ts",
+          "line": 148,
+          "text": "reservedApprovals.set(capability.id, effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/demo/src/chat.ts",
+          "line": 151,
+          "text": "async finalize(capability, effectId) {"
+        },
+        {
+          "file": "packages/pbui-chat/demo/src/chat.ts",
+          "line": 153,
+          "text": "if (reservedApprovals.get(capability.id) !== effectId) return \"wrong-effect\";"
+        },
+        {
+          "file": "packages/pbui-chat/demo/src/chat.ts",
+          "line": 164,
+          "text": "async release(capability, effectId) {"
+        },
+        {
+          "file": "packages/pbui-chat/demo/src/chat.ts",
+          "line": 166,
+          "text": "if (reservedApprovals.get(capability.id) !== effectId) return \"wrong-effect\";"
+        },
+        {
+          "file": "packages/pbui-chat/src/adapters/traceAdapter.ts",
+          "line": 28,
+          "text": "const effectId = typeof raw.effectId === \"string\" ? raw.effectId : \"\";"
+        },
+        {
+          "file": "packages/pbui-chat/src/adapters/traceAdapter.ts",
+          "line": 32,
+          "text": "if (!effectId || !effectKind || !conversationId || ![\"workbench\", \"sandbox\", \"conversation\", \"server\"].includes(String(effectScope))) {"
+        },
+        {
+          "file": "packages/pbui-chat/src/adapters/traceAdapter.ts",
+          "line": 36,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/adapters/traceAdapter.ts",
+          "line": 99,
+          "text": "effectId: entry.effect.effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/adapters/traceAdapter.ts",
+          "line": 125,
+          "text": "...(entry.effectId ? { effectId: entry.effectId } : {}),"
+        },
+        {
+          "file": "packages/pbui-chat/src/adapters/traceAdapter.ts",
+          "line": 144,
+          "text": "...(typeof payload.effectId === \"string\" && payload.effectId ? { effectId: payload.effectId } : {}),"
+        },
+        {
+          "file": "packages/pbui-chat/src/generated/hyperslop/pbui/chat/v1/chat_pb.ts",
+          "line": 117,
+          "text": "effectId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/generated/hyperslop/pbui/chat/v1/chat_pb.ts",
+          "line": 147,
+          "text": "effectId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/generated/hyperslop/pbui/chat/v1/chat_pb.ts",
+          "line": 294,
+          "text": "effectId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/router/createVerbRouter.ts",
+          "line": 92,
+          "text": "effectId?: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/router/createVerbRouter.ts",
+          "line": 154,
+          "text": "correlation?: Pick<PerformOptions, \"effectId\" | \"invocationKey\" | \"approvalId\">,"
+        },
+        {
+          "file": "packages/pbui-chat/src/router/createVerbRouter.ts",
+          "line": 167,
+          "text": "...(correlation?.effectId ? { effectId: correlation.effectId } : {}),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 15,
+          "text": "effectId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 39,
+          "text": "effectId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 94,
+          "text": "constructor(effectId: string) {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 95,
+          "text": "super(`effect ${effectId} was reused with different input`);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 149,
+          "text": "const terminal = this.#terminal.get(normalized.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 151,
+          "text": "if (terminal.fingerprint !== fingerprint) throw new EffectConflictError(normalized.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 154,
+          "text": "const running = this.#running.get(normalized.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 156,
+          "text": "if (running.fingerprint !== fingerprint) throw new EffectConflictError(normalized.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 162,
+          "text": "this.#running.delete(normalized.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 163,
+          "text": "this.#terminal.set(normalized.effectId, {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 171,
+          "text": "this.#running.delete(normalized.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 174,
+          "text": "this.#running.set(normalized.effectId, { fingerprint, promise: promise as Promise<AgentEffectResult<unknown>> });"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 181,
+          "text": "for (const [effectId, envelope] of [...this.#pendingReports]) {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 184,
+          "text": "this.#pendingReports.delete(effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 185,
+          "text": "this.#markTraceRecorded(effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 205,
+          "text": "if (this.#reporter && this.#pendingReports.size >= this.#maxTerminalEntries && !this.#pendingReports.has(request.effectId)) {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 235,
+          "text": "const reserved = await this.#approvalLedger.reserve(capability, subject, request.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 257,
+          "text": "const finalized = await this.#approvalLedger.finalize(capability, request.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 259,
+          "text": "throw new Error(`effect ${request.effectId} performed but approval finalization returned ${finalized}`);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 262,
+          "text": "const released = await this.#approvalLedger.release(capability, request.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 264,
+          "text": "throw new Error(`effect ${request.effectId} was rejected but approval release returned ${released}`);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 281,
+          "text": "effectId: request.effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 305,
+          "text": "this.#pendingReports.delete(envelope.effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 309,
+          "text": "this.#pendingReports.set(envelope.effectId, envelope);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 328,
+          "text": "this.#pendingReports.set(value.effectId, value);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 346,
+          "text": "#markTraceRecorded(effectId: string): void {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 347,
+          "text": "const terminal = this.#terminal.get(effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 353,
+          "text": "for (const [effectId, entry] of this.#terminal) {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 354,
+          "text": "if (entry.completedAt <= cutoff) this.#terminal.delete(effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 364,
+          "text": "type NormalizedEffectRequest<Value> = Omit<AgentEffectRequest<Value>, \"effectId\" | \"effectKind\" | \"input\" | \"targetIds\" | \"referenceKeys\"> & {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 365,
+          "text": "effectId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 373,
+          "text": "const effectId = request.effectId.trim();"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 375,
+          "text": "if (!effectId) throw new Error(\"agent effect requires effectId\");"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 382,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/agentEffectGateway.ts",
+          "line": 394,
+          "text": "typeof envelope.effectId === \"string\" &&"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 29,
+          "text": "reserve(capability: ApprovalCapability, subject: ApprovalSubject, effectId: string): Promise<ApprovalReserveResult>;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 30,
+          "text": "finalize(capability: ApprovalCapability, effectId: string): Promise<ApprovalFinalizeResult>;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 31,
+          "text": "release(capability: ApprovalCapability, effectId: string): Promise<ApprovalReleaseResult>;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 105,
+          "text": "effectId: string | null;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 144,
+          "text": "this.#entries.set(id, { capability, state: \"available\", effectId: null });"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 154,
+          "text": "async reserve(capability: ApprovalCapability, subject: ApprovalSubject, effectId: string): Promise<ApprovalReserveResult> {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 159,
+          "text": "if (entry.state === \"reserved\") return entry.effectId === effectId ? \"already-reserved\" : \"already-used\";"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 162,
+          "text": "entry.effectId = effectId;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 166,
+          "text": "async finalize(capability: ApprovalCapability, effectId: string): Promise<ApprovalFinalizeResult> {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 169,
+          "text": "if (entry.state === \"consumed\") return entry.effectId === effectId ? \"already-finalized\" : \"wrong-effect\";"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 171,
+          "text": "if (entry.effectId !== effectId) return \"wrong-effect\";"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 176,
+          "text": "async release(capability: ApprovalCapability, effectId: string): Promise<ApprovalReleaseResult> {"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 181,
+          "text": "if (entry.effectId !== effectId) return \"wrong-effect\";"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/approvalLedger.ts",
+          "line": 183,
+          "text": "entry.effectId = null;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/conversationTools.ts",
+          "line": 151,
+          "text": "effectId: `${options.conversationId}:${context.toolCallId}`,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/conversationTools.ts",
+          "line": 169,
+          "text": "const effectId = `${options.conversationId}:${context.toolCallId}`;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/conversationTools.ts",
+          "line": 171,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 134,
+          "text": "effectId: string,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 140,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 141,
+          "text": "invocationKey: effectId.replace(\":\", \"/\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 161,
+          "text": "effectId: string,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 168,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 171,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 172,
+          "text": "invocationKey: effectId.replace(\":\", \"/\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 322,
+          "text": "effectId: string,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/sandboxTools.ts",
+          "line": 332,
+          "text": "const outcome = await performGated(\"program.open\", verb, confirmationId, effectId);"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 215,
+          "text": "effectId: string,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 226,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 227,
+          "text": "invocationKey: effectId.replace(\":\", \"/\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 244,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 245,
+          "text": "invocationKey: effectId.replace(\":\", \"/\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 674,
+          "text": "const effectId = `${options.senderConversationId}:${context.toolCallId}`;"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 676,
+          "text": "effectId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 677,
+          "text": "invocationKey: effectId.replace(\":\", \"/\"),"
+        },
+        {
+          "file": "packages/pbui-chat/src/tools/workbenchTools.ts",
+          "line": 806,
+          "text": "effectId: `${options.senderConversationId}:${context.toolCallId}`,"
+        },
+        {
+          "file": "packages/pbui-chat/src/types.ts",
+          "line": 115,
+          "text": "effectId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/types.ts",
+          "line": 204,
+          "text": "effectId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/types.ts",
+          "line": 230,
+          "text": "effectId?: string;"
+        },
+        {
+          "file": "packages/workbench-core/src/sync/index.ts",
+          "line": 71,
+          "text": "* `requestId` is stable for the request's CONTENT, so a retry after a"
+        },
+        {
+          "file": "packages/workbench-core/src/sync/index.ts",
+          "line": 75,
+          "text": "mutate(revision: Revision, mutations: Mutation[], requestId: string): Promise<SyncResult>;"
+        },
+        {
+          "file": "packages/workbench-core/src/sync/index.ts",
+          "line": 222,
+          "text": "const requestIdOf = (mutations: readonly Mutation[]): string => {"
+        },
+        {
+          "file": "packages/workbench-core/src/sync/index.ts",
+          "line": 358,
+          "text": "return adopt(await client.mutate(revision!, mutations, requestIdOf(mutations)), remaining).keptExtra;"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 322,
+          "text": "EffectID      string         `json:\"effectId\"`"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 340,
+          "text": "cmd.EffectId = strings.TrimSpace(body.EffectID)"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 349,
+          "text": "EffectID       string   `json:\"effectId\"`"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 368,
+          "text": "body.EffectID = strings.TrimSpace(body.EffectID)"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 373,
+          "text": "if body.EffectID == \"\" || body.ConversationID == \"\" || body.EffectKind == \"\" {"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 374,
+          "text": "return nil, errors.New(\"effectId, conversationId, and effectKind are required\")"
+        },
+        {
+          "file": "pkg/pbuichat/plugin.go",
+          "line": 407,
+          "text": "EffectId:       body.EffectID,"
+        },
+        {
+          "file": "pkg/pbuichat/trace.go",
+          "line": 88,
+          "text": "if id := entry.GetEffect().GetEffectId(); id != \"\" {"
+        },
+        {
+          "file": "pkg/pbuichat/trace.go",
+          "line": 109,
+          "text": "delete(s.effects[sid], old.GetEffect().GetEffectId())"
+        },
+        {
+          "file": "pkg/pbuichat/trace.go",
+          "line": 122,
+          "text": "if existing := s.effects[sid][effect.GetEffectId()]; existing != nil {"
+        },
+        {
+          "file": "pkg/pbuichat/trace.go",
+          "line": 124,
+          "text": "return nil, false, fmt.Errorf(\"effect id %q was reused with a different envelope\", effect.GetEffectId())"
+        },
+        {
+          "file": "pkg/pbuichat/trace.go",
+          "line": 145,
+          "text": "delete(s.effects[sid], old.GetEffect().GetEffectId())"
+        },
+        {
+          "file": "pkg/pbuichat/trace.go",
+          "line": 150,
+          "text": "s.effects[sid][effect.GetEffectId()] = entry"
+        },
+        {
+          "file": "pkg/pbuichat/trace.go",
+          "line": 200,
+          "text": "EffectId:      payload.GetEffectId(),"
+        },
+        {
+          "file": "src/presentation/createPbui.tsx",
+          "line": 397,
+          "text": "const acceptRequestIds = useRef(0);"
+        },
+        {
+          "file": "src/presentation/createPbui.tsx",
+          "line": 467,
+          "text": "const resolve = acceptResolvers.current.get(effect.requestId);"
+        },
+        {
+          "file": "src/presentation/createPbui.tsx",
+          "line": 468,
+          "text": "acceptResolvers.current.delete(effect.requestId);"
+        },
+        {
+          "file": "src/presentation/createPbui.tsx",
+          "line": 474,
+          "text": "const resolve = acceptResolvers.current.get(effect.requestId);"
+        },
+        {
+          "file": "src/presentation/createPbui.tsx",
+          "line": 475,
+          "text": "acceptResolvers.current.delete(effect.requestId);"
+        },
+        {
+          "file": "src/presentation/createPbui.tsx",
+          "line": 502,
+          "text": "const requestId = (acceptRequestIds.current += 1);"
+        },
+        {
+          "file": "src/presentation/createPbui.tsx",
+          "line": 503,
+          "text": "acceptResolvers.current.set(requestId, resolve);"
+        },
+        {
+          "file": "src/presentation/createPbui.tsx",
+          "line": 504,
+          "text": "acceptDispatch({ type: \"request\", requestId, request });"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 27,
+          "text": "| { readonly kind: \"pending\"; readonly requestId: number; readonly request: AcceptRequest<Values> }"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 30,
+          "text": "readonly requestId: number;"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 37,
+          "text": "| { readonly type: \"request\"; readonly requestId: number; readonly request: AcceptRequest<Values> }"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 51,
+          "text": "| { readonly kind: \"settle\"; readonly requestId: number; readonly reference: PresentationReference<Values> }"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 53,
+          "text": "| { readonly kind: \"resolve-null\"; readonly requestId: number; readonly reason: \"refused\" | \"aborted\" };"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 72,
+          "text": "return { state, effects: [{ kind: \"resolve-null\", requestId: event.requestId, reason: \"refused\" }] };"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 74,
+          "text": "return { state: { kind: \"pending\", requestId: event.requestId, request: event.request }, effects: [{ kind: \"close-menu\" }] };"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 78,
+          "text": "const { requestId, request } = state;"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 81,
+          "text": "return { state: { kind: \"idle\" }, effects: [{ kind: \"settle\", requestId, reference: event.resolution.option.result }] };"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 84,
+          "text": "return same({ kind: \"choosing\", requestId, request, options: event.resolution.options });"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 93,
+          "text": "return { state: { kind: \"idle\" }, effects: [{ kind: \"settle\", requestId: state.requestId, reference: event.option.result }] };"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 97,
+          "text": "return same({ kind: \"pending\", requestId: state.requestId, request: state.request });"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 100,
+          "text": "if (state.kind === \"choosing\") return same({ kind: \"pending\", requestId: state.requestId, request: state.request });"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 101,
+          "text": "if (state.kind === \"pending\") return { state: { kind: \"idle\" }, effects: [{ kind: \"resolve-null\", requestId: state.requestId, reason: \"aborted\" }] };"
+        },
+        {
+          "file": "src/presentation/interaction/accept.ts",
+          "line": 106,
+          "text": "return { state: { kind: \"idle\" }, effects: [{ kind: \"resolve-null\", requestId: state.requestId, reason: \"aborted\" }] };"
+        }
+      ]
+    },
+    "eventIdentity": {
+      "occurrences": 3,
+      "files": 2,
+      "evidence": [
+        {
+          "file": "packages/pbui-chat/demo/src/pbui/types.ts",
+          "line": 133,
+          "text": "eventId: string;"
+        },
+        {
+          "file": "packages/pbui-chat/src/conversations/EventsTile/EventsTile.tsx",
+          "line": 129,
+          "text": "eventId: entry.eventId,"
+        },
+        {
+          "file": "packages/pbui-chat/src/conversations/EventsTile/EventsTile.tsx",
+          "line": 256,
+          "text": "{entry.eventId}"
+        }
+      ]
+    },
+    "computationEpoch": {
+      "occurrences": 57,
+      "files": 22,
+      "evidence": [
+        {
+          "file": "packages/datalab-ui/src/analysis/runtime.ts",
+          "line": 54,
+          "text": "private workerGeneration = 0;"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/runtime.ts",
+          "line": 85,
+          "text": "this.workerGeneration += 1;"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/runtime.ts",
+          "line": 222,
+          "text": "workerGeneration: this.workerGeneration,"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/runtime.ts",
+          "line": 243,
+          "text": "generation: request.generation,"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/types.ts",
+          "line": 68,
+          "text": "workerGeneration: number;"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/types.ts",
+          "line": 102,
+          "text": "generation: number;"
+        },
+        {
+          "file": "packages/datalab-ui/src/analysis/types.ts",
+          "line": 113,
+          "text": "generation: number;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/AnalysisProvider.tsx",
+          "line": 34,
+          "text": "principalEpoch: number;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/AnalysisProvider.tsx",
+          "line": 59,
+          "text": "const [principalEpoch, setPrincipalEpoch] = useState(0);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/AnalysisProvider.tsx",
+          "line": 80,
+          "text": "setPrincipalEpoch((value) => value + 1);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/AnalysisProvider.tsx",
+          "line": 97,
+          "text": "() => ({ coordinator, principalEpoch, latest, publish, clear }),"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/AnalysisProvider.tsx",
+          "line": 98,
+          "text": "[clear, coordinator, latest, principalEpoch, publish],"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/AnalysisProvider.tsx",
+          "line": 138,
+          "text": "const { coordinator, principalEpoch, publish, clear } = context;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/AnalysisProvider.tsx",
+          "line": 218,
+          "text": "}, [clear, compiled, document, execute, principalEpoch, publish, table]);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 25,
+          "text": "* Owns one lazily-created executor and the latest-generation rule for every"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 32,
+          "text": "private namespaces = new Map<string, { generation: number; semanticKey: string }>();"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 35,
+          "text": "private epoch = 0;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 78,
+          "text": "request: Omit<AnalysisRequest, \"requestId\" | \"generation\" | \"sourceKey\"> & {"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 91,
+          "text": "const generation ="
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 92,
+          "text": "previous?.semanticKey === semanticKey ? previous.generation : (previous?.generation ?? 0) + 1;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 93,
+          "text": "this.namespaces.set(request.namespace, { generation, semanticKey });"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 94,
+          "text": "const epoch = this.epoch;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 112,
+          "text": "generation,"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 119,
+          "text": "if (!this.disposed && epoch === this.epoch) {"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 139,
+          "text": "epoch === this.epoch &&"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 140,
+          "text": "this.namespaces.get(request.namespace)?.generation === generation &&"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 148,
+          "text": "this.epoch += 1;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/analysisCoordinator.ts",
+          "line": 161,
+          "text": "this.epoch += 1;"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 66,
+          "text": "const [retryGeneration, setRetryGeneration] = useState(0);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 76,
+          "text": "// Update the request epoch during render so callbacks from an older"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 93,
+          "text": "setRetryGeneration(0);"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 293,
+          "text": "retryGeneration,"
+        },
+        {
+          "file": "packages/datalab-ui/src/appkit/useRemoteWorkbench.ts",
+          "line": 344,
+          "text": "setRetryGeneration((value) => value + 1);"
+        },
+        {
+          "file": "packages/datalab-ui/src/apps/TemplatesApp/TemplatesApp.tsx",
+          "line": 52,
+          "text": "const [generation, setGeneration] = useState(0);"
+        },
+        {
+          "file": "packages/datalab-ui/src/apps/TemplatesApp/TemplatesApp.tsx",
+          "line": 56,
+          "text": "void generation;"
+        },
+        {
+          "file": "packages/datalab-ui/src/apps/TemplatesApp/TemplatesApp.tsx",
+          "line": 58,
+          "text": "}, [generation]);"
+        },
+        {
+          "file": "packages/datalab-ui/src/apps/TemplatesApp/TemplatesApp.tsx",
+          "line": 63,
+          "text": "const refresh = useCallback(() => setGeneration((n) => n + 1), []);"
+        },
+        {
+          "file": "packages/datalab-ui/src/apps/tutorials/Tutorial.tsx",
+          "line": 45,
+          "text": "* product question, and a different ticket."
+        },
+        {
+          "file": "packages/datalab-ui/src/components/organisms/PipelinePanel/PipelinePanel.stories.tsx",
+          "line": 121,
+          "text": "* separate ticket; that it is invisible until the output is empty is what a"
+        },
+        {
+          "file": "packages/datalab-ui/src/components/organisms/TemplateTable/TemplateTable.tsx",
+          "line": 168,
+          "text": "{/* The only confirmation in the ticket, because this"
+        },
+        {
+          "file": "packages/datalab-ui/src/components/pages/MarketingPage/copy.ts",
+          "line": 163,
+          "text": "*   stale-while-fresh    analysisCoordinator.ts:76 — the latest-generation rule"
+        },
+        {
+          "file": "packages/datalab-ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.stories.tsx",
+          "line": 17,
+          "text": "* in the tree where the property the whole ticket exists to establish is"
+        },
+        {
+          "file": "packages/datalab-ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.stories.tsx",
+          "line": 19,
+          "text": "* graph, a registry, a stylesheet and nothing else. Before this ticket the"
+        },
+        {
+          "file": "packages/datalab-ui/src/pbui/Pbui.stories.tsx",
+          "line": 282,
+          "text": "* feature; everything else in the ticket is what those verbs *do*."
+        },
+        {
+          "file": "packages/datalab-ui/src/pbui/descriptors/cat.ts",
+          "line": 7,
+          "text": "* This and `<datum>` are where the thesis of the ticket becomes visible. Its"
+        },
+        {
+          "file": "packages/datalab-ui/src/pbui/types.ts",
+          "line": 135,
+          "text": "* ticket is what made it worth saying out loud."
+        },
+        {
+          "file": "packages/datalab-ui/src/pbui/verbs.ts",
+          "line": 74,
+          "text": "// Every action this ticket adds is a verb of `tile`, `workspace` or `stage`."
+        },
+        {
+          "file": "packages/datalab-ui/src/store/applyVerb.ts",
+          "line": 31,
+          "text": "* this ticket adds targets the layout. And it may return a **thunk**, because"
+        },
+        {
+          "file": "packages/datalab-ui/src/store/persist.ts",
+          "line": 225,
+          "text": "// Hydrate before validating (design §9.7 of the stabilization ticket): a"
+        },
+        {
+          "file": "packages/datalab-ui/src/store/runtime.ts",
+          "line": 38,
+          "text": "* feeding each other (§8.3, the stabilization ticket's reentrancy rule)."
+        },
+        {
+          "file": "packages/pbui-chat/src/types.ts",
+          "line": 129,
+          "text": "runId?: string;"
+        },
+        {
+          "file": "packages/pbui-plotscript/src/runner.ts",
+          "line": 72,
+          "text": "*     ticket and only the newest ticket may publish;"
+        },
+        {
+          "file": "packages/pbui-plotscript/src/runner.ts",
+          "line": 110,
+          "text": "const ticket = (tickets.get(id) ?? 0) + 1;"
+        },
+        {
+          "file": "packages/pbui-plotscript/src/runner.ts",
+          "line": 111,
+          "text": "tickets.set(id, ticket);"
+        },
+        {
+          "file": "packages/pbui-plotscript/src/runner.ts",
+          "line": 122,
+          "text": "if (tickets.get(id) !== ticket) return;"
+        },
+        {
+          "file": "src/components/organisms/FileBrowser/FileBrowser.tsx",
+          "line": 369,
+          "text": "* defect this whole ticket is named for, and it turned up inside the"
+        },
+        {
+          "file": "src/presentation/actions/index.ts",
+          "line": 4,
+          "text": "* resolved actions, ambiguities, and a trace come out. See the ticket's"
+        }
+      ]
+    }
+  }
+}

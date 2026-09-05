@@ -1,4 +1,4 @@
-import { createWorkbench, type AppDescriptor, type CreateWorkbenchOptions, type Workbench } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench, type CreateWorkbenchOptions, type WorkbenchApp, type WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
 import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { createShopApps } from "./apps";
 import { createShopHost, type ShopHost } from "./host";
@@ -15,7 +15,7 @@ import { seedShopDocument } from "./seed";
 export interface Shop {
   host: ShopHost;
   pbui: ShopPbui;
-  apps: AppDescriptor[];
+  apps: WorkbenchApp[];
 }
 
 export interface CreateShopOptions {
@@ -34,7 +34,7 @@ export function createShop(options: CreateShopOptions = {}): Shop {
 export type CreateShopWorkbenchOptions = Omit<CreateWorkbenchOptions, "apps" | "initial"> & { initial?: WorkbenchDocument };
 
 /** A workbench over the shop's apps, seeded with the four scenes unless told otherwise. */
-export function createShopWorkbench(shop: Shop, options: CreateShopWorkbenchOptions = {}): Workbench {
+export function createShopWorkbench(shop: Shop, options: CreateShopWorkbenchOptions = {}): WorkbenchShell {
   const { initial, ...rest } = options;
   return createWorkbench({
     apps: shop.apps,

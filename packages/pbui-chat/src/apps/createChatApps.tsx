@@ -1,5 +1,5 @@
 import { documentSlotPort } from "@hyperslop-systems/pbui";
-import { defineApp, type AppDescriptor } from "@hyperslop-systems/pbui-workbench";
+import { defineWorkbenchApp, type WorkbenchApp } from "@hyperslop-systems/pbui-workbench";
 import { ActiveConversationScope } from "../conversations/ActiveConversationScope";
 import { CONVERSATION_BINDING } from "../conversations/bindings";
 import type { ConversationRegistry } from "../conversations/registry";
@@ -32,7 +32,7 @@ export interface CreateChatAppsOptions {
 export function createChatApps(
   chat: { vocabulary: Vocabulary; conversations: ConversationRegistry },
   options: CreateChatAppsOptions = {},
-): AppDescriptor[] {
+): WorkbenchApp[] {
   const tone = (id: ChatAppId, type: string, fallback: string) =>
     options.tones?.[id] ?? toneVar(chat.vocabulary.types[type]?.tone ?? type, fallback);
   const title = (id: ChatAppId, fallback: string) => options.titles?.[id] ?? fallback;
@@ -45,66 +45,80 @@ export function createChatApps(
      * what splitting a tile has always meant. The workbench's doc-binding
      * rule gives de-duplication, titles and linked splits for free.
      */
-    defineApp({
-      id: "chat",
-      title: title("chat", "chat"),
-      tone: tone("chat", "message", "var(--pbui-pane-alt)"),
-      singleton: false,
-      duplicable: true,
-      ports: [documentSlotPort(CONVERSATION_BINDING, "the conversation this tile is a view of")],
-      titleFor: (view) => {
-        const id = view.documents[CONVERSATION_BINDING];
-        if (!id) return view.title || "chat";
-        return view.title || chat.conversations.get(id)?.title || `conversation ${id.slice(0, 8)}`;
+    defineWorkbenchApp({
+      manifest: {
+        id: "chat",
+        ports: [documentSlotPort(CONVERSATION_BINDING, "the conversation this tile is a view of")],
       },
-      Component: ChatApp,
+      presentation: {
+        title: title("chat", "chat"),
+        tone: tone("chat", "message", "var(--pbui-tone-message)"),
+        titleFor: (view) => {
+          const id = view.documents[CONVERSATION_BINDING];
+          if (!id) return view.title || "chat";
+          return view.title || chat.conversations.get(id)?.title || `conversation ${id.slice(0, 8)}`;
+        },
+        Component: ChatApp,
+      },
     }),
-    defineApp({
-      id: "inspector",
-      title: title("inspector", "inspector"),
-      tone: options.tones?.inspector ?? "var(--pbui-selected)",
-      singleton: true,
-      Component: () => (
-        <PanelApp part="inspector-app">
-          <ChatInspectorPanel />
-        </PanelApp>
-      ),
+    defineWorkbenchApp({
+      manifest: {
+        id: "inspector",
+        viewCardinality: "one",
+      },
+      presentation: {
+        title: title("inspector", "inspector"),
+        tone: options.tones?.inspector ?? "var(--pbui-tone-tool)",
+        Component: () => (
+          <PanelApp part="inspector-app">
+            <ChatInspectorPanel />
+          </PanelApp>
+        ),
+      },
     }),
-    defineApp({
-      id: "watchlist",
-      title: title("watchlist", "watchlist"),
-      tone: options.tones?.watchlist ?? "var(--pbui-pane-alt)",
-      singleton: true,
-      Component: () => (
-        <PanelApp part="watchlist-app">
-          <WatchlistPanel />
-        </PanelApp>
-      ),
+    defineWorkbenchApp({
+      manifest: {
+        id: "watchlist",
+        viewCardinality: "one",
+      },
+      presentation: {
+        title: title("watchlist", "watchlist"),
+        tone: options.tones?.watchlist ?? "var(--pbui-tone-row)",
+        Component: () => (
+          <PanelApp part="watchlist-app">
+            <WatchlistPanel />
+          </PanelApp>
+        ),
+      },
     }),
-    defineApp({
-      id: "trace",
-      title: title("trace", "trace"),
-      tone: tone("trace", "traceEntry", "var(--pbui-tone-neutral)"),
-      singleton: true,
-      // The trace lives in a conversation's timeline, so the tile follows the
-      // active one rather than showing an arbitrary session's entries.
-      Component: () => (
-        <PanelApp part="trace-app">
-          <ActiveConversationScope>
-            <TracePanel />
-          </ActiveConversationScope>
-        </PanelApp>
-      ),
+    defineWorkbenchApp({
+      manifest: {
+        id: "trace",
+      },
+      presentation: {
+        title: title("trace", "trace"),
+        tone: tone("trace", "traceEntry", "var(--pbui-tone-neutral)"),
+        Component: () => (
+          <PanelApp part="trace-app">
+            <ActiveConversationScope>
+              <TracePanel />
+            </ActiveConversationScope>
+          </PanelApp>
+        ),
+      },
     }),
-    defineApp({
-      id: "widget",
-      title: title("widget", "widget"),
-      tone: tone("widget", "widget", "var(--pbui-tone-neutral)"),
-      singleton: false,
-      duplicable: false,
-      ports: [documentSlotPort(WIDGET_BINDING, "the widget this tile shows")],
-      titleFor: (view) => view.title || `widget ${view.documents[WIDGET_BINDING] ?? ""}`.trim(),
-      Component: WidgetApp,
+    defineWorkbenchApp({
+      manifest: {
+        id: "widget",
+        duplicatePlacement: "link",
+        ports: [documentSlotPort(WIDGET_BINDING, "the widget this tile shows")],
+      },
+      presentation: {
+        title: title("widget", "widget"),
+        tone: tone("widget", "widget", "var(--pbui-tone-neutral)"),
+        titleFor: (view) => view.title || `widget ${view.documents[WIDGET_BINDING] ?? ""}`.trim(),
+        Component: WidgetApp,
+      },
     }),
   ];
 }

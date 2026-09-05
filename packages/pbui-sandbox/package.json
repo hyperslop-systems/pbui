@@ -41,9 +41,11 @@
     "build-storybook": "storybook build -o storybook-static"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "2.11.0",
     "@hyperslop-systems/pbui": "workspace:^",
     "@hyperslop-systems/pbui-editor": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
+    "@hyperslop-systems/workbench-core": "workspace:^",
     "@hyperslop-systems/workbench-protocol": "workspace:^",
     "quickjs-emscripten": "0.23.0"
   },

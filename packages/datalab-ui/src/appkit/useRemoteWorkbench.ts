@@ -3,16 +3,16 @@ import { useDispatch, useSelector } from "react-redux";
 import { useGetWorkbenchQuery, useReplaceWorkbenchMutation } from "../api/client";
 import { startWorkbenchStream } from "../api/workbenchStream";
 import type { RootState } from "../store";
-import type { Node, ViewId } from "../store/layout";
+import { navigationActions } from "../store/navigation";
 import { remoteWorkbenchLoaded } from "../store/remote";
-import { WORK_STAGE_ID } from "../store/stages";
 import {
-  assertRemoteDocumentNamespace,
-  decodeRemoteWorkbench,
-  encodeRemoteWorkbench,
+  assertRemoteEnvelope,
+  parseRemoteWorkbenchJSON,
   workbenchDocumentJSON,
 } from "../remote/codec";
-import type { RemoteWorkbenchState, WorkbenchPersistence } from "../remote/types";
+import { mergeRemoteWorkStage, projectWorkStage, type LocalWorkbench } from "../remote/projection";
+import type { RemoteIdentity, WorkbenchPersistence } from "../remote/types";
+import { useCurrentWorkspaceId, useDatalabWorkbench } from "./DatalabWorkbenchContext";
 
 export type { WorkbenchPersistence };
 
@@ -34,14 +34,27 @@ export interface RemoteWorkbenchController {
   retry: () => void;
 }
 
-interface RemoteIdentity {
-  id: string;
-  name: string;
-}
-
+/**
+ * The remote controller: HTTP revision, conflict and stream policy over the
+ * work-stage projection (design §14.1, Decision 6).
+ *
+ * The projection (`remote/projection.ts`) is pure; this owns the moments.
+ * Outbound, a coherent capture of the core's document, the navigation
+ * metadata and the world is projected to one wire document, fingerprinted,
+ * and sent after a debounce. Inbound, a server document is merged into a
+ * complete candidate, checked against the catalog, and installed in three
+ * steps in dependency order — world documents, then the core, then
+ * navigation — so no tile ever observes a view whose document is missing.
+ *
+ * Conflicts stay visible: a newer revision arriving while this browser has
+ * unsaved changes is reported, never silently rebased (§14.4).
+ */
 export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchController {
   const dispatch = useDispatch();
-  const layout = useSelector((state: RootState) => state.layout);
+  const workbench = useDatalabWorkbench();
+  const document = workbench.shell.useDocument();
+  const currentWorkspaceId = useCurrentWorkspaceId();
+  const navigation = useSelector((state: RootState) => state.navigation);
   const world = useSelector((state: RootState) => state.world);
   const query = useGetWorkbenchQuery(workbenchId);
   const [replace] = useReplaceWorkbenchMutation();
@@ -52,8 +65,6 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
   const [error, setError] = useState<string | null>(null);
   const [retryGeneration, setRetryGeneration] = useState(0);
   const appliedFingerprint = useRef<string | null>(null);
-  const managedViewIds = useRef(new Set<string>());
-  const managedDocumentIds = useRef(new Set<string>());
   const revisionRef = useRef(0n);
   const dirtyRef = useRef(false);
   const savingRef = useRef(false);
@@ -68,8 +79,6 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
 
   useEffect(() => {
     appliedFingerprint.current = null;
-    managedViewIds.current = new Set();
-    managedDocumentIds.current = new Set();
     revisionRef.current = 0n;
     dirtyRef.current = false;
     savingRef.current = false;
@@ -83,6 +92,11 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
     setError(null);
     setRetryGeneration(0);
   }, [workbenchId]);
+
+  const local = useMemo<LocalWorkbench>(
+    () => ({ document, navigation, world: { docs: world.docs, docOrder: world.docOrder } }),
+    [document, navigation, world.docs, world.docOrder],
+  );
 
   useEffect(() => {
     const resource = query.currentData;
@@ -121,23 +135,58 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
       return;
     }
     try {
-      const remote = decodeRemoteWorkbench(resource.workbench);
-      const preserved = preservedLocalState(layout);
-      assertRemoteDocumentNamespace(remote, preserved.documentIds);
+      const remote = parseRemoteWorkbenchJSON(resource.workbench);
+      assertRemoteEnvelope(remote);
+      // One coherent capture of the core and the store, not the render's copy:
+      // the merge must see the state the install will replace.
+      const coreState = workbench.core.getState();
+      const state = workbench.store.getState();
+      const adoption = mergeRemoteWorkStage(
+        { document: coreState.document, navigation: state.navigation, world: state.world },
+        remote,
+        coreState.session.workspaceId,
+      );
+      // Validate the candidate BEFORE touching the world: a refusal leaves
+      // every store as it was.
+      const checked = workbench.core.validateDocument(adoption.document);
+      if (!checked.ok) {
+        const first = checked.diagnostics[0];
+        throw new Error(
+          `the server workbench does not fit this build: ${first?.code}${first?.path ? ` at ${first.path}` : ""}: ${first?.detail}`,
+        );
+      }
+      // World documents first, so a view that arrives with the core's install
+      // never references a document the world lacks (§14.3).
       dispatch(
         remoteWorkbenchLoaded({
-          state: remote,
-          stageId: WORK_STAGE_ID,
-          preserveViewIds: preserved.viewIds,
-          preserveDocumentIds: preserved.documentIds,
+          documents: adoption.graphics,
+          preserveDocumentIds: adoption.preserveDocumentIds,
         }),
       );
-      managedViewIds.current = new Set(remote.viewOrder);
-      managedDocumentIds.current = new Set(Object.keys(remote.documents));
-      appliedFingerprint.current = fingerprint(remote);
+      dispatch(navigationActions.replaceNavigation(adoption.navigation));
+      const installed = workbench.core.replaceDocument(adoption.document, {
+        session: { workspaceId: adoption.workspaceId },
+      });
+      if (!installed.ok) {
+        const first = installed.diagnostics[0];
+        throw new Error(
+          `the server workbench could not be installed: ${first?.code}: ${first?.detail}`,
+        );
+      }
+      const remoteIdentity: RemoteIdentity = { id: remote.id, name: remote.name };
+      appliedFingerprint.current = fingerprint(
+        projectWorkStage(
+          {
+            document: workbench.core.getState().document,
+            navigation: workbench.store.getState().navigation,
+            world: workbench.store.getState().world,
+          },
+          remoteIdentity,
+        ),
+      );
       revisionRef.current = incomingRevision;
       setRevision(incomingRevision);
-      setIdentity({ id: remote.id, name: remote.name });
+      setIdentity(remoteIdentity);
       setConflict(null);
       setError(null);
       failedFingerprint.current = null;
@@ -145,21 +194,26 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
     } catch (cause) {
       setError(messageOf(cause));
     }
-  }, [dispatch, identity?.id, layout, query.currentData, query.isSuccess, revision, workbenchId]);
+  }, [
+    dispatch,
+    identity?.id,
+    query.currentData,
+    query.isSuccess,
+    revision,
+    workbenchId,
+    workbench,
+  ]);
 
-  const current = useMemo(
-    () =>
-      identity
-        ? currentRemoteState(
-            identity,
-            layout,
-            world,
-            managedViewIds.current,
-            managedDocumentIds.current,
-          )
-        : null,
-    [identity, layout, world],
-  );
+  const current = useMemo(() => {
+    if (!identity) return null;
+    try {
+      return projectWorkStage(local, identity);
+    } catch {
+      // The work stage binds a document the world has not received yet (a
+      // remote adoption mid-flight); nothing coherent to send this render.
+      return null;
+    }
+  }, [identity, local]);
   const currentFingerprint = useMemo(() => (current ? fingerprint(current) : null), [current]);
   const dirty =
     currentFingerprint !== null &&
@@ -181,7 +235,6 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
     }
     const timer = setTimeout(async () => {
       const requestWorkbenchId = workbenchId;
-      const document = encodeRemoteWorkbench(current);
       const request =
         pendingRequest.current?.fingerprint === currentFingerprint
           ? pendingRequest.current
@@ -195,7 +248,7 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
           id: requestWorkbenchId,
           revision: revision.toString(),
           requestId: request.id,
-          document,
+          document: current,
         }).unwrap();
         if (activeWorkbenchId.current !== requestWorkbenchId) return;
         appliedFingerprint.current = currentFingerprint;
@@ -291,6 +344,11 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
     setRetryGeneration((value) => value + 1);
   }, [identity, query.refetch]);
 
+  // The selected workspace is part of the capture that decides "dirty" only
+  // through the document; it is read here so the memo above stays honest
+  // about what the user is looking at without adding it to the wire.
+  void currentWorkspaceId;
+
   return {
     loading: query.isLoading && identity === null,
     ready: identity !== null,
@@ -304,64 +362,8 @@ export function useRemoteWorkbench(workbenchId: string): RemoteWorkbenchControll
   };
 }
 
-function currentRemoteState(
-  identity: RemoteIdentity,
-  layout: RootState["layout"],
-  world: RootState["world"],
-  managedViews: Set<string>,
-  managedDocuments: Set<string>,
-): RemoteWorkbenchState {
-  const workspaces = layout.spaces
-    .filter((space) => space.stageId === WORK_STAGE_ID)
-    .map(({ id, name, tree }) => ({ id, name, tree }));
-  for (const workspace of workspaces) collectViewIds(workspace.tree, managedViews);
-
-  const views: RemoteWorkbenchState["views"] = {};
-  const viewOrder: string[] = [];
-  for (const id of layout.viewOrder) {
-    const view = layout.views[id];
-    if (!managedViews.has(id) || !view) continue;
-    views[id] = view;
-    viewOrder.push(id);
-    for (const documentId of Object.values(view.documents)) managedDocuments.add(documentId);
-  }
-
-  const documents: RemoteWorkbenchState["documents"] = {};
-  for (const id of world.docOrder) {
-    const document = world.docs[id];
-    if (managedDocuments.has(id) && document) documents[id] = document;
-  }
-  return { ...identity, workspaces, views, viewOrder, documents };
-}
-
-function preservedLocalState(layout: RootState["layout"]): {
-  viewIds: string[];
-  documentIds: string[];
-} {
-  const viewIds = new Set<string>();
-  for (const space of layout.spaces) {
-    if (space.stageId !== WORK_STAGE_ID) collectViewIds(space.tree, viewIds);
-  }
-  const documentIds = new Set<string>();
-  for (const id of viewIds) {
-    const view = layout.views[id];
-    if (!view) continue;
-    for (const documentId of Object.values(view.documents)) documentIds.add(documentId);
-  }
-  return { viewIds: [...viewIds], documentIds: [...documentIds] };
-}
-
-function collectViewIds(node: Node, target: Set<ViewId>): void {
-  if (node.type === "leaf") {
-    target.add(node.viewId);
-    return;
-  }
-  collectViewIds(node.a, target);
-  collectViewIds(node.b, target);
-}
-
-function fingerprint(state: RemoteWorkbenchState): string {
-  return JSON.stringify(workbenchDocumentJSON(encodeRemoteWorkbench(state)));
+function fingerprint(document: Parameters<typeof workbenchDocumentJSON>[0]): string {
+  return JSON.stringify(workbenchDocumentJSON(document));
 }
 
 function conflictOf(cause: unknown, expected: bigint): RemoteConflict | null {

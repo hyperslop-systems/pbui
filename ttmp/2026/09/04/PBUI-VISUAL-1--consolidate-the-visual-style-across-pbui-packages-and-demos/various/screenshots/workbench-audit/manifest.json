@@ -1,0 +1,98 @@
+[
+  {
+    "n": 1,
+    "id": "visual-audit--coordination-inspector-content",
+    "title": "Visual Audit",
+    "name": "CoordinationInspector — ports, wires, contexts, invariants",
+    "file": "001-visual-audit--coordination-inspector-content.png",
+    "size": "1440x546"
+  },
+  {
+    "n": 2,
+    "id": "visual-audit--link-announcer-messages",
+    "title": "Visual Audit",
+    "name": "LinkAnnouncer — a few coordination messages, made visible",
+    "file": "002-visual-audit--link-announcer-messages.png",
+    "size": "1440x383"
+  },
+  {
+    "n": 3,
+    "id": "visual-audit--port-badge-gallery",
+    "title": "Visual Audit",
+    "name": "PortBadge — every state, as it sits after a tile title",
+    "file": "003-visual-audit--port-badge-gallery.png",
+    "size": "1440x322"
+  },
+  {
+    "n": 4,
+    "id": "visual-audit--port-rail-counts",
+    "title": "Visual Audit",
+    "name": "PortRail — 0 / 1 / many ports, connect mode",
+    "file": "004-visual-audit--port-rail-counts.png",
+    "size": "1440x696"
+  },
+  {
+    "n": 5,
+    "id": "visual-audit--rebalance-dialog-open",
+    "title": "Visual Audit",
+    "name": "RebalanceDialog — open over a degenerate layout",
+    "file": "005-visual-audit--rebalance-dialog-open.png",
+    "size": "1440x900"
+  },
+  {
+    "n": 6,
+    "id": "visual-audit--rebalance-settings-and-badge",
+    "title": "Visual Audit",
+    "name": "RebalanceSettings tile + RebalanceBadge, healthy vs broken",
+    "file": "006-visual-audit--rebalance-settings-and-badge.png",
+    "size": "1440x900"
+  },
+  {
+    "n": 7,
+    "id": "visual-audit--relation-palette-open",
+    "title": "Visual Audit",
+    "name": "RelationPalette — open, two relations offered",
+    "file": "007-visual-audit--relation-palette-open.png",
+    "size": "1440x900"
+  },
+  {
+    "n": 8,
+    "id": "visual-audit--show-chooser-open",
+    "title": "Visual Audit",
+    "name": "ShowChooser — a show with no clear target",
+    "file": "008-visual-audit--show-chooser-open.png",
+    "size": "1440x546"
+  },
+  {
+    "n": 9,
+    "id": "visual-audit--split-pane-nested",
+    "title": "Visual Audit",
+    "name": "SplitPane — nested, each divider independently resizable",
+    "file": "009-visual-audit--split-pane-nested.png",
+    "size": "1440x526"
+  },
+  {
+    "n": 10,
+    "id": "visual-audit--surface-variants",
+    "title": "Visual Audit",
+    "name": "Surface — single tile / split / nested split",
+    "file": "010-visual-audit--surface-variants.png",
+    "size": "1440x520"
+  },
+  {
+    "n": 11,
+    "id": "visual-audit--tile-header-variants",
+    "title": "Visual Audit",
+    "name": "Tile — header variants",
+    "file": "011-visual-audit--tile-header-variants.png",
+    "size": "1440x788"
+  },
+  {
+    "n": 12,
+    "id": "visual-audit--wire-layer-styles",
+    "title": "Visual Audit",
+    "name": "WireLayer — follow, held (dotted), derived (dashed + label), identity (double)",
+    "file": "012-visual-audit--wire-layer-styles.png",
+    "size": "1440x566"
+  }
+]

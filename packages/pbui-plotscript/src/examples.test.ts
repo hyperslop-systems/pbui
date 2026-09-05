@@ -1,5 +1,6 @@
 import { renderPlot } from "@hyperslop-systems/plot";
-import { createAppRegistry, createWorkbench, layout, parseDocument, serializeDocument, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench } from "@hyperslop-systems/pbui-workbench";
+import { layout, parseWorkbenchDocument, serializeDocument, split, tile } from "@hyperslop-systems/workbench-core";
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import { createPlotScriptApps } from "./apps";
 import { plotScriptMutation, listPlotScripts } from "./document";
@@ -44,8 +45,9 @@ describe("the seeded demo document", () => {
       layout(split("row", 0.5, tile("plot-script", { documents: { plot: EXAMPLE_SCRIPTS[0]!.id } }), tile("plot-view", { documents: { plot: EXAMPLE_SCRIPTS[0]!.id } })), { id: "wb" }),
       EXAMPLE_SCRIPTS.map((s) => plotScriptMutation(s)),
     );
-    const wb = createWorkbench({ apps: createAppRegistry(createPlotScriptApps(createPlotScriptHost())), initial });
-    const again = parseDocument(serializeDocument(wb.store.getState().document));
+    const wb = createWorkbench({ apps: createPlotScriptApps(createPlotScriptHost()), initial });
+    const parsed = parseWorkbenchDocument(serializeDocument(wb.core.getState().document));
+    const again = parsed.ok ? parsed.document : null;
     expect(again).not.toBeNull();
     expect(listPlotScripts(again!).map((s) => s.id)).toEqual(EXAMPLE_SCRIPTS.map((s) => s.id));
     expect(listPlotScripts(again!).map((s) => s.source)).toEqual(EXAMPLE_SCRIPTS.map((s) => s.source));

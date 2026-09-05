@@ -43,6 +43,7 @@
     "@hyperslop-systems/pbui-sandbox": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
     "@hyperslop-systems/plot": "0.3.1",
+    "@hyperslop-systems/workbench-core": "workspace:^",
     "@hyperslop-systems/workbench-protocol": "workspace:^"
   },
   "peerDependencies": {

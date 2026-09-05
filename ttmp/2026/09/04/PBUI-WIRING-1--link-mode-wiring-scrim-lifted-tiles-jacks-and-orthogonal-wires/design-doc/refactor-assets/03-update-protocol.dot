@@ -1,0 +1,28 @@
+digraph design {
+graph [rankdir=TB, bgcolor="white", pad="0.25", nodesep="0.3", ranksep="0.4"];
+node [shape=box, style="rounded,filled", fillcolor="#edf3f8", color="#384b60", fontname="DejaVu Sans", fontsize=12, margin="0.15,0.12"];
+edge [color="#42566b", fontname="DejaVu Sans", fontsize=10];
+
+change [label="Input changes
+React layout commit / scroll / resize / registration"];
+dirty [label="Invalidate surface
+remove stale hit regions; record dirty reasons"];
+read [label="Read one geometry snapshot
+frames + cards + clips + root origin"];
+derive [label="Derive anchors and route graph
+no reading rendered jacks"];
+solve [label="Build and validate complete scene
+retain stable topology only while valid"];
+guard [shape=diamond, fillcolor="#fff4d9", label="Inputs and
+root lifetime
+still current?"];
+install [label="Publish one immutable scene
+jacks, routes, labels, selection targets", fillcolor="#e4efe5"];
+retry [label="Discard result
+schedule current inputs", fillcolor="#f6e8e5"];
+change -> dirty -> read -> derive -> solve -> guard;
+guard -> install [label="yes"];
+guard -> retry [label="no"];
+retry -> read;
+
+}

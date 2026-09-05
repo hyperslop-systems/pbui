@@ -1,4 +1,4 @@
-import { Callout, Chip, Meter, SegmentedBar, Sparkline, Text } from "@hyperslop-systems/pbui";
+import { Callout, Chip, Meter, SegmentedBar, Sparkline, Swatch, Text } from "@hyperslop-systems/pbui";
 import type { ReactNode } from "react";
 import { RefPresentation } from "../../../components/RefPresentation";
 import { usePbuiChat } from "../../../context";
@@ -119,7 +119,12 @@ export function WidgetChild({ child, depth, instanceId, renderDocument }: Widget
             summary={
               <span className={styles.legend}>
                 {child.parts.map((part, i) => (
-                  <Chip key={`${i}-${part.label}`} label={`${part.label} ${part.value}`} tone={toneVar(part.tone, `var(--pbui-cat-${(i % 8) + 1})`)} />
+                  <span key={`${i}-${part.label}`} className={styles.legendItem}>
+                    <Swatch color={toneVar(part.tone, `var(--pbui-cat-${(i % 8) + 1})`)} label={part.label} />
+                    <Text size="tiny">
+                      {part.label} {part.value}
+                    </Text>
+                  </span>
                 ))}
               </span>
             }
@@ -134,12 +139,27 @@ export function WidgetChild({ child, depth, instanceId, renderDocument }: Widget
         </RefWrap>
       );
 
-    case "callout":
+    case "callout": {
+      // A note is prose; only a danger earns the notice box.
+      const variant = child.tone === "danger" ? "danger" : calloutVariant(child.tone);
+      if (variant !== "danger") {
+        return (
+          <div data-part="widget-note" className={styles.note}>
+            {child.title ? (
+              <Text size="small" strong>
+                {child.title}
+              </Text>
+            ) : null}
+          <PbuiMarkdown text={child.text} />
+          </div>
+        );
+      }
       return (
-        <Callout variant={calloutVariant(child.tone)} title={child.title}>
+        <Callout variant={variant} title={child.title}>
           <PbuiMarkdown text={child.text} />
         </Callout>
       );
+    }
 
     case "table":
       return <TableChild child={child} fallbackDocId={instanceId} />;

@@ -1,15 +1,18 @@
-import { documentSlots } from "@hyperslop-systems/pbui-workbench";
 import type { FrontendTool, ToolDefinition } from "@go-go-golems/chat-provider";
+import { isAppAvailable, type WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
 import {
-  describeWorkbench,
-  describeWorkbenchVerb,
-  isAppAvailable,
-  isWorkbenchVerb,
+  canSplitPlacement,
+  commands,
+  describeWorkbenchCommand,
+  bindingNames,
+  isWorkbenchCommand,
+  layoutFits,
+  longerAxis,
+  splitRatioBounds,
   type LayoutSpec,
-  type Workbench,
-  type WorkbenchVerb,
-  type WorkbenchVerbKind,
-} from "@hyperslop-systems/pbui-workbench";
+  type WorkbenchCommand,
+  type WorkbenchCommandKind,
+} from "@hyperslop-systems/workbench-core";
 import { type JsonValue, fromJson, toJson } from "@bufbuild/protobuf";
 import { type Mutation, MutationSchema, WorkbenchDocumentSchema } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations, MutationError } from "@hyperslop-systems/workbench-protocol/client";
@@ -88,31 +91,41 @@ export type PolicyDecision = "allow" | "confirm" | "deny";
 export type WorkbenchPolicy = Record<string, PolicyDecision>;
 
 export const DEFAULT_POLICY: WorkbenchPolicy = {
-  "tile.activate": "allow",
-  "tile.split": "allow",
-  "tile.swap": "allow",
-  "tile.dock": "allow",
-  "tile.link": "allow",
-  "split.resize": "allow",
-  "app.place": "allow",
-  "view.open": "allow",
-  "view.setTitle": "allow",
-  "view.rebind": "allow",
-  "view.goTo": "allow",
+  "session.activatePlacement": "allow",
+  "session.selectWorkspace": "allow",
+  "placement.duplicate": "allow",
+  "placement.swap": "allow",
+  "placement.dock": "allow",
+  "placement.resize": "allow",
+  "view.configure": "allow",
   "workspace.create": "allow",
-  "workspace.select": "allow",
   "workspace.rename": "allow",
   "workspace.clone": "allow",
+  "workspace.rebalance": "allow",
+  // `view.show` opens, links, navigates — and, with a `replace` placement,
+  // changes what a tile shows. The replace form has its own key (see
+  // `policyKindOf`); the kind itself is allowed.
+  "view.show": "allow",
+  "view.show.replace": "confirm",
   // Destroys what someone may be reading.
-  "tile.close": "confirm",
-  "tile.replace": "confirm",
+  "placement.close": "confirm",
+  "placement.replaceWith": "confirm",
   "workspace.delete": "confirm",
   // Raw-only today; deleting payload can discard unsaved user work.
   "document.delete": "confirm",
-  // The launcher is a human's dialog; an agent opening it steals the keyboard.
-  "launcher.open": "deny",
-  "launcher.close": "deny",
+  // The launcher and the other dialogs are shell actions, not commands: the
+  // tools refuse them before any policy is consulted.
 };
+
+/**
+ * The policy key of one command. `view.show` with a `replace` placement is
+ * what the old `tile.replace` was: it changes what someone may be reading,
+ * so it has its own key.
+ */
+export function policyKindOf(command: WorkbenchCommand): string {
+  if (command.kind === "view.show" && command.placement.kind === "replace") return "view.show.replace";
+  return command.kind;
+}
 
 /* ---- the factory --------------------------------------------------------- */
 
@@ -124,12 +137,12 @@ export interface WorkbenchToolsOptions {
    * `available: () => getWorkbench() !== null` and simply are not offered to
    * the model until `attachWorkbench` runs.
    */
-  getWorkbench(): Workbench | null;
+  getWorkbench(): WorkbenchShell | null;
   /**
-   * Perform one verb through the PRODUCT's router rather than calling
-   * `wb.verbs.*`. That single indirection is what buys the trace: the router
-   * validates against the vocabulary, records the outcome — including a
-   * rejection — and reports it with `actor: "agent"`.
+   * Perform one command through the PRODUCT's router rather than calling
+   * `wb.execute` directly. That single indirection is what buys the trace:
+   * the router validates against the vocabulary, records the outcome —
+   * including a refusal — and reports it with `actor: "agent"`.
    */
   perform(verb: VerbLike, correlation?: EffectCorrelation): Promise<Outcome>;
   limits?: Partial<WorkbenchToolLimits>;
@@ -142,13 +155,13 @@ export interface WorkbenchToolsOptions {
    */
   allowRawMutations?: boolean;
   /**
-   * Translate a workbench verb into the product's own verb before it reaches
-   * the router. The default emits the `WorkbenchVerb` unchanged, so a product
-   * declares `tile.close` and friends in its vocabulary and routes them to
-   * `performWorkbenchVerb`; a product that already has its own names for
-   * these maps them here.
+   * Translate a workbench command into the product's own verb before it
+   * reaches the router. The default emits the `WorkbenchCommand` unchanged,
+   * so a product declares `placement.close` and friends in its vocabulary
+   * and routes them to `workbench.perform`; a product with its own names
+   * for these maps them here.
    */
-  mapVerb?(verb: WorkbenchVerb): VerbLike;
+  mapVerb?(verb: WorkbenchCommand): VerbLike;
   /** Conversation whose agent owns these per-session tools. */
   senderConversationId: string;
   /** Shared product execution, approval, idempotency, and trace gateway. */
@@ -176,8 +189,8 @@ function fail(error: string): Failure {
  * workspace.
  *
  * Every one of them is a thin, validated wrapper over the same
- * `WorkbenchVerb` handlers a mouse gesture calls, on the same local document,
- * reported to the same trace. The agent gets no private door into the layout:
+ * `WorkbenchCommand`s a mouse gesture executes, on the same core, reported
+ * to the same trace. The agent gets no private door into the layout:
  * if it can do something the UI cannot, the UI is missing a button.
  */
 export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchTools {
@@ -186,17 +199,17 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   // `PolicyDecision | undefined`, and `decisionFor` already answers "allow"
   // for a kind nobody has an opinion about.
   const policy: Record<string, PolicyDecision | undefined> = { ...DEFAULT_POLICY, ...options.policy };
-  const mapVerb = options.mapVerb ?? ((verb: WorkbenchVerb) => verb as unknown as VerbLike);
+  const mapVerb = options.mapVerb ?? ((verb: WorkbenchCommand) => verb as unknown as VerbLike);
 
   const available = () => options.getWorkbench() !== null;
 
-  async function performVerb(verb: WorkbenchVerb, correlation: EffectCorrelation): Promise<Outcome> {
+  async function performVerb(verb: WorkbenchCommand, correlation: EffectCorrelation): Promise<Outcome> {
     return options.perform(mapVerb(verb), correlation);
   }
 
   /** The one door every high-level mutating tool uses. */
   async function performWithPolicy(
-    verb: WorkbenchVerb,
+    verb: WorkbenchCommand,
     expectedRevision: string,
     confirmationId: string | undefined,
     effectId: string,
@@ -207,23 +220,24 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     if (expectedRevision !== beforeRevision) {
       return "rejected:workbench changed; call workbench_describe again and use its revision";
     }
-    const baseDocument = wb.store.getState().document;
+    const baseRevision = wb.core.getState().revision;
+    const policyKind = policyKindOf(verb);
     const result = await options.effectGateway.execute({
       effectId,
       invocationKey: effectId.replace(":", "/"),
       actor: "agent",
       conversationId: options.senderConversationId,
-      effectKind: verb.kind,
+      effectKind: policyKind,
       effectScope: "workbench",
       input: verb as unknown as JsonValue,
       targetIds: workbenchVerbTargetIds(verb),
-      policy: decisionFor(verb.kind),
+      policy: decisionFor(policyKind),
       confirmationId,
       beforeRevision,
-      approvalPrompt: `${verb.kind} needs the user's approval: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`,
-      approvalDescription: describeWorkbenchVerb(verb),
+      approvalPrompt: `${policyKind} needs the user's approval: call pbui_propose first, describing exactly this change, and pass the id you used as confirmationId`,
+      approvalDescription: describeWorkbenchCommand(verb),
       async perform() {
-        if (wb.store.getState().document !== baseDocument) {
+        if (wb.core.getState().revision !== baseRevision) {
           return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
         }
         const outcome = await performVerb(verb, {
@@ -244,22 +258,22 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   /* ---- id and availability checks, with messages a model can act on ------ */
 
   /** Is this application placeable HERE, and does it exist at all? */
-  function appProblem(appId: string, wb: Workbench): string | null {
+  function appProblem(appId: string, wb: WorkbenchShell): string | null {
     const app = wb.apps.get(appId);
-    if (!app) {
+    if (!app || !wb.core.apps.get(appId)) {
       return `unknown app "${appId}"; available: ${placeableIds(wb).join(", ")}`;
     }
     // A product hides an application from a workspace on purpose. The launcher
     // honours it; an agent that could place it anyway would be a way around
     // the policy rather than a second door to it.
-    if (!isAppAvailable(app, { workspaceId: wb.store.getState().workspaceId })) {
+    if (!isAppAvailable(app, { workspaceId: wb.core.getState().session.workspaceId })) {
       return `app "${appId}" is not offered in this workspace`;
     }
     return null;
   }
 
-  function placeableIds(wb: Workbench): string[] {
-    const workspaceId = wb.store.getState().workspaceId;
+  function placeableIds(wb: WorkbenchShell): string[] {
+    const workspaceId = wb.core.getState().session.workspaceId;
     return wb.apps
       .list()
       .filter((app) => isAppAvailable(app, { workspaceId }))
@@ -267,72 +281,99 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   }
 
   /**
-   * What is wrong with a verb before it is dispatched, if anything.
+   * What is wrong with a command before it is dispatched, if anything.
    *
-   * The handlers refuse a bad id by returning false, which now surfaces — but
-   * "the workbench refused" is a worse message than "you misspelled
-   * inventory", and an app id is the one field the protocol will happily
-   * accept as anything at all.
+   * The core refuses a bad id with a code, which does surface — but "the
+   * workbench refused" is a worse message than "you misspelled inventory",
+   * and an app id is the one field the protocol accepts as anything at all.
    */
-  function verbProblem(verb: WorkbenchVerb, wb: Workbench): string | null {
-    const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
+  function verbProblem(command: WorkbenchCommand, wb: WorkbenchShell): string | null {
+    const state = wb.core.getState();
+    const description = wb.describe({ workspaceId: state.session.workspaceId });
     const tiles = description.workspaces[0]?.tiles ?? [];
     const knownPlacement = (id: string) => tiles.some((tile) => tile.placementId === id);
-    const knownView = (id: string) => Boolean(wb.store.getState().document.views[id]);
+    const knownView = (id: string) => Boolean(state.document.views[id]);
+    const knownWorkspace = (id: string) => state.document.workspaces.some((workspace) => workspace.id === id);
+    const geometry = wb.measure();
+    const constraints = wb.core.policy.split;
+    const tooSmall = (placementId: string, axis: "row" | "col") => (canSplitPlacement(geometry, placementId, axis, constraints) ? null : `tile "${placementId}" is too small to split ${axis === "row" ? "side by side" : "top and bottom"}`);
 
-    switch (verb.kind) {
-      case "tile.split":
-        if (!knownPlacement(verb.placementId)) return unknownPlacement(verb.placementId, tiles);
-        if (!wb.verbs.canSplit(verb.placementId, verb.direction)) return `tile "${verb.placementId}" is too small to split ${verb.direction === "row" ? "side by side" : "top and bottom"}`;
-        return verb.appId ? appProblem(verb.appId, wb) : null;
-      case "tile.replace":
-        if (!knownPlacement(verb.placementId)) return unknownPlacement(verb.placementId, tiles);
-        return appProblem(verb.appId, wb);
-      case "app.place":
-        return appProblem(verb.appId, wb);
-      case "tile.close":
-      case "tile.activate":
-        return knownPlacement(verb.placementId) ? null : unknownPlacement(verb.placementId, tiles);
-      case "tile.link":
-        if (!knownPlacement(verb.placementId)) return unknownPlacement(verb.placementId, tiles);
-        return knownView(verb.viewId) ? null : `unknown view "${verb.viewId}"`;
-      case "tile.swap":
-        if (!knownPlacement(verb.a)) return unknownPlacement(verb.a, tiles);
-        return knownPlacement(verb.b) ? null : unknownPlacement(verb.b, tiles);
-      case "tile.dock": {
-        if (!knownPlacement(verb.source)) return unknownPlacement(verb.source, tiles);
-        if (!knownPlacement(verb.target)) return unknownPlacement(verb.target, tiles);
-        const direction = verb.zone === "left" || verb.zone === "right" ? "row" : "col";
-        return wb.verbs.canSplit(verb.target, direction) ? null : `tile "${verb.target}" is too small to dock another tile`;
+    switch (command.kind) {
+      case "placement.duplicate":
+        if (!knownPlacement(command.placementId)) return unknownPlacement(command.placementId, tiles);
+        return tooSmall(command.placementId, command.axis ?? longerAxis(geometry, command.placementId, constraints.headlessAxis));
+      case "placement.close":
+      case "session.activatePlacement":
+        if (command.placementId === null) return null;
+        return knownPlacement(command.placementId) ? null : unknownPlacement(command.placementId, tiles);
+      case "placement.swap":
+        if (!knownPlacement(command.a)) return unknownPlacement(command.a, tiles);
+        return knownPlacement(command.b) ? null : unknownPlacement(command.b, tiles);
+      case "placement.replaceWith":
+        if (!knownPlacement(command.source)) return unknownPlacement(command.source, tiles);
+        return knownPlacement(command.target) ? null : unknownPlacement(command.target, tiles);
+      case "placement.dock": {
+        if (!knownPlacement(command.source)) return unknownPlacement(command.source, tiles);
+        if (!knownPlacement(command.target)) return unknownPlacement(command.target, tiles);
+        const axis = command.edge === "left" || command.edge === "right" ? "row" : "col";
+        return canSplitPlacement(geometry, command.target, axis, constraints) ? null : `tile "${command.target}" is too small to dock another tile`;
       }
-      case "view.setTitle":
-      case "view.rebind":
-      case "view.goTo":
-        return knownView(verb.viewId) ? null : `unknown view "${verb.viewId}"`;
-      case "split.resize":
-        if (!description.workspaces[0]?.splits.some((split) => split.splitId === verb.splitId)) return `unknown split "${verb.splitId}"`;
-        return wb.verbs.ratioBounds(verb.splitId) ? null : `split "${verb.splitId}" is too small to resize while keeping both panes usable`;
-      case "workspace.select":
+      case "view.show": {
+        if (command.view.kind === "existing") {
+          if (!knownView(command.view.viewId)) return `unknown view "${command.view.viewId}"`;
+        } else {
+          const problem = appProblem(command.view.appId, wb);
+          if (problem) return problem;
+        }
+        const placement = command.placement;
+        if (placement.kind === "replace" && !knownPlacement(placement.target)) return unknownPlacement(placement.target, tiles);
+        if (placement.kind === "split" && placement.target !== undefined) {
+          if (!knownPlacement(placement.target)) return unknownPlacement(placement.target, tiles);
+          const axis = placement.edge ? (placement.edge === "left" || placement.edge === "right" ? "row" : "col") : (placement.axis ?? longerAxis(geometry, placement.target, constraints.headlessAxis));
+          return tooSmall(placement.target, axis);
+        }
+        if (placement.kind === "auto" && placement.near !== undefined && !knownPlacement(placement.near)) return unknownPlacement(placement.near, tiles);
+        return null;
+      }
+      case "view.configure":
+        return knownView(command.viewId) ? null : `unknown view "${command.viewId}"`;
+      case "placement.resize": {
+        const split = description.workspaces[0]?.splits.find((item) => item.splitId === command.splitId);
+        if (!split) return `unknown split "${command.splitId}"`;
+        return splitRatioBounds(geometry, command.splitId, split.direction, constraints) ? null : `split "${command.splitId}" is too small to resize while keeping both panes usable`;
+      }
+      case "session.selectWorkspace":
       case "workspace.rename":
       case "workspace.delete":
       case "workspace.clone":
-        return wb.store.getState().document.workspaces.some((workspace) => workspace.id === verb.workspaceId)
-          ? null
-          : `unknown workspace "${verb.workspaceId}"`;
+      case "workspace.rebalance":
+        return knownWorkspace(command.workspaceId) ? null : `unknown workspace "${command.workspaceId}"`;
       default:
         return null;
     }
   }
 
-  async function workbenchRevision(wb: Workbench): Promise<string> {
-    return digestCanonicalJson(toJson(WorkbenchDocumentSchema, wb.store.getState().document) as JsonValue);
+  async function workbenchRevision(wb: WorkbenchShell): Promise<string> {
+    return digestCanonicalJson(toJson(WorkbenchDocumentSchema, wb.core.getState().document) as JsonValue);
   }
 
-  function workbenchVerbTargetIds(verb: WorkbenchVerb): string[] {
-    const candidate = verb as unknown as Record<string, unknown>;
-    return ["placementId", "workspaceId", "viewId", "splitId", "appId", "source", "target", "a", "b"]
-      .map((key) => candidate[key])
-      .filter((value): value is string => typeof value === "string" && value.length > 0);
+  /** Every id a command names, one level deep (a `view.show` names ids inside `view` and `placement`). */
+  function workbenchVerbTargetIds(verb: WorkbenchCommand): string[] {
+    const keys = ["placementId", "workspaceId", "viewId", "splitId", "appId", "source", "target", "a", "b", "near", "requestedViewId"];
+    const out: string[] = [];
+    const collect = (candidate: Record<string, unknown>) => {
+      for (const key of keys) {
+        const value = candidate[key];
+        if (typeof value === "string" && value.length > 0) out.push(value);
+      }
+    };
+    const record = verb as unknown as Record<string, unknown>;
+    collect(record);
+    for (const nested of ["view", "placement"]) {
+      const inner = record[nested];
+      if (inner && typeof inner === "object") collect(inner as Record<string, unknown>);
+    }
+    return out;
   }
 
   function unknownPlacement(id: string, tiles: { placementId: string }[]): string {
@@ -341,7 +382,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
 
   /* ---- layout validation, with messages written for a model to act on ---- */
 
-  function validateLayout(spec: LayoutSpec, wb: Workbench): string | null {
+  function validateLayout(spec: LayoutSpec, wb: WorkbenchShell): string | null {
     let tiles = 0;
 
     const walk = (node: LayoutSpec, depth: number): string | null => {
@@ -355,10 +396,10 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       tiles += 1;
       const problem = appProblem(node.appId, wb);
       if (problem) return problem;
-      const app = wb.apps.get(node.appId)!;
+      const app = wb.core.apps.get(node.appId)!;
       // A doc-bound application placed with nothing bound opens empty, which
       // reads as a broken tile rather than as a mistake in the request.
-      for (const key of documentSlots(app)) {
+      for (const key of bindingNames(app)) {
         if (!node.documents?.[key]) {
           return `app "${node.appId}" needs a "${key}" binding; got ${JSON.stringify(node.documents ?? {})}`;
         }
@@ -369,7 +410,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     const problem = walk(spec, 1);
     if (problem) return problem;
     if (tiles > limits.tilesPerWorkspace) return `layout has ${tiles} tiles, the limit is ${limits.tilesPerWorkspace}`;
-    if (!wb.verbs.layoutFits(spec)) return "layout would create panes smaller than this workbench's configured minimum size";
+    if (!layoutFits(spec, wb.measure(), wb.core.policy.split)) return "layout would create panes smaller than this workbench's configured minimum size";
     return null;
   }
 
@@ -389,7 +430,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     async execute(input) {
       const wb = options.getWorkbench();
       if (!wb) return fail("no workbench is attached to this chat") as unknown as Record<string, unknown>;
-      const description = describeWorkbench(wb, {
+      const description = wb.describe({
         ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}),
         ...(input.geometry ? { geometry: true } : {}),
       });
@@ -399,12 +440,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       // A product may hide an application from a workspace. Marking rather
       // than omitting: the agent can then say "the ledger isn't available
       // here" instead of insisting the application does not exist.
-      const workspaceId = input.workspaceId ?? wb.store.getState().workspaceId;
+      const workspaceId = input.workspaceId ?? wb.core.getState().session.workspaceId;
       const apps = description.apps.map((app) => {
-        const descriptor = wb.apps.get(app.id);
-        return { ...app, available: descriptor ? isAppAvailable(descriptor, { workspaceId }) : false };
+        const presentation = wb.apps.get(app.id);
+        return { ...app, available: presentation ? isAppAvailable(presentation, { workspaceId }) : false };
       });
-      return { ok: true, revision: await workbenchRevision(wb), ...description, apps } as unknown as Record<string, unknown>;
+      return { ok: true, ...description, apps, revision: await workbenchRevision(wb) } as unknown as Record<string, unknown>;
     },
   };
 
@@ -429,19 +470,14 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     async execute(input, context) {
       const wb = options.getWorkbench();
       if (!wb) return fail("no workbench is attached to this chat") as unknown as Record<string, unknown>;
-      if (wb.store.getState().document.workspaces.length >= limits.workspaces) {
+      if (wb.core.getState().document.workspaces.length >= limits.workspaces) {
         return fail(`the workbench already has ${limits.workspaces} workspaces, the limit`) as unknown as Record<string, unknown>;
       }
       const problem = validateLayout(input.layout, wb);
       if (problem) return fail(problem) as unknown as Record<string, unknown>;
 
-      const before = new Set(wb.store.getState().document.workspaces.map((w) => w.id));
-      const verb: WorkbenchVerb = {
-        kind: "workspace.create",
-        name: input.name,
-        spec: input.layout,
-        ...(input.select === false ? { select: false } : {}),
-      };
+      const before = new Set(wb.core.getState().document.workspaces.map((w) => w.id));
+      const verb: WorkbenchCommand = commands.createWorkspace(input.name, input.layout, input.select === false ? { select: false } : {});
       const outcome = await performWithPolicy(
         verb,
         input.expectedRevision,
@@ -450,15 +486,15 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       );
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
 
-      // The verb returns nothing through the router, so name the workspace by
+      // The router returns nothing but an outcome, so name the workspace by
       // difference; the model needs the id for anything it does next.
-      const after = wb.store.getState().document.workspaces.find((w) => !before.has(w.id));
-      const description = after ? describeWorkbench(wb, { workspaceId: after.id }) : null;
+      const after = wb.core.getState().document.workspaces.find((w) => !before.has(w.id));
+      const description = after ? wb.describe({ workspaceId: after.id }) : null;
       return {
         ok: true,
         workspaceId: after?.id ?? null,
         name: after?.name ?? input.name,
-        active: wb.store.getState().workspaceId === after?.id,
+        active: wb.core.getState().session.workspaceId === after?.id,
         revision: await workbenchRevision(wb),
         tiles: description?.workspaces[0]?.tiles ?? [],
       } as unknown as Record<string, unknown>;
@@ -480,7 +516,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       documents: z.record(z.string(), z.string()).optional(),
       near: z.string().optional().describe("a placementId to open beside; omitted means the active tile"),
       title: z.string().optional(),
-      confirmationId: z.string().optional().describe("an approved pbui_propose id, if view.open requires confirmation"),
+      confirmationId: z.string().optional().describe("an approved pbui_propose id, if view.show requires confirmation"),
     }),
     available,
     async execute(input, context) {
@@ -492,15 +528,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       );
       if (problem) return fail(problem) as unknown as Record<string, unknown>;
 
-      const workspaceId = wb.store.getState().workspaceId;
-      const before = describeWorkbench(wb, { workspaceId }).workspaces[0]?.tiles ?? [];
-      const verb: WorkbenchVerb = {
-        kind: "view.open",
-        appId: input.appId,
-        documents: input.documents ?? {},
+      const workspaceId = wb.core.getState().session.workspaceId;
+      const before = wb.describe({ workspaceId }).workspaces[0]?.tiles ?? [];
+      const verb: WorkbenchCommand = commands.open(input.appId, input.documents ?? {}, {
         ...(input.near ? { near: input.near } : {}),
         ...(input.title ? { title: input.title } : {}),
-      };
+      });
       const outcome = await performWithPolicy(
         verb,
         input.expectedRevision,
@@ -509,9 +542,9 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       );
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
 
-      const after = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId }).workspaces[0]?.tiles ?? [];
+      const after = wb.describe({ workspaceId: wb.core.getState().session.workspaceId }).workspaces[0]?.tiles ?? [];
       const fresh = after.find((tile) => !before.some((old) => old.placementId === tile.placementId));
-      // No new placement means `openView` went to an existing tile — the
+      // No new placement means `view.show` went to an existing tile — the
       // doc-bound de-dup rule. Reporting it stops the model concluding it
       // failed and opening a third.
       const wentToExisting = !fresh;
@@ -534,26 +567,26 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     parameters: z.object({
       workspaceId: z.string(),
       expectedRevision: RevisionSchema.describe("revision from the latest workbench_describe"),
-      confirmationId: z.string().optional().describe("an approved pbui_propose id, if workspace.select requires confirmation"),
+      confirmationId: z.string().optional().describe("an approved pbui_propose id, if session.selectWorkspace requires confirmation"),
     }),
     available,
     async execute(input, context) {
       const wb = options.getWorkbench();
       if (!wb) return fail("no workbench is attached to this chat") as unknown as Record<string, unknown>;
-      if (!wb.store.getState().document.workspaces.some((w) => w.id === input.workspaceId)) {
+      if (!wb.core.getState().document.workspaces.some((w) => w.id === input.workspaceId)) {
         return fail(`unknown workspace "${input.workspaceId}"`) as unknown as Record<string, unknown>;
       }
       const outcome = await performWithPolicy(
-        { kind: "workspace.select", workspaceId: input.workspaceId },
+        commands.selectWorkspace(input.workspaceId),
         input.expectedRevision,
         input.confirmationId,
         `${options.senderConversationId}:${context.toolCallId}`,
       );
       if (outcome !== "performed") return fail(outcome.replace(/^rejected:/, "")) as unknown as Record<string, unknown>;
-      const description = describeWorkbench(wb, { workspaceId: input.workspaceId });
+      const description = wb.describe({ workspaceId: input.workspaceId });
       return {
         ok: true,
-        activeWorkspaceId: wb.store.getState().workspaceId,
+        activeWorkspaceId: wb.core.getState().session.workspaceId,
         revision: await workbenchRevision(wb),
         tiles: description.workspaces[0]?.tiles ?? [],
       } as unknown as Record<string, unknown>;
@@ -564,12 +597,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
     name: "workbench_perform",
     mode: "frontend",
     description:
-      "Atomically preflight and apply one or more changes to the current layout. Every verb must be valid or none land. " +
-      "Each verb is an object with a kind: tile.split{placementId,direction,appId?}, tile.close{placementId}, " +
-      "tile.swap{a,b}, tile.replace{placementId,appId}, tile.link{placementId,viewId}, split.resize{splitId,ratio}, " +
-      "app.place{appId,from?}, view.setTitle{viewId,title}, view.rebind{viewId,documents}, view.goTo{viewId}, " +
-      "workspace.select{workspaceId}, workspace.rename{workspaceId,name}, workspace.clone{workspaceId}. " +
-      "Ids and expectedRevision come from workbench_describe.",
+      "Atomically preflight and apply one or more changes to the current layout. Every command must be valid or none land. " +
+      "Each command is an object with a kind: placement.duplicate{placementId,axis?:'row'|'col'}, placement.close{placementId}, " +
+      "placement.swap{a,b}, placement.dock{source,target,edge}, placement.resize{splitId,ratio}, " +
+      "view.show{view:{kind:'application',appId,documents?}|{kind:'existing',viewId}, placement:{kind:'auto',near?}|{kind:'split',target?,edge?,axis?}|{kind:'replace',target}|{kind:'navigate'}}, " +
+      "view.configure{viewId,title?,documents?}, session.selectWorkspace{workspaceId}, session.activatePlacement{placementId}, " +
+      "workspace.rename{workspaceId,name}, workspace.clone{workspaceId}. Ids and expectedRevision come from workbench_describe.",
     parameters: z.object({
       verbs: z.array(z.record(z.string(), z.unknown())).min(1),
       expectedRevision: RevisionSchema.describe("revision from the latest workbench_describe"),
@@ -587,18 +620,22 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         return fail("workbench changed; call workbench_describe again and use its revision") as unknown as Record<string, unknown>;
       }
 
-      const verbs: WorkbenchVerb[] = [];
+      const verbs: WorkbenchCommand[] = [];
       const errors: { index: number; verb: unknown; error: string }[] = [];
       input.verbs.forEach((candidate, index) => {
-        if (!isWorkbenchVerb(candidate)) {
-          errors.push({ index, verb: candidate, error: "not a complete workbench verb; see the tool description for required fields" });
+        if (!isWorkbenchCommand(candidate)) {
+          const kind = (candidate as { kind?: unknown }).kind;
+          // The launcher and the other dialogs are the human's; an agent
+          // opening one steals the keyboard.
+          const shellAction = typeof kind === "string" && /^(launcher|rebalance|link\.mode|relation\.palette|show\.chooser)\./.test(kind);
+          errors.push({ index, verb: candidate, error: shellAction ? `${kind} is not something the assistant may do` : "not a complete workbench command; see the tool description for required fields" });
           return;
         }
         const unusable = verbProblem(candidate, wb);
         if (unusable) errors.push({ index, verb: candidate, error: unusable });
         else verbs.push(candidate);
       });
-      const forbidden = verbs.find((verb) => decisionFor(verb.kind) === "deny");
+      const forbidden = verbs.find((verb) => decisionFor(policyKindOf(verb)) === "deny");
       if (forbidden) errors.push({ index: input.verbs.indexOf(forbidden), verb: forbidden, error: `${forbidden.kind} is not something the assistant may do` });
       if (errors.length > 0) {
         return {
@@ -614,21 +651,26 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         } as unknown as Record<string, unknown>;
       }
 
-      const planned = wb.plan(verbs);
-      if (!planned.ok) {
+      // Advisory preflight (S2): the batch is planned against the current
+      // state and refused early; acceptance below executes it FRESH.
+      const previewed = wb.preview(verbs);
+      if (!previewed.ok) {
+        const at = previewed.index ?? 0;
+        const because = `the workbench refused to ${describeWorkbenchCommand(verbs[at]!)}: ${previewed.because}`;
         return {
           ok: false,
           atomic: true,
           applied: 0,
-          errors: [{ index: planned.index, verb: planned.verb, error: planned.error }],
+          errors: [{ index: at, verb: verbs[at], error: because }],
           results: verbs.map((verb, index) => ({
             verb,
             ok: false,
-            error: index === planned.index ? planned.error : "atomic plan rejected before any verb was applied",
+            error: index === at ? because : "atomic plan rejected before any command was applied",
           })),
         } as unknown as Record<string, unknown>;
       }
-      const gated = verbs.filter((verb) => decisionFor(verb.kind) === "confirm");
+      const baseRevision = wb.core.getState().revision;
+      const gated = verbs.filter((verb) => decisionFor(policyKindOf(verb)) === "confirm");
       const effectId = `${options.senderConversationId}:${context.toolCallId}`;
       const result = await options.effectGateway.execute({
         effectId,
@@ -643,14 +685,15 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
         confirmationId: input.confirmationId,
         beforeRevision,
         approvalPrompt:
-          `this atomic batch includes ${gated.map((verb) => describeWorkbenchVerb(verb)).join(", ")}; call pbui_propose first ` +
+          `this atomic batch includes ${gated.map((verb) => describeWorkbenchCommand(verb)).join(", ")}; call pbui_propose first ` +
           "describing the complete batch, and pass its id as confirmationId",
         approvalDescription: `apply ${verbs.length} workbench changes atomically`,
         async perform() {
-          if (wb.store.getState().document !== planned.plan.baseDocument) {
+          if (wb.core.getState().revision !== baseRevision) {
             return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
           }
-          if (!wb.applyPlan(planned.plan)) return { outcome: "rejected:the workbench refused the atomic plan" };
+          const executed = wb.execute(verbs);
+          if (!executed.ok) return { outcome: `rejected:the workbench refused the atomic batch: ${executed.because}` };
           return { outcome: "performed", afterRevision: await workbenchRevision(wb) } as const;
         },
       });
@@ -664,7 +707,7 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
           results: verbs.map((verb) => ({ verb, ok: false, error })),
         } as unknown as Record<string, unknown>;
       }
-      const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
+      const description = wb.describe({ workspaceId: wb.core.getState().session.workspaceId });
       return {
         ok: true,
         atomic: true,
@@ -688,13 +731,13 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       case "viewDelete":
       case "viewClose":
       case "placementClose":
-        return "tile.close";
+        return "placement.close";
       case "placementReplace":
-        return "tile.replace";
+        return "view.show.replace";
       case "viewConfigure":
-        // Title and binding changes have their own allow-by-default verbs;
+        // Title and binding changes have their own allow-by-default command;
         // changing appId is the raw equivalent of replacing a tile.
-        return mutation.body.value.appId !== undefined ? "tile.replace" : null;
+        return mutation.body.value.appId !== undefined ? "view.show.replace" : null;
       case "documentDelete":
         return "document.delete";
       default:
@@ -746,13 +789,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
       if (input.expectedRevision !== beforeRevision) {
         return fail("workbench changed; call workbench_describe again and use its revision") as unknown as Record<string, unknown>;
       }
-      const baseDocument = wb.store.getState().document;
+      const baseRevision = wb.core.getState().revision;
 
-      // Applied twice on purpose: once against a copy to learn WHY the applier
-      // refuses, since `store.mutate` only answers true or false, and once for
-      // real. The document is immutable, so the dry run cannot affect it.
+      // A dry run against the immutable document, to learn WHY the applier
+      // refuses before spending an approval on the batch.
       try {
-        applyMutations(wb.store.getState().document, batch);
+        applyMutations(wb.core.getState().document, batch);
       } catch (error) {
         if (error instanceof MutationError) {
           return { ok: false, error: error.detail, code: error.code, path: error.path } as unknown as Record<string, unknown>;
@@ -776,11 +818,12 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
           "describing exactly that, and pass the id you used as confirmationId",
         approvalDescription: "this mutation batch",
         async perform() {
-          if (wb.store.getState().document !== baseDocument) {
+          if (wb.core.getState().revision !== baseRevision) {
             return { outcome: "rejected:workbench changed while awaiting approval; call workbench_describe again" };
           }
-          if (!wb.mutate(batch)) return { outcome: "rejected:the workbench refused the batch" };
-          const description = describeWorkbench(wb, { workspaceId: wb.store.getState().workspaceId });
+          const applied = wb.apply(batch);
+          if (!applied.ok) return { outcome: `rejected:the workbench refused the batch: ${applied.because}` };
+          const description = wb.describe({ workspaceId: wb.core.getState().session.workspaceId });
           return {
             outcome: "performed",
             afterRevision: await workbenchRevision(wb),
@@ -803,26 +846,21 @@ export function createWorkbenchTools(options: WorkbenchToolsOptions): WorkbenchT
   };
 }
 
-/** The verb kinds a product must declare in its vocabulary for these tools to work. */
-export const WORKBENCH_VERB_KINDS: WorkbenchVerbKind[] = [
-  "tile.split",
-  "tile.close",
-  "tile.swap",
-  "tile.dock",
-  "tile.activate",
-  "tile.replace",
-  "tile.link",
-  "split.resize",
-  "app.place",
-  "view.setTitle",
-  "view.open",
-  "view.rebind",
-  "view.goTo",
-  "workspace.select",
+/** The command kinds a product must declare in its vocabulary for these tools to work. */
+export const WORKBENCH_COMMAND_KINDS: WorkbenchCommandKind[] = [
+  "placement.duplicate",
+  "placement.close",
+  "placement.swap",
+  "placement.dock",
+  "placement.replaceWith",
+  "placement.resize",
+  "view.show",
+  "view.configure",
   "workspace.create",
   "workspace.rename",
   "workspace.delete",
   "workspace.clone",
+  "workspace.rebalance",
+  "session.selectWorkspace",
+  "session.activatePlacement",
 ];
-
-export { describeWorkbenchVerb };

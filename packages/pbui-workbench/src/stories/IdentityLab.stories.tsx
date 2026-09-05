@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, JsonBlock, Stack, Text, planIdentityAdd, quotientOf, type SplitPolicy } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useMemo, useState } from "react";
-import { defineApp, type AppProps } from "../apps";
-import { createWorkbench } from "../createWorkbench";
-import { layout, split, tile } from "../document";
+import { defineWorkbenchApp, type AppProps } from "../app";
+import { createWorkbench } from "../createWorkbenchShell";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { useEmitPort, usePort } from "../links/hooks";
 
 /**
@@ -43,13 +43,9 @@ function Picker({ view, authority }: AppProps & { authority: string }) {
 }
 
 const picker = (id: string, title: string, authority: string) =>
-  defineApp({
-    id,
-    title,
-    tone: "var(--pbui-cat-3)",
-    singleton: false,
-    ports: [{ name: "selection", direction: "inout", contract: { valueType: "number", semanticRole: "selection", authorityDomain: authority }, doc: `the picked number (${authority})` }],
-    Component: (props: AppProps) => <Picker {...props} authority={authority} />,
+  defineWorkbenchApp({
+    manifest: { id, ports: [{ name: "selection", direction: "inout", contract: { valueType: "number", semanticRole: "selection", authorityDomain: authority }, doc: `the picked number (${authority})` }] },
+    presentation: { title, tone: "var(--pbui-tone-chart)", Component: (props: AppProps) => <Picker {...props} authority={authority} /> },
   });
 
 const apps = [picker("picker", "picker", "orders"), picker("sales-picker", "sales picker", "daily_sales")];
@@ -65,18 +61,18 @@ function IdentityLab() {
   );
   const [, tick] = useState(0);
   const [last, setLast] = useState<string>("");
-  const views = () => leaves(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
+  const views = () => leaves(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
   const share = (rightIndex: 1 | 2) => {
     const v = views();
     const left = `${v[0]}/selection`;
     const right = `${v[rightIndex]}/selection`;
-    const plan = planIdentityAdd(left, right, "prefer-left", wb.links.snapshot(), wb.links.deps);
+    const plan = planIdentityAdd(left, right, "prefer-left", wb.linkSnapshot(), wb.links.deps);
     setLast(plan.kind === "available" ? plan.explanation : plan.kind === "unavailable" ? `refused (${plan.code}): ${plan.because}` : "ambiguous");
     if (plan.kind === "available") wb.perform(plan.verb);
     tick((n) => n + 1);
   };
   const leave = (splitPolicy: SplitPolicy) => {
-    const declaration = wb.links.snapshot().identity[0];
+    const declaration = wb.linkSnapshot().identity[0];
     if (!declaration) {
       setLast("nothing to leave");
       return;
@@ -85,7 +81,7 @@ function IdentityLab() {
     setLast(`left the cell · ${splitPolicy}`);
     tick((n) => n + 1);
   };
-  const snapshot = wb.links.snapshot();
+  const snapshot = wb.linkSnapshot();
   const quotient = quotientOf(snapshot);
   return (
     <div style={{ display: "grid", gridTemplateRows: "auto minmax(0, 1fr) auto", gap: 8, height: "100vh", padding: 8, boxSizing: "border-box" }}>

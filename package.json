@@ -1,6 +1,6 @@
 {
   "name": "@hyperslop-systems/pbui",
-  "version": "0.10.0",
+  "version": "0.12.0",
   "description": "Presentation-based React UI primitives and typed interaction protocols",
   "type": "module",
   "sideEffects": [
@@ -18,6 +18,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./link-kernel": {
+      "types": "./dist/link-kernel.d.ts",
+      "import": "./dist/link-kernel.js"
     },
     "./presentation": {
       "types": "./dist/presentation/index.d.ts",
@@ -52,6 +56,14 @@
   "peerDependencies": {
     "react": "^18.3.0 || ^19.0.0",
     "react-dom": "^18.3.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@storybook/addon-a11y": "^10.5.4",

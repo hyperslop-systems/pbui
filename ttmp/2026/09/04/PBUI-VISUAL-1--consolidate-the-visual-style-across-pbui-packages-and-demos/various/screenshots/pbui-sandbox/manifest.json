@@ -1,0 +1,18 @@
+[
+  {
+    "n": 1,
+    "id": "sandbox-devtools--playground",
+    "title": "Sandbox/Devtools",
+    "name": "playground: the draft in a CodeEditor, run live",
+    "file": "001-sandbox-devtools--playground.png",
+    "size": "320x120"
+  },
+  {
+    "n": 2,
+    "id": "sandbox-devtools--source",
+    "title": "Sandbox/Devtools",
+    "name": "source: a read-only CodeEditor with versions and diff",
+    "file": "002-sandbox-devtools--source.png",
+    "size": "320x120"
+  }
+]

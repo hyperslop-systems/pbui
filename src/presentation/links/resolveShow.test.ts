@@ -51,21 +51,30 @@ describe("resolveShow", () => {
     expect(r.winners[0]?.kind === "existing-port" && r.winners[0].verb).toEqual(linkVerbs.bind("v-cust/customer", CUSTOMER_ADA));
   });
 
-  it("spawns rank after every free existing port and never tie among themselves", () => {
+  it("spawns rank after every free existing port and prefers the first placement for one target", () => {
     const s = world({ without: ["v-a", "v-b", "v-c"] });
     const r = resolveShow({ subject: ORDER_1042, from: "v-east/order", role: "order.detail" }, s, deps, { placements: PLACEMENTS, spawnable: [DETAIL, INSPECTOR] });
     // Type distance is the FIRST rank key (report §7.10): a spawned detail (exact type, matching role) beats
     // the inspector on screen, which reaches <order> only through <inspectable> and has the wrong role.
-    expect(r.winners.map((w) => w.candidateId)).toEqual(["spawn:order-detail:right"]);
+    expect(r.winners.map((w) => w.candidateId)).toEqual(["spawn:order-detail:order:right"]);
     const insp = r.candidates.find((c) => c.candidateId === "existing:v-insp/subject")!;
     expect(insp.status.kind).toBe("available");
     expect(insp.rank[0]).toBeGreaterThan(0);
     const spawnIds = r.candidates.filter((c) => c.kind === "spawn").map((c) => c.candidateId);
-    expect(spawnIds).toEqual(["spawn:order-detail:right", "spawn:order-detail:below", "spawn:inspector:right", "spawn:inspector:below"]);
+    expect(spawnIds).toEqual(["spawn:order-detail:order:right", "spawn:order-detail:order:below", "spawn:inspector:subject:right", "spawn:inspector:subject:below"]);
     const empty = world({ without: ["v-a", "v-b", "v-c", "v-insp", "v-notes"] });
     const r2 = resolveShow({ subject: ORDER_1042, from: "v-east/order" }, empty, deps, { placements: PLACEMENTS, spawnable: [DETAIL, INSPECTOR] });
-    expect(r2.winners.map((w) => w.candidateId)).toEqual(["spawn:order-detail:right"]);
+    expect(r2.winners.map((w) => w.candidateId)).toEqual(["spawn:order-detail:order:right"]);
     expect(r2.ambiguous).toBe(false);
+  });
+
+  it("keeps equally ranked distinct app ports ambiguous while discarding their alternate placements", () => {
+    const empty = world({ without: ["v-a", "v-b", "v-c", "v-insp", "v-notes"] });
+    const alternate: SpawnableApp = { appId: "order-card", title: "order card", portName: "subject", valueType: "order", semanticRole: "order.detail" };
+    const secondPort: SpawnableApp = { ...DETAIL, portName: "comparison" };
+    const r = resolveShow({ subject: ORDER_1042, role: "order.detail" }, empty, deps, { placements: PLACEMENTS, spawnable: [DETAIL, alternate, secondPort] });
+    expect(r.winners.map((winner) => winner.candidateId)).toEqual(["spawn:order-detail:order:right", "spawn:order-card:subject:right", "spawn:order-detail:comparison:right"]);
+    expect(r.ambiguous).toBe(true);
   });
 
   it("ranking is independent of port registration order", () => {

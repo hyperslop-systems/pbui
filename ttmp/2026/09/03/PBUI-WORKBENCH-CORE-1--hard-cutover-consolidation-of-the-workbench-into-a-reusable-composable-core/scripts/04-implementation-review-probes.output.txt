@@ -1,0 +1,37 @@
+
+ RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui
+
+stdout | ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows that exposed protobuf state can be mutated without the gateway or a revision
+EXPOSED_STATE_MUTATION {"name":"mutated outside the gateway","revision":0}
+
+stdout | ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows that advisory preview consumes the shared deterministic id stream
+PREVIEW_ID_DRIFT {"previewPlacementId":"n-00000009-0000","executePlacementId":"n-00000012-0000"}
+
+stdout | ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows that a core subscriber exception escapes after install and suppresses the commit receipt
+SUBSCRIBER_ESCAPE {"revisionAfterThrow":1,"commitReceipts":0}
+
+stdout | ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows that a links post-commit exception escapes after durable state is visible
+POST_COMMIT_ESCAPE {"revisionAfterThrow":1}
+
+stdout | ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows document-source reentrancy delivering commit receipts out of revision order
+REENTRANT_RECEIPTS [{"revision":4,"cases":["documentDelete"]},{"revision":3,"cases":["placementClose","viewDelete"]}]
+
+stdout | ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows same-app replacement dropping an explicitly requested title
+DROPPED_REPLACE_TITLE {"ok":true,"changed":false,"placementId":"n-76fd06f1-4897","viewId":"v-7bb470d0-3b52"}
+
+stdout | ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows bootstrap-create treating already-created local work as a dropped rebase
+CREATE_BOOTSTRAP_DROP {"droppedCalls":1,"status":{"phase":"synced","revision":"created","queued":0,"inFlight":0}}
+
+ ✓ ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows that exposed protobuf state can be mutated without the gateway or a revision 9ms
+ ✓ ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows that advisory preview consumes the shared deterministic id stream 7ms
+ ✓ ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows that a core subscriber exception escapes after install and suppresses the commit receipt 5ms
+ ✓ ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows that a links post-commit exception escapes after durable state is visible 4ms
+ ✓ ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows document-source reentrancy delivering commit receipts out of revision order 7ms
+ ✓ ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows same-app replacement dropping an explicitly requested title 1ms
+ ✓ ttmp/2026/09/03/PBUI-WORKBENCH-CORE-1--hard-cutover-consolidation-of-the-workbench-into-a-reusable-composable-core/scripts/04-implementation-review-probes.test.ts > PBUI-WORKBENCH-CORE-1 implementation-review probes > shows bootstrap-create treating already-created local work as a dropped rebase 5ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  16:53:41
+   Duration  1.85s (transform 759ms, setup 0ms, import 1.00s, tests 41ms, environment 571ms)
+

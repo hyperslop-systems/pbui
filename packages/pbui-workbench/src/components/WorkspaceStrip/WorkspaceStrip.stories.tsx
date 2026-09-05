@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, Text } from "@hyperslop-systems/pbui";
-import { createWorkbench } from "../../createWorkbench";
-import { split, tile, workspaces } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
+import { split, tile, workspaces } from "@hyperslop-systems/workbench-core";
 import { demoApps } from "../../stories/demoApps";
 
 const workbench = createWorkbench({

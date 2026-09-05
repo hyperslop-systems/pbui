@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { createAppRegistry, createWorkbench, layout, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench } from "@hyperslop-systems/pbui-workbench";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import { useMemo } from "react";
 import { createPlotScriptApps } from "./apps";
@@ -39,7 +40,7 @@ function Pair({ source, spec }: { source: string; spec?: "pair" | "plot-only" | 
     const tree =
       spec === "plot-only" ? tile("plot-view", bound) : spec === "script-only" ? tile("plot-script", bound) : split("row", 0.5, tile("plot-script", bound), tile("plot-view", bound));
     const initial = applyMutations(layout(tree, { id: "story" }), [plotScriptMutation({ id: "demo", name: "monthly temperature", source, updatedAt: new Date().toISOString() })]);
-    return createWorkbench({ apps: createAppRegistry(createPlotScriptApps(host)), initial });
+    return createWorkbench({ apps: createPlotScriptApps(host), initial });
   }, [source, spec]);
   return (
     <div style={{ display: "grid", gridTemplateRows: "minmax(0, 1fr)", height: 520 }}>

@@ -1,3 +1,11 @@
+import { create } from "@bufbuild/protobuf";
+import {
+  AppViewSchema,
+  Direction,
+  NodeSchema,
+  type AppView,
+  type Node,
+} from "@hyperslop-systems/workbench-protocol";
 import { describe, expect, test } from "vitest";
 import type { AppDescriptor } from "../src/appkit/registry";
 import {
@@ -6,11 +14,12 @@ import {
   type LauncherRow,
   type LauncherIndexInput,
   type LauncherSearchContext,
+  type LauncherWorkspace,
   parseLauncherQuery,
   preferredPlacement,
   searchLauncherIndex,
 } from "../src/components/organisms/ViewSwitcher";
-import type { AppView, Node, Stage, Workspace } from "../src/store/layout";
+import type { StageDefinition } from "../src/store/navigation";
 
 /**
  * The launcher's search semantics, tested with no React and no store.
@@ -34,34 +43,32 @@ const descriptor = (
   Component: () => null,
 });
 
-const view = (id: string, appId: string, title?: string, docId?: string): AppView => ({
-  id,
-  appId,
-  documents: docId ? { primary: docId } : {},
-  ...(title ? { title } : {}),
-});
+/** Protocol values, built directly: the index reads the core's document, not a store. */
+const view = (id: string, appId: string, title?: string, docId?: string): AppView =>
+  create(AppViewSchema, {
+    id,
+    appId,
+    documents: docId ? { primary: docId } : {},
+    ...(title ? { title } : {}),
+  });
 
 let nodeCounter = 0;
-const leaf = (viewId: string, id?: string): Node => ({
-  id: id ?? `node-${++nodeCounter}`,
-  type: "leaf",
-  viewId,
-});
-const split = (a: Node, b: Node): Node => ({
-  id: `split-${++nodeCounter}`,
-  type: "split",
-  dir: "row",
-  a,
-  b,
-  ratio: 0.5,
-});
+const leaf = (viewId: string, id?: string): Node =>
+  create(NodeSchema, {
+    id: id ?? `node-${++nodeCounter}`,
+    body: { case: "leaf", value: { viewId } },
+  });
+const split = (a: Node, b: Node): Node =>
+  create(NodeSchema, {
+    id: `split-${++nodeCounter}`,
+    body: { case: "split", value: { direction: Direction.ROW, ratio: 0.5, a, b } },
+  });
 
-const stage = (id: string, apps: string[] | null = null): Stage => ({
+const stage = (id: string, apps: string[] | null = null): StageDefinition => ({
   id,
   name: id,
   apps,
   chrome: { masthead: true, workspaces: true, stageBar: true },
-  currentSpaceId: "",
 });
 
 const workspace = (
@@ -69,7 +76,7 @@ const workspace = (
   name: string,
   tree: Node,
   options: { stageId?: string; apps?: string[] | null } = {},
-): Workspace => ({
+): LauncherWorkspace => ({
   id,
   name,
   tree,

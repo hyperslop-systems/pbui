@@ -14,6 +14,7 @@ const external = [
   "@hyperslop-systems/pbui",
   "@hyperslop-systems/pbui/presentation",
   "@hyperslop-systems/pbui-workbench",
+  "@hyperslop-systems/workbench-core",
   "@hyperslop-systems/pbui-sandbox",
   "@hyperslop-systems/workbench-protocol",
   "@hyperslop-systems/workbench-protocol/client",
@@ -50,6 +51,7 @@ export default defineConfig({
         id.startsWith("@go-go-golems/chat-provider/") ||
         id.startsWith("@bufbuild/protobuf/") ||
         id.startsWith("@hyperslop-systems/pbui/") ||
+        id.startsWith("@hyperslop-systems/workbench-core/") ||
         id.startsWith("@hyperslop-systems/workbench-protocol/"),
     },
     sourcemap: true,

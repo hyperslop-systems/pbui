@@ -37,10 +37,11 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** Every `--pbui-x:` declared anywhere under src/styles. */
+/** Every `--pbui-x:` declared by pbui core (src/tokens.css) or under src/styles. */
+const CORE_TOKENS = resolve(import.meta.dirname, "../../../src/tokens.css");
 function declared(): Set<string> {
   const names = new Set<string>();
-  for (const file of walk(join(SRC, "styles"))) {
+  for (const file of [CORE_TOKENS, ...walk(join(SRC, "styles"))]) {
     const source = readFileSync(file, "utf8");
     const pattern = /(--pbui-[\w-]+)\s*:/g;
     let match: RegExpExecArray | null;

@@ -1,0 +1,26 @@
+digraph design {
+graph [rankdir=TB, bgcolor="white", pad="0.25", nodesep="0.3", ranksep="0.4"];
+node [shape=box, style="rounded,filled", fillcolor="#edf3f8", color="#384b60", fontname="DejaVu Sans", fontsize=12, margin="0.15,0.12"];
+edge [color="#42566b", fontname="DejaVu Sans", fontsize=10];
+
+root [label="Surface: explicit routing inset + local stacking context"];
+tile [label="TileFrame: positioned frame; obstacle registration"];
+header [label="Header: title, badges, actions"];
+body [label="Content region: bounded; overflow clipped"];
+app [label="Application scrollport
+app stays mounted and inert in wiring"];
+ports [label="Port workspace
+independent vertical column scrollports"];
+overlay [label="Frame overlay: sibling of content region
+jacks from scene coordinates; no measurement"];
+wires [label="Surface SVG overlay
+paths, labels and hits from same scene"];
+root -> tile;
+root -> wires;
+tile -> header;
+tile -> body;
+tile -> overlay;
+body -> app;
+body -> ports;
+
+}

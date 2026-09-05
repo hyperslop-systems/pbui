@@ -1,0 +1,649 @@
+               Orthogonal Connector Routing
+
+            Michael Wybrow1 , Kim Marriott1 , and Peter J. Stuckey2
+                    1
+                      Clayton School of Information Technology,
+               Monash University, Clayton, Victoria 3800, Australia,
+            {Michael.Wybrow,Kim.Marriott}@infotech.monash.edu.au
+                  2
+                     National ICT Australia, Victoria Laboratory,
+             Department of Computer Science & Software Engineering,
+                University of Melbourne, Victoria 3010, Australia,
+                            pjs@csse.unimelb.edu.au
+
+
+
+       Abstract. Orthogonal connectors are used in a variety of common net-
+       work diagrams. Most interactive diagram editors provide orthogonal con-
+       nectors with some form of automatic connector routing. However, these
+       tools use ad-hoc heuristics that can lead to strange routes and even routes
+       that pass through other objects. We present an algorithm for computing
+       optimal object-avoiding orthogonal connector routings where the route
+       minimizes a monotonic function of the connector length and number of
+       bends. The algorithm is efficient and can calculate connector routings
+       fast enough to reroute connectors during interaction.
+
+
+
+1     Introduction
+Most interactive diagram editors provide some form of automatic connector rout-
+ing between shapes whose position is fixed by the user. Usually the editor com-
+putes an initial automatic route when the connector is created and updates this
+each time the connector end-points (or attached shapes) are moved. Orthogonal
+connectors, which consist of a sequence of horizontal and vertical line segments,
+are a particularly common kind of connector, used in ER and UML diagrams
+among others. However, in current diagramming tools that we are aware of,
+automatic routing of orthogonal connectors uses ad-hoc heuristics that lead to
+aesthetically unpleasing routes and unpredictable behaviour.
+    For example, the graphic editors OmniGraffle Pro 5.1.1, and Dia 0.97, provide
+automatic orthogonal connector routing but these routes may overlap other ob-
+jects in the diagram. Both Microsoft Visio 2007, and ConceptDraw Pro 5 provide
+object-avoiding orthogonal connector routing but in both applications connec-
+tor routing does not use a predictable heuristic, such as minimizing distance or
+number of segments. Furthermore, the routes are mostly updated only after ob-
+ject movement has been completed, rather than as the action is happening. The
+Graph layout library yFiles3 and demonstration editor yEd offers orthogonal
+edge routing but routing is not maintained throughout further editing.
+    Thus, we know of no interactive diagram authoring tool which ensures that
+the orthogonal connectors are optimally routed in any meaningful sense. On the
+3
+    http://www.yworks.com/products/yfiles/
+             (a)                           (b)                          (c)
+
+Fig. 1. Three stage routing: (a) the orthogonal visibility graph, (b) the optimal con-
+nector routes, (c) the final routes after centering and nudging. Arrows indicate routing
+direction for connectors.
+
+other hand, automatic routing of poly-line connectors is better supported: two
+tools, Dunnart and Inkscape, provide real-time poly-line connector routing which
+is optimal in the sense that it minimizes edge bends and connector length. Both
+use the connector routing library libavoid4 which has three steps in connector
+routing [1]. The first stage is to compute a visibility graph for the diagram
+which contains a node for each vertex of each object in the diagram and an
+edge between two nodes iff they are mutually visible. The second stage uses A?
+search to find the optimal route through the visibility graph for each connector.
+The third stage computes the visual representation of the connector. This three
+step approach is also used in the Spline-o-matic library5 developed for GraphViz
+which supports poly-line and Bezier curve edge routing [2].
+    In this paper we describe how we have extended the connector routing library
+libavoid to support orthogonal connector routing. The main contribution is to
+show that a similar three step process to that used for poly-line connector rout-
+ing can also be used for optimal orthogonal connector routing. We introduce the
+orthogonal visibility graph in which edges in the graph represent horizontal or
+vertical lines of visibility from the vertices and connector ports of each object
+(Section 3). Connector routes are found using an A? search through the orthog-
+onal visibility graph (Section 4). The algorithm is guaranteed to find a route for
+each connector that is optimal in the sense that it minimizes bends and overall
+connector length. Finally, the actual visual route is computed (Section 5). This
+step orders and nudges apart the connectors in shared segments so as to ensure
+that unnecessary crossings are not introduced and that crossings occur at the
+start or end of the shared segment. It also tries to ensure that connectors pass
+down the middle of “alleys” in the diagram when this does not lead to additional
+cost. Figure 1 shows the three step process for an example layout. Our algorithms
+are surprisingly efficient and fast enough to reroute connectors even during di-
+4
+    http://adaptagrams.sourceforge.net/libavoid/
+5
+    http://www.graphviz.org/Misc/spline-o-matic/
+
+
+                                           2
+rect manipulation of reasonably sized diagrams, thus giving instant feedback to
+the diagram author (Section 6).
+
+2    Problem Statement
+For simplicity we model objects by their bounding rectangle and assume for
+the purposes of complexity analysis that the number of connector points on
+each object is a fixed constant. Also for simplicity, we assume that connectors
+must start and end at distinct connection points. In practice, connectors are not
+always connected to objects and may have end-points which are not connection
+points. This can be handled by adding an extra node to the visibility graph for
+this endpoint.
+    We are interested in finding a poly-line route of horizontal and vertical seg-
+ments for each connector. We wish to find routes that are short and which
+have few bends. While we also wish to reduce connector crossings we will delay
+consideration of this until Section 8. We assume our penalty function p(R) for
+measuring the quality of a particular route R is a monotonic function f of the
+length of the path, ||R||, and the number of bends (or equivalently segments) in
+R, bends(R), i.e. p(R) = f(||R||, bends(R)). We require that the routes are valid :
+they do not pass through objects and only contain right-angle bends.
+    We use the Manhattan distance ||(v1 , v2 )||1 = |x1 − x2 | + |y1 − y2 | to measure
+the shortest orthogonal route between points v1 = (x1 , y1 ) and v2 = (x2 , y2 ).
+We make use of 4 cardinal directions: N, S, E, W. We assume the functions right,
+left, and reverse defined by the mappings:
+
+                    right = {N 7→ E, E 7→ S, S 7→ W, W 7→ N}
+                      left = {N 7→ W, E 7→ N, S 7→ E, W 7→ S}
+                  reverse = {N 7→ S, E 7→ W, S 7→ N, W 7→ E}
+
+    We define the directions of point v2 = (x2 , y2 ) from v1 = (x1 , y1 ) as:
+
+dirns(v1 , v2 ) = {N | y2 > y1 } ∪ {E | x2 > x1 } ∪ {S | y2 < y1 } ∪ {W | x2 < x1 }
+
+Note dirns(v1 , v2 ) = {D} means v2 is on the line in direction D drawn from v1 .
+
+3    Orthogonal Visibility Graph
+The basis for our approach is the observation that when finding routes minimiz-
+ing the penalty function we need only consider routes in the orthogonal visibility
+graph. This is defined as follows.
+    Let I be the set of interesting points (x, y) in the diagram, i.e. the connector
+points and corners of the bounding box of each object. Let XI be the set of x
+coordinates in I and YI the set of y coordinates in I. The orthogonal visibility
+graph V G = (V, E) is made up of nodes V ⊆ XI × YI s.t. (x, y) ∈ V iff there
+exists y 0 s.t. (x, y 0 ) ∈ I and there is no intervening object between (x, y) and
+(x, y 0 ) and there exists x0 s.t. (x0 , y) ∈ I and there is no intervening object
+between (x, y) and (x0 , y). There is an edge e ∈ E between each point in V to its
+nearest neighbour to the north, south, east and west iff there is no intervening
+object in the original diagram.
+
+
+                                          3
+    An example orthogonal visibility graph is shown in Figure 1(a). It is quite
+different to the standard (non-orthogonal) visibility graph used for poly-line
+routing. In particular, the standard visibility graph has O(n) nodes if there are
+n objects in the diagram while the orthogonal visibility graph has O(n2 ) nodes.
+Both have O(n2 ) edges.
+Observation: Let R be a valid orthogonal route for a connector c. Then there
+exists a valid orthogonal route R0 using edges in the orthogonal visibility graph
+for c s.t. p(R0 ) ≤ p(R).
+Proof. We simply take the route R and “shrink” each segment on the route onto
+a path in the visibility graph to give R0 . By construction R0 is no longer than R
+and has no additional bends.                                                     2
+    The orthogonal visibility graph can be constructed using the following algo-
+rithm. It has three steps:
+1. Generate the interesting horizontal segments
+
+       HI = { ((x, y), (x0 , y)) | (x, y), (x0 , y) ∈ I s.t. x ≤ x0
+              and there is no intervening object between (x, y) and (x0 , y)}.
+
+2. Generate the interesting vertical segments
+
+       VI = { ((x, y), (x, y 0 )) | (x, y), (x, y 0 ) ∈ I s.t. y ≤ y 0
+              and there is no intervening object between (x, y) and (x, y 0 )}.
+
+3. Compute the orthogonal visibility graph by intersecting all pairs of segments
+   from HI and VI . We note that this could be done lazily, however for simplicity
+   we construct the entire visibility graph in one step.
+Theorem 1. The orthogonal visibility graph can be constructed in O(n2 ) time
+for a diagram with n objects using the above algorithm.
+Proof. The interesting horizontal segments can be generated in O(n log n) time
+where n is the number of objects in the diagram by using a variant of the line-
+sweep algorithm from [3, 4]. This uses a vertical sweep through the objects in
+the diagram, keeping a horizontal “scan line” list of open objects with each node
+having references to its closest left and right neighbors. Interesting, horizontal
+segments are generated, when an object is opened, closed, or a connection point
+is reached. Dually, the interesting vertical segments can generated in O(n log n)
+time by using a horizontal sweep. The last step takes O(n2 ) time since there are
+O(n) interesting horizontal and vertical segments.                              2
+
+
+4   Routing the Connector
+We use an A? algorithm which iteratively builds longer and longer partial paths
+that start from the source node s until the destination node d is reached. Partial
+paths are stored in a priority queue and at each step the partial path with lowest
+cost is taken from the queue and expanded. The expanded nodes are placed in
+the queue. The process stops when the path chosen for expansion is already at
+
+
+                                        4
+                     3                  3
+                2         2         2        4
+
+        4           01                  34
+                                                     4
+                         destination
+            3                                    3
+                              (a)                                  (b)
+
+Fig. 2. (a) Minimal required additional bends for reaching the destination with correct
+direction from each point and direction. (b) The solid path is preferred to the dashed
+path since it is the “initially straighter” path. The dotted line shows the middle of the
+“alley” of possible paths for the middle segment of the connector.
+
+d. The cost associated with each partial path is the cost of the partial path so
+far plus a lower bound on the remaining cost to the destination.
+    If we are only trying to minimize connector length, the only state we need to
+know about the partial path is the position of its end. However, if the number
+of bends is also part of the cost we also need to know the direction of the path.
+Thus, entries in the priority queue have form (v, D, lv , bv , p, cv ) where v is the
+node in the orthogonal visibility graph, D is the “direction of entry” to the node,
+lv is the length of the partial path from s to v and bv the number of bends in
+the partial path, p a pointer to the parent entry (so that the final path can be
+reconstructed), and cv the cost of the partial path. There is at most one entry
+popped from the queue for each (v, D) pair. When an entry (v, D, lv , bv , p, cv )
+is scheduled for addition to the priority queue, it is only added if no entry with
+the same (v, D) pair has been removed from the queue, i.e. is on the closed list.
+And only the entry with lowest cost for each (v, D) pair is kept on the priority
+queue. When we remove entry (v, D, lv , bv , p, cv ) from the priority queue we
+ 1. add the neighbour (v 0 , D) in the same direction with priority f(lv +||(v, v 0 )||1 +
+    ||(v 0 , d)||1 , sv + sd );
+ 2. conditionally add the neighbours (v 0 , right(D)) and (v 0 , left(D)) at right an-
+    gles to the entry with priority f(lv + ||(v, v 0 )||1 + ||(v 0 , d)||1 , sv + 1 + sd );
+where sd is the estimation of the remaining segments required for the route from
+(v 0 , D0 ) to (d, Dd ). Since some edges are useful only when searching in a particular
+direction or for a specific point, we don’t add the left or right neighbours if the
+extension of that visibility line neither passes right by an obstacle nor contains
+the target endpoint. The estimation of the remaining segments required is: sd =
+ 0. if D0 = Dd and dirns(v 0 , d) = {D0 };
+ 1. if left(Dd ) = D0 ∨ right(Dd ) = D0 and D0 ∈ dirns(v 0 , d);
+ 2. if D0 = Dd and dirns(v 0 , d) 6= {D0 } but D0 ∈ dirns(v 0 , d), or D0 = reverse(Dd )
+    and dirns(v 0 , d) 6= {Dd };
+ 3. if left(Dd ) = D0 ∨ right(Dd ) = D0 and D0 6∈ dirns(v 0 , d); and
+ 4. if D0 = reverse(Dd ) and dirns(v 0 , d) = {Dd }, or D0 = Dd and D0 6∈ dirns(v 0 , d).
+Figure 2(a) shows all the possible scenarios for determining the remaining min-
+imal number of bends. We note that Miriyala et al. [5] use a similar cost.
+   Even taking into account number of bends, there are usually many alternate
+routes of the same cost from source to destination. To make the routing behaviour
+
+
+                                                         5
+more predictable and faster we add a tie break for equal cost routes based on a
+time stamp of when the entry was added to the priority queue. This means that
+because the order in which neighbours is added is deterministic—straight, right,
+left—there is a slight preference for right turns and also that the latest path is
+extended in preference to earlier paths. See Figure 2(b).
+    The worst-case complexity of the A? algorithm is that of a priority queue
+based implementation of the shortest path algorithm over the orthogonal visi-
+bility graph. Thus:
+Theorem 2. The above algorithm will find an optimal valid route for a single
+connector through the orthogonal visibility graph in O(n2 log n) time where the
+diagram has n objects.                                                       2
+
+
+5     Computing the visual representation
+The third and last step in orthogonal connector routing is “nudging” of the
+connectors to compute their actual position in the drawing. The importance of
+this step is often overlooked, but feedback from users of Dunnart and Inkscape
+suggests that it has a significant impact on the perception of layout quality. It
+has two steps.
+
+5.1   Ordering shared edges
+The first aspect is determining the relative ordering of connectors in shared
+edges. A consequence of routing connectors along the orthogonal visibility graph
+is that multiple connectors will share edges of their paths. In order to make the
+connector route clearer we want to nudge these paths apart to make the distinct
+paths clear. It is important to do so in a manner which does not introduce
+unnecessary crossings or bends in segments.
+    We now explain our algorithm to generate a relative ordering of connectors in
+shared edges. Initially we construct the graph of shared edges, that is the subset
+of the edges in the visibility graph that have two or more connectors routed along
+that edge (plus their incident nodes). We process each connected component in
+the graph separately since each defines an independent subproblem in terms of
+the parts of connectors whose routes enter and exit this connected component
+of shared edges. Note that one connector may enter and exit the connected
+component multiple times in which case each sub-route is treated as a separate
+connector. Processing of each connected component has two steps.
+    We first try and assign a uniform pseudo direction for each of these connector
+sub-routes. This pseudo direction is independent of the actual direction of the
+connector—it is simply used for route adjustment. Choose an arbitrary connector
+sub-route A and fix its pseudo direction in an arbitrary direction. Now fix the
+pseudo direction of a connector sub-route that shares an edge with A to have
+the same direction as one of the shared edges. Follow the sub-route assigning the
+same pseudo-direction until there is a conflict in which case we mark the sub-
+route with a split point, reverse the pseudo-direction and continue following the
+sub-route. Continue this until all sub-routes segments have a pseudo direction.
+The whole process is O(e) where e is the number of edges in all the sub-routes
+appearing in this tree.
+
+
+                                        6
+                       B                 D                           B             D                       B             D
+                                                 C                                     C                                     C
+
+
+           1       2        3        4       5
+ A                                                   A   A                                 A   A                                 A
+
+
+       B                                                     B                                     B
+               D                 C                               D             C                       D             C
+
+
+                           (a)                                           (b)                                   (c)
+
+Fig. 3. (a) A set of orthogonal connectors which share edges, and (b) an ordering
+of shared edges to minimize crossings, (c) an order of shared edges that minimizes
+crossings and does not introduce additional segments.
+
+
+    In practice, we have found that the pseudo-direction assignment for each
+connector sub-route is almost always consistent. We say a set of connector paths
+is path consistent if the pseudo-direction assignment is consistent for each con-
+nected component of the shared edge graph.
+    The next step is to determine for each shared edge a relative order, left to
+right along the pseudo direction, of each of the connectors that share that edge.
+We do this in an incremental fashion. Each edge starts with an empty sequence of
+connectors. We choose an, as yet unconsidered, connector sub-route and process
+each of its consistent sub-sections, one at a time (i.e. the sub-sections without
+split point. We insert this consistent sub-section in the ordering for each shared
+edge it makes use of. The key is that we will ensure that the necessary crossings
+of this sub-section with other connectors only occur at the end of the last (in
+the pseudo direction) shared edge between them, which is either at the end of
+the connector or at a split point.
+    Consider adding a connector c to a shared edge order O for edge e. We need to
+insert c in O in the appropriate place. There are three subsequences of connectors
+in O = L++S++R. Those that enter e (along the pseudo direction) from the left
+of c, L, those that enter in the same direction as c, S, and those that enter from
+the right, R. Now c already shares an edge e0 with connectors in S, so we can
+project the order O0 for this edge onto the connectors in S ∪ {c} to determine an
+order SL ++[c]++SR .6 The new order for edge s is hence L++SL ++[c]++SR ++R.
+This step is O(e2 ).
+
+Example 1. Consider the tree of shared edges shown if Figure 3(a). The ordering
+of shared edges shown in Figure 3(b), has minimal connector crossings but adds
+two extra segments in the route for D. The algorithm proceeds as follows. We as-
+sign the pseudo direction left to right to connector A, and this propagates to the
+other edges as shown by the arrow heads in Figure 3(c). The tree is path consis-
+tent. We first add connector A as the unique route in each of edges 1–5. Next we
+add connector B. Since it enters from below it is ordered after A in edge 1 and 2,
+implicitly crossing A after edge 2. Similarly we add connector C. The resulting
+ordering is ([A,B],[A,B],[A],[A,C],[A,C]). Next we add connector D, it is added
+6
+     It may be that when starting from a split point that while c already shares an edge
+     e0 with connectors in S the ordering is not yet decided, in which case the ordering
+     is determined by following the sub-route back across the split point and along the
+     shared path to find the input ordering.
+
+
+                                                                         7
+last on edges 2 and 3 but since it enters above C it is ordered between A and
+C in edge 4. The final resulting ordering is ([A,B],[A,B,D],[A,D],[A,D,C],[A,C]).
+The resulting diagram is shown in Figure 3(c).                                 2
+
+Theorem 3. If the shared edge graph is path consistent the above ordering algo-
+rithm produces segment orders with the minimal number of connector crossings,
+and all connector crossings are produced at the end of the last (in the pseudo
+direction) shared edge of the two connectors.
+
+Proof. (Sketch) Consider any pair of (sub-routes of) connectors A and B in a
+tree of shared edges. The algorithm ensures that the relative order of A and B
+is fixed in all their shared edges. By definition this order is defined by their left
+to right order on entry to the shared edge. Hence the two connectors can only
+cross at the exit of the shared edge, and only do so if that is necessary.         2
+
+Theorem 4. If the shared edge graph is planar then the above ordering algo-
+rithm produces a planar layout.
+
+Proof. (Sketch) The relative order of shared edged is always preserved from one
+endpoint of the connectors, thus a crossing will only be inserted if the relative
+order of the two endpoints is different, in which case the graph is not planar. 2
+
+5.2   Final placement
+The final step in the layout is to determine the exact coordinates of the orthogo-
+nal connector segments. This nudges connector routes a minimum distance apart
+to show the relative order of connectors with shared segments and also ensures
+that connectors pass down the middle of “alleys” in the diagrams when this does
+not lead to additional cost or additional edge crossings.
+    We collapse collinear segments in the connector routes into maximal hori-
+zontal and vertical segments. This means that segments in the path alternate
+horizontal and vertical alignment. We compute the horizontal and vertical po-
+sition in separate passes. The horizontal pass works as follows and the vertical
+pass is symmetric.
+ 1. Determine a desired horizontal position for all non-end segments in the con-
+    nector. For the middle segment in an “S” or “Z” bend, this is the middle
+    of the “alley” that the segment is in. For example, for the solid connector
+    route shown in Figure 2(c), the dotted line shows the desired position for
+    this segment. For the middle segment in an “=” or “<” bend, this is that of
+    the vertex of the object that the segment bends around.
+ 2. Generate a set of horizontal separation constraints to ensure that segments
+    maintain their current relative horizontal ordering with each other and with
+    the other objects in the diagram. In the case of shared segments the sep-
+    aration constraints impose the ordering determined previously. The con-
+    straints are designed to enforce non-overlap and also to stop segments passing
+    through each other and so introducing additional connector crossings.
+ 3. Project the desired values on to the separation constraints to find the hori-
+    zontal position of the segments using the approximate projection algorithm
+    satisfy VPSC from [3, 4].
+
+
+                                         8
+    The constraints and desired positions can be generated using a variant of the
+line-sweep algorithm from [3] in O((n + s) log(n + s)) time where n is the number
+of diagram objects and s the total number of vertical connector segments. The
+approximate projection algorithm has O((s + n)2 ) worst-case complexity but in
+practice O((s + n) log(s + n)) complexity [4].
+
+
+6     Evaluation
+
+We have implemented all algorithms in the open source libavoid library and
+call them from the Dunnart diagram editor.7 The library is written in C++ and
+compiled with gcc 4.2.1 at -O3. To investigate the performance of the algorithms
+we have timed libavoid computing connector routes for a variety of diagrams.
+    We used diagrams with various sized grid arrangements of nodes, where each
+outside node is connected to the diagonally opposite node, and each node except
+those on the right and bottom edge is connected to the node directly down and
+to the right. We also used two larger random graphs and a protein topology
+diagram. Figure 4 shows the layout of three of these evaluation diagrams.
+    We measured the time to construct the orthogonal visibility graph, the time
+to find all connector routes using the A? algorithm, the time to centre routes
+in channels and perform nudging. The experiment was run on a MacBook Pro
+with a 2.53 GHz Intel Core 2 Duo processor and 2GB of memory. The results are
+shown in Table 1. We found for smaller diagrams with fewer than 100 nodes and
+edges the routing process for the entire diagram can be performed in a fraction
+of a second. Such smaller diagrams typify the sort of diagrams constructed in
+interactive authoring software. The size and construction time for the visibility
+graph in grid examples is notably smaller, as would be expected since the shapes
+have visibility just to their neighbours. The time required to centre routes is
+negligible, so should always be performed since it leads to more predictable
+routes. The Graph-compact example is notable for the smaller visibility graph
+and higher routing time, where both are due to the fact that many of the nodes
+in this graph are close together and obscure visibility or block the optimal routes
+of connectors.
+7
+    Dunnart is available for download from http://www.dunnart.org/.
+
+
+Table 1. Average time taken to construct the orthogonal visibility graph, route all
+connectors, and compute final positions of all connectors for grids and random graphs.
+
+                 Diagram size VisGraph size    Times (in msec.) to compute
+Diagram           |V | |E|     |V |   |E| VisGraph RouteConns FinalPos Total
+Protein-1ABI        26     25 2,138 3,602        7            4        1    12
+Grid-6x6            36     35   641     542      1            3        6    10
+Grid-8x8            64     63 1,109     928      5          13        22    40
+Grid-10x10         100     99 2,261 2,474        5          58        48   111
+Grid-12x12         144   143 2,429 2,012        17          63        94   174
+Graph-sparse       231   276 52,318 101,589    143          38       149   330
+Graph-compact      305   413 51,187 98,801     144         261       605 1,010
+
+
+                                          9
+              7              9
+                                                         13
+                       8
+
+
+
+
+                                                                             4*
+                                                                        10
+
+
+
+                                                                   11
+
+                        Cl
+                                                         12
+                                 Nl                  6
+
+              1
+
+
+                                           5*
+                        2
+
+
+
+
+          3                           Nh
+
+
+
+                   15                                         16
+
+
+
+                   14
+
+
+
+                       18
+
+
+
+                  19
+
+
+
+     20                                         21            Ch
+
+
+
+    17
+
+
+
+
+                                      (a)                                         (b)    (c)
+
+ Fig. 4. Evaluation diagrams: (a) Protein-1ABI, (b) Grid-6x6 and (c) Graph-sparse.
+
+
+7                  Related Work
+Our work extends the previously mentioned research into three-step optimal
+routing of poly-line connectors to handle orthogonal connector routing. There
+has been some previous work on finding good orthogonal connector routings be-
+tween fixed position shapes. The most closely related work in the graph drawing
+literature is that of Miriyala et al. [5] who also use an A? algorithm for comput-
+ing orthogonal connector paths. The main difference is that they search through
+the rectangulation of the diagram rather than the orthogonal visibility graph.
+The rectangulation is obtained by drawing vertical lines from the vertices of each
+shape. The search is then through these rectangles. While superficially similar,
+the rectangulation is actually quite different to the orthogonal visibility graph.
+The key difference is that the rectangulation does not directly model horizontal
+visibility. This means that their algorithm is heuristic and routes are not guar-
+anteed to be optimal in any meaningful sense even if minimizing edge crossings
+is ignored. A disadvantage of our approach is that the rectangulation is O(n) in
+size while the orthogonal visibility graph is O(n2 ) in size for n shapes.
+    Other related work includes algorithms for orthogonal graph layout. A stan-
+dard technique is to solve a network flow problem in order to compute an orthog-
+onal representation for the graph which minimizes the total number of connector
+bends [6]. A compaction step is then applied to the orthogonal representation
+to assign positions to the nodes which minimize the area of the drawing but do
+not introduce additional crossings or overlap. The orthogonal graph layout algo-
+rithm used in Tom Sawyer [7] uses a different approach. It first uses a heuristic to
+position nodes on a grid so that connected nodes are close and no nodes (treated
+as points) are on the same horizontal or vertical grid line. Next the edge routing
+is chosen using a heuristic. Nodes may be expanded in size in this step to ensure
+that edges require at most one bend. A compaction step is then applied.
+    The key difference between orthogonal graph layout and the problem we
+address is that in orthogonal graph layout the layout algorithm is responsible for
+positioning nodes so as to minimize bends, while in our context nodes, i.e. shapes,
+have fixed position and dimensions. We also mention incremental approaches to
+
+
+                                                                                    10
+orthogonal graph layout which incrementally construct the layout as vertices
+(and all of their associated edges) are added one at a time [6, 7]. Again nodes
+are allowed to move and the focus is on bend minimization.
+    Orthogonal connector routing has been extensively studied in computational
+geometry, in part because of its applications to circuit design. Lee et al. [8]
+provides an extensive survey of algorithms for orthogonal connector routing,
+while Lenguauer [9] provides an introduction to the algorithms used in circuit
+layout.
+    One of the earliest approaches in circuit design was so-called maze running
+in which objects were assumed to be laid out on a uniform grid and a shortest
+path algorithm was employed to find the shortest path in the grid [10]. The
+complexity is proportional to the size of the grid. In our context, the grid needs
+to be very fine because the user is free to place elements where they like and
+so the time complexity is prohibitively high. Our approach can be considered a
+modification to maze running in which we use a non-uniform grid whose mesh
+size is tailored to the geometry of the diagram.
+    Another approach used in circuit layout is to construct a track graph [11].
+The construction is very similar to that of the orthogonal visibility graph. The
+difference is that not all intersections of the interesting horizontal and vertical
+segments are placed in the graph, thus the track graph is a sub-graph of the
+orthogonal visibility graph. The track graph is not suitable for our purposes be-
+cause it is only intended for finding minimal length connector paths (the primary
+concern in circuit design).
+    The problem we are addressing is finding a minimum-cost path (MCP) where
+the cost is a function of the number of bend points and path length. Algorithms
+with O(n log3/2 n) complexity for routing a single connector where n is the num-
+ber of objects (assuming they are rectangles) are known for this problem [8].
+However, it is fair to say that these algorithms are quite complex and dependent
+on the kind of penalty function. Our approach has the advantage of simplicity
+and, since A? search is a generic technique, it can be extended to more com-
+plex penalty functions such as one, for instance, penalizing connector crossings
+(see Section 8). Furthermore, our approach is analogous to the poly-line con-
+nector routing approach already used in libavoid and so implementation effort
+is reduced. While the worst-case complexity of our approach is O(n2 log n), in
+practice because of the good heuristic used in the A? search, we have found
+performance is perfectly acceptable.
+    Another significant contribution of our paper is our algorithm for “nudging”
+orthogonal connectors apart so as to improve the legibility of the layout. While
+Miriyala et. al. do consider nudging, the issues and approach are quite different.
+They do not consider the problem of how to avoid introducing unnecessary cross-
+ings when separating connectors with a shared path. Our algorithm for ordering
+connectors in shared paths so as to avoid introducing unnecessary crossings is
+related to algorithms for metro-line crossing [12, 13]. The main difference is that
+we have the additional requirement that the ordering should not introduce un-
+necessary bends in the layout and so crossings are only allowed to occur when a
+connector enters or leaves the shared path, but not in the shared path itself.
+
+                                        11
+8    Conclusion
+Most diagram editors and graph construction tools provide some form of auto-
+matic orthogonal connector routing. However the routes are typically computed
+using ad-hoc techniques and are not usually updated during direct manipula-
+tion. We present algorithms for computing optimal object-avoiding orthogonal
+connector routings where optimality is w.r.t some monotonic function of the con-
+nector length and number of bends. Our approach is based on first computing
+an orthogonal visibility graph for the diagram, then an optimal route using an
+A? search, followed by computation of the precise connector path. The approach
+is surprisingly fast and allow us to recalculate optimal connector routings fast
+enough to reroute connectors interactively for use in authoring applications.
+    We plan to extend our work to incorporate a cost for edge crossings in the
+penalty function. An advantage of using the orthogonal visibility graph and the
+shared path ordering step is that it allows easy identification of edge crossings.
+Thus computing how many times a new connector route crosses the previously
+routed connectors can be done simply and with little additional overhead.
+    Acknowledgments: NICTA is funded by the Australian Government as repre-
+sented by the Department of Broadband, Communications and the Digital Economy
+and the Australian Research Council. We acknowledge the support of the ARC through
+Discovery Project Grant DP0987168.
+
+References
+ 1. Wybrow, M., Marriott, K., Stuckey, P.J.: Incremental connector routing. In: GD
+    2005. Volume 3843 of LNCS., Springer (2006) 446–457
+ 2. Dobkin, D.P., Gansner, E.R., Koutsofios, E., North, S.C.: Implementing a general-
+    purpose edge router. In: GD 1996. Volume 1353 of LNCS., Springer (1997) 262–271
+ 3. Dwyer, T., Marriott, K., Stuckey, P.: Fast node overlap removal. In: GD 2005.
+    Volume 3843 of LNCS., Springer (2006) 153–164
+ 4. Dwyer, T., Marriott, K., Stuckey, P.: Fast node overlap removal—correction. In:
+    GD 2005. Volume 4372 of LNCS., Springer (2007) 446–447
+ 5. Miriyala, K., Hornick, S.W., Tamassia, R.: An incremental approach to aesthetic
+    graph layout. In: CASE ’93, IEEE Computer Society (Jul 1993) 297–308
+ 6. Di Battista, G., Eades, P., Tamassia, R., Tollis, I.G.: Graph Drawing: Algorithms
+    for the Visualization of Graphs. Prentice-Hall, Inc. (1999)
+ 7. Biedl, T.C., Madden, B., Tollis, I.G.: The three-phase method: A unified approach
+    to orthogonal graph drawing. IJCGA 10(6) (2000) 553–580
+ 8. Lee, D., Yang, C., Wong, C.: Rectilinear paths among rectilinear obstacles. Discrete
+    Applied Mathematics 70(3) (1996) 185–216
+ 9. Lengauer, T.: Combinatorial Algorithms for Integrated Circuit Layout. John Wiley
+    & Sons, Inc., New York, NY, USA (1990)
+10. Lee, C.Y.: An algorithm for path connections and its applications. IRE Transac-
+    tions on Electronic Computers EC-10(2) (1961) 346–365
+11. Wu, Y.F., Widmayer, P., Schlag, M.D.F., Wong, C.K.: Rectilinear shortest paths
+    and minimum spanning trees in the presence of rectilinear obstacles. IEEE Trans-
+    actions on Computers 36(3) (1987) 321–331
+12. Argyriou, E., Bekos, M., Kaufmann, M., Symvonis, A.: Two polynomial time
+    algorithms for the metro-line crossing minimization problem. In: GD 2008. Volume
+    5417 of LNCS., Springer (2009) 336–347
+13. Bekos, M., Kaufmann, M., Potika, K., Symvonis, A.: Line crossing minimization
+    on metro maps. In: GD 2007. Volume 4875 of LNCS., Springer (2008) 231
+
+
+
+                                          12
+

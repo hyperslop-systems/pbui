@@ -1,359 +1,42 @@
 import { describe, expect, test } from "vitest";
+import { toJson } from "@bufbuild/protobuf";
+import { WorkbenchDocumentSchema } from "@hyperslop-systems/workbench-protocol";
+import { sequentialIds } from "@hyperslop-systems/workbench-core";
+import "../src/apps/all";
+import { datalabManifests } from "../src/appkit/workbenchApps";
 import { readings } from "../src/fixtures";
 import { fieldRef, orderedTransformIds, rootView } from "../src/model/graphicAuthoring";
-import {
-  cloneTree,
-  countLeaves,
-  findLeaf,
-  initialLayout,
-  layoutSlice,
-  leaf,
-  removeLeaf,
-  snapRatio,
-  split,
-  updateNode,
-  type LayoutState,
-  type Node,
-} from "../src/store/layout";
-import { TRACE_CAP, worldActions, worldSlice, type WorldState } from "../src/store/world";
 import { actionsForVerb, environmentFor } from "../src/store/applyVerb";
-import { findSecrets, save, validate } from "../src/store/persist";
+import { durableNavigation, navigationActions } from "../src/store/navigation";
+import { findSecrets, PERSISTENCE_VERSION, save, validate } from "../src/store/persist";
+import { createDatalabRuntime } from "../src/store/runtime";
+import { compileSeed, pinnedDefinitions, tile, type DatalabSeed } from "../src/store/seed";
 import {
   ACCOUNT_SPACE_ID,
   ACCOUNT_STAGE_ID,
   SIGNIN_SPACE_ID,
   WORK_STAGE_ID,
 } from "../src/store/stages";
+import { TRACE_CAP, worldActions, worldSlice, type WorldState } from "../src/store/world";
 
 /**
- * The shell reducers: pure functions, tested without a DOM.
+ * The world reducers, the verb seam and durable storage: pure functions and
+ * a headless runtime, tested without a DOM.
  *
  * The list is the guide's §16.2, which was written around the failures that are
- * easy to produce and invisible until a tile disappears or a snapshot quietly
- * follows the document it was copied from.
+ * easy to produce and invisible until a snapshot quietly follows the document
+ * it was copied from. The spatial half — tiles, split trees, workspaces — is
+ * workbench-core's now and is replayed through the controller in
+ * `test/controller.test.ts`.
  */
 
 const world = worldSlice.reducer;
-const layout = layoutSlice.reducer;
+const apps = datalabManifests();
 
 function withDoc(): { state: WorldState; docId: string } {
   const state = world(undefined, worldActions.newDoc(readings.source));
   return { state, docId: state.docOrder[0] as string };
 }
-
-/* ---------------------------------------------------------------- layout -- */
-
-describe("the split tree", () => {
-  const tree = () => split("row", leaf("chart"), split("col", leaf("table"), leaf("pipeline")));
-
-  test("updateNode returns the IDENTICAL object when nothing changed", () => {
-    // Not a micro-optimisation: it is what lets React.memo skip an untouched
-    // subtree when one tile changes, which with fifteen tiles is the difference
-    // between a responsive divider drag and a slideshow.
-    const t = tree();
-    expect(updateNode(t, "absent", (n) => n)).toBe(t);
-  });
-
-  test("updateNode shares every untouched subtree", () => {
-    const t = tree() as Extract<Node, { type: "split" }>;
-    const next = updateNode(t, t.a.id, (n) => ({ ...n, viewId: "encode" }) as Node) as Extract<
-      Node,
-      { type: "split" }
-    >;
-    expect(next).not.toBe(t);
-    expect(next.b).toBe(t.b);
-  });
-
-  test("removeLeaf promotes the sibling", () => {
-    const t = tree() as Extract<Node, { type: "split" }>;
-    const next = removeLeaf(t, t.a.id);
-    expect(next).toBe(t.b);
-    expect(countLeaves(next)).toBe(2);
-  });
-
-  test("removing an absent leaf is a no-op, not a corruption", () => {
-    const t = tree();
-    expect(removeLeaf(t, "absent")).toBe(t);
-  });
-
-  test("cloneTree shares no node objects and reuses no ids", () => {
-    // A clone that reused ids would give React duplicate keys AND make the
-    // hit-test return the wrong tile — the bug DR-12 exists to prevent.
-    const t = tree();
-    const copy = cloneTree(t);
-
-    const ids = (node: Node): string[] =>
-      node.type === "leaf" ? [node.id] : [node.id, ...ids(node.a), ...ids(node.b)];
-    const objects = (node: Node): Node[] =>
-      node.type === "leaf" ? [node] : [node, ...objects(node.a), ...objects(node.b)];
-
-    expect(new Set([...ids(t), ...ids(copy)]).size).toBe(ids(t).length * 2);
-    for (const object of objects(copy)) expect(objects(t)).not.toContain(object);
-  });
-
-  test("dividers snap only within tolerance", () => {
-    expect(snapRatio(0.51)).toEqual({ ratio: 0.5, snapped: true });
-    expect(snapRatio(0.6)).toEqual({ ratio: 0.6, snapped: false });
-  });
-});
-
-describe("the layout slice", () => {
-  const start = (): LayoutState => layout(undefined, { type: "@@init" });
-  const viewAt = (state: LayoutState, node: Node) =>
-    node.type === "leaf" ? state.views[node.viewId] : undefined;
-
-  test("the last tile cannot be closed", () => {
-    const state = start();
-    const only = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "leaf" }>;
-    const next = layout(state, layoutSlice.actions.closeLeaf(only.id));
-    expect(countLeaves((next.spaces[0] as { tree: Node }).tree)).toBe(1);
-  });
-
-  test("splitting then closing returns to one tile", () => {
-    let state = start();
-    const first = (state.spaces[0] as { tree: Node }).tree.id;
-    state = layout(state, layoutSlice.actions.splitLeaf({ nodeId: first, dir: "row" }));
-    expect(countLeaves((state.spaces[0] as { tree: Node }).tree)).toBe(2);
-
-    const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
-    state = layout(state, layoutSlice.actions.closeLeaf(tree.b.id));
-    expect(countLeaves((state.spaces[0] as { tree: Node }).tree)).toBe(1);
-  });
-
-  test("swapping two tiles moves app, doc and label while geometric ids stay put", () => {
-    let state = start();
-    const first = (state.spaces[0] as { tree: Node }).tree.id;
-    state = layout(state, layoutSlice.actions.splitLeaf({ nodeId: first, dir: "row" }));
-    const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
-    state = layout(
-      state,
-      layoutSlice.actions.createViewInPlacement({
-        nodeId: tree.a.id,
-        appId: "chart",
-        docId: "climate",
-        title: "temperature by station",
-      }),
-    );
-    state = layout(
-      state,
-      layoutSlice.actions.createViewInPlacement({
-        nodeId: tree.b.id,
-        appId: "table",
-        docId: "census",
-        title: "population by region",
-      }),
-    );
-
-    state = layout(state, layoutSlice.actions.swapTiles({ a: tree.a.id, b: tree.b.id }));
-    const after = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
-    // The ids stay put because they name geometry. Everything the user sees as
-    // the named view moves together.
-    expect(after.a.id).toBe(tree.a.id);
-    expect(after.b.id).toBe(tree.b.id);
-    expect(viewAt(state, after.a)).toMatchObject({
-      appId: "table",
-      documents: { primary: "census" },
-      title: "population by region",
-    });
-    expect(viewAt(state, after.b)).toMatchObject({
-      appId: "chart",
-      documents: { primary: "climate" },
-      title: "temperature by station",
-    });
-  });
-
-  test("renaming a view and then clearing it restores the derived title", () => {
-    // `title: ""` must normalise to `undefined`, so there is one representation
-    // of "no title" and `Tile`'s `view.title ?? derived` sends it back to the
-    // derived title rather than rendering an empty bar (DR-62).
-    let state = start();
-    const only = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "leaf" }>;
-    state = layout(
-      state,
-      layoutSlice.actions.renameView({ viewId: only.viewId, title: "  raw feed  " }),
-    );
-    expect(state.views[only.viewId]?.title).toBe("raw feed");
-
-    state = layout(state, layoutSlice.actions.renameView({ viewId: only.viewId, title: "   " }));
-    expect(state.views[only.viewId]?.title).toBeUndefined();
-  });
-
-  test("duplicating a view keeps the document and marks the copy", () => {
-    // The SAME document, not a copy of it: two tiles on one document stay in
-    // lockstep because they read one object rather than two copies.
-    let state = start();
-    const only = (state.spaces[0] as { tree: Node }).tree;
-    state = layout(
-      state,
-      layoutSlice.actions.createViewInPlacement({
-        nodeId: only.id,
-        appId: "chart",
-        docId: "doc-1",
-        title: "raw feed",
-      }),
-    );
-    state = layout(state, layoutSlice.actions.duplicateView(only.id));
-
-    const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
-    expect(countLeaves(tree)).toBe(2);
-    const a = tree.a as Extract<Node, { type: "leaf" }>;
-    const b = tree.b as Extract<Node, { type: "leaf" }>;
-    expect(state.views[b.viewId]?.appId).toBe("chart");
-    expect(state.views[b.viewId]?.documents).toEqual(state.views[a.viewId]?.documents);
-    expect(state.views[b.viewId]?.title).toBe("raw feed (copy)");
-    expect(b.viewId).not.toBe(a.viewId);
-    // A duplicate that reused the id would give React duplicate keys AND make
-    // the hit-test return the wrong tile — the class of bug DR-12 removes.
-    expect(b.id).not.toBe(a.id);
-  });
-
-  test("duplicating an unlabelled leaf leaves it unlabelled", () => {
-    // Not "new tile (copy)": the derived title is already doing the work, and
-    // a label appearing out of nowhere would make the copy look renamed.
-    let state = start();
-    const only = (state.spaces[0] as { tree: Node }).tree;
-    state = layout(state, layoutSlice.actions.duplicateView(only.id, "col"));
-    const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
-    expect(tree.dir).toBe("col");
-    expect(state.views[(tree.b as Extract<Node, { type: "leaf" }>).viewId]?.title).toBeUndefined();
-  });
-
-  test("a linked duplicate creates a second placement of the same view", () => {
-    let state = start();
-    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
-    state = layout(state, layoutSlice.actions.createLinkedDuplicate(only.id));
-    const tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
-    expect((tree.a as Extract<Node, { type: "leaf" }>).viewId).toBe(
-      (tree.b as Extract<Node, { type: "leaf" }>).viewId,
-    );
-  });
-
-  test("renaming and document changes propagate through linked placements", () => {
-    let state = start();
-    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
-    state = layout(
-      state,
-      layoutSlice.actions.createViewInPlacement({
-        nodeId: only.id,
-        appId: "chart",
-        docId: "doc-a",
-      }),
-    );
-    state = layout(state, layoutSlice.actions.createLinkedDuplicate(only.id));
-    const tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
-    const a = tree.a as Extract<Node, { type: "leaf" }>;
-    const b = tree.b as Extract<Node, { type: "leaf" }>;
-
-    state = layout(
-      state,
-      layoutSlice.actions.renameView({ viewId: b.viewId, title: "shared title" }),
-    );
-    state = layout(
-      state,
-      layoutSlice.actions.setViewDocument({ viewId: b.viewId, docId: "doc-b" }),
-    );
-
-    expect(a.viewId).toBe(b.viewId);
-    expect(state.views[a.viewId]).toMatchObject({
-      title: "shared title",
-      documents: { primary: "doc-b" },
-    });
-  });
-
-  test("an independent duplicate diverges without copying its document", () => {
-    let state = start();
-    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
-    state = layout(
-      state,
-      layoutSlice.actions.createViewInPlacement({
-        nodeId: only.id,
-        appId: "chart",
-        docId: "doc-a",
-      }),
-    );
-    state = layout(state, layoutSlice.actions.duplicateView(only.id));
-    const tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
-    const source = tree.a as Extract<Node, { type: "leaf" }>;
-    const copy = tree.b as Extract<Node, { type: "leaf" }>;
-
-    state = layout(
-      state,
-      layoutSlice.actions.setViewDocument({ viewId: copy.viewId, docId: "doc-b" }),
-    );
-    expect(state.views[source.viewId]?.documents.primary).toBe("doc-a");
-    expect(state.views[copy.viewId]?.documents.primary).toBe("doc-b");
-  });
-
-  test("replacing a placement links an existing view and leaves the old view open", () => {
-    let state = start();
-    const source = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
-    const oldViewId = source.viewId;
-    state = layout(state, layoutSlice.actions.createLinkedDuplicate(source.id));
-    let tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
-    const target = tree.b as Extract<Node, { type: "leaf" }>;
-    state = layout(
-      state,
-      layoutSlice.actions.createViewInPlacement({ nodeId: target.id, appId: "chart" }),
-    );
-    tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
-    const chartViewId = (tree.b as Extract<Node, { type: "leaf" }>).viewId;
-
-    state = layout(
-      state,
-      layoutSlice.actions.replacePlacementWithView({
-        nodeId: (tree.a as Extract<Node, { type: "leaf" }>).id,
-        viewId: chartViewId,
-      }),
-    );
-    const after = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
-    expect((after.a as Extract<Node, { type: "leaf" }>).viewId).toBe(chartViewId);
-    expect((after.b as Extract<Node, { type: "leaf" }>).viewId).toBe(chartViewId);
-    expect(state.views[oldViewId]).toBeDefined();
-  });
-
-  test("removing one linked placement leaves its view and other placement intact", () => {
-    let state = start();
-    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
-    state = layout(state, layoutSlice.actions.createLinkedDuplicate(only.id));
-    const tree = state.spaces[0]!.tree as Extract<Node, { type: "split" }>;
-    const linked = tree.b as Extract<Node, { type: "leaf" }>;
-    state = layout(state, layoutSlice.actions.closeLeaf(linked.id));
-
-    const remaining = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
-    expect(remaining.viewId).toBe(only.viewId);
-    expect(state.views[only.viewId]).toBeDefined();
-  });
-
-  test("closing a view removes all placements and repairs an emptied workspace", () => {
-    let state = start();
-    const only = state.spaces[0]!.tree as Extract<Node, { type: "leaf" }>;
-    state = layout(state, layoutSlice.actions.createLinkedDuplicate(only.id));
-    state = layout(state, layoutSlice.actions.cloneSpace(state.currentSpaceId));
-    state = layout(state, layoutSlice.actions.closeView(only.viewId));
-
-    expect(state.views[only.viewId]).toBeUndefined();
-    for (const space of state.spaces) {
-      expect(countLeaves(space.tree)).toBe(1);
-      const replacement = space.tree as Extract<Node, { type: "leaf" }>;
-      expect(state.views[replacement.viewId]?.appId).toBe("launcher");
-    }
-  });
-
-  test("docking never leaves the same leaf in two places", () => {
-    let state = start();
-    const first = (state.spaces[0] as { tree: Node }).tree.id;
-    state = layout(state, layoutSlice.actions.splitLeaf({ nodeId: first, dir: "row" }));
-    const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
-
-    state = layout(
-      state,
-      layoutSlice.actions.dockTile({ from: tree.a.id, to: tree.b.id, zone: "bottom" }),
-    );
-    const after = (state.spaces[0] as { tree: Node }).tree;
-    expect(countLeaves(after)).toBe(2);
-    expect(findLeaf(after, tree.a.id)).not.toBeNull();
-  });
-});
 
 /* ----------------------------------------------------------------- world -- */
 
@@ -610,11 +293,11 @@ describe("verbs become actions", () => {
     );
 
   /**
-   * `actionsForVerb` takes the WHOLE state since DATADROP-8 (DR-68), and may
-   * return a thunk. These world-verb cases never do, so the helper narrows the
-   * result back to a plain action rather than every call site casting.
+   * `actionsForVerb` takes the world since DATADROP-8 (DR-68), and may return
+   * a thunk for a spatial verb. These world-verb cases never do, so the helper
+   * narrows the result back to a plain action rather than every call site
+   * casting.
    */
-  const world1 = (state: WorldState) => ({ world: state, layout: initialLayout() });
   const only = (results: unknown[]) => results[0] as Parameters<typeof world>[1];
 
   test("a verb naming a document targets that document", () => {
@@ -622,7 +305,7 @@ describe("verbs become actions", () => {
     const action = only(
       actionsForVerb(
         { kind: "setMapping", docId, channel: "y", field: "data.temp_c" },
-        world1(state),
+        { world: state },
         env(state),
       ),
     );
@@ -640,7 +323,7 @@ describe("verbs become actions", () => {
     const action = only(
       actionsForVerb(
         { kind: "setMapping", docId: null, channel: "y", field: "data.temp_c" },
-        world1(state),
+        { world: state },
         env(state),
       ),
     );
@@ -653,7 +336,7 @@ describe("verbs become actions", () => {
     const action = only(
       actionsForVerb(
         { kind: "addFilter", docId, field: "data.station", op: "=", value: "north" },
-        world1(state),
+        { world: state },
         env(state),
       ),
     );
@@ -669,7 +352,7 @@ describe("verbs become actions", () => {
     const action = only(
       actionsForVerb(
         { kind: "addFilter", docId, field: "data.temp_c", op: "=", value: "" },
-        world1(state),
+        { world: state },
         env(state),
       ),
     );
@@ -681,204 +364,143 @@ describe("verbs become actions", () => {
 
 /* ----------------------------------------------------------- persistence -- */
 
-describe("splitting to make room for a new view", () => {
-  const leavesOf = (node: Node): Extract<Node, { type: "leaf" }>[] =>
-    node.type === "leaf" ? [node] : [...leavesOf(node.a), ...leavesOf(node.b)];
-  const currentTree = (state: LayoutState) =>
-    state.spaces.find((s) => s.id === state.currentSpaceId)?.tree as Node;
-
-  test("a split with no application still makes an empty launcher tile", () => {
-    // The title bar's split button names none, and that is the original
-    // behaviour this must not change.
-    const state = initialLayout();
-    const first = leavesOf(currentTree(state))[0] as Extract<Node, { type: "leaf" }>;
-    const next = layout(state, layoutSlice.actions.splitLeaf({ nodeId: first.id, dir: "row" }));
-    const added = leavesOf(currentTree(next)).find((leaf) => leaf.id !== first.id);
-    expect(next.views[added?.viewId ?? ""]?.appId).toBe("launcher");
-  });
-
-  test("a split that names an application creates that view in one action", () => {
-    // One dispatch, not two: splitting and then filling would render an empty
-    // launcher tile for a frame before the real view replaced it.
-    const state = initialLayout();
-    const first = leavesOf(currentTree(state))[0] as Extract<Node, { type: "leaf" }>;
-    const next = layout(
-      state,
-      layoutSlice.actions.splitLeaf({
-        nodeId: first.id,
-        dir: "col",
-        appId: "chart",
-        docId: "doc-1",
-      }),
-    );
-    const added = leavesOf(currentTree(next)).find((leaf) => leaf.id !== first.id);
-    expect(next.views[added?.viewId ?? ""]).toMatchObject({
-      appId: "chart",
-      documents: { primary: "doc-1" },
-    });
-    // The tile that was split survives untouched — nothing is replaced.
-    expect(leavesOf(currentTree(next)).map((leaf) => leaf.id)).toContain(first.id);
-  });
-});
-
 describe("persistence is defensive", () => {
-  /** A current canonical payload holding one user workspace in the work stage. */
-  const currentPayload = (
-    spaces: unknown[],
-    currentSpaceId: string,
-    stages: unknown[] = [],
-    currentStageId = WORK_STAGE_ID,
-  ) => ({
-    version: 5,
+  /** A seed holding the pinned pages plus the workspaces given, all in the work stage unless said otherwise. */
+  const seedWith = (
+    workspaces: { id: string; name: string; stageId?: string }[],
+    current = workspaces[0]?.id,
+  ): DatalabSeed =>
+    compileSeed({
+      stages: pinnedDefinitions().stages,
+      workspaces: [
+        ...pinnedDefinitions().workspaces,
+        ...workspaces.map((space) => ({
+          id: space.id,
+          name: space.name,
+          stageId: space.stageId ?? WORK_STAGE_ID,
+          spec: tile("chart"),
+        })),
+      ],
+      apps,
+      current,
+    });
+
+  /** The version-6 envelope a previous session would have written for a seed. */
+  const payloadFor = (seed: DatalabSeed) => ({
+    version: PERSISTENCE_VERSION,
     world: { docs: {}, docOrder: [], snapshots: {} },
-    layout: {
-      stages,
-      currentStageId,
-      spaces,
-      currentSpaceId,
-      views: { v: { id: "v", appId: "chart", documents: {} } },
-      viewOrder: ["v"],
-    },
+    workbench: toJson(WorkbenchDocumentSchema, seed.document) as Record<string, unknown>,
+    navigation: durableNavigation(seed.navigation),
+    workspaceId: seed.workspaceId,
   });
+
+  const workspaceIds = (seed: DatalabSeed) => seed.document.workspaces.map((space) => space.id);
 
   test("a payload from another version is refused", () => {
-    expect(
-      validate({ version: 99, world: {}, layout: { spaces: [], currentSpaceId: "" } }),
-    ).toBeNull();
+    const payload = payloadFor(seedWith([{ id: "mine", name: "mine" }]));
+    expect(validate({ ...payload, version: 99 }, apps)).toBeNull();
+    expect(validate({ ...payload, version: PERSISTENCE_VERSION + 1 }, apps)).toBeNull();
   });
 
-  test("a normalized payload with a known view reference is accepted", () => {
-    const tree = { id: "n", type: "leaf", viewId: "v" };
-    const valid = validate(
-      currentPayload([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "s"),
-    );
-    expect(valid?.layout.spaces.find((space) => space.id === "s")?.tree).toEqual(tree);
-    expect(valid?.layout.views.v).toEqual({
-      id: "v",
-      appId: "chart",
-      documents: {},
+  test("a well-formed payload is accepted, and lands where the user was", () => {
+    const valid = validate(payloadFor(seedWith([{ id: "mine", name: "mine" }])), apps);
+    expect(valid).not.toBeNull();
+    expect(valid?.seed.workspaceId).toBe("mine");
+    expect(valid?.seed.document.workspaces.find((space) => space.id === "mine")?.name).toBe("mine");
+    expect(valid?.seed.navigation.workspace.mine).toEqual({
+      stageId: WORK_STAGE_ID,
+      pinned: false,
+      apps: null,
     });
   });
 
-  test("a missing view dictionary is refused", () => {
-    const payload = currentPayload([], "");
-    const { views: _, ...layout } = payload.layout;
-    expect(validate({ ...payload, layout })).toBeNull();
-  });
-
-  test("a view dictionary key that disagrees with its view id is refused", () => {
-    const payload = currentPayload([], "");
-    payload.layout.views.v.id = "another-view";
-    expect(validate(payload)).toBeNull();
-  });
-
-  test("a dangling placement view reference is refused", () => {
-    const tree = { id: "n", type: "leaf", viewId: "missing" };
-    expect(
-      validate(currentPayload([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "s")),
-    ).toBeNull();
-  });
-
-  test("duplicate view-order entries are refused", () => {
-    const payload = currentPayload([], "");
-    expect(
-      validate({
-        ...payload,
-        layout: {
-          ...payload.layout,
-          views: {
-            ...payload.layout.views,
-            second: { id: "second", appId: "table", documents: {} },
-          },
-          viewOrder: ["v", "v"],
-        },
-      }),
-    ).toBeNull();
-  });
-
-  test("a malformed tree is refused rather than rendered", () => {
+  test("a missing or malformed navigation is refused", () => {
+    const payload = payloadFor(seedWith([{ id: "mine", name: "mine" }]));
+    const { navigation: _, ...withoutNavigation } = payload;
+    expect(validate(withoutNavigation, apps)).toBeNull();
+    expect(validate({ ...payload, navigation: null }, apps)).toBeNull();
+    expect(validate({ ...payload, navigation: { stages: "nope" } }, apps)).toBeNull();
     expect(
       validate(
-        currentPayload(
-          [{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree: { id: "n", type: "split" } }],
-          "s",
-        ),
+        { ...payload, navigation: { ...payload.navigation, workspace: { mine: { stageId: 7 } } } },
+        apps,
       ),
     ).toBeNull();
   });
 
-  test("a ratio outside the sane range is refused", () => {
-    const tree = {
-      id: "n",
-      type: "split",
-      dir: "row",
-      ratio: 12,
-      a: { id: "a", type: "leaf", viewId: "v" },
-      b: { id: "b", type: "leaf", viewId: "v" },
-    };
-    expect(
-      validate(currentPayload([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "s")),
-    ).toBeNull();
+  test("a workbench that is not a document is refused rather than rendered", () => {
+    const payload = payloadFor(seedWith([{ id: "mine", name: "mine" }]));
+    expect(validate({ ...payload, workbench: 42 }, apps)).toBeNull();
+    expect(validate({ ...payload, workbench: { workspaces: "nope" } }, apps)).toBeNull();
   });
 
-  test("a currentSpaceId naming a missing space falls back to the stage's", () => {
-    const tree = { id: "n", type: "leaf", viewId: "v" };
-    const valid = validate(
-      currentPayload([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "gone"),
+  test("a dangling placement view reference fails the structural parse", () => {
+    const seed = seedWith([{ id: "mine", name: "mine" }]);
+    const payload = payloadFor(seed);
+    const views = payload.workbench.views as Record<string, unknown>;
+    const mine = seed.document.workspaces.find((space) => space.id === "mine")!;
+    const viewId = mine.tree?.body.case === "leaf" ? mine.tree.body.value.viewId : "";
+    expect(views[viewId]).toBeDefined();
+    delete views[viewId];
+    payload.workbench.viewOrder = (payload.workbench.viewOrder as string[]).filter(
+      (id) => id !== viewId,
     );
-    // The stage's own pointer has already been repaired by mergeStages, so the
-    // layout mirror follows it (DR-60). The property under test is the fallback,
-    // not the identity of the space it falls back to.
-    expect(valid?.layout.currentSpaceId).toBe("s");
-    expect(valid?.layout.spaces.map((space) => space.id)).toContain("s");
+    expect(validate(payload, apps)).toBeNull();
+  });
+
+  test("a view naming an application this build lacks is refused", () => {
+    // The structural parse lets it through — a retired application on a
+    // PINNED page is replaced from code at the merge — but one the user's own
+    // workspace still shows has nothing to render, and the catalog says so.
+    const seed = seedWith([{ id: "mine", name: "mine" }]);
+    const payload = payloadFor(seed);
+    const mine = seed.document.workspaces.find((space) => space.id === "mine")!;
+    const viewId = mine.tree?.body.case === "leaf" ? mine.tree.body.value.viewId : "";
+    const views = payload.workbench.views as Record<string, { appId: string }>;
+    views[viewId]!.appId = "retired-application";
+    expect(validate(payload, apps)).toBeNull();
+  });
+
+  test("a workspaceId naming a missing workspace falls back to the work stage, never the sign-in page", () => {
+    const seed = seedWith([{ id: "mine", name: "mine" }]);
+    const valid = validate({ ...payloadFor(seed), workspaceId: "gone" }, apps);
+    expect(valid).not.toBeNull();
+    expect(workspaceIds(valid!.seed)).toContain(valid!.seed.workspaceId);
+    // The first workspace in document order is the sign-in page; a restored
+    // layout must not land there. The work stage's own workspace is where the
+    // signed-in product starts, and the gate moves a visitor on from it.
+    expect(valid!.seed.navigation.workspace[valid!.seed.workspaceId]?.stageId).toBe(WORK_STAGE_ID);
   });
 
   test("the hardwired workspaces are restored from code, not from storage", () => {
     // DR-29. A user who deleted the account workspace in a previous release
     // must get it back, and a stored tree under a pinned id must not win.
-    const valid = validate(
-      currentPayload(
-        [
-          {
-            id: ACCOUNT_SPACE_ID,
-            name: "renamed by a user",
-            stageId: ACCOUNT_STAGE_ID,
-            tree: { id: "n", type: "leaf", viewId: "v" },
-          },
-        ],
-        ACCOUNT_SPACE_ID,
-        [],
-        ACCOUNT_STAGE_ID,
-      ),
-    );
+    const seed = compileSeed({
+      stages: pinnedDefinitions().stages,
+      workspaces: [
+        ...pinnedDefinitions().workspaces.filter((space) => space.id !== ACCOUNT_SPACE_ID),
+        {
+          id: ACCOUNT_SPACE_ID,
+          name: "renamed by a user",
+          stageId: ACCOUNT_STAGE_ID,
+          spec: tile("chart"),
+        },
+      ],
+      apps,
+      current: ACCOUNT_SPACE_ID,
+    });
+    const valid = validate(payloadFor(seed), apps);
 
-    const ids = valid?.layout.spaces.map((space) => space.id) ?? [];
+    const ids = valid ? workspaceIds(valid.seed) : [];
     expect(ids).toContain(SIGNIN_SPACE_ID);
     expect(ids).toContain(ACCOUNT_SPACE_ID);
-    // Exactly once: merging must not duplicate a pinned space that was stored.
+    // Exactly once: merging must not duplicate a pinned workspace that was stored.
     expect(ids.filter((id) => id === ACCOUNT_SPACE_ID)).toHaveLength(1);
 
-    const account = valid?.layout.spaces.find((space) => space.id === ACCOUNT_SPACE_ID);
+    const account = valid?.seed.document.workspaces.find((space) => space.id === ACCOUNT_SPACE_ID);
     expect(account?.name).toBe("profile");
-    expect(account?.pinned).toBe(true);
-  });
-
-  test("user-created spaces survive the merge", () => {
-    const valid = validate(
-      currentPayload(
-        [
-          {
-            id: "mine",
-            name: "mine",
-            stageId: WORK_STAGE_ID,
-            tree: { id: "n", type: "leaf", viewId: "v" },
-          },
-        ],
-        "mine",
-      ),
-    );
-    expect(valid?.layout.spaces.find((space) => space.id === "mine")?.name).toBe("mine");
-    expect(valid?.layout.currentSpaceId).toBe("mine");
+    expect(account?.tree?.body.case).toBe("split");
+    expect(valid?.seed.navigation.workspace[ACCOUNT_SPACE_ID]?.pinned).toBe(true);
   });
 
   test("credential-shaped keys are detected anywhere in the payload", () => {
@@ -895,16 +517,16 @@ describe("persistence is defensive", () => {
   });
 
   /**
-   * Transient layout state is excluded from what `save` writes.
+   * Transient navigation state is excluded from what `save` writes.
    *
-   * `save()` enumerates the fields it writes rather than passing the slice
+   * `save()` writes the durable subset by name rather than passing the slice
    * whole, which is what makes a new transient field safe *by default* — but
    * only until someone reaches for a spread. This asserts the property rather
    * than the convention (DATALAB-VIEW-001 design-doc/02 §14): the failure it
    * catches produces no error and no visible symptom until the next reload
    * opens a modal over a tile that may no longer exist (DR-69).
    */
-  test("no transient layout field reaches storage", () => {
+  test("no transient navigation field reaches storage, and what does reach it loads", () => {
     const written: Record<string, string> = {};
     const previous = (globalThis as { localStorage?: unknown }).localStorage;
     (globalThis as { localStorage?: unknown }).localStorage = {
@@ -918,27 +540,51 @@ describe("persistence is defensive", () => {
     };
 
     try {
-      const layout: LayoutState = {
-        ...initialLayout(),
-        launcher: { kind: "replace", placementId: "n" },
-        renamingId: "n",
-        pendingImport: { target: { kind: "stage" }, prefill: "secret-ish", from: "clipboard" },
-        notice: { ok: true, title: "Copied", body: "…" },
-        justSignedUp: true,
-      };
-      save("test-key", worldSlice.getInitialState(), layout);
+      const ids = sequentialIds();
+      const seed = seedWith([{ id: "mine", name: "mine" }]);
+      const rt = createDatalabRuntime({ seed, apps, ids, ownership: "trust" });
+      rt.store.dispatch(navigationActions.openLauncher({ kind: "replace", placementId: "n" }));
+      rt.store.dispatch(navigationActions.beginRename("n"));
+      rt.store.dispatch(
+        navigationActions.openImport({
+          target: { kind: "stage" },
+          prefill: "secret-ish",
+          from: "clipboard",
+        }),
+      );
+      rt.store.dispatch(navigationActions.showNotice({ ok: true, title: "Copied", body: "…" }));
+      rt.store.dispatch(navigationActions.setJustSignedUp(true));
+
+      const core = rt.core.getState();
+      save(
+        "test-key",
+        rt.store.getState().world,
+        { document: core.document, workspaceId: core.session.workspaceId },
+        rt.store.getState().navigation,
+      );
 
       const stored = written["test-key"];
       expect(stored).toBeDefined();
-      const parsed = JSON.parse(stored as string) as { layout: Record<string, unknown> };
-      expect(Object.keys(parsed.layout).sort()).toEqual([
-        "currentSpaceId",
-        "currentStageId",
-        "spaces",
-        "stages",
-        "viewOrder",
-        "views",
+      const parsed = JSON.parse(stored as string) as {
+        version: number;
+        navigation: Record<string, unknown>;
+      };
+      expect(parsed.version).toBe(PERSISTENCE_VERSION);
+      expect(Object.keys(parsed).sort()).toEqual([
+        "navigation",
+        "version",
+        "workbench",
+        "workspaceId",
+        "world",
       ]);
+      expect(Object.keys(parsed.navigation).sort()).toEqual([
+        "rememberedWorkspaceByStage",
+        "stages",
+        "workspace",
+      ]);
+      expect(stored).not.toContain("secret-ish");
+      // And the round trip: what the runtime wrote is what a runtime can be built from.
+      expect(validate(parsed, apps)?.seed.workspaceId).toBe("mine");
     } finally {
       (globalThis as { localStorage?: unknown }).localStorage = previous;
     }

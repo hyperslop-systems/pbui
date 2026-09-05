@@ -11,6 +11,12 @@ const external = [
   "@reduxjs/toolkit/query/react",
   "@hyperslop-systems/pbui",
   "@hyperslop-systems/pbui/presentation",
+  "@hyperslop-systems/pbui/link-kernel",
+  "@hyperslop-systems/pbui-workbench",
+  "@hyperslop-systems/workbench-core",
+  "@hyperslop-systems/workbench-core/persistence",
+  "@hyperslop-systems/workbench-protocol",
+  "@hyperslop-systems/workbench-protocol/client",
   "@hyperslop-systems/plot",
   "@hyperslop-systems/plot/react",
 ];

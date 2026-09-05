@@ -1,4 +1,5 @@
-import { createAppRegistry, createWorkbench, parseDocument, split, tile, workspaces, type Workbench } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench, manifestsOf, type WorkbenchShell } from "@hyperslop-systems/pbui-workbench";
+import { createManifestCatalog, parseWorkbenchDocument, split, tile, workspaces } from "@hyperslop-systems/workbench-core";
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import { EXAMPLE_SCRIPTS, PLOT_BINDING, connectPlotScriptDocuments, createPlotScriptApps, createPlotScriptHost, plotScriptMutation, type PlotScriptHost } from "@hyperslop-systems/pbui-plotscript";
 
@@ -22,9 +23,9 @@ export function seedDocument() {
   return applyMutations(doc, EXAMPLE_SCRIPTS.map(plotScriptMutation));
 }
 
-export function createDemoWorkbench(): { workbench: Workbench; host: PlotScriptHost; restored: boolean } {
+export function createDemoWorkbench(): { workbench: WorkbenchShell; host: PlotScriptHost; restored: boolean } {
   const host = createPlotScriptHost();
-  const apps = createAppRegistry(createPlotScriptApps(host));
+  const apps = createPlotScriptApps(host);
   const seed = seedDocument();
   let stored: string | null = null;
   try {
@@ -32,13 +33,14 @@ export function createDemoWorkbench(): { workbench: Workbench; host: PlotScriptH
   } catch {
     stored = null;
   }
-  const restored = parseDocument(stored);
+  const parsed = parseWorkbenchDocument(stored, { apps: createManifestCatalog(manifestsOf(apps)) });
+  const restored = parsed.ok ? parsed.document : null;
   const workbench = createWorkbench({
     apps,
     initial: restored ?? seed,
-    // Once per COMMITTED batch (pbui-workbench store.ts): a script write, a
-    // split, a rename. Never for launcher toggles — those are this browser's.
-    onMutate() {
+    // Once per COMMITTED batch: a script write, a split, a rename. Never for
+    // launcher toggles — those are this browser's.
+    onCommit() {
       try {
         localStorage.setItem(STORAGE_KEY, workbench.serialize());
       } catch {
@@ -48,6 +50,6 @@ export function createDemoWorkbench(): { workbench: Workbench; host: PlotScriptH
   });
   // Successful runs persist into the document from the runner's own
   // lifecycle, so a run that finishes after its tile closed is not lost.
-  connectPlotScriptDocuments(workbench, host);
+  connectPlotScriptDocuments(workbench.core, host);
   return { workbench, host, restored: restored !== null };
 }

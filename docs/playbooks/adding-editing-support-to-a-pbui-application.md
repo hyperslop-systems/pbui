@@ -90,11 +90,20 @@ Start with these files:
 
 - `packages/datalab-ui/src/appkit/registry.ts` defines `AppDescriptor` and
   `AppProps`.
-- `packages/datalab-ui/src/store/layout.ts` owns workspaces, views, and
-  placement trees.
-- `packages/datalab-ui/src/store/world.ts` owns analytical documents.
-- `packages/datalab-ui/src/remote/codec.ts` converts Redux state to and from
-  generated protocol messages.
+- `packages/workbench-core` owns workspaces, views, and placement trees as the
+  protocol's `WorkbenchDocument`; `packages/datalab-ui/src/store/runtime.ts`
+  builds one core per Datalab workbench and
+  `packages/datalab-ui/src/store/controller.ts` puts Datalab's policy in
+  front of its commands.
+- `packages/datalab-ui/src/store/navigation.ts` owns stages and per-workspace
+  metadata above the workbench document.
+- `packages/datalab-ui/src/store/world.ts` owns analytical documents; the
+  workbench holds identity stubs for them
+  (`packages/datalab-ui/src/store/graphicSource.ts`).
+- `packages/datalab-ui/src/remote/projection.ts` decides what crosses the
+  server boundary (the work stage, with full documents) and how a server
+  document is adopted; `packages/datalab-ui/src/remote/codec.ts` is the JSON
+  and graphic-envelope codec.
 - `packages/datalab-ui/src/appkit/useRemoteWorkbench.ts` loads, fingerprints,
   saves, streams, and reports conflicts.
 - `proto/hyperslop/pbui/workbench/v1/workbench.proto` defines the shared

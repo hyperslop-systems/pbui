@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { describeWorkbench, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { split, tile } from "@hyperslop-systems/workbench-core";
 import { APP_IDS, createShopApps } from "./apps";
 import { createShop, createShopWorkbench } from "./createShop";
 import { listPlotDocuments, readTableName, tableDocumentId } from "./document";
@@ -27,17 +27,17 @@ describe("the seeded document", () => {
     const json = wb.serialize();
     const again = createShopWorkbench(shop);
     expect(again.restore(json)).toBe(true);
-    expect(listPlotDocuments(again.store.getState().document)).toHaveLength(3);
+    expect(listPlotDocuments(again.core.getState().document)).toHaveLength(3);
   });
 });
 
 describe("the applications", () => {
-  it("declare their ports, and describeWorkbench reports them", () => {
+  it("declare their ports, and describe reports them", () => {
     const shop = createShop();
     const apps = createShopApps(shop);
-    expect(apps.map((app) => app.id)).toEqual([...Object.values(APP_IDS), "coordination"]);
+    expect(apps.map((app) => app.manifest.id)).toEqual([...Object.values(APP_IDS), "coordination"]);
     const wb = createShopWorkbench(shop);
-    const description = describeWorkbench(wb);
+    const description = wb.describe();
     const byId = new Map(description.apps.map((app) => [app.id, app]));
     expect(byId.get("orders")?.ports?.map((port) => `${port.direction} ${port.name}:${port.valueType}`)).toEqual(["out order:order", "inout selection:datum", "in filter:category"]);
     expect(byId.get("order-detail")?.ports?.[0]).toMatchObject({ name: "order", direction: "in", valueType: "order", role: "order.detail", fallbackContext: "workspace.order" });

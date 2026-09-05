@@ -3,8 +3,8 @@ import { linkVerbs } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useMemo } from "react";
 import { Button, Text } from "@hyperslop-systems/pbui";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { demoApps } from "../../stories/demoApps";
 
 const meta: Meta = { title: "Workbench/LinkAnnouncer" };
@@ -13,7 +13,7 @@ export default meta;
 /** The live region made visible, so what a screen reader would hear can be seen. */
 function Visible() {
   const wb = useMemo(() => createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter", { title: "Counter A" }), tile("notes"))) }), []);
-  const ids = () => leaves(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
+  const ids = () => leaves(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
   return (
     <div style={{ display: "grid", gridTemplateRows: "auto minmax(0, 1fr)", gap: 8, height: 460 }}>
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

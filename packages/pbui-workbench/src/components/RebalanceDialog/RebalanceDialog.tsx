@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, Dialog, isEditableTarget, routeWorkbenchKey, useAnyEscapeSurface } from "@hyperslop-systems/pbui";
+import { commands, DEFAULT_DIVIDER_PX, type GeometrySnapshot } from "@hyperslop-systems/workbench-core";
 import type { Node as PlacementNode, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { resizeSplit, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
-import { panesOf, toAnalysis, layoutBinary, type Rect } from "../../rebalance/analysisTree";
-import type { RebalanceConfig } from "../../rebalance/config";
+import { buildSlate, layoutBinary, panesOf, TIERS, toAnalysis, type Proposal, type Rect, type RebalanceConfig, type RebalanceSlate } from "@hyperslop-systems/workbench-core/rebalance";
 import { documentRebalanceConfigStore, type RebalanceConfigStore } from "../../rebalance/configStore";
-import { TIERS } from "../../rebalance/measure";
-import { buildSlate, type Proposal, type RebalanceSlate } from "../../rebalance/slate";
 import type { RebalanceProps } from "../../types";
-import { DEFAULT_DIVIDER_PX } from "../../verbs";
 import styles from "./RebalanceDialog.module.css";
 
 /**
@@ -18,9 +15,10 @@ import styles from "./RebalanceDialog.module.css";
  * Mod+Shift+K and the workspace's repair proposals appear as cards ordered by
  * measured invasiveness, each a thumbnail of the proposed layout with ghost
  * outlines where tiles sit today. The layout is never repaired behind the
- * user's back — Apply is the only mutating path, it goes through the
- * workbench's atomic `plan`/`applyPlan`, and a single-level Undo restores the
- * pre-apply document while the dialog stays open.
+ * user's back — Apply is the only mutating path, it goes through the core's
+ * one gateway (a raw resize batch or the `workspace.rebalance` command, which
+ * enforces the preservation law), and a single-level Undo restores the
+ * pre-apply tree while the dialog stays open.
  *
  * Escape and focus return belong to the wrapped `Dialog`; this component
  * deliberately does NOT register an escape surface of its own (surfaces.ts:
@@ -28,7 +26,7 @@ import styles from "./RebalanceDialog.module.css";
  */
 export function WorkbenchRebalance({ shortcut = true, shortcutContext, config, configStore }: RebalanceProps) {
   const workbench = useWorkbench();
-  const open = workbench.useWorkbenchState((state) => state.rebalanceOpen);
+  const open = workbench.useShellState((state) => state.rebalanceOpen);
   const anySurfaceOpen = useAnyEscapeSurface();
 
   useEffect(() => {
@@ -48,7 +46,7 @@ export function WorkbenchRebalance({ shortcut = true, shortcutContext, config, c
         event,
         {
           targetIsEditable: isEditableTarget(event.target as HTMLElement | null),
-          launcherOpen: workbench.store.getState().launcherOpen,
+          launcherOpen: workbench.shell.getState().launcher !== null,
           dialogOpen: anySurfaceOpen,
           objectMenuOpen: extra.objectMenuOpen ?? false,
           acceptingPresentation: extra.acceptingPresentation ?? false,
@@ -58,7 +56,7 @@ export function WorkbenchRebalance({ shortcut = true, shortcutContext, config, c
       );
       if (decision.kind !== "open-rebalance") return;
       event.preventDefault();
-      workbench.verbs.openRebalance();
+      workbench.dispatch({ kind: "rebalance.open" });
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -70,29 +68,17 @@ export function WorkbenchRebalance({ shortcut = true, shortcutContext, config, c
 /** Headless/story fallback when the Surface has no measurable box yet. */
 const FALLBACK_RECT: Rect = { x: 0, y: 0, w: 1024, h: 640 };
 
-export function measureRect(element: HTMLElement | null): Rect {
-  const box = element?.getBoundingClientRect();
-  if (!box || !Number.isFinite(box.width) || box.width <= 8 || box.height <= 8) return FALLBACK_RECT;
-  return { x: 0, y: 0, w: Math.round(box.width), h: Math.round(box.height) };
-}
-
-export function measureDividerPx(element: HTMLElement | null): number {
-  const rendered = element?.querySelector<HTMLElement>('[data-part="split-divider"]');
-  if (rendered) {
-    // The track's THICKNESS is its smaller dimension: a row divider is tall
-    // and ~10px wide, a column divider is wide and ~10px tall. Reading
-    // `.width` unconditionally once measured a column divider's full ~700px
-    // span as the gap, inflating every propagation number and clumping the
-    // thumbnails (PBUI-REBALANCE-1 diary step 7).
-    const box = rendered.getBoundingClientRect();
-    const thickness = Math.min(box.width, box.height);
-    if (Number.isFinite(thickness) && thickness > 0) return thickness;
-  }
-  if (element && typeof getComputedStyle === "function") {
-    const token = Number.parseFloat(getComputedStyle(element).getPropertyValue("--pbui-space-4"));
-    if (Number.isFinite(token) && token > 0) return token;
-  }
-  return DEFAULT_DIVIDER_PX;
+/**
+ * The engine's input from the shell's measured geometry: the Surface's box
+ * (or the fallback when nothing is laid out) and the divider track's
+ * THICKNESS — its smaller dimension, which `measureGeometry` already
+ * separates per axis (PBUI-REBALANCE-1 diary step 7).
+ */
+export function rebalanceGeometry(geometry: GeometrySnapshot | null): { rect: Rect; dividerPx: number } {
+  const viewport = geometry?.viewport;
+  const rect: Rect = viewport && viewport.width > 8 && viewport.height > 8 ? { x: 0, y: 0, w: Math.round(viewport.width), h: Math.round(viewport.height) } : FALLBACK_RECT;
+  const dividerPx = geometry ? Math.min(geometry.divider.inline, geometry.divider.block) : DEFAULT_DIVIDER_PX;
+  return { rect, dividerPx: Number.isFinite(dividerPx) && dividerPx > 0 ? dividerPx : DEFAULT_DIVIDER_PX };
 }
 
 function tileLabels(doc: WorkbenchDocument, workspaceId: string, appTitle: (appId: string) => string | null): Map<string, string> {
@@ -121,8 +107,8 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
   // store: the `pbui.rebalance-config` payload in the workbench document.
   const storedConfig = (configStore ?? documentRebalanceConfigStore).useConfig(workbench);
   const config = configProp ?? storedConfig;
-  const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
-  const [rect, setRect] = useState<Rect>(() => measureRect(workbench.root()));
+  const workspaceId = workbench.useCoreState((state) => state.session.workspaceId);
+  const [measured, setMeasured] = useState(() => rebalanceGeometry(workbench.measure()));
   const [status, setStatus] = useState<string | null>(null);
   const undoRef = useRef<{ workspaceId: string; tree: PlacementNode } | null>(null);
   const [canUndo, setCanUndo] = useState(false);
@@ -130,7 +116,7 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
   useEffect(() => {
     const element = workbench.root();
     if (!element || typeof ResizeObserver !== "function") return;
-    const observer = new ResizeObserver(() => setRect(measureRect(element)));
+    const observer = new ResizeObserver(() => setMeasured(rebalanceGeometry(workbench.measure())));
     observer.observe(element);
     return () => observer.disconnect();
   }, [workbench]);
@@ -138,18 +124,17 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
   const tree = workspaceTree(doc, workspaceId);
   const slate: RebalanceSlate | null = useMemo(() => {
     if (!tree) return null;
-    const dividerPx = measureDividerPx(workbench.root());
     const labels = tileLabels(doc, workspaceId, (appId) => workbench.apps.get(appId)?.title ?? null);
-    return buildSlate({ tree, rect, dividerPx, labels }, config);
-    // doc identity covers tree identity; rect is state.
-  }, [doc, workspaceId, rect, config, workbench, tree]);
+    return buildSlate({ tree, rect: measured.rect, dividerPx: measured.dividerPx, labels }, config);
+    // doc identity covers tree identity; the measurement is state.
+  }, [doc, workspaceId, measured, config, workbench, tree]);
 
   const proposals = slate?.proposals ?? [];
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected =
     proposals.find((p) => p.id === selectedId) ?? proposals.find((p) => p.recommended) ?? proposals[0] ?? null;
 
-  const close = () => workbench.verbs.closeRebalance();
+  const close = () => workbench.dispatch({ kind: "rebalance.close" });
 
   /**
    * Apply a proposal. `close: true` (the default gesture — a plain click on a
@@ -167,33 +152,27 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
       setStatus(proposal.baseline ? "Kept the layout as it is." : "This proposal has nothing to apply.");
       return;
     }
-    const before = workbench.store.getState().document;
+    const before = workbench.core.getState().document;
     if (proposal.apply.kind === "resize-batch") {
-      // A raw splitResize batch, NOT `split.resize` verbs: the verb re-clamps
-      // each ratio against the PRE-repair rendered geometry, which refuses
-      // compound repairs whose nested splits only become feasible once their
-      // parent has resized (PR #19). The engine already validated these
-      // ratios against propagated minimums; the applier still validates ids.
+      // A raw splitResize batch, NOT `placement.resize` commands: the command
+      // re-clamps each ratio against the PRE-repair rendered geometry, which
+      // refuses compound repairs whose nested splits only become feasible
+      // once their parent has resized (PR #19). The engine already validated
+      // these ratios against propagated minimums; the gateway still validates.
       const mutations = proposal.apply.resizes.flatMap((r) => resizeSplit(before, r.splitId, r.ratio));
       if (mutations.length !== proposal.apply.resizes.length) {
         // A split id no longer exists: the document moved under the slate.
         setStatus("The layout changed underneath — proposals recomputed.");
         return;
       }
-      if (!workbench.mutate(mutations)) {
+      if (!workbench.apply(mutations).ok) {
         setStatus("Refused: the workbench rejected the resize batch.");
         return;
       }
     } else {
-      const planned = workbench.plan([{ kind: "workspace.setTree", workspaceId, tree: proposal.apply.tree }]);
-      if (!planned.ok) {
-        setStatus(`Refused: ${planned.error}`);
-        return;
-      }
-      if (!workbench.applyPlan(planned.plan)) {
-        // The document moved between plan and apply; the slate recomputes
-        // from the store subscription, so just say what happened.
-        setStatus("The layout changed underneath — proposals recomputed.");
+      const result = workbench.execute(commands.rebalance(workspaceId, proposal.apply.tree));
+      if (!result.ok) {
+        setStatus(`Refused: ${result.because}`);
         return;
       }
     }
@@ -214,11 +193,11 @@ function RebalanceModal({ config: configProp, configStore }: { config?: Rebalanc
     if (!previous) return;
     undoRef.current = null;
     setCanUndo(false);
-    // Through the MUTATION path, never `replaceDocument`: a product's
-    // persistence/outbox subscribes to onMutate, and a silent replacement
+    // Through the COMMAND path, never `replaceDocument`: a product's
+    // persistence/outbox subscribes to onCommit, and a silent replacement
     // would look undone until reload (PR #19). The previous tree is immutable
     // protobuf data; the applier clones it in.
-    if (workbench.perform({ kind: "workspace.setTree", workspaceId: previous.workspaceId, tree: previous.tree })) {
+    if (workbench.execute(commands.rebalance(previous.workspaceId, previous.tree)).ok) {
       setStatus("Restored the previous layout.");
     } else {
       setStatus("Could not restore the previous layout — the workspace no longer exists.");
@@ -447,7 +426,7 @@ const HUES = 7;
 function Thumbnail({ proposal, config }: { proposal: Proposal; config: RebalanceConfig }) {
   const workbench = useWorkbench();
   const doc = workbench.useDocument();
-  const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
+  const workspaceId = workbench.useCoreState((state) => state.session.workspaceId);
   const order = useMemo(() => {
     const tree = workspaceTree(doc, workspaceId);
     if (!tree) return [] as string[];

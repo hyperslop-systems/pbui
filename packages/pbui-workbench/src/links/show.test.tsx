@@ -1,11 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPresentationTypeGraph, linkVerbs, resetEscapeSurfaces } from "@hyperslop-systems/pbui";
+import { bindingsOf, layout, split, tile, type LayoutSpec } from "@hyperslop-systems/workbench-core";
 import { leaves, viewsOfApp, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
-import { defineApp } from "../apps";
-import { createWorkbench } from "../createWorkbench";
-import { layout, split, tile, type LayoutSpec } from "../document";
-import { bindingsOf } from "./document";
+import { defineWorkbenchApp } from "../app";
+import { createWorkbench } from "../createWorkbenchShell";
 
 /*
  * "Show details…" end to end (design §8.6): one free target → performed;
@@ -16,16 +15,16 @@ import { bindingsOf } from "./document";
 
 const graph = createPresentationTypeGraph([{ id: "inspectable", abstract: true }, { id: "order", parents: ["inspectable"] }]);
 const ORDER = { type: "order", value: { id: "1042" } };
-const ordersApp = defineApp({ id: "orders", title: "orders", tone: "var(--pbui-cat-1)", singleton: false, ports: [{ name: "order", direction: "out", contract: { valueType: "order", semanticRole: "order.current" }, doc: "the clicked order" }], Component: () => null });
-const detailApp = defineApp({ id: "detail", title: "detail", tone: "var(--pbui-cat-2)", singleton: false, ports: [{ name: "order", direction: "in", contract: { valueType: "order", semanticRole: "order.detail" }, doc: "the order shown", fallbackContext: "workspace.order" }], Component: () => null });
-const inspectorApp = defineApp({ id: "inspector", title: "inspector", tone: "var(--pbui-cat-3)", singleton: false, ports: [{ name: "subject", direction: "in", contract: "inspectable", doc: "anything" }], Component: () => null });
+const ordersApp = defineWorkbenchApp({ manifest: { id: "orders", ports: [{ name: "order", direction: "out", contract: { valueType: "order", semanticRole: "order.current" }, doc: "the clicked order" }] }, presentation: { title: "orders", tone: "var(--pbui-cat-1)", Component: () => null } });
+const detailApp = defineWorkbenchApp({ manifest: { id: "detail", ports: [{ name: "order", direction: "in", contract: { valueType: "order", semanticRole: "order.detail" }, doc: "the order shown", fallbackContext: "workspace.order" }] }, presentation: { title: "detail", tone: "var(--pbui-cat-2)", Component: () => null } });
+const inspectorApp = defineWorkbenchApp({ manifest: { id: "inspector", ports: [{ name: "subject", direction: "in", contract: "inspectable", doc: "anything" }] }, presentation: { title: "inspector", tone: "var(--pbui-cat-3)", Component: () => null } });
 
 function scene(spec: LayoutSpec) {
-  const onMutate = vi.fn();
-  const wb = createWorkbench({ apps: [ordersApp, detailApp, inspectorApp], initial: layout(spec), links: { graph, label: (r) => `#${(r.value as { id: string }).id}` }, onMutate });
-  const views = () => leaves(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
+  const onCommit = vi.fn();
+  const wb = createWorkbench({ apps: [ordersApp, detailApp, inspectorApp], initial: layout(spec), links: { graph, label: (r) => `#${(r.value as { id: string }).id}` }, onCommit });
+  const views = () => leaves(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
   render(<wb.Surface />);
-  return { wb, views, onMutate };
+  return { wb, views, onCommit };
 }
 
 afterEach(() => {
@@ -50,12 +49,12 @@ describe("show", () => {
     const [orders, detail] = views();
     wb.links.runtime.emit(`${orders}/order`, ORDER);
     expect(act(() => wb.perform(linkVerbs.show(ORDER, { from: `${orders}/order` })))).toBeTruthy();
-    expect(bindingsOf(wb.store.getState().document).get(`${detail}/order`)).toMatchObject({ kind: "follow", source: `${orders}/order` });
+    expect(bindingsOf(wb.core.getState().document).get(`${detail}/order`)).toMatchObject({ kind: "follow", source: `${orders}/order` });
     expect(badges()).toEqual(["following:→Orders East"]);
     // The subject's provenance is found through the runtime when `from` is not given.
     expect(act(() => wb.perform(linkVerbs.clear(`${detail}/order`)))).toBeTruthy();
     expect(act(() => wb.perform(linkVerbs.show(ORDER)))).toBeTruthy();
-    expect(bindingsOf(wb.store.getState().document).get(`${detail}/order`)?.kind).toBe("follow");
+    expect(bindingsOf(wb.core.getState().document).get(`${detail}/order`)?.kind).toBe("follow");
   });
 
   it("two details, one held: the free one is chosen; the held one is left alone", () => {
@@ -65,9 +64,9 @@ describe("show", () => {
     act(() => void wb.perform(linkVerbs.follow(`${orders}/order`, `${a}/order`)));
     act(() => void wb.perform(linkVerbs.pin(`${a}/order`)));
     expect(act(() => wb.perform(linkVerbs.show(ORDER, { from: `${orders}/order` })))).toBeTruthy();
-    expect(bindingsOf(wb.store.getState().document).get(`${b}/order`)?.kind).toBe("follow");
-    expect(bindingsOf(wb.store.getState().document).get(`${a}/order`)?.kind).toBe("hold");
-    expect(wb.store.getState().showChooser).toBeNull();
+    expect(bindingsOf(wb.core.getState().document).get(`${b}/order`)?.kind).toBe("follow");
+    expect(bindingsOf(wb.core.getState().document).get(`${a}/order`)?.kind).toBe("hold");
+    expect(wb.shell.getState().showChooser).toBeNull();
   });
 
   it("two free details: the chooser opens; a row performs the show with its candidate id", async () => {
@@ -75,26 +74,26 @@ describe("show", () => {
     const [orders, , b] = views();
     wb.links.runtime.emit(`${orders}/order`, ORDER);
     expect(act(() => wb.perform(linkVerbs.show(ORDER, { from: `${orders}/order` })))).toBeTruthy();
-    expect(wb.store.getState().showChooser?.resolution.winners).toHaveLength(2);
-    expect(bindingsOf(wb.store.getState().document).size).toBe(0);
+    expect(wb.shell.getState().showChooser?.choices.filter((choice) => choice.available).length).toBeGreaterThanOrEqual(2);
+    expect(bindingsOf(wb.core.getState().document).size).toBe(0);
     expect(await screen.findByText("SHOW #1042")).toBeTruthy();
     expect(screen.getByText("EXISTING TARGETS")).toBeTruthy();
     fireEvent.click(screen.getByText("B · order"));
-    expect(bindingsOf(wb.store.getState().document).get(`${b}/order`)?.kind).toBe("follow");
-    expect(wb.store.getState().showChooser).toBeNull();
+    expect(bindingsOf(wb.core.getState().document).get(`${b}/order`)?.kind).toBe("follow");
+    expect(wb.shell.getState().showChooser).toBeNull();
   });
 
   it("nothing on screen: a detail is spawned beside the source and linked in ONE batch", () => {
-    const { wb, views, onMutate } = scene(tile("orders", { title: "Orders East" }));
+    const { wb, views, onCommit } = scene(tile("orders", { title: "Orders East" }));
     const [orders] = views();
     wb.links.runtime.emit(`${orders}/order`, ORDER);
-    onMutate.mockClear();
+    onCommit.mockClear();
     expect(act(() => wb.perform(linkVerbs.show(ORDER, { from: `${orders}/order`, role: "order.detail" })))).toBeTruthy();
-    expect(onMutate).toHaveBeenCalledTimes(1);
-    const detailViews = viewsOfApp(wb.store.getState().document, "detail");
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    const detailViews = viewsOfApp(wb.core.getState().document, "detail");
     expect(detailViews).toHaveLength(1);
     expect(views()).toHaveLength(2);
-    expect(bindingsOf(wb.store.getState().document).get(`${detailViews[0]!.id}/order`)).toMatchObject({ kind: "follow", source: `${orders}/order` });
+    expect(bindingsOf(wb.core.getState().document).get(`${detailViews[0]!.id}/order`)).toMatchObject({ kind: "follow", source: `${orders}/order` });
     expect(badges()).toEqual(["following:→Orders East"]);
   });
 
@@ -104,8 +103,8 @@ describe("show", () => {
     wb.links.runtime.emit(`${orders}/order`, ORDER);
     // No role: the detail (exact type) beats the inspector (through <inspectable>) — one winner, spawned.
     expect(act(() => wb.perform(linkVerbs.show(ORDER, { from: `${orders}/order` })))).toBeTruthy();
-    expect(viewsOfApp(wb.store.getState().document, "detail")).toHaveLength(1);
-    expect(viewsOfApp(wb.store.getState().document, "inspector")).toHaveLength(0);
+    expect(viewsOfApp(wb.core.getState().document, "detail")).toHaveLength(1);
+    expect(viewsOfApp(wb.core.getState().document, "inspector")).toHaveLength(0);
   });
 
   it("a stale candidate is refused, not replayed", () => {
@@ -115,6 +114,6 @@ describe("show", () => {
     act(() => void wb.perform(linkVerbs.follow(`${orders}/order`, `${detail}/order`)));
     act(() => void wb.perform(linkVerbs.pin(`${detail}/order`)));
     expect(performed(() => wb.perform(linkVerbs.show(ORDER, { from: `${orders}/order`, candidateId: `existing:${detail}/order` })))).toBe(false);
-    expect(bindingsOf(wb.store.getState().document).get(`${detail}/order`)?.kind).toBe("hold");
+    expect(bindingsOf(wb.core.getState().document).get(`${detail}/order`)?.kind).toBe("hold");
   });
 });

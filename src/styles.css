@@ -1,197 +1,121 @@
 /*
- * pbui's ZERO-SPECIFICITY fallback defaults for the presentation parts.
- *
- * # What this file is
- *
- * Two layers style the presentation parts, on purpose:
- *
- *   1. THIS file — :where() rules (zero specificity) so a consumer who imports
- *      nothing but the library's own stylesheet still sees a legible menu and
- *      a legible presentation.
- *   2. public/presentation-parts.css — the design-system look, plain attribute
- *      selectors that carry (0,1,0) and therefore win over every rule here
- *      regardless of import order.
- *
- * The defaults follow the same rules as the products: no radius, no blurred
- * shadows, hairline-solid borders in ink. An earlier version shipped a 999px
- * pill and a blurred menu shadow as the DEFAULT, which meant a storybook or
- * product missing presentation-parts.css silently rendered off-system — the
- * exact silent-failure mode the parts file exists to end.
- *
- * # It did not ship for its first eleven months
- *
- * `src/index.ts` imported `tokens.css` and not this file, so Vite never pulled
- * it into the module graph and none of it reached `dist/pbui.css`. A file
- * written to protect a bare consumer, carrying a header explaining what it
- * protects against, attached to nothing. That is the same defect as the one
- * `tokens.css` was created to fix in 0.3.0, one layer up: a safety net nothing
- * imports does not ship. PBUI-HARDEN-1 P1.1 wired it in.
- *
- * Wiring it in also exposed a bug it had been hiding. The muted-text rule read
- *
- *     :where([data-pbui="menu"]) button:disabled,
- *     :where([data-pbui="menu"]) [data-part="menu-item"] { color: muted }
- *
- * and `data-part="menu-item"` is on EVERY action button (createPbui.tsx:364),
- * not only the empty-state div (`:357`). Shipping the file unchanged would
- * have greyed every entry in every menu. The empty state is now selected as
- * `div[data-part="menu-item"]`, which is the only part of the pair that is not
- * a button.
- *
- * # These values read the real tokens
- *
- * They used to be a parallel palette — `--pbui-fallback-surface`,
- * `--pbui-menu-border` and ten more hardcoded hexes — declared here "because
- * pbui defines no design tokens". Since 0.3.0 it does, in `tokens.css`, which
- * is bundled into the same stylesheet as this file and cannot be absent when
- * these rules apply. The second palette is gone; a colour that should track
- * the family now does. Inline fallbacks stay on every read, matching
- * presentation-parts.css, because a read with a fallback is safe by
- * construction.
- */
-
-/* ---- the typographic baseline ------------------------------------------- */
-
-/*
- * pbui DEFINES `--pbui-font` and, until this rule, never applied it to
- * anything a bare consumer would inherit from.
- *
- * Four component modules read it — `Text`, `Kbd`, `CodeLine`, `FileBrowser` —
- * so anything rendered through `<Text>` was monospace. But every presentation
- * part says `font: inherit`, deliberately, so that a product's typography
- * flows into the menus. With no document baseline there was nothing to
- * inherit, and a consumer who imported the stylesheet and set no typography of
- * their own got the browser default: Times New Roman at 16px, with an 11.5px
- * design system layered on top of it.
- *
- * Every product sets its own `body` typography, so none of them ever saw this
- * — which is exactly why it survived. The bare consumer is the only one who
- * hits it, and the bare consumer is who this file is for.
- *
- * Zero specificity, so a product's own `body` rule wins without needing to
- * know this exists. Colour and background are deliberately NOT set here: the
- * parts below paint their own, and a page-level background is a decision
- * belonging to whoever owns the page.
+ * pbui's page-level baseline. Everything else a consumer sees is a component
+ * module (hashed classes) or a part sheet (public/*.css, plain attribute
+ * selectors): tokens.css, components.css, presentation-parts.css and
+ * chrome.css ship in the same bundle as this file, so this file no longer
+ * carries a second, "fallback" definition of the presentation parts. There is
+ * one definition of every part (PBUI-VISUAL-1 P2).
  *
  * # ON `body`, NOT `:root`, AND THAT DISTINCTION IS THE WHOLE RULE
  *
  * `font-size` on the root element redefines what `1rem` means for the entire
  * document, and a product CANNOT undo it from `body` — rem always resolves
- * against the root. The first version of this rule sat on `:where(:root)` and
- * silently rescaled every rem-based layout in every consumer from a 16px basis
- * to an 11.5px one:
+ * against the root. An earlier version of this rule sat on `:where(:root)` and
+ * silently rescaled every rem-based layout in every consumer (measured: the
+ * datalab launcher lost 28% of its height). `body` gives a bare consumer the
+ * family's typography instead of 16px Times and leaves `rem` alone.
  *
- *     LauncherDialog  width: min(34rem, 80vw)  544px -> 391px
- *                     height: 22rem            352px -> 253px    (-28%)
- *
- * Measured in a browser, not reasoned about. Caught in review on PR #9.
- *
- * `body` gives the same benefit — a bare consumer inherits the family's
- * typography instead of 16px Times — and leaves `rem` alone, because rem is a
- * layout unit that belongs to whoever owns the page. Typography inherits from
- * `body`; layout scales from `:root`; a design system may set the first and
- * must not touch the second.
+ * Zero specificity, so a product's own `body` rule wins without needing to
+ * know this exists. Colour and background are deliberately NOT set here: a
+ * page-level background belongs to whoever owns the page.
  */
 :where(body) {
-  font-family: var(--pbui-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: var(--pbui-fs-base, 11.5px);
-  line-height: var(--pbui-lh-tight, 1.35);
+  font-family: var(--pbui-font);
+  font-size: var(--pbui-fs-base);
+  line-height: var(--pbui-lh-tight);
 }
 
-/* ---- the presentation --------------------------------------------------- */
-
-:where([data-pbui="presentation"]) {
-  appearance: none;
-  border: var(--pbui-border-hair, 1px solid #23262b);
-  border-radius: var(--pbui-radius, 0);
-  background: var(--pbui-pane, #ffffff);
-  color: var(--pbui-ink-on-pane, #23262b);
-  cursor: context-menu;
-  font: inherit;
-  padding: var(--pbui-space-1, 2px) var(--pbui-space-3, 6px);
-}
+/* ---- native controls ----------------------------------------------------- */
 
 /*
- * An object that would satisfy the accept in progress. The outline is danger
- * rather than accent because accepting is the one click in the protocol that
- * commits to something.
+ * The floor under every product's form controls (PBUI-VISUAL-1 P7). The atoms
+ * (Button, CheckboxRow, SelectInput, TextInput) are what products should use;
+ * these zero-specificity rules catch the raw element a story, a sandboxed
+ * program or a quick form still renders, so it reads as family rather than as
+ * the browser's grey bevel. Any class or data-part on the element opts out:
+ * the atoms' modules and the parts sheets carry (0,1,0) and win.
  */
-:where([data-pbui="presentation"])[data-state="acceptable"] {
-  outline: var(--pbui-border-firm, 2px solid #23262b);
-  outline-color: var(--pbui-danger, #b64b37);
-  background: var(--pbui-selected, #fdeec6);
+:where(input[type="checkbox"], input[type="radio"]):not([class]):not([data-part]) {
+  appearance: none;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  margin: 0 var(--pbui-space-2) 0 0;
+  vertical-align: -1px;
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
   cursor: pointer;
 }
 
-:where([data-pbui="presentation"]):focus-visible,
-:where([data-pbui="menu"]) button:focus-visible {
-  outline: var(--pbui-focus-ring, 2px solid #23262b);
-  outline-offset: var(--pbui-focus-offset, 1px);
+:where(input[type="radio"]):not([class]):not([data-part]) {
+  /* A radio is the one circle the family allows: it is the control's name. */
+  border-radius: 50%;
 }
 
-/* ---- the object menu ---------------------------------------------------- */
-
-/*
- * Fixed at the pointer and above everything. The absence of this rule is the
- * silent-failure mode both stylesheets exist to end: an unpositioned menu
- * renders at the end of the document, opens on every click, and is never seen.
- */
-:where([data-pbui="menu"]) {
-  position: fixed;
-  z-index: 1000;
-  display: grid;
-  min-width: 13rem;
-  overflow: hidden;
-  border: var(--pbui-border-hair, 1px solid #23262b);
-  border-radius: var(--pbui-radius, 0);
-  background: var(--pbui-pane, #ffffff);
-  /* Shadows are off. Separation comes from the border. */
-  box-shadow: var(--pbui-shadow-menu, none);
-  color: var(--pbui-ink-on-pane, #23262b);
+:where(input[type="checkbox"], input[type="radio"]):not([class]):not([data-part]):checked {
+  background: var(--pbui-ink);
+  box-shadow: inset 0 0 0 2px var(--pbui-pane);
 }
 
-:where([data-pbui="menu"]) [data-part="menu-header"] {
-  padding: var(--pbui-space-3, 6px) var(--pbui-space-4, 10px);
-  border-bottom: var(--pbui-border-hair, 1px solid #23262b);
-  font-weight: 700;
+:where(input[type="checkbox"], input[type="radio"]):not([class]):not([data-part]):focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
 }
 
-:where([data-pbui="menu"]) button,
-:where([data-pbui="menu"]) [data-part="menu-item"] {
-  border: 0;
-  background: transparent;
-  color: inherit;
+:where(select):not([class]):not([data-part]) {
+  appearance: none;
+  box-sizing: border-box;
   font: inherit;
-  padding: var(--pbui-space-2, 4px) var(--pbui-space-4, 10px);
-  text-align: left;
+  font-size: var(--pbui-fs-small);
+  line-height: 1.6;
+  color: var(--pbui-ink-on-pane);
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  padding: 0 var(--pbui-space-5) 0 var(--pbui-space-3);
+  /* The chevron, drawn in ink; a select cannot carry a pseudo-element. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%2323262b' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--pbui-space-2) center;
+  cursor: pointer;
 }
 
-:where([data-pbui="menu"]) button:not(:disabled):hover {
-  background: var(--pbui-selected, #fdeec6);
+:where(button):not([class]):not([data-part]) {
+  appearance: none;
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  line-height: 1.6;
+  color: var(--pbui-ink-on-pane);
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  padding: 0 var(--pbui-space-3);
+  cursor: pointer;
 }
 
-:where([data-pbui="menu"]) button[data-danger="true"] {
-  color: var(--pbui-danger, #b64b37);
+:where(button):not([class]):not([data-part]):hover {
+  background: var(--pbui-selected-wash);
 }
 
-/*
- * Muted: a disabled entry, and the "No actions available" placeholder.
- *
- * The placeholder is the only `[data-part="menu-item"]` that is not a button
- * (createPbui.tsx:357), which is what `div` selects here. Grouping the bare
- * attribute with `button:disabled` — as this rule did before it shipped —
- * greys every entry in the menu.
- */
-:where([data-pbui="menu"]) button:disabled,
-:where([data-pbui="menu"]) div[data-part="menu-item"] {
-  color: var(--pbui-faint, #696e75);
+:where(button):not([class]):not([data-part]):disabled {
+  color: var(--pbui-faint);
+  background: var(--pbui-pane-alt);
+  cursor: default;
 }
 
-/*
- * The reason an entry is unavailable, shown after the label. Faint and small,
- * so it reads as an annotation on the verb rather than part of its name.
- */
-:where([data-pbui="menu"]) [data-part="menu-reason"] {
-  color: var(--pbui-faint, #696e75);
-  font-size: var(--pbui-fs-tiny, 9.5px);
+:where(input:not([type]), input[type="text"], input[type="search"], input[type="number"], textarea):not([class]):not([data-part]) {
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  color: var(--pbui-ink-on-pane);
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+}
+
+:where(select, button, input, textarea):not([class]):not([data-part]):focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
 }

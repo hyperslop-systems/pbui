@@ -1,0 +1,165 @@
+<html>
+<head>
+<title>Fast Robust Predicates for Computational Geometry</title>
+</head>
+<body bgcolor='ffffff'>
+
+<h1>Adaptive Precision Floating-Point Arithmetic and Fast Robust Predicates for
+Computational Geometry</h1>
+<hr>
+<a href="http://www.cs.berkeley.edu/~jrs">Jonathan Richard Shewchuk</a><br>
+Computer Science Division<br>
+University of California at Berkeley<br>
+Berkeley, California  94720-1776<br>
+<img src="sig.gif" width=151 height=21>
+<hr>
+Created as part of the
+<a href="archimedes.html">Archimedes</a> project (tools for parallel finite
+element methods).<br>
+Supported in part by
+<a href="grant.html">NSF Grant CMS-9318163</a> and an
+<a href="http://www.nserc.ca">NSERC</a> 1967 Scholarship.
+<hr><hr>
+Many computational geometry applications use numerical tests known
+as the <i>orientation</i> and <i>incircle</i> tests.  The
+orientation test determines whether a point lies to the left of, to the
+right of, or on a line or plane defined by other points.  The incircle
+test determines whether a point lies inside, outside, or on a circle
+defined by other points.<p>
+
+Each of these tests is performed by evaluating the sign of a determinant
+(see the figure below).
+The determinant is expressed in terms of the coordinates of the points.
+If these coordinates are expressed as single or double precision floating-point
+numbers, roundoff error may lead to an incorrect result when
+the true determinant is near zero.  In turn, this misinformation
+can lead an application to fail or produce incorrect results.<p>
+
+<center>
+<img align="middle" src="preds.gif">
+</center><p>
+
+One way to solve this problem is to use exact arithmetic.  Unfortunately,
+traditional libraries for arbitrary precision floating-point arithmetic
+are quite slow, and can reduce the speed of an application by one or two
+orders of magnitude.<p>
+
+To minimize this problem, I've produced algorithms and implementations
+for performing the 2D and 3D orientation and incircle tests correctly and
+reasonably quickly.  From this page, you may access papers describing
+the approach (short and long versions), and the code itself.  My hope
+is that working computational geometers will be able to simply plug
+the code into their applications with little effort, and forget about
+robustness problems (for those algorithms that only require
+orientation and incircle tests).<p>
+
+My algorithms are faster than traditional arbitrary precision libraries
+for two reasons.  First, I use an unusual approach to exact arithmetic,
+pioneered by Douglas Priest and sped by me, that has its greatest advantage
+over traditional techniques when manipulating numbers of relatively small
+complexity (a few hundred or
+thousand bits).  Second, the algorithms are <i>adaptive</i> in the sense
+that they do only as much work as necessary to guarantee a correct result.
+The sign of a small determinant can typically be determined quickly unless the
+determinant is close to zero.  See the papers for details.<p>
+
+<h3>Papers</h3>
+
+The long version.
+
+<ul>
+<li>
+Jonathan Richard Shewchuk, <i>Adaptive Precision Floating-Point
+Arithmetic and Fast Robust Geometric Predicates</i>,
+Discrete &amp; Computational Geometry <b>18</b>:305-363, 1997.
+Also Technical Report CMU-CS-96-140, School of Computer Science,
+Carnegie Mellon University, Pittsburgh, Pennsylvania, May 1996.
+<a href="/afs/cs/project/quake/public/papers/robust-arithmetic.abstract">
+<b>Abstract</b></a> (with BibTeX citation),
+<a href="/afs/cs/project/quake/public/papers/robust-arithmetic.ps">
+<b>PostScript (676k, 53 pages)</b></a>.
+</ul>
+
+The short version.
+Covers the most important points,
+but leaves out all the proofs and many details.
+Presents a slower version of the addition algorithm because
+there wasn't room to explain the fastest one.
+
+<ul>
+<li>
+<i>Robust Adaptive Floating-Point Geometric
+Predicates</i>, Proceedings of the Twelfth Annual Symposium on
+Computational Geometry, ACM, May 1996.
+<a href="/afs/cs/project/quake/public/papers/robust-predicates.abstract">
+<b>Abstract</b></a> (with BibTeX citation),
+<a href="/afs/cs/project/quake/public/papers/robust-predicates.ps">
+<b>PostScript (310k, 10 pages)</b></a>.
+</ul>
+
+<h3>Software</h3>
+
+<ul>
+<li>
+Here's <a href="/afs/cs/project/quake/public/code/predicates.c">
+C code for the 2D and 3D orientation and incircle tests</a>,
+and for arbitrary precision floating-point addition and multiplication.
+Last revised May 18, 1996.
+This code is in the public domain.
+I'm planning to add subtraction routines when I have a day free,
+but haven't gotten around to it yet.<p>
+
+<b>Warning:</b> This code will not work correctly on a processor that
+uses extended precision internal floating-point registers, such as
+the Intel 80486 and Pentium, unless the processor is configured to
+round internally to double precision.  See the
+<a href="robust.pc.html">Predicates on PCs page</a> for details.<p>
+
+<li>
+Triangle is a 2D Delaunay triangulator and quality mesh generator that
+uses the 2D orientation and incircle tests for robustness.  Triangle
+is copyrighted; it is <b>not</b> in the public domain.  However, it is
+freely available from the <a href="triangle.html">Triangle page</a>.
+</ul>
+
+<h3>Inspiration</h3>
+
+<ul>
+<li>
+Douglas M. Priest, <i>Algorithms for
+Arbitrary Precision Floating Point Arithmetic</i>, Tenth Symposium on
+Computer Arithmetic, pp. 132-143, IEEE Computer Society Press, 1991.
+<a href="/afs/cs/project/quake/public/papers/related/Priest.abstract">
+<b>Abstract</b></a> (with BibTeX citation),
+<a href="/afs/cs/project/quake/public/papers/related/Priest.copy">
+<b>Copyright notice</b></a> (please read),
+<a href="/afs/cs/project/quake/public/papers/related/Priest.ps">
+<b>PostScript (240k)</b></a>.
+
+<li>
+Steven Fortune and Christopher J. Van Wyk, <i>Efficient Exact Arithmetic
+for Computational Geometry</i>, Proceedings of the Ninth Annual Symposium
+on Computational Geometry, pp. 163-172, Association for Computing Machinery,
+May 1993.
+
+<li>
+Steven Fortune, <i>Numerical Stability of Algorithms for 2D Delaunay
+Triangulations</i>, International Journal of Computational
+Geometry & Applications <b>5</b>(1-2):193-213, March-June 1995.
+</ul>
+
+<hr>
+Also check out the corresponding papers and software offered by
+<a href="http://www-sop.inria.fr/prisme/logiciel/determinant.html">
+Avnaim, Boissonnat, Devillers, Preparata, and Yvinec</a>.  Their
+technique may be faster than mine (I haven't timed theirs),
+but is meant for points whose
+coordinates are integers.
+<hr>
+<address>
+<a href="http://www.cs.berkeley.edu/~jrs">
+Jonathan Shewchuk</a><br>
+<img src="sig.gif" width=151 height=21>
+</address>
+</body>
+</html>

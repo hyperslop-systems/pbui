@@ -1,0 +1,150 @@
+# Changelog
+
+## 2026-09-04
+
+- Initial workspace created
+
+
+## 2026-09-04
+
+Step 1: ticket, tmux server session, playwright harness (commit 97d52c7)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/scripts/01-screenshot-storybook.mjs — Harness
+
+
+## 2026-09-04
+
+Step 2: five subagent collections (583 static + 36 demo + 22 interaction + 21 workbench shots), CSS inventory, VisualAudit stories for workbench and sandbox (commit 4a009db)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/various/css-inventory.md — CSS structure inventory
+
+
+## 2026-09-04
+
+Step 3: analysis + generated 663-exhibit catalog in the design doc; exhibit codes verified
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/design-doc/01-visual-audit-screenshots-and-inconsistency-notes.md — The feedback document
+
+
+## 2026-09-04
+
+Step 4: feedback round one recorded as a Decisions section (1 datalab chrome + dark masthead, 2 one chip, 3 brutalist dialog, 4–9 adopted, 5/10 explained)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/design-doc/01-visual-audit-screenshots-and-inconsistency-notes.md — Decisions section
+
+
+## 2026-09-04
+
+P1 tokens: one definition site, fallbacks stripped, datalab tokens.css deleted (commit b1e351f)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/tokens.css — All family tokens
+
+
+## 2026-09-04
+
+P2 parts files: single parts definition, Dialog/JsonBlock/InspectorPanel on the menu recipe, datalab dialogs.css deleted (commit 10e1bc1)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/public/components.css — Rewritten in tokens
+
+
+## 2026-09-04
+
+P3 tile chrome, tones by kind, AppShell for all four shells, nested gutter, strip tabs (commit 80fadf4)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench/src/components/AppShell/AppShell.tsx — The one page shell
+
+
+## 2026-09-04
+
+P5 notices + mode banner: Callout with danger/hint/dismiss, refusal notice and accept banner on the recipes (commit 87caa13)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/molecules/Callout/Callout.tsx — The one notice
+
+
+## 2026-09-04
+
+P4 one Chip: sizes/fills/edge/glyph/states; PortBadge, PortRail and datalab badges folded (commit d4021ce)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/atoms/Chip/Chip.tsx — The one chip
+
+
+## 2026-09-04
+
+P7 native-control skin in src/styles.css (commit 2fdc172)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/styles.css — The floor for raw controls
+
+
+## 2026-09-04
+
+P6 labels/TileHeader/KeyValueList: 16 headers and 5 facts grids on shared components, tracking on the token (commit 5d72e5f)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/organisms/TileHeader/TileHeader.tsx — Shared tile header
+
+
+## 2026-09-04
+
+P8 story hygiene, after-corpus (scripts 07/08), doc 03 before/after exhibits (commit 8004224)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/scripts/07-after-corpus.sh — Re-shoots the corpus
+
+
+## 2026-09-04
+
+Feedback round two: presentations carry the type edge from the kernel; chip-in-presentation unboxed; chat mention and PanelApp story fixed (commit 20ec2d2)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/createPbui.tsx — presentationToneVar
+
+
+## 2026-09-04
+
+Feedback round three: block presentations chromeless; widget stats/notes plain, legend swatches (commit 3101444)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/src/widget/children/WidgetChild/WidgetChild.tsx — Widget children
+
+
+## 2026-09-04
+
+Feedback round four: data-chip marker so a renamed chip is still its presentation's box (commit b117d22)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/components/atoms/Chip/Chip.tsx — data-chip marker
+
+
+## 2026-09-04
+
+Feedback round five: kernel ObjectChip; ecommerce text presentations migrated; nested presentation unboxed (commit e5103e2)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/createPbui.tsx — ObjectChip
+

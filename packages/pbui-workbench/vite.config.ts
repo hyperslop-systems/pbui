@@ -8,6 +8,7 @@ const external = [
   "react/jsx-runtime",
   "@bufbuild/protobuf",
   "@hyperslop-systems/pbui",
+  "@hyperslop-systems/workbench-core",
   "@hyperslop-systems/workbench-protocol",
   "@hyperslop-systems/workbench-protocol/client",
 ];
@@ -17,10 +18,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     lib: {
-      // A second entry, not a re-export from the root: a product with no
-      // server should not pull the sync loop into its bundle, and nothing in
-      // it touches React or the DOM.
-      entry: { index: "src/index.ts", sync: "src/sync.ts" },
+      entry: { index: "src/index.ts" },
       formats: ["es"],
       cssFileName: "pbui-workbench",
     },
@@ -29,6 +27,7 @@ export default defineConfig({
         external.includes(id) ||
         id.startsWith("@bufbuild/protobuf/") ||
         id.startsWith("@hyperslop-systems/pbui/") ||
+        id.startsWith("@hyperslop-systems/workbench-core/") ||
         id.startsWith("@hyperslop-systems/workbench-protocol/"),
     },
     sourcemap: true,

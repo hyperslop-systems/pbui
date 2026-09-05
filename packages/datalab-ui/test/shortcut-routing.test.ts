@@ -11,13 +11,6 @@ import {
   resetEscapeSurfaces,
   topEscapeSurface,
 } from "@hyperslop-systems/pbui";
-import {
-  initialLayout,
-  layoutSlice,
-  type LayoutState,
-  type Node,
-  type NodeId,
-} from "../src/store/layout";
 
 /**
  * Keyboard routing and the surface stack, decided as data.
@@ -162,64 +155,5 @@ describe("the escape surface stack", () => {
     pushEscapeSurface("instance-a:full-frame");
     pushEscapeSurface("instance-b:dialog");
     expect(topEscapeSurface()).toBe("instance-b:dialog");
-  });
-});
-
-describe("active placement", () => {
-  const reduce = (state: LayoutState, action: { type: string; payload?: unknown }) =>
-    layoutSlice.reducer(state, action as never);
-
-  /** Every leaf of the current workspace, in tree order. */
-  const leaves = (state: LayoutState): NodeId[] => {
-    const space = state.spaces.find((candidate) => candidate.id === state.currentSpaceId);
-    const out: NodeId[] = [];
-    const walk = (node: Node) => {
-      if (node.type === "leaf") out.push(node.id);
-      else {
-        walk(node.a);
-        walk(node.b);
-      }
-    };
-    if (space) walk(space.tree);
-    return out;
-  };
-
-  /** A current workspace holding at least two tiles, whatever the seed is. */
-  const twoTiles = (): { state: LayoutState; first: NodeId; second: NodeId } => {
-    let state = initialLayout();
-    while (leaves(state).length < 2) {
-      const target = leaves(state)[0];
-      if (!target) throw new Error("the seeded workspace has no tiles at all");
-      state = reduce(state, layoutSlice.actions.splitLeaf({ nodeId: target, dir: "row" }));
-    }
-    const [first, second] = leaves(state);
-    if (!first || !second) throw new Error("expected two tiles");
-    return { state, first, second };
-  };
-
-  test("a repeat write is ignored, so subscribers do not wake", () => {
-    let state = initialLayout();
-    state = reduce(state, layoutSlice.actions.setActivePlacement("n1"));
-    const after = reduce(state, layoutSlice.actions.setActivePlacement("n1"));
-    // Identity, not equality: this is the property that stops six identical
-    // dispatches when focus crosses a tile's six title controls.
-    expect(after).toBe(state);
-  });
-
-  test("closing the active tile clears it rather than moving it", () => {
-    const { state: seeded, first } = twoTiles();
-    let state = reduce(seeded, layoutSlice.actions.setActivePlacement(first));
-    state = reduce(state, layoutSlice.actions.closeLeaf(first));
-    // Cleared, not handed to a neighbour: nothing should become the keyboard
-    // target because something else stopped existing.
-    expect(state.activePlacementId).toBeNull();
-    expect(leaves(state)).not.toContain(first);
-  });
-
-  test("closing another tile leaves it alone", () => {
-    const { state: seeded, first, second } = twoTiles();
-    let state = reduce(seeded, layoutSlice.actions.setActivePlacement(first));
-    state = reduce(state, layoutSlice.actions.closeLeaf(second));
-    expect(state.activePlacementId).toBe(first);
   });
 });

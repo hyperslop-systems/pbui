@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
+import { useCurrentStageId } from "../../appkit/DatalabWorkbenchContext";
 import { registerApp } from "../../appkit/registry";
 import {
   describeBundle,
@@ -8,7 +9,6 @@ import {
   type TilePayload,
   type WorkspacePayload,
 } from "../../model/portable";
-import type { RootState } from "../../store";
 import { beginImport, copyTemplate, loadTemplate } from "../../store/effects";
 import {
   deleteTemplate,
@@ -45,7 +45,7 @@ import { TemplateTable, type TemplateView } from "../../components/organisms";
  */
 function TemplatesApp() {
   const dispatch = useDispatch();
-  const stageId = useSelector((state: RootState) => state.layout.currentStageId);
+  const stageId = useCurrentStageId();
   // A counter rather than the array: the array is re-read on every render
   // anyway, and keeping it in state would give two sources of truth for
   // something localStorage already holds.

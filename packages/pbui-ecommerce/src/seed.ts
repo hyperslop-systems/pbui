@@ -1,4 +1,4 @@
-import { layout, split, tile, workspaces, type LayoutSpec } from "@hyperslop-systems/pbui-workbench";
+import { layout, split, tile, workspaces, type LayoutSpec } from "@hyperslop-systems/workbench-core";
 import type { WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import { APP_IDS } from "./apps";

@@ -1,19 +1,13 @@
 import { CONVERSATION_BINDING, createChatApps, createConversationApps, RefPresentation, type Reference } from "@hyperslop-systems/pbui-chat";
-import { createSandboxDevtools, createScriptApp, type SandboxHost } from "@hyperslop-systems/pbui-sandbox";
-import {
-  createLocalPersistence,
-  createWorkbench,
-  describeWorkbench,
-  layout,
-  rebalanceSettingsApp,
-  readWorkbenchSnapshot,
-  split,
-  tile,
-} from "@hyperslop-systems/pbui-workbench";
+import { connectProgramLibrary, createSandboxDevtools, createScriptApp, programDocumentSource, type SandboxHost } from "@hyperslop-systems/pbui-sandbox";
+import { createWorkbench, manifestsOf, rebalanceSettingsApp } from "@hyperslop-systems/pbui-workbench";
+import { commands, createManifestCatalog, layout, split, tile, connectDocumentSource, type DocumentSource } from "@hyperslop-systems/workbench-core";
+import { createLocalPersistence, readWorkbenchSnapshot } from "@hyperslop-systems/workbench-core/persistence";
 import { createElement } from "react";
 import { createDemoApps } from "./apps";
 import { chat, LEGACY_SESSION_KEY, router } from "./chat";
 import type { Verb } from "./pbui/verbs";
+import { CATEGORIES, METALS, ORDERS, PRODUCTS } from "./world";
 import { demoBindingChoices, engine, instances, library, programStates, resolveDemoBinding, seedLibrary, LIBRARY_STORAGE_KEY } from "./sandbox";
 
 /**
@@ -39,11 +33,17 @@ export function defaultLayout() {
  * Read BEFORE the workbench is built, so a reload renders the restored layout
  * once instead of the default layout followed by the restored one.
  */
-const stored = readWorkbenchSnapshot(WORKBENCH_STORAGE_KEY, {
+const stored = () => readWorkbenchSnapshot(WORKBENCH_STORAGE_KEY, {
   // Builds before PBUI-WORKBENCH-2 §5.F wrote the bare document under this
   // key. It arrives as version 0 and the wrap is the whole migration.
   migrate: (payload, from) => (from === 0 ? { version: 1, document: payload } : null),
+  // A stored layout naming a tile this build no longer has falls back to the default.
+  apps: createManifestCatalog(manifestsOf(apps)),
+  // Stubs first, catalog second (design doc 04 §9.7): a layout stored before a
+  // source existed is repaired, not replaced by the default.
+  sources: [...worldDocumentSources(), programDocumentSource(library)],
 });
+
 
 /** Still needed for the legacy session key below; the layout no longer uses it. */
 function storage(): Storage | null {
@@ -91,19 +91,32 @@ export const scriptApp = createScriptApp(sandboxHost);
 /** The inspector, REPL, timeline, playground and source tiles — the same host object, so the script tile knows they exist. */
 export const devtoolApps = createSandboxDevtools(sandboxHost, { playgroundKey: `${LIBRARY_STORAGE_KEY}.playground` });
 
+// The chat's own applications (conversation, inspector, watchlist, trace,
+// widget) plus the shop's four, plus the sandbox's one. All in one array
+// because the registry refuses a duplicate id, so a name collision between
+// the agent's machinery and the product's tiles fails at startup rather
+// than showing whichever declaration was registered last.
+const apps = [...createChatApps(chat), ...createConversationApps(chat), ...createDemoApps(), scriptApp, ...devtoolApps, rebalanceSettingsApp];
+const restored = stored();
+
 export const workbench = createWorkbench({
-  // The chat's own applications (conversation, inspector, watchlist, trace,
-  // widget) plus the shop's four, plus the sandbox's one. All in one array
-  // because the app registry refuses a duplicate id, so a name collision
-  // between the agent's machinery and the product's tiles fails at startup
-  // rather than showing whichever descriptor was registered last.
-  apps: [...createChatApps(chat), ...createConversationApps(chat), ...createDemoApps(), scriptApp, ...devtoolApps, rebalanceSettingsApp],
-  initial: stored?.document ?? defaultLayout(),
-  onRejected: (_mutations, error) => {
-    console.warn(`layout change refused: ${error.code} at ${error.path} — ${error.detail}`);
+  apps,
+  initial: restored?.document ?? defaultLayout(),
+  // A workspace that is gone (a restored document from an older layout)
+  // is repaired to the first one by the core.
+  ...(restored?.workspaceId ? { initialSession: { workspaceId: restored.workspaceId } } : {}),
+  onRejected: (_mutations, diagnostics) => {
+    const first = diagnostics[0];
+    console.warn(`layout change refused: ${first?.code} at ${first?.path} — ${first?.detail}`);
   },
 });
 
+// The core validates every binding against the document store, and this
+// demo's tiles bind things that live elsewhere: the world's products, the
+// sandbox's programs, the chat's conversations (mirrored by `attachWorkbench`).
+// Each gets a stub document that stands for it; the host stays its home.
+for (const source of worldDocumentSources()) connectDocumentSource(workbench.core, source);
+connectProgramLibrary(workbench.core, library);
 // "Open in tile" now opens a widget tile beside the active one.
 chat.attachWorkbench(workbench);
 // …and the sandbox_* tools are offered to the model from here on.
@@ -125,6 +138,16 @@ chat.attachSandbox(library, engine, instances);
  * "not bound to a conversation" state on a normal boot.
  */
 export const conversationsReady = bootstrapConversations();
+
+/** The shop's world as document sources: static, one format per type. */
+function worldDocumentSources(): DocumentSource[] {
+  return [
+    { id: "shop.products", format: "shop.product", list: () => PRODUCTS.map((product) => ({ id: product.id, body: { name: product.name } })) },
+    { id: "shop.categories", format: "shop.category", list: () => Object.keys(CATEGORIES).map((id) => ({ id })) },
+    { id: "shop.metals", format: "shop.metal", list: () => Object.keys(METALS).map((id) => ({ id })) },
+    { id: "shop.orders", format: "shop.order", list: () => Object.keys(ORDERS).map((id) => ({ id })) },
+  ];
+}
 
 async function bootstrapConversations(): Promise<string | null> {
   const conversations = chat.conversations;
@@ -153,11 +176,11 @@ async function bootstrapConversations(): Promise<string | null> {
 
 /** Bind every `chat` tile a saved layout left without a conversation. */
 function bindLooseChatTiles(conversationId: string) {
-  for (const workspace of describeWorkbench(workbench).workspaces) {
+  for (const workspace of workbench.describe().workspaces) {
     for (const chatTile of workspace.tiles) {
       if (chatTile.appId !== "chat") continue;
       if (chatTile.documents[CONVERSATION_BINDING]) continue;
-      workbench.verbs.rebind(chatTile.viewId, { [CONVERSATION_BINDING]: conversationId });
+      workbench.execute(commands.rebind(chatTile.viewId, { [CONVERSATION_BINDING]: conversationId }));
     }
   }
 }
@@ -176,17 +199,13 @@ if (typeof window !== "undefined") {
   (window as unknown as { __pbuiDemo?: Record<string, unknown> }).__pbuiDemo = demo;
 }
 
-// A workspace that is gone (a restored document from an older layout) makes
-// this a no-op and the first workspace stays selected.
-if (stored?.workspaceId) workbench.verbs.selectWorkspace(stored.workspaceId);
-
 /**
  * One writer for the document and the workspace pointer alike (§5.F). It
- * subscribes to the store rather than to `onMutate`, which is what makes
- * `resetLayout` below a one-liner: `replaceDocument` never reaches
- * `onMutate`, and the hand-written version had to remember to write after it.
+ * subscribes to the core's state rather than to `onCommit`, which is what
+ * makes `resetLayout` below a one-liner: a replacement never reaches
+ * `onCommit`, and the hand-written version had to remember to write after it.
  */
-export const persistence = createLocalPersistence(workbench, { key: WORKBENCH_STORAGE_KEY });
+export const persistence = createLocalPersistence(workbench.core, { key: WORKBENCH_STORAGE_KEY });
 
 export function resetLayout() {
   // `reset(factory)`, not `reset()`: `initial` is the STORED layout after a

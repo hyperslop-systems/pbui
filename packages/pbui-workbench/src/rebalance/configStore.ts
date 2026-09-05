@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
+import type { ApplyResult } from "@hyperslop-systems/workbench-core";
 import type { Mutation, WorkbenchDocument } from "@hyperslop-systems/workbench-protocol";
-import { DEFAULT_REBALANCE_CONFIG, normalizeConfig, type RebalanceConfig } from "./config";
-import { readRebalanceConfig, rebalanceConfigMutation } from "./configDocument";
+import { DEFAULT_REBALANCE_CONFIG, normalizeConfig, type RebalanceConfig } from "@hyperslop-systems/workbench-core/rebalance";
+import { readRebalanceConfig, rebalanceConfigMutation } from "@hyperslop-systems/workbench-core/rebalance";
 
 /**
  * WHERE the rebalance config lives is the importing product's decision
@@ -22,10 +23,10 @@ import { readRebalanceConfig, rebalanceConfigMutation } from "./configDocument";
  * when the config changes); everything else in the directory stays pure.
  */
 
-/** The slice of a `Workbench` the stores need — every `Workbench` satisfies it. */
+/** The slice of a `WorkbenchShell` the stores need — every shell satisfies it. */
 export interface RebalanceConfigHost {
-  useWorkbenchState<T>(selector: (state: { document: WorkbenchDocument }) => T): T;
-  mutate(mutations: Mutation[]): boolean;
+  useDocument(): WorkbenchDocument;
+  apply(mutations: readonly Mutation[]): ApplyResult;
 }
 
 export interface RebalanceConfigStore {
@@ -42,11 +43,11 @@ export interface RebalanceConfigStore {
 /** The default: the config rides in the workbench document (documentPut). */
 export const documentRebalanceConfigStore: RebalanceConfigStore = {
   useConfig(host) {
-    const doc = host.useWorkbenchState((state) => state.document);
+    const doc = host.useDocument();
     return readRebalanceConfig(doc) ?? DEFAULT_REBALANCE_CONFIG;
   },
   save(host, config) {
-    host.mutate([rebalanceConfigMutation(config)]);
+    host.apply([rebalanceConfigMutation(config)]);
   },
 };
 

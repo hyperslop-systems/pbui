@@ -1,0 +1,28 @@
+digraph design {
+graph [rankdir=TB, bgcolor="white", pad="0.25", nodesep="0.3", ranksep="0.4"];
+node [shape=box, style="rounded,filled", fillcolor="#edf3f8", color="#384b60", fontname="DejaVu Sans", fontsize=12, margin="0.15,0.12"];
+edge [color="#42566b", fontname="DejaVu Sans", fontsize=10];
+
+idle [label="Idle / inspect relationships"];
+source [label="Source chosen
+operation visible; source can change"];
+candidate [label="Destination candidate
+preview complete command batch"];
+commit [label="Commit
+execute same intent against current state"];
+success [label="Completed
+select relationship; announce outcome", fillcolor="#e4efe5"];
+refused [label="Refused
+keep context; show planner explanation", fillcolor="#f6e8e5"];
+idle -> source [label="click / keyboard / drag start"];
+source -> candidate [label="choose or hover destination"];
+candidate -> candidate [label="operation or relation changes"];
+candidate -> commit [label="confirm / valid drop"];
+commit -> success [label="ok"];
+commit -> refused [label="refused or changed facts"];
+refused -> candidate [label="change choice"];
+success -> idle;
+source -> idle [label="cancel"];
+candidate -> idle [label="cancel"];
+
+}

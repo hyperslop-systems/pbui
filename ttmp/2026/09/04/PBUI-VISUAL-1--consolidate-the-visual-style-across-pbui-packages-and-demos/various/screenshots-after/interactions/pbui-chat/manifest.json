@@ -1,0 +1,30 @@
+[
+  {
+    "n": 1,
+    "story": "pbui-chat-pbuiwidget--form",
+    "slug": "widget-form-accept-mode",
+    "description": "The form's object field 'pick…' button enters accept mode for the <product> type — banner shown, acceptable presentations highlighted.",
+    "file": "001-widget-form-accept-mode.png"
+  },
+  {
+    "n": 2,
+    "story": "pbui-chat-pbuiwidget--streaming-table",
+    "slug": "widget-table-row-menu",
+    "description": "Right-clicking a streaming table's row (a <row> presentation) opens its object menu.",
+    "file": "002-widget-table-row-menu.png"
+  },
+  {
+    "n": 3,
+    "story": "pbui-chat-pbuiwidget--health",
+    "slug": "widget-title-menu",
+    "description": "Right-clicking the widget's own title presentation opens its menu (open in tile, inspect, ask the agent).",
+    "file": "003-widget-title-menu.png"
+  },
+  {
+    "n": 4,
+    "story": "pbui-chat-proposalcard--pending",
+    "slug": "proposalcard-rejected-live",
+    "description": "Rejecting live from Pending: unlike the static Rejected story (which sets danger:false in args), a real decision leaves the card's original danger styling in place — the two can disagree.",
+    "file": "004-proposalcard-rejected-live.png"
+  }
+]

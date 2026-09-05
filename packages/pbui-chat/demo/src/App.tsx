@@ -1,10 +1,10 @@
-import { Button, CheckboxRow, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, CheckboxRow, Text } from "@hyperslop-systems/pbui";
 import { RefPresentation, useConversations } from "@hyperslop-systems/pbui-chat";
 import { useCallback, useMemo, useState } from "react";
-import styles from "./App.module.css";
 import { chat } from "./chat";
 import { type Environment } from "./pbui/types";
-import { defaultLauncherRows, tileRefOf, type LauncherRow, type LauncherRowsContext } from "@hyperslop-systems/pbui-workbench";
+import { AppShell, defaultLauncherRows, tileRefOf, type LauncherRow, type LauncherRowsContext } from "@hyperslop-systems/pbui-workbench";
+import { commands } from "@hyperslop-systems/workbench-core";
 import { PROGRAM_BINDING, useLibrary } from "@hyperslop-systems/pbui-sandbox";
 import { library } from "./sandbox";
 import { resetLayout, workbench } from "./workbench";
@@ -40,16 +40,11 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
 
   return (
     <>
-      <div className={styles.shell}>
-        <Surface as="section" tone="inverted" border="none" className={styles.masthead}>
-          <Toolbar as="header" tight>
-            <Text size="title" strong className={styles.wordmark}>
-              GOLD COIN SHOP
-            </Text>
-            <Text size="tiny" tone="faint">
-              · agent
-            </Text>
-            <span className={styles.spacer} />
+      <AppShell
+        wordmark="Gold coin shop"
+        tagline="agent"
+        mastheadActions={
+          <>
             <CheckboxRow checked={canApprove} onCheckedChange={onCanApproveChange} label="approver role" size="tiny" />
             <Button
               size="tiny"
@@ -59,29 +54,23 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
             >
               + conversation
             </Button>
-            <Button size="tiny" variant="framed" onClick={() => workbench.verbs.openLauncher()} title="open the launcher to place an application">
+            <Button size="tiny" variant="framed" onClick={() => workbench.dispatch({ kind: "launcher.open" })} title="open the launcher to place an application">
               {isApple ? "⌘K" : "Ctrl+K"} · launcher
             </Button>
             <Button size="tiny" onClick={resetLayout} title="back to the default tiles">
               reset layout
             </Button>
-          </Toolbar>
-        </Surface>
-
-        <main className={styles.canvas}>
-          <Workbench />
-        </main>
-
-        {/* One status bar for the whole page: what the pointer is over, what
-            L and R will do to it, and which conversation is active. */}
-        <div className={styles.status}>
-          <chat.MouseDocLine
-            ambient={active ? `${active.title} · ${active.id.slice(0, 8)} · ${active.wsStatus}` : "no conversation"}
-          />
-        </div>
-      </div>
+          </>
+        }
+        strip={<Strip />}
+        banner={<chat.AcceptBanner />}
+        // One status bar for the whole page: what the pointer is over, what
+        // L and R will do to it, and which conversation is active.
+        status={<chat.MouseDocLine ambient={active ? `${active.title} · ${active.id.slice(0, 8)} · ${active.wsStatus}` : "no conversation"} />}
+      >
+        <Workbench />
+      </AppShell>
       <chat.ObjectMenu />
-      <chat.AcceptBanner />
     </>
   );
 }
@@ -96,6 +85,38 @@ function Shell({ canApprove, onCanApproveChange }: { canApprove: boolean; onCanA
  * pbui-workbench's `createTileDescriptor`, so every product in the family
  * words them identically.
  */
+
+/**
+ * The human door to workspace.select. The agent can create a workspace and
+ * switch to it; without this the user could not switch back. Each workspace
+ * IS a `<workspace>` object: left-click goes to it, right-click offers go-to
+ * / duplicate / rename / delete / ask — the same menu a mention of it in the
+ * transcript offers.
+ */
+function Strip() {
+  return (
+    <workbench.WorkspaceStrip
+        addLabel="workspace"
+        renderWorkspace={(workspace, placement) => (
+          <RefPresentation
+            reference={{
+              type: "workspace",
+              id: workspace.id,
+              value: { name: workspace.name || workspace.id, tileCount: placement.tileCount, active: placement.active },
+            }}
+            doc={`workspace · ${placement.tileCount} tile${placement.tileCount === 1 ? "" : "s"}${placement.active ? " · you are here" : ""}`}
+            activate={{ run: () => void chat.router.perform({ kind: "session.selectWorkspace", workspaceId: workspace.id }), doc: "go to this workspace" }}
+          >
+            <Text size="tiny" strong={placement.active}>
+              {placement.active ? "▸ " : ""}
+              {workspace.name || workspace.id}
+            </Text>
+          </RefPresentation>
+        )}
+      />
+  );
+}
+
 const PROGRAM_ROW_PREFIX = "program:";
 const CONVERSATION_ROW_PREFIX = "conversation:";
 const NEW_CONVERSATION_ROW = "conversation:new";
@@ -149,7 +170,7 @@ function Workbench() {
     const near = context.invocation.target;
     if (row.id === NEW_CONVERSATION_ROW) {
       void chat.router.perform({ kind: "conversation.new", ...(near ? { near } : {}) });
-      workbench.verbs.closeLauncher();
+      workbench.dispatch({ kind: "launcher.close" });
       return true;
     }
     if (row.id.startsWith(CONVERSATION_ROW_PREFIX)) {
@@ -158,41 +179,16 @@ function Workbench() {
         conversationId: row.id.slice(CONVERSATION_ROW_PREFIX.length),
         ...(near ? { near } : {}),
       });
-      workbench.verbs.closeLauncher();
+      workbench.dispatch({ kind: "launcher.close" });
       return true;
     }
     if (!row.id.startsWith(PROGRAM_ROW_PREFIX)) return false;
-    workbench.verbs.openView("script", { [PROGRAM_BINDING]: row.id.slice(PROGRAM_ROW_PREFIX.length) }, near ? { near } : {});
-    workbench.verbs.closeLauncher();
+    workbench.execute(commands.open("script", { [PROGRAM_BINDING]: row.id.slice(PROGRAM_ROW_PREFIX.length) }, near ? { near } : {}));
+    workbench.dispatch({ kind: "launcher.close" });
     return true;
   }, []);
   return (
     <>
-      {/* The human door to workspace.select. The agent can create a workspace
-          and switch to it; without this the user could not switch back. */}
-      {/* Each workspace IS a `<workspace>` object: left-click goes to it,
-          right-click offers go-to / duplicate / rename / delete / ask — the
-          same menu a mention of it in the transcript offers. The strip's own
-          default button would be a second door to the same verbs. */}
-      <workbench.WorkspaceStrip
-        addLabel="workspace"
-        renderWorkspace={(workspace, placement) => (
-          <RefPresentation
-            reference={{
-              type: "workspace",
-              id: workspace.id,
-              value: { name: workspace.name || workspace.id, tileCount: placement.tileCount, active: placement.active },
-            }}
-            doc={`workspace · ${placement.tileCount} tile${placement.tileCount === 1 ? "" : "s"}${placement.active ? " · you are here" : ""}`}
-            activate={{ run: () => void chat.router.perform({ kind: "workspace.select", workspaceId: workspace.id }), doc: "go to this workspace" }}
-          >
-            <Text size="tiny" strong={placement.active}>
-              {placement.active ? "▸ " : ""}
-              {workspace.name || workspace.id}
-            </Text>
-          </RefPresentation>
-        )}
-      />
       <workbench.Surface
         renderTitle={(_view, placement) => {
           const tile = tileRefOf(workbench, placement.placementId);

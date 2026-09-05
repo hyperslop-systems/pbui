@@ -1,9 +1,22 @@
-import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import {
+  useCurrentStageId,
+  useCurrentWorkspaceId,
+  useDatalabWorkbench,
+  useWorkspacesOfStage,
+} from "../../../appkit/DatalabWorkbenchContext";
 import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
-import { layoutActions } from "../../../store/layout";
-import { Button, InlineRename, SectionLabel, Stack, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { navigationActions } from "../../../store/navigation";
+import {
+  Button,
+  Chip,
+  InlineRename,
+  SectionLabel,
+  Stack,
+  Text,
+  Toolbar,
+} from "@hyperslop-systems/pbui";
 
 /**
  * The workspace strip.
@@ -13,44 +26,33 @@ import { Button, InlineRename, SectionLabel, Stack, Text, Toolbar } from "@hyper
  * cached tables are the same objects, which is why an accept started in one
  * workspace can be satisfied in another.
  *
- * **Scoped to the current stage** since DATADROP-8. Before stages this was
- * every workspace in the layout, which is how the account arrangement and the
- * four tutorial arrangements ended up in the same flat strip as the user's own
- * — twelve chips, two of them marked ⌾ and needing a tooltip to explain why
- * they were different.
- *
- * ## The help text is finally true
- *
- * It has ended with "R for duplicate / delete" since DATADROP-4, describing a
- * feature that did not exist: `workspace` was a declared presentation type with
- * no descriptor, so right-clicking a chip produced "no verbs for this object
- * yet". `pbui/descriptors/workspace.ts` is what makes the sentence true, and it
- * also supplies the keyboard route the double-click never had.
+ * **Scoped to the current stage** since DATADROP-8, which is why this is not
+ * the workbench shell's own `WorkspaceStrip` (design §11.2): the generic strip
+ * lists the whole document, and Datalab's stages are exactly the layer that
+ * says which of those a user should see here. The workspaces come from the
+ * core's document; which stage each belongs to, and whether it is pinned,
+ * from navigation metadata.
  */
 export function WorkspaceStrip() {
   const dispatch = useDispatch();
   const pbui = usePbui();
-  // Selected raw and filtered in a memo, not filtered inside the selector: a
-  // selector returning a fresh array on every call re-renders on every store
-  // change and trips react-redux's identity warning.
-  const allSpaces = useSelector((s: RootState) => s.layout.spaces);
-  const stageId = useSelector((s: RootState) => s.layout.currentStageId);
-  const spaces = useMemo(
-    () => allSpaces.filter((space) => space.stageId === stageId),
-    [allSpaces, stageId],
-  );
-  const current = useSelector((s: RootState) => s.layout.currentSpaceId);
-  const renaming = useSelector((s: RootState) => s.layout.renamingId);
+  const workbench = useDatalabWorkbench();
+  const stageId = useCurrentStageId();
+  const spaces = useWorkspacesOfStage(stageId);
+  const current = useCurrentWorkspaceId();
+  const meta = useSelector((s: RootState) => s.navigation.workspace);
+  const renaming = useSelector((s: RootState) => s.navigation.renamingId);
 
   return (
     <Toolbar tight>
       <SectionLabel>Workspaces</SectionLabel>
       <Stack direction="row" gap={2} wrap align="center">
-        {spaces.map((space) =>
+        {spaces.map((space) => {
+          const pinned = meta[space.id]?.pinned === true;
           // A pinned space cannot be renamed: the name comes from code and
           // would be overwritten on the next load, so offering the edit would
           // be a lie (DR-29).
-          renaming === space.id && !space.pinned ? (
+          return renaming === space.id && !pinned ? (
             <InlineRename
               key={space.id}
               initial={space.name}
@@ -61,7 +63,7 @@ export function WorkspaceStrip() {
               onCommit={(name) =>
                 pbui.perform({ kind: "renameWorkspace", spaceId: space.id, name })
               }
-              onCancel={() => dispatch(layoutActions.beginRename(null))}
+              onCancel={() => dispatch(navigationActions.beginRename(null))}
             />
           ) : (
             <Presentation
@@ -74,39 +76,37 @@ export function WorkspaceStrip() {
                 value: {
                   spaceId: space.id,
                   name: space.name,
-                  stageId: space.stageId,
-                  pinned: space.pinned === true,
+                  stageId,
+                  pinned,
                   canDelete: spaces.length > 1,
                 },
               }}
               doc={`<workspace> ${space.name}`}
               activate={{
-                run: () => dispatch(layoutActions.setCurrentSpace(space.id)),
+                run: () => void workbench.controller.selectWorkspace(space.id),
                 doc: "switch to it",
               }}
             >
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: the interactive element is the Presentation around this span — it carries tabIndex, role and the key handlers. What this span adds is double-click-to-rename; the keyboard route is "Rename this workspace …" in the object menu, which DATADROP-8 added. */}
-              <span
-                style={{
-                  border: "var(--pbui-border-firm)",
-                  background:
-                    current === space.id ? "var(--pbui-selected)" : "var(--pbui-pane-alt)",
-                  padding: "0 var(--pbui-space-4)",
-                  fontSize: "var(--pbui-fs-small)",
-                  fontWeight: current === space.id ? 700 : 400,
-                }}
-                onDoubleClick={() => !space.pinned && dispatch(layoutActions.beginRename(space.id))}
-                title={space.pinned ? "defined in code — cannot be renamed or deleted" : undefined}
-              >
-                {space.pinned ? `⌾ ${space.name}` : space.name}
-              </span>
+              {/* The interactive element is the Presentation around this Chip — it
+                  carries tabIndex, role and the key handlers. What the Chip adds
+                  is double-click-to-rename; the keyboard route is "Rename this
+                  workspace …" in the object menu, which DATADROP-8 added. */}
+              <Chip
+                label={pinned ? `⌾ ${space.name}` : space.name}
+                size="tiny"
+                edge={false}
+                strong={current === space.id}
+                state={current === space.id ? "active" : undefined}
+                onDoubleClick={() => !pinned && dispatch(navigationActions.beginRename(space.id))}
+                title={pinned ? "defined in code — cannot be renamed or deleted" : undefined}
+              />
             </Presentation>
-          ),
-        )}
+          );
+        })}
         <Button
           variant="raised"
           fill="var(--pbui-tone-source)"
-          onClick={() => dispatch(layoutActions.addSpace())}
+          onClick={() => void workbench.controller.createWorkspace()}
         >
           + workspace
         </Button>

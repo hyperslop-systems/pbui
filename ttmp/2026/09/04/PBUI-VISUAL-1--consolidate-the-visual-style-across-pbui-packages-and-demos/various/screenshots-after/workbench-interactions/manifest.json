@@ -1,0 +1,51 @@
+[
+  {
+    "n": 1,
+    "story": "shop-scenes--scene-1-ambient",
+    "slug": "right-click-menu-open",
+    "description": "right-click an order row: the object menu opens, offering “Link to order detail · order” among other rows",
+    "file": "001-right-click-menu-open.png"
+  },
+  {
+    "n": 2,
+    "story": "shop-scenes--scene-1-ambient",
+    "slug": "connect-mode-acceptable-highlighted",
+    "description": "Mod+Shift+L then drag ▸ order toward ◂ order mid-flight: the wire-cursor names Follow(...) and the acceptable input lights up before release",
+    "file": "002-connect-mode-acceptable-highlighted.png"
+  },
+  {
+    "n": 3,
+    "story": "shop-scenes--scene-5-incompatible",
+    "slug": "connect-mode-refused-target",
+    "description": "Ctrl-drag onto an incompatible port: the wire-cursor says “cannot share with …” and the target is data-acceptable=false",
+    "file": "003-connect-mode-refused-target.png"
+  },
+  {
+    "n": 4,
+    "story": "shop-scenes--scene-7-connect-mode",
+    "slug": "completed-link-wires-and-badges",
+    "description": "connect mode over an already-linked pair: the wire is drawn and the badges at both ends show their state",
+    "file": "004-completed-link-wires-and-badges.png"
+  },
+  {
+    "n": 5,
+    "story": "shop-scenes--scene-2-hold",
+    "slug": "paused-pinned-link",
+    "description": "the detail is pinned (held) on order #88213; the badge reads ⏸ and the row selection no longer moves it",
+    "file": "005-paused-pinned-link.png"
+  },
+  {
+    "n": 6,
+    "story": "shop-scenes--scene-3-show",
+    "slug": "ambiguity-menu-two-targets",
+    "description": "right-click an order with two open detail tiles: the object menu lists “Link to detail A · order” and “Link to detail B · order” — the user disambiguates by picking a row",
+    "file": "006-ambiguity-menu-two-targets.png"
+  },
+  {
+    "n": 7,
+    "story": "workbench-rebalancelab--lab",
+    "slug": "rebalance-dialog-proposals",
+    "description": "RebalanceLab: SLIVER preset (one tile hogs 90%), REBALANCE pressed — the dialog's proposal cards",
+    "file": "007-rebalance-dialog-proposals.png"
+  }
+]

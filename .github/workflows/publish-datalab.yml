@@ -68,13 +68,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build PBUI dependency
-        run: pnpm --workspace-root run build
-
-      # The generated protocol package ships only its dist/, which is not
-      # committed; ci.yml builds it before typecheck for the same reason.
-      - name: Build generated TypeScript protocol package
-        run: pnpm --filter @hyperslop-systems/workbench-protocol build
+      # Workspace package declarations live in uncommitted dist directories.
+      # Let pnpm build all transitive dependencies in dependency order.
+      - name: Build Datalab workspace dependencies
+        run: pnpm --include-workspace-root --filter '@hyperslop-systems/datalab-ui^...' build
 
       - name: Typecheck
         run: pnpm --filter @hyperslop-systems/datalab-ui typecheck

@@ -5,7 +5,7 @@ import type { Preview } from "@storybook/react-vite";
 // Without this import every story renders bare: monospace becomes Times,
 // borders vanish, and the selection fill disappears. The canonical values
 // live in datalab-ui's tokens.css; storybook borrows them verbatim.
-import "../packages/datalab-ui/src/styles/tokens.css";
+import "../src/tokens.css";
 import "./base.css";
 import "../src/styles.css";
 import "../public/components.css";

@@ -27,15 +27,18 @@ describe("render failure containment", () => {
   });
 
   test("the product, embedded shell, and each tile own boundaries", async () => {
-    const [workbench, embedded, tile] = await Promise.all([
+    const [workbench, embedded, shell] = await Promise.all([
       source("components/pages/Workbench/Workbench.tsx"),
       source("components/pages/WorkbenchInstance/WorkbenchInstance.tsx"),
-      source("components/organisms/Tile/Tile.tsx"),
+      source("components/pages/Workbench/WorkbenchShell.tsx"),
     ]);
     expect(workbench).toContain("<RenderBoundary");
     expect(embedded).toContain("<RenderBoundary");
-    expect(tile).toContain("<RenderBoundary");
-    expect(tile.indexOf("<RenderBoundary")).toBeLessThan(tile.indexOf("<Component placementId="));
+    // The per-tile boundary is the workbench shell's since
+    // PBUI-DATALAB-WORKBENCH-1: every tile the Surface renders wraps its
+    // application in a `TileBoundary`, so an application that throws takes
+    // down its own tile and not the workbench. Datalab mounts that Surface.
+    expect(shell).toContain("<workbench.shell.Surface");
   });
 });
 

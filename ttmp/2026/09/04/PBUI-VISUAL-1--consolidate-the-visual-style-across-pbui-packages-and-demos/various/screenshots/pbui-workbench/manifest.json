@@ -1,0 +1,243 @@
+[
+  {
+    "n": 1,
+    "id": "workbench-coordinationinspector--tile",
+    "title": "Workbench/CoordinationInspector",
+    "name": "the coordination tile beside a linked pair: ports, wires, contexts, invariants",
+    "file": "001-workbench-coordinationinspector--tile.png",
+    "size": "320x120"
+  },
+  {
+    "n": 2,
+    "id": "workbench-identitylab--lab",
+    "title": "Workbench/IdentityLab",
+    "name": "Lab",
+    "file": "002-workbench-identitylab--lab.png",
+    "size": "320x120"
+  },
+  {
+    "n": 3,
+    "id": "workbench-launcher--open",
+    "title": "Workbench/Launcher",
+    "name": "open: a placed singleton is “go to”, the rest “place”",
+    "file": "003-workbench-launcher--open.png",
+    "size": "320x120"
+  },
+  {
+    "n": 4,
+    "id": "workbench-launcher--per-pane",
+    "title": "Workbench/Launcher",
+    "name": "per-pane: show something else in THIS tile",
+    "file": "004-workbench-launcher--per-pane.png",
+    "size": "320x120"
+  },
+  {
+    "n": 5,
+    "id": "workbench-launcher--product-rows",
+    "title": "Workbench/Launcher",
+    "name": "slot: a product's rows model",
+    "file": "005-workbench-launcher--product-rows.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 6,
+    "id": "workbench-linkannouncer--announcements",
+    "title": "Workbench/LinkAnnouncer",
+    "name": "coordination announcements, coalesced per target",
+    "file": "006-workbench-linkannouncer--announcements.png",
+    "size": "1280x500"
+  },
+  {
+    "n": 7,
+    "id": "workbench-linklab--lab",
+    "title": "Workbench/LinkLab",
+    "name": "Lab",
+    "file": "007-workbench-linklab--lab.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 8,
+    "id": "workbench-portbadge--every-state",
+    "title": "Workbench/PortBadge",
+    "name": "every badge state, as it sits after a tile title",
+    "file": "008-workbench-portbadge--every-state.png",
+    "size": "1280x288"
+  },
+  {
+    "n": 9,
+    "id": "workbench-portrail--with-a-wire",
+    "title": "Workbench/PortRail",
+    "name": "a wire already declared: notes.subject follows counter.count",
+    "file": "009-workbench-portrail--with-a-wire.png",
+    "size": "1280x805"
+  },
+  {
+    "n": 10,
+    "id": "workbench-portrail--back-sides",
+    "title": "Workbench/PortRail",
+    "name": "connect mode: every tile flips to its rail; drag the counter's ▸ count onto the notes' ◂ subject",
+    "file": "010-workbench-portrail--back-sides.png",
+    "size": "1280x805"
+  },
+  {
+    "n": 11,
+    "id": "workbench-rebalancebadge--broken-sliver",
+    "title": "Workbench/RebalanceBadge",
+    "name": "Broken Sliver",
+    "file": "011-workbench-rebalancebadge--broken-sliver.png",
+    "size": "1280x120"
+  },
+  {
+    "n": 12,
+    "id": "workbench-rebalancebadge--healthy",
+    "title": "Workbench/RebalanceBadge",
+    "name": "Healthy",
+    "file": "012-workbench-rebalancebadge--healthy.png",
+    "size": "1280x120"
+  },
+  {
+    "n": 13,
+    "id": "workbench-rebalancedialog--broken",
+    "title": "Workbench/RebalanceDialog",
+    "name": "Broken",
+    "file": "013-workbench-rebalancedialog--broken.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 14,
+    "id": "workbench-rebalancedialog--shortcut-closed",
+    "title": "Workbench/RebalanceDialog",
+    "name": "Shortcut Closed",
+    "file": "014-workbench-rebalancedialog--shortcut-closed.png",
+    "size": "1280x580"
+  },
+  {
+    "n": 15,
+    "id": "workbench-rebalancelab--lab",
+    "title": "Workbench/RebalanceLab",
+    "name": "Lab",
+    "file": "015-workbench-rebalancelab--lab.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 16,
+    "id": "workbench-rebalancesettings--default",
+    "title": "Workbench/RebalanceSettings",
+    "name": "Default",
+    "file": "016-workbench-rebalancesettings--default.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 17,
+    "id": "workbench-relationpalette--open",
+    "title": "Workbench/RelationPalette",
+    "name": "the palette for notes.subject: two relations from the counter's count",
+    "file": "017-workbench-relationpalette--open.png",
+    "size": "1280x800"
+  },
+  {
+    "n": 18,
+    "id": "workbench-showchooser--chooser",
+    "title": "Workbench/ShowChooser",
+    "name": "a show with nothing on screen to take it: the chooser offers the spawnable notes tile at two placements",
+    "file": "018-workbench-showchooser--chooser.png",
+    "size": "1280x520"
+  },
+  {
+    "n": 19,
+    "id": "workbench-splitpane--nested",
+    "title": "Workbench/SplitPane",
+    "name": "nested splits, each divider independently resizable",
+    "file": "019-workbench-splitpane--nested.png",
+    "size": "1280x535"
+  },
+  {
+    "n": 20,
+    "id": "workbench-surface--drag-to-swap-or-dock",
+    "title": "Workbench/Surface",
+    "name": "drag: centre swaps the two applications, an edge docks the source beside the target",
+    "file": "020-workbench-surface--drag-to-swap-or-dock.png",
+    "size": "1280x460"
+  },
+  {
+    "n": 21,
+    "id": "workbench-surface--with-launcher-and-persistence",
+    "title": "Workbench/Surface",
+    "name": "launcher (⌘K / Ctrl+K) and serialize()/restore()",
+    "file": "021-workbench-surface--with-launcher-and-persistence.png",
+    "size": "1280x520"
+  },
+  {
+    "n": 22,
+    "id": "workbench-surface--placement-mode",
+    "title": "Workbench/Surface",
+    "name": "placement mode: aim a document at a pane (5.E)",
+    "file": "022-workbench-surface--placement-mode.png",
+    "size": "1280x560"
+  },
+  {
+    "n": 23,
+    "id": "workbench-surface--resize",
+    "title": "Workbench/Surface",
+    "name": "resize: drag the divider; it snaps at ¼ ⅓ ½ ⅔ ¾ and the arrow keys nudge it",
+    "file": "023-workbench-surface--resize.png",
+    "size": "1280x400"
+  },
+  {
+    "n": 24,
+    "id": "workbench-surface--three-tiles",
+    "title": "Workbench/Surface",
+    "name": "three tiles: split, close, drag the ⠿ to swap or dock",
+    "file": "024-workbench-surface--three-tiles.png",
+    "size": "1280x560"
+  },
+  {
+    "n": 25,
+    "id": "workbench-tile--unknown-app",
+    "title": "Workbench/Tile",
+    "name": "a view of an application this build lacks",
+    "file": "025-workbench-tile--unknown-app.png",
+    "error": "workbench-core: unknown_application at views[\"v-2f6ffd4b-4f3f\"].appId: application \"retired-app\" is not registered",
+    "size": "320x120"
+  },
+  {
+    "n": 26,
+    "id": "workbench-tile--title-slot",
+    "title": "Workbench/Tile",
+    "name": "renderTitle: the product's own title presentation in the bar",
+    "file": "026-workbench-tile--title-slot.png",
+    "size": "1280x340"
+  },
+  {
+    "n": 27,
+    "id": "workbench-wirelayer--styles",
+    "title": "Workbench/WireLayer",
+    "name": "wire styles: dotted for a held (suspended) follow, dashed and labelled for derived",
+    "file": "027-workbench-wirelayer--styles.png",
+    "size": "1280x805"
+  },
+  {
+    "n": 28,
+    "id": "workbench-workspacestrip--custom-row",
+    "title": "workbench/WorkspaceStrip",
+    "name": "Custom Row",
+    "file": "028-workbench-workspacestrip--custom-row.png",
+    "size": "1280x424"
+  },
+  {
+    "n": 29,
+    "id": "workbench-workspacestrip--default",
+    "title": "workbench/WorkspaceStrip",
+    "name": "Default",
+    "file": "029-workbench-workspacestrip--default.png",
+    "size": "1280x424"
+  },
+  {
+    "n": 30,
+    "id": "workbench-workspacestrip--with-add",
+    "title": "workbench/WorkspaceStrip",
+    "name": "With Add",
+    "file": "030-workbench-workspacestrip--with-add.png",
+    "size": "1280x424"
+  }
+]

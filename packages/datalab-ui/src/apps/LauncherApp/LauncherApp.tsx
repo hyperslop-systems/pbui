@@ -2,7 +2,7 @@ import { useDispatch } from "react-redux";
 import { Button, Stack, Text } from "@hyperslop-systems/pbui";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { useAvailableApps } from "../../appkit/AppScope";
-import { layoutActions } from "../../store/layout";
+import { navigationActions } from "../../store/navigation";
 import styles from "./LauncherApp.module.css";
 
 /**
@@ -33,7 +33,7 @@ function LauncherApp({ placementId }: AppProps) {
 
   const open = (prefill?: string) =>
     dispatch(
-      layoutActions.openLauncher({
+      navigationActions.openLauncher({
         kind: "fill-launcher",
         placementId,
         ...(prefill ? { prefill } : {}),

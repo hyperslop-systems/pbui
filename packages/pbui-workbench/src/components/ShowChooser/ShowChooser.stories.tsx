@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { linkVerbs } from "@hyperslop-systems/pbui";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
 import { useMemo } from "react";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { demoApps } from "../../stories/demoApps";
 
 const meta: Meta = { title: "Workbench/ShowChooser" };
@@ -18,7 +18,7 @@ function TwoTargets() {
     });
     // Counters have an OUT port only; give the show two INPUT targets by opening notes twice is impossible (singleton),
     // so this story shows the chooser with the notes tile plus a spawn row instead.
-    const [a] = leaves(workspaceTree(workbench.store.getState().document, workbench.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
+    const [a] = leaves(workspaceTree(workbench.core.getState().document, workbench.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
     if (a) workbench.links.runtime.emit(`${a}/count`, { type: "number", value: 7 });
     workbench.perform(linkVerbs.show({ type: "number", value: 7 }, { from: `${a}/count` }));
     return workbench;

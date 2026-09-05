@@ -1,0 +1,59 @@
+almanach_studio_version: 1
+theme: brutalist
+paperWidth: 384
+bodyScale: 1
+feedLines: 8
+blocks:
+- id: head
+  type: row
+  data:
+    cols:
+    - w: 1fr
+      text: PBUI-WIRING-1
+      preset: micro
+    - w: 1fr
+      text: P7 START
+      preset: micro
+      align: right
+- id: r1
+  type: rule
+  data:
+    weight: heavy
+- id: gap1
+  type: space
+  data:
+    size: s
+- id: title
+  type: text
+  data:
+    text: Retire old wiring and verify
+    preset: h1
+    lines: 3
+- id: gap3
+  type: space
+  data:
+    size: m
+- id: planhead
+  type: text
+  data:
+    text: PLAN
+    preset: h2
+- id: plan
+  type: checks
+  data:
+    items:
+    - Remove global carry and old routes
+    - Run package and browser corpus
+    - Document, commit, push and upload
+- id: r2
+  type: rule
+  data:
+    weight: hair
+- id: facts
+  type: kv
+  data:
+    items:
+    - - PHASES
+      - '3'
+    - - NEXT
+      - Repository-wide reference audit

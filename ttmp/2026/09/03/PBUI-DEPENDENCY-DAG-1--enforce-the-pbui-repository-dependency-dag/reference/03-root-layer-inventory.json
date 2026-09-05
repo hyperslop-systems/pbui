@@ -1,0 +1,152 @@
+{
+  "chrome -> components/index.ts": [
+    "chrome/LauncherShell.tsx -> ../components",
+    "chrome/TileFrame.tsx -> ../components"
+  ],
+  "components/atoms -> components/foundation": [
+    "components/atoms/CheckboxRow/CheckboxRow.tsx -> ../../foundation"
+  ],
+  "components/ContextHelp -> components/foundation": [
+    "components/ContextHelp/HelpContent.tsx -> ../foundation",
+    "components/ContextHelp/builtins.tsx -> ../foundation",
+    "components/ContextHelp/markdown.tsx -> ../foundation"
+  ],
+  "components/ContextHelp -> presentation": [
+    "components/ContextHelp/HelpContent.tsx -> ../../presentation/actions/types",
+    "components/ContextHelp/HelpContent.tsx -> ../../presentation/help/types",
+    "components/ContextHelp/HelpContent.tsx -> ../../presentation/types",
+    "components/ContextHelp/registry.ts -> ../../presentation/actions/types"
+  ],
+  "components/Dialog -> focus.ts": [
+    "components/Dialog/Dialog.tsx -> ../../focus"
+  ],
+  "components/Dialog -> surfaces.ts": [
+    "components/Dialog/Dialog.tsx -> ../../surfaces"
+  ],
+  "components/index.ts -> components/atoms": [
+    "components/index.ts -> ./atoms"
+  ],
+  "components/index.ts -> components/ContextHelp": [
+    "components/index.ts -> ./ContextHelp"
+  ],
+  "components/index.ts -> components/Dialog": [
+    "components/index.ts -> ./Dialog"
+  ],
+  "components/index.ts -> components/format.ts": [
+    "components/index.ts -> ./format"
+  ],
+  "components/index.ts -> components/foundation": [
+    "components/index.ts -> ./foundation"
+  ],
+  "components/index.ts -> components/InspectorPanel": [
+    "components/index.ts -> ./InspectorPanel"
+  ],
+  "components/index.ts -> components/JsonBlock": [
+    "components/index.ts -> ./JsonBlock"
+  ],
+  "components/index.ts -> components/layout": [
+    "components/index.ts -> ./layout"
+  ],
+  "components/index.ts -> components/molecules": [
+    "components/index.ts -> ./molecules"
+  ],
+  "components/index.ts -> components/organisms": [
+    "components/index.ts -> ./organisms"
+  ],
+  "components/InspectorPanel -> components/JsonBlock": [
+    "components/InspectorPanel/InspectorPanel.tsx -> ../JsonBlock"
+  ],
+  "components/molecules -> components/atoms": [
+    "components/molecules/DiffHunk/DiffHunk.tsx -> ../../atoms",
+    "components/molecules/FileDropZone/FileDropZone.tsx -> ../../atoms",
+    "components/molecules/KindLegend/KindLegend.tsx -> ../../atoms",
+    "components/molecules/Legend/Legend.tsx -> ../../atoms"
+  ],
+  "components/molecules -> components/format.ts": [
+    "components/molecules/KindLegend/KindLegend.tsx -> ../../format",
+    "components/molecules/MoreBar/MoreBar.tsx -> ../../format"
+  ],
+  "components/molecules -> components/foundation": [
+    "components/molecules/Callout/Callout.tsx -> ../../foundation",
+    "components/molecules/EmptyState/EmptyState.tsx -> ../../foundation",
+    "components/molecules/FileDropZone/FileDropZone.tsx -> ../../foundation",
+    "components/molecules/KindLegend/KindLegend.tsx -> ../../foundation"
+  ],
+  "components/molecules -> components/layout": [
+    "components/molecules/Callout/Callout.tsx -> ../../layout",
+    "components/molecules/EmptyState/EmptyState.tsx -> ../../layout",
+    "components/molecules/FileDropZone/FileDropZone.tsx -> ../../layout",
+    "components/molecules/Legend/Legend.tsx -> ../../layout"
+  ],
+  "components/organisms -> chrome": [
+    "components/organisms/FileBrowser/FileBrowser.tsx -> ../../../chrome/shortcutRouting"
+  ],
+  "components/organisms -> components/atoms": [
+    "components/organisms/RadarPanel/RadarPanel.tsx -> ../../atoms",
+    "components/organisms/TransportBar/TransportBar.tsx -> ../../atoms"
+  ],
+  "components/organisms -> components/format.ts": [
+    "components/organisms/TransportBar/TransportBar.tsx -> ../../format"
+  ],
+  "components/organisms -> components/foundation": [
+    "components/organisms/BackdropPanel/BackdropPanel.tsx -> ../../foundation",
+    "components/organisms/FileBrowser/FileBrowser.tsx -> ../../foundation",
+    "components/organisms/RadarPanel/RadarPanel.tsx -> ../../foundation",
+    "components/organisms/TransportBar/TransportBar.tsx -> ../../foundation"
+  ],
+  "components/organisms -> components/layout": [
+    "components/organisms/BackdropPanel/BackdropPanel.tsx -> ../../layout",
+    "components/organisms/RadarPanel/RadarPanel.tsx -> ../../layout"
+  ],
+  "components/organisms -> components/molecules": [
+    "components/organisms/FileBrowser/FileBrowser.tsx -> ../../molecules/EmptyState",
+    "components/organisms/FileBrowser/FileBrowser.tsx -> ../../molecules/InlineRename"
+  ],
+  "components/organisms -> visualization": [
+    "components/organisms/RadarPanel/RadarPanel.tsx -> ../../../visualization"
+  ],
+  "index.ts -> chrome": [
+    "index.ts -> ./chrome"
+  ],
+  "index.ts -> components/index.ts": [
+    "index.ts -> ./components"
+  ],
+  "index.ts -> presentation": [
+    "index.ts -> ./presentation"
+  ],
+  "index.ts -> styles.css": [
+    "index.ts -> ./styles.css"
+  ],
+  "index.ts -> surfaces.ts": [
+    "index.ts -> ./surfaces"
+  ],
+  "index.ts -> tokens.css": [
+    "index.ts -> ./tokens.css"
+  ],
+  "index.ts -> visualization": [
+    "index.ts -> ./visualization"
+  ],
+  "link-kernel.ts -> presentation": [
+    "link-kernel.ts -> ./presentation/links/index",
+    "link-kernel.ts -> ./presentation/actions/typeGraph",
+    "link-kernel.ts -> ./presentation/actions/typeGraph",
+    "link-kernel.ts -> ./presentation/actions/ids"
+  ],
+  "presentation -> components/ContextHelp": [
+    "presentation/createPbui.tsx -> ../components/ContextHelp",
+    "presentation/createPbui.tsx -> ../components/ContextHelp"
+  ],
+  "presentation -> components/foundation": [
+    "presentation/createPbui.tsx -> ../components/foundation"
+  ],
+  "presentation -> focus.ts": [
+    "presentation/createPbui.tsx -> ../focus",
+    "presentation/types.ts -> ../focus"
+  ],
+  "presentation -> surfaces.ts": [
+    "presentation/createPbui.tsx -> ../surfaces"
+  ],
+  "visualization -> components/format.ts": [
+    "visualization/radar.ts -> ../components/format"
+  ]
+}

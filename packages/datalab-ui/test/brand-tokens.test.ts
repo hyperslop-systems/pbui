@@ -28,7 +28,7 @@ const brand = await readFile(
   "utf8",
 );
 const tokens = await readFile(
-  fileURLToPath(new URL("../src/styles/tokens.css", import.meta.url)),
+  fileURLToPath(new URL("../../../src/tokens.css", import.meta.url)),
   "utf8",
 );
 

@@ -4,5 +4,7 @@ export { FileBrowser } from "./FileBrowser";
 export type { FileBrowserProps, FileNode, RootState } from "./FileBrowser";
 export { RadarPanel } from "./RadarPanel";
 export type { RadarPanelProps } from "./RadarPanel";
+export { TileHeader } from "./TileHeader";
+export type { TileHeaderProps } from "./TileHeader";
 export { TransportBar } from "./TransportBar";
 export type { TransportBarProps } from "./TransportBar";

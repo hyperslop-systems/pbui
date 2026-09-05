@@ -25,18 +25,18 @@ export const ThePanelsAsTiles: StoryObj = {
   render: () => (
     <DemoChat>
       <Seed />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, height: 320 }}>
-        <div style={{ display: "grid", border: "var(--pbui-border-hair)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gridTemplateRows: "minmax(0, 1fr)", gap: 8, height: 320 }}>
+        <div style={{ display: "grid", gridTemplateRows: "minmax(0, 1fr)", minHeight: 0, overflow: "auto", border: "var(--pbui-border-hair)" }}>
           <PanelApp part="inspector-app">
             <ChatInspectorPanel />
           </PanelApp>
         </div>
-        <div style={{ display: "grid", border: "var(--pbui-border-hair)" }}>
+        <div style={{ display: "grid", gridTemplateRows: "minmax(0, 1fr)", minHeight: 0, overflow: "auto", border: "var(--pbui-border-hair)" }}>
           <PanelApp part="watchlist-app">
             <WatchlistPanel />
           </PanelApp>
         </div>
-        <div style={{ display: "grid", border: "var(--pbui-border-hair)" }}>
+        <div style={{ display: "grid", gridTemplateRows: "minmax(0, 1fr)", minHeight: 0, overflow: "auto", border: "var(--pbui-border-hair)" }}>
           <PanelApp part="trace-app">
             <TracePanel />
           </PanelApp>

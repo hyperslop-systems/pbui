@@ -43,6 +43,7 @@
     "@hyperslop-systems/pbui": "workspace:^",
     "@hyperslop-systems/pbui-sandbox": "workspace:^",
     "@hyperslop-systems/pbui-workbench": "workspace:^",
+    "@hyperslop-systems/workbench-core": "workspace:^",
     "@hyperslop-systems/workbench-protocol": "workspace:^",
     "react-redux": "^9.3.0",
     "zod": "^4.4.0"

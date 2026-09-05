@@ -1,0 +1,38 @@
+/* Paper, a hairline, and the tone edge: the Chip's grammar at paragraph size.
+ * Severity is the edge colour; the glyph in the title repeats it for
+ * greyscale. */
+.callout {
+  --callout-tone: var(--pbui-tone-neutral);
+  background: var(--pbui-paper);
+  color: var(--pbui-ink);
+  border: var(--pbui-border-hair);
+  border-left: var(--pbui-tone-edge) solid var(--callout-tone);
+  border-radius: var(--pbui-radius);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+}
+
+.info {
+  --callout-tone: var(--pbui-tone-neutral);
+}
+
+.ok {
+  --callout-tone: var(--pbui-ok);
+}
+
+.warning {
+  --callout-tone: var(--pbui-cat-3);
+}
+
+.danger {
+  --callout-tone: var(--pbui-danger);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pbui-space-3);
+}
+
+.dismiss {
+  margin-left: auto;
+}

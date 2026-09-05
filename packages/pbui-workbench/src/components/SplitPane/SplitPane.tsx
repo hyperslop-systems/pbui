@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { commands, splitRatioBounds } from "@hyperslop-systems/workbench-core";
 import { Direction, type Node } from "@hyperslop-systems/workbench-protocol";
 import { snapRatio } from "@hyperslop-systems/workbench-protocol/client";
 import { useWorkbench } from "../../context";
+import { measureSplitGeometry } from "../../geometry";
+import { useGeometryStore } from "../../wiring/geometryContext";
 import styles from "./SplitPane.module.css";
 
 export interface SplitPaneProps {
@@ -20,6 +23,7 @@ export interface SplitPaneProps {
  */
 export function SplitPane({ node, renderNode }: SplitPaneProps) {
   const workbench = useWorkbench();
+  const geometry = useGeometryStore();
   const container = useRef<HTMLDivElement>(null);
   const split = node.body.case === "split" ? node.body.value : null;
   const row = split?.direction !== Direction.COLUMN;
@@ -27,12 +31,16 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
   const [live, setLive] = useState<{ ratio: number; snapped: boolean } | null>(null);
   const [bounds, setBounds] = useState<{ min: number; max: number } | null>(null);
   const ratio = live?.ratio ?? committed;
+  useLayoutEffect(() => { geometry?.invalidate(); }, [geometry, ratio]);
+  // The same rendered pixel bounds an agent's `placement.resize` sees: the
+  // engine's math over a geometry measured for this one split.
+  const ratioBounds = () => splitRatioBounds(measureSplitGeometry(container.current, node.id), node.id, row ? "row" : "col", workbench.core.policy.split);
 
   useLayoutEffect(() => {
     const element = container.current;
     if (!element) return;
     const refresh = () => {
-      const next = workbench.verbs.ratioBounds(node.id);
+      const next = ratioBounds();
       setBounds((current) =>
         current?.min === next?.min && current?.max === next?.max ? current : next,
       );
@@ -45,7 +53,8 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
       observer?.disconnect();
       window.removeEventListener("resize", refresh);
     };
-  }, [node.id, workbench]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node.id, workbench, row]);
 
   // A drag that outlives the component (the split closed under it) must not
   // leave window listeners behind.
@@ -72,7 +81,7 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
         const pointer = row ? moveEvent.clientX - box.left : moveEvent.clientY - box.top;
         const raw = (pointer - dividerSize / 2) / available;
         if (!Number.isFinite(raw)) return;
-        const bounds = workbench.verbs.ratioBounds(node.id);
+        const bounds = ratioBounds();
         if (!bounds) return;
         const constrained = Math.max(bounds.min, Math.min(bounds.max, raw));
         const snapped = snapRatio(constrained);
@@ -89,7 +98,7 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
         window.removeEventListener("pointercancel", cancel);
         window.removeEventListener("blur", cancel);
         setLive(null);
-        if (commit) workbench.verbs.resize(node.id, last);
+        if (commit) workbench.execute(commands.resize(node.id, last));
       };
       const stop = () => finish(false);
       const up = () => finish(true);
@@ -112,18 +121,18 @@ export function SplitPane({ node, renderNode }: SplitPaneProps) {
     const increase = row ? "ArrowRight" : "ArrowDown";
     if (event.key === "Home" || event.key === "End") {
       event.preventDefault();
-      workbench.verbs.resize(node.id, event.key === "Home" ? 0 : 1, { snap: false });
+      workbench.execute(commands.resize(node.id, event.key === "Home" ? 0 : 1, { snap: false }));
       return;
     }
     if (event.key !== decrease && event.key !== increase) return;
     event.preventDefault();
-    workbench.verbs.resize(node.id, committed + (event.key === increase ? step : -step), { snap: false });
+    workbench.execute(commands.resize(node.id, committed + (event.key === increase ? step : -step), { snap: false }));
   };
 
   // Double-click is the conventional "even it out" and costs one handler.
   const onDoubleClick = (event: React.MouseEvent) => {
     event.preventDefault();
-    workbench.verbs.resize(node.id, 0.5);
+    workbench.execute(commands.resize(node.id, 0.5));
   };
 
   if (!split?.a || !split.b) return null;

@@ -1,4 +1,4 @@
-import { AppBody, EmptyState, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, EmptyState, KeyValueList, TileHeader } from "@hyperslop-systems/pbui";
 import { usePort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { useHostRevision } from "../../host";
@@ -14,7 +14,7 @@ export interface CustomerDetailProps extends AppProps {
 /** One customer and their orders, read through the `customer` in port; the orders are `<order>` presentations, so the loop closes. */
 export function CustomerDetail({ shop, view }: CustomerDetailProps) {
   useHostRevision(shop.host);
-  const { Presentation } = shop.pbui;
+  const { ObjectChip } = shop.pbui;
   const port = usePort<CustomerValue>(view, "customer");
   const customer = port.value ? (shop.host.customer(port.value.id) ?? null) : null;
   if (!customer) {
@@ -28,26 +28,23 @@ export function CustomerDetail({ shop, view }: CustomerDetailProps) {
   const spent = orders.filter((order) => order.status !== "cancelled").reduce((n, order) => n + order.total, 0);
   return (
     <div data-part="customer-detail" className={styles.app}>
-      <Toolbar tight>
-        <Presentation reference={{ type: "customer", value: customerValue(customer) }} doc={customer.name} inComposite>
-          <Text size="tiny" strong>
+      <TileHeader
+        title={
+          <ObjectChip reference={{ type: "customer", value: customerValue(customer) }} doc={customer.name} inComposite>
             {customer.name}
-          </Text>
-        </Presentation>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {customer.kind} · {customer.city}
-        </Text>
-      </Toolbar>
+          </ObjectChip>
+        }
+        status={`${customer.kind} · ${customer.city}`}
+      />
       <AppBody flush className={styles.body}>
         <div className={styles.detail}>
           <div className={styles.big}>{money(spent)}</div>
-          <dl className={styles.facts}>
-            <dt>since</dt>
-            <dd>{customer.since}</dd>
-            <dt>orders</dt>
-            <dd>{orders.length}</dd>
-          </dl>
+          <KeyValueList
+            items={[
+              { key: "since", value: customer.since },
+              { key: "orders", value: orders.length },
+            ]}
+          />
           <table className={styles.table}>
             <thead>
               <tr>
@@ -61,9 +58,9 @@ export function CustomerDetail({ shop, view }: CustomerDetailProps) {
               {orders.map((order) => (
                 <tr key={order.id}>
                   <td>
-                    <Presentation reference={{ type: "order", value: orderValue(order) }} doc={`order #${order.id}`}>
+                    <ObjectChip reference={{ type: "order", value: orderValue(order) }} doc={`order #${order.id}`}>
                       #{order.id}
-                    </Presentation>
+                    </ObjectChip>
                   </td>
                   <td>{order.placedAt}</td>
                   <td>{order.status}</td>

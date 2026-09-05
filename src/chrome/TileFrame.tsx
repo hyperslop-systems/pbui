@@ -11,7 +11,7 @@
  * doors to the same verbs. Styled by `chrome.css` through data-part hooks.
  */
 import type { ReactNode } from "react";
-import { IconButton } from "../components";
+import { IconButton } from "../components/atoms/IconButton";
 import type { DragZone } from "./useTileDrag";
 
 export interface TileFrameProps {
@@ -42,6 +42,8 @@ export interface TileFrameProps {
    * disappears on exactly the tiles with long names; this slot never does.
    */
   actions?: ReactNode;
+  /** Decoration outside the bounded content scrollport. */
+  overlay?: ReactNode;
   children: ReactNode;
 }
 
@@ -94,6 +96,7 @@ export function TileFrame({
   registerElement,
   actions,
   children,
+  overlay,
 }: TileFrameProps) {
   return (
     <section
@@ -141,7 +144,8 @@ export function TileFrame({
           />
         </span>
       </header>
-      <div data-part="tile-body">{children}</div>
+      <div data-part="tile-body"><div data-part="tile-scrollport">{children}</div></div>
+      {overlay ? <div data-part="tile-frame-overlay">{overlay}</div> : null}
     </section>
   );
 }

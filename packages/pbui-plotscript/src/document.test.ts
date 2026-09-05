@@ -1,5 +1,5 @@
 import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
-import { emptyDocument, layout, parseDocument, serializeDocument, tile } from "@hyperslop-systems/pbui-workbench";
+import { emptyDocument, layout, parseWorkbenchDocument, serializeDocument, tile } from "@hyperslop-systems/workbench-core";
 import { describe, expect, it } from "vitest";
 import { deletePlotScriptMutation, listPlotScripts, plotScriptMutation, readPlotScript } from "./document";
 
@@ -7,10 +7,11 @@ const script = { id: "s1", name: "scatter", source: "return null;", updatedAt: "
 
 describe("PlotScriptDoc as a DocumentPayload", () => {
   it("round-trips through the document, and through serialize/parse", () => {
-    // parseDocument refuses a document with no workspace, so seed one tile.
+    // parseWorkbenchDocument refuses a document with no workspace, so seed one tile.
     const doc = applyMutations(layout(tile("plot-view"), { id: "wb" }), [plotScriptMutation(script)]);
     expect(readPlotScript(doc, "s1")).toEqual(script);
-    const again = parseDocument(serializeDocument(doc));
+    const parsed = parseWorkbenchDocument(serializeDocument(doc));
+    const again = parsed.ok ? parsed.document : null;
     expect(again && readPlotScript(again, "s1")).toEqual(script);
   });
 

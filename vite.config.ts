@@ -6,12 +6,14 @@ export default defineConfig({
   build: {
     lib: {
       /*
-       * Two entries. `index` is the library; `vite` is the consumer-side
+       * Three entries. `index` is the library; `link-kernel` is the pure
+       * semantic subset workbench-core depends on (no React in its graph —
+       * see src/link-kernel.ts); `vite` is the consumer-side
        * config preset (`@hyperslop-systems/pbui/vite`), which exists so the
        * duplicate-React resolution requirement ships WITH the package rather
        * than living in each product's memory — see src/vite.ts.
        */
-      entry: { index: "src/index.ts", vite: "src/vite.ts" },
+      entry: { index: "src/index.ts", "link-kernel": "src/link-kernel.ts", vite: "src/vite.ts" },
       formats: ["es"],
       cssFileName: "pbui",
     },

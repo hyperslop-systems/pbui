@@ -1,10 +1,10 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { Button, documentSlotPort } from "@hyperslop-systems/pbui";
+import { commands, layout, split, tile, workspaces } from "@hyperslop-systems/workbench-core";
 import { leaves } from "@hyperslop-systems/workbench-protocol/client";
-import { defineApp } from "../../apps";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile, workspaces } from "../../document";
+import { defineWorkbenchApp } from "../../app";
+import { createWorkbench } from "../../createWorkbenchShell";
 import { counterApp, demoApps } from "../../stories/demoApps";
 
 afterEach(cleanup);
@@ -22,7 +22,7 @@ describe("Launcher", () => {
     act(() => {
       fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     });
-    expect(wb.store.getState().launcherOpen).toBe(true);
+    expect((wb.shell.getState().launcher !== null)).toBe(true);
     // Every PLACED VIEW is offered first (5.D), then applications that could
     // open a new tile; `notes` is a placed singleton and so appears only as
     // its view.
@@ -41,8 +41,8 @@ describe("Launcher", () => {
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
     });
-    expect(wb.store.getState().launcherOpen).toBe(false);
-    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(2);
+    expect((wb.shell.getState().launcher !== null)).toBe(false);
+    expect(leaves(wb.core.getState().document.workspaces[0]?.tree)).toHaveLength(2);
     expect(baseElement.querySelector('[data-part="workbench-placing"]')?.textContent).toMatch(/placing/);
     // Enter commits the old default spot: split the active tile. The
     // placement outcome is a promise, so the tile lands a microtask later.
@@ -50,7 +50,7 @@ describe("Launcher", () => {
       fireEvent.keyDown(window, { key: "Enter" });
     });
     expect(baseElement.querySelector('[data-part="workbench-placing"]')).toBeNull();
-    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(3);
+    expect(leaves(wb.core.getState().document.workspaces[0]?.tree)).toHaveLength(3);
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(3);
   });
 
@@ -70,11 +70,11 @@ describe("Launcher", () => {
           ({ left: index * 700, top: 0, right: index * 700 + 600, bottom: 600, width: 600, height: 600, x: index * 700, y: 0, toJSON: () => ({}) }) as DOMRect;
       });
     mockRects([...baseElement.querySelectorAll<HTMLElement>('[data-part="tile"]')]);
-    const leafBefore = leaves(wb.store.getState().document.workspaces[0]?.tree).map((l) => l.id);
+    const leafBefore = leaves(wb.core.getState().document.workspaces[0]?.tree).map((l) => l.id);
 
     // Aim at B's left edge and click: the new tile docks BEFORE B.
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
@@ -82,16 +82,16 @@ describe("Launcher", () => {
     act(() => {
       fireEvent(window, new MouseEvent("pointerdown", { clientX: 710, clientY: 300, bubbles: true }));
     });
-    const afterDock = leaves(wb.store.getState().document.workspaces[0]?.tree);
+    const afterDock = leaves(wb.core.getState().document.workspaces[0]?.tree);
     expect(afterDock).toHaveLength(3);
     const created = afterDock.map((l) => l.id).find((id) => !leafBefore.includes(id));
     expect(afterDock.findIndex((l) => l.id === created)).toBe(1); // before B, after A
 
     // Alt-click on a tile replaces what it shows: tile count unchanged.
     const targetLeaf = afterDock[0]!;
-    expect(targetLeaf.body.case === "leaf" && wb.store.getState().document.views[targetLeaf.body.value.viewId]?.appId).toBe("counter");
+    expect(targetLeaf.body.case === "leaf" && wb.core.getState().document.views[targetLeaf.body.value.viewId]?.appId).toBe("counter");
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:notes")!);
@@ -100,13 +100,13 @@ describe("Launcher", () => {
     act(() => {
       fireEvent(window, new MouseEvent("pointerdown", { clientX: 300, clientY: 300, altKey: true, bubbles: true }));
     });
-    const afterReplace = leaves(wb.store.getState().document.workspaces[0]?.tree);
+    const afterReplace = leaves(wb.core.getState().document.workspaces[0]?.tree);
     expect(afterReplace).toHaveLength(3); // no new tile
     const replacedLeaf = afterReplace.find((l) => l.id === targetLeaf.id);
     const replacedView = replacedLeaf?.body.case === "leaf" ? replacedLeaf.body.value.viewId : "";
     // `replace` retargets a single-placement view in place (same view id, new
     // app) — the pane keeps its identity; what it SHOWS changed.
-    expect(wb.store.getState().document.views[replacedView]?.appId).toBe("notes");
+    expect(wb.core.getState().document.views[replacedView]?.appId).toBe("notes");
   });
 
   test("placement mode: Escape cancels without placing", () => {
@@ -118,7 +118,7 @@ describe("Launcher", () => {
       </>,
     );
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
@@ -128,14 +128,14 @@ describe("Launcher", () => {
       fireEvent.keyDown(window, { key: "Escape" });
     });
     expect(baseElement.querySelector('[data-part="workbench-placing"]')).toBeNull();
-    expect(leaves(wb.store.getState().document.workspaces[0]?.tree)).toHaveLength(1);
+    expect(leaves(wb.core.getState().document.workspaces[0]?.tree)).toHaveLength(1);
   });
 
   test("returns focus to the exact control that opened it", async () => {
     const wb = createWorkbench({ apps: demoApps, initial: layout(tile("counter")) });
     const { getByRole } = render(
       <>
-        <Button onClick={() => wb.verbs.openLauncher()}>open launcher</Button>
+        <Button onClick={() => wb.dispatch({ kind: "launcher.open" })}>open launcher</Button>
         <wb.Surface />
         <wb.Launcher />
       </>,
@@ -150,11 +150,11 @@ describe("Launcher", () => {
   });
 
   test("a doc-bound application is not offered as a new tile", () => {
-    const widgetApp = defineApp({ ...counterApp, id: "widget", title: "widget", ports: [documentSlotPort("widget")] });
+    const widgetApp = defineWorkbenchApp({ manifest: { id: "widget", ports: [documentSlotPort("widget")] }, presentation: { ...counterApp.presentation, title: "widget" } });
     const wb = createWorkbench({ apps: [...demoApps, widgetApp], initial: layout(tile("counter")) });
     const { baseElement } = render(<wb.Launcher />);
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.id);
     // One goto row for the placed counter view, then the two placeable
@@ -173,7 +173,7 @@ describe("Launcher", () => {
       </>,
     );
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     const event = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, cancelable: true });
     act(() => {
@@ -186,7 +186,7 @@ describe("Launcher", () => {
 describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
   function twoTiles() {
     const wb = createWorkbench({ apps: demoApps, initial: layout(split("row", 0.5, tile("counter"), tile("notes"))) });
-    const ids = leaves(wb.store.getState().document.workspaces[0]?.tree).map((leaf) => leaf.id);
+    const ids = leaves(wb.core.getState().document.workspaces[0]?.tree).map((leaf) => leaf.id);
     return { wb, first: ids[0]!, second: ids[1]! };
   }
 
@@ -199,7 +199,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
       </>,
     );
     act(() => {
-      wb.verbs.openLauncher(first);
+      wb.dispatch({ kind: "launcher.open", from: first });
     });
     expect(baseElement.querySelector('[data-part="launcher-status"]')?.textContent).toContain("shows it instead");
     act(() => {
@@ -207,8 +207,8 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     });
     // Two tiles before, two after: a per-pane choice never grows the layout.
     expect(container.querySelectorAll('[data-part="tile"]')).toHaveLength(2);
-    expect(wb.store.getState().launcherOpen).toBe(false);
-    expect(wb.store.getState().launcherFrom).toBeNull();
+    expect((wb.shell.getState().launcher !== null)).toBe(false);
+    expect((wb.shell.getState().launcher?.from ?? null)).toBeNull();
   });
 
   test("per-pane mode links the pane to a chosen view", () => {
@@ -220,16 +220,16 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
       </>,
     );
     const viewOfSecond = (() => {
-      const leaf = leaves(wb.store.getState().document.workspaces[0]?.tree).find((node) => node.id === second)!;
+      const leaf = leaves(wb.core.getState().document.workspaces[0]?.tree).find((node) => node.id === second)!;
       return leaf.body.case === "leaf" ? leaf.body.value.viewId : "";
     })();
     act(() => {
-      wb.verbs.openLauncher(first);
+      wb.dispatch({ kind: "launcher.open", from: first });
     });
     act(() => {
       fireEvent.click(baseElement.querySelector(`#goto\\:${viewOfSecond}`)!);
     });
-    const tree = wb.store.getState().document.workspaces[0]?.tree;
+    const tree = wb.core.getState().document.workspaces[0]?.tree;
     const viewIds = leaves(tree).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
     expect(viewIds).toEqual([viewOfSecond, viewOfSecond]);
   });
@@ -243,7 +243,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
       </>,
     );
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
@@ -270,18 +270,18 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
       />,
     );
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.id);
     expect(rows).toEqual(["custom:one"]);
-    const before = wb.store.getState().document;
+    const before = wb.core.getState().document;
     act(() => {
       fireEvent.click(baseElement.querySelector("#custom\\:one")!);
     });
     expect(claimed).toEqual(["custom:one"]);
     // Claiming means the default meaning never ran.
-    expect(wb.store.getState().document).toBe(before);
-    expect(wb.store.getState().launcherOpen).toBe(false);
+    expect(wb.core.getState().document).toBe(before);
+    expect((wb.shell.getState().launcher !== null)).toBe(false);
   });
 
   test("choose returning false falls through to the default meaning", async () => {
@@ -293,7 +293,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
       </>,
     );
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     act(() => {
       fireEvent.click(baseElement.querySelector("#place\\:counter")!);
@@ -305,18 +305,18 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
   });
 
   test("an unavailable application is not offered", () => {
-    const scoped = { ...counterApp, id: "scoped", title: "scoped", available: () => false };
+    const scoped = defineWorkbenchApp({ manifest: { id: "scoped" }, presentation: { ...counterApp.presentation, title: "scoped", available: () => false } });
     const wb = createWorkbench({ apps: [...demoApps, scoped], initial: layout(tile("counter")) });
     const { baseElement } = render(<wb.Launcher />);
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.id);
     expect(rows).not.toContain("place:scoped");
   });
 
   test("a tile whose layout names an excluded application still renders it", () => {
-    const scoped = { ...counterApp, id: "scoped", title: "scoped", available: () => false };
+    const scoped = defineWorkbenchApp({ manifest: { id: "scoped" }, presentation: { ...counterApp.presentation, title: "scoped", available: () => false } });
     const wb = createWorkbench({ apps: [...demoApps, scoped], initial: layout(tile("scoped")) });
     const { container } = render(<wb.Surface />);
     // Hiding it from the launcher must never silently drop a seeded tile.
@@ -324,11 +324,11 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
   });
 
   test("group and blurb shape the default rows", () => {
-    const grouped = { ...counterApp, id: "tools", title: "tools", group: "TOOLS", blurb: "the useful ones" };
+    const grouped = defineWorkbenchApp({ manifest: { id: "tools" }, presentation: { ...counterApp.presentation, title: "tools", group: "TOOLS", blurb: "the useful ones" } });
     const wb = createWorkbench({ apps: [...demoApps, grouped], initial: layout(tile("counter")) });
     const { baseElement } = render(<wb.Launcher />);
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     // The shell renders a group's label as its first child; there is no part
     // name on it, so read the group's own first element.
@@ -343,7 +343,7 @@ describe("Launcher · per-pane invocation and the rows slot (5.D)", () => {
     const wb = createWorkbench({ apps: demoApps, initial: layout(tile("counter")) });
     const { baseElement } = render(<wb.Launcher renderDetail={(row) => `[${row.kind}]`} />);
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     expect(baseElement.querySelector("#place\\:notes")?.textContent).toContain("[app]");
   });
@@ -370,7 +370,7 @@ describe("Launcher · rows scope (C1 finding 6)", () => {
       </>,
     );
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.textContent ?? "");
     expect(rows.some((row) => row.includes("elsewhere") && row.includes("in another workspace"))).toBe(true);
@@ -391,21 +391,21 @@ describe("Launcher · rows scope (C1 finding 6)", () => {
       </>,
     );
     // Link workspace one's view into workspace two as well.
-    const [firstWorkspace, secondWorkspace] = wb.store.getState().document.workspaces;
+    const [firstWorkspace, secondWorkspace] = wb.core.getState().document.workspaces;
     const sharedView = (() => {
       const leaf = leaves(firstWorkspace!.tree)[0]!;
       return leaf.body.case === "leaf" ? leaf.body.value.viewId : "";
     })();
     act(() => {
-      wb.verbs.selectWorkspace(secondWorkspace!.id);
-      wb.verbs.split(leaves(secondWorkspace!.tree)[0]!.id, "row");
+      wb.execute(commands.selectWorkspace(secondWorkspace!.id));
+      wb.execute(commands.duplicate(leaves(secondWorkspace!.tree)[0]!.id, "row"));
     });
-    const newPane = leaves(wb.store.getState().document.workspaces[1]?.tree)[1]!.id;
+    const newPane = leaves(wb.core.getState().document.workspaces[1]?.tree)[1]!.id;
     act(() => {
-      wb.verbs.link(newPane, sharedView);
+      wb.execute(commands.link(newPane, sharedView));
     });
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     // The shared view IS on screen in workspace two. Deciding foreignness by
     // "which workspace holds its FIRST placement" calls it foreign here and
@@ -424,7 +424,7 @@ describe("Launcher · rows scope (C1 finding 6)", () => {
       </>,
     );
     act(() => {
-      wb.verbs.openLauncher();
+      wb.dispatch({ kind: "launcher.open" });
     });
     const rows = [...baseElement.querySelectorAll('[data-part="launcher-row"]')].map((row) => row.textContent ?? "");
     expect(rows.some((row) => row.includes("elsewhere"))).toBe(false);

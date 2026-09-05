@@ -1,0 +1,10 @@
+Source commit: 142b458a410ad8302cdf4afbc8c240d47b161c57
+Targeted existing tests: pnpm exec vitest run src/components/WireLayer/route.test.ts src/links/connect.test.tsx src/links/identity.test.tsx
+Test Files 3 passed (3); Tests 11 passed (11).
+Source replay executed: scripts/02-replay-route-and-seed.mjs; output source-replay.json.
+Native browser replay: node --check passed; not independently executed end to end.
+Actual browser evidence: Playwright MCP resize/pointer/keyboard/wheel actions.
+Local Markdown references: no missing targets. JSON records: all parsed.
+PDF: 29 pages; title, findings/table, and API reference pages visually inspected.
+Upload dry-run: passed.
+OK: uploaded PBUI-WIRING-1 Intern Review and Browser Evidence.pdf -> /ai/2026/09/04/PBUI-WIRING-1

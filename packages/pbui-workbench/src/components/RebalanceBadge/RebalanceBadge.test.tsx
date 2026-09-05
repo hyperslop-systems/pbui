@@ -1,9 +1,9 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import type { ReactNode } from "react";
+import { layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { WorkbenchContext } from "../../context";
-import { createWorkbench } from "../../createWorkbench";
-import { layout, split, tile } from "../../document";
+import { createWorkbench } from "../../createWorkbenchShell";
 import { demoApps } from "../../stories/demoApps";
 import { RebalanceStatusBadge } from "./RebalanceBadge";
 
@@ -50,6 +50,6 @@ describe("RebalanceStatusBadge", () => {
     expect(badge?.textContent).toMatch(/1 tile under minimum/);
     expect(badge?.getAttribute("title")).toMatch(/worst shortfall \d+px/);
     fireEvent.click(badge!);
-    expect(wb.store.getState().rebalanceOpen).toBe(true);
+    expect(wb.shell.getState().rebalanceOpen).toBe(true);
   });
 });

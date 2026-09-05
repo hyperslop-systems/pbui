@@ -1,15 +1,10 @@
+import { create } from "@bufbuild/protobuf";
 import { documentSlotPort } from "@hyperslop-systems/pbui";
+import { DocumentPayloadSchema, MutationSchema } from "@hyperslop-systems/workbench-protocol";
+import { applyMutations } from "@hyperslop-systems/workbench-protocol/client";
 import { describe, expect, it } from "vitest";
-import {
-  createAppRegistry,
-  createWorkbench,
-  defineApp,
-  layout,
-  performWorkbenchVerb,
-  split,
-  tile,
-  type WorkbenchVerb,
-} from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench, defineWorkbenchApp, type WorkbenchVerb } from "@hyperslop-systems/pbui-workbench";
+import { commands, layout, split, tile } from "@hyperslop-systems/workbench-core";
 import type { FrontendTool } from "@go-go-golems/chat-provider";
 import { createWorkbenchTools, type WorkbenchToolsOptions } from "./workbenchTools";
 import type { Outcome, VerbLike } from "../types";
@@ -46,31 +41,28 @@ function effectGateway(check: (id: string, subject: ApprovalSubject) => boolean)
 
 const Blank = () => null;
 
-const apps = createAppRegistry([
-  defineApp({ id: "chat", title: "chat", tone: "var(--pbui-pane-alt)", singleton: false, Component: Blank }),
-  defineApp({ id: "trace", title: "trace", tone: "var(--pbui-pane-alt)", singleton: true, Component: Blank }),
-  defineApp({
-    id: "sku",
-    title: "SKU",
-    tone: "var(--pbui-pane-alt)",
-    singleton: false,
-    ports: [documentSlotPort("product")],
-    Component: Blank,
-  }),
-]);
+const apps = [
+  defineWorkbenchApp({ manifest: { id: "chat" }, presentation: { title: "chat", tone: "var(--pbui-pane-alt)", Component: Blank } }),
+  defineWorkbenchApp({ manifest: { id: "trace", viewCardinality: "one" }, presentation: { title: "trace", tone: "var(--pbui-pane-alt)", Component: Blank } }),
+  defineWorkbenchApp({ manifest: { id: "sku", ports: [documentSlotPort("product")] }, presentation: { title: "SKU", tone: "var(--pbui-pane-alt)", Component: Blank } }),
+];
+
+/** The seed holds the product the doc-bound `sku` tests bind: the core validates bindings at its door. */
+const withProduct = (doc: ReturnType<typeof layout>) =>
+  applyMutations(doc, [create(MutationSchema, { body: { case: "documentPut", value: { document: create(DocumentPayloadSchema, { id: "2049", format: "shop.product", schemaVersion: 1, body: {} }) } } })]);
 
 /**
  * A workbench plus the router seam the tools go through. `performed` records
  * exactly what reached the router, which is what the trace would have stored.
  */
 function harness(overrides: Partial<WorkbenchToolsOptions> = {}) {
-  const wb = createWorkbench({ apps, initial: layout(split("row", 0.6, tile("chat"), tile("trace"))) });
+  const wb = createWorkbench({ apps, initial: withProduct(layout(split("row", 0.6, tile("chat"), tile("trace")))) });
   const performed: VerbLike[] = [];
   const tools = createWorkbenchTools({
     getWorkbench: () => wb,
     perform: async (verb) => {
       performed.push(verb);
-      performWorkbenchVerb(wb.verbs, verb as unknown as WorkbenchVerb);
+      wb.perform(verb as unknown as WorkbenchVerb);
       return "performed" as Outcome;
     },
     senderConversationId: "agent-a",
@@ -209,7 +201,7 @@ describe("workbench_create_workspace · success", () => {
       layout: { kind: "split", direction: "row", ratio: 0.55, a: { kind: "tile", appId: "chat" }, b: { kind: "tile", appId: "trace" } },
     })) as any;
 
-    // The verb went through the ROUTER, not straight to wb.verbs — that is
+    // The verb went through the ROUTER, not straight to wb.execute — that is
     // the indirection that puts it in the trace.
     expect(performed).toHaveLength(1);
     expect(performed[0]).toMatchObject({ kind: "workspace.create", name: "Gold desk" });
@@ -219,7 +211,7 @@ describe("workbench_create_workspace · success", () => {
     expect(result.active).toBe(true);
     expect(result.tiles.map((t: any) => t.appId)).toEqual(["chat", "trace"]);
     expect(result).not.toHaveProperty("undoToken");
-    expect(wb.store.getState().document.workspaces).toHaveLength(2);
+    expect(wb.core.getState().document.workspaces).toHaveLength(2);
   });
 });
 
@@ -235,10 +227,10 @@ describe("workbench_open_tile", () => {
   it("reports wentToExisting rather than opening a second identical tile", async () => {
     const { call, wb } = harness();
     await call("workbench_open_tile", { appId: "sku", documents: { product: "2049" } });
-    const before = wb.store.getState().document;
+    const before = wb.core.getState().document;
     const second = (await call("workbench_open_tile", { appId: "sku", documents: { product: "2049" } })) as any;
     expect(second.wentToExisting).toBe(true);
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   it("validates the app the same way create does", async () => {
@@ -249,19 +241,19 @@ describe("workbench_open_tile", () => {
   });
 
   it("cannot bypass a deny policy through the specialized tool", async () => {
-    const { call, performed } = harness({ policy: { "view.open": "deny" } });
+    const { call, performed } = harness({ policy: { "view.show": "deny" } });
     const result = await call("workbench_open_tile", { appId: "sku", documents: { product: "2049" } });
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining("not something the assistant may do") });
     expect(performed).toHaveLength(0);
   });
 
-  it("accepts a matching one-shot approval when view.open requires confirmation", async () => {
+  it("accepts a matching one-shot approval when view.show requires confirmation", async () => {
     const seen: WorkbenchVerb[] = [];
     const h = harness({
-      policy: { "view.open": "confirm" },
+      policy: { "view.show": "confirm" },
       effectGateway: effectGateway((id, subject) => {
         seen.push(subject.arguments as unknown as WorkbenchVerb);
-        return id === "p-open" && subject.operation === "view.open";
+        return id === "p-open" && subject.operation === "view.show";
       }),
     });
     expect(await h.call("workbench_open_tile", { appId: "sku", documents: { product: "2049" } })).toMatchObject({
@@ -280,11 +272,11 @@ describe("workbench_open_tile", () => {
 describe("workbench_perform · policy", () => {
   it("applies an allowed verb and returns the new tiles", async () => {
     const { call, wb, performed } = harness();
-    const placement = wb.store.getState().document.workspaces[0]!.tree!.body.case === "split" ? null : null;
+    const placement = wb.core.getState().document.workspaces[0]!.tree!.body.case === "split" ? null : null;
     void placement;
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
-    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.split", placementId: first, direction: "col" }] })) as any;
+    const result = (await call("workbench_perform", { verbs: [commands.duplicate(first, "col")] })) as any;
     expect(result.applied).toBe(1);
     expect(result.results[0].ok).toBe(true);
     // Atomic batches commit through Workbench.applyPlan; the gateway effect is
@@ -298,7 +290,7 @@ describe("workbench_perform · policy", () => {
     const { call, performed } = harness();
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
-    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }] })) as any;
+    const result = (await call("workbench_perform", { verbs: [commands.close(first)] })) as any;
     expect(result.applied).toBe(0);
     expect(result.results[0].error).toContain("call pbui_propose first");
     expect(performed).toHaveLength(0);
@@ -308,7 +300,7 @@ describe("workbench_perform · policy", () => {
     const { call } = harness({ effectGateway: effectGateway(() => false) });
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
-    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
+    const result = (await call("workbench_perform", { verbs: [commands.close(first)], confirmationId: "p-1" })) as any;
     // The message names the operation, so a model that reused an id for a
     // different change can see which change was refused.
     expect(result.results[0].error).toContain('no approved proposal with id "p-1"');
@@ -319,7 +311,7 @@ describe("workbench_perform · policy", () => {
     const { call, performed } = harness({ effectGateway: effectGateway((id) => id === "p-1") });
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
-    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.close", placementId: first }], confirmationId: "p-1" })) as any;
+    const result = (await call("workbench_perform", { verbs: [commands.close(first)], confirmationId: "p-1" })) as any;
     expect(result.applied).toBe(1);
     expect(performed).toHaveLength(0);
   });
@@ -335,7 +327,7 @@ describe("workbench_perform · policy", () => {
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
     const result = (await call("workbench_perform", {
-      verbs: [{ kind: "nonsense" }, { kind: "tile.activate", placementId: first }],
+      verbs: [{ kind: "nonsense" }, commands.activate(first)],
     })) as any;
     expect(result.results[0].ok).toBe(false);
     expect(result.results[1].ok).toBe(false);
@@ -347,39 +339,39 @@ describe("workbench_perform · policy", () => {
     const { call, wb } = harness();
     const described = (await call("workbench_describe", {})) as any;
     const first = described.workspaces[0].tiles[0].placementId;
-    wb.verbs.setTitle(described.workspaces[0].tiles[0].viewId, "human changed it");
-    const before = wb.store.getState().document;
+    wb.execute(commands.setTitle(described.workspaces[0].tiles[0].viewId, "human changed it"));
+    const before = wb.core.getState().document;
 
     const result = (await call("workbench_perform", {
-      verbs: [{ kind: "tile.split", placementId: first, direction: "row" }],
+      verbs: [commands.duplicate(first, "row")],
       expectedRevision: described.revision,
     })) as any;
 
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining("call workbench_describe again") });
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   it("preflights all candidates and changes nothing for an invalid atomic batch", async () => {
     const { call, wb } = harness();
     const described = (await call("workbench_describe", {})) as any;
-    const before = wb.store.getState().document;
+    const before = wb.core.getState().document;
     const result = (await call("workbench_perform", {
       verbs: [
-        { kind: "view.setTitle", viewId: described.workspaces[0].tiles[0].viewId, title: "would apply" },
-        { kind: "tile.close", placementId: "missing" },
+        commands.setTitle(described.workspaces[0].tiles[0].viewId, "would apply"),
+        commands.close("missing"),
       ],
       expectedRevision: described.revision,
     })) as any;
 
     expect(result).toMatchObject({ ok: false, atomic: true, applied: 0 });
     expect(result.results.every((entry: any) => entry.ok === false)).toBe(true);
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   it("refuses more verbs than the limit", async () => {
     const { call } = harness({ limits: { verbsPerCall: 1 } });
     const result = (await call("workbench_perform", {
-      verbs: [{ kind: "tile.activate", placementId: "a" }, { kind: "tile.activate", placementId: "b" }],
+      verbs: [commands.activate("a"), commands.activate("b")],
     })) as any;
     expect(result.error).toBe("2 verbs in one call, the limit is 1");
   });
@@ -389,7 +381,7 @@ describe("workbench_switch_workspace", () => {
   it("switches and reports the tiles it landed on", async () => {
     const { call, wb } = harness();
     const created = (await call("workbench_create_workspace", { name: "second", layout: { kind: "tile", appId: "chat" } })) as any;
-    const first = wb.store.getState().document.workspaces[0]!.id;
+    const first = wb.core.getState().document.workspaces[0]!.id;
     const result = (await call("workbench_switch_workspace", { workspaceId: first })) as any;
     expect(result.activeWorkspaceId).toBe(first);
     expect(result.tiles).toHaveLength(2);
@@ -402,15 +394,15 @@ describe("workbench_switch_workspace", () => {
   });
 
   it("honours a policy override in the specialized switch tool", async () => {
-    const h = harness({ policy: { "workspace.select": "deny" } });
+    const h = harness({ policy: { "session.selectWorkspace": "deny" } });
     const created = (await h.call("workbench_create_workspace", { name: "second", layout: { kind: "tile", appId: "chat" } })) as any;
-    const first = h.wb.store.getState().document.workspaces[0]!.id;
+    const first = h.wb.core.getState().document.workspaces[0]!.id;
     expect(created.workspaceId).not.toBe(first);
     expect(await h.call("workbench_switch_workspace", { workspaceId: first })).toMatchObject({
       ok: false,
       error: expect.stringContaining("not something the assistant may do"),
     });
-    expect(h.wb.store.getState().workspaceId).toBe(created.workspaceId);
+    expect(h.wb.core.getState().session.workspaceId).toBe(created.workspaceId);
   });
 });
 
@@ -432,16 +424,16 @@ describe("unsafe whole-document undo", () => {
 describe("a refused verb is reported as refused, not as applied", () => {
   it("reports ok:false when the workbench refuses, and does not count it", async () => {
     // The router's local handler throws on a refusal; before the fix
-    // performWorkbenchVerb swallowed the handler's `false` and the model was
+    // the dispatcher swallowed the handler's `false` and the model was
     // told a close of the last tile had landed.
-    const wb = createWorkbench({ apps, initial: layout(tile("chat")) });
+    const wb = createWorkbench({ apps, initial: layout(tile("chat")), onRefused: () => undefined });
     const tools = createWorkbenchTools({
       getWorkbench: () => wb,
       perform: async (verb) => {
-        const ok = performWorkbenchVerb(wb.verbs, verb as unknown as WorkbenchVerb);
+        const ok = wb.perform(verb as unknown as WorkbenchVerb);
         return (ok ? "performed" : "rejected:the workbench refused") as Outcome;
       },
-      policy: { "tile.close": "allow" },
+      policy: { "placement.close": "allow" },
       senderConversationId: "agent-a",
       effectGateway: new AgentEffectGateway(),
     });
@@ -451,18 +443,18 @@ describe("a refused verb is reported as refused, not as applied", () => {
     const only = ((await describe_.execute({} as never, ctx)) as any).workspaces[0].tiles[0].placementId;
 
     const described = (await describe_.execute({} as never, ctx)) as any;
-    const result = (await perform.execute({ verbs: [{ kind: "tile.close", placementId: only }], expectedRevision: described.revision } as never, ctx)) as any;
+    const result = (await perform.execute({ verbs: [commands.close(only)], expectedRevision: described.revision } as never, ctx)) as any;
     expect(result.applied).toBe(0);
     expect(result.results[0].ok).toBe(false);
-    expect(wb.store.getState().document.workspaces[0]!.tree).toBeTruthy();
+    expect(wb.core.getState().document.workspaces[0]!.tree).toBeTruthy();
   });
 
-  it("performWorkbenchVerb returns false for every handler that refuses", () => {
-    const wb = createWorkbench({ apps, initial: layout(tile("chat")) });
-    expect(performWorkbenchVerb(wb.verbs, { kind: "tile.close", placementId: "n-nope" })).toBe(false);
-    expect(performWorkbenchVerb(wb.verbs, { kind: "workspace.select", workspaceId: "ws-nope" })).toBe(false);
-    expect(performWorkbenchVerb(wb.verbs, { kind: "view.goTo", viewId: "v-nope" })).toBe(false);
-    expect(performWorkbenchVerb(wb.verbs, { kind: "workspace.create", name: "ok" })).toBe(true);
+  it("workbench.perform returns false for every command the core refuses", () => {
+    const wb = createWorkbench({ apps, initial: layout(tile("chat")), onRefused: () => undefined });
+    expect(wb.perform(commands.close("n-nope"))).toBe(false);
+    expect(wb.perform(commands.selectWorkspace("ws-nope"))).toBe(false);
+    expect(wb.perform(commands.goTo("v-nope"))).toBe(false);
+    expect(wb.perform(commands.createWorkspace("ok"))).toBe(true);
   });
 });
 
@@ -472,7 +464,7 @@ describe("an approval names the operation it approved", () => {
     const tiles = (await h.call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
     const result = (await h.call("workbench_perform", {
-      verbs: [{ kind: "tile.close", placementId: first }],
+      verbs: [commands.close(first)],
       ...(confirmationId ? { confirmationId } : {}),
     })) as any;
     return { h, result, first };
@@ -490,7 +482,7 @@ describe("an approval names the operation it approved", () => {
       "p-1",
     );
     expect(seen).toHaveLength(1);
-    expect(seen[0]).toMatchObject({ id: "p-1", verb: { verbs: [{ kind: "tile.close" }] } });
+    expect(seen[0]).toMatchObject({ id: "p-1", verb: { verbs: [{ kind: "placement.close" }] } });
     expect(result.results[0].error).toContain("no approved proposal");
   });
 
@@ -514,9 +506,9 @@ describe("an approval names the operation it approved", () => {
     const h = harness({ effectGateway: effectGateway((id) => id === "p-1") });
     const tiles = (await h.call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
-    const one = (await h.call("workbench_perform", { verbs: [{ kind: "tile.replace", placementId: first, appId: "chat" }], confirmationId: "p-1" })) as any;
+    const one = (await h.call("workbench_perform", { verbs: [commands.replace(first, "chat")], confirmationId: "p-1" })) as any;
     expect(one.applied).toBe(1);
-    const two = (await h.call("workbench_perform", { verbs: [{ kind: "tile.replace", placementId: first, appId: "trace" }], confirmationId: "p-1" })) as any;
+    const two = (await h.call("workbench_perform", { verbs: [commands.replace(first, "trace")], confirmationId: "p-1" })) as any;
     expect(two.applied).toBe(0);
     expect(two.results[0].error).toContain("already been used");
   });
@@ -527,12 +519,12 @@ describe("the perform tool validates ids and availability", () => {
     const { call, wb } = harness();
     const tiles = (await call("workbench_describe", {})) as any;
     const first = tiles.workspaces[0].tiles[0].placementId;
-    const before = wb.store.getState().document;
+    const before = wb.core.getState().document;
     const result = (await call("workbench_perform", {
-      verbs: [{ kind: "tile.split", placementId: first, direction: "col", appId: "invnetory" }],
+      verbs: [commands.split(first, "col", "invnetory")],
     })) as any;
     expect(result.results[0].error).toContain('unknown app "invnetory"');
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   it("returns an actionable refusal when rendered pane minima forbid a split", async () => {
@@ -547,19 +539,19 @@ describe("the perform tool validates ids and availability", () => {
     } as DOMRect);
     root.append(placement);
     wb.setRoot(root);
-    const before = wb.store.getState().document;
+    const before = wb.core.getState().document;
 
     const result = (await call("workbench_perform", {
-      verbs: [{ kind: "tile.split", placementId: first, direction: "row" }],
+      verbs: [commands.duplicate(first, "row")],
       expectedRevision: description.revision,
     })) as any;
     expect(result.results[0].error).toContain("too small to split side by side");
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   it("rejects a stale placement with the ids that are actually on screen", async () => {
     const { call } = harness();
-    const result = (await call("workbench_perform", { verbs: [{ kind: "tile.activate", placementId: "n-gone" }] })) as any;
+    const result = (await call("workbench_perform", { verbs: [commands.activate("n-gone")] })) as any;
     expect(result.results[0].error).toContain('unknown tile "n-gone"');
   });
 
@@ -567,8 +559,8 @@ describe("the perform tool validates ids and availability", () => {
     const { call } = harness();
     const result = (await call("workbench_perform", {
       verbs: [
-        { kind: "view.setTitle", viewId: "v-gone", title: "x" },
-        { kind: "split.resize", splitId: "n-gone", ratio: 0.5 },
+        commands.setTitle("v-gone", "x"),
+        commands.resize("n-gone", 0.5),
         { kind: "workspace.rename", workspaceId: "ws-gone", name: "x" },
       ],
     })) as any;
@@ -579,15 +571,8 @@ describe("the perform tool validates ids and availability", () => {
   });
 
   it("refuses an application the product hid from this workspace", async () => {
-    const scoped = defineApp({
-      id: "ledger",
-      title: "ledger",
-      tone: "var(--pbui-pane-alt)",
-      singleton: false,
-      available: () => false,
-      Component: Blank,
-    });
-    const wb = createWorkbench({ apps: createAppRegistry([...apps.list(), scoped]), initial: layout(tile("chat")) });
+    const scoped = defineWorkbenchApp({ manifest: { id: "ledger" }, presentation: { title: "ledger", tone: "var(--pbui-pane-alt)", available: () => false, Component: Blank } });
+    const wb = createWorkbench({ apps: [...apps, scoped], initial: layout(tile("chat")) });
     const tools = createWorkbenchTools({ getWorkbench: () => wb, perform: async () => "performed" as Outcome, senderConversationId: "agent-a", effectGateway: new AgentEffectGateway() });
     const ctx = { signal: new AbortController().signal, toolCallId: "t" };
     const create_ = tools.tools.find((t) => t.name === "workbench_create_workspace") as FrontendTool<any, any>;
@@ -619,34 +604,34 @@ describe("workbench_apply", () => {
   it("applies a valid batch atomically", async () => {
     const { run, wb } = rawHarness();
     const result = (await run({
-      mutations: [{ workspaceRename: { workspaceId: wb.store.getState().workspaceId, name: "renamed" } }],
+      mutations: [{ workspaceRename: { workspaceId: wb.core.getState().session.workspaceId, name: "renamed" } }],
     })) as any;
     expect(result.ok).toBe(true);
-    expect(wb.store.getState().document.workspaces[0]!.name).toBe("renamed");
+    expect(wb.core.getState().document.workspaces[0]!.name).toBe("renamed");
     expect(result).not.toHaveProperty("undoToken");
   });
 
   it("rejects a raw batch based on an old described revision", async () => {
     const { run, wb, call } = rawHarness();
     const described = (await call("workbench_describe", {})) as any;
-    wb.verbs.renameWorkspace(wb.store.getState().workspaceId, "human update");
-    const before = wb.store.getState().document;
+    wb.execute(commands.renameWorkspace(wb.core.getState().session.workspaceId, "human update"));
+    const before = wb.core.getState().document;
     const result = (await run({
-      mutations: [{ workspaceRename: { workspaceId: wb.store.getState().workspaceId, name: "stale agent" } }],
+      mutations: [{ workspaceRename: { workspaceId: wb.core.getState().session.workspaceId, name: "stale agent" } }],
       expectedRevision: described.revision,
     })) as any;
     expect(result.error).toContain("call workbench_describe again");
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   it("returns the applier's code and path for a batch it refuses", async () => {
     const { run, wb } = rawHarness();
-    const before = wb.store.getState().document;
+    const before = wb.core.getState().document;
     const result = (await run({ mutations: [{ workspaceRename: { workspaceId: "ws-nope", name: "x" } }] })) as any;
     expect(result.ok).toBe(false);
     expect(result.code).toBe("unknown_workspace");
     expect(result.path).toContain("workspaceRename");
-    expect(wb.store.getState().document).toBe(before);
+    expect(wb.core.getState().document).toBe(before);
   });
 
   it("rejects something that is not a mutation at all", async () => {
@@ -658,11 +643,12 @@ describe("workbench_apply", () => {
 
   it("will not delete without an approval, so the escape hatch is not a way around the gate", async () => {
     const { run, wb } = rawHarness();
-    const id = wb.verbs.createWorkspace("second", { kind: "tile", appId: "chat" })!;
+    const created = wb.execute(commands.createWorkspace("second", { kind: "tile", appId: "chat" }));
+    const id = created.ok ? created.workspaceId! : "";
     const denied = (await run({ mutations: [{ workspaceDelete: { workspaceId: id } }] })) as any;
     expect(denied.ok).toBe(false);
     expect(denied.error).toContain("call pbui_propose first");
-    expect(wb.store.getState().document.workspaces).toHaveLength(2);
+    expect(wb.core.getState().document.workspaces).toHaveLength(2);
   });
 
   it("deletes once the product approves that exact raw batch", async () => {
@@ -674,10 +660,11 @@ describe("workbench_apply", () => {
         return confirmationId === "p-9" && Boolean(args.mutations[0]?.workspaceDelete);
       }),
     });
-    const id = wb.verbs.createWorkspace("second", { kind: "tile", appId: "chat" })!;
+    const created = wb.execute(commands.createWorkspace("second", { kind: "tile", appId: "chat" }));
+    const id = created.ok ? created.workspaceId! : "";
     const result = (await run({ mutations: [{ workspaceDelete: { workspaceId: id } }], confirmationId: "p-9" })) as any;
     expect(result.ok).toBe(true);
-    expect(wb.store.getState().document.workspaces).toHaveLength(1);
+    expect(wb.core.getState().document.workspaces).toHaveLength(1);
     expect(seen).toHaveLength(1);
   });
 
@@ -687,7 +674,7 @@ describe("workbench_apply", () => {
     const [first, second] = description.workspaces[0].tiles;
     const denied = (await run({
       mutations: [
-        { placementReplace: { workspaceId: wb.store.getState().workspaceId, placementId: first.placementId, viewId: second.viewId } },
+        { placementReplace: { workspaceId: wb.core.getState().session.workspaceId, placementId: first.placementId, viewId: second.viewId } },
         { viewConfigure: { viewId: first.viewId, appId: "chat" } },
       ],
     })) as any;
@@ -706,7 +693,7 @@ describe("workbench_apply", () => {
 
   it("refuses more mutations than the limit", async () => {
     const { run, wb } = rawHarness({ limits: { mutationsPerCall: 1 } });
-    const workspaceId = wb.store.getState().workspaceId;
+    const workspaceId = wb.core.getState().session.workspaceId;
     const result = (await run({
       mutations: [
         { workspaceRename: { workspaceId, name: "a" } },
@@ -720,15 +707,15 @@ describe("workbench_apply", () => {
 /* ---- PBUI-LINK-1 Phase 7: the agent links tiles through the same tools --- */
 
 describe("workbench_perform · tile linking", () => {
-  const ordersApp = defineApp({ id: "orders", title: "orders", tone: "var(--pbui-pane-alt)", singleton: false, ports: [{ name: "order", direction: "out", contract: "order", doc: "the clicked order" }], Component: Blank });
-  const detailApp = defineApp({ id: "detail", title: "detail", tone: "var(--pbui-pane-alt)", singleton: false, ports: [{ name: "order", direction: "in", contract: "order", doc: "the order shown", fallbackContext: "workspace.order" }], Component: Blank });
+  const ordersApp = defineWorkbenchApp({ manifest: { id: "orders", ports: [{ name: "order", direction: "out", contract: "order", doc: "the clicked order" }] }, presentation: { title: "orders", tone: "var(--pbui-pane-alt)", Component: Blank } });
+  const detailApp = defineWorkbenchApp({ manifest: { id: "detail", ports: [{ name: "order", direction: "in", contract: "order", doc: "the order shown", fallbackContext: "workspace.order" }] }, presentation: { title: "detail", tone: "var(--pbui-pane-alt)", Component: Blank } });
 
   function linkedHarness() {
-    const wb = createWorkbench({ apps: createAppRegistry([ordersApp, detailApp]), initial: layout(split("row", 0.5, tile("orders", { title: "Orders East" }), tile("detail"))) });
+    const wb = createWorkbench({ apps: [ordersApp, detailApp], initial: layout(split("row", 0.5, tile("orders", { title: "Orders East" }), tile("detail"))) });
     const tools = createWorkbenchTools({
       getWorkbench: () => wb,
       perform: async (verb) => {
-        performWorkbenchVerb(wb.verbs, verb as unknown as WorkbenchVerb);
+        wb.perform(verb as unknown as WorkbenchVerb);
         return "performed" as Outcome;
       },
       senderConversationId: "agent-a",
@@ -758,6 +745,6 @@ describe("workbench_perform · tile linking", () => {
     const { run } = linkedHarness();
     const described = (await run("workbench_describe", {})) as { revision: string };
     const result = (await run("workbench_perform", { verbs: [{ kind: "port.follow", source: "a/x" }], expectedRevision: described.revision })) as { error?: string; errors?: unknown[] };
-    expect(JSON.stringify(result)).toContain("not a complete workbench verb");
+    expect(JSON.stringify(result)).toContain("not a complete workbench command");
   });
 });

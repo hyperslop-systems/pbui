@@ -1,4 +1,4 @@
-import { AppBody, Text, Toolbar } from "@hyperslop-systems/pbui";
+import { AppBody, TileHeader } from "@hyperslop-systems/pbui";
 import { useEmitPort, type AppProps } from "@hyperslop-systems/pbui-workbench";
 import type { Shop } from "../../createShop";
 import { useHostRevision } from "../../host";
@@ -13,20 +13,12 @@ export interface CustomersTableProps extends AppProps {
 /** Who buys, with what they have spent this summer. Each row emits its `<customer>` on click and as attended on hover. */
 export function CustomersTable({ shop, view }: CustomersTableProps) {
   useHostRevision(shop.host);
-  const { Presentation } = shop.pbui;
+  const { ObjectChip } = shop.pbui;
   const emit = useEmitPort(view, "customer");
   const customers = shop.host.rows("customers");
   return (
     <div data-part="customers-table" className={styles.app}>
-      <Toolbar tight>
-        <Text size="tiny" strong>
-          customers
-        </Text>
-        <span className={styles.spacer} />
-        <Text size="tiny" tone="faint">
-          {customers.length} customers
-        </Text>
-      </Toolbar>
+      <TileHeader title="customers" status={`${customers.length} customers`} />
       <AppBody flush className={styles.body}>
         <table className={styles.table}>
           <thead>
@@ -46,9 +38,9 @@ export function CustomersTable({ shop, view }: CustomersTableProps) {
               return (
                 <tr key={customer.id} data-customer-id={customer.id} className={styles.row} onClick={() => emit(reference)} onContextMenuCapture={() => emit(reference)} onPointerEnter={() => emit(reference, { attended: true })}>
                   <td>
-                    <Presentation reference={reference} doc={`${customer.name}, a ${customer.kind} customer in ${customer.city}`}>
+                    <ObjectChip reference={reference} doc={`${customer.name}, a ${customer.kind} customer in ${customer.city}`}>
                       {customer.name}
-                    </Presentation>
+                    </ObjectChip>
                   </td>
                   <td>{customer.kind}</td>
                   <td>{customer.city}</td>

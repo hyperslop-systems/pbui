@@ -53,12 +53,10 @@
       "idHint": "placementId, from workbench_describe",
       "tone": "var(--pbui-selected)",
       "verbs": [
-        "tile.split",
-        "tile.close",
-        "tile.replace",
-        "tile.link",
-        "view.setTitle",
-        "view.goTo",
+        "placement.duplicate",
+        "placement.close",
+        "view.show",
+        "view.configure",
         "askAgent"
       ],
       "example": "[[tile:n-7|inventory]]"
@@ -68,7 +66,7 @@
       "idHint": "workspaceId, from workbench_describe",
       "tone": "var(--pbui-tone-neutral)",
       "verbs": [
-        "workspace.select",
+        "session.selectWorkspace",
         "workspace.rename",
         "workspace.delete",
         "workspace.clone",
@@ -81,7 +79,7 @@
       "idHint": "appId, from workbench_describe",
       "tone": "var(--pbui-pane-alt)",
       "verbs": [
-        "app.place",
+        "view.show",
         "askAgent"
       ],
       "example": "[[app:inventory|inventory]]"
@@ -290,112 +288,83 @@
       },
       "danger": true
     },
-    "tile.split": {
-      "doc": "open a new pane beside a tile",
+    "placement.duplicate": {
+      "doc": "open a second pane beside a tile",
       "fields": {
         "placementId": "string",
-        "direction": "string",
-        "appId?": "string"
+        "axis?": "string"
       }
     },
-    "tile.close": {
+    "placement.close": {
       "doc": "close a tile",
       "fields": {
         "placementId": "string"
       },
       "danger": true
     },
-    "tile.swap": {
+    "placement.swap": {
       "doc": "exchange what two tiles show",
       "fields": {
         "a": "string",
         "b": "string"
       }
     },
-    "tile.dock": {
+    "placement.dock": {
       "doc": "move a tile to an edge of another",
       "fields": {
         "source": "string",
         "target": "string",
-        "zone": "string"
+        "edge": "string"
       }
     },
-    "tile.activate": {
-      "doc": "make a tile the keyboard target",
+    "placement.replaceWith": {
+      "doc": "move a tile onto another, closing what it showed",
       "fields": {
-        "placementId": "string"
-      }
-    },
-    "tile.replace": {
-      "doc": "show a different application in a tile",
-      "fields": {
-        "placementId": "string",
-        "appId": "string",
-        "documents?": "object"
+        "source": "string",
+        "target": "string"
       },
       "danger": true
     },
-    "tile.link": {
-      "doc": "show an existing view in a tile too",
-      "fields": {
-        "placementId": "string",
-        "viewId": "string"
-      }
-    },
-    "split.resize": {
+    "placement.resize": {
       "doc": "move a divider",
       "fields": {
         "splitId": "string",
-        "ratio": "number"
+        "ratio": "number",
+        "snap?": "boolean"
       }
     },
-    "app.place": {
-      "doc": "open an application beside the active tile",
+    "view.show": {
+      "doc": "show an application or an existing view somewhere on screen",
       "fields": {
-        "appId": "string",
-        "from?": "string"
+        "view": "string",
+        "placement": "string"
       }
     },
-    "view.setTitle": {
-      "doc": "name a tile, or clear its name",
-      "fields": {
-        "viewId": "string",
-        "title": "string"
-      }
-    },
-    "view.open": {
-      "doc": "open an application on specific documents in a new tile",
-      "fields": {
-        "appId": "string",
-        "documents": "object",
-        "near?": "string",
-        "title?": "string"
-      }
-    },
-    "view.rebind": {
-      "doc": "point a tile at different documents",
+    "view.configure": {
+      "doc": "name a tile, or point it at different documents",
       "fields": {
         "viewId": "string",
-        "documents": "object"
+        "title?": "string",
+        "documents?": "object"
       }
     },
-    "view.goTo": {
-      "doc": "go to the tile showing a view",
-      "fields": {
-        "viewId": "string"
-      }
-    },
-    "workspace.select": {
+    "session.selectWorkspace": {
       "doc": "show a different workspace",
       "fields": {
         "workspaceId": "string"
+      }
+    },
+    "session.activatePlacement": {
+      "doc": "make a tile the keyboard target",
+      "fields": {
+        "placementId?": "string"
       }
     },
     "workspace.create": {
       "doc": "create a workspace of tiles",
       "fields": {
         "name": "string",
-        "spec?": "object",
+        "layout?": "object",
         "workspaceId?": "string",
         "select?": "boolean"
       }
@@ -426,7 +395,7 @@
     "launcher.open": {
       "doc": "open the launcher",
       "fields": {
-        "placementId?": "string"
+        "from?": "string"
       }
     },
     "launcher.close": {

@@ -8,15 +8,6 @@
   padding: var(--pbui-space-2);
 }
 
-.header {
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.spacer {
-  flex: 1 1 auto;
-}
-
 .split {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);

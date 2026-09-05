@@ -140,13 +140,23 @@ func Validate(ctx context.Context, document *Document, deps Dependencies, limits
 			}
 			singletons[view.AppId] = view.Id
 		}
+		// The same checks, in the same order, as the TypeScript core (design
+		// doc 04 §12.5): legality, existence, format; then requiredness.
 		for binding, documentID := range view.Documents {
 			bindingPath := fmt.Sprintf("%s.documents[%q]", path, binding)
-			if _, known := app.DocumentBindings[binding]; !known {
+			rule, known := app.DocumentBindings[binding]
+			if !known && app.AdditionalBindings == nil {
 				return invalid("unknown_binding", bindingPath, "application %q does not define binding %q", view.AppId, binding)
 			}
-			if _, exists := document.Documents[documentID]; !exists {
+			payload, exists := document.Documents[documentID]
+			if !exists {
 				return invalid("unknown_document", bindingPath, "document %q does not exist", documentID)
+			}
+			if !known {
+				rule = *app.AdditionalBindings
+			}
+			if payload != nil && !rule.acceptsFormat(payload.Format) {
+				return invalid("invalid_binding_format", bindingPath, "binding %q of application %q accepts %v; document %q has format %q", binding, view.AppId, rule.Formats, documentID, payload.Format)
 			}
 		}
 		for binding, rule := range app.DocumentBindings {

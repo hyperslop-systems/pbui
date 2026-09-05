@@ -20,7 +20,9 @@
  *      Enter commits — the product's status line does the saying.
  */
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Dialog, Text, TextInput } from "../components";
+import { TextInput } from "../components/atoms/TextInput";
+import { Dialog } from "../components/Dialog";
+import { Text } from "../components/foundation";
 
 export interface LauncherShellRow {
   /** Unique across all groups; also the DOM id for aria-activedescendant. */

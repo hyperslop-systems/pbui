@@ -1,0 +1,18 @@
+[
+  {
+    "n": 1,
+    "id": "applications-workbench--default",
+    "title": "Applications/Workbench",
+    "name": "Default",
+    "file": "001-applications-workbench--default.png",
+    "size": "1440x1012"
+  },
+  {
+    "n": 2,
+    "id": "applications-workbench-deviceapprovalpage--missing-pairing-link",
+    "title": "Applications/Workbench/DeviceApprovalPage",
+    "name": "Missing Pairing Link",
+    "file": "002-applications-workbench-deviceapprovalpage--missing-pairing-link.png",
+    "size": "444x544"
+  }
+]

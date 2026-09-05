@@ -1,0 +1,30 @@
+[
+  {
+    "n": 1,
+    "story": "visual-audit-sandbox-devtools--all-devtools",
+    "slug": "devtools-initial-content",
+    "description": "Script tile (Counter, running) beside inspector/timeline/REPL, all bound to the same host — the load/render entries and state pane are already populated.",
+    "file": "001-devtools-initial-content.png"
+  },
+  {
+    "n": 2,
+    "story": "visual-audit-sandbox-devtools--all-devtools",
+    "slug": "inspector-tree-pane",
+    "description": "Inspector's tree pane after two 'increment' clicks: the render outline with per-node fire buttons.",
+    "file": "002-inspector-tree-pane.png"
+  },
+  {
+    "n": 3,
+    "story": "visual-audit-sandbox-devtools--all-devtools",
+    "slug": "repl-with-output",
+    "description": "Evaluating `$state` in the REPL: the result line renders the JSON value beneath the echoed input.",
+    "file": "003-repl-with-output.png"
+  },
+  {
+    "n": 4,
+    "story": "visual-audit-sandbox-devtools--all-devtools",
+    "slug": "timeline-with-entries",
+    "description": "Timeline after the increments and the REPL evaluate: render/intent/event/evaluate rows, newest first.",
+    "file": "004-timeline-with-entries.png"
+  }
+]

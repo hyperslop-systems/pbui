@@ -3,12 +3,13 @@ import type { Preview } from "@storybook/react-vite";
 // The whole foundation, in dependency order. There is no CSS framework to
 // import ahead of them (DR-13).
 import "../src/styles/reset.css";
-import "../src/styles/tokens.css";
 import "@hyperslop-systems/pbui/styles.css";
-import "@hyperslop-systems/pbui/components.css";
+import "@hyperslop-systems/pbui-workbench/styles.css";
 import "@hyperslop-systems/plot/styles.css";
 import "../src/styles/plot.css";
 import "../src/styles/scrollbars.css";
+// The brand components (PhaseRule, PhaseIcon, Lockup) read --brand-* tokens.
+import "../src/styles/brand.css";
 
 import { withStore, withTile } from "./decorators";
 import { withPbui } from "./withPbui";

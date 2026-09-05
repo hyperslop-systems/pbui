@@ -38,18 +38,17 @@ try {
     join(workspaceRoot, "packages", "workbench-protocol"),
     "hyperslop-systems-workbench-protocol-",
   );
-  const datalabTarball = await pack(packageRoot, "hyperslop-systems-datalab-ui-");
-
-  await writeFile(
-    join(smokeRoot, ".npmrc"),
-    [
-      "@hyperslop-systems:registry=https://npm.pkg.github.com",
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: npm expands this environment placeholder.
-      "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}",
-      "always-auth=true",
-      "",
-    ].join("\n"),
+  const coreTarball = await pack(
+    join(workspaceRoot, "packages", "workbench-core"),
+    "hyperslop-systems-workbench-core-",
   );
+  const shellTarball = await pack(
+    join(workspaceRoot, "packages", "pbui-workbench"),
+    "hyperslop-systems-pbui-workbench-",
+  );
+  const plotRoot = join(packageRoot, "node_modules", "@hyperslop-systems", "plot");
+  const plotTarball = await pack(plotRoot, "hyperslop-systems-plot-");
+  const datalabTarball = await pack(packageRoot, "hyperslop-systems-datalab-ui-");
 
   await writeFile(
     join(smokeRoot, "package.json"),
@@ -64,6 +63,9 @@ try {
         dependencies: {
           "@hyperslop-systems/datalab-ui": `file:${datalabTarball}`,
           "@hyperslop-systems/pbui": `file:${pbuiTarball}`,
+          "@hyperslop-systems/pbui-workbench": `file:${shellTarball}`,
+          "@hyperslop-systems/plot": `file:${plotTarball}`,
+          "@hyperslop-systems/workbench-core": `file:${coreTarball}`,
           "@hyperslop-systems/workbench-protocol": `file:${protocolTarball}`,
           react: "^19.2.8",
           "react-dom": "^19.2.8",
@@ -176,17 +178,36 @@ createRoot(root).render(<Consumer />);
   if (installedDatalab.name !== "@hyperslop-systems/datalab-ui") {
     throw new Error(`unexpected installed package ${installedDatalab.name}`);
   }
-  // The expected range follows the workspace's own pbui version — a
-  // hardcoded "^0.1.0" here turned every pbui version bump into a smoke
-  // failure whose message blamed the rewrite.
-  const workspacePbui = JSON.parse(
-    await readFile(join(workspaceRoot, "package.json"), "utf8"),
-  ).version;
-  if (installedDatalab.dependencies["@hyperslop-systems/pbui"] !== `^${workspacePbui}`) {
+  // Expected ranges follow the workspace packages. Packing every private
+  // runtime dependency above makes this smoke independent of registry auth
+  // and unpublished workspace versions; checking all rewritten ranges catches
+  // a tarball that still contains a workspace: specifier or a stale version.
+  for (const [name, packageJSON] of [
+    ["@hyperslop-systems/pbui", join(workspaceRoot, "package.json")],
+    [
+      "@hyperslop-systems/pbui-workbench",
+      join(workspaceRoot, "packages", "pbui-workbench", "package.json"),
+    ],
+    [
+      "@hyperslop-systems/workbench-core",
+      join(workspaceRoot, "packages", "workbench-core", "package.json"),
+    ],
+    [
+      "@hyperslop-systems/workbench-protocol",
+      join(workspaceRoot, "packages", "workbench-protocol", "package.json"),
+    ],
+  ]) {
+    const version = JSON.parse(await readFile(packageJSON, "utf8")).version;
+    if (installedDatalab.dependencies[name] !== `^${version}`) {
+      throw new Error(
+        `workspace dependency ${name} was not rewritten to ^${version}: ${installedDatalab.dependencies[name]}`,
+      );
+    }
+  }
+  const plotVersion = JSON.parse(await readFile(join(plotRoot, "package.json"), "utf8")).version;
+  if (installedDatalab.dependencies["@hyperslop-systems/plot"] !== plotVersion) {
     throw new Error(
-      `workspace dependency was not rewritten to ^${workspacePbui}: ${
-        installedDatalab.dependencies["@hyperslop-systems/pbui"]
-      }`,
+      `plot dependency changed from ${plotVersion}: ${installedDatalab.dependencies["@hyperslop-systems/plot"]}`,
     );
   }
 

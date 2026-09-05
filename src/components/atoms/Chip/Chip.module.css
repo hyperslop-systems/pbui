@@ -1,13 +1,17 @@
 /*
  * The atom that does the most work.
  *
- * Every presentation chip is a Chip with a different tone and badge: same
- * geometry, same padding, same border, one 4px coloured edge. That sameness is
- * not a style choice — it is what makes a chip in a legend read as the same
- * KIND of object as a chip in a table header, which is the premise of a
- * presentation-based interface (§10.3 rule 5).
+ * Every small labelled box in the family is a Chip with a different tone,
+ * size, fill and state: same geometry, same border, one 4px coloured edge.
+ * That sameness is not a style choice — it is what makes a chip in a legend
+ * read as the same KIND of object as a chip in a table header, which is the
+ * premise of a presentation-based interface (§10.3 rule 5).
+ *
+ * State is carried by border STYLE (dashed, dotted, double) so it survives
+ * greyscale; colour reinforces it and never replaces it.
  */
 .chip {
+  --chip-tone: var(--pbui-presentation-tone, var(--pbui-tone-neutral));
   display: inline-flex;
   align-items: baseline;
   gap: var(--pbui-space-2);
@@ -16,13 +20,43 @@
   line-height: 1.6;
   white-space: nowrap;
   background: var(--pbui-pane);
+  color: var(--pbui-ink-on-pane);
   border: var(--pbui-border-hair);
-  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-neutral);
   border-radius: var(--pbui-radius);
   max-width: 100%;
+  vertical-align: baseline;
+}
+
+/* The 4px edge that names the type. */
+.edge {
+  border-left: var(--pbui-tone-edge) solid var(--chip-tone);
+}
+
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+  padding: 0 var(--pbui-space-2);
+}
+
+.micro {
+  font-size: var(--pbui-fs-micro);
+  line-height: 1.5;
+  padding: 0 var(--pbui-space-1);
+}
+
+/* A fill that carries no state: kind tags, type letters. */
+.fillWash {
+  background: var(--pbui-tag-wash);
+}
+
+.fillTone {
+  background: var(--chip-tone);
 }
 
 .strong {
+  font-weight: 700;
+}
+
+.glyph {
   font-weight: 700;
 }
 
@@ -30,6 +64,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---- states: border style first, colour second ---------------------------- */
 
 .active {
   background: var(--pbui-selected);
@@ -46,4 +82,29 @@
 .disabled {
   opacity: 0.55;
   background: var(--pbui-pane-alt);
+}
+
+/* Nothing bound yet: an open slot. */
+.empty {
+  border-style: dashed;
+  color: var(--pbui-faint);
+}
+
+/* Bound to something that cannot be found. */
+.unresolved {
+  border-style: dotted;
+  font-weight: 700;
+}
+
+/* Pinned by the user: the double rule of a held thing. */
+.held {
+  border-style: double;
+  border-width: 3px;
+}
+
+/* Was valid, is not any more. */
+.revoked {
+  border-style: dashed;
+  color: var(--pbui-faint);
+  text-decoration: line-through;
 }

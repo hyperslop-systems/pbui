@@ -1,9 +1,20 @@
+import { useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Provider } from "react-redux";
 import { StageBar } from "./StageBar";
 import { Stack, Surface, Toolbar, Text } from "@hyperslop-systems/pbui";
-import { makeStore } from "../../../store";
-import { defaultLayout } from "../../../store/stages";
+import {
+  DatalabWorkbenchProvider,
+  useCurrentStageId,
+} from "../../../appkit/DatalabWorkbenchContext";
+import { createDatalabWorkbench, datalabDefaultSeed } from "../../../appkit/workbench";
+import { datalabManifests } from "../../../appkit/workbenchApps";
+import {
+  compileSeed,
+  pinnedDefinitions,
+  workDefinitions,
+  type DatalabSeed,
+} from "../../../store/seed";
+import { WORK_STAGE_ID } from "../../../store/stageIds";
 import "../../../apps/all";
 
 /**
@@ -40,17 +51,40 @@ function Masthead() {
   );
 }
 
+/**
+ * The current stage, DERIVED from the core's selected workspace — the same
+ * hook the bar reads, so the line below the masthead and the bar can never
+ * disagree.
+ */
+function CurrentStage() {
+  const stageId = useCurrentStageId();
+  return (
+    <Text size="tiny" tone="faint">
+      current stage: <code>{stageId}</code>
+    </Text>
+  );
+}
+
+/** One workbench per story, built once over the given seed. */
+function Stage({ seed, children }: { seed: () => DatalabSeed; children: React.ReactNode }) {
+  const workbench = useMemo(() => createDatalabWorkbench({ seed: seed() }), [seed]);
+  return <DatalabWorkbenchProvider workbench={workbench}>{children}</DatalabWorkbenchProvider>;
+}
+
 /** The four pinned stages, in a masthead. */
 export const Default: Story = {
   render: () => (
-    <Stack gap={3}>
-      <Masthead />
-      <Text size="tiny" tone="faint" prose>
-        ⌾ marks a stage defined in code — the same glyph the workspace strip uses one level down.
-        Switching remembers each stage's workspace, so leaving `work` on `gallery` and coming back
-        from `account` returns you to `gallery` rather than to `build`.
-      </Text>
-    </Stack>
+    <Stage seed={datalabDefaultSeed}>
+      <Stack gap={3}>
+        <Masthead />
+        <CurrentStage />
+        <Text size="tiny" tone="faint" prose>
+          ⌾ marks a stage defined in code — the same glyph the workspace strip uses one level down.
+          Switching remembers each stage's workspace, so leaving `work` on `gallery` and coming back
+          from `account` returns you to `gallery` rather than to `build`.
+        </Text>
+      </Stack>
+    </Stage>
   ),
 };
 
@@ -60,32 +94,26 @@ export const Default: Story = {
  * Every embedded tour panel is this — six of them down the landing page, each
  * seeding one stage. A switcher that cannot switch is furniture that reads as a
  * control, so the bar drops to the name alone. This state is expensive to reach
- * by clicking and is two lines of preloaded state here.
+ * by clicking and is a few lines of seed here: the work stage and its four
+ * workspaces, and nothing else.
  */
+function workStageOnly(): DatalabSeed {
+  const work = pinnedDefinitions().stages.find((stage) => stage.id === WORK_STAGE_ID);
+  if (!work) throw new Error("the pinned definitions always include the work stage");
+  return compileSeed({
+    stages: [work],
+    workspaces: workDefinitions(),
+    apps: datalabManifests(),
+  });
+}
+
 export const SingleStage: Story = {
-  render: () => {
-    const full = defaultLayout();
-    // `work`, which `defaultLayout` always supplies; the non-null assertion is
-    // a story's licence to assume its own fixture rather than handle it.
-    const stage = full.stages.find((s) => s.id === full.currentStageId) as NonNullable<
-      (typeof full.stages)[number]
-    >;
-    const store = makeStore({
-      preloaded: {
-        layout: {
-          stages: [stage],
-          currentStageId: stage.id,
-          spaces: full.spaces.filter((space) => space.stageId === stage.id),
-          currentSpaceId: stage.currentSpaceId,
-          views: full.views,
-          viewOrder: full.viewOrder,
-        },
-      },
-    });
-    return (
-      <Provider store={store}>
+  render: () => (
+    <Stage seed={workStageOnly}>
+      <Stack gap={3}>
         <Masthead />
-      </Provider>
-    );
-  },
+        <CurrentStage />
+      </Stack>
+    </Stage>
+  ),
 };

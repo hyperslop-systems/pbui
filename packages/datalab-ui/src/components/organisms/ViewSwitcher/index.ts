@@ -28,5 +28,6 @@ export {
   type LauncherRow,
   type LauncherSearchContext,
   type LauncherUnplacedRow,
+  type LauncherWorkspace,
   type LauncherWorkspaceGroup,
 } from "./launcherIndex.logic";

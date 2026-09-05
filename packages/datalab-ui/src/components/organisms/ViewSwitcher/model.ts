@@ -1,5 +1,7 @@
+import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import type { AppDescriptor } from "../../../appkit/registry";
-import type { AppView, ViewId } from "../../../store/layout";
+
+type ViewId = string;
 
 export interface ExistingViewOption {
   view: AppView;

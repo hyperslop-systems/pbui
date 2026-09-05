@@ -5,6 +5,7 @@ import type { Preview } from "@storybook/react-vite";
 import "../demo/src/styles/reset.css";
 import "../demo/src/styles/tokens.css";
 import "@hyperslop-systems/pbui/styles.css";
+import "./base.css";
 import "../src/styles.css";
 
 const preview: Preview = {

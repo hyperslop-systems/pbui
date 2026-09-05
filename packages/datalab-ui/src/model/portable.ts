@@ -62,7 +62,7 @@ export const LIMITS = {
 /**
  * A stage's chrome, restated here.
  *
- * Structurally identical to `store/layout.ts`'s `StageChrome` and deliberately
+ * Structurally identical to `store/navigation.ts`'s `StageChrome` and deliberately
  * not imported from it: `model` may import nothing outside `model`, and the
  * direction of that rule is what keeps this file testable in milliseconds. The
  * two are checked against each other by assignment at the one place they meet,

@@ -31,11 +31,9 @@ function contextFor(conversations: ConversationRegistry) {
   const sent: { conversationId: string; template: string }[] = [];
   const workbench = {
     activePlacementId: () => "p-1",
-    verbs: {
-      openView: (appId: string, documents: Record<string, string>, options?: { near?: string }) => {
-        opened.push({ appId, documents, ...(options?.near ? { near: options.near } : {}) });
-        return "p-2";
-      },
+    execute: (command: { view: { appId: string; documents?: Record<string, string> }; placement: { near?: string } }) => {
+      opened.push({ appId: command.view.appId, documents: command.view.documents ?? {}, ...(command.placement.near ? { near: command.placement.near } : {}) });
+      return { ok: true, changed: true, placementId: "p-2" };
     },
   } as unknown as ConversationVerbContext["workbench"];
   const ctx: ConversationVerbContext = {

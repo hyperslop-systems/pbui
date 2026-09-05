@@ -2,11 +2,12 @@ import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useMeQuery } from "../../../api/client";
 import { AnalysisProvider } from "../../../appkit/AnalysisProvider";
+import { useCurrentStageId, useDatalabWorkbench } from "../../../appkit/DatalabWorkbenchContext";
 import { RenderBoundary } from "../../../appkit/RenderBoundary";
 import { usePersistence } from "../../../appkit/usePersistence";
 import { Button, Callout, Text } from "@hyperslop-systems/pbui";
 import type { RootState } from "../../../store";
-import { layoutActions } from "../../../store/layout";
+import { navigationActions } from "../../../store/navigation";
 import { worldActions } from "../../../store/world";
 import { rootSource } from "../../../model/graphicAuthoring";
 import { welcomeDemoInstallation } from "../../../demo/welcome";
@@ -15,12 +16,8 @@ import {
   type RemoteWorkbenchController,
   type WorkbenchPersistence,
 } from "../../../appkit/useRemoteWorkbench";
-import {
-  ACCOUNT_STAGE_ID,
-  SIGNIN_STAGE_ID,
-  landingStageFor,
-  stageIsVisible,
-} from "../../../store/stages";
+import { ACCOUNT_STAGE_ID, SIGNIN_STAGE_ID } from "../../../store/stageIds";
+import { landingStageFor, stageIsVisible } from "../../../store/stages";
 import { WorkbenchProviders } from "./WorkbenchProviders";
 import { WorkbenchShell } from "./WorkbenchShell";
 import styles from "./Workbench.module.css";
@@ -94,6 +91,7 @@ function WorkbenchSession({
   remote: RemoteWorkbenchController | null;
 }) {
   const dispatch = useDispatch();
+  const workbench = useDatalabWorkbench();
   const { data: me } = useMeQuery();
 
   /**
@@ -150,15 +148,15 @@ function WorkbenchSession({
    *     one I may see" is also true on the way out, which is what makes
    *     signing out move you off `work` with no separate handling.
    */
-  const stages = useSelector((state: RootState) => state.layout.stages);
-  const currentStageId = useSelector((state: RootState) => state.layout.currentStageId);
+  const stages = useSelector((state: RootState) => state.navigation.stages);
+  const currentStageId = useCurrentStageId();
 
   useEffect(() => {
     if (!me) return;
     const current = stages.find((stage) => stage.id === currentStageId);
     if (current && stageIsVisible(current, authed)) return;
-    dispatch(layoutActions.setCurrentStage(landingStageFor(authed)));
-  }, [me, authed, stages, currentStageId, dispatch]);
+    workbench.controller.selectStage(landingStageFor(authed));
+  }, [me, authed, stages, currentStageId, workbench]);
 
   /**
    * A failed sign-in returns to the sign-in stage, whatever the rule above says.
@@ -174,8 +172,8 @@ function WorkbenchSession({
    */
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has("auth_error")) return;
-    dispatch(layoutActions.setCurrentStage(SIGNIN_STAGE_ID));
-  }, [dispatch]);
+    workbench.controller.selectStage(SIGNIN_STAGE_ID);
+  }, [workbench]);
 
   /**
    * A first sign-in lands in the account stage rather than wherever this
@@ -195,12 +193,12 @@ function WorkbenchSession({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("first") !== "1") return;
-    dispatch(layoutActions.setJustSignedUp(true));
-    dispatch(layoutActions.setCurrentStage(ACCOUNT_STAGE_ID));
+    dispatch(navigationActions.setJustSignedUp(true));
+    workbench.controller.selectStage(ACCOUNT_STAGE_ID);
     params.delete("first");
     const query = params.toString();
     window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
-  }, [dispatch]);
+  }, [dispatch, workbench]);
 
   /**
    * Point the visitor's document at the public dataset, once, on arrival.

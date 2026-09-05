@@ -1,5 +1,5 @@
 import { documentSlotPort } from "@hyperslop-systems/pbui";
-import { defineApp, type AppDescriptor } from "@hyperslop-systems/pbui-workbench";
+import { defineWorkbenchApp, type WorkbenchApp } from "@hyperslop-systems/pbui-workbench";
 import { InventoryApp } from "./InventoryApp";
 import { MetalsApp } from "./MetalsApp";
 import { NOTE_BINDING, NotesApp, noteTitle } from "./NotesApp";
@@ -31,56 +31,65 @@ export const SHOP_GROUP = "GOLD COIN SHOP";
  *   notes      documentPut / documentDelete — the WorkbenchDocument.documents
  *              map, which nothing else in this product touches
  */
-export function createDemoApps(): AppDescriptor[] {
+export function createDemoApps(): WorkbenchApp[] {
   return [
-    defineApp({
-      id: "inventory",
-      title: "inventory",
-      tone: "var(--pbui-tone-product)",
-      singleton: false,
-      group: SHOP_GROUP,
-      blurb: "the eight SKUs, filterable by metal and category",
-      Component: InventoryApp,
+    defineWorkbenchApp({
+      manifest: {
+        id: "inventory",
+      },
+      presentation: {
+        title: "inventory",
+        tone: "var(--pbui-tone-product)",
+        group: SHOP_GROUP,
+        blurb: "the eight SKUs, filterable by metal and category",
+        Component: InventoryApp,
+      },
     }),
-    defineApp({
-      id: "sku",
-      title: "SKU",
-      tone: "var(--pbui-tone-product)",
-      singleton: false,
-      // A document-slot port: declared so a caller can refuse `open a sku
-      // tile` with nothing bound BEFORE placing it; an unbound doc-bound tile
-      // opens empty, which reads as a broken tile rather than as a mistake in
-      // the request.
-      ports: [documentSlotPort(SKU_BINDING, "the SKU this tile details")],
-      // `false` because a split must LINK a second placement of this view
-      // rather than mint a second detail tile for the same SKU — the same
-      // rule `openView` enforces when the bindings are identical.
-      duplicable: false,
-      group: SHOP_GROUP,
-      blurb: "one SKU: stock against its floor, 30-day sales, metal and category",
-      titleFor: skuTitle,
-      Component: SkuApp,
+    defineWorkbenchApp({
+      manifest: {
+        id: "sku",
+        duplicatePlacement: "link",
+        ports: [documentSlotPort(SKU_BINDING, "the SKU this tile details")],
+        // `false` because a split must LINK a second placement of this view
+        // rather than mint a second detail tile for the same SKU — the same
+        // rule `openView` enforces when the bindings are identical.,
+      },
+      presentation: {
+        title: "SKU",
+        tone: "var(--pbui-tone-product)",
+        group: SHOP_GROUP,
+        blurb: "one SKU: stock against its floor, 30-day sales, metal and category",
+        titleFor: skuTitle,
+        Component: SkuApp,
+      },
     }),
-    defineApp({
-      id: "metals",
-      title: "metals",
-      tone: "var(--pbui-tone-metal)",
-      singleton: true,
-      group: SHOP_GROUP,
-      blurb: "spot prices and share of stock value",
-      Component: MetalsApp,
+    defineWorkbenchApp({
+      manifest: {
+        id: "metals",
+        viewCardinality: "one",
+      },
+      presentation: {
+        title: "metals",
+        tone: "var(--pbui-tone-metal)",
+        group: SHOP_GROUP,
+        blurb: "spot prices and share of stock value",
+        Component: MetalsApp,
+      },
     }),
-    defineApp({
-      id: "notes",
-      title: "notes",
-      tone: "var(--pbui-tone-neutral)",
-      singleton: false,
-      ports: [documentSlotPort(NOTE_BINDING, "the note kept in the workbench document")],
-      duplicable: false,
-      group: SHOP_GROUP,
-      blurb: "a scratchpad kept in the workbench document itself",
-      titleFor: noteTitle,
-      Component: NotesApp,
+    defineWorkbenchApp({
+      manifest: {
+        id: "notes",
+        duplicatePlacement: "link",
+        ports: [documentSlotPort(NOTE_BINDING, "the note kept in the workbench document")],
+      },
+      presentation: {
+        title: "notes",
+        tone: "var(--pbui-tone-neutral)",
+        group: SHOP_GROUP,
+        blurb: "a scratchpad kept in the workbench document itself",
+        titleFor: noteTitle,
+        Component: NotesApp,
+      },
     }),
   ];
 }

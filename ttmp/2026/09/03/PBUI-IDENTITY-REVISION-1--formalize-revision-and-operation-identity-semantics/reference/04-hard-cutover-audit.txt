@@ -1,0 +1,115 @@
+PBUI-IDENTITY-REVISION-1 hard-cutover audit
+Commit: 320c75878862a3435d4d7c96aedbb0a391014d9b
+
+=== Forbidden FNV implementation (expect no matches) ===
+$ rg 2166136261|16777619|Math.imul ...
+PASS: no matches
+
+=== Forbidden old sync type/API vocabulary in TypeScript (expect no matches) ===
+$ rg export type Revision|requestId ...
+PASS: no matches
+
+=== Built declaration identity ===
+packages/workbench-core/dist/identity.d.ts:5:export type LocalRevision = number & {
+packages/workbench-core/dist/identity.d.ts:6:    readonly [localRevisionBrand]: "LocalRevision";
+packages/workbench-core/dist/identity.d.ts:9:export type ServerRevision = string & {
+packages/workbench-core/dist/identity.d.ts:10:    readonly [serverRevisionBrand]: "ServerRevision";
+packages/workbench-core/dist/identity.d.ts:13:export type OperationId = string & {
+packages/workbench-core/dist/identity.d.ts:14:    readonly [operationIdBrand]: "OperationId";
+packages/workbench-core/dist/identity.d.ts:16:export declare function localRevision(value: number): LocalRevision;
+packages/workbench-core/dist/identity.d.ts:17:export declare function nextLocalRevision(value: LocalRevision): LocalRevision;
+packages/workbench-core/dist/identity.d.ts:18:export declare function serverRevision(value: string): ServerRevision;
+packages/workbench-core/dist/identity.d.ts:19:export declare function operationId(value: string): OperationId;
+packages/workbench-core/dist/identity.d.ts:21:export declare function newOperationId(randomUUID?: () => string): OperationId;
+packages/workbench-core/dist/sync/index.d.ts:3:import { type OperationId, type ServerRevision } from "../identity";
+packages/workbench-core/dist/sync/index.d.ts:16:    revision: ServerRevision;
+packages/workbench-core/dist/sync/index.d.ts:21:    readonly id: OperationId;
+packages/workbench-core/dist/sync/index.d.ts:43:    mutate(revision: ServerRevision, mutations: Mutation[], operationId: OperationId): Promise<SyncResult>;
+packages/workbench-core/dist/sync/index.d.ts:45:    stream?(onChange: (revision?: ServerRevision) => void): () => void;
+packages/workbench-core/dist/sync/index.d.ts:67:    operationIds?(): OperationId;
+packages/workbench-core/dist/sync/index.d.ts:93:        revision: ServerRevision | null;
+packages/workbench-core/dist/sync/index.d.ts:134:export declare function syncRequestOperationId(revision: ServerRevision, batches: readonly OutboxEntry[]): Promise<OperationId>;
+
+=== Production consumers of workbench-core/sync ===
+packages/workbench-core/src/sync/index.ts:18: * Imported from `@hyperslop-systems/workbench-core/sync` rather than the
+packages/workbench-core/src/sync/index.ts:62:export interface SyncClient {
+packages/workbench-core/src/sync/index.ts:92:  client: SyncClient;
+packages/workbench-core/src/sync/index.ts:181:export function createWorkbenchSync(options: SyncOptions): WorkbenchSync {
+PASS: no production adapter still implements the old API; current sync is package-owned and test-adapted.
+
+=== Remaining requestId domains outside Workbench sync (intentional, expected no-change) ===
+src/presentation/interaction/accept.test.ts:30:    const { state, effects } = run([{ type: "request", requestId: 1, request: REQUEST }]);
+src/presentation/interaction/accept.test.ts:31:    expect(state).toEqual({ kind: "pending", requestId: 1, request: REQUEST });
+src/presentation/interaction/accept.test.ts:38:      { type: "request", requestId: 1, request: REQUEST },
+src/presentation/interaction/accept.test.ts:39:      { type: "request", requestId: 2, request: REQUEST },
+src/presentation/interaction/accept.test.ts:41:    expect(state).toMatchObject({ kind: "pending", requestId: 1 });
+src/presentation/interaction/accept.test.ts:42:    expect(effects).toEqual([{ kind: "close-menu" }, { kind: "resolve-null", requestId: 2, reason: "refused" }]);
+src/presentation/interaction/accept.test.ts:46:    const { state, effects } = run([{ type: "request", requestId: 1, request: REQUEST }, { type: "offer", reference: ORDER, resolution: accepted }]);
+src/presentation/interaction/accept.test.ts:48:    expect(effects[1]).toEqual({ kind: "settle", requestId: 1, reference: ORDER });
+src/presentation/interaction/accept.test.ts:52:    const { state } = run([{ type: "request", requestId: 1, request: REQUEST }, { type: "offer", reference: ORDER, resolution: ambiguous }]);
+src/presentation/interaction/accept.test.ts:53:    expect(state).toMatchObject({ kind: "choosing", requestId: 1 });
+src/presentation/interaction/accept.test.ts:55:    expect(run([{ type: "request", requestId: 1, request: REQUEST }, { type: "offer", reference: CUSTOMER, resolution: none }]).state).toMatchObject({ kind: "pending", requestId: 1 });
+src/presentation/interaction/accept.test.ts:59:    const { state, effects } = run([{ type: "request", requestId: 1, request: REQUEST }, { type: "offer", reference: ORDER, resolution: ambiguous }, { type: "choose", option: option(CUSTOMER, "b") }]);
+src/presentation/interaction/accept.test.ts:61:    expect(effects.at(-1)).toEqual({ kind: "settle", requestId: 1, reference: CUSTOMER });
+src/presentation/interaction/accept.test.ts:65:    const chooser = run([{ type: "request", requestId: 1, request: REQUEST }, { type: "offer", reference: ORDER, resolution: ambiguous }, { type: "escape" }]);
+src/presentation/interaction/accept.test.ts:66:    expect(chooser.state).toEqual({ kind: "pending", requestId: 1, request: REQUEST });
+src/presentation/interaction/accept.test.ts:70:    expect(aborted.effects).toEqual([{ kind: "resolve-null", requestId: 1, reason: "aborted" }]);
+src/presentation/interaction/accept.test.ts:74:    const choosing = run([{ type: "request", requestId: 1, request: REQUEST }, { type: "offer", reference: ORDER, resolution: ambiguous }]).state;
+src/presentation/interaction/accept.test.ts:75:    expect(run([{ type: "dismiss-chooser" }], choosing).state).toMatchObject({ kind: "pending", requestId: 1 });
+src/presentation/interaction/accept.test.ts:76:    expect(run([{ type: "abort" }], choosing).effects).toEqual([{ kind: "resolve-null", requestId: 1, reason: "aborted" }]);
+src/presentation/interaction/accept.test.ts:100:  if (r < 0.2) return { type: "request", requestId: nextId(), request: REQUEST };
+src/presentation/interaction/accept.test.ts:117:      const terminals = new Map<number, number>(); // requestId → count of settle/resolve-null
+src/presentation/interaction/accept.test.ts:128:            admitted.add(event.requestId);
+src/presentation/interaction/accept.test.ts:129:            expect(after).toMatchObject({ kind: "pending", requestId: event.requestId });
+src/presentation/interaction/accept.test.ts:131:            refused.add(event.requestId);
+src/presentation/interaction/accept.test.ts:134:            expect(effects).toEqual([{ kind: "resolve-null", requestId: event.requestId, reason: "refused" }]);
+src/presentation/interaction/accept.test.ts:139:            terminals.set(effect.requestId, (terminals.get(effect.requestId) ?? 0) + 1);
+src/presentation/interaction/accept.test.ts:141:            expect(admitted.has(effect.requestId) || refused.has(effect.requestId)).toBe(true);
+src/presentation/interaction/accept.test.ts:145:        if (before.kind !== "idle" && effects.some((e) => (e.kind === "settle" || e.kind === "resolve-null") && e.requestId === before.requestId)) {
+src/presentation/interaction/accept.test.ts:149:        if (event.type === "escape" && before.kind === "choosing") expect(after).toMatchObject({ kind: "pending", requestId: before.requestId });
+src/presentation/interaction/accept.test.ts:155:      for (const effect of drained.effects) if (effect.kind === "resolve-null") terminals.set(effect.requestId, (terminals.get(effect.requestId) ?? 0) + 1);
+src/presentation/interaction/accept.test.ts:156:      for (const requestId of admitted) expect(terminals.get(requestId)).toBe(1);
+src/presentation/interaction/accept.test.ts:157:      for (const requestId of refused) expect(terminals.get(requestId)).toBe(1);
+src/presentation/interaction/accept.ts:27:  | { readonly kind: "pending"; readonly requestId: number; readonly request: AcceptRequest<Values> }
+src/presentation/interaction/accept.ts:30:      readonly requestId: number;
+src/presentation/interaction/accept.ts:37:  | { readonly type: "request"; readonly requestId: number; readonly request: AcceptRequest<Values> }
+src/presentation/interaction/accept.ts:51:  | { readonly kind: "settle"; readonly requestId: number; readonly reference: PresentationReference<Values> }
+src/presentation/interaction/accept.ts:53:  | { readonly kind: "resolve-null"; readonly requestId: number; readonly reason: "refused" | "aborted" };
+src/presentation/interaction/accept.ts:72:        return { state, effects: [{ kind: "resolve-null", requestId: event.requestId, reason: "refused" }] };
+src/presentation/interaction/accept.ts:74:      return { state: { kind: "pending", requestId: event.requestId, request: event.request }, effects: [{ kind: "close-menu" }] };
+src/presentation/interaction/accept.ts:78:      const { requestId, request } = state;
+src/presentation/interaction/accept.ts:81:          return { state: { kind: "idle" }, effects: [{ kind: "settle", requestId, reference: event.resolution.option.result }] };
+src/presentation/interaction/accept.ts:84:          return same({ kind: "choosing", requestId, request, options: event.resolution.options });
+src/presentation/interaction/accept.ts:93:      return { state: { kind: "idle" }, effects: [{ kind: "settle", requestId: state.requestId, reference: event.option.result }] };
+src/presentation/interaction/accept.ts:97:      return same({ kind: "pending", requestId: state.requestId, request: state.request });
+src/presentation/interaction/accept.ts:100:      if (state.kind === "choosing") return same({ kind: "pending", requestId: state.requestId, request: state.request });
+src/presentation/interaction/accept.ts:101:      if (state.kind === "pending") return { state: { kind: "idle" }, effects: [{ kind: "resolve-null", requestId: state.requestId, reason: "aborted" }] };
+src/presentation/interaction/accept.ts:106:      return { state: { kind: "idle" }, effects: [{ kind: "resolve-null", requestId: state.requestId, reason: "aborted" }] };
+src/presentation/createPbui.tsx:467:          const resolve = acceptResolvers.current.get(effect.requestId);
+src/presentation/createPbui.tsx:468:          acceptResolvers.current.delete(effect.requestId);
+src/presentation/createPbui.tsx:474:          const resolve = acceptResolvers.current.get(effect.requestId);
+src/presentation/createPbui.tsx:475:          acceptResolvers.current.delete(effect.requestId);
+src/presentation/createPbui.tsx:502:          const requestId = (acceptRequestIds.current += 1);
+src/presentation/createPbui.tsx:503:          acceptResolvers.current.set(requestId, resolve);
+src/presentation/createPbui.tsx:504:          acceptDispatch({ type: "request", requestId, request });
+packages/datalab-ui/src/analysis/types.ts:100:  requestId: string;
+packages/datalab-ui/src/analysis/types.ts:112:  requestId: string;
+packages/datalab-ui/src/analysis/runtime.ts:242:        requestId: request.requestId,
+packages/datalab-ui/src/appkit/analysisCoordinator.ts:78:    request: Omit<AnalysisRequest, "requestId" | "generation" | "sourceKey"> & {
+packages/datalab-ui/src/appkit/analysisCoordinator.ts:111:            requestId: crypto.randomUUID(),
+packages/datalab-ui/src/api/client.ts:418:        requestId: string;
+packages/datalab-ui/src/api/client.ts:422:      query: ({ id, revision, requestId, document }) => ({
+packages/datalab-ui/src/api/client.ts:427:          "Idempotency-Key": requestId,
+packages/datalab-ui/src/api/client.ts:439:        requestId: string;
+packages/datalab-ui/src/api/client.ts:443:      query: ({ id, revision, requestId, batch }) => ({
+packages/datalab-ui/src/api/client.ts:448:          "Idempotency-Key": requestId,
+packages/datalab-ui/src/appkit/useRemoteWorkbench.ts:250:          requestId: request.id,
+packages/datalab-ui/src/appkit/AnalysisProvider.tsx:63:      current[documentId]?.requestId === execution.requestId
+packages/datalab-ui/test/duckdb-runtime.test.ts:196:    requestId: "request-1",
+packages/datalab-ui/test/duckdb-runtime.test.ts:262:    const again = await runtime.execute(request({ requestId: "request-2", generation: 2 }));
+packages/datalab-ui/test/duckdb-runtime.test.ts:281:        requestId: "empty",
+packages/datalab-ui/test/duckdb-runtime.test.ts:298:      runtime.execute(request({ requestId: "one" })),
+packages/datalab-ui/test/duckdb-runtime.test.ts:299:      runtime.execute(request({ requestId: "two", generation: 2 })),
+packages/datalab-ui/test/duckdb-runtime.test.ts:311:    const execution = await runtime.execute(request({ requestId: "after-purge" }));
+packages/datalab-ui/test/analysis-coordinator.test.ts:20:    requestId: request.requestId,
+PASS: remaining names belong to Datalab analysis correlation, Datalab whole-document replacement, or PBUI presentation acceptance—not Workbench core sync.

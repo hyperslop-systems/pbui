@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { EmptyState, isEditableTarget, routeWorkbenchKey, useAnyEscapeSurface } from "@hyperslop-systems/pbui";
 import type { Node } from "@hyperslop-systems/workbench-protocol";
 import { usePlacement, useWorkbench } from "../../context";
@@ -8,7 +8,13 @@ import { Tile } from "../Tile";
 import { LinkAnnouncer } from "../LinkAnnouncer";
 import { RelationPalette } from "../RelationPalette";
 import { ShowChooser } from "../ShowChooser";
-import { WireLayer } from "../WireLayer";
+import { ConnectionProvider } from "../../wiring/connectionController";
+import { ConnectionInspector } from "../../wiring/ConnectionInspector";
+import { WiringCanvas } from "../../wiring/WiringCanvas";
+import { createGeometryStore } from "../../wiring/geometryStore";
+import { wiringMinimum, shouldFocus } from "../../wiring/layoutPolicy";
+import { GeometryContext, useWiringGeometry } from "../../wiring/geometryContext";
+import { useConnectedHighlight } from "../../wiring/connectedHighlight";
 import styles from "./Surface.module.css";
 
 /**
@@ -18,12 +24,26 @@ import styles from "./Surface.module.css";
  * `data-launcher-open` so the active tile is outlined only while a keyboard
  * operation needs a target.
  */
-export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, renderWire, linkModeShortcut = true, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
+export function WorkbenchSurface({ renderTitle, renderBadges, wiring = {}, linkModeShortcut = true, tileAction, className, swapLabel, dockLabel, replaceLabel }: SurfaceProps) {
   const workbench = useWorkbench();
-  const document = workbench.useDocument();
-  const workspaceId = workbench.useWorkbenchState((state) => state.workspaceId);
-  const launcherOpen = workbench.useWorkbenchState((state) => state.launcherOpen);
-  const linkMode = workbench.useWorkbenchState((state) => state.linkModeOpen);
+  const geometry = useMemo(() => createGeometryStore(), []);
+  const setRoot = useCallback((element: HTMLDivElement | null) => { workbench.setRoot(element); geometry.setRoot(element); }, [workbench, geometry]);
+  const tree = workbench.useCoreState((state) => state.index.workspaceById.get(state.session.workspaceId)?.tree);
+  const launcherOpen = workbench.useShellState((state) => state.launcher !== null);
+  const linkMode = workbench.useShellState((state) => state.linkModeOpen);
+  useLayoutEffect(() => { geometry.invalidate(); geometry.flush(); }, [geometry, tree, linkMode]);
+  useConnectedHighlight(geometry, linkMode);
+  const measured = useWiringGeometry(geometry);
+  const [automaticFocus, setAutomaticFocus] = useState(false);
+  const [presentation, setPresentation] = useState<"auto"|"spatial"|"focused">("auto");
+  const requested = wiring.mode ?? presentation;
+  const focused = linkMode && (requested === "focused" || requested === "auto" && automaticFocus);
+  useLayoutEffect(() => {
+    if (!linkMode || measured.bounds.right === 0) return;
+    const minimum = wiringMinimum(tree);
+    setAutomaticFocus(previous => shouldFocus({width: measured.bounds.right,height: measured.bounds.bottom}, minimum, previous));
+  }, [linkMode, measured.bounds, tree]);
+  useLayoutEffect(() => { geometry.invalidate(); }, [geometry, focused]);
   const anySurfaceOpen = useAnyEscapeSurface();
 
   // Mod+Shift+L toggles connect mode (PBUI-LINK-1 Phase 3), under the same
@@ -38,12 +58,12 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
       const ownsFocus = !unowned && root.contains(focused);
       const lone = window.document.querySelectorAll("[data-workbench-shell]").length === 1;
       if (!ownsFocus && !(unowned && lone)) return;
-      const open = workbench.store.getState().linkModeOpen;
+      const open = workbench.shell.getState().linkModeOpen;
       const decision = routeWorkbenchKey(
         event,
         {
           targetIsEditable: isEditableTarget(event.target as HTMLElement | null),
-          launcherOpen: workbench.store.getState().launcherOpen,
+          launcherOpen: workbench.shell.getState().launcher !== null,
           // The wire layer is itself an escape surface: closing must stay possible while it is open.
           dialogOpen: anySurfaceOpen && !open,
           objectMenuOpen: false,
@@ -54,13 +74,12 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
       );
       if (decision.kind !== "toggle-link-mode") return;
       event.preventDefault();
-      workbench.perform({ kind: open ? "link.mode.close" : "link.mode.open" });
+      workbench.dispatch({ kind: open ? "link.mode.close" : "link.mode.open" });
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [linkModeShortcut, anySurfaceOpen, workbench]);
   const placing = usePlacement(workbench);
-  const tree = document.workspaces.find((workspace) => workspace.id === workspaceId)?.tree;
 
   const renderNode = useCallback(
     function renderNode(node: Node): ReactNode {
@@ -71,7 +90,6 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
           node={node}
           renderTitle={renderTitle}
           renderBadges={renderBadges}
-          renderPort={renderPort}
           tileAction={tileAction}
           swapLabel={swapLabel}
           dockLabel={dockLabel}
@@ -80,18 +98,23 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
         />
       );
     },
-    [renderTitle, renderBadges, renderPort, tileAction, swapLabel, dockLabel, replaceLabel, placing],
+    [renderTitle, renderBadges, tileAction, swapLabel, dockLabel, replaceLabel, placing],
   );
 
   return (
+    <GeometryContext.Provider value={geometry}>
+    <ConnectionProvider enabled={linkMode} options={wiring} focused={focused}>
     <div
-      ref={workbench.setRoot}
+      tabIndex={-1}
+      ref={setRoot}
       data-part="workbench"
       data-workbench-shell=""
       data-launcher-open={launcherOpen || undefined}
       data-link-mode={linkMode || undefined}
+      data-wiring-focused={focused || undefined}
       className={[styles.surface, className ?? ""].filter(Boolean).join(" ")}
     >
+      <div className={styles.tree} inert={focused || undefined} data-part="workbench-tree">
       {tree ? (
         renderNode(tree)
       ) : (
@@ -99,7 +122,9 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
           <EmptyState message="this workbench has no workspace" hint="create it with layout() or singleTile() and pass it as `initial`" />
         </div>
       )}
-      {linkMode ? <WireLayer {...(renderWire ? { renderWire } : {})} /> : null}
+      </div>
+      {linkMode && !focused ? <WiringCanvas /> : null}
+      {linkMode ? <ConnectionInspector focused={focused} mode={requested} onMode={setPresentation} /> : null}
       <ShowChooser />
       <RelationPalette />
       <LinkAnnouncer />
@@ -112,5 +137,7 @@ export function WorkbenchSurface({ renderTitle, renderBadges, renderPort, render
         </div>
       ) : null}
     </div>
+    </ConnectionProvider>
+    </GeometryContext.Provider>
   );
 }

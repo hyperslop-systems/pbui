@@ -19,6 +19,8 @@ the `chat` application is doc-bound to a `conversation`, so two tiles with
 two bindings are two agents and two placements of one binding are one agent
 seen twice.
 
+Because the workbench core validates every binding against the document store, `attachWorkbench` mirrors the registry into the workbench document as one stub per conversation (format `chat.conversation`). A product whose host validates document formats passes `conversationDocuments: { format: "my.conversation" }`; a product that writes conversation documents itself passes `conversationDocuments: false` and no source is connected.
+
 `chat.conversations` is the registry. Records — id, title, pins, archive
 flag, counts — persist in `localStorage`; a **runtime** (a store, a client, a
 socket, a tool set) exists only while a conversation is *open*, which is

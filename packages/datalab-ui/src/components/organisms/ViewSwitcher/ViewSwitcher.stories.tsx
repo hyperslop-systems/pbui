@@ -1,47 +1,53 @@
 import { useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Provider } from "react-redux";
-import { makeStore } from "../../../store";
-import { singleStageLayout } from "../../../store/stages";
-import { leaf as placement, split, type Node, type NodeId } from "../../../store/layout";
+import { leaves } from "@hyperslop-systems/workbench-protocol/client";
+import { DatalabWorkbenchProvider } from "../../../appkit/DatalabWorkbenchContext";
+import { createDatalabWorkbench, datalabSingleStageSeed } from "../../../appkit/workbench";
+import { split, tile, type LayoutSpec } from "../../../store/seed";
 import { ViewSwitcher } from "./ViewSwitcher";
 import "../../../apps/all";
 
 type Scenario = "many" | "none" | "linked-singleton";
 
+/** Named rather than inline: `test/stories.test.ts` takes the first quoted `title` key in the file as the meta title. */
+const CHART_TITLE = "Yield by station";
+
+/**
+ * The launcher tile is always the FIRST leaf, so the switcher targets it.
+ *
+ * `linked-singleton` seeds `trace` twice: the seed compiler shares a
+ * singleton's logical view across leaves, so the second `tile("trace")` is a
+ * second placement of the same view — the ×2 the switcher has to show.
+ */
+function specFor(scenario: Scenario): LayoutSpec {
+  if (scenario === "none") return tile("launcher");
+  if (scenario === "linked-singleton") {
+    return split("row", 0.5, tile("launcher"), split("col", 0.5, tile("trace"), tile("trace")));
+  }
+  return split(
+    "row",
+    0.5,
+    tile("launcher"),
+    split(
+      "col",
+      0.5,
+      tile("chart", { title: CHART_TITLE }),
+      split("row", 0.5, tile("table"), tile("trace")),
+    ),
+  );
+}
+
 function SwitcherStory({ scenario }: { scenario: Scenario }) {
   const fixture = useMemo(() => {
-    let placementId: NodeId = "";
-    const layout = singleStageLayout("story", (builder) => {
-      const launcher = builder.leaf("launcher");
-      placementId = launcher.id;
-      if (scenario === "none") return launcher;
-      if (scenario === "linked-singleton") {
-        const trace = builder.leaf("trace") as Extract<Node, { type: "leaf" }>;
-        return split("row", launcher, split("col", trace, placement(trace.viewId), 0.5), 0.5);
-      }
-      return split(
-        "row",
-        launcher,
-        split(
-          "col",
-          builder.leaf("chart", null, "Yield by station"),
-          split("row", builder.leaf("table"), builder.leaf("trace"), 0.5),
-          0.5,
-        ),
-        0.5,
-      );
-    });
-    return {
-      store: makeStore({ preloaded: { layout } }),
-      placementId,
-    };
+    const seed = datalabSingleStageSeed("story", specFor(scenario));
+    const placementId = leaves(seed.document.workspaces[0]?.tree)[0]?.id ?? "";
+    return { workbench: createDatalabWorkbench({ seed }), placementId };
   }, [scenario]);
 
   return (
-    <Provider store={fixture.store}>
+    <DatalabWorkbenchProvider workbench={fixture.workbench}>
       <ViewSwitcher placementId={fixture.placementId} />
-    </Provider>
+    </DatalabWorkbenchProvider>
   );
 }
 

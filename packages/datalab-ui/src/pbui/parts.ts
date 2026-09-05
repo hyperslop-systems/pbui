@@ -11,7 +11,6 @@ export const PARTS = {
   chip: "chip",
   chipLabel: "chip-label",
   chipBadge: "chip-badge",
-  roleBadge: "role-badge",
   menu: "menu",
   menuHeader: "menu-header",
   menuItem: "menu-item",

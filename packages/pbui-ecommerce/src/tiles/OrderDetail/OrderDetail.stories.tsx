@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { split, tile } from "@hyperslop-systems/pbui-workbench";
+import { split, tile } from "@hyperslop-systems/workbench-core";
 import { APP_IDS } from "../../apps";
 import { followOrders, holdOrders, presentOrder, ShopStory } from "../../stories/harness";
 

@@ -1,11 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { createPresentationTypeGraph, linkVerbs, resetEscapeSurfaces } from "@hyperslop-systems/pbui";
+import { bindingsOf, layout, split, tile } from "@hyperslop-systems/workbench-core";
 import { leaves, workspaceTree } from "@hyperslop-systems/workbench-protocol/client";
-import { defineApp } from "../apps";
-import { createWorkbench } from "../createWorkbench";
-import { layout, split, tile } from "../document";
-import { bindingsOf } from "./document";
+import { defineWorkbenchApp } from "../app";
+import { createWorkbench } from "../createWorkbenchShell";
 
 /*
  * Derived through the workbench (Phase 6): the palette lists the legal
@@ -15,8 +14,8 @@ import { bindingsOf } from "./document";
  */
 
 const graph = createPresentationTypeGraph([{ id: "order" }, { id: "customer" }]);
-const ordersApp = defineApp({ id: "orders", title: "orders", tone: "var(--pbui-cat-1)", singleton: false, ports: [{ name: "order", direction: "out", contract: "order", doc: "the clicked order" }], Component: () => null });
-const customerApp = defineApp({ id: "customer", title: "customer", tone: "var(--pbui-cat-2)", singleton: false, ports: [{ name: "customer", direction: "in", contract: "customer", doc: "the customer shown" }], Component: () => null });
+const ordersApp = defineWorkbenchApp({ manifest: { id: "orders", ports: [{ name: "order", direction: "out", contract: "order", doc: "the clicked order" }] }, presentation: { title: "orders", tone: "var(--pbui-cat-1)", Component: () => null } });
+const customerApp = defineWorkbenchApp({ manifest: { id: "customer", ports: [{ name: "customer", direction: "in", contract: "customer", doc: "the customer shown" }] }, presentation: { title: "customer", tone: "var(--pbui-cat-2)", Component: () => null } });
 
 function scene() {
   const wb = createWorkbench({
@@ -32,7 +31,7 @@ function scene() {
           : { kind: "empty" },
     },
   });
-  const [orders, customer] = leaves(workspaceTree(wb.store.getState().document, wb.store.getState().workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
+  const [orders, customer] = leaves(workspaceTree(wb.core.getState().document, wb.core.getState().session.workspaceId)).map((leaf) => (leaf.body.case === "leaf" ? leaf.body.value.viewId : ""));
   render(<wb.Surface />);
   return { wb, orders: orders!, customer: customer! };
 }
@@ -52,8 +51,8 @@ describe("derived bindings through the workbench", () => {
     act(() => void wb.perform(linkVerbs.openPalette(`${customer}/customer`)));
     expect(await screen.findByText("DERIVE customer · customer THROUGH…")).toBeTruthy();
     fireEvent.click(screen.getByText("its customer"));
-    expect(bindingsOf(wb.store.getState().document).get(`${customer}/customer`)).toMatchObject({ kind: "derived", relationId: "order.customer", source: { kind: "follow", source: `${orders}/order` } });
-    expect(wb.store.getState().relationPalette).toBeNull();
+    expect(bindingsOf(wb.core.getState().document).get(`${customer}/customer`)).toMatchObject({ kind: "derived", relationId: "order.customer", source: { kind: "follow", source: `${orders}/order` } });
+    expect(wb.shell.getState().relationPalette).toBeNull();
     expect(badges()).toEqual(["derived:←customer ← its customer"]);
     expect(document.querySelector('[data-part="port-badge"]')?.getAttribute("title")).toBe("customer derives through order.customer from Orders East, now Ada");
     // A wire in connect mode carries the relation's label.
@@ -64,7 +63,7 @@ describe("derived bindings through the workbench", () => {
   it("port.derive is refused when no relation fits, and follows the usual laws under pin/resume", () => {
     const { wb, orders, customer } = scene();
     expect(act(() => wb.perform(linkVerbs.derive(`${orders}/order`, `${customer}/customer`, "nope")))).toBeTruthy();
-    expect(bindingsOf(wb.store.getState().document).size).toBe(0);
+    expect(bindingsOf(wb.core.getState().document).size).toBe(0);
     act(() => void wb.perform(linkVerbs.derive(`${orders}/order`, `${customer}/customer`, "order.customer")));
     wb.links.runtime.emit(`${orders}/order`, { type: "order", value: { id: "1060", customer: "Sam" } });
     const before = wb.serialize();

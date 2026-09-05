@@ -4,6 +4,7 @@ import type { Preview } from "@storybook/react-vite";
 // stories' app tones come from pbui's own tokens, so no product token sheet
 // is needed here.
 import "@hyperslop-systems/pbui/styles.css";
+import "./base.css";
 import "../src/styles.css";
 
 const preview: Preview = {

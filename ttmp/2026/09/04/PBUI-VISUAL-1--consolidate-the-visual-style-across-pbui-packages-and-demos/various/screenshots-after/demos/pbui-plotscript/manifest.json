@@ -1,0 +1,30 @@
+[
+  {
+    "n": 1,
+    "demo": "pbui-plotscript",
+    "slug": "workspace-initial",
+    "description": "Scripted plots demo, first example workspace (script + plot split)",
+    "file": "001-workspace-initial.png"
+  },
+  {
+    "n": 2,
+    "demo": "pbui-plotscript",
+    "slug": "launcher-open",
+    "description": "Launcher dialog (Mod+K)",
+    "file": "002-launcher-open.png"
+  },
+  {
+    "n": 3,
+    "demo": "pbui-plotscript",
+    "slug": "rebalance-dialog",
+    "description": "Rebalance layout-repair dialog (Mod+Shift+K)",
+    "file": "003-rebalance-dialog.png"
+  },
+  {
+    "n": 4,
+    "demo": "pbui-plotscript",
+    "slug": "script-run",
+    "description": "After running the focused script (Mod+Enter)",
+    "file": "004-script-run.png"
+  }
+]

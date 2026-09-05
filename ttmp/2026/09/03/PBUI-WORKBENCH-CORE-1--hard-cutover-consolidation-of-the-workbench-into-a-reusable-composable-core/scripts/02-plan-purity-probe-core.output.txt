@@ -1,0 +1,10 @@
+npm warn Unknown project config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+ RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  15:40:21
+   Duration  1.94s (transform 1.80s, setup 0ms, import 2.46s, tests 55ms, environment 872ms)
+

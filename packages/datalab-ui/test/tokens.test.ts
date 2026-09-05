@@ -18,12 +18,14 @@ import {
 // forgetting to run it a failure rather than a surprise.
 
 const css = await readFile(
-  fileURLToPath(new URL("../src/styles/tokens.css", import.meta.url)),
+  fileURLToPath(new URL("../../../src/tokens.css", import.meta.url)),
   "utf8",
 );
 
+const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
 function tokenValue(name: string): string | undefined {
-  const match = css.match(new RegExp(`--${name}:\\s*([^;]+);`));
+  const match = code.match(new RegExp(`--${name}:\\s*([^;]+);`));
   return match?.[1]?.trim();
 }
 

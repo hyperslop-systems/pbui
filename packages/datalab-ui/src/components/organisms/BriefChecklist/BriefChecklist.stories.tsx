@@ -1,6 +1,11 @@
+import { useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { leaves } from "@hyperslop-systems/workbench-protocol/client";
 import { BriefChecklist } from "./BriefChecklist";
+import { DatalabWorkbenchProvider } from "../../../appkit/DatalabWorkbenchContext";
 import type { Goal } from "../../../appkit/lessons";
+import { createDatalabWorkbench } from "../../../appkit/workbench";
+import "../../../apps/all";
 
 /**
  * The capstone: one question, five goals, and no ▶.
@@ -10,21 +15,28 @@ import type { Goal } from "../../../appkit/lessons";
  * nobody wrote down. That is the difference between this and the rail: the rail
  * teaches a move, the brief asks for an outcome.
  *
- * These goals are live against the store the decorator supplies, so `Untouched`
- * really is untouched. Press "I'm stuck" through all five hints to see the
- * terminal message, which matters more than it looks: without it a reader keeps
- * pressing, expecting the answer.
+ * These goals are live against the workbench the decorator supplies, so
+ * `Untouched` really is untouched. Press "I'm stuck" through all five hints to
+ * see the terminal message, which matters more than it looks: without it a
+ * reader keeps pressing, expecting the answer.
  */
 const meta = {
   title: "Component Library/Organisms/BriefChecklist",
   component: BriefChecklist,
   parameters: { tile: false, pbui: {} },
   decorators: [
-    (Story) => (
-      <div style={{ display: "flex", height: 460, maxWidth: 400 }}>
-        <Story />
-      </div>
-    ),
+    (Story) => {
+      // One workbench per story: goal g4 reads the core's document, and a
+      // play in one story must not tick a goal in the next.
+      const workbench = useMemo(() => createDatalabWorkbench(), []);
+      return (
+        <DatalabWorkbenchProvider workbench={workbench}>
+          <div style={{ display: "flex", height: 460, maxWidth: 400 }}>
+            <Story />
+          </div>
+        </DatalabWorkbenchProvider>
+      );
+    },
   ],
   args: { question: "", goals: [], hints: [] },
 } satisfies Meta<typeof BriefChecklist>;
@@ -63,23 +75,18 @@ const GOALS: Goal[] = [
   {
     id: "g4",
     label: <>the evidence beside the picture — a table and a chart, on one document, at once</>,
-    done: (state) => {
-      // Reads the LAYOUT, not the world — which is the goal the prototype needs
-      // a render-phase probe for and we get from a plain selector, because our
-      // tiles live in the same store as our documents (DR-49).
-      const space = state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId);
-      if (!space) return false;
-      const leaves: Array<{ app: string; docId: string | null }> = [];
-      const walk = (node: (typeof space)["tree"]): void => {
-        if (node.type === "leaf") {
-          const view = state.layout.views[node.viewId];
-          if (view) leaves.push({ app: view.appId, docId: view.documents.primary ?? null });
-        } else {
-          walk(node.a);
-          walk(node.b);
-        }
-      };
-      walk(space.tree);
+    done: (_state, workbench) => {
+      // Reads the WORKBENCH, not the world — the goal the prototype needs a
+      // render-phase probe for and we get from the core's own state: the
+      // current workspace's leaves and the views they show.
+      const workspace = workbench.index.workspaceById.get(workbench.session.workspaceId);
+      if (!workspace) return false;
+      const tiles: Array<{ app: string; docId: string | null }> = [];
+      for (const leaf of leaves(workspace.tree)) {
+        const viewId = leaf.body.case === "leaf" ? leaf.body.value.viewId : "";
+        const view = workbench.document.views[viewId];
+        if (view) tiles.push({ app: view.appId, docId: view.documents.primary ?? null });
+      }
       // `table.docId != null` is load-bearing, and leaving it out was a live
       // bug in this story for about ten minutes. A doc-bound tile whose docId
       // is null follows the ACTIVE document, and the default workspace opens
@@ -91,11 +98,11 @@ const GOALS: Goal[] = [
       // means "whatever is active", not "nothing". Two nulls are not evidence
       // of agreement, and a predicate that treats them as such is satisfied by
       // the empty case.
-      return leaves.some(
+      return tiles.some(
         (table) =>
           table.app === "table" &&
           table.docId != null &&
-          leaves.some((chart) => chart.app === "chart" && chart.docId === table.docId),
+          tiles.some((chart) => chart.app === "chart" && chart.docId === table.docId),
       );
     },
   },

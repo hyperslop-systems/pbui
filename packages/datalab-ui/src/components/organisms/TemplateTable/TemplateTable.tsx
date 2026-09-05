@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   AppBody,
   Button,
+  Chip,
   EmptyState,
   InlineRename,
   SectionLabel,
@@ -135,9 +136,7 @@ export function TemplateTable({
                     </Text>
                   )}
 
-                  <span className={styles.kind}>
-                    <Text size="micro">{template.kind}</Text>
-                  </span>
+                  <Chip label={template.kind} size="tiny" edge={false} />
                   <Text size="tiny" tone="faint">
                     {template.savedAt.slice(0, 10)}
                   </Text>
@@ -156,9 +155,7 @@ export function TemplateTable({
                       {template.apps.length > 0 && (
                         <Stack direction="row" gap={2} wrap>
                           {template.apps.map((app) => (
-                            <span key={app} className={styles.app}>
-                              <Text size="micro">{app}</Text>
-                            </span>
+                            <Chip key={app} label={app} size="tiny" fill="wash" edge={false} />
                           ))}
                         </Stack>
                       )}

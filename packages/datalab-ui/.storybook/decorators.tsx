@@ -1,7 +1,8 @@
 import type { Decorator } from "@storybook/react-vite";
-import { Provider } from "react-redux";
 import { useMemo } from "react";
-import { makeStore } from "../src/store";
+import { DatalabWorkbenchProvider } from "../src/appkit/DatalabWorkbenchContext";
+import { createDatalabWorkbench } from "../src/appkit/workbench";
+import "../src/apps/all";
 
 /**
  * The decorators that make a workbench component storyable.
@@ -17,18 +18,22 @@ import { makeStore } from "../src/store";
  */
 
 /**
- * A real store, one per story.
+ * A real workbench — store, core, shell, controller — one per story.
  *
  * Per story, not shared: a `play` function that dispatches in one story must
  * not leave state behind for the next. An intermittently-failing story is worse
  * than no story, and the cause is nearly impossible to see from the failure.
+ *
+ * A whole workbench rather than a bare store since PBUI-DATALAB-WORKBENCH-1:
+ * the tiles live in the workbench core, and a component that asks which
+ * stage it is on asks the core which workspace is selected.
  */
 export const withStore: Decorator = (Story) => {
-  const store = useMemo(() => makeStore(), []);
+  const workbench = useMemo(() => createDatalabWorkbench(), []);
   return (
-    <Provider store={store}>
+    <DatalabWorkbenchProvider workbench={workbench}>
       <Story />
-    </Provider>
+    </DatalabWorkbenchProvider>
   );
 };
 

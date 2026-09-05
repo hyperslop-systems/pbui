@@ -61,7 +61,7 @@ export const HERO = {
  *   01  presentations carry value and type      pbui/src/types.ts, descriptors/*
  *   02  the accept protocol and its red banner  the §A tour cheat sheet teaches
  *       it live on this same page; Esc aborts
- *   03  tiles/documents/workspaces              store/world.ts, store/layout.ts;
+ *   03  tiles/documents/workspaces              store/world.ts, store/controller.ts;
  *       §B of the tour proves two tiles on one document move together
  *
  * The lineage sentence stays: Genera and CLIM are where presentation-based

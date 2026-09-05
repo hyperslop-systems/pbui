@@ -1,6 +1,6 @@
-import { Button, JsonBlock, Stack, Text } from "@hyperslop-systems/pbui";
+import { AppBody, Button, JsonBlock, Stack, Text } from "@hyperslop-systems/pbui";
 import { useState } from "react";
-import { defineApp, type AppProps } from "../apps";
+import { defineWorkbenchApp, type AppProps } from "../app";
 import { useEmitPort, usePort } from "../links/hooks";
 
 /*
@@ -18,7 +18,7 @@ function CounterApp({ placementId, view }: AppProps) {
   const [count, setCount] = useState(0);
   const emit = useEmitPort(view, "count");
   return (
-    <div data-part="counter-app">
+    <AppBody data-part="counter-app">
       <Stack gap={2}>
         <Text size="small">
           counter in <code>{placementId}</code> · view <code>{view.id}</code>
@@ -40,14 +40,14 @@ function CounterApp({ placementId, view }: AppProps) {
           </Button>
         </div>
       </Stack>
-    </div>
+    </AppBody>
   );
 }
 
 function NotesApp({ placementId, view }: AppProps) {
   const subject = usePort(view, "subject");
   return (
-    <div data-part="notes-app">
+    <AppBody data-part="notes-app">
       <Stack gap={2}>
         <Text size="small" tone="faint">
           a singleton: the launcher offers “go to” once it is on screen
@@ -68,26 +68,18 @@ function NotesApp({ placementId, view }: AppProps) {
           }}
         />
       </Stack>
-    </div>
+    </AppBody>
   );
 }
 
-export const counterApp = defineApp({
-  id: "counter",
-  title: "counter",
-  tone: "var(--pbui-cat-3)",
-  singleton: false,
-  ports: [{ name: "count", direction: "out", contract: "number", doc: "the count, each time the button is pressed" }],
-  Component: CounterApp,
+export const counterApp = defineWorkbenchApp({
+  manifest: { id: "counter", ports: [{ name: "count", direction: "out", contract: "number", doc: "the count, each time the button is pressed" }] },
+  presentation: { title: "counter", tone: "var(--pbui-tone-step)", Component: CounterApp },
 });
 
-export const notesApp = defineApp({
-  id: "notes",
-  title: "notes",
-  tone: "var(--pbui-selected)",
-  singleton: true,
-  ports: [{ name: "subject", direction: "in", contract: "any", doc: "anything at all; the tile shows what it was handed" }],
-  Component: NotesApp,
+export const notesApp = defineWorkbenchApp({
+  manifest: { id: "notes", viewCardinality: "one", ports: [{ name: "subject", direction: "in", contract: "any", doc: "anything at all; the tile shows what it was handed" }] },
+  presentation: { title: "notes", tone: "var(--pbui-tone-cat)", Component: NotesApp },
 });
 
 export const demoApps = [counterApp, notesApp];

@@ -1,6 +1,7 @@
 import { documentSlotPort } from "@hyperslop-systems/pbui";
 import { describe, expect, it } from "vitest";
-import { createAppRegistry, createWorkbench, defineApp, layout, split, tile } from "@hyperslop-systems/pbui-workbench";
+import { createWorkbench, defineWorkbenchApp } from "@hyperslop-systems/pbui-workbench";
+import { commands, connectDocumentSource, layout, split, tile } from "@hyperslop-systems/workbench-core";
 import {
   createInstanceRegistry,
   BROKEN_RENDER_PROGRAM,
@@ -11,6 +12,7 @@ import {
   createProgramLibrary,
   memoryStorage,
   type UIReference,
+  connectProgramLibrary,
 } from "@hyperslop-systems/pbui-sandbox";
 import type { FrontendTool } from "@go-go-golems/chat-provider";
 import { defineVocabulary } from "../vocabulary/defineVocabulary";
@@ -50,10 +52,10 @@ function effectGateway(approved: ReadonlySet<string>): AgentEffectGateway {
 
 const Blank = () => null;
 
-const apps = createAppRegistry([
-  defineApp({ id: "chat", title: "chat", tone: "var(--pbui-pane-alt)", singleton: false, Component: Blank }),
-  defineApp({ id: "script", title: "program", tone: "var(--pbui-pane-alt)", singleton: false, duplicable: false, ports: [documentSlotPort("program")], Component: Blank }),
-]);
+const apps = [
+  defineWorkbenchApp({ manifest: { id: "chat" }, presentation: { title: "chat", tone: "var(--pbui-pane-alt)", Component: Blank } }),
+  defineWorkbenchApp({ manifest: { id: "script", duplicatePlacement: "link", ports: [documentSlotPort("program")], additionalBindings: {} }, presentation: { title: "program", tone: "var(--pbui-pane-alt)", Component: Blank } }),
+];
 
 const vocabulary = defineVocabulary({
   product: "test",
@@ -76,6 +78,10 @@ function harness(overrides: Partial<SandboxToolsOptions> = {}) {
   const library = createProgramLibrary({ key: "t", storage: memoryStorage() });
   const engine = createEvalEngine();
   const wb = createWorkbench({ apps, initial: layout(split("row", 0.6, tile("chat"), tile("chat"))) });
+  // The `script` app binds `program`; the core validates that binding, so the
+  // library's programs must exist in the document as stubs (as the demo does).
+  connectProgramLibrary(wb.core, library);
+  connectDocumentSource(wb.core, { id: "test.products", format: "shop.product", list: () => [{ id: "2049" }] });
   const performed: VerbLike[] = [];
   const options: SandboxToolsOptions = {
     getLibrary: () => library,
@@ -89,7 +95,7 @@ function harness(overrides: Partial<SandboxToolsOptions> = {}) {
       performed.push(verb);
       if (verb.kind === "program.open") {
         const near = (verb.near as string | undefined) ?? wb.activePlacementId() ?? undefined;
-        wb.verbs.openView("script", { program: verb.programId as string, ...((verb.documents as Record<string, string>) ?? {}) }, near ? { near } : {});
+        wb.execute(commands.open("script", { program: verb.programId as string, ...((verb.documents as Record<string, string>) ?? {}) }, near ? { near } : {}));
       }
       if (verb.kind === "program.remove") library.removeProgram(verb.programId as string);
       if (verb.kind === "action.remove") library.removeAction(verb.actionId as string);
@@ -169,7 +175,7 @@ describe("sandbox_create_app", () => {
     expect(result.placementId).toBeTruthy();
     expect(library.getState().programs["prg-1"]).toMatchObject({ title: "Counter", by: "agent", pinned: false });
     expect(performed).toEqual([{ kind: "program.open", programId: "prg-1", documents: {}, title: "Counter" }]);
-    expect(wb.store.getState().document.viewOrder).toHaveLength(3);
+    expect(wb.core.getState().document.viewOrder).toHaveLength(3);
   });
 
   it("stores nothing when the program fails, and names the phase", async () => {

@@ -1,0 +1,2298 @@
+{
+  "records": [
+    {
+      "name": "07-divider-drag-live",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "surface": {
+        "x": 8,
+        "y": 30.8125,
+        "width": 1424,
+        "height": 961.1875
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "tiles": [
+        {
+          "title": "Source A",
+          "x": 0,
+          "y": 0,
+          "width": 592,
+          "height": 468.59375
+        },
+        {
+          "title": "Transform→Source A · none",
+          "x": 616.015625,
+          "y": 0,
+          "width": 391.984375,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink A→Source A · none",
+          "x": 1032,
+          "y": 0,
+          "width": 392,
+          "height": 468.59375
+        },
+        {
+          "title": "Source B",
+          "x": 0,
+          "y": 492.59375,
+          "width": 462,
+          "height": 468.59375
+        },
+        {
+          "title": "Wide→Transform · none",
+          "x": 486,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink B→Source B · none",
+          "x": 967,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        }
+      ],
+      "jacks": [
+        {
+          "id": "v-1e62d79b-82dd/count",
+          "side": "out",
+          "x": 585,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-1e62d79b-82dd/label",
+          "side": "out",
+          "x": 585,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-75404f89-a754/in",
+          "side": "in",
+          "x": 611.015625,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-75404f89-a754/out",
+          "side": "out",
+          "x": 1001,
+          "y": 43.671875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-d079e8d1-055f/value",
+          "side": "in",
+          "x": 1027,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-d079e8d1-055f/anything",
+          "side": "in",
+          "x": 1027,
+          "y": 97.46875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-ac20aa5c-15bd/count",
+          "side": "out",
+          "x": 455,
+          "y": 534.59375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-ac20aa5c-15bd/label",
+          "side": "out",
+          "x": 455,
+          "y": 575.578125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-9692b4c6-c1cf/alpha",
+          "side": "in",
+          "x": 481,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-9692b4c6-c1cf/beta",
+          "side": "in",
+          "x": 481,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-9692b4c6-c1cf/gamma",
+          "side": "out",
+          "x": 936,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-9692b4c6-c1cf/delta",
+          "side": "out",
+          "x": 936,
+          "y": 577.25,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-eac31a59-5824/value",
+          "side": "in",
+          "x": 962,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-eac31a59-5824/anything",
+          "side": "in",
+          "x": 962,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        }
+      ],
+      "wires": [
+        {
+          "term": "follow",
+          "source": "v-75404f89-a754/out",
+          "destination": "v-9692b4c6-c1cf/beta",
+          "d": "M 948 49.671875 L 954 49.671875 L 954 486 L 474 486 L 474 589.65625 L 481 589.65625",
+          "points": [
+            {
+              "x": 948,
+              "y": 49.671875
+            },
+            {
+              "x": 954,
+              "y": 49.671875
+            },
+            {
+              "x": 954,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 589.65625
+            },
+            {
+              "x": 481,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 65,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [
+            {
+              "tile": "Transform→Source A · none",
+              "samples": 212
+            }
+          ],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-1e62d79b-82dd/count",
+          "destination": "v-d079e8d1-055f/value",
+          "d": "M 467 48 L 480 48 L 480 -6 L 954 -6 L 954 56.078125 L 962 56.078125",
+          "points": [
+            {
+              "x": 467,
+              "y": 48
+            },
+            {
+              "x": 480,
+              "y": 48
+            },
+            {
+              "x": 480,
+              "y": -6
+            },
+            {
+              "x": 954,
+              "y": -6
+            },
+            {
+              "x": 954,
+              "y": 56.078125
+            },
+            {
+              "x": 962,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [],
+          "fromError": 130,
+          "toError": 65,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [
+            {
+              "tile": "Source A",
+              "samples": 30
+            },
+            {
+              "tile": "Transform→Source A · none",
+              "samples": 31
+            }
+          ],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-ac20aa5c-15bd/label",
+          "destination": "v-eac31a59-5824/anything",
+          "d": "M 467 581.578125 L 480 581.578125 L 480 480 L 954 480 L 954 589.65625 L 962 589.65625",
+          "points": [
+            {
+              "x": 467,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 589.65625
+            },
+            {
+              "x": 962,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-1e62d79b-82dd/count",
+          "destination": "v-75404f89-a754/in",
+          "d": "M 467 48 L 468 56.078125 L 481 56.078125",
+          "points": [
+            {
+              "x": 467,
+              "y": 48
+            },
+            {
+              "x": 468,
+              "y": 56.078125
+            },
+            {
+              "x": 481,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [
+            {
+              "a": {
+                "x": 467,
+                "y": 48
+              },
+              "b": {
+                "x": 468,
+                "y": 56.078125
+              }
+            }
+          ],
+          "fromError": 130,
+          "toError": 130.015625,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [
+            {
+              "tile": "Source A",
+              "samples": 11
+            }
+          ],
+          "labelDistance": null
+        }
+      ],
+      "columns": [
+        {
+          "side": "in",
+          "view": "v-1e62d79b-82dd",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-1e62d79b-82dd",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-75404f89-a754",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-75404f89-a754",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-d079e8d1-055f",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-d079e8d1-055f",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "in",
+          "view": "v-ac20aa5c-15bd",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-ac20aa5c-15bd",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-9692b4c6-c1cf",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-9692b4c6-c1cf",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-eac31a59-5824",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-eac31a59-5824",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        }
+      ]
+    },
+    {
+      "name": "08-divider-drag-released",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "surface": {
+        "x": 8,
+        "y": 30.8125,
+        "width": 1424,
+        "height": 961.1875
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "tiles": [
+        {
+          "title": "Source A",
+          "x": 0,
+          "y": 0,
+          "width": 592,
+          "height": 468.59375
+        },
+        {
+          "title": "Transform→Source A · none",
+          "x": 616.015625,
+          "y": 0,
+          "width": 391.984375,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink A→Source A · none",
+          "x": 1032,
+          "y": 0,
+          "width": 392,
+          "height": 468.59375
+        },
+        {
+          "title": "Source B",
+          "x": 0,
+          "y": 492.59375,
+          "width": 462,
+          "height": 468.59375
+        },
+        {
+          "title": "Wide→Transform · none",
+          "x": 486,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink B→Source B · none",
+          "x": 967,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        }
+      ],
+      "jacks": [
+        {
+          "id": "v-1e62d79b-82dd/count",
+          "side": "out",
+          "x": 585,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-1e62d79b-82dd/label",
+          "side": "out",
+          "x": 585,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-75404f89-a754/in",
+          "side": "in",
+          "x": 611.015625,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-75404f89-a754/out",
+          "side": "out",
+          "x": 1001,
+          "y": 43.671875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-d079e8d1-055f/value",
+          "side": "in",
+          "x": 1027,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-d079e8d1-055f/anything",
+          "side": "in",
+          "x": 1027,
+          "y": 97.46875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-ac20aa5c-15bd/count",
+          "side": "out",
+          "x": 455,
+          "y": 534.59375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-ac20aa5c-15bd/label",
+          "side": "out",
+          "x": 455,
+          "y": 575.578125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-9692b4c6-c1cf/alpha",
+          "side": "in",
+          "x": 481,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-9692b4c6-c1cf/beta",
+          "side": "in",
+          "x": 481,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-9692b4c6-c1cf/gamma",
+          "side": "out",
+          "x": 936,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-9692b4c6-c1cf/delta",
+          "side": "out",
+          "x": 936,
+          "y": 577.25,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-eac31a59-5824/value",
+          "side": "in",
+          "x": 962,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-eac31a59-5824/anything",
+          "side": "in",
+          "x": 962,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        }
+      ],
+      "wires": [
+        {
+          "term": "follow",
+          "source": "v-75404f89-a754/out",
+          "destination": "v-9692b4c6-c1cf/beta",
+          "d": "M 1013 49.671875 L 1020 49.671875 L 1020 486 L 474 486 L 474 589.65625 L 481 589.65625",
+          "points": [
+            {
+              "x": 1013,
+              "y": 49.671875
+            },
+            {
+              "x": 1020,
+              "y": 49.671875
+            },
+            {
+              "x": 1020,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 589.65625
+            },
+            {
+              "x": 481,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-ac20aa5c-15bd/label",
+          "destination": "v-eac31a59-5824/anything",
+          "d": "M 467 581.578125 L 480 581.578125 L 480 480 L 954 480 L 954 589.65625 L 962 589.65625",
+          "points": [
+            {
+              "x": 467,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 589.65625
+            },
+            {
+              "x": 962,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-1e62d79b-82dd/count",
+          "destination": "v-d079e8d1-055f/value",
+          "d": "M 597 48 L 606 48 L 606 -6 L 1020 -6 L 1020 56.078125 L 1027 56.078125",
+          "points": [
+            {
+              "x": 597,
+              "y": 48
+            },
+            {
+              "x": 606,
+              "y": 48
+            },
+            {
+              "x": 606,
+              "y": -6
+            },
+            {
+              "x": 1020,
+              "y": -6
+            },
+            {
+              "x": 1020,
+              "y": 56.078125
+            },
+            {
+              "x": 1027,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-1e62d79b-82dd/count",
+          "destination": "v-75404f89-a754/in",
+          "d": "M 597 48 L 600 56.078125 L 611.015625 56.078125",
+          "points": [
+            {
+              "x": 597,
+              "y": 48
+            },
+            {
+              "x": 600,
+              "y": 56.078125
+            },
+            {
+              "x": 611.015625,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [
+            {
+              "a": {
+                "x": 597,
+                "y": 48
+              },
+              "b": {
+                "x": 600,
+                "y": 56.078125
+              }
+            }
+          ],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        }
+      ],
+      "columns": [
+        {
+          "side": "in",
+          "view": "v-1e62d79b-82dd",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-1e62d79b-82dd",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-75404f89-a754",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-75404f89-a754",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-d079e8d1-055f",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-d079e8d1-055f",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "in",
+          "view": "v-ac20aa5c-15bd",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-ac20aa5c-15bd",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-9692b4c6-c1cf",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-9692b4c6-c1cf",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-eac31a59-5824",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-eac31a59-5824",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        }
+      ]
+    },
+    {
+      "name": "09-live-values",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "surface": {
+        "x": 8,
+        "y": 30.8125,
+        "width": 1424,
+        "height": 961.1875
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "tiles": [
+        {
+          "title": "Source A",
+          "x": 0,
+          "y": 0,
+          "width": 466.609375,
+          "height": 475.59375
+        },
+        {
+          "title": "Transform→Source A",
+          "x": 476.609375,
+          "y": 0,
+          "width": 468.6875,
+          "height": 475.59375
+        },
+        {
+          "title": "Sink A→Source A",
+          "x": 955.296875,
+          "y": 0,
+          "width": 468.703125,
+          "height": 475.59375
+        },
+        {
+          "title": "Source B",
+          "x": 0,
+          "y": 485.59375,
+          "width": 466.609375,
+          "height": 475.59375
+        },
+        {
+          "title": "Wide→Transform",
+          "x": 476.609375,
+          "y": 485.59375,
+          "width": 468.6875,
+          "height": 475.59375
+        },
+        {
+          "title": "Sink B→Source B",
+          "x": 955.296875,
+          "y": 485.59375,
+          "width": 468.703125,
+          "height": 475.59375
+        }
+      ],
+      "jacks": [],
+      "wires": [],
+      "columns": []
+    },
+    {
+      "name": "10-follow-preview",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "surface": {
+        "x": 8,
+        "y": 30.8125,
+        "width": 1424,
+        "height": 961.1875
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "tiles": [
+        {
+          "title": "Source A",
+          "x": 0,
+          "y": 0,
+          "width": 462,
+          "height": 468.59375
+        },
+        {
+          "title": "Transform→Source A",
+          "x": 486,
+          "y": 0,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink A→Source A",
+          "x": 967,
+          "y": 0,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Source B",
+          "x": 0,
+          "y": 492.59375,
+          "width": 462,
+          "height": 468.59375
+        },
+        {
+          "title": "Wide→Transform",
+          "x": 486,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink B→Source B",
+          "x": 967,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        }
+      ],
+      "jacks": [
+        {
+          "id": "v-08e3f4d4-f609/count",
+          "side": "out",
+          "x": 455,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-08e3f4d4-f609/label",
+          "side": "out",
+          "x": 455,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-4d3d8e62-44c5/in",
+          "side": "in",
+          "x": 481,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-4d3d8e62-44c5/out",
+          "side": "out",
+          "x": 936,
+          "y": 43.671875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-a5f2372e-3fa6/value",
+          "side": "in",
+          "x": 962,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-a5f2372e-3fa6/anything",
+          "side": "in",
+          "x": 962,
+          "y": 97.46875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-0dae16bb-bb02/count",
+          "side": "out",
+          "x": 455,
+          "y": 534.59375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-0dae16bb-bb02/label",
+          "side": "out",
+          "x": 455,
+          "y": 575.578125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/alpha",
+          "side": "in",
+          "x": 481,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/beta",
+          "side": "in",
+          "x": 481,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/gamma",
+          "side": "out",
+          "x": 936,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/delta",
+          "side": "out",
+          "x": 936,
+          "y": 577.25,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-c9f40029-446e/value",
+          "side": "in",
+          "x": 962,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-c9f40029-446e/anything",
+          "side": "in",
+          "x": 962,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        }
+      ],
+      "wires": [
+        {
+          "term": "follow",
+          "source": "v-4d3d8e62-44c5/out",
+          "destination": "v-125c7a92-dab2/beta",
+          "d": "M 948 49.671875 L 954 49.671875 L 954 486 L 474 486 L 474 589.65625 L 481 589.65625",
+          "points": [
+            {
+              "x": 948,
+              "y": 49.671875
+            },
+            {
+              "x": 954,
+              "y": 49.671875
+            },
+            {
+              "x": 954,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 589.65625
+            },
+            {
+              "x": 481,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-08e3f4d4-f609/count",
+          "destination": "v-a5f2372e-3fa6/value",
+          "d": "M 467 48 L 480 48 L 480 -6 L 954 -6 L 954 56.078125 L 962 56.078125",
+          "points": [
+            {
+              "x": 467,
+              "y": 48
+            },
+            {
+              "x": 480,
+              "y": 48
+            },
+            {
+              "x": 480,
+              "y": -6
+            },
+            {
+              "x": 954,
+              "y": -6
+            },
+            {
+              "x": 954,
+              "y": 56.078125
+            },
+            {
+              "x": 962,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-0dae16bb-bb02/label",
+          "destination": "v-c9f40029-446e/anything",
+          "d": "M 467 581.578125 L 480 581.578125 L 480 480 L 954 480 L 954 589.65625 L 962 589.65625",
+          "points": [
+            {
+              "x": 467,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 589.65625
+            },
+            {
+              "x": 962,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-08e3f4d4-f609/count",
+          "destination": "v-4d3d8e62-44c5/in",
+          "d": "M 467 48 L 468 56.078125 L 481 56.078125",
+          "points": [
+            {
+              "x": 467,
+              "y": 48
+            },
+            {
+              "x": 468,
+              "y": 56.078125
+            },
+            {
+              "x": 481,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [
+            {
+              "a": {
+                "x": 467,
+                "y": 48
+              },
+              "b": {
+                "x": 468,
+                "y": 56.078125
+              }
+            }
+          ],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        }
+      ],
+      "columns": [
+        {
+          "side": "in",
+          "view": "v-08e3f4d4-f609",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-08e3f4d4-f609",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-4d3d8e62-44c5",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-4d3d8e62-44c5",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-a5f2372e-3fa6",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-a5f2372e-3fa6",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "in",
+          "view": "v-0dae16bb-bb02",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-0dae16bb-bb02",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-125c7a92-dab2",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-125c7a92-dab2",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-c9f40029-446e",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-c9f40029-446e",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        }
+      ],
+      "cursor": "Follow(Source A · label) → Sink A · anything"
+    },
+    {
+      "name": "11-hold-preview",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "surface": {
+        "x": 8,
+        "y": 30.8125,
+        "width": 1424,
+        "height": 961.1875
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "tiles": [
+        {
+          "title": "Source A",
+          "x": 0,
+          "y": 0,
+          "width": 462,
+          "height": 468.59375
+        },
+        {
+          "title": "Transform→Source A",
+          "x": 486,
+          "y": 0,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink A→Source A",
+          "x": 967,
+          "y": 0,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Source B",
+          "x": 0,
+          "y": 492.59375,
+          "width": 462,
+          "height": 468.59375
+        },
+        {
+          "title": "Wide→Transform",
+          "x": 486,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink B→Source B",
+          "x": 967,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        }
+      ],
+      "jacks": [
+        {
+          "id": "v-08e3f4d4-f609/count",
+          "side": "out",
+          "x": 455,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-08e3f4d4-f609/label",
+          "side": "out",
+          "x": 455,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-4d3d8e62-44c5/in",
+          "side": "in",
+          "x": 481,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-4d3d8e62-44c5/out",
+          "side": "out",
+          "x": 936,
+          "y": 43.671875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-a5f2372e-3fa6/value",
+          "side": "in",
+          "x": 962,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-a5f2372e-3fa6/anything",
+          "side": "in",
+          "x": 962,
+          "y": 97.46875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-0dae16bb-bb02/count",
+          "side": "out",
+          "x": 455,
+          "y": 534.59375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-0dae16bb-bb02/label",
+          "side": "out",
+          "x": 455,
+          "y": 575.578125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/alpha",
+          "side": "in",
+          "x": 481,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/beta",
+          "side": "in",
+          "x": 481,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/gamma",
+          "side": "out",
+          "x": 936,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/delta",
+          "side": "out",
+          "x": 936,
+          "y": 577.25,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-c9f40029-446e/value",
+          "side": "in",
+          "x": 962,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-c9f40029-446e/anything",
+          "side": "in",
+          "x": 962,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        }
+      ],
+      "wires": [
+        {
+          "term": "follow",
+          "source": "v-4d3d8e62-44c5/out",
+          "destination": "v-125c7a92-dab2/beta",
+          "d": "M 948 49.671875 L 954 49.671875 L 954 486 L 474 486 L 474 589.65625 L 481 589.65625",
+          "points": [
+            {
+              "x": 948,
+              "y": 49.671875
+            },
+            {
+              "x": 954,
+              "y": 49.671875
+            },
+            {
+              "x": 954,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 589.65625
+            },
+            {
+              "x": 481,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-08e3f4d4-f609/count",
+          "destination": "v-a5f2372e-3fa6/value",
+          "d": "M 467 48 L 480 48 L 480 -6 L 954 -6 L 954 56.078125 L 962 56.078125",
+          "points": [
+            {
+              "x": 467,
+              "y": 48
+            },
+            {
+              "x": 480,
+              "y": 48
+            },
+            {
+              "x": 480,
+              "y": -6
+            },
+            {
+              "x": 954,
+              "y": -6
+            },
+            {
+              "x": 954,
+              "y": 56.078125
+            },
+            {
+              "x": 962,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-0dae16bb-bb02/label",
+          "destination": "v-c9f40029-446e/anything",
+          "d": "M 467 581.578125 L 480 581.578125 L 480 480 L 954 480 L 954 589.65625 L 962 589.65625",
+          "points": [
+            {
+              "x": 467,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 589.65625
+            },
+            {
+              "x": 962,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-08e3f4d4-f609/count",
+          "destination": "v-4d3d8e62-44c5/in",
+          "d": "M 467 48 L 468 56.078125 L 481 56.078125",
+          "points": [
+            {
+              "x": 467,
+              "y": 48
+            },
+            {
+              "x": 468,
+              "y": 56.078125
+            },
+            {
+              "x": 481,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [
+            {
+              "a": {
+                "x": 467,
+                "y": 48
+              },
+              "b": {
+                "x": 468,
+                "y": 56.078125
+              }
+            }
+          ],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        }
+      ],
+      "columns": [
+        {
+          "side": "in",
+          "view": "v-08e3f4d4-f609",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-08e3f4d4-f609",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-4d3d8e62-44c5",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-4d3d8e62-44c5",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-a5f2372e-3fa6",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-a5f2372e-3fa6",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "in",
+          "view": "v-0dae16bb-bb02",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-0dae16bb-bb02",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-125c7a92-dab2",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-125c7a92-dab2",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-c9f40029-446e",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-c9f40029-446e",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        }
+      ],
+      "cursor": "Hold(Source A · label, then pin) → Sink A · anything"
+    },
+    {
+      "name": "12-hold-created",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "surface": {
+        "x": 8,
+        "y": 30.8125,
+        "width": 1424,
+        "height": 961.1875
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "tiles": [
+        {
+          "title": "Source A",
+          "x": 0,
+          "y": 0,
+          "width": 462,
+          "height": 468.59375
+        },
+        {
+          "title": "Transform→Source A",
+          "x": 486,
+          "y": 0,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink A→Source A⏸<text>",
+          "x": 967,
+          "y": 0,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Source B",
+          "x": 0,
+          "y": 492.59375,
+          "width": 462,
+          "height": 468.59375
+        },
+        {
+          "title": "Wide→Transform",
+          "x": 486,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        },
+        {
+          "title": "Sink B→Source B",
+          "x": 967,
+          "y": 492.59375,
+          "width": 457,
+          "height": 468.59375
+        }
+      ],
+      "jacks": [
+        {
+          "id": "v-08e3f4d4-f609/count",
+          "side": "out",
+          "x": 455,
+          "y": 42,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-08e3f4d4-f609/label",
+          "side": "out",
+          "x": 455,
+          "y": 82.984375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-4d3d8e62-44c5/in",
+          "side": "in",
+          "x": 481,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-4d3d8e62-44c5/out",
+          "side": "out",
+          "x": 936,
+          "y": 43.671875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-a5f2372e-3fa6/value",
+          "side": "in",
+          "x": 962,
+          "y": 50.078125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-a5f2372e-3fa6/anything",
+          "side": "in",
+          "x": 962,
+          "y": 103.875,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-0dae16bb-bb02/count",
+          "side": "out",
+          "x": 455,
+          "y": 534.59375,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-0dae16bb-bb02/label",
+          "side": "out",
+          "x": 455,
+          "y": 575.578125,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/alpha",
+          "side": "in",
+          "x": 481,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/beta",
+          "side": "in",
+          "x": 481,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/gamma",
+          "side": "out",
+          "x": 936,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-125c7a92-dab2/delta",
+          "side": "out",
+          "x": 936,
+          "y": 577.25,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-c9f40029-446e/value",
+          "side": "in",
+          "x": 962,
+          "y": 536.265625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        },
+        {
+          "id": "v-c9f40029-446e/anything",
+          "side": "in",
+          "x": 962,
+          "y": 583.65625,
+          "width": 12,
+          "height": 12,
+          "clipped": false
+        }
+      ],
+      "wires": [
+        {
+          "term": "follow",
+          "source": "v-4d3d8e62-44c5/out",
+          "destination": "v-125c7a92-dab2/beta",
+          "d": "M 948 49.671875 L 954 49.671875 L 954 486 L 474 486 L 474 589.65625 L 481 589.65625",
+          "points": [
+            {
+              "x": 948,
+              "y": 49.671875
+            },
+            {
+              "x": 954,
+              "y": 49.671875
+            },
+            {
+              "x": 954,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 486
+            },
+            {
+              "x": 474,
+              "y": 589.65625
+            },
+            {
+              "x": 481,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "held",
+          "source": "v-08e3f4d4-f609/label",
+          "destination": "v-a5f2372e-3fa6/anything",
+          "d": "M 467 88.984375 L 480 88.984375 L 480 -6 L 960 -6 L 960 102 L 954 102 L 954 109.875 L 962 109.875",
+          "points": [
+            {
+              "x": 467,
+              "y": 88.984375
+            },
+            {
+              "x": 480,
+              "y": 88.984375
+            },
+            {
+              "x": 480,
+              "y": -6
+            },
+            {
+              "x": 960,
+              "y": -6
+            },
+            {
+              "x": 960,
+              "y": 102
+            },
+            {
+              "x": 954,
+              "y": 102
+            },
+            {
+              "x": 954,
+              "y": 109.875
+            },
+            {
+              "x": 962,
+              "y": 109.875
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-08e3f4d4-f609/count",
+          "destination": "v-a5f2372e-3fa6/value",
+          "d": "M 467 48 L 474 48 L 474 -12 L 954 -12 L 954 56.078125 L 962 56.078125",
+          "points": [
+            {
+              "x": 467,
+              "y": 48
+            },
+            {
+              "x": 474,
+              "y": 48
+            },
+            {
+              "x": 474,
+              "y": -12
+            },
+            {
+              "x": 954,
+              "y": -12
+            },
+            {
+              "x": 954,
+              "y": 56.078125
+            },
+            {
+              "x": 962,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-0dae16bb-bb02/label",
+          "destination": "v-c9f40029-446e/anything",
+          "d": "M 467 581.578125 L 480 581.578125 L 480 480 L 954 480 L 954 589.65625 L 962 589.65625",
+          "points": [
+            {
+              "x": 467,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 581.578125
+            },
+            {
+              "x": 480,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 480
+            },
+            {
+              "x": 954,
+              "y": 589.65625
+            },
+            {
+              "x": 962,
+              "y": 589.65625
+            }
+          ],
+          "diagonals": [],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        },
+        {
+          "term": "follow",
+          "source": "v-08e3f4d4-f609/count",
+          "destination": "v-4d3d8e62-44c5/in",
+          "d": "M 467 48 L 468 56.078125 L 481 56.078125",
+          "points": [
+            {
+              "x": 467,
+              "y": 48
+            },
+            {
+              "x": 468,
+              "y": 56.078125
+            },
+            {
+              "x": 481,
+              "y": 56.078125
+            }
+          ],
+          "diagonals": [
+            {
+              "a": {
+                "x": 467,
+                "y": 48
+              },
+              "b": {
+                "x": 468,
+                "y": 56.078125
+              }
+            }
+          ],
+          "fromError": 0,
+          "toError": 0,
+          "sourceClipped": false,
+          "destinationClipped": false,
+          "intersections": [],
+          "labelDistance": null
+        }
+      ],
+      "columns": [
+        {
+          "side": "in",
+          "view": "v-08e3f4d4-f609",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-08e3f4d4-f609",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-4d3d8e62-44c5",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-4d3d8e62-44c5",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-a5f2372e-3fa6",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-a5f2372e-3fa6",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "in",
+          "view": "v-0dae16bb-bb02",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "out",
+          "view": "v-0dae16bb-bb02",
+          "scrollTop": 0,
+          "clientHeight": 416,
+          "scrollHeight": 416
+        },
+        {
+          "side": "in",
+          "view": "v-125c7a92-dab2",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "out",
+          "view": "v-125c7a92-dab2",
+          "scrollTop": 0,
+          "clientHeight": 414,
+          "scrollHeight": 414
+        },
+        {
+          "side": "in",
+          "view": "v-c9f40029-446e",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        },
+        {
+          "side": "out",
+          "view": "v-c9f40029-446e",
+          "scrollTop": 0,
+          "clientHeight": 429,
+          "scrollHeight": 429
+        }
+      ]
+    }
+  ],
+  "afterEscape": 0,
+  "text": "WIRING LAB\nopen wiring\nclose wiring\nreset links\nMod+Shift+L toggles · drag an output card onto an input · Shift while dropping pins it · Ctrl shares one cell · Esc leaves the mode · right-click a badge for its verbs\n⠿\nSOURCE A\n⌕\n⬌\n⬍\n✕\na producer: two outputs, a number and a label\n1\ntick\n⠿\nTRANSFORM\n→\nSOURCE A\n⌕\n⬌\n⬍\n✕\na transform: doubles what comes in\nin: 1 → out: 2\n⠿\nSINK A\n→\nSOURCE A\n⏸\n<TEXT>\n⌕\n⬌\n⬍\n✕\na consumer: a number and anything at all\nvalue: 1 · value follows Source A, now <number>\nanything: \"tick 1\" · anything is held on <text>; resume follows Source A\n⠿\nSOURCE B\n⌕\n⬌\n⬍\n✕\na producer: two outputs, a number and a label\n1\ntick\n⠿\nWIDE\n→\nTRANSFORM\n⌕\n⬌\n⬍\n✕\nmany ports: two inputs, two outputs\nalpha: —\nbeta: 2\nemit gamma\n⠿\nSINK B\n→\nSOURCE B\n⌕\n⬌\n⬍\n✕\na consumer: a number and anything at all\nvalue: — · value is not bound\nanything: \"tick 1\" · anything follows Source B, now <text>\nSink A held on <text>"
+}

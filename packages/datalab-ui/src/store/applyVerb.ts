@@ -11,8 +11,7 @@ import type { DatadropPresentationReference } from "../pbui/runtime";
 import type { PbuiEnvironment } from "../pbui/types";
 import type { Verb } from "../pbui/verbs";
 import type { AppThunk } from "./index";
-import { actionsForLayoutVerb } from "./applyLayoutVerb";
-import type { LayoutState } from "./layout";
+import { actionsForWorkbenchVerb } from "./workbenchVerbs";
 import { worldActions, type WorldState } from "./world";
 
 /**
@@ -43,17 +42,18 @@ export type VerbResult = UnknownAction | AppThunk<unknown>;
 
 export function actionsForVerb(
   verb: Verb,
-  state: { world: WorldState; layout: LayoutState },
+  state: { world: WorldState },
   env: PbuiEnvironment,
 ): VerbResult[] {
   const a = worldActions;
   const world = state.world;
 
-  // The layout half lives in its own file so neither becomes a 400-line switch.
-  // It returns null for a verb it does not own, so there is no second list of
-  // verb kinds to keep in step with this switch.
-  const layoutResult = actionsForLayoutVerb(verb, state.layout);
-  if (layoutResult) return layoutResult;
+  // The workbench half — tiles, workspaces, stages, bundles — lives in its
+  // own file so neither becomes a 400-line switch. It returns null for a
+  // verb it does not own, so there is no second list of verb kinds to keep
+  // in step with this switch.
+  const workbenchResult = actionsForWorkbenchVerb(verb);
+  if (workbenchResult) return workbenchResult;
   // The reducers accept `docId: null` and resolve it to the active document
   // themselves, so an ambient verb is resolved at APPLICATION time rather than
   // at menu-build time. The active document can change while a menu is open.

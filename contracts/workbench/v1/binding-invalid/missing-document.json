@@ -1,0 +1,39 @@
+{
+  "name": "missing document",
+  "catalog": "basic",
+  "document": {
+    "format": "pbui.workbench",
+    "schemaVersion": 1,
+    "id": "w1",
+    "name": "fixture",
+    "workspaces": [
+      {
+        "id": "main",
+        "name": "main",
+        "tree": {
+          "id": "n-00000002-0000",
+          "leaf": {
+            "viewId": "v-00000001-0000"
+          }
+        }
+      }
+    ],
+    "views": {
+      "v-00000001-0000": {
+        "id": "v-00000001-0000",
+        "appId": "chat",
+        "documents": {
+          "conversation": "c-gone"
+        }
+      }
+    },
+    "viewOrder": [
+      "v-00000001-0000"
+    ]
+  },
+  "expected": {
+    "ok": false,
+    "code": "unknown_document",
+    "path": "views[\"v-00000001-0000\"].documents[\"conversation\"]"
+  }
+}

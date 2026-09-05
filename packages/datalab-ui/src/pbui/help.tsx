@@ -7,7 +7,12 @@ import {
 } from "@hyperslop-systems/pbui";
 import type { HelpRendererProps } from "@hyperslop-systems/pbui";
 import { defineHelp } from "@hyperslop-systems/pbui/presentation";
-import type { ActionQuery, HelpContribution, ResolutionResult, SelectionSnapshot } from "@hyperslop-systems/pbui/presentation";
+import type {
+  ActionQuery,
+  HelpContribution,
+  ResolutionResult,
+  SelectionSnapshot,
+} from "@hyperslop-systems/pbui/presentation";
 import { TYPE_LABEL } from "../model/table";
 import type { FieldType } from "../model/table";
 import type { DatalabFacts } from "./actions";
@@ -62,42 +67,42 @@ export function createDatalabHelpContributions(
   ) => ResolutionResult<PresentationValues, Verb>,
 ): HelpContribution<PresentationValues, DatalabFacts>[] {
   return [
-  define.exact("field", {
-    id: "datalab.field.help",
-    scopes: ["datalab"],
-    help: ({ subject, snapshot }) => [
-      markdownHelp.create({
-        id: "field.meaning",
-        title: "Field",
-        order: 0,
-        payload: {
-          markdown:
-            "A **field** is one named column in the current pipeline output.\n\n" +
-            "Drop it on a channel to map it; its menu carries the `keep` filters.",
-        },
-      }),
-      fieldSummaryHelp.create({
-        id: "field.summary",
-        title: "Current context",
-        order: 10,
-        payload: {
-          name: subject.value.name,
-          type: snapshot.product.fieldType,
-          targetName: snapshot.product.targetName,
-        },
-      }),
-      // Availability comes from the ACTION kernel, resolved with the same
-      // subject and snapshot — displayed, not reconstructed (§9.5).
-      actionsHelp.create({
-        id: "field.actions",
-        title: "Actions",
-        order: 20,
-        payload: {
-          actions: resolveActions({ subject, invocation: "menu" }, snapshot).actions,
-        },
-      }),
-    ],
-  }),
+    define.exact("field", {
+      id: "datalab.field.help",
+      scopes: ["datalab"],
+      help: ({ subject, snapshot }) => [
+        markdownHelp.create({
+          id: "field.meaning",
+          title: "Field",
+          order: 0,
+          payload: {
+            markdown:
+              "A **field** is one named column in the current pipeline output.\n\n" +
+              "Drop it on a channel to map it; its menu carries the `keep` filters.",
+          },
+        }),
+        fieldSummaryHelp.create({
+          id: "field.summary",
+          title: "Current context",
+          order: 10,
+          payload: {
+            name: subject.value.name,
+            type: snapshot.product.fieldType,
+            targetName: snapshot.product.targetName,
+          },
+        }),
+        // Availability comes from the ACTION kernel, resolved with the same
+        // subject and snapshot — displayed, not reconstructed (§9.5).
+        actionsHelp.create({
+          id: "field.actions",
+          title: "Actions",
+          order: 20,
+          payload: {
+            actions: resolveActions({ subject, invocation: "menu" }, snapshot).actions,
+          },
+        }),
+      ],
+    }),
   ];
 }
 

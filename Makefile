@@ -1,6 +1,6 @@
 .PHONY: lint lintmax fmt-check docker-lint gosec govulncheck test build \
 	ci-check logcopter-generate logcopter-check glazed-lint \
-	protocol-generate protocol-check \
+	protocol-generate protocol-check frontend-check \
 	chat-ui chat-build chat-serve chat-test
 
 GO_PACKAGES ?= ./...
@@ -35,6 +35,25 @@ build:
 	GOWORK=off go build $(GO_PACKAGES)
 
 ci-check: fmt-check lint logcopter-check glazed-lint test build
+
+# Shared by GitHub CI and Lefthook. Keep this ordered: workspace packages
+# export uncommitted dist declarations, and tests must use current builds.
+# Lint first so formatting failures are reported before the expensive checks.
+frontend-check:
+	pnpm --filter @hyperslop-systems/datalab-ui lint
+	pnpm --filter @hyperslop-systems/workbench-protocol build
+	pnpm --workspace-root run typecheck
+	pnpm --workspace-root run test
+	pnpm --workspace-root run build
+	pnpm --filter @hyperslop-systems/workbench-core typecheck
+	pnpm --filter @hyperslop-systems/workbench-core test
+	pnpm --filter @hyperslop-systems/workbench-core build
+	pnpm --filter @hyperslop-systems/pbui-workbench typecheck
+	pnpm --filter @hyperslop-systems/pbui-workbench test
+	pnpm --filter @hyperslop-systems/pbui-workbench build
+	pnpm --filter @hyperslop-systems/datalab-ui typecheck
+	pnpm --filter @hyperslop-systems/datalab-ui test
+	pnpm --filter @hyperslop-systems/datalab-ui build
 
 logcopter-generate:
 	GOWORK=off go generate $(GO_PACKAGES)

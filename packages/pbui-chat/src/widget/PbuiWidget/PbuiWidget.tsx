@@ -36,7 +36,7 @@ export function PbuiWidget({ document, instanceId = "widget", status, parentMess
   const problem = validated ? null : validateWidgetDocument(chat.vocabulary, document, DEFAULT_WIDGET_LIMITS, { verbs: "lenient" });
   if (problem) {
     return (
-      <Callout variant="warning" title="invalid widget document">
+      <Callout variant="danger" title="invalid widget document">
         {problem}
       </Callout>
     );

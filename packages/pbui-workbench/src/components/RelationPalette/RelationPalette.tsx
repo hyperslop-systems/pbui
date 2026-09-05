@@ -12,14 +12,14 @@ import { useLinkSnapshot } from "../../links/hooks";
  */
 export function RelationPalette() {
   const workbench = useWorkbench();
-  const state = workbench.useWorkbenchState((s) => s.relationPalette);
+  const state = workbench.useShellState((s) => s.relationPalette);
   const snapshot = useLinkSnapshot(workbench);
   const [query, setQuery] = useState("");
   if (!state) return null;
 
   const destination = snapshot.ports.get(state.destination);
   const close = () => {
-    workbench.perform(linkVerbs.closePalette());
+    workbench.dispatch({ kind: "relation.palette.close" });
     setQuery("");
   };
   if (!destination) {
@@ -37,7 +37,7 @@ export function RelationPalette() {
   }
   const choose = (rowId: string) => {
     const [source, relation] = rowId.split("|") as [PortId, string];
-    workbench.perform(linkVerbs.derive(source, destination.id, relation));
+    workbench.execute(linkVerbs.derive(source, destination.id, relation) as Extract<ReturnType<typeof linkVerbs.derive>, { kind: "port.derive" }>);
     close();
   };
   return (

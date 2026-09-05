@@ -1,45 +1,67 @@
 import type { ReactNode } from "react";
+import { IconButton } from "../../atoms/IconButton";
 import { Text } from "../../foundation";
-import { Stack, Surface, Toolbar } from "../../layout";
+import { Stack, Toolbar } from "../../layout";
+import styles from "./Callout.module.css";
 
-/**
- * A bordered aside that reports a state and offers what to do about it.
- *
- * Three of these existed inline, all as `<Surface tone="alt" role="status">`:
- * the unfinished-upload panel, the published-successfully panel, and the
- * secure-context warning. They are the same shape — a title, a body, sometimes
- * actions — and none of them announced itself the same way.
- *
- * The variant chooses the left edge and the role. `warning` and `ok` are
- * distinguishable without colour by the edge width and the title weight; that
- * is deliberate and it is why there is no `danger` variant here — a *failure*
- * is `ErrorNotice`, which announces as an alert. A Callout reports a state that
- * is merely worth knowing.
- */
-export function Callout({
-  variant = "info",
-  title,
-  children,
-  actions,
-}: {
-  variant?: "info" | "ok" | "warning";
+export type CalloutVariant = "info" | "ok" | "warning" | "danger";
+
+export interface CalloutProps {
+  /** Severity, carried by the 4px left edge: neutral, ok green, warning gold, danger red. */
+  variant?: CalloutVariant;
   title?: string;
   children: ReactNode;
-  /** Buttons. Rendered in a tight toolbar below the body. */
+  /** A faint line under the body: what to do about it. */
+  hint?: ReactNode;
   actions?: ReactNode;
-}) {
+  /** Shows a dismiss control at the top right. */
+  onDismiss?(): void;
+  dismissLabel?: string;
+}
+
+/**
+ * The one notice in the family (PBUI-VISUAL-1 P5): a paper box with a
+ * hairline and a 4px tone edge that names the severity — the Chip's edge at
+ * paragraph size. Every "something to know" surface renders through it: a
+ * published version, an unfinished upload, an invalid document, a program
+ * error, a refusal (the kernel's RefusalNotice draws the same recipe).
+ *
+ * `danger` announces as an alert; the other three as status. That split is
+ * what an earlier version used to justify having no danger variant at all —
+ * failures then grew four unrelated looks across the products.
+ */
+export function Callout({ variant = "info", title, children, hint, actions, onDismiss, dismissLabel = "dismiss" }: CalloutProps) {
   return (
-    <Surface tone="alt" border="hair" padding={3} role="status" data-part="callout">
+    <div
+      data-part="callout"
+      data-variant={variant}
+      role={variant === "danger" ? "alert" : "status"}
+      className={[styles.callout, styles[variant]].join(" ")}
+    >
       <Stack gap={2}>
-        {title && (
-          <Text size="small" strong>
-            {variant === "ok" ? "✓ " : variant === "warning" ? "⚠ " : ""}
-            {title}
-          </Text>
-        )}
+        {title || onDismiss ? (
+          <div className={styles.head}>
+            {title ? (
+              <Text size="small" strong>
+                {variant === "ok" ? "✓ " : variant === "warning" ? "⚠ " : variant === "danger" ? "✕ " : ""}
+                {title}
+              </Text>
+            ) : null}
+            {onDismiss ? (
+              <span className={styles.dismiss}>
+                <IconButton variant="bare" size="tiny" glyph="✕" accessibleName={dismissLabel} onClick={onDismiss} />
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {children}
+        {hint ? (
+          <Text size="tiny" tone="faint">
+            {hint}
+          </Text>
+        ) : null}
         {actions && <Toolbar tight>{actions}</Toolbar>}
       </Stack>
-    </Surface>
+    </div>
   );
 }

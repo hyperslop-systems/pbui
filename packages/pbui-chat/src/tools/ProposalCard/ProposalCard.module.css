@@ -2,12 +2,16 @@
   max-width: 64ch;
 }
 
+/* The Callout recipe: paper, a hairline, the proposal tone on the edge;
+ * danger takes the edge when the proposal is one. */
 .inner {
   display: flex;
   flex-direction: column;
   gap: var(--pbui-space-3);
-  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-proposal, var(--pbui-cat-3));
-  padding-left: var(--pbui-space-3);
+  background: var(--pbui-paper);
+  border: var(--pbui-border-hair);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-proposal);
+  padding: var(--pbui-space-2) var(--pbui-space-3);
 }
 
 .inner[data-danger] {

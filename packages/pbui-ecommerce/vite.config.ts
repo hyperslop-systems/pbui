@@ -9,6 +9,7 @@ const external = [
   "@bufbuild/protobuf",
   "@hyperslop-systems/pbui",
   "@hyperslop-systems/pbui-workbench",
+  "@hyperslop-systems/workbench-core",
   "@hyperslop-systems/plot",
   "@hyperslop-systems/workbench-protocol",
 ];

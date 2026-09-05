@@ -458,7 +458,7 @@ export const worldSlice = createSlice({
           docOrder.push(id);
         }
       }
-      for (const [id, document] of Object.entries(action.payload.state.documents)) {
+      for (const [id, document] of Object.entries(action.payload.documents)) {
         if (preserved.has(id)) continue;
         docs[id] = document;
         if (!docOrder.includes(id)) docOrder.push(id);
@@ -466,7 +466,7 @@ export const worldSlice = createSlice({
       state.docs = docs;
       state.docOrder = docOrder;
       if (!state.activeDocId || !docs[state.activeDocId]) {
-        state.activeDocId = Object.keys(action.payload.state.documents)[0] ?? docOrder[0] ?? null;
+        state.activeDocId = Object.keys(action.payload.documents)[0] ?? docOrder[0] ?? null;
       }
     });
   },

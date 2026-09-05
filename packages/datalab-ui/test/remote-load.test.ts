@@ -1,138 +1,212 @@
+import { create } from "@bufbuild/protobuf";
+import { sequentialIds } from "@hyperslop-systems/workbench-core";
+import {
+  type WorkbenchDocument,
+  WorkbenchDocumentSchema,
+} from "@hyperslop-systems/workbench-protocol";
 import { describe, expect, test } from "vitest";
-import { remoteWorkbenchLoaded } from "../src/store/remote";
-import type { RemoteWorkbenchState } from "../src/remote/types";
-import { makeStore } from "../src/store";
-import { layoutActions, type Node } from "../src/store/layout";
-import { WORK_STAGE_ID } from "../src/store/stages";
+import "../src/apps/all";
+import { datalabManifests } from "../src/appkit/workbenchApps";
 import { createGraphicDocument } from "../src/model/graphicAuthoring";
+import { encodeGraphicDocument } from "../src/remote/codec";
+import {
+  type LocalWorkbench,
+  mergeRemoteWorkStage,
+  preservedLocalState,
+  projectWorkStage,
+} from "../src/remote/projection";
+import { WORKBENCH_FORMAT, WORKBENCH_SCHEMA_VERSION } from "../src/remote/types";
+import { isGraphicStub } from "../src/store/graphicSource";
+import { navigationActions } from "../src/store/navigation";
+import { remoteWorkbenchLoaded } from "../src/store/remote";
+import { createDatalabRuntime, type DatalabRuntime } from "../src/store/runtime";
+import { defaultSeed } from "../src/store/seed";
+import { WORK_STAGE_ID } from "../src/store/stageIds";
 
-function collectViews(node: Node, target: Set<string>): void {
-  if (node.type === "leaf") {
-    target.add(node.viewId);
-    return;
-  }
-  collectViews(node.a, target);
-  collectViews(node.b, target);
+/**
+ * Adopting a server workbench over a running runtime (design §14.3): the
+ * pure merge decides what to install, and the three installs land in
+ * dependency order — world documents, navigation, then the core's document
+ * with its session. What the tests pin is the OUTCOME: the work stage is the
+ * server's, every other stage is untouched, and nothing that a code-defined
+ * stage binds can be overwritten.
+ */
+
+const apps = datalabManifests();
+
+function runtime(): DatalabRuntime {
+  const ids = sequentialIds();
+  return createDatalabRuntime({ seed: defaultSeed({ apps, ids }), apps, ids, ownership: "trust" });
 }
 
-describe("remote workbench loading", () => {
-  test("replaces the remote graph atomically while preserving code-defined stages", () => {
-    const store = makeStore();
-    const before = store.getState();
-    const preserveViews = new Set<string>();
-    for (const space of before.layout.spaces) {
-      if (space.stageId !== WORK_STAGE_ID) collectViews(space.tree, preserveViews);
-    }
-    const preserveDocuments = new Set<string>();
-    for (const id of preserveViews) {
-      const view = before.layout.views[id];
-      for (const documentId of Object.values(view?.documents ?? {})) {
-        preserveDocuments.add(documentId);
-      }
-    }
+const localOf = (rt: DatalabRuntime): LocalWorkbench => ({
+  document: rt.core.getState().document,
+  navigation: rt.store.getState().navigation,
+  world: rt.store.getState().world,
+});
 
-    const document = createGraphicDocument(
-      "document-remote",
-      "Remote chart",
+const remoteDocument = createGraphicDocument(
+  "document-remote",
+  "Remote chart",
+  { kind: "stream", drop: "production" },
+  100,
+);
+
+/** One remote workspace holding one view of `appId`, bound to the remote document. */
+function remoteWorkbench(appId = "chart"): WorkbenchDocument {
+  return create(WorkbenchDocumentSchema, {
+    format: WORKBENCH_FORMAT,
+    schemaVersion: WORKBENCH_SCHEMA_VERSION,
+    id: "workbench-remote",
+    name: "Remote",
+    workspaces: [
+      {
+        id: "workspace-remote",
+        name: "Agent dashboard",
+        tree: { id: "placement-remote", body: { case: "leaf", value: { viewId: "view-remote" } } },
+      },
+    ],
+    views: {
+      "view-remote": {
+        id: "view-remote",
+        appId,
+        documents: { primary: remoteDocument.id },
+      },
+    },
+    viewOrder: ["view-remote"],
+    documents: { [remoteDocument.id]: encodeGraphicDocument(remoteDocument) },
+  });
+}
+
+const stageWorkspaceIds = (rt: DatalabRuntime) => {
+  const byStage: Record<string, string[]> = {};
+  for (const stage of rt.store.getState().navigation.stages) {
+    byStage[stage.id] = rt.controller.workspacesOfStage(stage.id).map((workspace) => workspace.id);
+  }
+  return byStage;
+};
+
+describe("remote workbench loading", () => {
+  test("saves unbound work graphics while excluding documents owned only by local stages", () => {
+    const local = localOf(runtime());
+    const preservedId = preservedLocalState(local).documentIds[0]!;
+    const localOnly = createGraphicDocument(
+      preservedId,
+      "Local demo",
       { kind: "stream", drop: "production" },
       100,
     );
-    const remote: RemoteWorkbenchState = {
-      id: "workbench-remote",
-      name: "Remote",
-      workspaces: [
-        {
-          id: "workspace-remote",
-          name: "Agent dashboard",
-          tree: {
-            id: "placement-remote",
-            type: "leaf",
-            viewId: "view-remote",
-          },
-        },
-      ],
-      views: {
-        "view-remote": {
-          id: "view-remote",
-          appId: "chart",
-          documents: { primary: document.id },
-        },
-      },
-      viewOrder: ["view-remote"],
-      documents: { [document.id]: document },
+    local.world = {
+      docs: { [preservedId]: localOnly, [remoteDocument.id]: remoteDocument },
+      docOrder: [preservedId, remoteDocument.id],
     };
 
-    store.dispatch(
-      layoutActions.openLauncher({ kind: "replace", placementId: "placement-before-load" }),
-    );
-    store.dispatch(layoutActions.setActivePlacement("placement-before-load"));
-    store.dispatch(layoutActions.beginRename("placement-before-load"));
+    const projected = projectWorkStage(local, { id: "workbench-remote", name: "Remote" });
+    expect(Object.keys(projected.documents)).toEqual([remoteDocument.id]);
+    expect(projected.documents[remoteDocument.id]).toEqual(encodeGraphicDocument(remoteDocument));
+    expect(
+      projected.workspaces.every(
+        (workspace) => local.navigation.workspace[workspace.id]?.stageId === WORK_STAGE_ID,
+      ),
+    ).toBe(true);
+  });
 
-    let notifications = 0;
-    let graphWasConsistent = false;
-    const unsubscribe = store.subscribe(() => {
-      notifications += 1;
-      const state = store.getState();
-      const view = state.layout.views["view-remote"];
-      graphWasConsistent =
-        view?.documents.primary === document.id && state.world.docs[document.id] === document;
-    });
-    store.dispatch(
+  test("replaces the work stage while preserving code-defined stages", () => {
+    const rt = runtime();
+    const local = localOf(rt);
+    const preserved = preservedLocalState(local);
+    const worldBefore = rt.store.getState().world;
+    const stagesBefore = stageWorkspaceIds(rt);
+    // The default seed starts the user on work/build.
+    expect(rt.controller.currentStageId()).toBe(WORK_STAGE_ID);
+
+    const adoption = mergeRemoteWorkStage(
+      local,
+      remoteWorkbench(),
+      rt.core.getState().session.workspaceId,
+    );
+
+    rt.store.dispatch(
       remoteWorkbenchLoaded({
-        state: remote,
-        stageId: WORK_STAGE_ID,
-        preserveViewIds: [...preserveViews],
-        preserveDocumentIds: [...preserveDocuments],
+        documents: adoption.graphics,
+        preserveDocumentIds: adoption.preserveDocumentIds,
       }),
     );
-    unsubscribe();
+    rt.store.dispatch(navigationActions.replaceNavigation(adoption.navigation));
+    expect(
+      rt.core.replaceDocument(adoption.document, {
+        session: { workspaceId: adoption.workspaceId },
+      }),
+    ).toEqual({ ok: true });
 
-    const after = store.getState();
-    expect(notifications).toBe(1);
-    expect(graphWasConsistent).toBe(true);
-    expect(after.layout.spaces.filter((space) => space.stageId === WORK_STAGE_ID)).toEqual([
-      expect.objectContaining({ id: "workspace-remote", name: "Agent dashboard" }),
-    ]);
-    expect(after.layout.stages.filter((stage) => stage.id !== WORK_STAGE_ID)).toEqual(
-      before.layout.stages.filter((stage) => stage.id !== WORK_STAGE_ID),
+    // The work stage is the server's, and only the work stage.
+    expect(rt.controller.workspacesOfStage(WORK_STAGE_ID).map((workspace) => workspace.id)).toEqual(
+      ["workspace-remote"],
     );
-    expect(after.layout.stages.find((stage) => stage.id === WORK_STAGE_ID)?.currentSpaceId).toBe(
-      "workspace-remote",
-    );
-    expect(after.layout.pendingImport).toBeNull();
-    expect(after.layout.launcher).toBeNull();
-    expect(after.layout.activePlacementId).toBeNull();
-    expect(after.layout.renamingId).toBeNull();
+    const stagesAfter = stageWorkspaceIds(rt);
+    for (const [stageId, ids] of Object.entries(stagesBefore)) {
+      if (stageId === WORK_STAGE_ID) continue;
+      expect(stagesAfter[stageId]).toEqual(ids);
+    }
+
+    // The world holds the remote graphic in full, and everything a
+    // code-defined stage binds survived untouched.
+    const worldAfter = rt.store.getState().world;
+    expect(worldAfter.docs[remoteDocument.id]).toEqual(remoteDocument);
+    expect(preserved.documentIds.length).toBeGreaterThan(0);
+    for (const id of preserved.documentIds) {
+      if (worldBefore.docs[id]) expect(worldAfter.docs[id]).toBe(worldBefore.docs[id]);
+    }
+
+    // The workbench holds an identity stub, never the graphic.
+    const document = rt.core.getState().document;
+    const stub = document.documents[remoteDocument.id];
+    expect(stub).toBeDefined();
+    expect(isGraphicStub(stub!)).toBe(true);
+    expect(document.views["view-remote"]).toMatchObject({
+      appId: "chart",
+      documents: { primary: remoteDocument.id },
+    });
+
+    // The user was in the work stage, so they land on the server's workspace.
+    expect(rt.core.getState().session.workspaceId).toBe("workspace-remote");
   });
 
   test("a remote collision cannot overwrite a preserved document", () => {
-    const store = makeStore();
-    const before = store.getState();
-    const preservedId = before.world.docOrder[0]!;
-    const preserved = before.world.docs[preservedId]!;
+    const rt = runtime();
+    const local = localOf(rt);
+    const preservedId = preservedLocalState(local).documentIds[0]!;
     const replacement = createGraphicDocument(
       preservedId,
       "Remote collision",
       { kind: "stream", drop: "production" },
       100,
     );
+    const remote = create(WorkbenchDocumentSchema, {
+      ...remoteWorkbench(),
+      documents: { [preservedId]: encodeGraphicDocument(replacement) },
+    });
+    const revision = rt.core.getState().revision;
+    const worldBefore = rt.store.getState().world;
 
-    store.dispatch(
-      remoteWorkbenchLoaded({
-        state: {
-          id: "workbench-remote",
-          name: "Remote",
-          workspaces: [],
-          views: {},
-          viewOrder: [],
-          documents: { [preservedId]: replacement },
-        },
-        stageId: WORK_STAGE_ID,
-        preserveViewIds: [],
-        preserveDocumentIds: [preservedId],
-      }),
+    expect(() =>
+      mergeRemoteWorkStage(local, remote, rt.core.getState().session.workspaceId),
+    ).toThrow(/collides/);
+
+    expect(rt.core.getState().revision).toBe(revision);
+    expect(rt.store.getState().world).toBe(worldBefore);
+    expect(rt.store.getState().world.docs[preservedId]).toBe(worldBefore.docs[preservedId]);
+  });
+
+  test("a remote naming an application this build lacks is refused before installing", () => {
+    const rt = runtime();
+    const adoption = mergeRemoteWorkStage(
+      localOf(rt),
+      remoteWorkbench("an-app-that-was-removed"),
+      rt.core.getState().session.workspaceId,
     );
-
-    expect(store.getState().world.docs[preservedId]).toBe(preserved);
+    const checked = rt.core.validateDocument(adoption.document);
+    expect(checked.ok).toBe(false);
+    if (!checked.ok) expect(checked.diagnostics.length).toBeGreaterThan(0);
   });
 });

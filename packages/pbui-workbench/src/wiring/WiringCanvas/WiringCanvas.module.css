@@ -1,0 +1,81 @@
+/* The wire layer: an SVG over the whole workbench, drawn in ink on the token
+ * scale. Wires are orthogonal (PBUI-WIRING-1 P3): square joins, no arrowheads;
+ * the term is the dash pattern — solid follow, dotted held, dashed derived,
+ * double identity. */
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wire {
+  pointer-events: none;
+}
+
+.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 10px;
+  pointer-events: stroke;
+  cursor: context-menu;
+}
+
+
+.stroke {
+  fill: none;
+  stroke: var(--pbui-ink);
+  stroke-width: 2px;
+  stroke-linejoin: miter;
+  stroke-linecap: butt;
+}
+
+.wire[data-term="held"] .stroke {
+  stroke-dasharray: 2 4;
+}
+
+.wire[data-term="derived"] .stroke {
+  stroke-dasharray: 8 3;
+}
+
+.wire[data-term="identity"] .stroke {
+  stroke-width: 5px;
+}
+
+.inner {
+  fill: none;
+  stroke: var(--pbui-pane);
+  stroke-width: 1.5px;
+}
+
+.label {
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  fill: var(--pbui-ink);
+  stroke: var(--pbui-pane);
+  stroke-width: 4px;
+  paint-order: stroke;
+  font-family: inherit;
+}
+
+/* A link whose other end is not on screen: a dotted portal at the end that is. */
+.portal {
+  fill: none;
+  stroke: var(--pbui-ink);
+  stroke-width: 2px;
+  stroke-dasharray: 2 2;
+}
+
+.wire[data-connected-highlight] .stroke,
+.wire[data-connected-highlight] .portal {
+  stroke: var(--pbui-cat-3);
+}
+.wire[data-connected-highlight] .label {
+  fill: var(--pbui-cat-3);
+}
