@@ -351,20 +351,29 @@ typed mutation application, and protobuf JSON. The standard local gates are:
 ```bash
 make ci-check
 make protocol-check
+make frontend-check
 ```
 
 `make ci-check` runs formatting, golangci-lint, logcopter drift, glazed command
 lint, Go tests, generation, and compilation. The generators and glazed-lint are
 pinned with Go's `tool` directive; they do not depend on an ambient `latest`
-installation. Lefthook runs the focused Go checks before a commit and the full
-Go/protocol checks before a push.
+installation. Lefthook runs the focused Go checks before a commit. Before a
+push, it checks protocol generation, then Go, then `make frontend-check`,
+stopping on any failure. Protocol generation finishes before either language's
+checks read the generated files.
 
-The generated TypeScript protocol package must be built before a clean
-Datalab-only typecheck:
+`make frontend-check` is shared with GitHub CI. It runs Datalab's Biome lint
+and format check first, then typechecks, tests, and builds PBUI, workbench-core,
+pbui-workbench, and Datalab in dependency order. It builds the generated
+protocol package before checking its consumers. No prior `dist` output is
+required. Storybook and clean tarball consumer checks remain additional CI
+steps; the local gate does not install temporary consumer dependencies.
+
+For only a Datalab typecheck, build all its workspace dependencies first:
 
 ```bash
-pnpm --filter @hyperslop-systems/workbench-protocol build
+pnpm --include-workspace-root --filter '@hyperslop-systems/datalab-ui^...' build
 pnpm --filter @hyperslop-systems/datalab-ui typecheck
 ```
 
-The PBUI CI workflow enforces this order after `buf generate`.
+The PBUI CI workflow calls `make frontend-check` after `buf generate`.

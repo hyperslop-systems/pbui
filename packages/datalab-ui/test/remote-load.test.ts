@@ -90,7 +90,12 @@ describe("remote workbench loading", () => {
   test("saves unbound work graphics while excluding documents owned only by local stages", () => {
     const local = localOf(runtime());
     const preservedId = preservedLocalState(local).documentIds[0]!;
-    const localOnly = createGraphicDocument(preservedId, "Local demo", { kind: "stream", drop: "production" }, 100);
+    const localOnly = createGraphicDocument(
+      preservedId,
+      "Local demo",
+      { kind: "stream", drop: "production" },
+      100,
+    );
     local.world = {
       docs: { [preservedId]: localOnly, [remoteDocument.id]: remoteDocument },
       docOrder: [preservedId, remoteDocument.id],
@@ -99,7 +104,11 @@ describe("remote workbench loading", () => {
     const projected = projectWorkStage(local, { id: "workbench-remote", name: "Remote" });
     expect(Object.keys(projected.documents)).toEqual([remoteDocument.id]);
     expect(projected.documents[remoteDocument.id]).toEqual(encodeGraphicDocument(remoteDocument));
-    expect(projected.workspaces.every((workspace) => local.navigation.workspace[workspace.id]?.stageId === WORK_STAGE_ID)).toBe(true);
+    expect(
+      projected.workspaces.every(
+        (workspace) => local.navigation.workspace[workspace.id]?.stageId === WORK_STAGE_ID,
+      ),
+    ).toBe(true);
   });
 
   test("replaces the work stage while preserving code-defined stages", () => {

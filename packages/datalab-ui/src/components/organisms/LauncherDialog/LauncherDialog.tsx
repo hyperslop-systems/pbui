@@ -181,7 +181,7 @@ function LauncherModal({ invocation }: { invocation: LauncherInvocation }) {
     const own = leaves(workspace.tree);
     // The active tile when there is one; otherwise the first in tree order.
     const leaf = own.find((node) => node.id === invocation.activePlacementId) ?? own[0];
-    if (!leaf || leaf.body.case !== "leaf") return null;
+    if (leaf?.body.case !== "leaf") return null;
     const view = document.views[leaf.body.value.viewId];
     return {
       placementId: leaf.id,

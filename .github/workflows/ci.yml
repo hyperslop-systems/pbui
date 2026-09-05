@@ -57,22 +57,11 @@ jobs:
       - run: buf generate
       - name: Verify generated protocol is current
         run: git diff --exit-code -- gen/go packages/workbench-protocol/src/generated
-      - name: Build generated TypeScript protocol package
-        run: pnpm --filter @hyperslop-systems/workbench-protocol build
-      - run: pnpm --workspace-root run typecheck
-      - run: pnpm --workspace-root run test
-      - run: pnpm --workspace-root run build
+      - name: Check frontend (same gate as Lefthook pre-push)
+        run: make frontend-check
       - run: pnpm --workspace-root run build-storybook
       - run: pnpm --workspace-root run consumer:smoke
       - run: mkdir -p .artifacts && pnpm pack --pack-destination .artifacts
-      # Workspace packages export dist declarations. Build Datalab's complete
-      # dependency graph, including the core and shell, before checking it.
-      - name: Build Datalab workspace dependencies
-        run: pnpm --include-workspace-root --filter '@hyperslop-systems/datalab-ui^...' build
-      - run: pnpm --filter @hyperslop-systems/datalab-ui typecheck
-      - run: pnpm --filter @hyperslop-systems/datalab-ui test
-      - run: pnpm --filter @hyperslop-systems/datalab-ui lint
-      - run: pnpm --filter @hyperslop-systems/datalab-ui build
       - run: pnpm --filter @hyperslop-systems/datalab-ui build-storybook
       - run: pnpm --filter @hyperslop-systems/datalab-ui consumer:smoke
         env:

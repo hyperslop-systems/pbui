@@ -184,9 +184,18 @@ createRoot(root).render(<Consumer />);
   // a tarball that still contains a workspace: specifier or a stale version.
   for (const [name, packageJSON] of [
     ["@hyperslop-systems/pbui", join(workspaceRoot, "package.json")],
-    ["@hyperslop-systems/pbui-workbench", join(workspaceRoot, "packages", "pbui-workbench", "package.json")],
-    ["@hyperslop-systems/workbench-core", join(workspaceRoot, "packages", "workbench-core", "package.json")],
-    ["@hyperslop-systems/workbench-protocol", join(workspaceRoot, "packages", "workbench-protocol", "package.json")],
+    [
+      "@hyperslop-systems/pbui-workbench",
+      join(workspaceRoot, "packages", "pbui-workbench", "package.json"),
+    ],
+    [
+      "@hyperslop-systems/workbench-core",
+      join(workspaceRoot, "packages", "workbench-core", "package.json"),
+    ],
+    [
+      "@hyperslop-systems/workbench-protocol",
+      join(workspaceRoot, "packages", "workbench-protocol", "package.json"),
+    ],
   ]) {
     const version = JSON.parse(await readFile(packageJSON, "utf8")).version;
     if (installedDatalab.dependencies[name] !== `^${version}`) {

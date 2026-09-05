@@ -83,12 +83,23 @@ describe("remote workbench codec", () => {
     const local = localOf(remote);
     const identity = { id: remote.id, name: remote.name };
     const before = JSON.stringify(workbenchDocumentJSON(projectWorkStage(local, identity)));
-    expect(workbenchDocumentJSON(projectWorkStage(local, identity))).toEqual(workbenchDocumentJSON(remote));
+    expect(workbenchDocumentJSON(projectWorkStage(local, identity))).toEqual(
+      workbenchDocumentJSON(remote),
+    );
 
     const original = local.world.docs["document-chart"]!;
-    const fresh = createGraphicDocument("new-unbound", "New chart", { kind: "stream", drop: "production" }, 100);
+    const fresh = createGraphicDocument(
+      "new-unbound",
+      "New chart",
+      { kind: "stream", drop: "production" },
+      100,
+    );
     local.world = {
-      docs: { ...local.world.docs, [original.id]: { ...original, name: "Edited without binding" }, [fresh.id]: fresh },
+      docs: {
+        ...local.world.docs,
+        [original.id]: { ...original, name: "Edited without binding" },
+        [fresh.id]: fresh,
+      },
       docOrder: [...local.world.docOrder, fresh.id],
     };
     const edited = projectWorkStage(local, identity);
@@ -99,14 +110,18 @@ describe("remote workbench codec", () => {
     const saved = projectWorkStage(local, identity);
     const reloaded = parseRemoteWorkbenchJSON(workbenchDocumentJSON(saved));
     expect(decodeRemoteGraphics(reloaded)).toEqual(local.world.docs);
-    expect(workbenchDocumentJSON(projectWorkStage(localOf(reloaded), identity))).toEqual(workbenchDocumentJSON(saved));
+    expect(workbenchDocumentJSON(projectWorkStage(localOf(reloaded), identity))).toEqual(
+      workbenchDocumentJSON(saved),
+    );
   });
 
   test("still refuses a bound document missing from the world", () => {
     const remote = parseRemoteWorkbenchJSON(fixture("valid", "linked-view.json"));
     const local = localOf(remote);
     local.world = { docs: {}, docOrder: [] };
-    expect(() => projectWorkStage(local, remote)).toThrow("the work stage binds document document-chart, which the world does not hold");
+    expect(() => projectWorkStage(local, remote)).toThrow(
+      "the work stage binds document document-chart, which the world does not hold",
+    );
   });
 
   test("round-trips one linked view across two workspace placements", () => {

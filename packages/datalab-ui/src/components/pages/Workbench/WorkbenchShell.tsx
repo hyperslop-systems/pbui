@@ -292,7 +292,11 @@ export function WorkbenchShell({
               size="tiny"
               glyph={fullFrame ? "⤡" : "⤢"}
               accessibleName={fullFrame ? "leave full frame (Esc)" : "fill the window"}
-              title={fullFrame ? "shrink back into the page — Esc does the same" : "fill the window, for room to work"}
+              title={
+                fullFrame
+                  ? "shrink back into the page — Esc does the same"
+                  : "fill the window, for room to work"
+              }
               onClick={onToggleFullFrame}
             />
           ) : undefined
