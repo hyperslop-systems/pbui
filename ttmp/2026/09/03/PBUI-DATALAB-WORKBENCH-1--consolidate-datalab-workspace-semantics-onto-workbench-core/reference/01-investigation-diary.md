@@ -13,6 +13,10 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://.github/workflows/ci.yml
+      Note: Build all Datalab dependency declarations before typecheck
+    - Path: repo://.github/workflows/publish-datalab.yml
+      Note: Use the same complete dependency build for publishing
     - Path: repo://packages/datalab-ui/MIGRATION.md
       Note: Migration guide (commit 17c9b83)
     - Path: repo://packages/datalab-ui/src/appkit/useRemoteWorkbench.ts
@@ -61,6 +65,7 @@ LastUpdated: 2026-09-03T17:45:00-04:00
 WhatFor: Preserve how the Datalab Workbench migration design was derived and make implementation continuation reproducible.
 WhenToUse: Read before implementing or reviewing PBUI-DATALAB-WORKBENCH-1.
 ---
+
 
 
 
@@ -604,3 +609,93 @@ This retains both remotely loaded and newly created unbound graphics. The existi
 
 - Inclusion predicate for an existing ordered world graphic: explicitly bound by a reachable work view OR absent from the local-only preserved document set.
 - No compatibility layer, migration, or remote controller API change was introduced.
+
+## Step 8: PR #25 — restore Datalab typechecking on a fresh CI checkout
+
+The user supplied CI TypeScript failures beginning with missing core/shell declarations and implicit-any callback parameters. Locally, Datalab typechecked because those packages had already been built. Temporarily removing their `dist` directories reproduced all the supplied errors and additional cascading errors. The missing dependency builds, rather than missing callback annotations, were the cause.
+
+CI and the Datalab publish workflow now build the complete transitive workspace dependency selection before Datalab typechecking. The command explicitly includes the root workspace package: pnpm otherwise excludes it from recursive script execution even though its filtered package listing includes it. A second verification removed all four dependency outputs and successfully rebuilt PBUI, protocol, core, and shell before running the full Datalab typecheck.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+```text
+Also address all the typescript issues in Run pnpm --filter @hyperslop-systems/datalab-ui typecheck
+
+> @hyperslop-systems/datalab-ui@0.2.0 typecheck /home/runner/work/pbui/pbui/packages/datalab-ui
+> tsc -p tsconfig.json --noEmit
+
+Error: src/appkit/DatalabWorkbenchContext.tsx(51,40): error TS7006: Parameter 'state' implicitly has an 'any' type.
+Error: src/appkit/DatalabWorkbenchContext.tsx(81,10): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+Error: src/appkit/lessons.ts(2,41): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+Error: src/appkit/workbench.ts(5,8): error TS2307: Cannot find module '@hyperslop-systems/pbui-workbench' or its corresponding type declarations.
+Error: src/appkit/workbench.ts(6,56): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+Error: src/appkit/workbench.ts(52,9): error TS7006: Parameter 'command' implicitly has an 'any' type.
+Error: src/appkit/workbench.ts(52,18): error TS7006: Parameter 'code' implicitly has an 'any' type.
+Error: src/appkit/workbench.ts(52,24): error TS7006: Parameter 'because' implicitly has an 'any' type.
+Error: src/appkit/workbenchApps.ts(2,61): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+Error: src/appkit/workbenchApps.ts(7,8): error TS2307: Cannot find module '@hyperslop-systems/pbui-workbench' or its corresponding type declarations.
+Error: src/apps/ModulesApp/ModulesApp.tsx(22,51): error TS7006: Parameter 'state' implicitly has an 'any' type.
+Error: src/components/organisms/BriefChecklist/BriefChecklist.tsx(42,51): error TS7006: Parameter 's' implicitly has an 'any' type.
+Error: src/components/organisms/LauncherDialog/LauncherDialog.tsx(3,26): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+Error: src/components/organisms/LauncherDialog/LauncherDialog.tsx(84,47): error TS7006: Parameter 'state' implicitly has an 'any' type.
+Error: src/components/organisms/LauncherDialog/LauncherDialog.tsx(118,32): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+Error: src/components/organisms/LessonRail/LessonRail.tsx(59,51): error TS7006: Parameter 's' implicitly has an 'any' type.
+Error: src/components/organisms/Tile/Tile.stories.tsx(3,55): error TS2307: Cannot find module '@hyperslop-systems/pbui-workbench' or its corresponding type declarations.
+```
+
+**Assistant interpretation:** Resolve the complete Datalab CI typecheck failure, including missing modules and their downstream inference errors, before pushing the review fixes.
+
+**Inferred user intent:** Make the PR validate on fresh CI checkouts, not only on a developer machine containing old builds.
+
+**Commit (code):** 42ac548 — "fix(ci): build Datalab dependency declarations before typechecking"
+
+### What I did
+
+- Verified the original Datalab typecheck succeeds with existing dependency outputs.
+- Added the transitive dependency build step to CI and replaced the incomplete dependency steps in the Datalab publish workflow.
+- Added `scripts/03-reproduce-ci-typecheck.py`: backs up existing outputs under `/tmp`, reproduces missing core/shell diagnostics, removes PBUI/protocol outputs too, builds dependencies from scratch, and verifies Datalab typechecking.
+- Ran `actionlint .github/workflows/ci.yml .github/workflows/publish-datalab.yml` successfully.
+
+### Why
+
+- Both packages expose declaration files under uncommitted `dist` directories. Installing workspace symlinks does not generate those declarations.
+
+### What worked
+
+- The cold build selected four projects and built root PBUI and protocol before core, followed by the shell. The subsequent `pnpm --filter @hyperslop-systems/datalab-ui typecheck` exited successfully with zero diagnostics.
+- No changes to callback annotations, ambient declarations, path aliases, or strict compiler options were necessary.
+
+### What didn't work
+
+- The deliberate reproduction failed with the exact diagnostics in the prompt and additional dependent type errors. Its complete output is preserved in `reference/03-ci-typecheck-reproduction.txt`.
+- The first dependency-selection experiment omitted `--include-workspace-root` and built three projects. That suffices for CI after its explicit root build, but not for the publish workflow. The final command explicitly includes the root, verified with all four outputs absent.
+
+### What I learned
+
+- A filtered pnpm package listing can show the root while recursive script execution excludes it by default. Verify the executed project list, not only the selection listing.
+
+### What was tricky to build
+
+- Existing local declarations conceal missing CI steps. The reproduction separates the observed CI state (root/protocol present, core/shell absent) from the stronger publish check (all four dependency outputs absent).
+
+### What warrants a second pair of eyes
+
+- Dependency build order and the explicit root inclusion flag. Datalab itself remains a separate typecheck/build stage, preserving its existing validation gates.
+
+### What should be done in the future
+
+- N/A for the reported Datalab typecheck failure.
+
+### Code review instructions
+
+- Inspect the two workflow changes, then run `python ttmp/2026/09/03/PBUI-DATALAB-WORKBENCH-1--consolidate-datalab-workspace-semantics-onto-workbench-core/scripts/03-reproduce-ci-typecheck.py` from the repository root.
+- The script preserves old outputs in a reported `/tmp` directory and leaves successful fresh dependency builds installed.
+
+### Technical details
+
+```sh
+pnpm --include-workspace-root --filter '@hyperslop-systems/datalab-ui^...' build
+pnpm --filter @hyperslop-systems/datalab-ui typecheck
+```

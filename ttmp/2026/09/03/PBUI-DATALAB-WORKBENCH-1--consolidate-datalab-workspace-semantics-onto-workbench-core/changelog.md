@@ -72,3 +72,8 @@ Step 6 / Phase 8: workspace audit green, browser smoke, performance recording, M
 
 PR 25: preserve unbound world graphics in remote snapshots; 605 Datalab tests and build pass (70c3dd2).
 
+
+## 2026-09-04
+
+PR 25 CI: reproduce missing-declaration cascade, build four workspace dependencies from absent outputs, and pass full Datalab typecheck and actionlint (42ac548).
+

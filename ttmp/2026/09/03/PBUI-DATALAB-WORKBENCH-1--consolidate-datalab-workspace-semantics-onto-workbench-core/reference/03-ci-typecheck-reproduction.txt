@@ -1,0 +1,105 @@
+Previous build outputs: /tmp/pbui-pr25-declarations-0i8n_9ix
+
+> @hyperslop-systems/datalab-ui@0.2.0 typecheck /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui
+> tsc -p tsconfig.json --noEmit
+
+src/appkit/DatalabWorkbenchContext.tsx(51,40): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/appkit/DatalabWorkbenchContext.tsx(81,10): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+src/appkit/lessons.ts(2,41): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/appkit/workbench.ts(5,8): error TS2307: Cannot find module '@hyperslop-systems/pbui-workbench' or its corresponding type declarations.
+src/appkit/workbench.ts(6,56): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/appkit/workbench.ts(52,9): error TS7006: Parameter 'command' implicitly has an 'any' type.
+src/appkit/workbench.ts(52,18): error TS7006: Parameter 'code' implicitly has an 'any' type.
+src/appkit/workbench.ts(52,24): error TS7006: Parameter 'because' implicitly has an 'any' type.
+src/appkit/workbenchApps.ts(2,61): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/appkit/workbenchApps.ts(7,8): error TS2307: Cannot find module '@hyperslop-systems/pbui-workbench' or its corresponding type declarations.
+src/apps/ModulesApp/ModulesApp.tsx(22,51): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/organisms/BriefChecklist/BriefChecklist.tsx(42,51): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/organisms/LauncherDialog/LauncherDialog.tsx(3,26): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/components/organisms/LauncherDialog/LauncherDialog.tsx(84,47): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/organisms/LauncherDialog/LauncherDialog.tsx(118,32): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+src/components/organisms/LessonRail/LessonRail.tsx(59,51): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/organisms/Tile/Tile.stories.tsx(3,55): error TS2307: Cannot find module '@hyperslop-systems/pbui-workbench' or its corresponding type declarations.
+src/components/organisms/Tile/Tile.tsx(3,54): error TS2307: Cannot find module '@hyperslop-systems/pbui-workbench' or its corresponding type declarations.
+src/components/organisms/Tile/Tile.tsx(130,78): error TS7006: Parameter 'view' implicitly has an 'any' type.
+src/components/organisms/Tile/Tile.tsx(130,84): error TS7006: Parameter 'placement' implicitly has an 'any' type.
+src/components/organisms/Tile/Tile.tsx(134,82): error TS7006: Parameter 'placement' implicitly has an 'any' type.
+src/components/organisms/ViewSwitcher/ViewSwitcher.tsx(30,47): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/organisms/ViewSwitcher/ViewSwitcher.tsx(31,53): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/organisms/ViewSwitcher/ViewSwitcher.tsx(44,58): error TS7006: Parameter 'ref' implicitly has an 'any' type.
+src/components/pages/Workbench/WorkbenchShell.tsx(3,26): error TS2307: Cannot find module '@hyperslop-systems/pbui-workbench' or its corresponding type declarations.
+src/components/pages/Workbench/WorkbenchShell.tsx(5,35): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/components/pages/Workbench/WorkbenchShell.tsx(158,6): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/pages/Workbench/WorkbenchShell.tsx(201,6): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/store/bundles.ts(10,37): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/controller.ts(16,8): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/controller.ts(144,57): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+src/store/controller.ts(149,42): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+src/store/controller.ts(437,57): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+src/store/controller.ts(445,59): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/store/effects.ts(4,41): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/graphicSource.ts(8,57): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/merge.ts(19,65): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/merge.ts(102,16): error TS7006: Parameter 'app' implicitly has an 'any' type.
+src/store/merge.ts(103,13): error TS7006: Parameter 'app' implicitly has an 'any' type.
+src/store/migrateV5.ts(12,60): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/persist.ts(11,8): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/runtime.ts(12,8): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/runtime.ts(110,58): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+src/store/seed.ts(15,8): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/store/seed.ts(101,16): error TS7006: Parameter 'app' implicitly has an 'any' type.
+src/store/seed.ts(102,13): error TS7006: Parameter 'app' implicitly has an 'any' type.
+src/store/seed.ts(167,69): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/tour/lessons/brief.tsx(1,35): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+src/tour/lessons/layout.tsx(1,35): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/controller.test.ts(2,31): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/controller.test.ts(277,67): error TS18046: 'view' is of type 'unknown'.
+test/controller.test.ts(279,61): error TS2339: Property 'id' does not exist on type '{}'.
+test/controller.test.ts(417,36): error TS7006: Parameter 'w' implicitly has an 'any' type.
+test/effects.test.ts(1,31): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/graphic-source.test.ts(13,8): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/graphic-source.test.ts(65,27): error TS7006: Parameter 'm' implicitly has an 'any' type.
+test/graphic-source.test.ts(87,22): error TS7006: Parameter 'm' implicitly has an 'any' type.
+test/instances.test.ts(162,55): error TS7006: Parameter 's' implicitly has an 'any' type.
+test/instances.test.ts(174,69): error TS7006: Parameter 's' implicitly has an 'any' type.
+test/instances.test.ts(175,66): error TS7006: Parameter 's' implicitly has an 'any' type.
+test/instances.test.ts(180,26): error TS7006: Parameter 's' implicitly has an 'any' type.
+test/lessons.test.ts(1,31): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/portable.test.ts(3,31): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/remote-load.test.ts(2,31): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/seed.test.ts(7,8): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/stages.test.ts(2,46): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/stages.test.ts(375,75): error TS7006: Parameter 'space' implicitly has an 'any' type.
+test/stages.test.ts(454,56): error TS7006: Parameter 's' implicitly has an 'any' type.
+test/store.test.ts(4,31): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+test/workbench-verbs.test.ts(2,31): error TS2307: Cannot find module '@hyperslop-systems/workbench-core' or its corresponding type declarations.
+/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @hyperslop-systems/datalab-ui@0.2.0 typecheck: `tsc -p tsconfig.json --noEmit`
+Exit status 1
+
+Scope: 4 of 13 workspace projects
+. build$ vite build && tsc -p tsconfig.build.json
+packages/workbench-protocol build$ tsc -p tsconfig.build.json
+packages/workbench-protocol build: Done
+. build:
+. build: transforming...✓ 198 modules transformed.
+. build: rendering chunks...
+. build: computing gzip size...
+. build: Done
+packages/workbench-core build$ vite build && tsc -p tsconfig.build.json
+packages/workbench-core build: transforming...
+packages/workbench-core build: ✓ 49 modules transformed.
+packages/workbench-core build: rendering chunks...
+packages/workbench-core build: computing gzip size...
+packages/workbench-core build: Done
+packages/pbui-workbench build$ vite build && tsc -p tsconfig.build.json
+packages/pbui-workbench build:
+packages/pbui-workbench build: transforming...✓ 79 modules transformed.
+packages/pbui-workbench build: rendering chunks...
+packages/pbui-workbench build: computing gzip size...
+packages/pbui-workbench build: Done
+
+> @hyperslop-systems/datalab-ui@0.2.0 typecheck /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui
+> tsc -p tsconfig.json --noEmit
+
+Fresh dependency builds fixed the complete Datalab typecheck.
