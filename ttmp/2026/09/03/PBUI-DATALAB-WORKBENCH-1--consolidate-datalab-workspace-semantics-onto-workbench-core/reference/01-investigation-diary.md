@@ -14,19 +14,33 @@ Intent: long-term
 Owners: []
 RelatedFiles:
     - Path: repo://.github/workflows/ci.yml
-      Note: Build all Datalab dependency declarations before typecheck
+      Note: |-
+        Build all Datalab dependency declarations before typecheck
+        Invoke the same frontend target as Lefthook
     - Path: repo://.github/workflows/publish-datalab.yml
       Note: Use the same complete dependency build for publishing
+    - Path: repo://Makefile
+      Note: Shared frontend lint typecheck test and build gate
+    - Path: repo://README.md
+      Note: Document local frontend checks and CI-only packaging checks
+    - Path: repo://lefthook.yml
+      Note: Run shared frontend gate before pushes after protocol and Go checks
     - Path: repo://packages/datalab-ui/MIGRATION.md
       Note: Migration guide (commit 17c9b83)
+    - Path: repo://packages/datalab-ui/scripts/consumer-smoke.mjs
+      Note: Fix CI formatter diagnostic
     - Path: repo://packages/datalab-ui/src/appkit/useRemoteWorkbench.ts
       Note: Current remote projection policy inspected
     - Path: repo://packages/datalab-ui/src/appkit/workbenchApps.ts
       Note: Registry to manifest mapping (commit 49d27e8)
     - Path: repo://packages/datalab-ui/src/components/organisms/LauncherDialog/LauncherDialog.tsx
-      Note: Product-specific launcher behavior inspected
+      Note: |-
+        Product-specific launcher behavior inspected
+        Resolve optional-chain warning
     - Path: repo://packages/datalab-ui/src/components/pages/Workbench/WorkbenchShell.tsx
-      Note: Surface mounted with Datalab's two slots (commit 0b980f3)
+      Note: |-
+        Surface mounted with Datalab's two slots (commit 0b980f3)
+        Fix CI formatter diagnostic
     - Path: repo://packages/datalab-ui/src/remote/codec.ts
       Note: Current local-to-protocol conversion inspected
     - Path: repo://packages/datalab-ui/src/remote/projection.ts
@@ -54,17 +68,24 @@ RelatedFiles:
     - Path: repo://packages/datalab-ui/test/migration-goldens.test.ts
       Note: Phase 0 golden test (commit bc3f027)
     - Path: repo://packages/datalab-ui/test/remote-codec.test.ts
-      Note: Unbound edit save reload regression
+      Note: |-
+        Unbound edit save reload regression
+        Format regression tests to satisfy CI
     - Path: repo://packages/datalab-ui/test/remote-load.test.ts
-      Note: Local-only namespace exclusion regression
+      Note: |-
+        Local-only namespace exclusion regression
+        Format regression tests to satisfy CI
     - Path: repo://ttmp/2026/09/03/PBUI-DATALAB-WORKBENCH-1--consolidate-datalab-workspace-semantics-onto-workbench-core/design-doc/01-intern-guide-to-consolidating-datalab-onto-workbench-core.md
       Note: Design produced by Step 1
+    - Path: repo://ttmp/2026/09/03/PBUI-DATALAB-WORKBENCH-1--consolidate-datalab-workspace-semantics-onto-workbench-core/scripts/04-verify-prepush-lint.py
+      Note: Verify actual hook rejects original formatting and restores file
 ExternalSources: []
 Summary: Chronological evidence, decisions, commands, risks, and review guidance for consolidating Datalab UI's duplicate spatial model onto workbench-core.
 LastUpdated: 2026-09-03T17:45:00-04:00
 WhatFor: Preserve how the Datalab Workbench migration design was derived and make implementation continuation reproducible.
 WhenToUse: Read before implementing or reviewing PBUI-DATALAB-WORKBENCH-1.
 ---
+
 
 
 
@@ -698,4 +719,96 @@ Error: src/components/organisms/Tile/Tile.stories.tsx(3,55): error TS2307: Canno
 ```sh
 pnpm --include-workspace-root --filter '@hyperslop-systems/datalab-ui^...' build
 pnpm --filter @hyperslop-systems/datalab-ui typecheck
+```
+
+## Step 9: PR #25 — enforce the frontend CI gate before pushing
+
+The follow-up CI job passed typechecking and tests, then failed Datalab's Biome check: four formatting errors and one optional-chaining warning. Two formatting errors were in the remote regression tests added in Step 7. The earlier validation omitted lint, and the pre-push hook checked only Go and protocol. This step fixes all five diagnostics and makes the frontend gate an explicit shared contract between CI and Lefthook.
+
+`make frontend-check` now runs Datalab lint first, then builds the protocol and typechecks, tests, and builds PBUI, core, shell, and Datalab in dependency order. Lefthook runs protocol, Go, and frontend checks sequentially and stops on failure. CI invokes the same frontend target. Storybook and clean consumer checks remain additional CI steps and were also verified during this step.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+
+```text
+Follow up errors in the CICD job: https://github.com/hyperslop-systems/pbui/actions/runs/33931767872/job/101211645103?pr=25
+
+Can we make it so that these will be caught by lefthook before pushing
+```
+
+**Assistant interpretation:** Fix the CI diagnostics, put the relevant frontend validation into the pre-push hook, and verify that it actually blocks the observed failure.
+
+**Inferred user intent:** Stop discovering routine frontend failures only after pushing and waiting for CI.
+
+**Commit (code):** 0633598 — "fix(ci): share frontend checks with pre-push and clear Datalab lint"
+
+### What I did
+
+- Read the linked job with `gh run view 33931767872 --repo hyperslop-systems/pbui --job 101211645103 --log-failed` and reproduced its Datalab lint output locally.
+- Ran Biome format on the four reported files: the consumer smoke script, WorkbenchShell, and the two remote test files. Replaced the launcher's explicit null guard with the equivalent optional chain.
+- Added the shared Make target, wired it into CI and the pre-push hook, and documented the commands and scope in the root README.
+- Added `scripts/04-verify-prepush-lint.py`: temporarily restores the original formatting from commit 38259d8, runs the actual hook, verifies rejection at lint before frontend tests, and restores current file bytes in `finally`.
+- Ran `make frontend-check`, `lefthook validate`, and `actionlint .github/workflows/ci.yml` successfully.
+- Ran both root and Datalab Storybook builds and clean package consumer smoke checks; all passed.
+
+### Why
+
+- A typecheck or build does not enforce the formatter. Sharing the complete lint/typecheck/test/build target avoids two manually maintained lists drifting apart.
+- Protocol generation must finish before Go or TypeScript checks read generated files, so the hook sequence is explicit rather than concurrent.
+
+### What worked
+
+- Biome checked 469 files with no remaining errors or warnings.
+- All four typechecks and builds passed; tests passed for root PBUI (859), core (254), shell (132), and Datalab (605): 1,850 total.
+- The real Lefthook pre-push invocation rejected the original formatting defect and did not reach frontend tests.
+- Both Storybooks and both clean tarball consumers passed, exercising CI steps that the reported lint failure had prevented from running.
+
+### What didn't work
+
+- The initial restricted GitHub read returned `error connecting to api.github.com`; an authorized escalated read succeeded.
+- Baseline `pnpm --filter @hyperslop-systems/datalab-ui lint` reported `Found 4 errors.` and `Found 1 warning.` with exit status 1. The formatter errors affected `scripts/consumer-smoke.mjs`, `src/components/pages/Workbench/WorkbenchShell.tsx`, `test/remote-codec.test.ts`, and `test/remote-load.test.ts`; the warning was `lint/complexity/useOptionalChain` in LauncherDialog.
+- The first manual rejection experiment used `lefthook run pre-push` while there were no unpushed commits. Lefthook returned success after `checks (skip) no matching push files`, producing `AssertionError: The pre-push hook accepted invalid formatting`. Adding the documented `--force` option made the manual experiment execute the hook and correctly reject the formatting. The file was restored after both experiments.
+- Successful builds still report the existing ineffective dynamic import warning in Datalab. The clean npm consumers also report inherited pnpm-config warnings; these did not fail either check.
+
+### What I learned
+
+- Manual hook verification needs `--force` when Git's push file set is empty. A zero exit status from a skipped hook is not evidence that its checks ran.
+- The root's dependency policy tests and Datalab's product tests are both now part of the hook; core and shell typechecks/tests are also covered explicitly.
+
+### What was tricky to build
+
+- Building before consumer typechecking prevents old local declaration output from concealing dependency order errors. The target orders each package's build before downstream consumers.
+- The negative test must preserve the exact current file and restore it regardless of subprocess or assertion failure. It does not make a network push or install packages.
+
+### What warrants a second pair of eyes
+
+- Pre-push is intentionally broader and slower now: it runs the complete four-package frontend gate on pushes with changed files. The hook does not autoformat source or silently skip failures.
+- Storybook and temporary consumer installs remain outside the default local hook. The README distinguishes these additional CI checks from the shared frontend gate.
+
+### What should be done in the future
+
+- N/A for the reported lint failure and missing local enforcement.
+
+### Code review instructions
+
+- Read the `frontend-check` recipe in Makefile, the single `checks` pre-push command in lefthook.yml, and CI's invocation of the same target.
+- Run `make frontend-check` to execute the shared gate, or `lefthook run pre-push --force` to include protocol and Go checks even with no unpushed changes.
+- For the negative check, run the ticket's `scripts/04-verify-prepush-lint.py` from the repository root.
+
+### Technical details
+
+```text
+pre-push:
+  make protocol-check
+  make ci-check
+  make frontend-check
+
+frontend-check:
+  datalab lint/format
+  protocol build
+  PBUI typecheck → test → build
+  core typecheck → test → build
+  shell typecheck → test → build
+  datalab typecheck → test → build
 ```

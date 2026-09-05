@@ -77,3 +77,8 @@ PR 25: preserve unbound world graphics in remote snapshots; 605 Datalab tests an
 
 PR 25 CI: reproduce missing-declaration cascade, build four workspace dependencies from absent outputs, and pass full Datalab typecheck and actionlint (42ac548).
 
+
+## 2026-09-04
+
+PR 25 follow-up CI: fix four formatter errors and optional-chain warning; share frontend gate between CI and Lefthook; 1850 tests, builds, Storybooks, consumers, and actual hook rejection verified (0633598).
+
