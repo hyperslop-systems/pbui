@@ -65,6 +65,10 @@ jobs:
       - run: pnpm --workspace-root run build-storybook
       - run: pnpm --workspace-root run consumer:smoke
       - run: mkdir -p .artifacts && pnpm pack --pack-destination .artifacts
+      # Workspace packages export dist declarations. Build Datalab's complete
+      # dependency graph, including the core and shell, before checking it.
+      - name: Build Datalab workspace dependencies
+        run: pnpm --include-workspace-root --filter '@hyperslop-systems/datalab-ui^...' build
       - run: pnpm --filter @hyperslop-systems/datalab-ui typecheck
       - run: pnpm --filter @hyperslop-systems/datalab-ui test
       - run: pnpm --filter @hyperslop-systems/datalab-ui lint
