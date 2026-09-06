@@ -1,6 +1,6 @@
 .panel { position:absolute; bottom:0; left:20px; right:20px; z-index:4; padding:var(--pbui-space-3); background:var(--pbui-pane); border:var(--pbui-border-hair); max-height:42%; overflow:auto; font-size:var(--pbui-fs-small); }
 .controls { display:flex; flex-wrap:wrap; align-items:end; gap:var(--pbui-space-3); }
-.controls label { display:grid; gap:var(--pbui-space-1); min-width:0; max-width:100%; }
+.controls label { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--pbui-space-1); min-width:0; max-width:100%; }
 .controls select { max-width:100%; min-width:0; }
 .status { margin:var(--pbui-space-2) 0; }
 .list { padding-left:20px; }
