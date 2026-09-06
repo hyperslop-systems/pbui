@@ -72,6 +72,7 @@ jobs:
         run: |
           pnpm --workspace-root build
           pnpm --filter @hyperslop-systems/workbench-protocol build
+          pnpm --filter @hyperslop-systems/workbench-core build
 
       - name: Typecheck
         run: pnpm --filter @hyperslop-systems/pbui-workbench typecheck
