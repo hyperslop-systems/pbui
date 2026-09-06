@@ -1,4 +1,4 @@
-name: Publish PBUI Chat
+name: Publish PBUI Editor
 
 on:
   workflow_dispatch:
@@ -29,7 +29,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: pbui-chat-github-packages-publish
+  group: pbui-editor-github-packages-publish
   cancel-in-progress: false
 
 jobs:
@@ -68,27 +68,27 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build workspace dependencies
-        run: |
-          pnpm --workspace-root build
-          pnpm --filter @hyperslop-systems/workbench-protocol build
-          pnpm --filter @hyperslop-systems/workbench-core build
-          pnpm --filter @hyperslop-systems/pbui-workbench build
-          pnpm --filter @hyperslop-systems/pbui-editor build
-          pnpm --filter @hyperslop-systems/pbui-sandbox build
+      - name: Build workspace dependency
+        run: pnpm --workspace-root build
 
       - name: Typecheck
-        run: pnpm --filter @hyperslop-systems/pbui-chat typecheck
+        run: pnpm --filter @hyperslop-systems/pbui-editor typecheck
 
       - name: Test
-        run: pnpm --filter @hyperslop-systems/pbui-chat test
+        run: pnpm --filter @hyperslop-systems/pbui-editor test
 
       - name: Build package
-        run: pnpm --filter @hyperslop-systems/pbui-chat build
+        run: pnpm --filter @hyperslop-systems/pbui-editor build
+
+      - name: Build Storybook
+        run: pnpm --filter @hyperslop-systems/pbui-editor build-storybook
+
+      - name: Test clean tarball consumer
+        run: pnpm --filter @hyperslop-systems/pbui-editor consumer:smoke
 
       - name: Publish to GitHub Packages
         shell: bash
-        working-directory: packages/pbui-chat
+        working-directory: packages/pbui-editor
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
