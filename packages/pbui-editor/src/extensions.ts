@@ -1,13 +1,14 @@
 import { defaultKeymap, deleteLine, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
+import { sql, MySQL } from "@codemirror/lang-sql";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { EditorView, drawSelection, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view";
 import { diagnostics } from "./diagnostics";
 import { pbuiEditorStyle } from "./theme";
 
-export type EditorLanguage = "javascript" | "json" | "plain";
+export type EditorLanguage = "javascript" | "json" | "sql" | "plain";
 
 /** The language extension for a `language` prop value. `plain` is no grammar at all. */
 export function languageExtension(language: EditorLanguage): Extension {
@@ -16,6 +17,8 @@ export function languageExtension(language: EditorLanguage): Extension {
       return javascript({ typescript: false, jsx: false });
     case "json":
       return json();
+    case "sql":
+      return sql({ dialect: MySQL });
     case "plain":
       return [];
   }
