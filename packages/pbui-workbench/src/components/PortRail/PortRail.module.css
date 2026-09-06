@@ -35,6 +35,7 @@
  * (PBUI-WIRING-1 P5); the card stays the only box. */
 .slot {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   max-width: 100%;
 }
