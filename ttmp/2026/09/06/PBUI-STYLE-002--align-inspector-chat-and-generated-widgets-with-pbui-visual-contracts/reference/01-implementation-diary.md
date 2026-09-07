@@ -130,3 +130,61 @@ Added narrow native-coordination and running-devtool stories. Browser measuremen
 ### Technical details
 - Capture IDs: `workbench-coordinationinspector--narrow`, `visual-audit-sandbox-devtools--narrow-devtools`.
 - P1 logs: `/tmp/pbui-style002-p1-{core,workbench,sandbox}.log`, `*-core-build.log`, `*-wb-story.log`, `*-sb-story.log`.
+
+## Step 3: P2 object references, cards and severity
+
+Default inline chat references now use the product's ObjectChip, with the original wire label, focus capture, documentation and activation forwarding intact. Custom children and block references remain presentations rather than being coerced into chip labels. Composer, watchlist and widget reference collections no longer redraw the same Chip recipe; a badge slot preserves their existing type metadata.
+
+ProposalCard now has one shared Surface frame, a Toolbar header and KeyValueList facts. ToolCard also composes Surface/Toolbar. The proposal remains an interactive group rather than a Callout live region, and its explicit decision controls remain unchanged. Generated sandbox danger notices now retain danger styling and alert semantics instead of becoming warnings.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Implement P2 without changing reference behavior, wire schema or proposal decision ownership.
+
+**Inferred user intent:** Reuse shared visual components while keeping meaningful interaction and severity distinctions.
+
+**Commit (code):** 5e4970e — "style: compose chat object chips cards and semantic notices"
+
+### What I did
+- Added four RefPresentation regression cases for default chip, focus/click/Enter, custom inline/block bodies and default block behavior.
+- Added two proposal decision cases including disabled state/reasons and exact large decimal strings.
+- Added five generated severity cases: omitted/neutral → info, positive → ok, warning → warning, danger → danger/alert.
+- Added reference, tool-card, narrow proposal and generated-notice stories; captured six figures including the actual clicked approved state.
+- Chat: 247 tests/27 files; sandbox: 229/18; both typechecks and Storybook builds passed.
+
+### Why
+- Product-bound ObjectChip owns object identity appearance; inert Chip still owns state markers. A proposal is not a passive announcement, so using Callout merely to borrow its border would change semantics.
+
+### What worked
+- Chat regression suite passed on the first P2 run. New activation test confirms click and Enter invoke the host exactly once each.
+- Browser narrow proposal and tool-card client/scroll widths match at 275px; all four generated notices are bounded, and danger has role alert.
+- Clicking Approve in the seeded story disabled both decision buttons.
+
+### What didn't work
+- Initial sandbox fixture incorrectly used core's `info` as a wire variant. Typecheck reported `error TS2322` and `Type '"info"' is not assignable to type 'UICalloutVariant | undefined'.` Read the contract and changed fixture/test input to `neutral`; did not widen the wire contract.
+- Static chat fixtures attempt `PATCH /api/chat/sessions/story`, receiving `501 (Unsupported method ('PATCH'))` from the loopback Python server; this was also present during baseline capture. Auto-connect off does not mean zero metadata HTTP. Favicon requests produce 404. No successful backend operation is claimed.
+- Capture viewport dimensions changed between navigations during the first batch. Recaptured all P2 figures with an explicit 1200×800 resize immediately before capture; final dimensions are recorded in the catalogue.
+
+### What I learned
+- A shared ObjectChip can preserve wire-specific label resolution by supplying the existing label as its text child; arbitrary JSX must stay on the custom Presentation branch.
+- Core callout vocabulary and sandbox wire vocabulary intentionally differ at neutral/positive; severity translation is a typed boundary.
+
+### What was tricky to build
+- Replacing every RefPresentation body would have turned JSX into ObjectChip text and broken block rendering. Limited default substitution to non-block nullish children, factored common forwarding props, and tested the untouched paths explicitly.
+
+### What warrants a second pair of eyes
+- Default reference tone now comes from the bound product presentation rather than local chat tone reconstruction; inspect unusual custom product descriptors.
+- Proposal exact fields are display strings, not numeric conversions. Its local callback fixture does not prove backend approval authorization.
+
+### What should be done in the future
+- Complete P3 and final dependency rebuilds. Separately isolate DemoChat metadata persistence if completely network-silent stories are required.
+
+### Code review instructions
+- Start with RefPresentation's default/custom branch and its tests, then the three simplified call sites. Review ProposalCard's single Surface and KeyValueList before comparing screenshots.
+- Run chat/sandbox typecheck and tests; open `pbui-chat-proposalcard--narrow-long-fields` and `sandbox-generated-notices--severity-matrix`.
+
+### Technical details
+- P2 logs: `/tmp/pbui-style002-p2-{chat,sandbox}.log` and corresponding `*-story.log`.
+- Receipts `03-p1-done` and `04-p2-start` both reported `printed: yes` before P2 implementation.
