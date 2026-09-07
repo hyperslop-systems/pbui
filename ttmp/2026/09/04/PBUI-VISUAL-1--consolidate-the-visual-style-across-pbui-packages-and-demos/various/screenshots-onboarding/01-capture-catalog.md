@@ -1,3 +1,21 @@
+---
+Title: Visual onboarding screenshot catalogue
+Ticket: PBUI-VISUAL-1
+Status: active
+Topics:
+    - pbui
+    - design
+DocType: reference
+Intent: long-term
+Owners: []
+RelatedFiles: []
+ExternalSources: []
+Summary: Eleven synthetic Storybook captures for visual onboarding and the forthcoming parc report.
+LastUpdated: 2026-09-07T00:22:00Z
+WhatFor: Preserve screenshot state, dimensions, provenance and limitations.
+WhenToUse: Reviewing the styled-panel example or writing the PBUI design-system report.
+---
+
 # Visual onboarding captures — 2026-09-06 local / 2026-09-07 UTC
 
 Saved in **PBUI-VISUAL-1** for the forthcoming parc report on PBUI visual style, widgets and the design system. These are actual Chromium captures of the compiled workbench Storybook, not image mockups. All data is synthetic; no credential or private API is involved.

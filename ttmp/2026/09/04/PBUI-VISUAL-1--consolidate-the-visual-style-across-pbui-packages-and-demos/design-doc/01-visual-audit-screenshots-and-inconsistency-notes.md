@@ -11,8 +11,6 @@ DocType: design-doc
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - Path: repo://packages/datalab-ui/src/styles/tokens.css
-      Note: Byte-copy of core tokens plus the tokens only datalab defines (border-grid, border-rule, wash, space-6, cat-1..8)
     - Path: repo://packages/pbui-workbench/src/stories/VisualAudit.stories.tsx
       Note: Regression gallery for tile, port, wire, dialog and palette states (WA exhibits)
     - Path: repo://public/chrome.css
@@ -31,6 +29,7 @@ LastUpdated: 2026-09-04T11:02:49.392048154-04:00
 WhatFor: Give feedback on visual consistency across pbui by exhibit number; plan the consolidation passes.
 WhenToUse: Before any style change in pbui; re-run the scripts in scripts/ to refresh the catalog.
 ---
+
 
 
 # Visual audit: screenshots and inconsistency notes

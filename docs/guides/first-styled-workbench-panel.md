@@ -5,7 +5,7 @@ This tutorial follows the compiled [StyledPanel example](../../packages/pbui-wor
 ![Native styled workbench after explicit inspection](../../ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/various/screenshots-onboarding/styled-workbench.png)
 
 Captured in Chromium at 1200×800 using synthetic data. The
-[ticket's figure catalogue](../../ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/various/screenshots-onboarding/README.md)
+[ticket's figure catalogue](../../ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/various/screenshots-onboarding/01-capture-catalog.md)
 contains the other states, a before/after theme-host fix, and capture limitations.
 
 ## 1. Run the example

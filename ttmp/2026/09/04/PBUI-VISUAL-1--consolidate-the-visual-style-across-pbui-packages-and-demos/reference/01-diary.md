@@ -11,8 +11,16 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://docs/README.md
+      Note: Current visual onboarding entry point
+    - Path: repo://docs/reference/styling-contract.md
+      Note: Authoritative shared styling and package-local policy
     - Path: repo://packages/pbui-sandbox/src/VisualAudit.stories.tsx
       Note: Four devtools tiles on one running program (I-SB exhibits)
+    - Path: repo://packages/pbui-workbench/src/stories/StyledPanel/StyledPanel.tsx
+      Note: Compiled pure and native example
+    - Path: repo://src/docs-contract.test.ts
+      Note: Documentation targets and example existence guard
     - Path: repo://ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/scripts/01-screenshot-storybook.mjs
       Note: The harness every sweep uses
     - Path: repo://ttmp/2026/09/04/PBUI-VISUAL-1--consolidate-the-visual-style-across-pbui-packages-and-demos/scripts/06-build-catalog.py
@@ -23,6 +31,7 @@ LastUpdated: 2026-09-04T11:02:49.203786789-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 # Diary
@@ -815,3 +824,72 @@ Screenshots: `various/screenshots-phases/feedback-4/`.
 
 ### Code review instructions
 - `git show e5103e2 -- src/presentation/createPbui.tsx`; `shop-scenes--scene-3-show` on :6012.
+
+
+## Step 17: Current visual onboarding, compiled example and report assets
+
+The SQL styling experience exposed a documentation problem: useful guidance existed, but shared policy, old migration APIs and product-specific conventions contradicted one another. Added a current visual onboarding path and rewrote the stale bootstrap/refactoring/Datalab guidance to distinguish shared rules from package-local constraints. Historical consolidation reports remain intact with pointers to the current guides.
+
+The accompanying example is compiled and tested inside pbui-workbench, with nine stories and a real native shell. Screenshot feedback found a theme wrapper breaking the bounded flex chain; the fix and both images are retained. The user requested that report assets live in the ticket, so all captures and their manifest are under `various/screenshots-onboarding/`, not a parallel docs asset directory.
+
+### Prompt Context
+
+**User prompt (verbatim):** "ok. do it and adjust all the docs."
+
+**Additional user prompts (verbatim):** "save screenshots for our vault report we are going to write abut the PBUI visual styles and widgets and design system, after this."; "store the assets in the ticket."
+
+**Assistant interpretation:** Implement the proposed documentation consolidation and example, preserve screenshots for a later report, and keep originals in this ticket.
+
+**Inferred user intent:** New developers should reach the proper PBUI visual and interaction conventions without reverse-engineering applications; the later report needs reproducible visual evidence.
+
+**Commit (code/docs/assets):** `f450189` — "docs: consolidate PBUI visual onboarding with tested panel and screenshots".
+
+### What I did
+
+- Added docs index, visual-style guide, first-panel tutorial, styling contract and visual-review playbook. Linked root/package READMEs and clarified Datalab's editing-adapter scope.
+- Replaced outdated bootstrap/refactoring instructions with current ownership/API guidance; corrected Datalab token ownership, commands, accessibility props and workspace source paths. Preserved historical design text with current-guide pointers.
+- Added StyledPanel pure/controller/native examples, nine stories, five behavior tests and a root documentation-link/example guard. Included ObjectChip guidance for typed object representations.
+- Captured 11 synthetic images plus a catalogue and SHA-256/dimension/timestamp manifest in the ticket, including the failed and corrected theme host.
+
+### Why
+
+Guidance must agree with source and local tests. A visual guide without a compiled example can drift in exactly the same way as the old prose; a screenshot without state/viewport/provenance is weak evidence.
+
+### What worked
+
+- Baseline workbench: 132 tests/30 files. Final: 137 tests/31 files, typecheck, production build and Storybook build passed.
+- Core: typecheck and 868 tests/52 files passed, including the new Markdown-target/example checks.
+- Live Linux Chromium: editing did not inspect; explicit Inspect did; visible Wiring and focused Ctrl+Shift+L opened the native mode. Shell bounds were 1168×640 in a 1200×800 viewport.
+- Narrow panel had 280px client/scroll width; long text stayed within its region. Corrected themed panel measured 640×360 and used the expected token-derived background/border.
+
+### What didn't work
+
+- Initial native registration failed typecheck: `error TS2322` / `Type 'AppProps' has no properties in common with type '{ state?: PanelState ... }'`. Corrected with a no-props application adapter rendering the fixture controller.
+- Initial error assertion failed: `TestingLibraryElementError: Unable to find an element with the text: Fixture unavailable.` Callout includes a glyph; the corrected test checks alert content rather than assuming an exact standalone text node.
+- Theme capture initially measured about 103px tall because the decorator interrupted the flex chain. Made it a growing flex column with `min-height: 0`, used visibly effective token overrides, rebuilt and recaptured at 360px. The before image is explicitly labeled as a failure exhibit.
+- Static serving produced one `/favicon.ico` 404, not an application exception. It was identified rather than silently counted as an error-free browser run.
+- First `docmgr doctor --ticket PBUI-VISUAL-1 --stale-after 30` rejected the new capture README: `frontmatter delimiters '---' not found`. Added frontmatter, renamed it `01-capture-catalog.md` and updated the tutorial link. Removed the historical metadata relation to the deleted Datalab token file; its historical audit body remains unchanged. Final doctor has only seven preexisting filename-prefix warnings, with no new errors.
+
+### What I learned
+
+Core/workbench enforce stricter folders than Datalab's lightweight-component policy; shared docs must acknowledge both rather than weaken tests or state incompatible universal rules. A theme wrapper is layout code even when its apparent purpose is only colour.
+
+### What was tricky to build
+
+Keeping the example small without pretending it exercises everything: it has native shell wiring access but no declared ports, no backend, no persistence and no product presentation provider. These limits are explicit. There is no invented universal unstyled prop; alternative CSS composition requires an isolated entry point.
+
+### What warrants a second pair of eyes
+
+Review the rewritten playbooks against actual consumer needs; verify that historical-only advice was not mistaken for current policy. The example is built/tested in the repository, not a fresh published workbench consumer. Screenshot theme coverage does not include portalled surfaces.
+
+### What should be done in the future
+
+Use the ticket originals in the later parc report, copying selected figures into that report's dated `_assets/` folder. Keep package API snippets and the example synchronized; extend native examples with real ports/providers when teaching those contracts. No later vault report is claimed written in this step.
+
+### Code review instructions
+
+Start at `docs/README.md`, follow the first-panel tutorial into `packages/pbui-workbench/src/stories/StyledPanel/`, and inspect the figure catalogue. From repository root run `pnpm typecheck`, `pnpm test`, and workbench `typecheck`, `test`, `build`, `build-storybook` via pnpm filter. Render the native and narrow/theme stories; do not substitute DOM presence for layout review.
+
+### Technical details
+
+Capture prefix: `workbench-getting-started-styled-panel--`; viewport 1200×800 CSS pixels. The original static server used loopback 16011. The manifest records exact PNG dimensions and hashes. Captures are synthetic and contain no credentials; original report assets are retained here.
