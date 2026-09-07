@@ -9,13 +9,7 @@
 }
 
 .body {
-  display: flex;
-  flex-direction: column;
   gap: var(--pbui-space-2);
-  min-width: 0;
-  min-height: 0;
-  overflow: auto;
-  flex: 1 1 auto;
 }
 
 .outline {
@@ -32,13 +26,19 @@
   align-items: center;
   gap: var(--pbui-space-2);
   min-width: 0;
-  padding: 1px var(--pbui-space-1);
-  border-radius: 2px;
+  padding: var(--pbui-space-1);
+  border-radius: var(--pbui-radius);
+  border-inline-start: var(--pbui-tone-edge) solid transparent;
 }
 
-.row:hover,
+.row:hover {
+  background: var(--pbui-selected-wash);
+}
+
+/* Cross-view hover target, not a persisted selection. */
 .row[data-highlighted="true"] {
-  background: var(--pbui-pane-alt);
+  background: var(--pbui-tag-wash);
+  border-inline-start-color: var(--pbui-faint);
 }
 
 .kind {

@@ -197,7 +197,7 @@ function renderNode(node: UINode, context: Context, path: string): ReactNode {
     case "callout": {
       const { variant, title, text } = node.props;
       return (
-        <Callout variant={variant === "positive" ? "ok" : variant === "warning" || variant === "danger" ? "warning" : "info"} title={title}>
+        <Callout variant={variant === "positive" ? "ok" : variant === "warning" || variant === "danger" ? variant : "info"} title={title}>
           <Text size="small" prose>
             {text}
           </Text>

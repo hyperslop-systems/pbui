@@ -1,4 +1,4 @@
-import { Chip, JsonBlock, Text } from "@hyperslop-systems/pbui";
+import { Chip, JsonBlock, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
 import { RefPresentation } from "../../components/RefPresentation";
 import type { Reference } from "../../types";
 import styles from "./ToolCard.module.css";
@@ -32,15 +32,15 @@ export function ToolCard({ toolCallId, toolName, status, parentMessageId, input,
     value: { callId: toolCallId, name: toolName, status, ...(parentMessageId ? { parentMessageId } : {}) },
   };
   return (
-    <div data-part="tool-card" data-status={status} className={styles.card}>
-      <div className={styles.head}>
+    <Surface tone="alt" border="hair" padding={3} data-part="tool-card" data-status={status} className={styles.card}>
+      <Toolbar tight className={styles.head}>
         <RefPresentation reference={reference}>
           <Text size="small" strong className={styles.name}>
             ⚙ {toolName}
           </Text>
         </RefPresentation>
         <Chip label={status} tone={statusTone(status)} />
-      </div>
+      </Toolbar>
       {input !== undefined && (
         <details className={styles.fold}>
           <summary className={styles.summary}>
@@ -66,6 +66,6 @@ export function ToolCard({ toolCallId, toolName, status, parentMessageId, input,
           {error}
         </Text>
       )}
-    </div>
+    </Surface>
   );
 }

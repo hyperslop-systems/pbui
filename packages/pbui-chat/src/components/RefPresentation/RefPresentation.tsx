@@ -6,6 +6,8 @@ export interface RefPresentationProps {
   reference: Reference;
   children?: ReactNode;
   block?: boolean;
+  /** Optional metadata on the default inline ObjectChip; custom bodies own their contents. */
+  badge?: ReactNode;
   className?: string;
   doc?: string;
   activate?: { run?(): void; doc?: string };
@@ -25,27 +27,32 @@ export function RefPresentation({
   reference,
   children,
   block = false,
+  badge,
   className,
   doc,
   activate,
   testId,
 }: RefPresentationProps) {
   const chat = usePbuiChat();
-  const Presentation = chat.pbui.Presentation;
+  const { Presentation, ObjectChip } = chat.pbui;
   const Wrap = block ? "div" : "span";
   const focus = () => chat.store.setFocus(reference);
+  const presentation = {
+    reference: chat.refs.toProduct(reference),
+    doc: doc ?? chat.docFor(reference.type) ?? `<${reference.type}>`,
+    className,
+    activate,
+    testId,
+  };
   return (
     <Wrap data-part="ref" data-ref-type={reference.type} onMouseOverCapture={focus} onFocusCapture={focus}>
-      <Presentation
-        reference={chat.refs.toProduct(reference)}
-        doc={doc ?? chat.docFor(reference.type) ?? `<${reference.type}>`}
-        block={block}
-        className={className}
-        activate={activate}
-        testId={testId}
-      >
-        {children ?? chat.labelFor(reference)}
-      </Presentation>
+      {!block && children == null ? (
+        <ObjectChip {...presentation} badge={badge}>{chat.labelFor(reference)}</ObjectChip>
+      ) : (
+        <Presentation {...presentation} block={block}>
+          {children ?? chat.labelFor(reference)}
+        </Presentation>
+      )}
     </Wrap>
   );
 }

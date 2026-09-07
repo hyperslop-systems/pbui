@@ -1,7 +1,6 @@
-import { Callout, Chip, Meter, SegmentedBar, Sparkline, Swatch, Text } from "@hyperslop-systems/pbui";
+import { Callout, Meter, SegmentedBar, Sparkline, Swatch, Text } from "@hyperslop-systems/pbui";
 import type { ReactNode } from "react";
 import { RefPresentation } from "../../../components/RefPresentation";
-import { usePbuiChat } from "../../../context";
 import { PbuiMarkdown } from "../../../markdown/PbuiMarkdown";
 import { calloutVariant, toneVar } from "../../../tone";
 import type { Reference } from "../../../types";
@@ -48,7 +47,6 @@ function RefWrap({ reference, children }: { reference?: Reference; children: Rea
  * construction: a newer server never breaks an older client's page.
  */
 export function WidgetChild({ child, depth, instanceId, renderDocument }: WidgetChildProps) {
-  const chat = usePbuiChat();
   const kind = (child as { kind: string }).kind;
 
   switch (child.kind) {
@@ -71,9 +69,7 @@ export function WidgetChild({ child, depth, instanceId, renderDocument }: Widget
           )}
           <div className={styles.chips}>
             {child.refs.map((reference) => (
-              <RefPresentation key={`${reference.type}:${reference.id}`} reference={reference}>
-                <Chip label={chat.labelFor(reference)} tone={toneVar(chat.toneFor(reference.type) ?? reference.type)} />
-              </RefPresentation>
+              <RefPresentation key={`${reference.type}:${reference.id}`} reference={reference} />
             ))}
           </div>
         </div>

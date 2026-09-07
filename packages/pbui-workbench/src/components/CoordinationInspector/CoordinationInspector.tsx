@@ -1,4 +1,4 @@
-import { AppBody, Button, EmptyState, Text, TileHeader } from "@hyperslop-systems/pbui";
+import { AppBody, Button, EmptyState, SectionLabel, TileHeader } from "@hyperslop-systems/pbui";
 import { badgesOfView, checkInvariants } from "@hyperslop-systems/pbui";
 import { defineWorkbenchApp, type AppProps, type WorkbenchApp } from "../../app";
 import { useWorkbench } from "../../context";
@@ -47,9 +47,7 @@ export function CoordinationInspector(_props: AppProps) {
         ) : (
           <div className={styles.pad}>
             <section>
-              <Text size="tiny" strong>
-                PORTS
-              </Text>
+              <SectionLabel>Ports</SectionLabel>
               <table className={styles.table} data-part="inspector-bindings">
                 <thead>
                   <tr>
@@ -75,9 +73,7 @@ export function CoordinationInspector(_props: AppProps) {
             </section>
             {links.length > 0 ? (
               <section>
-                <Text size="tiny" strong>
-                  WIRES
-                </Text>
+                <SectionLabel>Wires</SectionLabel>
                 <table className={styles.table} data-part="inspector-links">
                   <thead>
                     <tr>
@@ -102,9 +98,7 @@ export function CoordinationInspector(_props: AppProps) {
             ) : null}
             {contexts.length > 0 ? (
               <section>
-                <Text size="tiny" strong>
-                  CONTEXTS
-                </Text>
+                <SectionLabel>Contexts</SectionLabel>
                 <table className={styles.table} data-part="inspector-contexts">
                   <thead>
                     <tr>
@@ -129,9 +123,7 @@ export function CoordinationInspector(_props: AppProps) {
             ) : null}
             {violations.length > 0 ? (
               <section data-part="inspector-violations">
-                <Text size="tiny" strong>
-                  VIOLATIONS
-                </Text>
+                <SectionLabel>Violations</SectionLabel>
                 <ul>
                   {violations.map((violation, index) => (
                     <li key={index}>

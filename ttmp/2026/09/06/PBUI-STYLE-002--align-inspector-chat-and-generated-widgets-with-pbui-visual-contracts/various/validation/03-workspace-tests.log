@@ -1,0 +1,71 @@
+Scope: 12 of 13 workspace projects
+packages/pbui-editor test$ vitest run
+packages/workbench-protocol test$ vitest run
+packages/pbui-editor test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-editor
+packages/workbench-protocol test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-protocol
+packages/workbench-protocol test:  Test Files  3 passed (3)
+packages/workbench-protocol test:       Tests  40 passed (40)
+packages/workbench-protocol test:    Start at  21:39:18
+packages/workbench-protocol test:    Duration  870ms (transform 183ms, setup 0ms, import 452ms, tests 42ms, environment 1.53s)
+packages/workbench-protocol test: Done
+packages/pbui-editor test:  Test Files  3 passed (3)
+packages/pbui-editor test:       Tests  13 passed (13)
+packages/pbui-editor test:    Start at  21:39:18
+packages/pbui-editor test:    Duration  1.05s (transform 232ms, setup 89ms, import 493ms, tests 125ms, environment 1.53s)
+packages/pbui-editor test: Done
+packages/workbench-core test$ vitest run
+packages/workbench-core test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/workbench-core
+packages/workbench-core test:  Test Files  32 passed (32)
+packages/workbench-core test:       Tests  254 passed (254)
+packages/workbench-core test:    Start at  21:39:19
+packages/workbench-core test:    Duration  2.16s (transform 1.79s, setup 0ms, import 5.75s, tests 2.57s, environment 4ms)
+packages/workbench-core test: Done
+packages/pbui-workbench test$ vitest run
+packages/pbui-workbench test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-workbench
+packages/pbui-workbench test:  Test Files  32 passed (32)
+packages/pbui-workbench test:       Tests  139 passed (139)
+packages/pbui-workbench test:    Start at  21:39:21
+packages/pbui-workbench test:    Duration  9.47s (transform 4.60s, setup 0ms, import 15.47s, tests 14.67s, environment 24.71s)
+packages/pbui-workbench test: Done
+packages/datalab-ui test$ vitest run
+packages/pbui-ecommerce test$ vitest run
+packages/pbui-sandbox test$ vitest run
+packages/datalab-ui test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/datalab-ui
+packages/pbui-sandbox test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-sandbox
+packages/pbui-ecommerce test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-ecommerce
+packages/pbui-sandbox test:  Test Files  18 passed (18)
+packages/pbui-sandbox test:       Tests  229 passed (229)
+packages/pbui-sandbox test:    Start at  21:39:31
+packages/pbui-sandbox test:    Duration  11.22s (transform 13.91s, setup 723ms, import 24.64s, tests 11.45s, environment 24.46s)
+packages/pbui-sandbox test: Done
+packages/pbui-ecommerce test:  Test Files  7 passed (7)
+packages/pbui-ecommerce test:       Tests  35 passed (35)
+packages/pbui-ecommerce test:    Start at  21:39:31
+packages/pbui-ecommerce test:    Duration  15.39s (transform 5.16s, setup 548ms, import 7.16s, tests 11.76s, environment 13.79s)
+packages/pbui-ecommerce test: Done
+packages/datalab-ui test:  Test Files  55 passed (55)
+packages/datalab-ui test:       Tests  605 passed (605)
+packages/datalab-ui test:    Start at  21:39:31
+packages/datalab-ui test:    Duration  17.12s (transform 52.83s, setup 0ms, import 83.61s, tests 9.66s, environment 924ms)
+packages/datalab-ui test: Done
+packages/pbui-chat test$ vitest run
+packages/pbui-plotscript test$ vitest run
+packages/pbui-chat test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat
+packages/pbui-plotscript test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-plotscript
+packages/pbui-plotscript test:  Test Files  5 passed (5)
+packages/pbui-plotscript test:       Tests  32 passed (32)
+packages/pbui-plotscript test:    Start at  21:39:49
+packages/pbui-plotscript test:    Duration  6.79s (transform 10.19s, setup 463ms, import 14.52s, tests 2.71s, environment 6.63s)
+packages/pbui-plotscript test: Done
+packages/pbui-chat test:  Test Files  28 passed (28)
+packages/pbui-chat test:       Tests  249 passed (249)
+packages/pbui-chat test:    Start at  21:39:49
+packages/pbui-chat test:    Duration  13.94s (transform 21.42s, setup 0ms, import 45.00s, tests 8.17s, environment 29.75s)
+packages/pbui-chat test: Done
+packages/pbui-chat/demo test$ vitest run
+packages/pbui-chat/demo test:  RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/demo
+packages/pbui-chat/demo test:  Test Files  3 passed (3)
+packages/pbui-chat/demo test:       Tests  13 passed (13)
+packages/pbui-chat/demo test:    Start at  21:40:03
+packages/pbui-chat/demo test:    Duration  2.27s (transform 2.82s, setup 0ms, import 4.05s, tests 38ms, environment 0ms)
+packages/pbui-chat/demo test: Done

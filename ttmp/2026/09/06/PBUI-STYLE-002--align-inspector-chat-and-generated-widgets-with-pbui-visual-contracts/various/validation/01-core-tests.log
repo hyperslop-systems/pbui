@@ -1,0 +1,13 @@
+
+> @hyperslop-systems/pbui@0.12.0 test /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui
+> vitest run
+
+
+ RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui
+
+
+ Test Files  52 passed (52)
+      Tests  870 passed (870)
+   Start at  21:37:49
+   Duration  9.79s (transform 3.31s, setup 0ms, import 8.17s, tests 9.28s, environment 36.25s)
+

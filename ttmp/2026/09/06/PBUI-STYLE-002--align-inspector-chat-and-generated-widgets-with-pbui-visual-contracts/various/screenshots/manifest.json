@@ -1,0 +1,320 @@
+{
+  "timestamp_note": "Filesystem mtime is a capture-time proxy; source labels describe the loaded build/fixture state.",
+  "captures": [
+    {
+      "file": "coordination-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:06:51.158235+00:00",
+      "sha256": "b66fb3f232abd01088148750e893c53ef3166dd6251146dc7dbc7a2bb767afb2",
+      "source": "cf4cf5a",
+      "url": "http://127.0.0.1:16011/iframe.html?id=visual-audit--coordination-inspector-content&viewMode=story"
+    },
+    {
+      "file": "coordination-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T00:59:10.440918+00:00",
+      "sha256": "a7abc799cd9fd9e3ae5f79da5f294581de41202d5a89411857e746499043dcad",
+      "source": "bdc2dca baseline",
+      "url": "http://127.0.0.1:16011/iframe.html?id=visual-audit--coordination-inspector-content&viewMode=story"
+    },
+    {
+      "file": "coordination-narrow.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:06:52.872225+00:00",
+      "sha256": "f9aefd0ea63b95cbb899f8a773596cb8c0a3ae595849572f93c1368ca315f17d",
+      "source": "cf4cf5a",
+      "url": "http://127.0.0.1:16011/iframe.html?id=workbench-coordinationinspector--narrow&viewMode=story"
+    },
+    {
+      "file": "devtools-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:09:10.995423+00:00",
+      "sha256": "74f1450454561ec042733ea820196e060ee96c660f256a2be070583f308be285",
+      "source": "cf4cf5a; tree tab; increment fired",
+      "url": "http://127.0.0.1:16012/iframe.html?id=visual-audit-sandbox-devtools--all-devtools&viewMode=story"
+    },
+    {
+      "file": "devtools-before-textarea-fix.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:06:54.721215+00:00",
+      "sha256": "1271f6714d4d7cd2f88863e851ccf43e9eedf39dfcb698954151b9cd4f6457ba",
+      "source": "P1 intermediate; stale core dist / textarea overflow",
+      "url": "http://127.0.0.1:16012/iframe.html?id=visual-audit-sandbox-devtools--all-devtools&viewMode=story"
+    },
+    {
+      "file": "devtools-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:00:20.216511+00:00",
+      "sha256": "5d22a083c3b7699eac3f4dddcc9e5a5c79ed488f3687ed955b78cc413c8d56fe",
+      "source": "bdc2dca baseline; tree tab",
+      "url": "http://127.0.0.1:16012/iframe.html?id=visual-audit-sandbox-devtools--all-devtools&viewMode=story"
+    },
+    {
+      "file": "devtools-narrow-before-textarea-fix.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:06:56.491204+00:00",
+      "sha256": "ffb78db2df07466d4231115343ce0fbdccf0719da620ce344ed325268211c4e7",
+      "source": "P1 intermediate; stale core dist / textarea overflow",
+      "url": "http://127.0.0.1:16012/iframe.html?id=visual-audit-sandbox-devtools--narrow-devtools&viewMode=story"
+    },
+    {
+      "file": "devtools-narrow.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:09:12.484414+00:00",
+      "sha256": "de00ca79c9a9a2df29d0036817e4c34a0a4710f7ff9c1be62d7405a6d98b5509",
+      "source": "cf4cf5a; tree tab; increment fired",
+      "url": "http://127.0.0.1:16012/iframe.html?id=visual-audit-sandbox-devtools--narrow-devtools&viewMode=story"
+    },
+    {
+      "file": "events-narrow-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:38.007319+00:00",
+      "sha256": "142169d30d4e7de3b9f17dc07aaeb559d0946214d2cdaaa8e253e5014cd48a78",
+      "source": "46e3a30",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--events-narrow&viewMode=story"
+    },
+    {
+      "file": "events-narrow-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:30:23.214450+00:00",
+      "sha256": "c3871a0238d2c39da17e8a93cf5823ff7d16e6faace4f145cbc20dcb79fb9f3a",
+      "source": "5e4970e + new P3 fixtures, before style edits",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--events-narrow&viewMode=story"
+    },
+    {
+      "file": "events-wide-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:33.394345+00:00",
+      "sha256": "125b31a9598fe55ffff140fa2ec4099d1bf3ebf4c8bb4c9983422eb3c5f3d2c8",
+      "source": "46e3a30",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--events-wide&viewMode=story"
+    },
+    {
+      "file": "final-coordination-inspector.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:41.468299+00:00",
+      "sha256": "66fd61555138889f069ee1370c5b20acfc0115d8729078ff601a28b33360f96b",
+      "source": "46e3a30; final dependency rebuild",
+      "url": "http://127.0.0.1:16011/iframe.html?id=workbench-coordinationinspector--narrow&viewMode=story"
+    },
+    {
+      "file": "final-sandbox-repl.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:42.679292+00:00",
+      "sha256": "32f1a8f8a96b061e565a9b53cc46c68ae525c1543511cd2dea29dae77c6f1ba1",
+      "source": "46e3a30; final dependency rebuild; state tab",
+      "url": "http://127.0.0.1:16012/iframe.html?id=visual-audit-sandbox-devtools--narrow-devtools&viewMode=story"
+    },
+    {
+      "file": "generated-severities.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:21:41.007297+00:00",
+      "sha256": "6aa0a29a81dfa7561276f2dfb73c996cbd0f01eeecf1dc752efc8391888be8d0",
+      "source": "5e4970e",
+      "url": "http://127.0.0.1:16012/iframe.html?id=sandbox-generated-notices--severity-matrix&viewMode=story"
+    },
+    {
+      "file": "proposal-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:21:36.549320+00:00",
+      "sha256": "cce83b1f54bc92875190cd00cfdab80bfa26d9589115b79c875c60a5c7837cf4",
+      "source": "5e4970e",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-proposalcard--pending&viewMode=story"
+    },
+    {
+      "file": "proposal-approved-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:22:25.141062+00:00",
+      "sha256": "389008c74e3c1ffb6d75e490077aec67e4ba8f6f555631f58cda3c9edd869d94",
+      "source": "5e4970e; Approve clicked",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-proposalcard--pending&viewMode=story"
+    },
+    {
+      "file": "proposal-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T00:59:16.100885+00:00",
+      "sha256": "64013f5767220aa98b343cd5d71aa89e09526724fafbd6da0dd861b5bb8ffb6b",
+      "source": "bdc2dca baseline",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-proposalcard--pending&viewMode=story"
+    },
+    {
+      "file": "proposal-narrow.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:21:37.676314+00:00",
+      "sha256": "9dc40278d2e889018c5afb92964b7003d129011e56c65f3af5f1ca7267bd4292",
+      "source": "5e4970e",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-proposalcard--narrow-long-fields&viewMode=story"
+    },
+    {
+      "file": "reference-chip.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:21:39.885302+00:00",
+      "sha256": "ea77c9ff64e1ae96989278078096d810e5dac952613fb1d171e856670b8ae50c",
+      "source": "5e4970e",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-refpresentation--with-badge&viewMode=story"
+    },
+    {
+      "file": "runs-narrow-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:36.789326+00:00",
+      "sha256": "8cbae9ac3fab1dc7a69d920384641409c4f15721b6974615c38da4ab23b2f3b1",
+      "source": "46e3a30",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--runs-narrow&viewMode=story"
+    },
+    {
+      "file": "runs-narrow-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:30:21.885457+00:00",
+      "sha256": "8a32da8327c8fcb008b6f8d3a454cf83fb6e907a948f15ffef21b26b4793ccb0",
+      "source": "5e4970e + new P3 fixtures, before style edits",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--runs-narrow&viewMode=story"
+    },
+    {
+      "file": "runs-wide-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:32.271351+00:00",
+      "sha256": "a7d49f17dc83c4ba2d38d52efc7140b1b999ba1dc660ca413764680bbed511bc",
+      "source": "46e3a30",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--runs-wide&viewMode=story"
+    },
+    {
+      "file": "sandbox-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T00:59:13.265901+00:00",
+      "sha256": "2ebb95df7afc23316c352f255bc00e2f8871366d3437d8f75be771753ce773fe",
+      "source": "bdc2dca baseline",
+      "url": "http://127.0.0.1:16012/iframe.html?id=sandbox-devtools--playground&viewMode=story"
+    },
+    {
+      "file": "select-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:38:51.701599+00:00",
+      "sha256": "e814dbb96e512a8f60e6f11747385a036af16dd2f81bee2213815b488b55a873",
+      "source": "46e3a30; after",
+      "url": "http://127.0.0.1:16014/iframe.html?id=design-system-atoms-selectinput--skin-comparison&viewMode=story"
+    },
+    {
+      "file": "select-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:30:19.162472+00:00",
+      "sha256": "c1b35f1f3eb25bbf623ba446ccfaf6f2920f580d103a66218028f7af9a1c4c04",
+      "source": "5e4970e + comparison fixture",
+      "url": "http://127.0.0.1:16014/iframe.html?id=design-system-atoms-selectinput--skin-comparison&viewMode=story"
+    },
+    {
+      "file": "select-forced-colors.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:40.251306+00:00",
+      "sha256": "2589086c6aeec8e2353d28e3828c309fbad6529b7aef977e51f8d3f328dbad6f",
+      "source": "46e3a30; forced-colors",
+      "url": "http://127.0.0.1:16014/iframe.html?id=design-system-atoms-selectinput--skin-comparison&viewMode=story"
+    },
+    {
+      "file": "select-keyboard.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:40.198307+00:00",
+      "sha256": "ba98126e0ed1353ef5792ad5ce0c2f0d6acdcc15ad1ad786668ff3f344bf1773",
+      "source": "46e3a30; keyboard",
+      "url": "http://127.0.0.1:16014/iframe.html?id=design-system-atoms-selectinput--skin-comparison&viewMode=story"
+    },
+    {
+      "file": "tool-narrow.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:21:38.794308+00:00",
+      "sha256": "55cb49c9401fd0d45031429b5dd0bae4a0f21efd8bad73990ea07d68ab999781",
+      "source": "5e4970e",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-toolcard--narrow-long-content&viewMode=story"
+    },
+    {
+      "file": "tools-filtered-expanded.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:39.317312+00:00",
+      "sha256": "8a5abd439c861f53b9448f730e9acdda2c394e2d2f0f2671df54469231e2d397",
+      "source": "46e3a30; failed filter, input disclosure open",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--tools-narrow&viewMode=story"
+    },
+    {
+      "file": "tools-narrow-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:39.218312+00:00",
+      "sha256": "3ebeb12b3afa2858c8bc8aac0a643f96934ccffc02ad3cc69295f79397ff869d",
+      "source": "46e3a30",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--tools-narrow&viewMode=story"
+    },
+    {
+      "file": "tools-narrow-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:30:24.552442+00:00",
+      "sha256": "7025c961374196d01987c52abe4b4cefa4a336e1272a2f24d3ea9b7fc2fa7e77",
+      "source": "5e4970e + new P3 fixtures, before style edits",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--tools-narrow&viewMode=story"
+    },
+    {
+      "file": "tools-wide-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:34.522339+00:00",
+      "sha256": "86399478dcea024b2a3c9c95dc3c9c8ec2703e80631a494b90e988c52f7ea88c",
+      "source": "46e3a30",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--tools-wide&viewMode=story"
+    },
+    {
+      "file": "trace-narrow-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:35.648332+00:00",
+      "sha256": "fef0de77bc7a622452cce79c81dce04b754ca86d3fb249da36eac6a2b817c2ba",
+      "source": "46e3a30",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--trace-narrow&viewMode=story"
+    },
+    {
+      "file": "trace-narrow-before.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:30:20.566464+00:00",
+      "sha256": "da2ab5a59ec6ade85db1ab226c16dfc16a4823eff105db69af1821b6ba3bf61f",
+      "source": "5e4970e + new P3 fixtures, before style edits",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--trace-narrow&viewMode=story"
+    },
+    {
+      "file": "trace-wide-after.png",
+      "width": 1200,
+      "height": 800,
+      "file_modified_at_utc": "2026-09-07T01:42:31.152358+00:00",
+      "sha256": "91d2720d93c303a54221e10a95070a10596dcad68495e23319651b4826824a53",
+      "source": "46e3a30",
+      "url": "http://127.0.0.1:16013/iframe.html?id=pbui-chat-operational-panels--trace-wide&viewMode=story"
+    }
+  ]
+}
