@@ -53,6 +53,24 @@ menu row that fails fresh revalidation is always reported to the product.
 The package intentionally does not depend on Redux, RTK Query, Datadrop model
 types, or application routing.
 
+## Build an interface that matches PBUI
+
+Start with the [developer documentation](docs/README.md):
+
+- [Visual style and component selection](docs/guides/visual-style.md)
+- [First styled workbench panel — compiled example and stories](docs/guides/first-styled-workbench-panel.md)
+- [Styling contract: tokens, imports, modules, parts and editor](docs/reference/styling-contract.md)
+- [Visual review and Storybook](docs/playbooks/visual-review-and-storybook.md)
+
+Reuse controls before writing local CSS: Button/TextInput/SelectInput for controls,
+AppBody/Toolbar for bounded layout, EmptyState/Callout for states, Chip for inert
+markers, and KeyValueList for detail. For typed domain objects use the
+product-bound `pbui.ObjectChip` returned by `createPbui`, rather than separately
+styling each Presentation label. Core owns defaults; workbench and editor
+also have package-specific stylesheets. Shared rules live in these guides;
+package-specific tests may impose stricter structure. Historical ticket designs
+are provenance, not the current API reference.
+
 ## What a consumer imports
 
 ```ts

@@ -31,6 +31,11 @@ WhenToUse: Before touching pbui CSS or chrome; after doc 01 and its Decisions se
 
 # Consolidation design
 
+> Historical phase design. For current developer policy and implemented API
+> names, use [visual onboarding](../../../../../../docs/README.md). In particular,
+> current Callout uses `variant`, not the `severity` proposed below. The original
+> plan is retained as implementation provenance, not a copy-paste API guide.
+
 ## Executive Summary
 
 Doc 01 measured the family against the reference (`REF-001`) and the user chose the direction: datalab's tile chrome with the dark masthead, one chip, never rounded, no nested double borders, one un-overloaded selection colour, one notice grammar, tokens fixed at the source, one label idiom, a global skin for native controls. This document turns those decisions into eight phases, each independently shippable, each verified by re-running the screenshot scripts of this ticket. Everything is a hard cutover: no aliases, no compatibility sheets, dead CSS is deleted in the same commit that replaces it.
