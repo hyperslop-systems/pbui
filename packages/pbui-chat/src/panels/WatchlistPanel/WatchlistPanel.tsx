@@ -1,8 +1,7 @@
-import { Button, Chip, EmptyState } from "@hyperslop-systems/pbui";
+import { Button, EmptyState } from "@hyperslop-systems/pbui";
 import { RefPresentation } from "../../components/RefPresentation";
 import { usePbuiChat } from "../../context";
 import { usePbuiChatStore } from "../../store/chatStore";
-import { toneVar } from "../../tone";
 import styles from "./WatchlistPanel.module.css";
 
 /** The references the user pinned with `watch`, each still a live presentation. */
@@ -16,9 +15,7 @@ export function WatchlistPanel() {
     <ul data-part="watchlist" className={styles.list} aria-label="watchlist">
       {watchlist.map((reference) => (
         <li key={`${reference.type}:${reference.id}`} className={styles.row}>
-          <RefPresentation reference={reference}>
-            <Chip label={chat.labelFor(reference)} tone={toneVar(chat.toneFor(reference.type) ?? reference.type)} badge={<span className={styles.type}>{reference.type}</span>} />
-          </RefPresentation>
+          <RefPresentation reference={reference} badge={<span className={styles.type}>{reference.type}</span>} />
           <Button size="tiny" aria-label={`unwatch ${reference.id}`} onClick={() => chat.store.unwatch(reference)}>
             ×
           </Button>

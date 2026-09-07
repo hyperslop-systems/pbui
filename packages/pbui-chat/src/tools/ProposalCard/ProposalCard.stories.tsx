@@ -42,3 +42,8 @@ export const Pending: Story = {
 export const Approved: Story = { args: { decision: "approve" } };
 
 export const Rejected: Story = { args: { decision: "reject", danger: false } };
+
+export const NarrowLongFields: Story = {
+  args: { fields: [{ label: "exact amount", value: "9007199254740993.00" }, { label: "receipt", value: "receipt-" + "abcdef0123456789".repeat(6) }] },
+  decorators: [(Story) => <div style={{ width: 280 }}><Story /></div>],
+};

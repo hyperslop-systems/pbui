@@ -1,4 +1,4 @@
-import { Button, Chip, Surface, Text } from "@hyperslop-systems/pbui";
+import { Button, Chip, KeyValueList, Surface, Text, Toolbar } from "@hyperslop-systems/pbui";
 import { RefPresentation } from "../../components/RefPresentation";
 import { PbuiMarkdown } from "../../markdown/PbuiMarkdown";
 import type { Reference } from "../../types";
@@ -43,14 +43,16 @@ export function ProposalCard({ id, toolCallId, title, body, danger = false, fiel
   return (
     <Surface
       tone="pane"
-      border="none"
+      border="hair"
       padding={3}
       className={styles.card}
       role="group"
       aria-label={`proposal: ${title}`}
+      data-part="proposal"
+      data-danger={danger || undefined}
+      data-state={decision ?? "pending"}
     >
-      <div data-part="proposal" data-danger={danger || undefined} data-state={decision ?? "pending"} className={styles.inner}>
-        <header className={styles.header}>
+        <Toolbar tight className={styles.header}>
           <RefPresentation reference={reference} testId={`proposal-${id}`}>
             <Text size="small" strong>
               {title}
@@ -64,23 +66,10 @@ export function ProposalCard({ id, toolCallId, title, body, danger = false, fiel
               strong
             />
           )}
-        </header>
+        </Toolbar>
         {body && <PbuiMarkdown text={body} />}
         {fields && fields.length > 0 && (
-          <dl className={styles.fields}>
-            {fields.map((field) => (
-              <div key={field.label} className={styles.field}>
-                <dt>
-                  <Text size="tiny" tone="faint">
-                    {field.label}
-                  </Text>
-                </dt>
-                <dd>
-                  <Text size="small">{field.value}</Text>
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <KeyValueList dense items={fields.map((field) => ({ key: field.label, value: field.value }))} />
         )}
         <div className={styles.actions} data-part="proposal-actions">
           <Button
@@ -105,7 +94,6 @@ export function ProposalCard({ id, toolCallId, title, body, danger = false, fiel
             Reject
           </Button>
         </div>
-      </div>
     </Surface>
   );
 }

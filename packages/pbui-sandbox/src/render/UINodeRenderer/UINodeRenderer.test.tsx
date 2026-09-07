@@ -10,6 +10,20 @@ function mount(tree: UINode, onEvent = vi.fn()) {
 }
 
 describe("UINodeRenderer", () => {
+  test.each([
+    [undefined, "info", "status"],
+    ["neutral", "info", "status"],
+    ["positive", "ok", "status"],
+    ["warning", "warning", "status"],
+    ["danger", "danger", "alert"],
+  ] as const)("preserves callout severity %s as %s", (variant, expected, role) => {
+    const { container } = mount({ kind: "callout", props: { variant, title: "Notice", text: "Meaning is preserved" } });
+    const callout = container.querySelector('[data-part="callout"]');
+    expect(callout?.getAttribute("data-variant")).toBe(expected);
+    expect(callout?.getAttribute("role")).toBe(role);
+    expect(callout?.textContent).toContain("Meaning is preserved");
+  });
+
   test("renders every kind with pbui atoms and no raw controls of its own", () => {
     const { container, renderReference } = mount({
       kind: "column",
