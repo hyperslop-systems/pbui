@@ -142,8 +142,8 @@ function Row({ call }: { call: ToolCall }) {
           {call.toolName}
         </Text>
       </RefPresentation>
-      <Chip label={call.status} tone={failed ? "var(--pbui-tone-proposal)" : "var(--pbui-tone-neutral)"} />
-      <Text size="micro" tone="faint" className={styles.where}>
+      <Chip label={call.status} tone={failed ? "var(--pbui-danger)" : "var(--pbui-tone-neutral)"} />
+      <Text size="micro" tone="faint" className={styles.where} title={`${call.conversationTitle}${call.mode ? ` · ${call.mode}` : ""}`}>
         {call.conversationTitle}
         {call.mode ? ` · ${call.mode}` : ""}
       </Text>

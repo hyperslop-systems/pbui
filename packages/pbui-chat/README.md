@@ -12,6 +12,24 @@ const chat = createPbuiChat({ pbui, vocabulary, router, conversations: { key: "m
 <chat.Provider environment={environment}>…</chat.Provider>
 ```
 
+## Visual composition
+
+Follow the [shared visual guide](../../docs/guides/visual-style.md). Default
+inline `RefPresentation` bodies use the product-bound ObjectChip while retaining
+wire labels, focus tracking and activation. The optional `badge` decorates that
+default body; custom children and block presentations remain untouched.
+Composer, watchlist and widget reference collections use this common path.
+
+ProposalCard is a single Surface with Toolbar/KeyValueList, not a live-region
+Callout. Decisions remain explicit controlled callbacks. Operational panel
+stories cover 280px and 640px widths, long identifiers, missing trace targets
+and failures. Narrow traces use container queries; collapsed tool details remain
+native disclosures. No data columns or exact values are converted for styling.
+
+Story fixtures are synthetic, not authorization or persistence tests. DemoChat
+has auto-connect disabled but can still attempt session-metadata PATCH requests;
+a static-only server returns 501 for those requests.
+
 ## Conversations
 
 A conversation is a chat session, and in a workbench it is a **document**:

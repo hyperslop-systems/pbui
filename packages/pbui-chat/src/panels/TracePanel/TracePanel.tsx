@@ -52,14 +52,18 @@ export function TracePanel({ order = "newest", limit = 200 }: TracePanelProps) {
             <Text size="tiny" tone="faint" className={styles.actor}>
               {entry.actor}
             </Text>
-            <RefPresentation reference={reference}>
-              <span className={styles.verb}>{String(entry.verb?.kind ?? "?")}</span>
-            </RefPresentation>
-            {entry.target && (
-              <RefPresentation reference={entry.target}>
-                <span className={styles.target}>{chat.labelFor(entry.target)}</span>
+            <span className={styles.verbCell}>
+              <RefPresentation reference={reference}>
+                <span className={styles.verb}>{String(entry.verb?.kind ?? "?")}</span>
               </RefPresentation>
-            )}
+            </span>
+            <span className={styles.targetCell} data-part="trace-target">
+              {entry.target ? (
+                <RefPresentation reference={entry.target}>
+                  <span className={styles.target} title={chat.labelFor(entry.target)}>{chat.labelFor(entry.target)}</span>
+                </RefPresentation>
+              ) : <Text size="tiny" tone="faint" title="no target">—</Text>}
+            </span>
             <Text size="tiny" tone={rejected ? "danger" : "faint"} className={styles.outcome} title={entry.outcome}>
               {rejected ? entry.outcome.replace(/^rejected:/, "✗ ") : "✓"}
             </Text>

@@ -88,3 +88,15 @@ export const Empty: Story = {
 export const Disabled: Story = {
   render: () => <Live accessibleName="expires in" options={ROLES} initial="reader" disabled />,
 };
+
+/** Framed follows the global skin; the explicit native variant retains platform chrome. */
+export const SkinComparison: Story = {
+  render: () => (
+    <Stack gap={3}>
+      <label>Global skin <select aria-label="global select" defaultValue="reader">{ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select></label>
+      <label>Framed <Live accessibleName="framed select" options={ROLES} initial="reader" size="small" variant="framed" /></label>
+      <label>Native <Live accessibleName="native select" options={ROLES} initial="reader" size="small" variant="native" /></label>
+      <label>Disabled framed <Live accessibleName="disabled framed select" options={ROLES} initial="reader" size="small" variant="framed" disabled /></label>
+    </Stack>
+  ),
+};

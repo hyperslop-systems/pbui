@@ -115,6 +115,11 @@
    */
   --pbui-radius: 0;
 
+  /* Shared framed/native-element skin; explicit native SelectInput keeps OS chrome.
+   * Override the image for a custom pane palette. Forced-colors uses the OS arrow. */
+  --pbui-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%2323262b' stroke-width='1.5'/%3E%3C/svg%3E");
+  --pbui-select-line-height: 1.6;
+
   /* ---- type -------------------------------------------------------------- */
   --pbui-font: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --pbui-fs-micro: 8.5px;
