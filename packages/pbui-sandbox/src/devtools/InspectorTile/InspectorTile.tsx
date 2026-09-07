@@ -1,4 +1,4 @@
-import { Button, Chip, EmptyState, JsonBlock, KeyValueList, SelectInput, Text, TileHeader } from "@hyperslop-systems/pbui";
+import { AppBody, Button, Chip, EmptyState, JsonBlock, KeyValueList, SelectInput, Text, TileHeader } from "@hyperslop-systems/pbui";
 import type { AppView } from "@hyperslop-systems/workbench-protocol";
 import { useMemo, useState } from "react";
 import type { SandboxHost } from "../../host/hostOptions";
@@ -96,7 +96,7 @@ export function InspectorTile({ view, host }: InspectorTileProps) {
         ) : null}
       </TileHeader>
 
-      <div className={styles.body}>
+      <AppBody flush className={styles.body}>
         {pane === "state" ? (
           <StatePane
             state={state}
@@ -139,7 +139,7 @@ export function InspectorTile({ view, host }: InspectorTileProps) {
           : null}
 
         {pane === "meta" ? <MetaPane snapshot={snapshot} engine={host.engine.kind} /> : null}
-      </div>
+      </AppBody>
     </div>
   );
 }
