@@ -1,7 +1,7 @@
 ---
 Title: Implementation diary
 Ticket: PBUI-STYLE-002
-Status: active
+Status: complete
 Topics:
     - pbui
     - frontend
@@ -9,13 +9,28 @@ Topics:
 DocType: reference
 Intent: long-term
 Owners: []
-RelatedFiles: []
+RelatedFiles:
+    - Path: repo://docs/guides/visual-style.md
+      Note: Canonical composition and bounded-control guidance
+    - Path: repo://packages/pbui-chat/src/components/RefPresentation/RefPresentation.tsx
+      Note: P2 default ObjectChip with preserved behavior and custom bodies
+    - Path: repo://packages/pbui-chat/src/panels/TracePanel/TracePanel.tsx
+      Note: P3 stable target cells and narrow operational layout
+    - Path: repo://packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.module.css
+      Note: P1 square cross-view markers; see change inventory for all devtool files
+    - Path: repo://packages/pbui-sandbox/src/render/UINodeRenderer/UINodeRenderer.tsx
+      Note: P2 severity boundary
+    - Path: repo://packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.tsx
+      Note: P1 shared headings and native coordination behavior
+    - Path: repo://src/components/atoms/SelectInput/SelectInput.module.css
+      Note: P3 framed/native skin and forced-colors handling
 ExternalSources: []
 Summary: ""
 LastUpdated: 2026-09-06T20:52:52.92870571-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # Diary
 
@@ -188,3 +203,116 @@ ProposalCard now has one shared Surface frame, a Toolbar header and KeyValueList
 ### Technical details
 - P2 logs: `/tmp/pbui-style002-p2-{chat,sandbox}.log` and corresponding `*-story.log`.
 - Receipts `03-p1-done` and `04-p2-start` both reported `printed: yes` before P2 implementation.
+
+## Step 4: P3 operational rows and select-control parity
+
+Added real seeded operational fixtures before changing their styles. The 280px captures confirmed the shortlist's risks: trace rows reached 376px scroll width in 278px, runs 378/270, events 687/270 and tools 460/270. These were rendered failures, not inferred from CSS counts. A targetless trace also omitted a grid child, shifting subsequent cells.
+
+Named trace grid areas now keep all slots stable, including an explicit no-target marker; a container query gives narrow rejected rows room for the full explanation. Runs/tools use two-line metadata, long identifiers wrap, and intentional metadata ellipses expose full titles. Framed selects now match the global native-element skin through shared chevron/line-height tokens; the explicit native variant retains platform chrome.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Finish the remaining operational-panel and select candidates, then validate the shared changes across consumers.
+
+**Inferred user intent:** Eliminate visible inconsistencies and small-pane breakage without replacing native controls or altering data contracts.
+
+**Commit (code):** 46e3a30 — "style: bound operational rows and unify framed select chrome"
+
+### What I did
+- Added eight wide/narrow operational stories, including missing targets, long names, failed tools, exact input values and a closed conversation.
+- Changed TracePanel named areas/placeholder/container query; retained ordering and limit behavior with two new tests.
+- Changed RunsTile, EventsTile and ToolsTile density, wrapping and metadata placement; failed tool status now uses the danger role rather than proposal-kind tone.
+- Added SelectInput skin-comparison story and two native-select change tests. Shared chevron defaults live in tokens.css; disabled framed controls retain their arrow. Forced-colors restores platform appearance.
+- Updated the canonical visual guide and chat README with the representation, control and fixture contracts.
+
+### Why
+- Missing data must not change column identity. Wrapping an identifier and changing its numeric representation are different operations; only the former is part of this pass.
+
+### What worked
+- Initial P3 after-captures showed equal client/scroll widths for every seeded row, both narrow and wide.
+- Global/framed selects both measure 62×18.796875px with identical padding, arrow and appearance; native remains appearance auto.
+
+### What didn't work
+- The first operational fixture used `event: "error"`; typecheck reported `error TS2322: Type '"error"' is not assignable to type 'TransportStatus'.` Read the installed declaration and used the supported `failed` state instead of a cast or contract change.
+- The session was interrupted during validation: the core log contained only the Vitest RUN header. No partial run was counted as passing; Step 5 reran it.
+
+### What I learned
+- The current RunsTile already intended a two-line layout, but its numbers spanned both columns and pushed duration onto another row. Explicit placement restores that intended hierarchy.
+- Native interaction and platform chrome are separate: a CSS-skinned select is still an actual SELECT, not a custom menu.
+
+### What was tricky to build
+- Reference wrappers are grid children, while their className forwards to the inner Presentation. Explicit verb/target cell wrappers avoid attaching layout areas to the wrong element and keep interaction ownership unchanged.
+- A disabled background shorthand would erase the new arrow; changed it to background-color. Forced-colors must also remove the image before restoring the OS arrow.
+
+### What warrants a second pair of eyes
+- Container queries are required for the narrow trace arrangement. Validate any older browser support target separately.
+- Custom pane palettes can override the chevron image token; SVG image color is not automatically inherited from text ink.
+
+### What should be done in the future
+- Finish final acceptance and receipt bookkeeping (recorded in Step 5).
+
+### Code review instructions
+- Compare all four `*-narrow-before.png` captures with their after counterparts. Start in TracePanel, then operational CSS and SelectInput.module.css/styles.css/tokens.css.
+- Run the ticket's browser acceptance script and inspect the full explanation and exact input disclosure, not just outer bounds.
+
+### Technical details
+- P2 DONE and P3 START printed successfully before P3 implementation (`05-p2-done`, `06-p3-start`).
+- Trace breakpoint is 420px of its own container, not the viewport. Fixtures allocate 280/640px outer frames.
+
+## Step 5: Resume, full acceptance and evidence handoff
+
+Resumed by reading the diary and inspecting Git/log state. The implementation was intact but the interrupted validation had no completion result. Reran root tests/typecheck, every workspace script for typecheck/test/build, and the four affected Storybooks instead of trusting the partial log.
+
+The ticket-owned browser script now reproduces bounded wide/narrow rows, actual status filtering and exact-value disclosure, native keyboard selection, forced-colors fallback, and final inspector/REPL bounds after rebuilding dependencies. The catalogue indexes 35 original PNGs with dimensions, source states, loopback URLs and SHA256; filesystem timestamps are explicitly described as capture-time proxies.
+
+### Prompt Context
+
+**User prompt (verbatim):** "sorry, i quit on you. continue"
+
+**Assistant interpretation:** Resume the interrupted P3 validation and complete the original ticket workflow.
+
+**Inferred user intent:** Finish the implementation, evidence and physical progress loop without losing the earlier work.
+
+### What I did
+- Root typecheck and 870 tests/52 files passed; the separate documentation guard rerun passed 9 tests.
+- Recursive workspace typechecks/builds passed. Ten workspace test suites passed 1,609 tests: protocol40, editor13, core254, workbench139, sandbox229, ecommerce35, datalab605, plotscript32, chat249 and chat-demo13. Combined with root: 2,479 tests.
+- Core/chat/sandbox/workbench Storybook builds passed; final logs are copied to `various/validation/`.
+- Ran `scripts/01-browser-acceptance.js` successfully: two rows per fixture at each width; trace 638/278px, other rows 630/270px, each equal to its scroll width.
+- Filtered tools to failed, opened its native disclosure and verified `9007199254740993.00`. Keyboard ArrowDown/Enter selected writer. Forced-colors produced appearance auto and no image for both skinned selects.
+- Final coordination bounds: 275×454 with equal scroll dimensions. Final REPL: 278×318 with equal scroll dimensions.
+- Created the catalogue script and retained the failed textarea captures alongside successful ones.
+
+### Why
+- Shared atom/token changes require downstream rebuilds and tests; package-local source tests alone missed the stale-dist issue in P1.
+
+### What worked
+- Full JavaScript/TypeScript validation and the browser acceptance script passed. No application source outside PBUI was modified.
+- All previously completed phase receipts remain archived with their matching commits.
+
+### What didn't work
+- Production demo builds retain large-chunk warnings (ecommerce, plotscript and chat); these are not build failures and were not silenced.
+- Static fixtures retain local metadata PATCH 501 and favicon 404 messages. This is not a warning-free or network-silent claim.
+
+### What I learned
+- Explicitly resizing immediately before each capture gives comparable final PNG dimensions even when browser viewport state changes between navigations.
+
+### What was tricky to build
+- Kept fixture provenance separate from source checkpoints: P3 baselines include new stories on the P2 source, while intermediate P1 images used stale core dist. The catalogue states those limitations rather than assigning every image the final commit.
+
+### What warrants a second pair of eyes
+- Browser evidence is local Chromium/Linux with synthetic fixtures and emulated forced-colors. It does not certify Safari, Windows high contrast, full accessibility, backend permissions, persistence, or a published consumer installation.
+- Source commits remain local; this request asked for commits, not another push.
+
+### What should be done in the future
+- Separately isolate DemoChat metadata persistence if network-silent Storybooks become a requirement. No implementation phase remains.
+
+### Code review instructions
+- Read the current guide, phase code commits cf4cf5a / 5e4970e / 46e3a30, then the capture catalogue and validation logs.
+- Rebuild core before downstream Storybooks. Run `pnpm typecheck && pnpm test`, then `pnpm -r --if-present typecheck`, `test`, and `build`; load the browser script using its absolute filename.
+
+### Technical details
+- All seven physical receipts are in `various/slips/`: overall PLAN and START/DONE for each phase. Final P3 DONE printed at 2026-09-07T01:50:51Z with HTTP 200, `printed: true`, and `printer_response.ok: true`; `07-p3-done-receipt.txt` retains the response.
+- All tasks checked and ticket closed complete; docmgr doctor passed. Lead files are related in frontmatter; the changed-file inventory links every modified file and the shared APIs used in decisions.
+- Ticket-owned scripts are reproducible acceptance/cataloguing tools, not production application dependencies.
