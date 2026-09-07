@@ -24,3 +24,8 @@ P3 complete (46e3a30): bounded operational rows, select parity, 2479 tests, recu
 
 All three phases implemented and validated; plan plus every START/DONE slip printed, including final P3 DONE. Source checkpoints cf4cf5a / 5e4970e / 46e3a30 remain local.
 
+
+## 2026-09-06
+
+Released five packages to GitHub Packages latest from tag pbui-style-release-20260907 (ed5b2a9). Five dry runs, five real publications and exact registry readbacks passed; receipts archived.
+

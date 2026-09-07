@@ -30,11 +30,12 @@ Implemented the seven styling candidates from the source review, using the share
 | P2 | Product ObjectChip references, generated danger notices, proposal/tool card composition | 5e4970e |
 | P3 | Trace/runs/events/tools density and overflow, native/framed select consistency | 46e3a30 |
 
-Source commits are local on `fix/chat-grid-contract`; no push was requested for this ticket.
+Subsequently released at the user's request: PBUI 0.12.1, Workbench 0.6.1, Editor 0.2.0, Sandbox 0.4.1 and Chat 0.4.1 are published to GitHub Packages latest. Source branch and tag `pbui-style-release-20260907` are pushed at ed5b2a9. The original implementation hashes above predate a user rebase; the release record maps their reachable equivalents. Main was not merged as part of publication.
 
 ## Evidence and review
 
 - [Detailed diary](reference/01-implementation-diary.md): prompts, decisions, exact failures, commands, checks and review guidance.
+- [Release diary and verification](reference/02-coordinated-package-release-and-registry-verification.md): pinned source, five dry runs, five real publications and registry readbacks.
 - [Capture catalogue](various/screenshots/01-capture-catalog.md): 35 original screenshots, including before/after and failed intermediate states.
 - [Capture manifest](various/screenshots/manifest.json): hashes, dimensions, source/build state and story URLs.
 - [Changed-file inventory](various/validation/10-change-inventory.md): links to every source/document change across the three code commits.

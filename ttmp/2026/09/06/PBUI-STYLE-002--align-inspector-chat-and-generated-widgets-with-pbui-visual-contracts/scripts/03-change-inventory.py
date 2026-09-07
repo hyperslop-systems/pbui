@@ -8,7 +8,8 @@ TICKET = Path(__file__).resolve().parents[1]
 REPO = Path(subprocess.check_output(['git', '-C', str(TICKET), 'rev-parse', '--show-toplevel'], text=True).strip())
 OUT = TICKET / 'various/validation/10-change-inventory.md'
 lines = ['---', 'Title: Changed files and shared API references', 'Ticket: PBUI-STYLE-002', 'Status: complete', 'DocType: reference', 'Topics: [pbui, frontend, design]', '---', '', '# Changed-file inventory', '', 'Paths below link every file in the three implementation checkpoints. Generated build outputs are excluded by normal Git ignore rules; ticket evidence is linked from the index.', '']
-for phase, commit in [('P1', 'cf4cf5a'), ('P2', '5e4970e'), ('P3', '46e3a30')]:
+# Rebased equivalents preserved by the immutable release tag; original capture labels remain historical.
+for phase, commit in [('P1', 'd948d61'), ('P2', '9c6bc6d'), ('P3', 'b390455'), ('Release', 'ed5b2a9')]:
     lines += [f'## {phase}: {commit}', '']
     paths = subprocess.check_output(['git', '-C', str(REPO), 'diff-tree', '--no-commit-id', '--name-only', '-r', commit], text=True).splitlines()
     lines += [f'- [{path}]({os.path.relpath(REPO / path, OUT.parent)})' for path in paths]

@@ -10,7 +10,7 @@ Topics: [pbui, frontend, design]
 
 Paths below link every file in the three implementation checkpoints. Generated build outputs are excluded by normal Git ignore rules; ticket evidence is linked from the index.
 
-## P1: cf4cf5a
+## P1: d948d61
 
 - [packages/pbui-sandbox/src/VisualAudit.stories.tsx](../../../../../../../packages/pbui-sandbox/src/VisualAudit.stories.tsx)
 - [packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.module.css](../../../../../../../packages/pbui-sandbox/src/devtools/InspectorTile/InspectorTile.module.css)
@@ -23,7 +23,7 @@ Paths below link every file in the three implementation checkpoints. Generated b
 - [packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.tsx](../../../../../../../packages/pbui-workbench/src/components/CoordinationInspector/CoordinationInspector.tsx)
 - [src/components/atoms/TextArea/TextArea.module.css](../../../../../../../src/components/atoms/TextArea/TextArea.module.css)
 
-## P2: 5e4970e
+## P2: 9c6bc6d
 
 - [packages/pbui-chat/src/components/RefPresentation/RefPresentation.stories.tsx](../../../../../../../packages/pbui-chat/src/components/RefPresentation/RefPresentation.stories.tsx)
 - [packages/pbui-chat/src/components/RefPresentation/RefPresentation.test.tsx](../../../../../../../packages/pbui-chat/src/components/RefPresentation/RefPresentation.test.tsx)
@@ -42,7 +42,7 @@ Paths below link every file in the three implementation checkpoints. Generated b
 - [packages/pbui-sandbox/src/render/UINodeRenderer/UINodeRenderer.test.tsx](../../../../../../../packages/pbui-sandbox/src/render/UINodeRenderer/UINodeRenderer.test.tsx)
 - [packages/pbui-sandbox/src/render/UINodeRenderer/UINodeRenderer.tsx](../../../../../../../packages/pbui-sandbox/src/render/UINodeRenderer/UINodeRenderer.tsx)
 
-## P3: 46e3a30
+## P3: b390455
 
 - [docs/guides/visual-style.md](../../../../../../../docs/guides/visual-style.md)
 - [packages/pbui-chat/README.md](../../../../../../../packages/pbui-chat/README.md)
@@ -61,6 +61,21 @@ Paths below link every file in the three implementation checkpoints. Generated b
 - [src/components/atoms/SelectInput/SelectInput.test.tsx](../../../../../../../src/components/atoms/SelectInput/SelectInput.test.tsx)
 - [src/styles.css](../../../../../../../src/styles.css)
 - [src/tokens.css](../../../../../../../src/tokens.css)
+
+## Release: ed5b2a9
+
+- [.github/workflows/publish-pbui-chat.yml](../../../../../../../.github/workflows/publish-pbui-chat.yml)
+- [.github/workflows/publish-pbui-editor.yml](../../../../../../../.github/workflows/publish-pbui-editor.yml)
+- [.github/workflows/publish-pbui-sandbox.yml](../../../../../../../.github/workflows/publish-pbui-sandbox.yml)
+- [.github/workflows/publish-pbui-workbench.yml](../../../../../../../.github/workflows/publish-pbui-workbench.yml)
+- [.github/workflows/publish.yml](../../../../../../../.github/workflows/publish.yml)
+- [package.json](../../../../../../../package.json)
+- [packages/pbui-chat/package.json](../../../../../../../packages/pbui-chat/package.json)
+- [packages/pbui-editor/package.json](../../../../../../../packages/pbui-editor/package.json)
+- [packages/pbui-sandbox/package.json](../../../../../../../packages/pbui-sandbox/package.json)
+- [packages/pbui-workbench/package.json](../../../../../../../packages/pbui-workbench/package.json)
+- [scripts/verify-published-package.mjs](../../../../../../../scripts/verify-published-package.mjs)
+- [scripts/verify-published-package.test.mjs](../../../../../../../scripts/verify-published-package.test.mjs)
 
 ## Shared APIs and reference recipes
 
