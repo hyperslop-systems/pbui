@@ -1,0 +1,87 @@
+{
+  "viewport_css": {
+    "width": 1200,
+    "height": 800
+  },
+  "story_prefix": "workbench-getting-started-styled-panel--",
+  "data": "synthetic",
+  "images": [
+    {
+      "file": "styled-panel-default.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "0f22914954f9263ede57091ca5490c004d7e5902a79b6954e19781b81f7f07f8",
+      "captured_at_utc": "2026-09-07T00:13:19.066453+00:00"
+    },
+    {
+      "file": "styled-panel-details-slot.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "46197fb60fc7a2f91a9f0bc7c9b742515a51179e8f39c706aa53cb4705b1a3d5",
+      "captured_at_utc": "2026-09-07T00:13:20.130446+00:00"
+    },
+    {
+      "file": "styled-panel-disabled.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "eefcab6be9001e152423202de8897f118e39f6594c4da801d4bb250d057d714d",
+      "captured_at_utc": "2026-09-07T00:13:19.796448+00:00"
+    },
+    {
+      "file": "styled-panel-empty.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "004b670c54142a1300a06806696aa3e1c863e8530a8c1e86ad03d17b62fc3018",
+      "captured_at_utc": "2026-09-07T00:13:19.282452+00:00"
+    },
+    {
+      "file": "styled-panel-error.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "cfaf4f64e7f8e5a0adb14e1419c1d051975c7ac18088b1cbd05e99dc7c40aa60",
+      "captured_at_utc": "2026-09-07T00:13:19.630449+00:00"
+    },
+    {
+      "file": "styled-panel-loading.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "ad398d895e718f79e1b941cf34aa852996fb9134e1e44e7ae648373ed3f91efd",
+      "captured_at_utc": "2026-09-07T00:13:19.455451+00:00"
+    },
+    {
+      "file": "styled-panel-narrow.png",
+      "width": 280,
+      "height": 360,
+      "sha256": "7df874912682368c08ee014f25e023ebaa2b15b298d5e921c4a59f9428144dc4",
+      "captured_at_utc": "2026-09-07T00:12:58.707593+00:00"
+    },
+    {
+      "file": "styled-panel-theme-before-host-fix.png",
+      "width": 640,
+      "height": 103,
+      "sha256": "f3cd850b47b8adb8ee5206af35c0cf3ddece8f1be6247679ba58ab2853e564e4",
+      "captured_at_utc": "2026-09-07T00:13:19.957447+00:00"
+    },
+    {
+      "file": "styled-panel-theme-override.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "64b9a94625a28407ce81cb616fd94d85d497be6954d8efaec6f9a7278ffa1428",
+      "captured_at_utc": "2026-09-07T00:14:56.825793+00:00"
+    },
+    {
+      "file": "styled-workbench-wiring.png",
+      "width": 1200,
+      "height": 800,
+      "sha256": "40e7a58c136b665e4ef588a93ebbf6347e8995a2ee19a45464b42267feb5ea18",
+      "captured_at_utc": "2026-09-07T00:13:20.318444+00:00"
+    },
+    {
+      "file": "styled-workbench.png",
+      "width": 1200,
+      "height": 800,
+      "sha256": "fa7371f030d56cf055fa5bebe520d0cf68b7f97f295e17d32869d0648c38aa8b",
+      "captured_at_utc": "2026-09-07T00:11:56.137029+00:00"
+    }
+  ]
+}

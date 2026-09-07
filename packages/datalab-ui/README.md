@@ -29,6 +29,13 @@ export default defineConfig({
 package. Datalab UI owns product models, descriptors, verbs, stores, API
 transport, routes, applications, pages, fixtures, and brand.
 
+## Visual onboarding
+
+Read the [shared developer docs](../../docs/README.md),
+[visual guide](../../docs/guides/visual-style.md), and this package's
+[GUIDELINES.md](GUIDELINES.md). Core owns the default tokens; package-local
+rules describe Datalab's domain layers, not a second shared design system.
+
 ## Integration playbooks
 
 - [Adding editing support to a PBUI application](../../docs/playbooks/adding-editing-support-to-a-pbui-application.md)

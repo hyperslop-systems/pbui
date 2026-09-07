@@ -148,3 +148,7 @@ Feedback round five: kernel ObjectChip; ecommerce text presentations migrated; n
 
 - /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/src/presentation/createPbui.tsx — ObjectChip
 
+
+## 2026-09-06
+
+Step 17: visual onboarding guides, reconciled package docs, compiled nine-story example and 11 ticket-owned report captures (f450189); 868 core and 137 workbench tests passed.

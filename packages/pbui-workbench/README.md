@@ -22,7 +22,7 @@ const orders = defineWorkbenchApp({
     duplicatePlacement: "clone",   // "clone" | "link"
     ports: [{ name: "order", direction: "out", contract: "order", doc: "the selected order" }],
   },
-  presentation: { title: "Orders", tone: "var(--pbui-tone-orders)", group: "DATA", Component: OrdersTile },
+  presentation: { title: "Orders", tone: "var(--pbui-tone-order)", group: "DATA", Component: OrdersTile },
 });
 ```
 
@@ -92,14 +92,38 @@ A sync client treats `core.getState().revision` (`LocalRevision`), the server's 
 
 `createWorkbenchPresentationFragment()` contributes the `tile`, `port` and `link` types, their descriptors, and the shared rows (split, duplicate, rename, close, link to…, show details…) to a product's compiled presentation. `tileRefOf(workbench, placementId)` and `portRefOf(badge, snapshot)` build the values those presentations carry.
 
-## Styles
+## Styles and the first panel
 
 ```ts
+import "@hyperslop-systems/pbui/styles.css";
 import "@hyperslop-systems/pbui-workbench/styles.css";
 ```
 
+Use `AppShell` for the page masthead/strip/canvas/status composition and
+`AppBody` for a tile's scrolling content (`flush` when the content owns its
+padding). A host must commit height; `min-height: 0` cannot create a missing
+parent bound. Do not wrap a native tile in a second copied title bar/frame.
+
+The [first styled panel tutorial](../../docs/guides/first-styled-workbench-panel.md)
+points to a compiled DTO/callback example and the **Workbench / Getting Started /
+Styled Panel** stories, including a real native shell. The
+[visual guide](../../docs/guides/visual-style.md) and
+[styling contract](../../docs/reference/styling-contract.md) define shared roles
+and permitted overrides.
+
 
 ## Wiring
+
+Provide a visible entry point, for example a PBUI Button whose `onClick` calls
+`workbench.dispatch({ kind: "link.mode.open" })`. The compiled tutorial does this
+in `AppShell.mastheadActions`; no raw custom wiring controls are needed.
+
+The shortcut is **Mod+Shift+L**: Command on Apple platforms, Control elsewhere.
+Surface owns it only while focus is within its workbench (or the lone workbench
+owns otherwise-unclaimed body focus), and transient dialogs may block it.
+Test from the editor/panel, not only from the page body. A visible Wiring button
+also works when the masthead has focus or another environment intercepts the
+shortcut. Opening the mode alone does not declare ports or persist connections.
 
 `<workbench.Surface wiring={{mode: "auto"}} />` provides spatial connections
 when its split tree can fit readable port cards, and focused controls otherwise.

@@ -77,6 +77,11 @@ export const WithDiagnostics: Story = {
   render: (args) => <Live {...args} initial={SCRIPT} rows={18} diagnostics={DIAGNOSTICS} />,
 };
 
+export const MySQL: Story = {
+  name: "MySQL: parameters, decimals, and comments",
+  render: (args) => <Live {...args} initial={"-- Read-only investigation\nSELECT order_id, refund_amount\nFROM orders_v1\nWHERE business_date >= ? AND refund_amount > 0.00\nORDER BY order_id\nLIMIT 50"} rows={9} language="sql" />,
+};
+
 export const Json: Story = {
   name: "JSON",
   render: (args) => <Live {...args} initial={'{\n  "format": "hyperslop.plot",\n  "version": 1\n}\n'} rows={6} language="json" />,

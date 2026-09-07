@@ -1,6 +1,6 @@
 # `@hyperslop-systems/pbui-editor`
 
-A CodeMirror 6 code editor for PBUI products: JavaScript and JSON
+A CodeMirror 6 code editor for PBUI products: JavaScript, JSON and MySQL SQL
 highlighting, line numbers, bracket matching, undo history, an inline
 diagnostics gutter, and a theme built entirely from pbui tokens.
 
@@ -26,10 +26,22 @@ products that never open an editor should not carry it. This package follows
 the same shape as `pbui-workbench`, `pbui-sandbox` and `pbui-chat`: a peer with
 its own dependencies and its own `styles.css` export.
 
-CodeMirror is **bundled into** `dist/index.js` rather than externalised, so a
-consumer can never end up with two copies of `@codemirror/state` (the
-"Unrecognized extension value" failure). The cost is that a consumer cannot
-share its own CodeMirror instance with this package; no PBUI product has one.
+CodeMirror is **bundled into** `dist/index.js` rather than externalised. This
+keeps the editor's own instance coherent, but does not prevent a consumer from
+installing another incompatible copy. Do not mix extensions constructed with
+an independently installed CodeMirror instance: that can cause the
+"Unrecognized extension value" failure. Use the exported `EditorView`,
+`EditorState`, `Compartment` and `Prec` primitives for integrations that need them.
+
+```ts
+import { EditorView, Compartment, Prec } from "@hyperslop-systems/pbui-editor";
+const editable = new Compartment();
+const extension = editable.of(Prec.highest(EditorView.editable.of(false)));
+```
+
+This snippet illustrates instance-safe extension construction, not an
+`extensions` prop on CodeEditor. Consult the exported editor API before wiring
+custom behavior; do not assume arbitrary extension injection is supported.
 
 ## The API mirrors `TextArea`
 
@@ -38,6 +50,25 @@ that becomes `aria-label`; `rows` measured in lines of content. A call site
 moving from `TextArea` to `CodeEditor` changes the import and adds `language`.
 Omit `rows` and the editor fills its container, which is the tile case — the
 container must then be a bounded box (`minmax(0, 1fr)` in a grid).
+
+## Languages and evidence
+
+| `language` | Grammar |
+|---|---|
+| `javascript` | JavaScript |
+| `json` | JSON |
+| `sql` | SQL with the MySQL dialect |
+| `plain` | No grammar |
+
+Use `language="sql"` for a MySQL statement and `language="json"` for its
+parameters. `readOnly` is appropriate for executed-input evidence; keep that
+value separate from the editable draft. Highlighting does not validate query
+authorization or execute anything. Changes go through `onValueChange`; Run is
+explicit. The MySQL grammar has a story and test in this package.
+
+For foundation imports, token semantics, bounded hosts and package portability,
+read the [styling contract](../../docs/reference/styling-contract.md) and
+[first-panel tutorial](../../docs/guides/first-styled-workbench-panel.md).
 
 ## Keyboard: what is deliberately not bound
 

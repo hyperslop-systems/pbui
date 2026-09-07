@@ -1,5 +1,12 @@
 # Adding editing support to a PBUI application
 
+For shared visual policy and a compiled panel example, start with the
+[developer docs](../README.md). This document describes **Datalab/Datadrop's**
+domain persistence adapter, not a universal requirement that every PBUI product
+use Redux, its graphic-document model or its full-snapshot synchronization.
+Generic workbench commands/sync are documented in the
+[workbench README](../../packages/pbui-workbench/README.md).
+
 > **The three PBUI playbooks, and which one you want:**
 >
 > | If you are… | Read |
@@ -13,8 +20,8 @@ state. It covers the frontend path implemented in PBUI and the server contract
 implemented by Datadrop. The intended reader can follow the procedure without
 having worked on the workbench protocol.
 
-The central rule is simple: an application does not save itself. It dispatches
-ordinary Redux actions that change a document or logical view. Remote
+In this Datalab integration, a presentational panel does not save itself. Its
+application controller dispatches ordinary Redux actions that change a document or logical view. Remote
 persistence observes the resulting normalized state, encodes one complete
 workbench snapshot, and conditionally replaces the server revision.
 

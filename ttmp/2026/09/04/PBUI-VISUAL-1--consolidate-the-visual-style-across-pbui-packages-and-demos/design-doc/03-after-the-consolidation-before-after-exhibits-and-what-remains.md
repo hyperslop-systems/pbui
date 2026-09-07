@@ -20,6 +20,12 @@ WhenToUse: "After doc 01 (the audit) and doc 02 (the design); regenerate the exh
 
 # After the consolidation
 
+> Follow-up (2026-09-06): the visual-audit playbook and onboarding guidance now
+> live in the [developer docs](../../../../../../docs/README.md), including a
+> compiled styled-panel/native-workbench example. The open-item list and exhibits
+> below record the original consolidation checkpoint; they are not a current API
+> reference. Other historical follow-up items have not been re-audited here.
+
 ## Executive Summary
 
 Eight phases landed on `task/consolidate-pbui-kernel` between commits `b1e351f` (P1) and the P8 commit named in the diary. Every phase is screenshot-verified against the before-corpus of doc 01, and the whole corpus was re-shot with the same scripts into `various/screenshots-after/`. This document sets the two side by side for each of the ten priorities the user ranked, states what changed in one paragraph each, and lists what is deliberately still open.

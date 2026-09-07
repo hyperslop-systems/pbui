@@ -1,0 +1,7 @@
+/* A committed height is required by the native split surface. */
+.host { height: 640px; min-width: 0; }
+.panelHost { display: flex; flex-direction: column; height: 360px; max-width: 640px; border: var(--pbui-border-hair); }
+.narrow { width: 280px; }
+.theme { display: flex; flex-direction: column; flex: 1; min-height: 0; --pbui-pane: var(--pbui-wash); --pbui-border-hair: 1px solid var(--pbui-tone-field); background: var(--pbui-pane); }
+/* Domain values can be arbitrarily long; they must not widen the pane. */
+.value { overflow-wrap: anywhere; white-space: pre-wrap; }
