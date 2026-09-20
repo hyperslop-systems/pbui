@@ -1,0 +1,9 @@
+
+ RUN  v4.1.10 /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui
+
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  21:44:30
+   Duration  383ms (transform 16ms, setup 0ms, import 25ms, tests 5ms, environment 253ms)
+

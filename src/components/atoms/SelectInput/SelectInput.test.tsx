@@ -16,8 +16,8 @@
  * which a defect survives review. The first caller would have shipped it.
  */
 
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, test } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { SelectInput } from "./SelectInput";
 
 afterEach(cleanup);
@@ -47,6 +47,15 @@ function renderOptions() {
 }
 
 describe("SelectInput options", () => {
+  test.each(["native", "framed"] as const)("%s chrome keeps the native select change contract", (variant) => {
+    const onValueChange = vi.fn();
+    render(<SelectInput variant={variant} accessibleName="role" value="reader" onValueChange={onValueChange} options={[{ value: "reader", label: "reader" }, { value: "writer", label: "writer" }]} />);
+    const select = screen.getByRole("combobox", { name: "role" });
+    expect(select.tagName).toBe("SELECT");
+    fireEvent.change(select, { target: { value: "writer" } });
+    expect(onValueChange).toHaveBeenCalledWith("writer");
+  });
+
   test("appends the reason to a disabled option", () => {
     const { parquet } = renderOptions();
 

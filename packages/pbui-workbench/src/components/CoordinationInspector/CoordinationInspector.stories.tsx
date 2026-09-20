@@ -10,7 +10,7 @@ import { coordinationInspectorApp } from "./CoordinationInspector";
 const meta: Meta = { title: "Workbench/CoordinationInspector" };
 export default meta;
 
-function Inspector() {
+function Inspector({ narrow = false }: { narrow?: boolean }) {
   const wb = useMemo(() => {
     const workbench = createWorkbench({
       apps: [...demoApps, coordinationInspectorApp],
@@ -24,7 +24,7 @@ function Inspector() {
     return workbench;
   }, []);
   return (
-    <div style={{ height: 480, display: "grid", gridTemplateRows: "minmax(0, 1fr)" }}>
+    <div style={{ height: 480, width: narrow ? 568 : undefined, maxWidth: "100%", display: "grid", gridTemplateRows: "minmax(0, 1fr)" }}>
       <wb.Surface />
     </div>
   );
@@ -33,4 +33,9 @@ function Inspector() {
 export const Tile: StoryObj = {
   name: "the coordination tile beside a linked pair: ports, wires, contexts, invariants",
   render: () => <Inspector />,
+};
+
+export const Narrow: StoryObj = {
+  name: "narrow coordination pane beside its linked pair",
+  render: () => <Inspector narrow />,
 };

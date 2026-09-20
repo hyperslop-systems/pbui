@@ -35,6 +35,15 @@ Do not draw a second tile frame around content already inside a native tile. A b
 
 A domain component is reusable only when its semantics fit. Datalab's TablePanel carries field/datum presentations and row-object semantics; a SQL result with duplicate aliases and positional string/null cells should not be converted into that model just to borrow the table's appearance. Reuse its visual recipe at a lower layer, or propose a genuinely shared primitive after comparing real call sites.
 
+### Native control behavior and shared chrome
+
+`SelectInput variant="framed"` matches the global unclassed-select skin: shared
+chevron, padding, line height and focus treatment. The explicit `native` variant
+retains platform chrome. Both remain real select elements with native keyboard
+interaction. Override `--pbui-select-chevron` for a custom pane palette; forced
+colors drops the image and restores the platform arrow. `TextArea` owns
+border-box sizing so its 100% width includes padding and borders.
+
 ### Typed objects: one representation per kind
 
 `Presentation` supplies behavior without prescribing every child. For a normal
@@ -83,6 +92,13 @@ A shortcut is not the only entry point for a core workflow. Provide visible Appl
 `AppBody` combines `flex: 1`, `min-height: 0`, `min-width: 0` and `overflow: auto`. The parent still has to supply a bounded height. In a grid, use `minmax(0, 1fr)` for the flexible content region. A `height: 100%` child cannot invent a height its parent never established.
 
 Use horizontal scrolling for exact wide tabular values when wrapping would obscure their structure. Use wrapping for long prose/identifiers in detail views. Align numeric text with tabular numerals without converting exact decimal or BIGINT strings to JavaScript numbers. Label null and empty values distinctly when the domain distinguishes them.
+
+Dense operational panels need awkward fixtures too. TracePanel uses named grid
+areas and a container query for narrow panes; a missing target still occupies a
+cell, so outcome/time do not shift columns. Runs and tools use two-line metadata
+rows. Long identifiers wrap where their full text matters; intentionally
+ellipsized metadata retains its full title and underlying reference behavior.
+See **pbui-chat / Operational Panels** for 280px and 640px fixtures.
 
 Avoid nested scroll regions and viewport-relative caps by default. If a feature needs them, test the actual tile at narrow widths and short heights; a large desktop screenshot cannot prove that arrangement works.
 

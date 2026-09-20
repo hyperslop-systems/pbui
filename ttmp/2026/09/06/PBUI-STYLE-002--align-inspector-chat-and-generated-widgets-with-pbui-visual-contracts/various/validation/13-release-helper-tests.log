@@ -1,0 +1,13 @@
+✔ accepts version, tag and rewritten dependency (0.697235ms)
+✔ rejects wrong immutable version (0.197007ms)
+✔ rejects a stale dist-tag (0.694902ms)
+✔ rejects a stale workspace dependency (0.135541ms)
+✔ rejects missing workspace metadata (0.110855ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48.388019

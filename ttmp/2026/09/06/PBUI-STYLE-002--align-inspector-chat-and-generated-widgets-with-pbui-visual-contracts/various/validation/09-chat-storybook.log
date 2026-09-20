@@ -1,0 +1,244 @@
+
+> @hyperslop-systems/pbui-chat@0.4.0 build-storybook /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat
+> storybook build -o storybook-static
+
+
+┌  Building storybook v10.5.5
+│
+◇  Cleaning outputDir: storybook-static
+│
+◇  Loading presets
+│
+◇  Building manager..
+│
+●  Building open services..
+│
+●  Building preview..
+│  Vite vite v8.1.5 building client environment for production...
+[2Ktransforming...│
+▲  Vite [plugin rolldown:vite-resolve] Module "fs" has been externalized
+│  for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_ASYNCIFY.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "path" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_ASYNCIFY.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "fs" has been externalized
+│  for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "path" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "crypto" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "fs" has been externalized
+│  for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_ASYNCIFY.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "path" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_ASYNCIFY.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "fs" has been externalized
+│  for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "path" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "path" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_ASYNCIFY.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "fs" has been externalized
+│  for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_ASYNCIFY.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "path" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "fs" has been externalized
+│  for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "fs" has been externalized
+│  for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "path" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "crypto" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_DEBUG_SYNC.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "fs" has been externalized
+│  for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_ASYNCIFY.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+│
+▲  Vite [plugin rolldown:vite-resolve] Module "path" has been
+│  externalized for browser compatibility, imported by
+│  "/home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/node_modules/.pnpm/quickjs-emscripten@0.23.0/node_modules/quickjs-emscripten/dist/generated/emscripten-module.WASM_RELEASE_ASYNCIFY.js".
+│  See
+│  ]8;;https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibilityhttps://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility]8;;
+│  for more details.
+✓ 555 modules transformed.
+rendering chunks...
+computing gzip size...
+│  Vite storybook-static/iframe.html
+│  19.07 kB │ gzip:   5.35 kB
+│  storybook-static/assets/sandbox.worker-D56-XiPP.js
+│  2,081.06 kB
+│  storybook-static/assets/PanelApp-CIOGypu0.css
+│  0.08 kB │ gzip:   0.10 kB
+│  storybook-static/assets/ChatApp-CL4mbsKz.css
+│  0.20 kB │ gzip:   0.16 kB
+│  storybook-static/assets/Operations-DFMIhhen.css
+│  2.88 kB │ gzip:   0.69 kB
+│  storybook-static/assets/DemoChat-BfzSz1xx.css
+│  11.29 kB │ gzip:   2.43 kB
+│  storybook-static/assets/iframe-DAsmQe_H.css
+│  40.32 kB │ gzip:   7.77 kB
+│  storybook-static/assets/chunk-242VQQM5-Bvks-qQ6.js
+│  0.22 kB │ gzip:   0.19 kB
+│  storybook-static/assets/formatter-L2YTDE3Q-DE84QQ6Q.js
+│  0.28 kB │ gzip:   0.23 kB
+│  storybook-static/assets/chunk-QQBDHPVZ-CLNKAVn-.js
+│  0.30 kB │ gzip:   0.18 kB
+│  storybook-static/assets/jsx-runtime-cM__dR4X.js
+│  0.43 kB │ gzip:   0.30 kB
+│  storybook-static/assets/react-B-Lm86cW.js
+│  0.53 kB │ gzip:   0.33 kB
+│  storybook-static/assets/rolldown-runtime-DaJ6WEGw.js
+│  1.17 kB │ gzip:   0.66 kB
+│  storybook-static/assets/RefPresentation.stories-LNNzryCe.js
+│  1.22 kB │ gzip:   0.53 kB
+│  storybook-static/assets/preload-helper-CKTsVmFD.js
+│  1.27 kB │ gzip:   0.73 kB
+│  storybook-static/assets/ToolCard.stories-DWQX1duO.js
+│  1.59 kB │ gzip:   0.74 kB
+│  storybook-static/assets/chunk-IMSF75WX-CvplaxuL.js
+│  1.62 kB │ gzip:   0.89 kB
+│  storybook-static/assets/Composer.stories-cwV8axnf.js
+│  1.87 kB │ gzip:   0.84 kB
+│  storybook-static/assets/WidgetApp.stories-D3o-Optn.js
+│  2.07 kB │ gzip:   0.74 kB
+│  storybook-static/assets/PbuiMarkdown.stories-L2ykrwkx.js
+│  2.54 kB │ gzip:   1.03 kB
+│  storybook-static/assets/ProposalCard.stories-B9-o_M-n.js
+│  2.54 kB │ gzip:   1.18 kB
+│  storybook-static/assets/ChatApp.stories-CsMbKU_N.js
+│  2.98 kB │ gzip:   1.45 kB
+│  storybook-static/assets/PbuiWidget.stories-BARWAPmN.js
+│  3.21 kB │ gzip:   1.18 kB
+│  storybook-static/assets/chunk-DRQKCCAG-BYT7chAe.js
+│  3.36 kB │ gzip:   1.41 kB
+│  storybook-static/assets/PanelApp.stories-CaxiY7_u.js
+│  3.40 kB │ gzip:   1.18 kB
+│  storybook-static/assets/react-dom-C7FWqcK4.js
+│  3.58 kB │ gzip:   1.36 kB
+│  storybook-static/assets/chunk-5GYAEUAU-lEZ6w7gf.js
+│  5.14 kB │ gzip:   1.91 kB
+│  storybook-static/assets/Operations.stories-XQj8xj3s.js
+│  19.13 kB │ gzip:   6.65 kB
+│  storybook-static/assets/chunk-W22LQPXL-BtXwNxx2.js
+│  22.71 kB │ gzip:   7.60 kB
+│  storybook-static/vite-inject-mocker-entry.js
+│  27.81 kB │ gzip:   9.65 kB
+│  storybook-static/assets/matchers-JIUQ3HVY-KbDH9QY-.js
+│  28.76 kB │ gzip:   9.67 kB
+│  storybook-static/assets/Color-6AOWCN3U-CFIlYpXf.js
+│  31.00 kB │ gzip:  11.66 kB
+│  storybook-static/assets/WithTooltip-7X4HQR7L-DAWl93ea.js
+│  32.78 kB │ gzip:  11.49 kB
+│  storybook-static/assets/theming-CLtDnPzk.js
+│  55.69 kB │ gzip:  21.50 kB
+│  storybook-static/assets/syntaxhighlighter-T5IQBZDB-DKCuYWZH.js
+│  75.92 kB │ gzip:  27.27 kB
+│  storybook-static/assets/react-18-DoOMDf1y.js
+│  179.12 kB │ gzip:  56.70 kB
+│  storybook-static/assets/DocsRenderer-JROSPFPF-BY4SdocM.js
+│  191.50 kB │ gzip:  60.73 kB
+│  storybook-static/assets/components-CeMxEeR-.js
+│  569.20 kB │ gzip: 181.32 kB
+│  storybook-static/assets/axe-BshuUsh3.js
+│  579.35 kB │ gzip: 158.45 kB
+│  storybook-static/assets/DemoChat-DytiJPn8.js
+│  606.93 kB │ gzip: 182.48 kB
+│  storybook-static/assets/iframe-N5o9drEt.js
+│  1,133.46 kB │ gzip: 323.35 kB
+
+│
+▲  Vite [plugin builtin:vite-reporter]
+│  (!) Some chunks are larger than 500 kB after minification. Consider:
+│  - Using dynamic import() to code-split the application
+│  - Use build.rolldownOptions.output.codeSplitting to improve chunking:
+│  ]8;;https://rolldown.rs/reference/OutputOptions.codeSplittinghttps://rolldown.rs/reference/OutputOptions.codeSplitting]8;;
+│  - Adjust chunk size limit for this warning via
+│  build.chunkSizeWarningLimit.
+│  Vite ✓ built in 9.35s
+│
+◇  Output directory:
+│  /home/manuel/workspaces/2026-09-01/add-plot-editor/pbui/packages/pbui-chat/storybook-static
+│
+└  Storybook build completed successfully
+

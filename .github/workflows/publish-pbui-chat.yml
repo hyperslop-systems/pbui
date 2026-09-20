@@ -118,3 +118,10 @@ jobs:
           fi
 
           pnpm publish . "${publish_args[@]}"
+
+      - name: Verify published version, tag and workspace dependencies
+        if: inputs.dry_run == false
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TAG: ${{ inputs.npm_tag }}
+        run: node scripts/verify-published-package.mjs packages/pbui-chat/package.json

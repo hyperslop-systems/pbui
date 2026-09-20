@@ -31,12 +31,13 @@
   align-items: baseline;
   column-gap: var(--pbui-space-2);
   min-width: 0;
-  padding: 2px var(--pbui-space-1);
-  border-bottom: var(--pbui-border-hair);
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-bottom: var(--pbui-border-grid);
+  overflow-wrap: anywhere;
 }
 
 .numbers {
-  grid-column: 1 / -1;
+  grid-column: 1;
   font-variant-numeric: tabular-nums;
   min-width: 0;
 }
@@ -46,8 +47,9 @@
 }
 
 .last {
+  grid-column: 2;
+  max-width: 18ch;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
   text-align: right;
 }
 
@@ -56,4 +58,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 18ch;
+}
+
+.row > [data-part="ref"] {
+  min-width: 0;
 }

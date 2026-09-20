@@ -41,8 +41,9 @@
   align-items: baseline;
   column-gap: var(--pbui-space-2);
   min-width: 0;
-  padding: 2px var(--pbui-space-1);
-  border-bottom: var(--pbui-border-hair);
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-bottom: var(--pbui-border-grid);
+  overflow-wrap: anywhere;
 }
 
 .summary {
@@ -63,5 +64,10 @@
 }
 
 .id {
-  white-space: nowrap;
+  max-width: 12ch;
+  overflow-wrap: anywhere;
+}
+
+.row > [data-part="ref"] {
+  min-width: 0;
 }

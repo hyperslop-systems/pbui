@@ -68,17 +68,34 @@
   box-sizing: border-box;
   font: inherit;
   font-size: var(--pbui-fs-small);
-  line-height: 1.6;
   color: var(--pbui-ink-on-pane);
   background: var(--pbui-pane);
   border: var(--pbui-border-hair);
   border-radius: var(--pbui-radius);
   padding: 0 var(--pbui-space-5) 0 var(--pbui-space-3);
-  /* The chevron, drawn in ink; a select cannot carry a pseudo-element. */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%2323262b' stroke-width='1.5'/%3E%3C/svg%3E");
+  line-height: var(--pbui-select-line-height);
+  background-image: var(--pbui-select-chevron);
   background-repeat: no-repeat;
   background-position: right var(--pbui-space-2) center;
   cursor: pointer;
+}
+
+:where(select):not([class]):not([data-part]):disabled {
+  background-color: var(--pbui-pane-alt);
+  opacity: 0.55;
+  cursor: default;
+}
+
+:where(select):not([class]):not([data-part]):focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}
+
+@media (forced-colors: active) {
+  :where(select):not([class]):not([data-part]) {
+    appearance: auto;
+    background-image: none;
+  }
 }
 
 :where(button):not([class]):not([data-part]) {

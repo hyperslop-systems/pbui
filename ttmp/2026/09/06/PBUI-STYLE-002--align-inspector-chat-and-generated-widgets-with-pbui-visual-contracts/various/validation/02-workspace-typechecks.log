@@ -1,0 +1,25 @@
+Scope: 12 of 13 workspace projects
+packages/pbui-editor typecheck$ tsc -p tsconfig.json --noEmit
+packages/workbench-protocol typecheck$ tsc -p tsconfig.json --noEmit
+packages/workbench-protocol typecheck: Done
+packages/pbui-editor typecheck: Done
+packages/workbench-core typecheck$ tsc -p tsconfig.json --noEmit
+packages/workbench-core typecheck: Done
+packages/pbui-workbench typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-workbench typecheck: Done
+packages/datalab-ui typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-ecommerce typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-ecommerce typecheck: Done
+packages/pbui-sandbox typecheck: Done
+packages/datalab-ui typecheck: Done
+packages/pbui-chat typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-ecommerce/demo typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-plotscript typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-ecommerce/demo typecheck: Done
+packages/pbui-plotscript typecheck: Done
+packages/pbui-chat typecheck: Done
+packages/pbui-chat/demo typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-plotscript/demo typecheck$ tsc -p tsconfig.json --noEmit
+packages/pbui-plotscript/demo typecheck: Done
+packages/pbui-chat/demo typecheck: Done

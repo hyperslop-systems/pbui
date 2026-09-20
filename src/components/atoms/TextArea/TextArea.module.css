@@ -4,6 +4,7 @@
  * does not.
  */
 .root {
+  box-sizing: border-box;
   font: inherit;
   color: var(--pbui-ink-on-pane);
   padding: var(--pbui-space-1) var(--pbui-space-2);

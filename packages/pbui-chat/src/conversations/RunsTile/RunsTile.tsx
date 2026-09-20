@@ -100,7 +100,7 @@ function Row({ snapshot, now }: { snapshot: ConversationSnapshot; now: number })
           {snapshot.title}
         </Text>
       </RefPresentation>
-      <Text size="micro" tone="faint" className={styles.model}>
+      <Text size="micro" tone="faint" className={styles.model} title={`${stats?.model ?? snapshot.model ?? "no model yet"}${stats?.provider ? ` · ${stats.provider}` : ""}`}>
         {stats?.model ?? snapshot.model ?? "no model yet"}
         {stats?.provider ? ` · ${stats.provider}` : ""}
       </Text>

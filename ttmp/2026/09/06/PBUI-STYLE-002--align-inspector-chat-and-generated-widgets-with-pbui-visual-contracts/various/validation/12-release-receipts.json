@@ -1,0 +1,174 @@
+{
+  "source_sha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+  "source_tag": "pbui-style-release-20260907",
+  "packages": [
+    {
+      "package": "@hyperslop-systems/pbui",
+      "version": "0.12.1",
+      "dry_run": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:40:52Z",
+        "databaseId": 34077086318,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:41:53Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077086318"
+      },
+      "publication": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:42:21Z",
+        "databaseId": 34077167380,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:43:33Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077167380"
+      },
+      "registry_readback": {
+        "verified": "@hyperslop-systems/pbui@0.12.1",
+        "tag": "latest",
+        "dependencies": {}
+      }
+    },
+    {
+      "package": "@hyperslop-systems/pbui-workbench",
+      "version": "0.6.1",
+      "dry_run": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:40:53Z",
+        "databaseId": 34077087449,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:41:53Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077087449"
+      },
+      "publication": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:43:51Z",
+        "databaseId": 34077248099,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:44:43Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077248099"
+      },
+      "registry_readback": {
+        "verified": "@hyperslop-systems/pbui-workbench@0.6.1",
+        "tag": "latest",
+        "dependencies": {
+          "@bufbuild/protobuf": "2.11.0",
+          "@hyperslop-systems/pbui": "^0.12.1",
+          "@hyperslop-systems/workbench-core": "^0.2.0",
+          "@hyperslop-systems/workbench-protocol": "^0.5.0"
+        }
+      }
+    },
+    {
+      "package": "@hyperslop-systems/pbui-editor",
+      "version": "0.2.0",
+      "dry_run": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:40:55Z",
+        "databaseId": 34077088641,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:41:43Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077088641"
+      },
+      "publication": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:43:53Z",
+        "databaseId": 34077249611,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:44:46Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077249611"
+      },
+      "registry_readback": {
+        "verified": "@hyperslop-systems/pbui-editor@0.2.0",
+        "tag": "latest",
+        "dependencies": {
+          "@codemirror/commands": "6.11.0",
+          "@codemirror/lang-javascript": "6.2.5",
+          "@codemirror/lang-json": "6.0.2",
+          "@codemirror/lang-sql": "6.10.0",
+          "@codemirror/language": "6.12.4",
+          "@codemirror/state": "6.7.1",
+          "@codemirror/view": "6.43.9",
+          "@hyperslop-systems/pbui": "^0.12.1",
+          "@lezer/highlight": "1.2.3"
+        }
+      }
+    },
+    {
+      "package": "@hyperslop-systems/pbui-sandbox",
+      "version": "0.4.1",
+      "dry_run": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:40:56Z",
+        "databaseId": 34077089795,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:41:37Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077089795"
+      },
+      "publication": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:45:09Z",
+        "databaseId": 34077323964,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:45:39Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077323964"
+      },
+      "registry_readback": {
+        "verified": "@hyperslop-systems/pbui-sandbox@0.4.1",
+        "tag": "latest",
+        "dependencies": {
+          "@bufbuild/protobuf": "2.11.0",
+          "@hyperslop-systems/pbui": "^0.12.1",
+          "@hyperslop-systems/pbui-editor": "^0.2.0",
+          "@hyperslop-systems/pbui-workbench": "^0.6.1",
+          "@hyperslop-systems/workbench-core": "^0.2.0",
+          "@hyperslop-systems/workbench-protocol": "^0.5.0",
+          "quickjs-emscripten": "0.23.0"
+        }
+      }
+    },
+    {
+      "package": "@hyperslop-systems/pbui-chat",
+      "version": "0.4.1",
+      "dry_run": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:40:57Z",
+        "databaseId": 34077091306,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:41:42Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077091306"
+      },
+      "publication": {
+        "conclusion": "success",
+        "createdAt": "2026-09-07T02:46:06Z",
+        "databaseId": 34077377586,
+        "headSha": "ed5b2a965fae6da1d8ec301c047b8b627547cb2b",
+        "status": "completed",
+        "updatedAt": "2026-09-07T02:46:58Z",
+        "url": "https://github.com/hyperslop-systems/pbui/actions/runs/34077377586"
+      },
+      "registry_readback": {
+        "verified": "@hyperslop-systems/pbui-chat@0.4.1",
+        "tag": "latest",
+        "dependencies": {
+          "@bufbuild/protobuf": "2.11.0",
+          "@go-go-golems/chat-provider": "0.6.0",
+          "@hyperslop-systems/pbui": "^0.12.1",
+          "@hyperslop-systems/pbui-sandbox": "^0.4.1",
+          "@hyperslop-systems/pbui-workbench": "^0.6.1",
+          "@hyperslop-systems/workbench-core": "^0.2.0",
+          "@hyperslop-systems/workbench-protocol": "^0.5.0",
+          "react-redux": "^9.3.0",
+          "zod": "^4.4.0"
+        }
+      }
+    }
+  ]
+}

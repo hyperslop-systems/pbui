@@ -255,7 +255,7 @@ function Row({ entry, conversationId }: { entry: ChatDebugEntry; conversationId:
       <Text size="micro" tone="faint" className={styles.id}>
         {entry.eventId}
       </Text>
-      <Text size="tiny" tone={danger ? "danger" : "default"} className={styles.summary}>
+      <Text size="tiny" tone={danger ? "danger" : "default"} className={styles.summary} title={detail ?? entry.summary}>
         {detail ?? entry.summary}
       </Text>
     </li>

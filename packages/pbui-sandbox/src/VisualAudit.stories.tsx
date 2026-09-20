@@ -44,14 +44,22 @@ function makeHost(): SandboxHost {
 
 const view = (id: string, documents: Record<string, string>) => ({ id, appId: "x", documents, title: "" }) as never;
 
-const frame = { display: "flex", flexDirection: "column" as const, height: "100%", border: "1px solid var(--pbui-line, #cbd5e1)", overflow: "auto" };
+const frame = { display: "flex", flexDirection: "column" as const, height: "100%", minWidth: 0, minHeight: 0, border: "var(--pbui-border-hair)", overflow: "auto" };
 
 export const AllDevtools: StoryObj = {
   name: "script tile + inspector + timeline + REPL, one running instance",
-  render: function AllDevtoolsStory() {
+  render: () => <DevtoolsGrid />,
+};
+
+export const NarrowDevtools: StoryObj = {
+  name: "280px devtool panes with a running instance",
+  render: () => <DevtoolsGrid narrow />,
+};
+
+function DevtoolsGrid({ narrow = false }: { narrow?: boolean }) {
     const host = useMemo(makeHost, []);
     return (
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 8, height: 640 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gridTemplateRows: "repeat(2, minmax(0, 1fr))", gap: "var(--pbui-space-2)", width: narrow ? 564 : undefined, maxWidth: "100%", height: 640 }}>
         <div style={frame}>
           <ScriptTile placementId="n-script" view={view("v-1", { program: "prg-1" })} host={host} />
         </div>
@@ -66,5 +74,4 @@ export const AllDevtools: StoryObj = {
         </div>
       </div>
     );
-  },
-};
+}

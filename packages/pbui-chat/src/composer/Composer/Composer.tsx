@@ -1,4 +1,4 @@
-import { Button, Chip, Text, TextArea, Toolbar } from "@hyperslop-systems/pbui";
+import { Button, Text, TextArea, Toolbar } from "@hyperslop-systems/pbui";
 import { selectOverlay, useChatClient, useChatSelector } from "@go-go-golems/chat-provider";
 import { useState, type KeyboardEvent } from "react";
 import { RefPresentation } from "../../components/RefPresentation";
@@ -6,7 +6,6 @@ import { usePbuiChat } from "../../context";
 import { scanMentions, uniqueMentions } from "../../mentions/mentions";
 import { resolveMention, useReferenceIndex } from "../../refs/referenceIndex";
 import { usePbuiChatStore, type ComposerDraft } from "../../store/chatStore";
-import { toneVar } from "../../tone";
 import type { Reference } from "../../types";
 import { referenceKey } from "../../types";
 import styles from "./Composer.module.css";
@@ -87,9 +86,7 @@ export function Composer({ placeholder = "ask the agent… (Enter sends, Shift+E
       {refs.length > 0 && (
         <div data-part="composer-refs" className={styles.refs}>
           {refs.map((reference) => (
-            <RefPresentation key={referenceKey(reference.type, reference.id)} reference={reference}>
-              <Chip label={chat.labelFor(reference)} tone={toneVar(chat.toneFor(reference.type) ?? reference.type)} badge={<span className={styles.type}>{reference.type}</span>} />
-            </RefPresentation>
+            <RefPresentation key={referenceKey(reference.type, reference.id)} reference={reference} badge={<span className={styles.type}>{reference.type}</span>} />
           ))}
         </div>
       )}

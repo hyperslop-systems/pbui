@@ -1,10 +1,12 @@
 /*
- * A select keeps its native chrome. The interface has no custom dropdown and
+ * A select keeps its native interaction. The explicit native variant keeps
+ * platform chrome; framed matches the global element skin. There is no custom dropdown and
  * should not grow one: the native control is keyboard-complete, screen-reader
  * complete and correct on a touch device, and reimplementing that is a project
  * rather than a component.
  */
 .root {
+  box-sizing: border-box;
   font: inherit;
   color: inherit;
   border-radius: var(--pbui-radius);
@@ -27,10 +29,16 @@
 }
 
 .framed {
+  appearance: none;
   border: var(--pbui-border-hair);
   background: var(--pbui-pane);
   color: var(--pbui-ink-on-pane);
-  padding: 0 var(--pbui-space-2);
+  line-height: var(--pbui-select-line-height);
+  padding: 0 var(--pbui-space-5) 0 var(--pbui-space-3);
+  background-image: var(--pbui-select-chevron);
+  background-repeat: no-repeat;
+  background-position: right var(--pbui-space-2) center;
+  cursor: pointer;
 }
 
 .auto {
@@ -48,11 +56,19 @@
 }
 
 .root:disabled {
-  background: var(--pbui-pane-alt);
+  background-color: var(--pbui-pane-alt);
   opacity: 0.55;
+  cursor: default;
 }
 
 .root:focus-visible {
   outline: var(--pbui-focus-ring);
   outline-offset: var(--pbui-focus-offset);
+}
+
+@media (forced-colors: active) {
+  .framed {
+    appearance: auto;
+    background-image: none;
+  }
 }

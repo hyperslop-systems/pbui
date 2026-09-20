@@ -36,8 +36,8 @@
   align-items: baseline;
   column-gap: var(--pbui-space-2);
   min-width: 0;
-  padding: 2px var(--pbui-space-1);
-  border-bottom: var(--pbui-border-hair);
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-bottom: var(--pbui-border-grid);
 }
 
 .row[data-danger="true"] {
